@@ -13,4 +13,8 @@
   <Folder Name="/src/BuildingBlocks/Infrastructure/">
     <Project Path="src/BuildingBlocks/Infrastructure/Sanad.BuildingBlocks.Infrastructure/Sanad.BuildingBlocks.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Sanad.ArchitectureTests/Sanad.ArchitectureTests.csproj" />
+    <Project Path="tests/Sanad.UnitTests/Sanad.UnitTests.csproj" />
+  </Folder>
 </Solution>
