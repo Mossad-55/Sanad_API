@@ -13,6 +13,20 @@
   <Folder Name="/src/BuildingBlocks/Infrastructure/">
     <Project Path="src/BuildingBlocks/Infrastructure/Sanad.BuildingBlocks.Infrastructure/Sanad.BuildingBlocks.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Identity/" />
+  <Folder Name="/src/Modules/Identity/Application/">
+    <Project Path="src/Modules/Identity/Application/Sanad.Modules.Identity.Application/Sanad.Modules.Identity.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identity/Domain/">
+    <Project Path="src/Modules/Identity/Domain/Sanad.Modules.Identity.Domain/Sanad.Modules.Identity.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identity/Infrastructure/">
+    <Project Path="src/Modules/Identity/Infrastructure/Sanad.Modules.Identity.Infrastructure/Sanad.Modules.Identity.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identity/Presentation/">
+    <Project Path="src/Modules/Identity/Presentation/Sanad.Modules.Identity.Presentation/Sanad.Modules.Identity.Presentation.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Sanad.ArchitectureTests/Sanad.ArchitectureTests.csproj" />
     <Project Path="tests/Sanad.UnitTests/Sanad.UnitTests.csproj" />

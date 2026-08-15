@@ -1,0 +1,15 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Infrastructure\Sanad.BuildingBlocks.Infrastructure\Sanad.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Application\Sanad.Modules.Identity.Application\Sanad.Modules.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\Domain\Sanad.Modules.Identity.Domain\Sanad.Modules.Identity.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
