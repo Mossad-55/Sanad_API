@@ -1,2 +1,16 @@
 <Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/BuildingBlocks/" />
+  <Folder Name="/src/BuildingBlocks/Application/">
+    <Project Path="src/BuildingBlocks/Application/Sanad.BuildingBlocks.Application/Sanad.BuildingBlocks.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Contracts/">
+    <Project Path="src/BuildingBlocks/Contracts/Sanad.BuildingBlocks.Contracts/Sanad.BuildingBlocks.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Domain/">
+    <Project Path="src/BuildingBlocks/Domain/Sanad.BuildingBlocks.Domain/Sanad.BuildingBlocks.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Infrastructure/">
+    <Project Path="src/BuildingBlocks/Infrastructure/Sanad.BuildingBlocks.Infrastructure/Sanad.BuildingBlocks.Infrastructure.csproj" />
+  </Folder>
 </Solution>
