@@ -26,4 +26,14 @@ public class Result<T> : Result
 
     public static new Result<T> Failure(Error error) => 
         new(error);
+
+    public static implicit operator Result<T>(T value)
+    {
+        return Success(value);
+    }
+
+    public static implicit operator Result<T>(Error error)
+    {
+        return Failure(error);
+    }
 }
