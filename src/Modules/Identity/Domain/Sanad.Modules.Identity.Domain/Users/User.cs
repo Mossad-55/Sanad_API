@@ -124,6 +124,13 @@ public sealed class User : AggregateRoot<Guid>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void ChangePhoneNumber(PhoneNumber phoneNumber)
+    {
+        PhoneNumber = phoneNumber;
+        PhoneVerified = false;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     public void UpdateLastLogin()
     {
         LastLoginOnUtc = DateTime.UtcNow;
