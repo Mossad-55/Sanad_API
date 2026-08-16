@@ -12,7 +12,7 @@ public abstract class Entity<TId>
     {
     }
 
-    public TId Id { get; protected set; } = default;
+    public TId Id { get; protected set; } = default!;
 
     public override bool Equals(object? obj)
     {
