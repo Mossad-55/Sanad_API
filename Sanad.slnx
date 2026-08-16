@@ -14,6 +14,19 @@
     <Project Path="src/BuildingBlocks/Infrastructure/Sanad.BuildingBlocks.Infrastructure/Sanad.BuildingBlocks.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Families/" />
+  <Folder Name="/src/Modules/Families/Application/">
+    <Project Path="src/Modules/Families/Application/Sanad.Modules.Families.Application/Sanad.Modules.Families.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Families/Domain/">
+    <Project Path="src/Modules/Families/Domain/Sanad.Modules.Families.Domain/Sanad.Modules.Families.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Families/Infrastructure/">
+    <Project Path="src/Modules/Families/Infrastructure/Sanad.Modules.Families.Infrastructure/Sanad.Modules.Families.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Families/Presentation/">
+    <Project Path="src/Modules/Families/Presentation/Sanad.Modules.Families.Presentation/Sanad.Modules.Families.Presentation.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Identity/" />
   <Folder Name="/src/Modules/Identity/Application/">
     <Project Path="src/Modules/Identity/Application/Sanad.Modules.Identity.Application/Sanad.Modules.Identity.Application.csproj" />

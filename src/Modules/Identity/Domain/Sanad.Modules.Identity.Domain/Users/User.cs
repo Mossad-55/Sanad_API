@@ -1,7 +1,7 @@
 using Sanad.BuildingBlocks.Domain.Abstractions;
 using Sanad.BuildingBlocks.Domain.Exceptions;
+using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Domain.Users.Events;
-using Sanad.Modules.Identity.Domain.ValueObjects;
 
 namespace Sanad.Modules.Identity.Domain.Users;
 

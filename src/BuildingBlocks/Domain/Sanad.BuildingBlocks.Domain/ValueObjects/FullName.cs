@@ -1,7 +1,7 @@
 using Sanad.BuildingBlocks.Domain.Abstractions;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 
-namespace Sanad.Modules.Identity.Domain.ValueObjects;
+namespace Sanad.BuildingBlocks.Domain.ValueObjects;
 
 public sealed class FullName : ValueObject
 {
