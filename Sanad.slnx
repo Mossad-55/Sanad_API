@@ -14,6 +14,19 @@
     <Project Path="src/BuildingBlocks/Infrastructure/Sanad.BuildingBlocks.Infrastructure/Sanad.BuildingBlocks.Infrastructure.csproj" />
   </Folder>
   <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Caregivers/" />
+  <Folder Name="/src/Modules/Caregivers/Application/">
+    <Project Path="src/Modules/Caregivers/Application/Sanad.Modules.Caregivers.Application/Sanad.Modules.Caregivers.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Caregivers/Domain/">
+    <Project Path="src/Modules/Caregivers/Domain/Sanad.Modules.Caregivers.Domain/Sanad.Modules.Caregivers.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Caregivers/Infrastructure/">
+    <Project Path="src/Modules/Caregivers/Infrastructure/Sanad.Modules.Caregivers.Infrastructure/Sanad.Modules.Caregivers.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Caregivers/Presentation/">
+    <Project Path="src/Modules/Caregivers/Presentation/Sanad.Modules.Caregivers.Presentation/Sanad.Modules.Caregivers.Presentation.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Families/" />
   <Folder Name="/src/Modules/Families/Application/">
     <Project Path="src/Modules/Families/Application/Sanad.Modules.Families.Application/Sanad.Modules.Families.Application.csproj" />
