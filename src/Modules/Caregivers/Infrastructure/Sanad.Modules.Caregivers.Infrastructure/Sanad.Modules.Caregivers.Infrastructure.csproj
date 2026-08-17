@@ -6,4 +6,11 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Application\Sanad.BuildingBlocks.Application\Sanad.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Domain\Sanad.BuildingBlocks.Domain\Sanad.BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\Application\Sanad.Modules.Families.Application\Sanad.Modules.Families.Application.csproj" />
+    <ProjectReference Include="..\..\Domain\Sanad.Modules.Families.Domain\Sanad.Modules.Families.Domain.csproj" />
+  </ItemGroup>
+  
 </Project>

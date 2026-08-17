@@ -15,7 +15,8 @@ public sealed class User : AggregateRoot<Guid>
 
     private User(
         Guid id,
-        FullName fullName,
+        FullName arabicFullName,
+        FullName englishFullName,
         Email? email,
         PhoneNumber phoneNumber,
         string? avatarUrl,
@@ -23,7 +24,8 @@ public sealed class User : AggregateRoot<Guid>
         DateTime createdOnUtc)
         : base(id)
     {
-        FullName = fullName;
+        ArabicFullName = arabicFullName;
+        EnglishFullName = englishFullName;
         Email = email;
         PhoneNumber = phoneNumber;
         AvatarUrl = avatarUrl;
@@ -36,11 +38,14 @@ public sealed class User : AggregateRoot<Guid>
         UpdatedOnUtc = createdOnUtc;
     }
 
-    public FullName FullName { get; private set; }
+    public FullName ArabicFullName { get; private set; }
+
+    public FullName EnglishFullName { get; private set; }
 
     public Email? Email { get; private set; }
 
     public PhoneNumber PhoneNumber { get; private set; }
+    public UserIdentityDocument? IdentityDocument { get; private set; }
 
     public string? AvatarUrl { get; private set; }
 
@@ -60,14 +65,16 @@ public sealed class User : AggregateRoot<Guid>
         _accounts.AsReadOnly();
 
     public static User Create(
-        FullName fullName,
+        FullName arabicFullName,
+        FullName englishFullName,
         Email? email,
         PhoneNumber phoneNumber,
         string? avatarUrl = null)
     {
         var user = new User(
             Guid.CreateVersion7(),
-            fullName,
+            arabicFullName,
+            englishFullName,
             email,
             phoneNumber,
             avatarUrl,
@@ -157,5 +164,30 @@ public sealed class User : AggregateRoot<Guid>
     {
         Status = UserStatus.Blocked;
         UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void UploadIdentityDocument(
+        string frontImagePath,
+        string backImagePath)
+    {
+        IdentityDocument =
+            UserIdentityDocument.Create(
+                frontImagePath,
+                backImagePath);
+    }
+
+    public void UpdateIdentityDocument(
+        string frontImagePath,
+        string backImagePath)
+    {
+        if (IdentityDocument is null)
+        {
+            throw new DomainException(
+                "Identity document does not exist.");
+        }
+
+        IdentityDocument.UpdateImages(
+            frontImagePath,
+            backImagePath);
     }
 }

@@ -12,7 +12,8 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         ElderlyId id,
         UserId ownerUserId,
         FamilyId familyId,
-        FullName fullName,
+        FullName arabicFullName,
+        FullName englishFullName,
         Gender gender,
         DateOnly dateOfBirth,
         string? profileImageUrl)
@@ -20,7 +21,8 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
     {
         OwnerUserId = ownerUserId;
         FamilyId = familyId;
-        FullName = fullName;
+        ArabicFullName = arabicFullName;
+        EnglishFullName = englishFullName;
         Gender = gender;
         DateOfBirth = dateOfBirth;
         ProfileImageUrl = profileImageUrl;
@@ -38,7 +40,8 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
     public UserId OwnerUserId { get; private set; }
     public FamilyId FamilyId { get; private set; }
 
-    public FullName FullName { get; private set; } = default!;
+    public FullName ArabicFullName { get; private set; } = default!;
+    public FullName EnglishFullName { get; private set; } = default!;
 
     public Gender Gender { get; private set; }
 
@@ -53,7 +56,8 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
     public static Elderly Create(
         UserId ownerUserId,
         FamilyId familyId,
-        FullName fullName,
+        FullName arabicFullName,
+        FullName englishFullName,
         Gender gender,
         DateOnly dateOfBirth,
         string? profileImageUrl = null)
@@ -67,19 +71,22 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
             ElderlyId.New(),
             ownerUserId,
             familyId,
-            fullName,
+            arabicFullName,
+            englishFullName,
             gender,
             dateOfBirth,
             profileImageUrl);
     }
 
     public void UpdateProfile(
-        FullName fullName,
+        FullName arabicFullName,
+        FullName englishFullName,
         Gender gender,
         DateOnly dateOfBirth,
         string? profileImageUrl)
     {
-        FullName = fullName;
+        ArabicFullName = arabicFullName;
+        EnglishFullName = englishFullName;
         Gender = gender;
         DateOfBirth = dateOfBirth;
         ProfileImageUrl = profileImageUrl;
