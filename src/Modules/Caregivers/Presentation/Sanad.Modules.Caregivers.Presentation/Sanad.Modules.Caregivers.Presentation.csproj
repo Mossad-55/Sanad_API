@@ -7,7 +7,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\Application\Sanad.Modules.Families.Application\Sanad.Modules.Families.Application.csproj" />
+    <ProjectReference Include="..\..\Application\Sanad.Modules.Caregivers.Application\Sanad.Modules.Caregivers.Application.csproj" />
   </ItemGroup>
 
 </Project>

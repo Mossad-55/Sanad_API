@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\BuildingBlocks\Application\Sanad.BuildingBlocks.Application\Sanad.BuildingBlocks.Application.csproj" />
-    <ProjectReference Include="..\..\Domain\Sanad.Modules.Families.Domain\Sanad.Modules.Families.Domain.csproj" />
+    <ProjectReference Include="..\..\Domain\Sanad.Modules.Caregivers.Domain\Sanad.Modules.Caregivers.Domain.csproj" />
   </ItemGroup>
 
 </Project>

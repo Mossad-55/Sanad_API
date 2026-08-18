@@ -7,10 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\BuildingBlocks\Application\Sanad.BuildingBlocks.Application\Sanad.BuildingBlocks.Application.csproj" />
-    <ProjectReference Include="..\..\..\..\BuildingBlocks\Domain\Sanad.BuildingBlocks.Domain\Sanad.BuildingBlocks.Domain.csproj" />
-    <ProjectReference Include="..\..\Application\Sanad.Modules.Families.Application\Sanad.Modules.Families.Application.csproj" />
-    <ProjectReference Include="..\..\Domain\Sanad.Modules.Families.Domain\Sanad.Modules.Families.Domain.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Infrastructure\Sanad.BuildingBlocks.Infrastructure\Sanad.BuildingBlocks.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Application\Sanad.Modules.Caregivers.Application\Sanad.Modules.Caregivers.Application.csproj" />
+    <ProjectReference Include="..\..\Domain\Sanad.Modules.Caregivers.Domain\Sanad.Modules.Caregivers.Domain.csproj" />
   </ItemGroup>
-  
+
 </Project>
