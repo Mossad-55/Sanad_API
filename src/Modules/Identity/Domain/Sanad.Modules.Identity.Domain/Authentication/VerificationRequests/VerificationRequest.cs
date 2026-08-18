@@ -117,7 +117,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
     {
         EnsurePending();
 
-        if (IsExpired())
+        if (IsExpired(DateTime.UtcNow))
         {
             throw new DomainException(
                 "Verification request has expired.");
@@ -134,7 +134,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
     {
         EnsurePending();
 
-        if (IsExpired())
+        if (IsExpired(DateTime.UtcNow))
         {
             throw new DomainException(
                 "Verification request has expired.");
@@ -166,9 +166,16 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
         Status = VerificationStatus.Expired;
     }
 
-    public bool IsExpired()
+    public bool IsExpired(DateTime utcNow)
     {
-        return DateTime.UtcNow >= ExpiresOnUtc;
+        if(utcNow.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException(
+                "Current time must be in UTC."
+            );
+        }
+
+        return utcNow >= ExpiresOnUtc;
     }
 
     private void EnsurePending()

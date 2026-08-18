@@ -191,6 +191,60 @@ public sealed class VerificationRequestTests
                 expiresOnUtc));
     }
 
+    [Theory]
+    [InlineData(-1, false)]
+    [InlineData(0, true)]
+    [InlineData(1, true)]
+    public void IsExpired_ShouldReturnExpectedResult(
+        int offsetFromExpirationSeconds,
+        bool expectedResult)
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        DateTime expiresOnUtc =
+            createdOnUtc.AddMinutes(5);
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                expiresOnUtc);
+
+        DateTime currentTimeUtc =
+            expiresOnUtc.AddSeconds(
+                offsetFromExpirationSeconds);
+
+        bool result =
+            request.IsExpired(currentTimeUtc);
+
+        Assert.Equal(expectedResult, result);
+    }
+
+    [Theory]
+    [InlineData(DateTimeKind.Local)]
+    [InlineData(DateTimeKind.Unspecified)]
+    public void IsExpired_ShouldRejectNonUtcCurrentTime(
+        DateTimeKind dateTimeKind)
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        DateTime expiresOnUtc =
+            createdOnUtc.AddMinutes(5);
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                expiresOnUtc);
+
+        DateTime invalidCurrentTime =
+            DateTime.SpecifyKind(
+                expiresOnUtc,
+                dateTimeKind);
+
+        Assert.Throws<DomainException>(
+            () => request.IsExpired(
+                invalidCurrentTime));
+    }
+
     private static VerificationRequest CreateRequest(
         DateTime createdOnUtc,
         DateTime expiresOnUtc)

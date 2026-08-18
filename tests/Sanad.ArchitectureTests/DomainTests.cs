@@ -1,20 +1,33 @@
-﻿using FluentAssertions;
+﻿using System.Reflection;
+using FluentAssertions;
 using NetArchTest.Rules;
+using Sanad.BuildingBlocks.Domain.Abstractions;
+using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.Modules.Families.Domain.Families;
+using Sanad.Modules.Identity.Domain.Users;
 
 namespace Sanad.ArchitectureTests;
 
-public class DomainTests
+public sealed class DomainTests
 {
+    private static readonly Assembly[] DomainAssemblies =
+    [
+        typeof(AggregateRoot<>).Assembly,
+        typeof(User).Assembly,
+        typeof(Family).Assembly,
+        typeof(Caregiver).Assembly
+    ];
+
     [Fact]
-    public void Domain_Should_Not_Depend_On_MediatR()
+    public void DomainAssemblies_ShouldNotDependOnMediatR()
     {
-        var result = Types.InCurrentDomain()
-            .That()
-            .ResideInNamespace("Sanad.BuildingBlocks.Domain")
+        TestResult result = Types
+            .InAssemblies(DomainAssemblies)
             .ShouldNot()
             .HaveDependencyOn("MediatR")
             .GetResult();
 
-        result.IsSuccessful.Should().BeTrue();
+        result.IsSuccessful.Should().BeTrue(
+            "Domain assemblies must remain independent of MediatR");
     }
 }
