@@ -39,13 +39,13 @@ public sealed class User : AggregateRoot<UserId>
         UpdatedOnUtc = createdOnUtc;
     }
 
-    public FullName ArabicFullName { get; private set; }
+    public FullName ArabicFullName { get; private set; } = default!;
 
-    public FullName EnglishFullName { get; private set; }
+    public FullName EnglishFullName { get; private set; } = default!;
 
     public Email? Email { get; private set; }
 
-    public PhoneNumber PhoneNumber { get; private set; }
+    public PhoneNumber PhoneNumber { get; private set; } = default!;
     public UserIdentityDocument? IdentityDocument { get; private set; }
 
     public string? AvatarUrl { get; private set; }
