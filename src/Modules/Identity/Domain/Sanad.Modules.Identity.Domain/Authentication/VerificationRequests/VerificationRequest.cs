@@ -166,9 +166,16 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
             new VerificationRequestInvalidatedDomainEvent(Id));
     }
 
-    public void MarkExpired()
+    public void MarkExpired(DateTime utcNow)
     {
         EnsurePending();
+
+        if(!IsExpired(utcNow))
+        {
+            throw new DomainException(
+                "Verification request has not expired yet."
+            );
+        }
 
         Status = VerificationStatus.Expired;
     }

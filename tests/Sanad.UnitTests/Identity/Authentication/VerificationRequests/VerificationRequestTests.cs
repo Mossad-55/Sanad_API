@@ -614,6 +614,118 @@ public sealed class VerificationRequestTests
                 .OfType<VerificationRequestInvalidatedDomainEvent>());
     }
 
+    [Fact]
+    public void MarkExpired_ShouldRejectBeforeExpiration()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        DateTime expiresOnUtc =
+            createdOnUtc.AddMinutes(5);
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                expiresOnUtc);
+
+        DateTime currentTimeUtc =
+            expiresOnUtc.AddSeconds(-1);
+
+        Assert.Throws<DomainException>(
+            () => request.MarkExpired(
+                currentTimeUtc));
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            request.Status);
+
+        Assert.Null(request.VerifiedOnUtc);
+        Assert.Null(request.InvalidatedOnUtc);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    public void MarkExpired_ShouldExpireAtOrAfterBoundary(
+        int offsetFromExpirationSeconds)
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        DateTime expiresOnUtc =
+            createdOnUtc.AddMinutes(5);
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                expiresOnUtc);
+
+        DateTime currentTimeUtc =
+            expiresOnUtc.AddSeconds(
+                offsetFromExpirationSeconds);
+
+        request.MarkExpired(currentTimeUtc);
+
+        Assert.Equal(
+            VerificationStatus.Expired,
+            request.Status);
+
+        Assert.Null(request.VerifiedOnUtc);
+        Assert.Null(request.InvalidatedOnUtc);
+    }
+
+    [Theory]
+    [InlineData(DateTimeKind.Local)]
+    [InlineData(DateTimeKind.Unspecified)]
+    public void MarkExpired_ShouldRejectNonUtcTime(
+        DateTimeKind dateTimeKind)
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        DateTime expiresOnUtc =
+            createdOnUtc.AddMinutes(5);
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                expiresOnUtc);
+
+        DateTime invalidCurrentTime =
+            DateTime.SpecifyKind(
+                expiresOnUtc,
+                dateTimeKind);
+
+        Assert.Throws<DomainException>(
+            () => request.MarkExpired(
+                invalidCurrentTime));
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            request.Status);
+    }
+
+    [Fact]
+    public void MarkExpired_ShouldRejectSecondExpiration()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        DateTime expiresOnUtc =
+            createdOnUtc.AddMinutes(5);
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                expiresOnUtc);
+
+        request.MarkExpired(expiresOnUtc);
+
+        Assert.Throws<DomainException>(
+            () => request.MarkExpired(
+                expiresOnUtc.AddSeconds(1)));
+
+        Assert.Equal(
+            VerificationStatus.Expired,
+            request.Status);
+    }
+
     private static VerificationRequest CreateRequest(
         DateTime createdOnUtc,
         DateTime expiresOnUtc)
