@@ -14,6 +14,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
         string otpHash,
         VerificationChannel channel,
         VerificationPurpose purpose,
+        DateTime createdOnUtc,
         DateTime expiresOnUtc)
         : base(id)
     {
@@ -28,7 +29,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
         Attempts = 0;
         MaxAttempts = 5;
 
-        CreatedOnUtc = DateTime.UtcNow;
+        CreatedOnUtc = createdOnUtc;
         ExpiresOnUtc = expiresOnUtc;
 
         RaiseDomainEvent(
@@ -69,6 +70,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
         string otpHash,
         VerificationChannel channel,
         VerificationPurpose purpose,
+        DateTime createdOnUtc,
         DateTime expiresOnUtc)
     {
         if (string.IsNullOrWhiteSpace(target))
@@ -83,6 +85,24 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
                 "OTP hash cannot be empty.");
         }
 
+        if (createdOnUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException(
+                "Creation time must be in UTC.");
+        }
+
+        if (expiresOnUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException(
+                "Expiration time must be in UTC.");
+        }
+
+        if (expiresOnUtc <= createdOnUtc)
+        {
+            throw new DomainException(
+                "Expiration time must be after creation time.");
+        }
+
         return new VerificationRequest(
             VerificationRequestId.New(),
             userId,
@@ -90,9 +110,9 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
             otpHash,
             channel,
             purpose,
+            createdOnUtc,
             expiresOnUtc);
     }
-
     public void Verify()
     {
         EnsurePending();
