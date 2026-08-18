@@ -245,6 +245,146 @@ public sealed class VerificationRequestTests
                 invalidCurrentTime));
     }
 
+    [Fact]
+    public void Verify_ShouldMarkPendingRequestAsVerified()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        DateTime expiresOnUtc =
+            createdOnUtc.AddMinutes(5);
+
+        DateTime verifiedOnUtc =
+            createdOnUtc.AddMinutes(2);
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                expiresOnUtc);
+
+        request.Verify(verifiedOnUtc);
+
+        Assert.Equal(
+            VerificationStatus.Verified,
+            request.Status);
+
+        Assert.Equal(
+            verifiedOnUtc,
+            request.VerifiedOnUtc);
+
+        Assert.Null(request.InvalidatedOnUtc);
+    }
+
+    [Fact]
+    public void Verify_ShouldRaiseVerifiedDomainEvent()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        request.Verify(
+            createdOnUtc.AddMinutes(2));
+
+        VerificationRequestVerifiedDomainEvent domainEvent =
+            Assert.Single(
+                request.DomainEvents
+                    .OfType<VerificationRequestVerifiedDomainEvent>());
+
+        Assert.Equal(
+            request.Id,
+            domainEvent.VerificationRequestId);
+    }
+
+    [Fact]
+    public void Verify_ShouldRejectRequestAtExpirationBoundary()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        DateTime expiresOnUtc =
+            createdOnUtc.AddMinutes(5);
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                expiresOnUtc);
+
+        Assert.Throws<DomainException>(
+            () => request.Verify(expiresOnUtc));
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            request.Status);
+
+        Assert.Null(request.VerifiedOnUtc);
+
+        Assert.Empty(
+            request.DomainEvents
+                .OfType<VerificationRequestVerifiedDomainEvent>());
+    }
+
+    [Theory]
+    [InlineData(DateTimeKind.Local)]
+    [InlineData(DateTimeKind.Unspecified)]
+    public void Verify_ShouldRejectNonUtcVerificationTime(
+        DateTimeKind dateTimeKind)
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        DateTime invalidVerificationTime =
+            DateTime.SpecifyKind(
+                createdOnUtc.AddMinutes(2),
+                dateTimeKind);
+
+        Assert.Throws<DomainException>(
+            () => request.Verify(
+                invalidVerificationTime));
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            request.Status);
+
+        Assert.Null(request.VerifiedOnUtc);
+    }
+
+    [Fact]
+    public void Verify_ShouldRejectSecondVerification()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        DateTime firstVerificationTime =
+            createdOnUtc.AddMinutes(1);
+
+        request.Verify(firstVerificationTime);
+
+        Assert.Throws<DomainException>(
+            () => request.Verify(
+                createdOnUtc.AddMinutes(2)));
+
+        Assert.Equal(
+            VerificationStatus.Verified,
+            request.Status);
+
+        Assert.Equal(
+            firstVerificationTime,
+            request.VerifiedOnUtc);
+
+        Assert.Single(
+            request.DomainEvents
+                .OfType<VerificationRequestVerifiedDomainEvent>());
+    }
+
     private static VerificationRequest CreateRequest(
         DateTime createdOnUtc,
         DateTime expiresOnUtc)
