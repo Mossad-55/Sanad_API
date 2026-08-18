@@ -113,28 +113,28 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
             createdOnUtc,
             expiresOnUtc);
     }
-    public void Verify()
+    public void Verify(DateTime utcNow)
     {
         EnsurePending();
 
-        if (IsExpired(DateTime.UtcNow))
+        if (IsExpired(utcNow))
         {
             throw new DomainException(
                 "Verification request has expired.");
         }
 
         Status = VerificationStatus.Verified;
-        VerifiedOnUtc = DateTime.UtcNow;
+        VerifiedOnUtc = utcNow;
 
         RaiseDomainEvent(
             new VerificationRequestVerifiedDomainEvent(Id));
     }
 
-    public void RegisterFailedAttempt()
+    public void RegisterFailedAttempt(DateTime utcNow)
     {
         EnsurePending();
 
-        if (IsExpired(DateTime.UtcNow))
+        if (IsExpired(utcNow))
         {
             throw new DomainException(
                 "Verification request has expired.");
@@ -144,16 +144,23 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
 
         if (Attempts >= MaxAttempts)
         {
-            Invalidate();
+            Invalidate(utcNow);
         }
     }
 
-    public void Invalidate()
+    public void Invalidate(DateTime utcNow)
     {
         EnsurePending();
 
+        if(utcNow.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException(
+                "Invalidation time must be in UTC."
+            );
+        }
+
         Status = VerificationStatus.Invalidated;
-        InvalidatedOnUtc = DateTime.UtcNow;
+        InvalidatedOnUtc = utcNow;
 
         RaiseDomainEvent(
             new VerificationRequestInvalidatedDomainEvent(Id));

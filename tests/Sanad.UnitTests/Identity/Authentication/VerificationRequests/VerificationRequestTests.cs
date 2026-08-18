@@ -385,6 +385,235 @@ public sealed class VerificationRequestTests
                 .OfType<VerificationRequestVerifiedDomainEvent>());
     }
 
+    [Fact]
+    public void RegisterFailedAttempt_ShouldIncrementAttempts()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(10));
+
+        request.RegisterFailedAttempt(
+            createdOnUtc.AddMinutes(1));
+
+        Assert.Equal(1, request.Attempts);
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            request.Status);
+
+        Assert.Null(request.InvalidatedOnUtc);
+
+        Assert.Empty(
+            request.DomainEvents
+                .OfType<VerificationRequestInvalidatedDomainEvent>());
+    }
+
+    [Fact]
+    public void RegisterFailedAttempt_ShouldInvalidateAtMaximumAttempts()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(10));
+
+        for (int attempt = 1;
+            attempt < request.MaxAttempts;
+            attempt++)
+        {
+            request.RegisterFailedAttempt(
+                createdOnUtc.AddMinutes(attempt));
+        }
+
+        DateTime invalidatedOnUtc =
+            createdOnUtc.AddMinutes(
+                request.MaxAttempts);
+
+        request.RegisterFailedAttempt(
+            invalidatedOnUtc);
+
+        Assert.Equal(
+            request.MaxAttempts,
+            request.Attempts);
+
+        Assert.Equal(
+            VerificationStatus.Invalidated,
+            request.Status);
+
+        Assert.Equal(
+            invalidatedOnUtc,
+            request.InvalidatedOnUtc);
+
+        VerificationRequestInvalidatedDomainEvent domainEvent =
+            Assert.Single(
+                request.DomainEvents
+                    .OfType<VerificationRequestInvalidatedDomainEvent>());
+
+        Assert.Equal(
+            request.Id,
+            domainEvent.VerificationRequestId);
+    }
+
+    [Fact]
+    public void RegisterFailedAttempt_ShouldRejectExpiredRequest()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        DateTime expiresOnUtc =
+            createdOnUtc.AddMinutes(5);
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                expiresOnUtc);
+
+        Assert.Throws<DomainException>(
+            () => request.RegisterFailedAttempt(
+                expiresOnUtc));
+
+        Assert.Equal(0, request.Attempts);
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            request.Status);
+
+        Assert.Null(request.InvalidatedOnUtc);
+    }
+
+    [Theory]
+    [InlineData(DateTimeKind.Local)]
+    [InlineData(DateTimeKind.Unspecified)]
+    public void RegisterFailedAttempt_ShouldRejectNonUtcTime(
+        DateTimeKind dateTimeKind)
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        DateTime invalidAttemptTime =
+            DateTime.SpecifyKind(
+                createdOnUtc.AddMinutes(1),
+                dateTimeKind);
+
+        Assert.Throws<DomainException>(
+            () => request.RegisterFailedAttempt(
+                invalidAttemptTime));
+
+        Assert.Equal(0, request.Attempts);
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            request.Status);
+    }
+
+    [Fact]
+    public void Invalidate_ShouldInvalidatePendingRequest()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        DateTime invalidatedOnUtc =
+            createdOnUtc.AddMinutes(1);
+
+        request.Invalidate(invalidatedOnUtc);
+
+        Assert.Equal(
+            VerificationStatus.Invalidated,
+            request.Status);
+
+        Assert.Equal(
+            invalidatedOnUtc,
+            request.InvalidatedOnUtc);
+
+        VerificationRequestInvalidatedDomainEvent domainEvent =
+            Assert.Single(
+                request.DomainEvents
+                    .OfType<VerificationRequestInvalidatedDomainEvent>());
+
+        Assert.Equal(
+            request.Id,
+            domainEvent.VerificationRequestId);
+    }
+
+    [Theory]
+    [InlineData(DateTimeKind.Local)]
+    [InlineData(DateTimeKind.Unspecified)]
+    public void Invalidate_ShouldRejectNonUtcTime(
+        DateTimeKind dateTimeKind)
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        DateTime invalidInvalidationTime =
+            DateTime.SpecifyKind(
+                createdOnUtc.AddMinutes(1),
+                dateTimeKind);
+
+        Assert.Throws<DomainException>(
+            () => request.Invalidate(
+                invalidInvalidationTime));
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            request.Status);
+
+        Assert.Null(request.InvalidatedOnUtc);
+
+        Assert.Empty(
+            request.DomainEvents
+                .OfType<VerificationRequestInvalidatedDomainEvent>());
+    }
+
+    [Fact]
+    public void RegisterFailedAttempt_ShouldRejectAfterInvalidation()
+    {
+        DateTime createdOnUtc = CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(10));
+
+        for (int attempt = 1;
+            attempt <= request.MaxAttempts;
+            attempt++)
+        {
+            request.RegisterFailedAttempt(
+                createdOnUtc.AddMinutes(attempt));
+        }
+
+        Assert.Throws<DomainException>(
+            () => request.RegisterFailedAttempt(
+                createdOnUtc.AddMinutes(6)));
+
+        Assert.Equal(
+            request.MaxAttempts,
+            request.Attempts);
+
+        Assert.Equal(
+            VerificationStatus.Invalidated,
+            request.Status);
+
+        Assert.Single(
+            request.DomainEvents
+                .OfType<VerificationRequestInvalidatedDomainEvent>());
+    }
+
     private static VerificationRequest CreateRequest(
         DateTime createdOnUtc,
         DateTime expiresOnUtc)
