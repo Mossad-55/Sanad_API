@@ -1,11 +1,12 @@
 using Sanad.BuildingBlocks.Domain.Abstractions;
 using Sanad.BuildingBlocks.Domain.Exceptions;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Domain.Users.Events;
 
 namespace Sanad.Modules.Identity.Domain.Users;
 
-public sealed class User : AggregateRoot<Guid>
+public sealed class User : AggregateRoot<UserId>
 {
     private readonly List<UserAccount> _accounts = [];
 
@@ -14,7 +15,7 @@ public sealed class User : AggregateRoot<Guid>
     }
 
     private User(
-        Guid id,
+        UserId id,
         FullName arabicFullName,
         FullName englishFullName,
         Email? email,
@@ -72,7 +73,7 @@ public sealed class User : AggregateRoot<Guid>
         string? avatarUrl = null)
     {
         var user = new User(
-            Guid.CreateVersion7(),
+            UserId.New(),
             arabicFullName,
             englishFullName,
             email,

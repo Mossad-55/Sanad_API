@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\BuildingBlocks\Domain\Sanad.BuildingBlocks.Domain\Sanad.BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Caregivers\Domain\Sanad.Modules.Caregivers.Domain\Sanad.Modules.Caregivers.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Domain\Sanad.Modules.Identity.Domain\Sanad.Modules.Identity.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>
