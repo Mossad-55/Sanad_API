@@ -36,8 +36,12 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public CaregiverAvailability Availability { get; private set; }
     public CaregiverPricing? Pricing { get; private set; }
     public CaregiverSchedule Schedule { get; private set; } = CaregiverSchedule.Create();
+    public decimal AverageRating { get; private set; } = 0;
+    public int ReviewsCount { get; private set; } = 0;
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
+    private readonly List<CaregiverCertificate> _certificates = [];
+    public IReadOnlyCollection<CaregiverCertificate> Certificates => _certificates.AsReadOnly();
 
     public static Caregiver Create(
         UserId userId,
@@ -86,6 +90,20 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public void UpdatePricing(CaregiverPricing pricing)
     {
         Pricing = pricing;
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void AddCertificate(
+        string name,
+        string filePath,
+        DateOnly? expiryDate = null)
+    {
+        _certificates.Add(
+            CaregiverCertificate.Create(
+                name,
+                filePath,
+                expiryDate));
 
         UpdatedOnUtc = DateTime.UtcNow;
     }
