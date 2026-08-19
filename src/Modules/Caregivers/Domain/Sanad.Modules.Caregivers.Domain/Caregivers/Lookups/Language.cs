@@ -4,7 +4,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
 namespace Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 
-public sealed class Language : Entity<LanguageId>
+public sealed class Language : AggregateRoot<LanguageId>
 {
     public const int MaximumNameLength = 100;
 

@@ -4,7 +4,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
 namespace Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 
-public sealed class Service : Entity<ServiceId>
+public sealed class Service : AggregateRoot<ServiceId>
 {
     public const int MaximumNameLength = 150;
 

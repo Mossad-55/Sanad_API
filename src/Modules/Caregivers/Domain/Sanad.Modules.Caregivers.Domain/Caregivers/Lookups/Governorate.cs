@@ -4,7 +4,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
 namespace Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 
-public sealed class Governorate : Entity<GovernorateId>
+public sealed class Governorate : AggregateRoot<GovernorateId>
 {
     public const int MaximumNameLength = 150;
 

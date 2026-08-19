@@ -3,7 +3,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
 namespace Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 
-public sealed class Area : Entity<AreaId>
+public sealed class Area : AggregateRoot<AreaId>
 {
     private Area()
     {
