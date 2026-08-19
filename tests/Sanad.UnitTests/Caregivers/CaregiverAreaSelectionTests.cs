@@ -199,6 +199,173 @@ public sealed class CaregiverAreaSelectionTests
             caregiver.UpdatedOnUtc);
     }
 
+    [Fact]
+    public void RemoveArea_ShouldRemoveFinalAreaDuringOnboarding()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        Area area = CreateArea();
+
+        caregiver.SelectArea(area);
+
+        caregiver.RemoveArea(area.Id);
+
+        Assert.Empty(
+            caregiver.AreaSelections);
+
+        Assert.Equal(
+            CaregiverStatus.PendingVerification,
+            caregiver.Status);
+
+        Assert.True(
+            caregiver.UpdatedOnUtc >=
+            caregiver.CreatedOnUtc);
+    }
+
+    [Fact]
+    public void RemoveArea_ShouldAllowActiveCaregiverToKeepOneArea()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        Area firstArea = CreateArea();
+        Area secondArea = CreateArea();
+
+        caregiver.SelectArea(firstArea);
+        caregiver.SelectArea(secondArea);
+        caregiver.Activate();
+
+        caregiver.RemoveArea(firstArea.Id);
+
+        var remainingSelection =
+            Assert.Single(
+                caregiver.AreaSelections);
+
+        Assert.Equal(
+            secondArea.Id,
+            remainingSelection.Id);
+
+        Assert.Equal(
+            CaregiverStatus.Active,
+            caregiver.Status);
+    }
+
+    [Fact]
+    public void RemoveArea_ShouldRejectFinalAreaForActiveCaregiver()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        Area area = CreateArea();
+
+        caregiver.SelectArea(area);
+        caregiver.Activate();
+
+        DateTime updatedOnUtcBeforeRemoval =
+            caregiver.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => caregiver.RemoveArea(
+                area.Id));
+
+        var selection =
+            Assert.Single(
+                caregiver.AreaSelections);
+
+        Assert.Equal(
+            area.Id,
+            selection.Id);
+
+        Assert.Equal(
+            CaregiverStatus.Active,
+            caregiver.Status);
+
+        Assert.Equal(
+            updatedOnUtcBeforeRemoval,
+            caregiver.UpdatedOnUtc);
+    }
+
+    [Fact]
+    public void RemoveArea_ShouldRejectUnselectedArea()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Companion);
+
+        Area selectedArea = CreateArea();
+        Area unselectedArea = CreateArea();
+
+        caregiver.SelectArea(selectedArea);
+
+        DateTime updatedOnUtcBeforeRemoval =
+            caregiver.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => caregiver.RemoveArea(
+                unselectedArea.Id));
+
+        var selection =
+            Assert.Single(
+                caregiver.AreaSelections);
+
+        Assert.Equal(
+            selectedArea.Id,
+            selection.Id);
+
+        Assert.Equal(
+            updatedOnUtcBeforeRemoval,
+            caregiver.UpdatedOnUtc);
+    }
+
+    [Fact]
+    public void RemoveArea_ShouldRejectEmptyAreaId()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        DateTime originalUpdatedOnUtc =
+            caregiver.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => caregiver.RemoveArea(
+                AreaId.Empty));
+
+        Assert.Empty(
+            caregiver.AreaSelections);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            caregiver.UpdatedOnUtc);
+    }
+
+    [Fact]
+    public void RemoveArea_ShouldAllowSuspendedCaregiverToRemoveFinalArea()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Companion);
+
+        Area area = CreateArea();
+
+        caregiver.SelectArea(area);
+        caregiver.Activate();
+        caregiver.Suspend();
+
+        caregiver.RemoveArea(area.Id);
+
+        Assert.Empty(
+            caregiver.AreaSelections);
+
+        Assert.Equal(
+            CaregiverStatus.Suspended,
+            caregiver.Status);
+    }    
+
     private static Caregiver CreateCaregiver(
         CaregiverType caregiverType)
     {

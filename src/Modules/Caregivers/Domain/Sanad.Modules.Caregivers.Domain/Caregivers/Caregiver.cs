@@ -284,4 +284,37 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         UpdatedOnUtc = DateTime.UtcNow;
     }
+
+    public void RemoveArea(AreaId areaId)
+    {
+        if (areaId == AreaId.Empty)
+        {
+            throw new DomainException(
+                "Area ID is required.");
+        }
+
+        CaregiverAreaSelection? selection =
+            _areaSelections.SingleOrDefault(
+                selection =>
+                    selection.Id == areaId);
+
+        if (selection is null)
+        {
+            throw new DomainException(
+                "The area is not selected.");
+        }
+
+        bool isRemovingFinalArea =
+            _areaSelections.Count == 1;
+
+        if (Status == CaregiverStatus.Active &&
+            isRemovingFinalArea)
+        {
+            throw new DomainException(
+                "An active caregiver must have at least one area.");
+        }
+
+        _areaSelections.Remove(selection);
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
 }
