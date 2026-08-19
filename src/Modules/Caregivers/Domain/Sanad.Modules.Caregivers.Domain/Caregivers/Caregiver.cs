@@ -177,6 +177,44 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void VerifyCertificate(CaregiverCertificateId certificateId)
+    {
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        certificate.Verify();
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RejectCertificate(CaregiverCertificateId certificateId, string reason)
+    {
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        certificate.Reject(reason);
+
+        if (IsMandatoryCertificate(certificate.Type))
+        {
+            Availability = CaregiverAvailability.Unavailable;
+        }
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RevokeCertificate(CaregiverCertificateId certificateId, string reason)
+    {
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        certificate.Revoke(reason);
+
+        if (IsMandatoryCertificate(certificate.Type))
+        {
+            Availability =
+                CaregiverAvailability.Unavailable;
+        }
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     public void SelectService(Service service)
     {
         ArgumentNullException.ThrowIfNull(service);
@@ -373,5 +411,35 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         _areaSelections.Remove(selection);
         UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    private CaregiverCertificate GetCertificate(CaregiverCertificateId certificateId)
+    {
+         if (certificateId == CaregiverCertificateId.Empty)
+        {
+            throw new DomainException(
+                "Certificate ID is required.");
+        }
+
+        CaregiverCertificate? certificate =
+            _certificates.SingleOrDefault(
+                certificate =>
+                    certificate.Id ==
+                    certificateId);
+
+        if (certificate is null)
+        {
+            throw new DomainException(
+                "Certificate was not found.");
+        }
+
+        return certificate;
+    }
+
+    private static bool IsMandatoryCertificate(CaregiverCertificateType type)
+    {
+        return type is
+            CaregiverCertificateType.PracticeLicense or
+            CaregiverCertificateType.GraduationCertificate;
     }
 }

@@ -42,7 +42,7 @@ public sealed class CaregiverCertificate :
         private set;
     }
 
-    public string? RejectionReason { get; private set; }
+    public string? ReviewReason { get; private set; }
 
     public DateTime CreatedOnUtc { get; private set; }
 
@@ -73,31 +73,66 @@ public sealed class CaregiverCertificate :
             createdOnUtc);
     }
 
-    public void Verify()
+    internal void Verify()
     {
-        VerificationStatus =
-            CertificateVerificationStatus.Verified;
+        if(VerificationStatus != CertificateVerificationStatus.Pending)
+        {
+            throw new DomainException(
+            "Only a Pending Certificate can be Verified.");
+        }
 
-        RejectionReason = null;
+        VerificationStatus = CertificateVerificationStatus.Verified;
+
+        ReviewReason = null;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
-    public void Reject(string reason)
+    internal void Reject(string reason)
     {
+        if(VerificationStatus != CertificateVerificationStatus.Pending)
+        {
+            throw new DomainException(
+                "Only a Pending Certificate can be Rejected."
+            );
+        }
+
         if (string.IsNullOrWhiteSpace(reason))
         {
             throw new DomainException(
-                "Rejection reason is required.");
+                "Rejection reason is required."
+            );
         }
 
-        VerificationStatus =
-            CertificateVerificationStatus.Rejected;
+        VerificationStatus = CertificateVerificationStatus.Rejected;
 
-        RejectionReason = reason.Trim();
+        ReviewReason = reason.Trim();
+
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
-    public void UpdateFile(
+    internal void Revoke(string reason)
+    {
+        if(VerificationStatus != CertificateVerificationStatus.Verified)
+        {
+            throw new DomainException(
+                "Only a Verified Certificate can be Revoked."
+            );
+        }
+
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new DomainException(
+                "Revocation reason is required."
+            );
+        }
+
+        VerificationStatus = CertificateVerificationStatus.Revoked;
+
+        ReviewReason = reason.Trim();
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    internal void UpdateFile(
         string filePath,
         DateOnly? expiryDate,
         DateOnly currentDate)
@@ -115,7 +150,7 @@ public sealed class CaregiverCertificate :
         VerificationStatus =
             CertificateVerificationStatus.Pending;
 
-        RejectionReason = null;
+        ReviewReason = null;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
