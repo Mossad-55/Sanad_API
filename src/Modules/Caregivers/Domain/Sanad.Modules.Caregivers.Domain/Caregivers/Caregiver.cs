@@ -10,6 +10,8 @@ namespace Sanad.Modules.Caregivers.Domain.Caregivers;
 public sealed class Caregiver : AggregateRoot<CaregiverId>
 {
     private readonly List<CaregiverServiceSelection> _serviceSelections = [];
+    private readonly List<CaregiverLanguageSelection> _languageSelections = [];
+
     private Caregiver()
     {
     }
@@ -47,6 +49,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     private readonly List<CaregiverCertificate> _certificates = [];
     public IReadOnlyCollection<CaregiverCertificate> Certificates => _certificates.AsReadOnly();
     public IReadOnlyCollection<CaregiverServiceSelection> ServiceSelections => _serviceSelections.AsReadOnly();
+    public IReadOnlyCollection<CaregiverLanguageSelection> LanguageSelections => _languageSelections.AsReadOnly();    
 
     public static Caregiver Create(
         UserId userId,
@@ -178,6 +181,33 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         }
 
         _serviceSelections.Remove(selection);
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void SelectLanguage(Language language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+
+        if (!language.IsActive)
+        {
+            throw new DomainException(
+                "Cannot select an inactive language."
+            );
+        }
+
+        bool alreadySelected = _languageSelections.Any(
+            selection => selection.Id == language.Id
+        );
+
+        if (alreadySelected)
+        {
+            throw new DomainException(
+                "The language is already selected."
+            );
+        }
+
+        _languageSelections.Add(CaregiverLanguageSelection.Create(language.Id));
 
         UpdatedOnUtc = DateTime.UtcNow;
     }
