@@ -161,6 +161,204 @@ public sealed class CaregiverLanguageSelectionTests
             caregiver.UpdatedOnUtc);
     }
 
+    [Fact]
+    public void RemoveLanguage_ShouldRemoveFinalLanguageDuringOnboarding()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        Language language =
+            CreateLanguage(
+                "ar",
+                "العربية",
+                "Arabic");
+
+        caregiver.SelectLanguage(language);
+
+        caregiver.RemoveLanguage(language.Id);
+
+        Assert.Empty(
+            caregiver.LanguageSelections);
+
+        Assert.Equal(
+            CaregiverStatus.PendingVerification,
+            caregiver.Status);
+
+        Assert.True(
+            caregiver.UpdatedOnUtc >=
+            caregiver.CreatedOnUtc);
+    }
+
+    [Fact]
+    public void RemoveLanguage_ShouldAllowActiveCaregiverToKeepOneLanguage()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        Language arabic =
+            CreateLanguage(
+                "ar",
+                "العربية",
+                "Arabic");
+
+        Language english =
+            CreateLanguage(
+                "en",
+                "الإنجليزية",
+                "English");
+
+        caregiver.SelectLanguage(arabic);
+        caregiver.SelectLanguage(english);
+        caregiver.Activate();
+
+        caregiver.RemoveLanguage(arabic.Id);
+
+        var remainingSelection =
+            Assert.Single(
+                caregiver.LanguageSelections);
+
+        Assert.Equal(
+            english.Id,
+            remainingSelection.Id);
+
+        Assert.Equal(
+            CaregiverStatus.Active,
+            caregiver.Status);
+    }
+
+    [Fact]
+    public void RemoveLanguage_ShouldRejectFinalLanguageForActiveCaregiver()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        Language language =
+            CreateLanguage(
+                "ar",
+                "العربية",
+                "Arabic");
+
+        caregiver.SelectLanguage(language);
+        caregiver.Activate();
+
+        DateTime updatedOnUtcBeforeRemoval =
+            caregiver.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => caregiver.RemoveLanguage(
+                language.Id));
+
+        var selection =
+            Assert.Single(
+                caregiver.LanguageSelections);
+
+        Assert.Equal(
+            language.Id,
+            selection.Id);
+
+        Assert.Equal(
+            CaregiverStatus.Active,
+            caregiver.Status);
+
+        Assert.Equal(
+            updatedOnUtcBeforeRemoval,
+            caregiver.UpdatedOnUtc);
+    }
+
+    [Fact]
+    public void RemoveLanguage_ShouldRejectUnselectedLanguage()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Companion);
+
+        Language selectedLanguage =
+            CreateLanguage(
+                "ar",
+                "العربية",
+                "Arabic");
+
+        Language unselectedLanguage =
+            CreateLanguage(
+                "en",
+                "الإنجليزية",
+                "English");
+
+        caregiver.SelectLanguage(
+            selectedLanguage);
+
+        DateTime updatedOnUtcBeforeRemoval =
+            caregiver.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => caregiver.RemoveLanguage(
+                unselectedLanguage.Id));
+
+        var selection =
+            Assert.Single(
+                caregiver.LanguageSelections);
+
+        Assert.Equal(
+            selectedLanguage.Id,
+            selection.Id);
+
+        Assert.Equal(
+            updatedOnUtcBeforeRemoval,
+            caregiver.UpdatedOnUtc);
+    }
+
+    [Fact]
+    public void RemoveLanguage_ShouldRejectEmptyLanguageId()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        DateTime originalUpdatedOnUtc =
+            caregiver.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => caregiver.RemoveLanguage(
+                LanguageId.Empty));
+
+        Assert.Empty(
+            caregiver.LanguageSelections);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            caregiver.UpdatedOnUtc);
+    }
+
+    [Fact]
+    public void RemoveLanguage_ShouldAllowSuspendedCaregiverToRemoveFinalLanguage()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Companion);
+
+        Language language =
+            CreateLanguage(
+                "ar",
+                "العربية",
+                "Arabic");
+
+        caregiver.SelectLanguage(language);
+        caregiver.Activate();
+        caregiver.Suspend();
+
+        caregiver.RemoveLanguage(language.Id);
+
+        Assert.Empty(
+            caregiver.LanguageSelections);
+
+        Assert.Equal(
+            CaregiverStatus.Suspended,
+            caregiver.Status);
+    }
+
     private static Caregiver CreateCaregiver(
         CaregiverType caregiverType)
     {

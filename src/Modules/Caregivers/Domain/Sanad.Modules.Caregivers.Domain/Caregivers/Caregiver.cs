@@ -211,4 +211,39 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         UpdatedOnUtc = DateTime.UtcNow;
     }
+
+    public void RemoveLanguage(LanguageId languageId)
+    {
+        if(languageId == LanguageId.Empty)
+        {
+            throw new DomainException(
+                "Language ID is required."
+            );
+        }
+
+        CaregiverLanguageSelection? selection =
+        _languageSelections.SingleOrDefault(
+            selection =>
+                selection.Id == languageId);
+
+        if (selection is null)
+        {
+            throw new DomainException(
+                "The language is not selected.");
+        }
+
+        bool isRemovingFinalLanguage =
+            _languageSelections.Count == 1;
+
+        if (Status == CaregiverStatus.Active &&
+            isRemovingFinalLanguage)
+        {
+            throw new DomainException(
+                "An active caregiver must have at least one language.");
+        }
+
+        _languageSelections.Remove(selection);
+        
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
 }
