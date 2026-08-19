@@ -570,7 +570,6 @@ public sealed class CaregiverCertificateTests
                 certificateType);
 
         caregiver.Activate();
-        caregiver.BecomeAvailable();
 
         caregiver.RejectCertificate(
             certificate.Id,
@@ -598,8 +597,8 @@ public sealed class CaregiverCertificateTests
         caregiver.VerifyCertificate(
             certificate.Id);
 
-        caregiver.Activate();
-        caregiver.BecomeAvailable();
+        MakeMedicalCaregiverCompliantAndAvailable(
+            caregiver);
 
         caregiver.RevokeCertificate(
             certificate.Id,
@@ -621,8 +620,8 @@ public sealed class CaregiverCertificateTests
                 caregiver,
                 CaregiverCertificateType.AdditionalCertificate);
 
-        caregiver.Activate();
-        caregiver.BecomeAvailable();
+        MakeMedicalCaregiverCompliantAndAvailable(
+            caregiver);
 
         caregiver.RejectCertificate(
             certificate.Id,
@@ -753,8 +752,8 @@ public sealed class CaregiverCertificateTests
         caregiver.VerifyCertificate(
             certificate.Id);
 
-        caregiver.Activate();
-        caregiver.BecomeAvailable();
+        MakeMedicalCaregiverCompliantAndAvailable(
+            caregiver);
 
         DateOnly currentDate =
             CreateCurrentDate();
@@ -788,8 +787,8 @@ public sealed class CaregiverCertificateTests
         caregiver.VerifyCertificate(
             certificate.Id);
 
-        caregiver.Activate();
-        caregiver.BecomeAvailable();
+        MakeMedicalCaregiverCompliantAndAvailable(
+            caregiver);
 
         caregiver.UpdateCertificateFile(
             certificate.Id,
@@ -824,8 +823,8 @@ public sealed class CaregiverCertificateTests
         caregiver.VerifyCertificate(
             certificate.Id);
 
-        caregiver.Activate();
-        caregiver.BecomeAvailable();
+        MakeMedicalCaregiverCompliantAndAvailable(
+            caregiver);
 
         string originalFilePath =
             certificate.FilePath;
@@ -887,8 +886,8 @@ public sealed class CaregiverCertificateTests
         caregiver.VerifyCertificate(
             certificate.Id);
 
-        caregiver.Activate();
-        caregiver.BecomeAvailable();
+        MakeMedicalCaregiverCompliantAndAvailable(
+            caregiver);
 
         string originalFilePath =
             certificate.FilePath;
@@ -967,8 +966,8 @@ public sealed class CaregiverCertificateTests
                 caregiver,
                 CaregiverCertificateType.AdditionalCertificate);
 
-        caregiver.Activate();
-        caregiver.BecomeAvailable();
+        MakeMedicalCaregiverCompliantAndAvailable(
+            caregiver);
 
         MoveCertificateToStatus(
             caregiver,
@@ -978,7 +977,33 @@ public sealed class CaregiverCertificateTests
         caregiver.RemoveCertificate(
             certificate.Id);
 
-        Assert.Empty(caregiver.Certificates);
+        Assert.DoesNotContain(
+    caregiver.Certificates,
+    existingCertificate =>
+        existingCertificate.Id ==
+        certificate.Id);
+
+        Assert.DoesNotContain(
+            caregiver.Certificates,
+            existingCertificate =>
+                existingCertificate.Type ==
+                CaregiverCertificateType.AdditionalCertificate);
+
+        Assert.Equal(
+            2,
+            caregiver.Certificates.Count);
+
+        Assert.Contains(
+            caregiver.Certificates,
+            existingCertificate =>
+                existingCertificate.Type ==
+                CaregiverCertificateType.PracticeLicense);
+
+        Assert.Contains(
+            caregiver.Certificates,
+            existingCertificate =>
+                existingCertificate.Type ==
+                CaregiverCertificateType.GraduationCertificate);
 
         Assert.Equal(
             CaregiverAvailability.Available,
@@ -1233,4 +1258,62 @@ public sealed class CaregiverCertificateTests
         }
     }
 
+    private static void MakeMedicalCaregiverCompliantAndAvailable(
+        Caregiver caregiver)
+    {
+        DateOnly currentDate =
+            CreateCurrentDate();
+
+        EnsureMandatoryCertificateIsVerified(
+            caregiver,
+            CaregiverCertificateType.PracticeLicense);
+
+        EnsureMandatoryCertificateIsVerified(
+            caregiver,
+            CaregiverCertificateType.GraduationCertificate);
+
+        if (caregiver.Status !=
+            CaregiverStatus.Active)
+        {
+            caregiver.Activate();
+        }
+
+        caregiver.BecomeAvailable(
+            currentDate);
+    }
+
+    private static void EnsureMandatoryCertificateIsVerified(
+        Caregiver caregiver,
+        CaregiverCertificateType certificateType)
+    {
+        CaregiverCertificate? certificate =
+            caregiver.Certificates
+                .SingleOrDefault(
+                    certificate =>
+                        certificate.Type ==
+                        certificateType);
+
+        certificate ??=
+            AddCertificate(
+                caregiver,
+                certificateType);
+
+        if (certificate.VerificationStatus ==
+            CertificateVerificationStatus.Pending)
+        {
+            caregiver.VerifyCertificate(
+                certificate.Id);
+
+            return;
+        }
+
+        if (certificate.VerificationStatus !=
+            CertificateVerificationStatus.Verified)
+        {
+            throw new InvalidOperationException(
+                $"The test Certificate {certificateType} " +
+                $"cannot be made compliant from status " +
+                $"{certificate.VerificationStatus}.");
+        }
+    }
 }

@@ -88,9 +88,22 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         Status = CaregiverStatus.Suspended;
         UpdatedOnUtc = DateTime.UtcNow;
     }
-    public void BecomeAvailable()
+    public void BecomeAvailable(DateOnly currentDate)
     {
+        if (Status != CaregiverStatus.Active)
+        {
+            throw new DomainException(
+                "Only an Active caregiver can become Available."
+            );
+        }
+
+        if (Type == CaregiverType.Medical)
+        {
+            EnsureMandatoryCertificatesAreCompliant(currentDate);
+        }
+
         Availability = CaregiverAvailability.Available;
+
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
@@ -479,5 +492,53 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         return type is
             CaregiverCertificateType.PracticeLicense or
             CaregiverCertificateType.GraduationCertificate;
+    }
+
+    private void EnsureMandatoryCertificatesAreCompliant(
+        DateOnly currentDate)
+    {
+        EnsureCertificateIsCompliant(
+            CaregiverCertificateType.PracticeLicense,
+            currentDate);
+
+        EnsureCertificateIsCompliant(
+            CaregiverCertificateType.GraduationCertificate,
+            currentDate);
+    }
+
+    private void EnsureCertificateIsCompliant(
+        CaregiverCertificateType certificateType,
+        DateOnly currentDate)
+    {
+        CaregiverCertificate? certificate =
+            _certificates.SingleOrDefault(
+                certificate =>
+                    certificate.Type ==
+                    certificateType);
+
+        if (certificate is null)
+        {
+            throw new DomainException(
+                $"The caregiver does not have a " +
+                $"{certificateType}.");
+        }
+
+        if (certificate.VerificationStatus !=
+            CertificateVerificationStatus.Verified)
+        {
+            throw new DomainException(
+                $"The {certificateType} must be Verified.");
+        }
+
+        bool isExpired =
+            certificate.ExpiryDate.HasValue &&
+            certificate.ExpiryDate.Value <
+            currentDate;
+
+        if (isExpired)
+        {
+            throw new DomainException(
+                $"The {certificateType} has expired.");
+        }
     }
 }
