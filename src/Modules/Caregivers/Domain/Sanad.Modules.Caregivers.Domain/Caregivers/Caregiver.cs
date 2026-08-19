@@ -10,6 +10,7 @@ namespace Sanad.Modules.Caregivers.Domain.Caregivers;
 public sealed class Caregiver : AggregateRoot<CaregiverId>
 {
     public const int MaximumAreaSelections = 10;
+    public const int MaximumAdditionalCertificates = 5;
 
     private readonly List<CaregiverServiceSelection> _serviceSelections = [];
     private readonly List<CaregiverLanguageSelection> _languageSelections = [];
@@ -107,15 +108,71 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     }
 
     public void AddCertificate(
-        string name,
+        CaregiverCertificateType type,
         string filePath,
-        DateOnly? expiryDate = null)
+        DateOnly? expiryDate,
+        DateOnly currentDate)
     {
+        if (Type != CaregiverType.Medical)
+        {
+            throw new DomainException(
+                "Only Medical caregivers can add professional certificates.");
+        }
+
+        if (type == CaregiverCertificateType.PracticeLicense)
+        {
+            bool alreadyHasPracticeLicense =
+                _certificates.Any(
+                    certificate =>
+                        certificate.Type ==
+                        CaregiverCertificateType.PracticeLicense);
+
+            if (alreadyHasPracticeLicense)
+            {
+                throw new DomainException(
+                    "The caregiver already has a Practice License.");
+            }
+        }
+
+        if (type == CaregiverCertificateType.GraduationCertificate)
+        {
+            bool alreadyHasGraduationCertificate =
+                _certificates.Any(
+                    certificate =>
+                        certificate.Type ==
+                        CaregiverCertificateType.GraduationCertificate);
+
+            if (alreadyHasGraduationCertificate)
+            {
+                throw new DomainException(
+                    "The caregiver already has a Graduation Certificate.");
+            }
+        }
+
+        if (type == CaregiverCertificateType.AdditionalCertificate)
+        {
+            int additionalCertificateCount =
+                _certificates.Count(
+                    certificate =>
+                        certificate.Type ==
+                        CaregiverCertificateType.AdditionalCertificate);
+
+            if (additionalCertificateCount >=
+                MaximumAdditionalCertificates)
+            {
+                throw new DomainException(
+                    $"A caregiver cannot add more than " +
+                    $"{MaximumAdditionalCertificates} " +
+                    $"Additional Certificates.");
+            }
+        }
+
         _certificates.Add(
             CaregiverCertificate.Create(
-                name,
+                type,
                 filePath,
-                expiryDate));
+                expiryDate,
+                currentDate));
 
         UpdatedOnUtc = DateTime.UtcNow;
     }

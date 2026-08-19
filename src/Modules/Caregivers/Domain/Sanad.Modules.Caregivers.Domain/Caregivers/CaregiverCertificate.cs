@@ -4,7 +4,8 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
 namespace Sanad.Modules.Caregivers.Domain.Caregivers;
 
-public sealed class CaregiverCertificate : Entity<CaregiverCertificateId>
+public sealed class CaregiverCertificate :
+    Entity<CaregiverCertificateId>
 {
     private CaregiverCertificate()
     {
@@ -12,29 +13,34 @@ public sealed class CaregiverCertificate : Entity<CaregiverCertificateId>
 
     private CaregiverCertificate(
         CaregiverCertificateId id,
-        string name,
+        CaregiverCertificateType type,
         string filePath,
-        DateOnly? expiryDate)
+        DateOnly? expiryDate,
+        DateTime createdOnUtc)
         : base(id)
     {
-        Name = name;
+        Type = type;
         FilePath = filePath;
         ExpiryDate = expiryDate;
 
         VerificationStatus =
             CertificateVerificationStatus.Pending;
 
-        CreatedOnUtc = DateTime.UtcNow;
-        UpdatedOnUtc = DateTime.UtcNow;
+        CreatedOnUtc = createdOnUtc;
+        UpdatedOnUtc = createdOnUtc;
     }
 
-    public string Name { get; private set; } = string.Empty;
+    public CaregiverCertificateType Type { get; private set; }
 
     public string FilePath { get; private set; } = string.Empty;
 
     public DateOnly? ExpiryDate { get; private set; }
 
-    public CertificateVerificationStatus VerificationStatus { get; private set; }
+    public CertificateVerificationStatus VerificationStatus
+    {
+        get;
+        private set;
+    }
 
     public string? RejectionReason { get; private set; }
 
@@ -42,28 +48,29 @@ public sealed class CaregiverCertificate : Entity<CaregiverCertificateId>
 
     public DateTime UpdatedOnUtc { get; private set; }
 
-    public static CaregiverCertificate Create(
-        string name,
+    internal static CaregiverCertificate Create(
+        CaregiverCertificateType type,
         string filePath,
-        DateOnly? expiryDate = null)
+        DateOnly? expiryDate,
+        DateOnly currentDate)
     {
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new DomainException(
-                "Certificate name is required.");
-        }
+        ValidateType(type);
 
-        if (string.IsNullOrWhiteSpace(filePath))
-        {
-            throw new DomainException(
-                "Certificate file is required.");
-        }
+        string normalizedFilePath =
+            NormalizeFilePath(filePath);
+
+        ValidateExpiryDate(
+            expiryDate,
+            currentDate);
+
+        DateTime createdOnUtc = DateTime.UtcNow;
 
         return new CaregiverCertificate(
             CaregiverCertificateId.New(),
-            name.Trim(),
-            filePath.Trim(),
-            expiryDate);
+            type,
+            normalizedFilePath,
+            expiryDate,
+            createdOnUtc);
     }
 
     public void Verify()
@@ -72,7 +79,6 @@ public sealed class CaregiverCertificate : Entity<CaregiverCertificateId>
             CertificateVerificationStatus.Verified;
 
         RejectionReason = null;
-
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
@@ -88,13 +94,43 @@ public sealed class CaregiverCertificate : Entity<CaregiverCertificateId>
             CertificateVerificationStatus.Rejected;
 
         RejectionReason = reason.Trim();
-
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
     public void UpdateFile(
         string filePath,
-        DateOnly? expiryDate)
+        DateOnly? expiryDate,
+        DateOnly currentDate)
+    {
+        string normalizedFilePath =
+            NormalizeFilePath(filePath);
+
+        ValidateExpiryDate(
+            expiryDate,
+            currentDate);
+
+        FilePath = normalizedFilePath;
+        ExpiryDate = expiryDate;
+
+        VerificationStatus =
+            CertificateVerificationStatus.Pending;
+
+        RejectionReason = null;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    private static void ValidateType(
+        CaregiverCertificateType type)
+    {
+        if (!Enum.IsDefined(type))
+        {
+            throw new DomainException(
+                "Caregiver certificate type is invalid.");
+        }
+    }
+
+    private static string NormalizeFilePath(
+        string filePath)
     {
         if (string.IsNullOrWhiteSpace(filePath))
         {
@@ -102,14 +138,18 @@ public sealed class CaregiverCertificate : Entity<CaregiverCertificateId>
                 "Certificate file is required.");
         }
 
-        FilePath = filePath.Trim();
-        ExpiryDate = expiryDate;
+        return filePath.Trim();
+    }
 
-        VerificationStatus =
-            CertificateVerificationStatus.Pending;
-
-        RejectionReason = null;
-
-        UpdatedOnUtc = DateTime.UtcNow;
+    private static void ValidateExpiryDate(
+        DateOnly? expiryDate,
+        DateOnly currentDate)
+    {
+        if (expiryDate.HasValue &&
+            expiryDate.Value < currentDate)
+        {
+            throw new DomainException(
+                "Certificate has already expired.");
+        }
     }
 }
