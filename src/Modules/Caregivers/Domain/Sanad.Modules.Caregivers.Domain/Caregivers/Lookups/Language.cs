@@ -72,14 +72,18 @@ public sealed class Language : AggregateRoot<LanguageId>
         string arabicName,
         string englishName)
     {
-        ArabicName = NormalizeName(
-            arabicName,
-            "Arabic");
+        string normalizedArabicName =
+            NormalizeName(
+                arabicName,
+                "Arabic");
 
-        EnglishName = NormalizeName(
-            englishName,
-            "English");
+        string normalizedEnglishName =
+            NormalizeName(
+                englishName,
+                "English");
 
+        ArabicName = normalizedArabicName;
+        EnglishName = normalizedEnglishName;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 

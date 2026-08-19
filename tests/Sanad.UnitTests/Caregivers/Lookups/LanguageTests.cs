@@ -185,6 +185,41 @@ public sealed class LanguageTests
     }
 
     [Fact]
+    public void UpdateNames_ShouldNotPartiallyUpdate_WhenEnglishNameIsInvalid()
+    {
+        Language language = Language.Create(
+            "en",
+            "الإنجليزية",
+            "English");
+
+        DateTime originalUpdatedOnUtc =
+            language.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => language.UpdateNames(
+                "اللغة الإنجليزية",
+                ""));
+
+        Assert.Equal(
+            "الإنجليزية",
+            language.ArabicName);
+
+        Assert.Equal(
+            "English",
+            language.EnglishName);
+
+        Assert.Equal(
+            "en",
+            language.Code);
+
+        Assert.True(language.IsActive);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            language.UpdatedOnUtc);
+    }
+
+    [Fact]
     public void Deactivate_ShouldMakeLanguageInactive()
     {
         Language language = Language.Create(

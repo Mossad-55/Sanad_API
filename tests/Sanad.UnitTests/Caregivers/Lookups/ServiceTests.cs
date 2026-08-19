@@ -136,6 +136,42 @@ public sealed class ServiceTests
     }
 
     [Fact]
+    public void UpdateNames_ShouldNotPartiallyUpdate_WhenEnglishNameIsInvalid()
+    {
+        Service service = Service.Create(
+            "تمريض منزلي",
+            "Home Nursing",
+            CaregiverType.Medical,
+            isActive: true);
+
+        DateTime originalUpdatedOnUtc =
+            service.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => service.UpdateNames(
+                "رعاية تمريضية منزلية",
+                ""));
+
+        Assert.Equal(
+            "تمريض منزلي",
+            service.ArabicName);
+
+        Assert.Equal(
+            "Home Nursing",
+            service.EnglishName);
+
+        Assert.Equal(
+            CaregiverType.Medical,
+            service.CaregiverType);
+
+        Assert.True(service.IsActive);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            service.UpdatedOnUtc);
+    }
+
+    [Fact]
     public void UpdateNames_ShouldRejectInvalidName()
     {
         Service service = Service.Create(
