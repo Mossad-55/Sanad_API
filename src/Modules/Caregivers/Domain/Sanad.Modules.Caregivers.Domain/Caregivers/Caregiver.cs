@@ -215,6 +215,44 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void UpdateCertificateFile(
+        CaregiverCertificateId certificateId,
+        string filePath,
+        DateOnly? expiryDate,
+        DateOnly currentDate)
+    {
+        CaregiverCertificate certificate =
+            GetCertificate(certificateId);
+
+        certificate.UpdateFile(
+            filePath,
+            expiryDate,
+            currentDate);
+
+        if (IsMandatoryCertificate(certificate.Type))
+        {
+            Availability = CaregiverAvailability.Unavailable;
+        }
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RemoveCertificate(CaregiverCertificateId certificateId)
+    {
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        if (IsMandatoryCertificate(
+            certificate.Type))
+        {
+            throw new DomainException(
+                "A mandatory Certificate cannot be removed. " +
+                "Replace its file instead.");
+        }
+
+        _certificates.Remove(certificate);
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     public void SelectService(Service service)
     {
         ArgumentNullException.ThrowIfNull(service);
