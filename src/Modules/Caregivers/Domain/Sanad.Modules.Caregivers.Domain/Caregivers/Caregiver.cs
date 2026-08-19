@@ -146,4 +146,39 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         UpdatedOnUtc = DateTime.UtcNow;
     }
+
+    public void RemoveService(ServiceId serviceId)
+    {
+        if(serviceId == ServiceId.Empty)
+        {
+            throw new DomainException(
+                "Service ID is required."
+            );
+        }
+
+        CaregiverServiceSelection? selection = _serviceSelections.SingleOrDefault(
+            selection => selection.Id == serviceId
+        );
+
+        if(selection is null)
+        {
+            throw new DomainException(
+                "The service is not selected."
+            );
+        }
+
+        bool isRemovingFinalService = _serviceSelections.Count == 1;
+
+        if(Status == CaregiverStatus.Active &&
+            isRemovingFinalService)
+        {
+            throw new DomainException(
+                "An active caregiver must have at least one service."
+            );
+        }
+
+        _serviceSelections.Remove(selection);
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
 }
