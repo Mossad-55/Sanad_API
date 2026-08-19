@@ -9,8 +9,11 @@ namespace Sanad.Modules.Caregivers.Domain.Caregivers;
 
 public sealed class Caregiver : AggregateRoot<CaregiverId>
 {
+    public const int MaximumAreaSelections = 10;
+
     private readonly List<CaregiverServiceSelection> _serviceSelections = [];
     private readonly List<CaregiverLanguageSelection> _languageSelections = [];
+    private readonly List<CaregiverAreaSelection> _areaSelections = [];
 
     private Caregiver()
     {
@@ -49,7 +52,8 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     private readonly List<CaregiverCertificate> _certificates = [];
     public IReadOnlyCollection<CaregiverCertificate> Certificates => _certificates.AsReadOnly();
     public IReadOnlyCollection<CaregiverServiceSelection> ServiceSelections => _serviceSelections.AsReadOnly();
-    public IReadOnlyCollection<CaregiverLanguageSelection> LanguageSelections => _languageSelections.AsReadOnly();    
+    public IReadOnlyCollection<CaregiverLanguageSelection> LanguageSelections => _languageSelections.AsReadOnly();  
+    public IReadOnlyCollection<CaregiverAreaSelection> AreaSelections => _areaSelections.AsReadOnly();  
 
     public static Caregiver Create(
         UserId userId,
@@ -243,7 +247,41 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         }
 
         _languageSelections.Remove(selection);
-        
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void SelectArea(Area area)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+
+        if (!area.IsActive)
+        {
+            throw new DomainException(
+                "Cannot select an inactive area.");
+        }
+
+        bool alreadySelected =
+            _areaSelections.Any(
+                selection =>
+                    selection.Id == area.Id);
+
+        if (alreadySelected)
+        {
+            throw new DomainException(
+                "The area is already selected.");
+        }
+
+        if (_areaSelections.Count >=
+            MaximumAreaSelections)
+        {
+            throw new DomainException(
+                $"A caregiver cannot select more than " + $"{MaximumAreaSelections} areas.");
+        }
+
+        _areaSelections.Add(
+            CaregiverAreaSelection.Create(area.Id));
+
         UpdatedOnUtc = DateTime.UtcNow;
     }
 }
