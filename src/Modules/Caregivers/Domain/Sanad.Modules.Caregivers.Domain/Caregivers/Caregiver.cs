@@ -1,11 +1,15 @@
 using Sanad.BuildingBlocks.Domain.Abstractions;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Events;
+using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
+using Sanad.Modules.Caregivers.Domain.Caregivers.Selections;
 
 namespace Sanad.Modules.Caregivers.Domain.Caregivers;
 
 public sealed class Caregiver : AggregateRoot<CaregiverId>
 {
+    private readonly List<CaregiverServiceSelection> _serviceSelections = [];
     private Caregiver()
     {
     }
@@ -42,6 +46,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public DateTime UpdatedOnUtc { get; private set; }
     private readonly List<CaregiverCertificate> _certificates = [];
     public IReadOnlyCollection<CaregiverCertificate> Certificates => _certificates.AsReadOnly();
+    public IReadOnlyCollection<CaregiverServiceSelection> ServiceSelections => _serviceSelections.AsReadOnly();
 
     public static Caregiver Create(
         UserId userId,
@@ -104,6 +109,40 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
                 name,
                 filePath,
                 expiryDate));
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void SelectService(Service service)
+    {
+        ArgumentNullException.ThrowIfNull(service);
+
+        if (!service.IsActive)
+        {
+            throw new DomainException(
+                "Cannot select an inactive service."
+            );
+        }
+
+        if(service.CaregiverType != Type)
+        {
+            throw new DomainException(
+                "The service does not support this caregiver type."
+            );
+        }
+
+        bool alreadySelected = _serviceSelections.Any(
+            selection => selection.Id == service.Id
+        );
+
+        if (alreadySelected)
+        {
+            throw new DomainException(
+                "The service is already selected."
+            );
+        }
+
+        _serviceSelections.Add(CaregiverServiceSelection.Create(service.Id));
 
         UpdatedOnUtc = DateTime.UtcNow;
     }
