@@ -9,5 +9,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\BuildingBlocks\Domain\Sanad.BuildingBlocks.Domain\Sanad.BuildingBlocks.Domain.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sanad.UnitTests" />
+  </ItemGroup>
   
 </Project>
