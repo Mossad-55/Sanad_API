@@ -807,18 +807,22 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     }
 
     public void SubmitForReview(
-        DateTime utcNow)
+        DateTime utcNow,
+        DateOnly currentDate
+    )
     {
         EnsureStatus(
             CaregiverStatus.Onboarding,
-            "Only an Onboarding caregiver can submit for review.");
+            "Only an Onboarding caregiver can submit for review."
+        );
 
         ValidateUtc(utcNow);
 
+        ValidateSubmissionReadiness(currentDate);
+
         Status = CaregiverStatus.PendingReview;
         StatusReason = null;
-        Availability =
-            CaregiverAvailability.Unavailable;
+        Availability = CaregiverAvailability.Unavailable;
 
         UpdatedOnUtc = utcNow;
     }
@@ -847,13 +851,16 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     }
 
     public void ResubmitForReview(
-        DateTime utcNow)
+        DateTime utcNow,
+        DateOnly currentDate)
     {
         EnsureStatus(
             CaregiverStatus.NeedsCorrection,
             "Only a Needs Correction caregiver can resubmit.");
 
         ValidateUtc(utcNow);
+
+        ValidateSubmissionReadiness(currentDate);
 
         Status = CaregiverStatus.PendingReview;
         StatusReason = null;

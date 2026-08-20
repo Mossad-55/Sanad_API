@@ -20,8 +20,13 @@ internal static class CaregiverTestTransitions
         switch (caregiver.Status)
         {
             case CaregiverStatus.Onboarding:
+                CaregiverTestData
+                    .EnsureReadyForSubmission(
+                        caregiver);
+
                 caregiver.SubmitForReview(
-                    BaseUtc);
+                    BaseUtc,
+                    CaregiverTestData.CurrentDate);
 
                 caregiver.Approve(
                     BaseUtc.AddMinutes(1));
@@ -33,8 +38,13 @@ internal static class CaregiverTestTransitions
                 return;
 
             case CaregiverStatus.NeedsCorrection:
+                CaregiverTestData
+                    .EnsureReadyForSubmission(
+                        caregiver);
+
                 caregiver.ResubmitForReview(
-                    BaseUtc);
+                    BaseUtc,
+                    CaregiverTestData.CurrentDate);
 
                 caregiver.Approve(
                     BaseUtc.AddMinutes(1));

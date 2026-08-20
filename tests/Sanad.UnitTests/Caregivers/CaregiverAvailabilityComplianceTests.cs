@@ -7,7 +7,7 @@ namespace Sanad.UnitTests.Caregivers;
 public sealed class CaregiverAvailabilityComplianceTests
 {
     [Fact]
-    public void BecomeAvailable_ShouldRejectPendingCaregiver()
+    public void BecomeAvailable_ShouldRejectOnboardingCaregiver()
     {
         Caregiver caregiver =
             CreateCompanionCaregiver();
@@ -53,7 +53,7 @@ public sealed class CaregiverAvailabilityComplianceTests
     }
 
     [Fact]
-    public void BecomeAvailable_ShouldAllowActiveCompanionWithoutCertificates()
+    public void BecomeAvailable_ShouldAllowActiveCompanion()
     {
         Caregiver caregiver =
             CreateCompanionCaregiver();
@@ -69,51 +69,14 @@ public sealed class CaregiverAvailabilityComplianceTests
     }
 
     [Fact]
-    public void BecomeAvailable_ShouldRejectMedicalWithoutCertificates()
+    public void BecomeAvailable_ShouldRejectMedicalWithPendingMandatoryCertificates()
     {
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
-        caregiver.TransitionToActive();
-
-        DateTime updatedOnUtcBeforeAttempt =
-            caregiver.UpdatedOnUtc;
-
-        Assert.Throws<DomainException>(
-            () => caregiver.BecomeAvailable(
-                CreateCurrentDate()));
-
-        Assert.Equal(
-            CaregiverAvailability.Unavailable,
-            caregiver.Availability);
-
-        Assert.Equal(
-            updatedOnUtcBeforeAttempt,
-            caregiver.UpdatedOnUtc);
-    }
-
-    [Theory]
-    [InlineData(CaregiverCertificateType.PracticeLicense)]
-    [InlineData(CaregiverCertificateType.GraduationCertificate)]
-    public void BecomeAvailable_ShouldRejectMedicalWithMissingMandatoryCertificate(
-        CaregiverCertificateType missingCertificateType)
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        CaregiverCertificateType existingCertificateType =
-            missingCertificateType ==
-            CaregiverCertificateType.PracticeLicense
-                ? CaregiverCertificateType.GraduationCertificate
-                : CaregiverCertificateType.PracticeLicense;
-
-        CaregiverCertificate existingCertificate =
-            AddCertificate(
-                caregiver,
-                existingCertificateType);
-
-        caregiver.VerifyCertificate(
-            existingCertificate.Id);
+        CaregiverTestData
+            .EnsureReadyForSubmission(
+                caregiver);
 
         caregiver.TransitionToActive();
 
@@ -136,25 +99,46 @@ public sealed class CaregiverAvailabilityComplianceTests
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
+        CaregiverTestData
+            .EnsureReadyForSubmission(
+                caregiver);
+
         CaregiverCertificate practiceLicense =
-            AddCertificate(
+            GetCertificate(
                 caregiver,
                 CaregiverCertificateType.PracticeLicense);
 
         CaregiverCertificate graduationCertificate =
-            AddCertificate(
+            GetCertificate(
                 caregiver,
                 CaregiverCertificateType.GraduationCertificate);
 
         caregiver.VerifyCertificate(
             graduationCertificate.Id);
 
-        MoveCertificateToStatus(
-            caregiver,
-            practiceLicense,
-            certificateStatus);
+        if (certificateStatus ==
+            CertificateVerificationStatus.Revoked)
+        {
+            caregiver.VerifyCertificate(
+                practiceLicense.Id);
+        }
 
         caregiver.TransitionToActive();
+
+        if (certificateStatus ==
+            CertificateVerificationStatus.Rejected)
+        {
+            caregiver.RejectCertificate(
+                practiceLicense.Id,
+                "Practice License rejected.");
+        }
+        else if (certificateStatus ==
+                 CertificateVerificationStatus.Revoked)
+        {
+            caregiver.RevokeCertificate(
+                practiceLicense.Id,
+                "Practice License revoked.");
+        }
 
         Assert.Throws<DomainException>(
             () => caregiver.BecomeAvailable(
@@ -171,7 +155,11 @@ public sealed class CaregiverAvailabilityComplianceTests
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
-        AddAndVerifyMandatoryCertificates(
+        CaregiverTestData
+            .EnsureReadyForSubmission(
+                caregiver);
+
+        VerifyMandatoryCertificates(
             caregiver);
 
         caregiver.TransitionToActive();
@@ -193,22 +181,24 @@ public sealed class CaregiverAvailabilityComplianceTests
         DateOnly currentDate =
             CreateCurrentDate();
 
-        CaregiverCertificate practiceLicense =
-            AddCertificate(
-                caregiver,
-                CaregiverCertificateType.PracticeLicense,
-                expiryDate: currentDate);
+        caregiver.AddCertificate(
+            CaregiverCertificateType.PracticeLicense,
+            "certificates/practice-license.jpg",
+            expiryDate: currentDate,
+            currentDate);
 
-        CaregiverCertificate graduationCertificate =
-            AddCertificate(
-                caregiver,
-                CaregiverCertificateType.GraduationCertificate);
+        caregiver.AddCertificate(
+            CaregiverCertificateType.GraduationCertificate,
+            "certificates/graduation.jpg",
+            expiryDate: null,
+            currentDate);
 
-        caregiver.VerifyCertificate(
-            practiceLicense.Id);
+        CaregiverTestData
+            .EnsureReadyForSubmission(
+                caregiver);
 
-        caregiver.VerifyCertificate(
-            graduationCertificate.Id);
+        VerifyMandatoryCertificates(
+            caregiver);
 
         caregiver.TransitionToActive();
 
@@ -230,23 +220,24 @@ public sealed class CaregiverAvailabilityComplianceTests
         DateOnly currentDate =
             CreateCurrentDate();
 
-        CaregiverCertificate practiceLicense =
-            AddCertificate(
-                caregiver,
-                CaregiverCertificateType.PracticeLicense,
-                expiryDate: currentDate);
+        caregiver.AddCertificate(
+            CaregiverCertificateType.PracticeLicense,
+            "certificates/practice-license.jpg",
+            expiryDate: currentDate,
+            currentDate);
 
-        CaregiverCertificate graduationCertificate =
-            AddCertificate(
-                caregiver,
-                CaregiverCertificateType.GraduationCertificate,
-                expiryDate: currentDate);
+        caregiver.AddCertificate(
+            CaregiverCertificateType.GraduationCertificate,
+            "certificates/graduation.jpg",
+            expiryDate: currentDate,
+            currentDate);
 
-        caregiver.VerifyCertificate(
-            practiceLicense.Id);
+        CaregiverTestData
+            .EnsureReadyForSubmission(
+                caregiver);
 
-        caregiver.VerifyCertificate(
-            graduationCertificate.Id);
+        VerifyMandatoryCertificates(
+            caregiver);
 
         caregiver.TransitionToActive();
 
@@ -264,17 +255,23 @@ public sealed class CaregiverAvailabilityComplianceTests
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
-        AddAndVerifyMandatoryCertificates(
-            caregiver);
+        CaregiverTestData
+            .EnsureReadyForSubmission(
+                caregiver);
 
         DateOnly currentDate =
             CreateCurrentDate();
 
+        caregiver.AddCertificate(
+            CaregiverCertificateType.AdditionalCertificate,
+            "certificates/additional.jpg",
+            expiryDate: currentDate,
+            currentDate);
+
         CaregiverCertificate additionalCertificate =
-            AddCertificate(
+            GetCertificate(
                 caregiver,
-                CaregiverCertificateType.AdditionalCertificate,
-                expiryDate: currentDate);
+                CaregiverCertificateType.AdditionalCertificate);
 
         caregiver.VerifyCertificate(
             additionalCertificate.Id);
@@ -282,6 +279,9 @@ public sealed class CaregiverAvailabilityComplianceTests
         caregiver.RevokeCertificate(
             additionalCertificate.Id,
             "Additional Certificate revoked.");
+
+        VerifyMandatoryCertificates(
+            caregiver);
 
         caregiver.TransitionToActive();
 
@@ -293,74 +293,42 @@ public sealed class CaregiverAvailabilityComplianceTests
             caregiver.Availability);
     }
 
-    private static void AddAndVerifyMandatoryCertificates(
+    private static void VerifyMandatoryCertificates(
         Caregiver caregiver)
     {
         CaregiverCertificate practiceLicense =
-            AddCertificate(
+            GetCertificate(
                 caregiver,
                 CaregiverCertificateType.PracticeLicense);
 
         CaregiverCertificate graduationCertificate =
-            AddCertificate(
+            GetCertificate(
                 caregiver,
                 CaregiverCertificateType.GraduationCertificate);
 
-        caregiver.VerifyCertificate(
-            practiceLicense.Id);
+        if (practiceLicense.VerificationStatus ==
+            CertificateVerificationStatus.Pending)
+        {
+            caregiver.VerifyCertificate(
+                practiceLicense.Id);
+        }
 
-        caregiver.VerifyCertificate(
-            graduationCertificate.Id);
+        if (graduationCertificate.VerificationStatus ==
+            CertificateVerificationStatus.Pending)
+        {
+            caregiver.VerifyCertificate(
+                graduationCertificate.Id);
+        }
     }
 
-    private static CaregiverCertificate AddCertificate(
+    private static CaregiverCertificate GetCertificate(
         Caregiver caregiver,
-        CaregiverCertificateType certificateType,
-        DateOnly? expiryDate = null)
+        CaregiverCertificateType certificateType)
     {
-        caregiver.AddCertificate(
-            certificateType,
-            "certificates/document.jpg",
-            expiryDate,
-            CreateCurrentDate());
-
         return caregiver.Certificates.Single(
             certificate =>
                 certificate.Type ==
                 certificateType);
-    }
-
-    private static void MoveCertificateToStatus(
-        Caregiver caregiver,
-        CaregiverCertificate certificate,
-        CertificateVerificationStatus status)
-    {
-        switch (status)
-        {
-            case CertificateVerificationStatus.Pending:
-                return;
-
-            case CertificateVerificationStatus.Rejected:
-                caregiver.RejectCertificate(
-                    certificate.Id,
-                    "Certificate rejected.");
-                return;
-
-            case CertificateVerificationStatus.Revoked:
-                caregiver.VerifyCertificate(
-                    certificate.Id);
-
-                caregiver.RevokeCertificate(
-                    certificate.Id,
-                    "Certificate revoked.");
-                return;
-
-            default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(status),
-                    status,
-                    "Unsupported test status.");
-        }
     }
 
     private static Caregiver CreateMedicalCaregiver()

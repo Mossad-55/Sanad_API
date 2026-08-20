@@ -7,16 +7,17 @@ namespace Sanad.UnitTests.Caregivers;
 public sealed class CaregiverStateMachineTests
 {
     [Fact]
-    public void SubmitForReview_ShouldMoveOnboardingToPendingReview()
+    public void SubmitForReview_ShouldMoveReadyOnboardingToPendingReview()
     {
         Caregiver caregiver =
-            CreateCaregiver();
+            CreateReadyCaregiver();
 
         DateTime submittedOnUtc =
             CreateUtcDateTime();
 
         caregiver.SubmitForReview(
-            submittedOnUtc);
+            submittedOnUtc,
+            CaregiverTestData.CurrentDate);
 
         Assert.Equal(
             CaregiverStatus.PendingReview,
@@ -34,6 +35,31 @@ public sealed class CaregiverStateMachineTests
     }
 
     [Fact]
+    public void SubmitForReview_ShouldRejectIncompleteCaregiverWithoutMutation()
+    {
+        Caregiver caregiver =
+            CreateRawCaregiver();
+
+        DateTime originalUpdatedOnUtc =
+            caregiver.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => caregiver.SubmitForReview(
+                CreateUtcDateTime(),
+                CaregiverTestData.CurrentDate));
+
+        Assert.Equal(
+            CaregiverStatus.Onboarding,
+            caregiver.Status);
+
+        Assert.Null(caregiver.StatusReason);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            caregiver.UpdatedOnUtc);
+    }
+
+    [Fact]
     public void SubmitForReview_ShouldRejectNonOnboardingStatus()
     {
         Caregiver caregiver =
@@ -45,7 +71,8 @@ public sealed class CaregiverStateMachineTests
         Assert.Throws<DomainException>(
             () => caregiver.SubmitForReview(
                 CreateUtcDateTime()
-                    .AddMinutes(1)));
+                    .AddMinutes(1),
+                CaregiverTestData.CurrentDate));
 
         Assert.Equal(
             CaregiverStatus.PendingReview,
@@ -118,7 +145,7 @@ public sealed class CaregiverStateMachineTests
     }
 
     [Fact]
-    public void ResubmitForReview_ShouldMoveNeedsCorrectionToPendingReview()
+    public void ResubmitForReview_ShouldMoveReadyCorrectionsToPendingReview()
     {
         Caregiver caregiver =
             CreateNeedsCorrectionCaregiver();
@@ -128,7 +155,8 @@ public sealed class CaregiverStateMachineTests
                 .AddMinutes(2);
 
         caregiver.ResubmitForReview(
-            resubmittedOnUtc);
+            resubmittedOnUtc,
+            CaregiverTestData.CurrentDate);
 
         Assert.Equal(
             CaregiverStatus.PendingReview,
@@ -142,6 +170,44 @@ public sealed class CaregiverStateMachineTests
     }
 
     [Fact]
+    public void ResubmitForReview_ShouldRejectIncompleteCorrections()
+    {
+        Caregiver caregiver =
+            CreateNeedsCorrectionCaregiver();
+
+        var service =
+            Assert.Single(
+                caregiver.ServiceSelections);
+
+        caregiver.RemoveService(
+            service.Id);
+
+        DateTime originalUpdatedOnUtc =
+            caregiver.UpdatedOnUtc;
+
+        string originalReason =
+            caregiver.StatusReason!;
+
+        Assert.Throws<DomainException>(
+            () => caregiver.ResubmitForReview(
+                CreateUtcDateTime()
+                    .AddMinutes(2),
+                CaregiverTestData.CurrentDate));
+
+        Assert.Equal(
+            CaregiverStatus.NeedsCorrection,
+            caregiver.Status);
+
+        Assert.Equal(
+            originalReason,
+            caregiver.StatusReason);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            caregiver.UpdatedOnUtc);
+    }
+
+    [Fact]
     public void ResubmitForReview_ShouldRejectWrongStatus()
     {
         Caregiver caregiver =
@@ -150,7 +216,8 @@ public sealed class CaregiverStateMachineTests
         Assert.Throws<DomainException>(
             () => caregiver.ResubmitForReview(
                 CreateUtcDateTime()
-                    .AddMinutes(1)));
+                    .AddMinutes(1),
+                CaregiverTestData.CurrentDate));
 
         Assert.Equal(
             CaregiverStatus.PendingReview,
@@ -189,7 +256,7 @@ public sealed class CaregiverStateMachineTests
     public void Approve_ShouldRejectWrongStatus()
     {
         Caregiver caregiver =
-            CreateCaregiver();
+            CreateReadyCaregiver();
 
         Assert.Throws<DomainException>(
             () => caregiver.Approve(
@@ -270,12 +337,14 @@ public sealed class CaregiverStateMachineTests
         Assert.Throws<DomainException>(
             () => caregiver.ResubmitForReview(
                 CreateUtcDateTime()
-                    .AddMinutes(2)));
+                    .AddMinutes(2),
+                CaregiverTestData.CurrentDate));
 
         Assert.Throws<DomainException>(
             () => caregiver.SubmitForReview(
                 CreateUtcDateTime()
-                    .AddMinutes(2)));
+                    .AddMinutes(2),
+                CaregiverTestData.CurrentDate));
 
         Assert.Equal(
             CaregiverStatus.Rejected,
@@ -287,10 +356,6 @@ public sealed class CaregiverStateMachineTests
     {
         Caregiver caregiver =
             CreateActiveCaregiver();
-
-        Assert.Equal(
-            CaregiverAvailability.Unavailable,
-            caregiver.Availability);
 
         DateTime suspendedOnUtc =
             CreateUtcDateTime()
@@ -415,7 +480,7 @@ public sealed class CaregiverStateMachineTests
         DateTimeKind dateTimeKind)
     {
         Caregiver caregiver =
-            CreateCaregiver();
+            CreateReadyCaregiver();
 
         DateTime invalidTime =
             DateTime.SpecifyKind(
@@ -430,27 +495,41 @@ public sealed class CaregiverStateMachineTests
 
         Assert.Throws<DomainException>(
             () => caregiver.SubmitForReview(
-                invalidTime));
+                invalidTime,
+                CaregiverTestData.CurrentDate));
 
         Assert.Equal(
             CaregiverStatus.Onboarding,
             caregiver.Status);
     }
 
-    private static Caregiver CreateCaregiver()
+    private static Caregiver CreateRawCaregiver()
     {
         return Caregiver.Create(
             UserId.New(),
             CaregiverType.Companion);
     }
 
+    private static Caregiver CreateReadyCaregiver()
+    {
+        Caregiver caregiver =
+            CreateRawCaregiver();
+
+        CaregiverTestData
+            .EnsureReadyForSubmission(
+                caregiver);
+
+        return caregiver;
+    }
+
     private static Caregiver CreatePendingReviewCaregiver()
     {
         Caregiver caregiver =
-            CreateCaregiver();
+            CreateReadyCaregiver();
 
         caregiver.SubmitForReview(
-            CreateUtcDateTime());
+            CreateUtcDateTime(),
+            CaregiverTestData.CurrentDate);
 
         return caregiver;
     }
