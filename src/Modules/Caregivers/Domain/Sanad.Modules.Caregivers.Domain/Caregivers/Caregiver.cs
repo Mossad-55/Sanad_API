@@ -74,6 +74,28 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public IReadOnlyCollection<CaregiverLanguageSelection> LanguageSelections => _languageSelections.AsReadOnly();
     public IReadOnlyCollection<CaregiverAreaSelection> AreaSelections => _areaSelections.AsReadOnly();
 
+    internal void ValidateSubmissionReadiness(
+        DateOnly currentDate)
+    {
+        EnsureRequiredSelections();
+
+        switch (Type)
+        {
+            case CaregiverType.Medical:
+                EnsureMedicalSubmissionReadiness(
+                    currentDate);
+                return;
+
+            case CaregiverType.Companion:
+                EnsureCompanionSubmissionReadiness();
+                return;
+
+            default:
+                throw new DomainException(
+                    "Caregiver type is invalid.");
+        }
+    }
+
     public static Caregiver Create(
         UserId userId,
         CaregiverType type)
@@ -949,18 +971,8 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         CaregiverCertificateType certificateType,
         DateOnly currentDate)
     {
-        CaregiverCertificate? certificate =
-            _certificates.SingleOrDefault(
-                certificate =>
-                    certificate.Type ==
-                    certificateType);
-
-        if (certificate is null)
-        {
-            throw new DomainException(
-                $"The caregiver does not have a " +
-                $"{certificateType}.");
-        }
+        CaregiverCertificate certificate =
+            GetRequiredCertificate(certificateType);
 
         if (certificate.VerificationStatus !=
             CertificateVerificationStatus.Verified)
@@ -1069,4 +1081,132 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
                 "Transition time must be in UTC.");
         }
     }
+    private void EnsureRequiredSelections()
+    {
+        if (_serviceSelections.Count == 0)
+        {
+            throw new DomainException(
+                "At least one Service is required.");
+        }
+
+        if (_languageSelections.Count == 0)
+        {
+            throw new DomainException(
+                "At least one Language is required.");
+        }
+
+        if (_areaSelections.Count == 0)
+        {
+            throw new DomainException(
+                "At least one Area is required.");
+        }
+    }
+
+    private void EnsureCompanionSubmissionReadiness()
+    {
+        if (CompanionProfile is null)
+        {
+            throw new DomainException(
+                "Companion professional profile is required.");
+        }
+
+        if (CompanionPricing is null)
+        {
+            throw new DomainException(
+                "Companion pricing is required.");
+        }
+
+        if (CompanionSchedule is null ||
+            !CompanionSchedule.HasAvailability)
+        {
+            throw new DomainException(
+                "At least one Companion availability " +
+                "window is required.");
+        }
+    }
+
+    private void EnsureMedicalSubmissionReadiness(
+        DateOnly currentDate)
+    {
+        if (MedicalProfile is null)
+        {
+            throw new DomainException(
+                "Medical professional profile is required.");
+        }
+
+        if (MedicalPricing is null)
+        {
+            throw new DomainException(
+                "Medical pricing is required.");
+        }
+
+        if (MedicalSchedule is null ||
+            !MedicalSchedule.HasAvailability)
+        {
+            throw new DomainException(
+                "At least one Medical availability " +
+                "entry is required.");
+        }
+
+        EnsureCertificateIsReadyForReview(
+            CaregiverCertificateType.PracticeLicense,
+            currentDate);
+
+        EnsureCertificateIsReadyForReview(
+            CaregiverCertificateType.GraduationCertificate,
+            currentDate);
+    }
+
+    private void EnsureCertificateIsReadyForReview(
+        CaregiverCertificateType certificateType,
+        DateOnly currentDate)
+    {
+        CaregiverCertificate certificate =
+            GetRequiredCertificate(
+                certificateType);
+
+        bool hasAllowedStatus =
+            certificate.VerificationStatus is
+                CertificateVerificationStatus.Pending or
+                CertificateVerificationStatus.Verified;
+
+        if (!hasAllowedStatus)
+        {
+            throw new DomainException(
+                $"The {certificateType} must be replaced " +
+                "before submission.");
+        }
+
+        bool isExpired =
+            certificate.ExpiryDate.HasValue &&
+            certificate.ExpiryDate.Value <
+            currentDate;
+
+        if (isExpired)
+        {
+            throw new DomainException(
+                $"The {certificateType} has expired.");
+        }
+    }
+
+    private CaregiverCertificate GetRequiredCertificate(
+        CaregiverCertificateType certificateType)
+    {
+        CaregiverCertificate? certificate =
+            _certificates.SingleOrDefault(
+                certificate =>
+                    certificate.Type ==
+                    certificateType);
+
+        if (certificate is null)
+        {
+            throw new DomainException(
+                $"The caregiver does not have a " +
+                $"{certificateType}.");
+        }
+
+        return certificate;
+    }
+
+
 }
