@@ -393,6 +393,7 @@ public sealed class CaregiverServiceSelectionTests
         return Service.Create(
             "خدمة رعاية",
             "Care Service",
+            "icons/care-service.svg",
             caregiverType,
             isActive);
     }

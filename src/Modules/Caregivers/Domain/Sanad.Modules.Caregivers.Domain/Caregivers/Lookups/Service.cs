@@ -7,6 +7,7 @@ namespace Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 public sealed class Service : AggregateRoot<ServiceId>
 {
     public const int MaximumNameLength = 150;
+    public const int MaximumIconPathLength = 500;
 
     private Service()
     {
@@ -16,6 +17,7 @@ public sealed class Service : AggregateRoot<ServiceId>
         ServiceId id,
         string arabicName,
         string englishName,
+        string iconPath,
         CaregiverType caregiverType,
         bool isActive,
         DateTime createdOnUtc)
@@ -23,6 +25,7 @@ public sealed class Service : AggregateRoot<ServiceId>
     {
         ArabicName = arabicName;
         EnglishName = englishName;
+        IconPath = iconPath;
         CaregiverType = caregiverType;
         IsActive = isActive;
         CreatedOnUtc = createdOnUtc;
@@ -30,20 +33,17 @@ public sealed class Service : AggregateRoot<ServiceId>
     }
 
     public string ArabicName { get; private set; } = string.Empty;
-
     public string EnglishName { get; private set; } = string.Empty;
-
     public CaregiverType CaregiverType { get; private set; }
-
     public bool IsActive { get; private set; }
-
+    public string IconPath { get; private set; } = string.Empty;
     public DateTime CreatedOnUtc { get; private set; }
-
     public DateTime UpdatedOnUtc { get; private set; }
 
     public static Service Create(
         string arabicName,
         string englishName,
+        string iconPath,
         CaregiverType caregiverType,
         bool isActive)
     {
@@ -55,6 +55,8 @@ public sealed class Service : AggregateRoot<ServiceId>
             englishName,
             "English");
 
+        string normalizedIconPath = NormalizeIconPath(iconPath);
+
         if (!Enum.IsDefined(caregiverType))
         {
             throw new DomainException(
@@ -63,13 +65,14 @@ public sealed class Service : AggregateRoot<ServiceId>
 
         DateTime createdOnUtc = DateTime.UtcNow;
 
-        return new Service(
-            ServiceId.New(),
-            normalizedArabicName,
-            normalizedEnglishName,
-            caregiverType,
-            isActive,
-            createdOnUtc);
+    return new Service(
+        ServiceId.New(),
+        normalizedArabicName,
+        normalizedEnglishName,
+        normalizedIconPath,
+        caregiverType,
+        isActive,
+        createdOnUtc);
     }
 
     public void UpdateNames(
@@ -113,6 +116,21 @@ public sealed class Service : AggregateRoot<ServiceId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void UpdateIcon(
+        string iconPath)
+    {
+        string normalizedIconPath =
+            NormalizeIconPath(iconPath);
+
+        if (IconPath == normalizedIconPath)
+        {
+            return;
+        }
+
+        IconPath = normalizedIconPath;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     private static string NormalizeName(
         string name,
         string language)
@@ -133,5 +151,29 @@ public sealed class Service : AggregateRoot<ServiceId>
         }
 
         return normalizedName;
+    }
+
+    private static string NormalizeIconPath(
+        string iconPath)
+    {
+        if (string.IsNullOrWhiteSpace(
+            iconPath))
+        {
+            throw new DomainException(
+                "Service icon is required.");
+        }
+
+        string normalizedIconPath =
+            iconPath.Trim();
+
+        if (normalizedIconPath.Length >
+            MaximumIconPathLength)
+        {
+            throw new DomainException(
+                $"Service icon path cannot exceed " +
+                $"{MaximumIconPathLength} characters.");
+        }
+
+        return normalizedIconPath;
     }
 }

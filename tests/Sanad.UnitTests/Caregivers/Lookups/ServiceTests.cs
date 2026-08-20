@@ -16,6 +16,7 @@ public sealed class ServiceTests
         Service service = Service.Create(
             "تمريض منزلي",
             "Home Nursing",
+            "icons/care-service.svg",
             CaregiverType.Medical,
             isActive);
 
@@ -37,6 +38,7 @@ public sealed class ServiceTests
         Service service = Service.Create(
             "  تمريض منزلي  ",
             "  Home Nursing  ",
+            "icons/care-service.svg",
             CaregiverType.Medical,
             isActive: true);
 
@@ -59,6 +61,7 @@ public sealed class ServiceTests
             () => Service.Create(
                 arabicName!,
                 englishName!,
+                "icons/care-service.svg",
                 CaregiverType.Medical,
                 isActive: true));
     }
@@ -74,6 +77,7 @@ public sealed class ServiceTests
             () => Service.Create(
                 longArabicName,
                 "Home Nursing",
+                "icons/care-service.svg",
                 CaregiverType.Medical,
                 isActive: true));
     }
@@ -89,6 +93,7 @@ public sealed class ServiceTests
             () => Service.Create(
                 "تمريض منزلي",
                 longEnglishName,
+                "icons/care-service.svg",
                 CaregiverType.Medical,
                 isActive: true));
     }
@@ -100,6 +105,7 @@ public sealed class ServiceTests
             () => Service.Create(
                 "تمريض منزلي",
                 "Home Nursing",
+                "icons/care-service.svg",
                 (CaregiverType)999,
                 isActive: true));
     }
@@ -110,6 +116,7 @@ public sealed class ServiceTests
         Service service = Service.Create(
             "تمريض منزلي",
             "Home Nursing",
+            "icons/care-service.svg",
             CaregiverType.Medical,
             isActive: true);
 
@@ -141,6 +148,7 @@ public sealed class ServiceTests
         Service service = Service.Create(
             "تمريض منزلي",
             "Home Nursing",
+            "icons/care-service.svg",
             CaregiverType.Medical,
             isActive: true);
 
@@ -177,6 +185,7 @@ public sealed class ServiceTests
         Service service = Service.Create(
             "تمريض منزلي",
             "Home Nursing",
+            "icons/care-service.svg",
             CaregiverType.Medical,
             isActive: true);
 
@@ -192,6 +201,7 @@ public sealed class ServiceTests
         Service service = Service.Create(
             "تمريض منزلي",
             "Home Nursing",
+            "icons/care-service.svg",
             CaregiverType.Medical,
             isActive: true);
 
@@ -208,6 +218,7 @@ public sealed class ServiceTests
         Service service = Service.Create(
             "تمريض منزلي",
             "Home Nursing",
+            "icons/care-service.svg",
             CaregiverType.Medical,
             isActive: false);
 
@@ -224,6 +235,7 @@ public sealed class ServiceTests
         Service service = Service.Create(
             "تمريض منزلي",
             "Home Nursing",
+            "icons/care-service.svg",
             CaregiverType.Medical,
             isActive: true);
 
@@ -243,6 +255,7 @@ public sealed class ServiceTests
         Service service = Service.Create(
             "تمريض منزلي",
             "Home Nursing",
+            "icons/care-service.svg",
             CaregiverType.Medical,
             isActive: false);
 
@@ -253,6 +266,124 @@ public sealed class ServiceTests
         Assert.False(service.IsActive);
         Assert.Equal(
             updatedOnUtc,
+            service.UpdatedOnUtc);
+    }
+
+    [Fact]
+public void Create_ShouldStoreTrimmedIconPath()
+{
+    Service service = Service.Create(
+        "تمريض منزلي",
+        "Home Nursing",
+        "  icons/home-nursing.svg  ",
+        CaregiverType.Medical,
+        isActive: true);
+
+    Assert.Equal(
+        "icons/home-nursing.svg",
+        service.IconPath);
+}
+
+[Theory]
+[InlineData(null)]
+[InlineData("")]
+[InlineData("   ")]
+public void Create_ShouldRejectMissingIcon(
+    string? iconPath)
+{
+    Assert.Throws<DomainException>(
+        () => Service.Create(
+            "تمريض منزلي",
+            "Home Nursing",
+            iconPath!,
+            CaregiverType.Medical,
+            isActive: true));
+}
+
+[Fact]
+public void Create_ShouldRejectLongIconPath()
+{
+    string longIconPath = new(
+        'A',
+        Service.MaximumIconPathLength + 1);
+
+    Assert.Throws<DomainException>(
+        () => Service.Create(
+            "تمريض منزلي",
+            "Home Nursing",
+            longIconPath,
+            CaregiverType.Medical,
+            isActive: true));
+}
+
+[Fact]
+public void UpdateIcon_ShouldReplaceAndTrimIconPath()
+{
+    Service service = Service.Create(
+        "تمريض منزلي",
+        "Home Nursing",
+        "icons/old.svg",
+        CaregiverType.Medical,
+        isActive: true);
+
+    ServiceId originalId = service.Id;
+    CaregiverType originalType =
+        service.CaregiverType;
+
+    service.UpdateIcon(
+        "  icons/new.svg  ");
+
+    Assert.Equal(originalId, service.Id);
+    Assert.Equal(originalType, service.CaregiverType);
+    Assert.Equal("icons/new.svg", service.IconPath);
+    Assert.Equal("تمريض منزلي", service.ArabicName);
+    Assert.Equal("Home Nursing", service.EnglishName);
+    Assert.True(service.IsActive);
+}
+
+[Fact]
+public void UpdateIcon_ShouldRejectInvalidPathWithoutMutation()
+{
+    Service service = Service.Create(
+        "تمريض منزلي",
+        "Home Nursing",
+        "icons/original.svg",
+        CaregiverType.Medical,
+        isActive: true);
+
+    DateTime originalUpdatedOnUtc =
+        service.UpdatedOnUtc;
+
+    Assert.Throws<DomainException>(
+        () => service.UpdateIcon(""));
+
+    Assert.Equal(
+        "icons/original.svg",
+        service.IconPath);
+
+    Assert.Equal(
+        originalUpdatedOnUtc,
+        service.UpdatedOnUtc);
+}
+
+    [Fact]
+    public void UpdateIcon_ShouldDoNothing_WhenPathIsUnchanged()
+    {
+        Service service = Service.Create(
+            "تمريض منزلي",
+            "Home Nursing",
+            "icons/home-nursing.svg",
+            CaregiverType.Medical,
+            isActive: true);
+
+        DateTime originalUpdatedOnUtc =
+            service.UpdatedOnUtc;
+
+        service.UpdateIcon(
+            "  icons/home-nursing.svg  ");
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
             service.UpdatedOnUtc);
     }
 }
