@@ -30,7 +30,8 @@ public sealed class CaregiverProfessionalProfileTests
             specialization,
             degree,
             "  Al Salam Hospital  ",
-            "  Experienced Medical caregiver.  ");
+            "  Experienced Medical caregiver.  ",
+            CaregiverTestData.CurrentUtc);
 
         Assert.NotNull(caregiver.MedicalProfile);
         Assert.Null(caregiver.CompanionProfile);
@@ -119,7 +120,8 @@ public sealed class CaregiverProfessionalProfileTests
                     CaregiverType.Medical),
                 CreateAcademicDegree(),
                 null,
-                null));
+                null,
+                CaregiverTestData.CurrentUtc));
 
         Assert.Null(caregiver.MedicalProfile);
         Assert.Null(caregiver.CompanionProfile);
@@ -174,7 +176,8 @@ public sealed class CaregiverProfessionalProfileTests
                     CaregiverType.Medical),
                 CreateAcademicDegree(),
                 null,
-                null));
+                null,
+                CaregiverTestData.CurrentUtc));
 
         Assert.Null(caregiver.MedicalProfile);
     }
@@ -199,7 +202,8 @@ public sealed class CaregiverProfessionalProfileTests
                 specialization,
                 CreateAcademicDegree(),
                 null,
-                null));
+                null,
+                CaregiverTestData.CurrentUtc));
 
         Assert.Null(caregiver.MedicalProfile);
     }
@@ -224,7 +228,8 @@ public sealed class CaregiverProfessionalProfileTests
                     CaregiverType.Medical),
                 degree,
                 null,
-                null));
+                null,
+                CaregiverTestData.CurrentUtc));
 
         Assert.Null(caregiver.MedicalProfile);
     }
@@ -244,7 +249,8 @@ public sealed class CaregiverProfessionalProfileTests
                     CaregiverType.Companion),
                 CreateAcademicDegree(),
                 null,
-                null));
+                null,
+                CaregiverTestData.CurrentUtc));
 
         Assert.Null(caregiver.MedicalProfile);
     }
@@ -280,7 +286,8 @@ public sealed class CaregiverProfessionalProfileTests
                 CaregiverType.Medical),
             CreateAcademicDegree(),
             null,
-            "Original biography.");
+            "Original biography.",
+            CaregiverTestData.CurrentUtc);
 
         MedicalCaregiverProfile originalProfile =
             caregiver.MedicalProfile!;
@@ -296,7 +303,8 @@ public sealed class CaregiverProfessionalProfileTests
                     CaregiverType.Medical),
                 CreateAcademicDegree(),
                 null,
-                "New biography."));
+                "New biography.",
+                CaregiverTestData.CurrentUtc));
 
         Assert.Same(
             originalProfile,
@@ -308,7 +316,7 @@ public sealed class CaregiverProfessionalProfileTests
     }
 
     [Fact]
-    public void UpdateMedicalProfile_ShouldMakeActiveCaregiverUnavailable()
+    public void UpdateMedicalProfile_ShouldReturnActiveCaregiverToPendingReview()
     {
         Caregiver caregiver =
             CreateCaregiver(
@@ -324,11 +332,105 @@ public sealed class CaregiverProfessionalProfileTests
                 CaregiverType.Medical),
             CreateAcademicDegree(),
             null,
-            null);
+            null,
+            CaregiverTestData.CurrentUtc);
+
+        Assert.Equal(
+            CaregiverStatus.PendingReview,
+            caregiver.Status);
+
+        Assert.Null(caregiver.StatusReason);
 
         Assert.Equal(
             CaregiverAvailability.Unavailable,
             caregiver.Availability);
+
+        Assert.Equal(
+            CaregiverTestData.CurrentUtc,
+            caregiver.UpdatedOnUtc);
+    }
+
+    [Theory]
+    [InlineData(DateTimeKind.Local)]
+    [InlineData(DateTimeKind.Unspecified)]
+    public void UpdateMedicalProfile_ShouldRejectNonUtcTime(
+        DateTimeKind dateTimeKind)
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        DateTime invalidTime =
+            DateTime.SpecifyKind(
+                new DateTime(
+                    2026,
+                    8,
+                    20,
+                    10,
+                    0,
+                    0),
+                dateTimeKind);
+
+        Assert.Throws<DomainException>(
+            () => caregiver.UpdateMedicalProfile(
+                CreateProfessionalTitle(),
+                5,
+                CreateSpecialization(
+                    CaregiverType.Medical),
+                CreateAcademicDegree(),
+                null,
+                null,
+                invalidTime));
+
+        Assert.Null(caregiver.MedicalProfile);
+
+        Assert.Equal(
+            CaregiverStatus.Onboarding,
+            caregiver.Status);
+    }
+
+    [Fact]
+    public void UpdateMedicalProfile_ShouldKeepActiveState_WhenValidationFails()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        MakeMedicalCaregiverCompliantAndAvailable(
+            caregiver);
+
+        MedicalCaregiverProfile originalProfile =
+            caregiver.MedicalProfile!;
+
+        DateTime originalUpdatedOnUtc =
+            caregiver.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => caregiver.UpdateMedicalProfile(
+                CreateProfessionalTitle(),
+                -1,
+                CreateSpecialization(
+                    CaregiverType.Medical),
+                CreateAcademicDegree(),
+                null,
+                null,
+                CaregiverTestData.CurrentUtc));
+
+        Assert.Same(
+            originalProfile,
+            caregiver.MedicalProfile);
+
+        Assert.Equal(
+            CaregiverStatus.Active,
+            caregiver.Status);
+
+        Assert.Equal(
+            CaregiverAvailability.Available,
+            caregiver.Availability);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            caregiver.UpdatedOnUtc);
     }
 
     [Fact]

@@ -276,7 +276,8 @@ public sealed class CaregiverSubmissionReadinessTests
                     "بكالوريوس تمريض",
                     "Bachelor of Nursing"),
                 currentWorkplace: null,
-                biography: null);
+                biography: null,
+                CaregiverTestData.CurrentUtc);
         }
 
         if (includePricing)

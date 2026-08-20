@@ -125,7 +125,8 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         Specialization specialization,
         AcademicDegree academicDegree,
         string? currentWorkplace,
-        string? biography)
+        string? biography,
+        DateTime utcNow)
     {
         ArgumentNullException.ThrowIfNull(
             professionalTitle);
@@ -135,6 +136,8 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         ArgumentNullException.ThrowIfNull(
             academicDegree);
+
+        ValidateUtc(utcNow);
 
         if (Type != CaregiverType.Medical)
         {
@@ -182,11 +185,13 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         if (Status == CaregiverStatus.Active)
         {
+            Status = CaregiverStatus.PendingReview;
+            StatusReason = null;
             Availability =
                 CaregiverAvailability.Unavailable;
         }
 
-        UpdatedOnUtc = DateTime.UtcNow;
+        UpdatedOnUtc = utcNow;
     }
 
     public void UpdateCompanionProfile(

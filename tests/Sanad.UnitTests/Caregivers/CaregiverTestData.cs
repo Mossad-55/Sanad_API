@@ -12,6 +12,16 @@ internal static class CaregiverTestData
             8,
             20);
 
+    internal static readonly DateTime CurrentUtc =
+        new(
+            2026,
+            8,
+            20,
+            10,
+            0,
+            0,
+            DateTimeKind.Utc);
+
     internal static void EnsureReadyForSubmission(
         Caregiver caregiver)
     {
@@ -142,7 +152,8 @@ internal static class CaregiverTestData
                     "بكالوريوس تمريض",
                     "Bachelor of Nursing"),
                 currentWorkplace: null,
-                biography: null);
+                biography: null,
+                CurrentUtc);
         }
 
         if (caregiver.MedicalPricing is null)
