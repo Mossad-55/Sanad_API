@@ -31,7 +31,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     {
         UserId = userId;
         Type = type;
-        Status = CaregiverStatus.PendingVerification;
+        Status = CaregiverStatus.Onboarding;
         Availability = CaregiverAvailability.Unavailable;
 
         if (type == CaregiverType.Companion)

@@ -208,7 +208,7 @@ public sealed class CaregiverServiceSelectionTests
             caregiver.ServiceSelections);
 
         Assert.Equal(
-            CaregiverStatus.PendingVerification,
+            CaregiverStatus.Onboarding,
             caregiver.Status);
 
         Assert.True(

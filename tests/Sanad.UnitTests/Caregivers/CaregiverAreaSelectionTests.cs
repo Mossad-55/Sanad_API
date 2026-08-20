@@ -216,7 +216,7 @@ public sealed class CaregiverAreaSelectionTests
             caregiver.AreaSelections);
 
         Assert.Equal(
-            CaregiverStatus.PendingVerification,
+            CaregiverStatus.Onboarding,
             caregiver.Status);
 
         Assert.True(
@@ -364,7 +364,7 @@ public sealed class CaregiverAreaSelectionTests
         Assert.Equal(
             CaregiverStatus.Suspended,
             caregiver.Status);
-    }    
+    }
 
     private static Caregiver CreateCaregiver(
         CaregiverType caregiverType)

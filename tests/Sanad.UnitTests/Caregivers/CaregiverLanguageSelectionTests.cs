@@ -182,7 +182,7 @@ public sealed class CaregiverLanguageSelectionTests
             caregiver.LanguageSelections);
 
         Assert.Equal(
-            CaregiverStatus.PendingVerification,
+            CaregiverStatus.Onboarding,
             caregiver.Status);
 
         Assert.True(
