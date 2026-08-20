@@ -40,7 +40,9 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     }
 
     public UserId UserId { get; private set; }
-    public CaregiverProfile? Profile { get; private set; }
+    public MedicalCaregiverProfile? MedicalProfile { get; private set; }
+    public CompanionCaregiverProfile? CompanionProfile { get; private set; }
+
     public CaregiverType Type { get; private set; }
     public CaregiverStatus Status { get; private set; }
     public CaregiverAvailability Availability { get; private set; }
@@ -66,14 +68,112 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             type);
     }
 
-    public void UpdateProfile(
-    string bio,
-    int yearsOfExperience)
+    public void UpdateMedicalProfile(
+        ProfessionalTitle professionalTitle,
+        int yearsOfExperience,
+        Specialization specialization,
+        AcademicDegree academicDegree,
+        string? currentWorkplace,
+        string? biography)
     {
-        Profile = CaregiverProfile.Create(
-            bio,
-            yearsOfExperience);
+        ArgumentNullException.ThrowIfNull(
+            professionalTitle);
 
+        ArgumentNullException.ThrowIfNull(
+            specialization);
+
+        ArgumentNullException.ThrowIfNull(
+            academicDegree);
+
+        if (Type != CaregiverType.Medical)
+        {
+            throw new DomainException(
+                "Only a Medical caregiver can have " +
+                "a Medical professional profile.");
+        }
+
+        if (!professionalTitle.IsActive)
+        {
+            throw new DomainException(
+                "Professional Title is inactive.");
+        }
+
+        if (!specialization.IsActive)
+        {
+            throw new DomainException(
+                "Specialization is inactive.");
+        }
+
+        if (specialization.CaregiverType !=
+            CaregiverType.Medical)
+        {
+            throw new DomainException(
+                "Specialization does not support " +
+                "Medical caregivers.");
+        }
+
+        if (!academicDegree.IsActive)
+        {
+            throw new DomainException(
+                "Academic Degree is inactive.");
+        }
+
+        MedicalCaregiverProfile profile =
+            MedicalCaregiverProfile.Create(
+                professionalTitle.Id,
+                yearsOfExperience,
+                specialization.Id,
+                academicDegree.Id,
+                currentWorkplace,
+                biography);
+
+        MedicalProfile = profile;
+
+        if (Status == CaregiverStatus.Active)
+        {
+            Availability =
+                CaregiverAvailability.Unavailable;
+        }
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void UpdateCompanionProfile(
+        int yearsOfExperience,
+        Specialization specialization,
+        string? biography)
+    {
+        ArgumentNullException.ThrowIfNull(
+            specialization);
+
+        if (Type != CaregiverType.Companion)
+        {
+            throw new DomainException(
+                "Only a Companion caregiver can have " +
+                "a Companion professional profile.");
+        }
+
+        if (!specialization.IsActive)
+        {
+            throw new DomainException(
+                "Specialization is inactive.");
+        }
+
+        if (specialization.CaregiverType !=
+            CaregiverType.Companion)
+        {
+            throw new DomainException(
+                "Specialization does not support " +
+                "Companion caregivers.");
+        }
+
+        CompanionCaregiverProfile profile =
+            CompanionCaregiverProfile.Create(
+                yearsOfExperience,
+                specialization.Id,
+                biography);
+
+        CompanionProfile = profile;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
