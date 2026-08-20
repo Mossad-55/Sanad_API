@@ -49,7 +49,8 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public CaregiverType Type { get; private set; }
     public CaregiverStatus Status { get; private set; }
     public CaregiverAvailability Availability { get; private set; }
-    public CaregiverPricing? Pricing { get; private set; }
+    public MedicalCaregiverPricing? MedicalPricing { get; private set; }
+    public CompanionCaregiverPricing? CompanionPricing { get; private set; }
     public CaregiverSchedule Schedule { get; private set; } = CaregiverSchedule.Create();
     public decimal AverageRating { get; private set; } = 0;
     public int ReviewsCount { get; private set; } = 0;
@@ -216,10 +217,49 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
-    public void UpdatePricing(CaregiverPricing pricing)
+    public void UpdateMedicalPricing(
+        decimal homeVisitPrice,
+        decimal eightHourShiftPrice,
+        decimal twelveHourShiftPrice,
+        decimal twentyFourHourShiftPrice)
     {
-        Pricing = pricing;
+        if (Type != CaregiverType.Medical)
+        {
+            throw new DomainException(
+                "Only a Medical caregiver can have " +
+                "Medical pricing.");
+        }
 
+        MedicalCaregiverPricing pricing =
+            MedicalCaregiverPricing.Create(
+                homeVisitPrice,
+                eightHourShiftPrice,
+                twelveHourShiftPrice,
+                twentyFourHourShiftPrice);
+
+        MedicalPricing = pricing;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void UpdateCompanionPricing(
+        decimal hourlyPrice,
+        decimal eightHourDayPrice,
+        decimal overnightPrice)
+    {
+        if (Type != CaregiverType.Companion)
+        {
+            throw new DomainException(
+                "Only a Companion caregiver can have " +
+                "Companion pricing.");
+        }
+
+        CompanionCaregiverPricing pricing =
+            CompanionCaregiverPricing.Create(
+                hourlyPrice,
+                eightHourDayPrice,
+                overnightPrice);
+
+        CompanionPricing = pricing;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
