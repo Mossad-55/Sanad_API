@@ -34,9 +34,14 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         Status = CaregiverStatus.PendingVerification;
         Availability = CaregiverAvailability.Unavailable;
 
-        if(type == CaregiverType.Companion)
+        if (type == CaregiverType.Companion)
         {
             CompanionSchedule = CompanionWeeklySchedule.Create();
+        }
+
+        if (type == CaregiverType.Medical)
+        {
+            MedicalSchedule = MedicalWeeklySchedule.Create();
         }
 
         CreatedOnUtc = DateTime.UtcNow;
@@ -51,13 +56,13 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public UserId UserId { get; private set; }
     public MedicalCaregiverProfile? MedicalProfile { get; private set; }
     public CompanionCaregiverProfile? CompanionProfile { get; private set; }
-
     public CaregiverType Type { get; private set; }
     public CaregiverStatus Status { get; private set; }
     public CaregiverAvailability Availability { get; private set; }
     public MedicalCaregiverPricing? MedicalPricing { get; private set; }
+    public MedicalWeeklySchedule? MedicalSchedule { get; private set; }
     public CompanionCaregiverPricing? CompanionPricing { get; private set; }
-    public CompanionWeeklySchedule? CompanionSchedule { get; private set; } 
+    public CompanionWeeklySchedule? CompanionSchedule { get; private set; }
     public decimal AverageRating { get; private set; } = 0;
     public int ReviewsCount { get; private set; } = 0;
     public DateTime CreatedOnUtc { get; private set; }
@@ -65,8 +70,8 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     private readonly List<CaregiverCertificate> _certificates = [];
     public IReadOnlyCollection<CaregiverCertificate> Certificates => _certificates.AsReadOnly();
     public IReadOnlyCollection<CaregiverServiceSelection> ServiceSelections => _serviceSelections.AsReadOnly();
-    public IReadOnlyCollection<CaregiverLanguageSelection> LanguageSelections => _languageSelections.AsReadOnly();  
-    public IReadOnlyCollection<CaregiverAreaSelection> AreaSelections => _areaSelections.AsReadOnly();  
+    public IReadOnlyCollection<CaregiverLanguageSelection> LanguageSelections => _languageSelections.AsReadOnly();
+    public IReadOnlyCollection<CaregiverAreaSelection> AreaSelections => _areaSelections.AsReadOnly();
 
     public static Caregiver Create(
         UserId userId,
@@ -426,7 +431,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             );
         }
 
-        if(service.CaregiverType != Type)
+        if (service.CaregiverType != Type)
         {
             throw new DomainException(
                 "The service does not support this caregiver type."
@@ -451,7 +456,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
     public void RemoveService(ServiceId serviceId)
     {
-        if(serviceId == ServiceId.Empty)
+        if (serviceId == ServiceId.Empty)
         {
             throw new DomainException(
                 "Service ID is required."
@@ -462,7 +467,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             selection => selection.Id == serviceId
         );
 
-        if(selection is null)
+        if (selection is null)
         {
             throw new DomainException(
                 "The service is not selected."
@@ -471,7 +476,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         bool isRemovingFinalService = _serviceSelections.Count == 1;
 
-        if(Status == CaregiverStatus.Active &&
+        if (Status == CaregiverStatus.Active &&
             isRemovingFinalService)
         {
             throw new DomainException(
@@ -513,7 +518,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
     public void RemoveLanguage(LanguageId languageId)
     {
-        if(languageId == LanguageId.Empty)
+        if (languageId == LanguageId.Empty)
         {
             throw new DomainException(
                 "Language ID is required."
@@ -615,7 +620,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
     private CaregiverCertificate GetCertificate(CaregiverCertificateId certificateId)
     {
-         if (certificateId == CaregiverCertificateId.Empty)
+        if (certificateId == CaregiverCertificateId.Empty)
         {
             throw new DomainException(
                 "Certificate ID is required.");
@@ -698,6 +703,94 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         }
 
         CompanionSchedule = updatedSchedule;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void AddMedicalShift(
+        DayOfWeek dayOfWeek,
+        MedicalShiftType shiftType
+    )
+    {
+        EnsureMedicalCaregiver();
+
+        MedicalWeeklySchedule currentSchedule =
+            MedicalSchedule ??
+            MedicalWeeklySchedule.Create();
+
+        MedicalWeeklySchedule updatedSchedule =
+            currentSchedule.AddShift(
+                dayOfWeek,
+                shiftType);
+
+        MedicalSchedule = updatedSchedule;
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RemoveMedicalShift(
+        DayOfWeek dayOfWeek,
+        MedicalShiftType shiftType)
+    {
+        EnsureMedicalCaregiver();
+
+        MedicalWeeklySchedule currentSchedule =
+            MedicalSchedule ??
+            MedicalWeeklySchedule.Create();
+
+        MedicalWeeklySchedule updatedSchedule =
+            currentSchedule.RemoveShift(
+                dayOfWeek,
+                shiftType);
+
+        EnsureActiveScheduleRemainsAvailable(
+            updatedSchedule.HasAvailability);
+
+        MedicalSchedule = updatedSchedule;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void AddMedicalHomeVisitWindow(
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime)
+    {
+        EnsureMedicalCaregiver();
+
+        MedicalWeeklySchedule currentSchedule =
+            MedicalSchedule ??
+            MedicalWeeklySchedule.Create();
+
+        MedicalWeeklySchedule updatedSchedule =
+            currentSchedule.AddHomeVisitWindow(
+                dayOfWeek,
+                startTime,
+                endTime);
+
+        MedicalSchedule = updatedSchedule;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RemoveMedicalHomeVisitWindow(
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime)
+    {
+        EnsureMedicalCaregiver();
+
+        MedicalWeeklySchedule currentSchedule =
+            MedicalSchedule ??
+            MedicalWeeklySchedule.Create();
+
+        MedicalWeeklySchedule updatedSchedule =
+            currentSchedule.RemoveHomeVisitWindow(
+                dayOfWeek,
+                startTime,
+                endTime);
+
+        EnsureActiveScheduleRemainsAvailable(
+            updatedSchedule.HasAvailability);
+
+        MedicalSchedule = updatedSchedule;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
@@ -786,6 +879,28 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             throw new DomainException(
                 "Only a Companion caregiver can manage " +
                 "a Companion schedule.");
+        }
+    }
+
+    private void EnsureMedicalCaregiver()
+    {
+        if (Type != CaregiverType.Medical)
+        {
+            throw new DomainException(
+                "Only a Medical caregiver can manage " +
+                "a Medical schedule.");
+        }
+    }
+
+    private void EnsureActiveScheduleRemainsAvailable(
+        bool hasAvailability)
+    {
+        if (Status == CaregiverStatus.Active &&
+            !hasAvailability)
+        {
+            throw new DomainException(
+                "An Active caregiver must have " +
+                "at least one availability entry.");
         }
     }
 }
