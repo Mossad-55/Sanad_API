@@ -33,6 +33,12 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         Type = type;
         Status = CaregiverStatus.PendingVerification;
         Availability = CaregiverAvailability.Unavailable;
+
+        if(type == CaregiverType.Companion)
+        {
+            CompanionSchedule = CompanionWeeklySchedule.Create();
+        }
+
         CreatedOnUtc = DateTime.UtcNow;
         UpdatedOnUtc = DateTime.UtcNow;
 
@@ -51,7 +57,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public CaregiverAvailability Availability { get; private set; }
     public MedicalCaregiverPricing? MedicalPricing { get; private set; }
     public CompanionCaregiverPricing? CompanionPricing { get; private set; }
-    public CaregiverSchedule Schedule { get; private set; } = CaregiverSchedule.Create();
+    public CompanionWeeklySchedule? CompanionSchedule { get; private set; } 
     public decimal AverageRating { get; private set; } = 0;
     public int ReviewsCount { get; private set; } = 0;
     public DateTime CreatedOnUtc { get; private set; }
@@ -641,6 +647,56 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void AddCompanionAvailabilityWindow(
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime)
+    {
+        EnsureCompanionCaregiver();
+
+        CompanionWeeklySchedule currentSchedule =
+            CompanionSchedule ??
+            CompanionWeeklySchedule.Create();
+
+        CompanionWeeklySchedule updatedSchedule =
+            currentSchedule.AddWindow(
+                dayOfWeek,
+                startTime,
+                endTime);
+
+        CompanionSchedule = updatedSchedule;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RemoveCompanionAvailabilityWindow(
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime)
+    {
+        EnsureCompanionCaregiver();
+
+        CompanionWeeklySchedule currentSchedule =
+            CompanionSchedule ??
+            CompanionWeeklySchedule.Create();
+
+        CompanionWeeklySchedule updatedSchedule =
+            currentSchedule.RemoveWindow(
+                dayOfWeek,
+                startTime,
+                endTime);
+
+        if (Status == CaregiverStatus.Active &&
+            !updatedSchedule.HasAvailability)
+        {
+            throw new DomainException(
+                "An Active caregiver must have " +
+                "at least one availability window.");
+        }
+
+        CompanionSchedule = updatedSchedule;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     private static bool IsMandatoryCertificate(CaregiverCertificateType type)
     {
         return type is
@@ -717,5 +773,15 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         }
 
         return normalizedAddress;
+    }
+
+    private void EnsureCompanionCaregiver()
+    {
+        if (Type != CaregiverType.Companion)
+        {
+            throw new DomainException(
+                "Only a Companion caregiver can manage " +
+                "a Companion schedule.");
+        }
     }
 }
