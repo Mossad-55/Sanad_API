@@ -2,6 +2,8 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Domain.Users.Events;
+using Sanad.BuildingBlocks.Domain.Enums;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 
 namespace Sanad.UnitTests.Identity.Users;
 
@@ -97,6 +99,247 @@ public sealed class UserTests
             secondUser.Id);
     }
 
+    [Fact]
+    public void Create_ShouldStartWithIncompletePersonalInformation()
+    {
+        User user = CreateUser();
+
+        Assert.Null(user.DateOfBirth);
+        Assert.Null(user.Gender);
+    }
+
+    [Fact]
+    public void CompletePersonalInformation_ShouldStoreDateOfBirthAndGender()
+    {
+        User user = CreateUser();
+
+        DateOnly currentDate =
+            CreateCurrentDate();
+
+        DateOnly dateOfBirth =
+            new(1995, 6, 15);
+
+        user.CompletePersonalInformation(
+            dateOfBirth,
+            Gender.Male,
+            currentDate);
+
+        Assert.Equal(
+            dateOfBirth,
+            user.DateOfBirth);
+
+        Assert.Equal(
+            Gender.Male,
+            user.Gender);
+
+        Assert.True(
+            user.UpdatedOnUtc >=
+            user.CreatedOnUtc);
+    }
+
+    [Fact]
+    public void CompletePersonalInformation_ShouldRejectSecondCompletion()
+    {
+        User user = CreateUser();
+
+        DateOnly currentDate =
+            CreateCurrentDate();
+
+        DateOnly originalDateOfBirth =
+            new(1995, 6, 15);
+
+        user.CompletePersonalInformation(
+            originalDateOfBirth,
+            Gender.Male,
+            currentDate);
+
+        DateTime updatedOnUtcAfterCompletion =
+            user.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => user.CompletePersonalInformation(
+                new DateOnly(1996, 7, 16),
+                Gender.Female,
+                currentDate));
+
+        Assert.Equal(
+            originalDateOfBirth,
+            user.DateOfBirth);
+
+        Assert.Equal(
+            Gender.Male,
+            user.Gender);
+
+        Assert.Equal(
+            updatedOnUtcAfterCompletion,
+            user.UpdatedOnUtc);
+    }
+
+    [Fact]
+    public void CompletePersonalInformation_ShouldRejectFutureDateOfBirth()
+    {
+        User user = CreateUser();
+
+        DateOnly currentDate =
+            CreateCurrentDate();
+
+        Assert.Throws<DomainException>(
+            () => user.CompletePersonalInformation(
+                currentDate.AddDays(1),
+                Gender.Male,
+                currentDate));
+
+        Assert.Null(user.DateOfBirth);
+        Assert.Null(user.Gender);
+    }
+
+    [Fact]
+    public void CompletePersonalInformation_ShouldRejectInvalidGender()
+    {
+        User user = CreateUser();
+
+        Assert.Throws<DomainException>(
+            () => user.CompletePersonalInformation(
+                new DateOnly(1995, 6, 15),
+                (Gender)999,
+                CreateCurrentDate()));
+
+        Assert.Null(user.DateOfBirth);
+        Assert.Null(user.Gender);
+    }
+
+    [Fact]
+    public void ChangeGender_ShouldRejectIncompletePersonalInformation()
+    {
+        User user = CreateUser();
+
+        Assert.Throws<DomainException>(
+            () => user.ChangeGender(
+                Gender.Female));
+
+        Assert.Null(user.Gender);
+    }
+
+    [Fact]
+    public void ChangeGender_ShouldUpdateCompletedPersonalInformation()
+    {
+        User user = CreateUser();
+
+        user.CompletePersonalInformation(
+            new DateOnly(1995, 6, 15),
+            Gender.Male,
+            CreateCurrentDate());
+
+        user.ChangeGender(
+            Gender.Female);
+
+        Assert.Equal(
+            Gender.Female,
+            user.Gender);
+
+        Assert.Equal(
+            new DateOnly(1995, 6, 15),
+            user.DateOfBirth);
+    }
+
+    [Fact]
+    public void ChangeGender_ShouldRejectInvalidValueWithoutMutation()
+    {
+        User user = CreateUser();
+
+        user.CompletePersonalInformation(
+            new DateOnly(1995, 6, 15),
+            Gender.Male,
+            CreateCurrentDate());
+
+        DateTime originalUpdatedOnUtc =
+            user.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => user.ChangeGender(
+                (Gender)999));
+
+        Assert.Equal(
+            Gender.Male,
+            user.Gender);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            user.UpdatedOnUtc);
+    }
+
+    [Fact]
+    public void CorrectDateOfBirth_ShouldRejectIncompletePersonalInformation()
+    {
+        User user = CreateUser();
+
+        Assert.Throws<DomainException>(
+            () => user.CorrectDateOfBirth(
+                new DateOnly(1995, 6, 15),
+                CreateCurrentDate()));
+
+        Assert.Null(user.DateOfBirth);
+    }
+
+    [Fact]
+    public void CorrectDateOfBirth_ShouldUpdateDateOfBirth()
+    {
+        User user = CreateUser();
+
+        user.CompletePersonalInformation(
+            new DateOnly(1995, 6, 15),
+            Gender.Male,
+            CreateCurrentDate());
+
+        DateOnly correctedDate =
+            new(1994, 5, 10);
+
+        user.CorrectDateOfBirth(
+            correctedDate,
+            CreateCurrentDate());
+
+        Assert.Equal(
+            correctedDate,
+            user.DateOfBirth);
+
+        Assert.Equal(
+            Gender.Male,
+            user.Gender);
+    }
+
+    [Fact]
+    public void CorrectDateOfBirth_ShouldRejectFutureDateWithoutMutation()
+    {
+        User user = CreateUser();
+
+        DateOnly originalDateOfBirth =
+            new(1995, 6, 15);
+
+        user.CompletePersonalInformation(
+            originalDateOfBirth,
+            Gender.Male,
+            CreateCurrentDate());
+
+        DateTime originalUpdatedOnUtc =
+            user.UpdatedOnUtc;
+
+        DateOnly currentDate =
+            CreateCurrentDate();
+
+        Assert.Throws<DomainException>(
+            () => user.CorrectDateOfBirth(
+                currentDate.AddDays(1),
+                currentDate));
+
+        Assert.Equal(
+            originalDateOfBirth,
+            user.DateOfBirth);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            user.UpdatedOnUtc);
+    }
+
     private static User CreateUser()
     {
         return User.Create(
@@ -104,5 +347,13 @@ public sealed class UserTests
             FullName.Create("Mohamed Ahmed"),
             Email.Create("mohamed@example.com"),
             PhoneNumber.Create("+201001234567"));
+    }
+
+    private static DateOnly CreateCurrentDate()
+    {
+        return new DateOnly(
+            2026,
+            8,
+            20);
     }
 }

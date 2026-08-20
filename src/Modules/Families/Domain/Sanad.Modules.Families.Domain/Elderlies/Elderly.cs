@@ -3,6 +3,7 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Domain.Elderlies.Events;
+using Sanad.BuildingBlocks.Domain.Enums;
 
 namespace Sanad.Modules.Families.Domain.Elderlies;
 

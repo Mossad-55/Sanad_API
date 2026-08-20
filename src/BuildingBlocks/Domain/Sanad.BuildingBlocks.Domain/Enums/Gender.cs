@@ -1,4 +1,4 @@
-namespace Sanad.Modules.Families.Domain.Elderlies;
+namespace Sanad.BuildingBlocks.Domain.Enums;
 
 public enum Gender
 {

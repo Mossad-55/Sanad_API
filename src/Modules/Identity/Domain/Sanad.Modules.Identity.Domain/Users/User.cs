@@ -3,6 +3,7 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Domain.Users.Events;
+using Sanad.BuildingBlocks.Domain.Enums;
 
 namespace Sanad.Modules.Identity.Domain.Users;
 
@@ -40,30 +41,21 @@ public sealed class User : AggregateRoot<UserId>
     }
 
     public FullName ArabicFullName { get; private set; } = default!;
-
     public FullName EnglishFullName { get; private set; } = default!;
-
+    public DateOnly? DateOfBirth { get; private set; }
+    public Gender? Gender { get; private set; }
     public Email? Email { get; private set; }
-
     public PhoneNumber PhoneNumber { get; private set; } = default!;
     public UserIdentityDocument? IdentityDocument { get; private set; }
-
     public string? AvatarUrl { get; private set; }
-
     public bool EmailVerified { get; private set; }
-
     public bool PhoneVerified { get; private set; }
-
     public UserStatus Status { get; private set; }
-
     public DateTime CreatedOnUtc { get; private set; }
-
     public DateTime UpdatedOnUtc { get; private set; }
-
     public DateTime? LastLoginOnUtc { get; private set; }
 
-    public IReadOnlyCollection<UserAccount> Accounts =>
-        _accounts.AsReadOnly();
+    public IReadOnlyCollection<UserAccount> Accounts => _accounts.AsReadOnly();
 
     public static User Create(
         FullName arabicFullName,
@@ -190,5 +182,83 @@ public sealed class User : AggregateRoot<UserId>
         IdentityDocument.UpdateImages(
             frontImagePath,
             backImagePath);
+    }
+
+    public void CompletePersonalInformation(
+        DateOnly dateOfBirth,
+        Gender gender,
+        DateOnly currentDate)
+    {
+        if (DateOfBirth.HasValue ||
+            Gender.HasValue)
+        {
+            throw new DomainException(
+                "Personal information has already been completed.");
+        }
+
+        ValidateDateOfBirth(
+            dateOfBirth,
+            currentDate);
+
+        ValidateGender(gender);
+
+        DateOfBirth = dateOfBirth;
+        Gender = gender;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void ChangeGender(
+        Gender gender)
+    {
+        EnsurePersonalInformationCompleted();
+        ValidateGender(gender);
+
+        Gender = gender;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void CorrectDateOfBirth(
+        DateOnly dateOfBirth,
+        DateOnly currentDate)
+    {
+        EnsurePersonalInformationCompleted();
+
+        ValidateDateOfBirth(
+            dateOfBirth,
+            currentDate);
+
+        DateOfBirth = dateOfBirth;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    private void EnsurePersonalInformationCompleted()
+    {
+        if (!DateOfBirth.HasValue ||
+            !Gender.HasValue)
+        {
+            throw new DomainException(
+                "Personal information is not complete.");
+        }
+    }
+
+    private static void ValidateDateOfBirth(
+        DateOnly dateOfBirth,
+        DateOnly currentDate)
+    {
+        if (dateOfBirth > currentDate)
+        {
+            throw new DomainException(
+                "Date of birth cannot be in the future.");
+        }
+    }
+
+    private static void ValidateGender(
+        Gender gender)
+    {
+        if (!Enum.IsDefined(gender))
+        {
+            throw new DomainException(
+                "Gender is invalid.");
+        }
     }
 }
