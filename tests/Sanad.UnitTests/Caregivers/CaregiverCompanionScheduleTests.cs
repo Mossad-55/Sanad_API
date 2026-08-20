@@ -13,9 +13,11 @@ public sealed class CaregiverCompanionScheduleTests
             CreateCaregiver(
                 CaregiverType.Companion);
 
-        Assert.NotNull(caregiver.CompanionSchedule);
-        Assert.Empty(
-            caregiver.CompanionSchedule.Windows);
+        CompanionWeeklySchedule schedule =
+            Assert.IsType<CompanionWeeklySchedule>(
+                caregiver.CompanionSchedule);
+
+        Assert.Empty(schedule.Windows);
     }
 
     [Fact]
@@ -29,20 +31,28 @@ public sealed class CaregiverCompanionScheduleTests
     }
 
     [Fact]
-    public void AddCompanionAvailabilityWindow_ShouldAddWindow()
+    public void AddCompanionAvailabilityWindow_ShouldAddProductWindow()
     {
         Caregiver caregiver =
             CreateCaregiver(
                 CaregiverType.Companion);
 
         caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.EightHourDay,
             DayOfWeek.Saturday,
             new TimeOnly(8, 0),
             new TimeOnly(16, 0));
 
+        CompanionWeeklySchedule schedule =
+            Assert.IsType<CompanionWeeklySchedule>(
+                caregiver.CompanionSchedule);
+
         CompanionAvailabilityWindow window =
-            Assert.Single(
-                caregiver.CompanionSchedule!.Windows);
+            Assert.Single(schedule.Windows);
+
+        Assert.Equal(
+            CompanionBookingType.EightHourDay,
+            window.BookingType);
 
         Assert.Equal(
             DayOfWeek.Saturday,
@@ -58,20 +68,56 @@ public sealed class CaregiverCompanionScheduleTests
     }
 
     [Fact]
+    public void AddCompanionAvailabilityWindow_ShouldAllowDifferentProducts()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Companion);
+
+        caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.Hourly,
+            DayOfWeek.Saturday,
+            new TimeOnly(8, 0),
+            new TimeOnly(12, 0));
+
+        caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.Overnight,
+            DayOfWeek.Saturday,
+            new TimeOnly(20, 0),
+            new TimeOnly(8, 0));
+
+        CompanionWeeklySchedule schedule =
+            Assert.IsType<CompanionWeeklySchedule>(
+                caregiver.CompanionSchedule);
+
+        Assert.Equal(
+            2,
+            schedule.Windows.Count);
+    }
+
+    [Fact]
     public void AddCompanionAvailabilityWindow_ShouldRejectMedicalCaregiver()
     {
         Caregiver caregiver =
             CreateCaregiver(
                 CaregiverType.Medical);
 
+        DateTime originalUpdatedOnUtc =
+            caregiver.UpdatedOnUtc;
+
         Assert.Throws<DomainException>(
             () => caregiver
                 .AddCompanionAvailabilityWindow(
+                    CompanionBookingType.EightHourDay,
                     DayOfWeek.Saturday,
                     new TimeOnly(8, 0),
                     new TimeOnly(16, 0)));
 
         Assert.Null(caregiver.CompanionSchedule);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            caregiver.UpdatedOnUtc);
     }
 
     [Fact]
@@ -82,12 +128,14 @@ public sealed class CaregiverCompanionScheduleTests
                 CaregiverType.Companion);
 
         caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.EightHourDay,
             DayOfWeek.Saturday,
             new TimeOnly(8, 0),
-            new TimeOnly(14, 0));
+            new TimeOnly(16, 0));
 
         CompanionWeeklySchedule originalSchedule =
-            caregiver.CompanionSchedule!;
+            Assert.IsType<CompanionWeeklySchedule>(
+                caregiver.CompanionSchedule);
 
         DateTime originalUpdatedOnUtc =
             caregiver.UpdatedOnUtc;
@@ -95,13 +143,21 @@ public sealed class CaregiverCompanionScheduleTests
         Assert.Throws<DomainException>(
             () => caregiver
                 .AddCompanionAvailabilityWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Saturday,
                     new TimeOnly(12, 0),
-                    new TimeOnly(16, 0)));
+                    new TimeOnly(18, 0)));
+
+        CompanionWeeklySchedule scheduleAfterFailure =
+            Assert.IsType<CompanionWeeklySchedule>(
+                caregiver.CompanionSchedule);
 
         Assert.Same(
             originalSchedule,
-            caregiver.CompanionSchedule);
+            scheduleAfterFailure);
+
+        Assert.Single(
+            scheduleAfterFailure.Windows);
 
         Assert.Equal(
             originalUpdatedOnUtc,
@@ -116,17 +172,50 @@ public sealed class CaregiverCompanionScheduleTests
                 CaregiverType.Companion);
 
         caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.Hourly,
             DayOfWeek.Saturday,
             new TimeOnly(8, 0),
-            new TimeOnly(16, 0));
+            new TimeOnly(12, 0));
 
         caregiver.RemoveCompanionAvailabilityWindow(
+            CompanionBookingType.Hourly,
+            DayOfWeek.Saturday,
+            new TimeOnly(8, 0),
+            new TimeOnly(12, 0));
+
+        CompanionWeeklySchedule schedule =
+            Assert.IsType<CompanionWeeklySchedule>(
+                caregiver.CompanionSchedule);
+
+        Assert.Empty(schedule.Windows);
+    }
+
+    [Fact]
+    public void RemoveCompanionAvailabilityWindow_ShouldRequireMatchingProduct()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Companion);
+
+        caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.Hourly,
             DayOfWeek.Saturday,
             new TimeOnly(8, 0),
             new TimeOnly(16, 0));
 
-        Assert.Empty(
-            caregiver.CompanionSchedule!.Windows);
+        Assert.Throws<DomainException>(
+            () => caregiver
+                .RemoveCompanionAvailabilityWindow(
+                    CompanionBookingType.EightHourDay,
+                    DayOfWeek.Saturday,
+                    new TimeOnly(8, 0),
+                    new TimeOnly(16, 0)));
+
+        CompanionWeeklySchedule schedule =
+            Assert.IsType<CompanionWeeklySchedule>(
+                caregiver.CompanionSchedule);
+
+        Assert.Single(schedule.Windows);
     }
 
     [Fact]
@@ -137,6 +226,7 @@ public sealed class CaregiverCompanionScheduleTests
                 CaregiverType.Companion);
 
         caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.EightHourDay,
             DayOfWeek.Saturday,
             new TimeOnly(8, 0),
             new TimeOnly(16, 0));
@@ -147,7 +237,8 @@ public sealed class CaregiverCompanionScheduleTests
             CreateCurrentDate());
 
         CompanionWeeklySchedule originalSchedule =
-            caregiver.CompanionSchedule!;
+            Assert.IsType<CompanionWeeklySchedule>(
+                caregiver.CompanionSchedule);
 
         DateTime originalUpdatedOnUtc =
             caregiver.UpdatedOnUtc;
@@ -155,6 +246,7 @@ public sealed class CaregiverCompanionScheduleTests
         Assert.Throws<DomainException>(
             () => caregiver
                 .RemoveCompanionAvailabilityWindow(
+                    CompanionBookingType.EightHourDay,
                     DayOfWeek.Saturday,
                     new TimeOnly(8, 0),
                     new TimeOnly(16, 0)));
@@ -163,20 +255,20 @@ public sealed class CaregiverCompanionScheduleTests
             Assert.IsType<CompanionWeeklySchedule>(
                 caregiver.CompanionSchedule);
 
-            Assert.Same(
-                originalSchedule,
-                scheduleAfterFailure);
+        Assert.Same(
+            originalSchedule,
+            scheduleAfterFailure);
 
-            Assert.Single(
-                scheduleAfterFailure.Windows);
+        Assert.Single(
+            scheduleAfterFailure.Windows);
 
-            Assert.Equal(
-                CaregiverAvailability.Available,
-                caregiver.Availability);
+        Assert.Equal(
+            CaregiverAvailability.Available,
+            caregiver.Availability);
 
-            Assert.Equal(
-                originalUpdatedOnUtc,
-                caregiver.UpdatedOnUtc);
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            caregiver.UpdatedOnUtc);
     }
 
     [Fact]
@@ -187,14 +279,16 @@ public sealed class CaregiverCompanionScheduleTests
                 CaregiverType.Companion);
 
         caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.Hourly,
             DayOfWeek.Saturday,
             new TimeOnly(8, 0),
             new TimeOnly(12, 0));
 
         caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.Overnight,
             DayOfWeek.Saturday,
-            new TimeOnly(14, 0),
-            new TimeOnly(18, 0));
+            new TimeOnly(20, 0),
+            new TimeOnly(8, 0));
 
         caregiver.Activate();
 
@@ -202,16 +296,72 @@ public sealed class CaregiverCompanionScheduleTests
             CreateCurrentDate());
 
         caregiver.RemoveCompanionAvailabilityWindow(
+            CompanionBookingType.Hourly,
             DayOfWeek.Saturday,
             new TimeOnly(8, 0),
             new TimeOnly(12, 0));
 
-        Assert.Single(
-            caregiver.CompanionSchedule!.Windows);
+        CompanionWeeklySchedule schedule =
+            Assert.IsType<CompanionWeeklySchedule>(
+                caregiver.CompanionSchedule);
+
+        CompanionAvailabilityWindow remaining =
+            Assert.Single(schedule.Windows);
+
+        Assert.Equal(
+            CompanionBookingType.Overnight,
+            remaining.BookingType);
 
         Assert.Equal(
             CaregiverAvailability.Available,
             caregiver.Availability);
+    }
+
+    [Fact]
+    public void AddCompanionAvailabilityWindow_ShouldKeepActiveCaregiverAvailable()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Companion);
+
+        caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.Hourly,
+            DayOfWeek.Saturday,
+            new TimeOnly(8, 0),
+            new TimeOnly(12, 0));
+
+        caregiver.Activate();
+
+        caregiver.BecomeAvailable(
+            CreateCurrentDate());
+
+        caregiver.AddCompanionAvailabilityWindow(
+            CompanionBookingType.Overnight,
+            DayOfWeek.Saturday,
+            new TimeOnly(20, 0),
+            new TimeOnly(8, 0));
+
+        Assert.Equal(
+            CaregiverAvailability.Available,
+            caregiver.Availability);
+    }
+
+    [Fact]
+    public void RemoveCompanionAvailabilityWindow_ShouldRejectMedicalCaregiver()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Medical);
+
+        Assert.Throws<DomainException>(
+            () => caregiver
+                .RemoveCompanionAvailabilityWindow(
+                    CompanionBookingType.Hourly,
+                    DayOfWeek.Saturday,
+                    new TimeOnly(8, 0),
+                    new TimeOnly(12, 0)));
+
+        Assert.Null(caregiver.CompanionSchedule);
     }
 
     private static Caregiver CreateCaregiver(

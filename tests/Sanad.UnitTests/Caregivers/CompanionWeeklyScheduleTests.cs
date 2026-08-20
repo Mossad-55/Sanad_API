@@ -23,29 +23,51 @@ public sealed class CompanionWeeklyScheduleTests
 
         CompanionWeeklySchedule updated =
             original.AddWindow(
+                CompanionBookingType.Hourly,
                 DayOfWeek.Saturday,
                 new TimeOnly(8, 0),
                 new TimeOnly(12, 0));
 
         Assert.Empty(original.Windows);
-
         Assert.Single(updated.Windows);
         Assert.True(updated.HasAvailability);
     }
 
     [Fact]
-    public void AddWindow_ShouldAllowMultipleNonOverlappingWindows()
+    public void AddWindow_ShouldPreserveBookingType()
     {
         CompanionWeeklySchedule schedule =
             CompanionWeeklySchedule.Create()
                 .AddWindow(
+                    CompanionBookingType.EightHourDay,
+                    DayOfWeek.Saturday,
+                    new TimeOnly(8, 0),
+                    new TimeOnly(16, 0));
+
+        CompanionAvailabilityWindow window =
+            Assert.Single(
+                schedule.Windows);
+
+        Assert.Equal(
+            CompanionBookingType.EightHourDay,
+            window.BookingType);
+    }
+
+    [Fact]
+    public void AddWindow_ShouldAllowMultipleNonOverlappingProducts()
+    {
+        CompanionWeeklySchedule schedule =
+            CompanionWeeklySchedule.Create()
+                .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Saturday,
                     new TimeOnly(8, 0),
                     new TimeOnly(12, 0))
                 .AddWindow(
+                    CompanionBookingType.Overnight,
                     DayOfWeek.Saturday,
-                    new TimeOnly(14, 0),
-                    new TimeOnly(18, 0));
+                    new TimeOnly(20, 0),
+                    new TimeOnly(8, 0));
 
         Assert.Equal(
             2,
@@ -58,10 +80,12 @@ public sealed class CompanionWeeklyScheduleTests
         CompanionWeeklySchedule schedule =
             CompanionWeeklySchedule.Create()
                 .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Saturday,
                     new TimeOnly(8, 0),
                     new TimeOnly(12, 0))
                 .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Saturday,
                     new TimeOnly(12, 0),
                     new TimeOnly(16, 0));
@@ -72,17 +96,19 @@ public sealed class CompanionWeeklyScheduleTests
     }
 
     [Fact]
-    public void AddWindow_ShouldRejectOverlappingSameDayWindow()
+    public void AddWindow_ShouldRejectSameProductOverlap()
     {
         CompanionWeeklySchedule schedule =
             CompanionWeeklySchedule.Create()
                 .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Saturday,
                     new TimeOnly(8, 0),
                     new TimeOnly(14, 0));
 
         Assert.Throws<DomainException>(
             () => schedule.AddWindow(
+                CompanionBookingType.Hourly,
                 DayOfWeek.Saturday,
                 new TimeOnly(12, 0),
                 new TimeOnly(16, 0)));
@@ -91,20 +117,60 @@ public sealed class CompanionWeeklyScheduleTests
     }
 
     [Fact]
+    public void AddWindow_ShouldRejectOverlapAcrossDifferentProducts()
+    {
+        CompanionWeeklySchedule schedule =
+            CompanionWeeklySchedule.Create()
+                .AddWindow(
+                    CompanionBookingType.EightHourDay,
+                    DayOfWeek.Saturday,
+                    new TimeOnly(8, 0),
+                    new TimeOnly(16, 0));
+
+        Assert.Throws<DomainException>(
+            () => schedule.AddWindow(
+                CompanionBookingType.Hourly,
+                DayOfWeek.Saturday,
+                new TimeOnly(12, 0),
+                new TimeOnly(18, 0)));
+    }
+
+    [Fact]
     public void AddWindow_ShouldRejectDuplicateWindow()
     {
         CompanionWeeklySchedule schedule =
             CompanionWeeklySchedule.Create()
                 .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Saturday,
                     new TimeOnly(8, 0),
-                    new TimeOnly(14, 0));
+                    new TimeOnly(12, 0));
 
         Assert.Throws<DomainException>(
             () => schedule.AddWindow(
+                CompanionBookingType.Hourly,
                 DayOfWeek.Saturday,
                 new TimeOnly(8, 0),
-                new TimeOnly(14, 0)));
+                new TimeOnly(12, 0)));
+    }
+
+    [Fact]
+    public void AddWindow_ShouldRejectSameTimesWithDifferentProduct()
+    {
+        CompanionWeeklySchedule schedule =
+            CompanionWeeklySchedule.Create()
+                .AddWindow(
+                    CompanionBookingType.Hourly,
+                    DayOfWeek.Saturday,
+                    new TimeOnly(8, 0),
+                    new TimeOnly(16, 0));
+
+        Assert.Throws<DomainException>(
+            () => schedule.AddWindow(
+                CompanionBookingType.EightHourDay,
+                DayOfWeek.Saturday,
+                new TimeOnly(8, 0),
+                new TimeOnly(16, 0)));
     }
 
     [Fact]
@@ -113,12 +179,14 @@ public sealed class CompanionWeeklyScheduleTests
         CompanionWeeklySchedule schedule =
             CompanionWeeklySchedule.Create()
                 .AddWindow(
+                    CompanionBookingType.Overnight,
                     DayOfWeek.Saturday,
                     new TimeOnly(20, 0),
                     new TimeOnly(8, 0));
 
         Assert.Throws<DomainException>(
             () => schedule.AddWindow(
+                CompanionBookingType.Hourly,
                 DayOfWeek.Sunday,
                 new TimeOnly(7, 0),
                 new TimeOnly(10, 0)));
@@ -130,10 +198,12 @@ public sealed class CompanionWeeklyScheduleTests
         CompanionWeeklySchedule schedule =
             CompanionWeeklySchedule.Create()
                 .AddWindow(
+                    CompanionBookingType.Overnight,
                     DayOfWeek.Saturday,
                     new TimeOnly(20, 0),
                     new TimeOnly(8, 0))
                 .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Sunday,
                     new TimeOnly(8, 0),
                     new TimeOnly(12, 0));
@@ -149,12 +219,14 @@ public sealed class CompanionWeeklyScheduleTests
         CompanionWeeklySchedule original =
             CompanionWeeklySchedule.Create()
                 .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Saturday,
                     new TimeOnly(8, 0),
                     new TimeOnly(12, 0));
 
         CompanionWeeklySchedule updated =
             original.RemoveWindow(
+                CompanionBookingType.Hourly,
                 DayOfWeek.Saturday,
                 new TimeOnly(8, 0),
                 new TimeOnly(12, 0));
@@ -165,6 +237,27 @@ public sealed class CompanionWeeklyScheduleTests
     }
 
     [Fact]
+    public void RemoveWindow_ShouldRequireMatchingBookingType()
+    {
+        CompanionWeeklySchedule schedule =
+            CompanionWeeklySchedule.Create()
+                .AddWindow(
+                    CompanionBookingType.Hourly,
+                    DayOfWeek.Saturday,
+                    new TimeOnly(8, 0),
+                    new TimeOnly(16, 0));
+
+        Assert.Throws<DomainException>(
+            () => schedule.RemoveWindow(
+                CompanionBookingType.EightHourDay,
+                DayOfWeek.Saturday,
+                new TimeOnly(8, 0),
+                new TimeOnly(16, 0)));
+
+        Assert.Single(schedule.Windows);
+    }
+
+    [Fact]
     public void RemoveWindow_ShouldRejectMissingWindow()
     {
         CompanionWeeklySchedule schedule =
@@ -172,6 +265,7 @@ public sealed class CompanionWeeklyScheduleTests
 
         Assert.Throws<DomainException>(
             () => schedule.RemoveWindow(
+                CompanionBookingType.Hourly,
                 DayOfWeek.Saturday,
                 new TimeOnly(8, 0),
                 new TimeOnly(12, 0)));
@@ -183,10 +277,12 @@ public sealed class CompanionWeeklyScheduleTests
         CompanionWeeklySchedule first =
             CompanionWeeklySchedule.Create()
                 .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Sunday,
                     new TimeOnly(14, 0),
                     new TimeOnly(18, 0))
                 .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Saturday,
                     new TimeOnly(8, 0),
                     new TimeOnly(12, 0));
@@ -194,14 +290,38 @@ public sealed class CompanionWeeklyScheduleTests
         CompanionWeeklySchedule second =
             CompanionWeeklySchedule.Create()
                 .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Saturday,
                     new TimeOnly(8, 0),
                     new TimeOnly(12, 0))
                 .AddWindow(
+                    CompanionBookingType.Hourly,
                     DayOfWeek.Sunday,
                     new TimeOnly(14, 0),
                     new TimeOnly(18, 0));
 
         Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void SchedulesWithDifferentProducts_ShouldNotBeEqual()
+    {
+        CompanionWeeklySchedule hourly =
+            CompanionWeeklySchedule.Create()
+                .AddWindow(
+                    CompanionBookingType.Hourly,
+                    DayOfWeek.Saturday,
+                    new TimeOnly(8, 0),
+                    new TimeOnly(16, 0));
+
+        CompanionWeeklySchedule day =
+            CompanionWeeklySchedule.Create()
+                .AddWindow(
+                    CompanionBookingType.EightHourDay,
+                    DayOfWeek.Saturday,
+                    new TimeOnly(8, 0),
+                    new TimeOnly(16, 0));
+
+        Assert.NotEqual(hourly, day);
     }
 }

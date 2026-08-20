@@ -28,6 +28,12 @@ public sealed class CompanionWeeklySchedule :
                 .ThenBy(
                     window =>
                         window.StartTime)
+                .ThenBy(
+                    window =>
+                        window.EndTime)
+                .ThenBy(
+                    window =>
+                        window.BookingType)
         ];
     }
 
@@ -44,12 +50,14 @@ public sealed class CompanionWeeklySchedule :
     }
 
     internal CompanionWeeklySchedule AddWindow(
+        CompanionBookingType bookingType,
         DayOfWeek dayOfWeek,
         TimeOnly startTime,
         TimeOnly endTime)
     {
         CompanionAvailabilityWindow candidate =
             CompanionAvailabilityWindow.Create(
+                bookingType,
                 dayOfWeek,
                 startTime,
                 endTime);
@@ -76,12 +84,14 @@ public sealed class CompanionWeeklySchedule :
     }
 
     internal CompanionWeeklySchedule RemoveWindow(
+        CompanionBookingType bookingType,
         DayOfWeek dayOfWeek,
         TimeOnly startTime,
         TimeOnly endTime)
     {
         CompanionAvailabilityWindow target =
             CompanionAvailabilityWindow.Create(
+                bookingType,
                 dayOfWeek,
                 startTime,
                 endTime);

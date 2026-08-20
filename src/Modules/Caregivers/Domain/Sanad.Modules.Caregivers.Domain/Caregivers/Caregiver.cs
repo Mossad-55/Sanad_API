@@ -648,6 +648,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     }
 
     public void AddCompanionAvailabilityWindow(
+        CompanionBookingType bookingType,
         DayOfWeek dayOfWeek,
         TimeOnly startTime,
         TimeOnly endTime)
@@ -660,6 +661,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         CompanionWeeklySchedule updatedSchedule =
             currentSchedule.AddWindow(
+                bookingType,
                 dayOfWeek,
                 startTime,
                 endTime);
@@ -669,6 +671,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     }
 
     public void RemoveCompanionAvailabilityWindow(
+        CompanionBookingType bookingType,
         DayOfWeek dayOfWeek,
         TimeOnly startTime,
         TimeOnly endTime)
@@ -681,6 +684,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         CompanionWeeklySchedule updatedSchedule =
             currentSchedule.RemoveWindow(
+                bookingType,
                 dayOfWeek,
                 startTime,
                 endTime);
