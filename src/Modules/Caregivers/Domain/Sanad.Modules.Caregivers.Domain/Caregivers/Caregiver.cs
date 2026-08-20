@@ -96,6 +96,19 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         }
     }
 
+    internal void ValidateActivationReadiness(
+        DateOnly currentDate)
+    {
+        ValidateSubmissionReadiness(
+            currentDate);
+
+        if (Type == CaregiverType.Medical)
+        {
+            EnsureMandatoryCertificatesAreCompliant(
+                currentDate);
+        }
+    }
+
     public static Caregiver Create(
         UserId userId,
         CaregiverType type)
@@ -871,7 +884,8 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     }
 
     public void Approve(
-        DateTime utcNow)
+        DateTime utcNow,
+        DateOnly currentDate)
     {
         EnsureStatus(
             CaregiverStatus.PendingReview,
@@ -879,10 +893,11 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         ValidateUtc(utcNow);
 
+        ValidateActivationReadiness(
+            currentDate);
+
         Status = CaregiverStatus.Active;
         StatusReason = null;
-
-        // Approval does not automatically accept work.
         Availability =
             CaregiverAvailability.Unavailable;
 
@@ -936,7 +951,8 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     }
 
     public void Reactivate(
-        DateTime utcNow)
+        DateTime utcNow,
+        DateOnly currentDate)
     {
         EnsureStatus(
             CaregiverStatus.Suspended,
@@ -944,11 +960,11 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         ValidateUtc(utcNow);
 
+        ValidateActivationReadiness(
+            currentDate);
+
         Status = CaregiverStatus.Active;
         StatusReason = null;
-
-        // Admin reactivation does not override
-        // the caregiver's work-availability choice.
         Availability =
             CaregiverAvailability.Unavailable;
 

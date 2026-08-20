@@ -36,6 +36,27 @@ internal static class CaregiverTestData
         }
     }
 
+    internal static void EnsureReadyForActivation(
+        Caregiver caregiver)
+    {
+        EnsureReadyForSubmission(
+            caregiver);
+
+        if (caregiver.Type !=
+            CaregiverType.Medical)
+        {
+            return;
+        }
+
+        VerifyMandatoryCertificate(
+            caregiver,
+            CaregiverCertificateType.PracticeLicense);
+
+        VerifyMandatoryCertificate(
+            caregiver,
+            CaregiverCertificateType.GraduationCertificate);
+    }
+
     private static void EnsureSharedSelections(
         Caregiver caregiver)
     {
@@ -173,5 +194,34 @@ internal static class CaregiverTestData
             filePath,
             expiryDate: null,
             CurrentDate);
+    }
+
+    private static void VerifyMandatoryCertificate(
+        Caregiver caregiver,
+        CaregiverCertificateType certificateType)
+    {
+        CaregiverCertificate certificate =
+            caregiver.Certificates.Single(
+                certificate =>
+                    certificate.Type ==
+                    certificateType);
+
+        if (certificate.VerificationStatus ==
+            CertificateVerificationStatus.Pending)
+        {
+            caregiver.VerifyCertificate(
+                certificate.Id);
+
+            return;
+        }
+
+        if (certificate.VerificationStatus !=
+            CertificateVerificationStatus.Verified)
+        {
+            throw new InvalidOperationException(
+                $"The test Certificate {certificateType} " +
+                $"cannot be activated from status " +
+                $"{certificate.VerificationStatus}.");
+        }
     }
 }

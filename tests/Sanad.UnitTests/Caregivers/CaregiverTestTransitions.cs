@@ -28,13 +28,23 @@ internal static class CaregiverTestTransitions
                     BaseUtc,
                     CaregiverTestData.CurrentDate);
 
+                CaregiverTestData
+                    .EnsureReadyForActivation(
+                        caregiver);
+
                 caregiver.Approve(
-                    BaseUtc.AddMinutes(1));
+                    BaseUtc.AddMinutes(1),
+                    CaregiverTestData.CurrentDate);
                 return;
 
             case CaregiverStatus.PendingReview:
+                CaregiverTestData
+                    .EnsureReadyForActivation(
+                        caregiver);
+
                 caregiver.Approve(
-                    BaseUtc.AddMinutes(1));
+                    BaseUtc.AddMinutes(1),
+                    CaregiverTestData.CurrentDate);
                 return;
 
             case CaregiverStatus.NeedsCorrection:
@@ -46,13 +56,23 @@ internal static class CaregiverTestTransitions
                     BaseUtc,
                     CaregiverTestData.CurrentDate);
 
+                CaregiverTestData
+                    .EnsureReadyForActivation(
+                        caregiver);
+
                 caregiver.Approve(
-                    BaseUtc.AddMinutes(1));
+                    BaseUtc.AddMinutes(1),
+                    CaregiverTestData.CurrentDate);
                 return;
 
             case CaregiverStatus.Suspended:
+                CaregiverTestData
+                    .EnsureReadyForActivation(
+                        caregiver);
+
                 caregiver.Reactivate(
-                    BaseUtc.AddMinutes(1));
+                    BaseUtc.AddMinutes(1),
+                    CaregiverTestData.CurrentDate);
                 return;
 
             case CaregiverStatus.Active:

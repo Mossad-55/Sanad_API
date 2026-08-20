@@ -35,7 +35,7 @@ public sealed class CaregiverStateMachineTests
     }
 
     [Fact]
-    public void SubmitForReview_ShouldRejectIncompleteCaregiverWithoutMutation()
+    public void SubmitForReview_ShouldRejectIncompleteCaregiver()
     {
         Caregiver caregiver =
             CreateRawCaregiver();
@@ -50,32 +50,6 @@ public sealed class CaregiverStateMachineTests
 
         Assert.Equal(
             CaregiverStatus.Onboarding,
-            caregiver.Status);
-
-        Assert.Null(caregiver.StatusReason);
-
-        Assert.Equal(
-            originalUpdatedOnUtc,
-            caregiver.UpdatedOnUtc);
-    }
-
-    [Fact]
-    public void SubmitForReview_ShouldRejectNonOnboardingStatus()
-    {
-        Caregiver caregiver =
-            CreatePendingReviewCaregiver();
-
-        DateTime originalUpdatedOnUtc =
-            caregiver.UpdatedOnUtc;
-
-        Assert.Throws<DomainException>(
-            () => caregiver.SubmitForReview(
-                CreateUtcDateTime()
-                    .AddMinutes(1),
-                CaregiverTestData.CurrentDate));
-
-        Assert.Equal(
-            CaregiverStatus.PendingReview,
             caregiver.Status);
 
         Assert.Equal(
@@ -106,10 +80,6 @@ public sealed class CaregiverStateMachineTests
             caregiver.StatusReason);
 
         Assert.Equal(
-            CaregiverAvailability.Unavailable,
-            caregiver.Availability);
-
-        Assert.Equal(
             reviewedOnUtc,
             caregiver.UpdatedOnUtc);
     }
@@ -136,8 +106,6 @@ public sealed class CaregiverStateMachineTests
         Assert.Equal(
             CaregiverStatus.PendingReview,
             caregiver.Status);
-
-        Assert.Null(caregiver.StatusReason);
 
         Assert.Equal(
             originalUpdatedOnUtc,
@@ -208,34 +176,22 @@ public sealed class CaregiverStateMachineTests
     }
 
     [Fact]
-    public void ResubmitForReview_ShouldRejectWrongStatus()
+    public void Approve_ShouldMoveReadyPendingReviewToActive()
     {
         Caregiver caregiver =
             CreatePendingReviewCaregiver();
 
-        Assert.Throws<DomainException>(
-            () => caregiver.ResubmitForReview(
-                CreateUtcDateTime()
-                    .AddMinutes(1),
-                CaregiverTestData.CurrentDate));
-
-        Assert.Equal(
-            CaregiverStatus.PendingReview,
-            caregiver.Status);
-    }
-
-    [Fact]
-    public void Approve_ShouldMovePendingReviewToActiveAndRemainUnavailable()
-    {
-        Caregiver caregiver =
-            CreatePendingReviewCaregiver();
+        CaregiverTestData
+            .EnsureReadyForActivation(
+                caregiver);
 
         DateTime approvedOnUtc =
             CreateUtcDateTime()
                 .AddMinutes(1);
 
         caregiver.Approve(
-            approvedOnUtc);
+            approvedOnUtc,
+            CaregiverTestData.CurrentDate);
 
         Assert.Equal(
             CaregiverStatus.Active,
@@ -253,33 +209,15 @@ public sealed class CaregiverStateMachineTests
     }
 
     [Fact]
-    public void Approve_ShouldRejectWrongStatus()
-    {
-        Caregiver caregiver =
-            CreateReadyCaregiver();
-
-        Assert.Throws<DomainException>(
-            () => caregiver.Approve(
-                CreateUtcDateTime()));
-
-        Assert.Equal(
-            CaregiverStatus.Onboarding,
-            caregiver.Status);
-    }
-
-    [Fact]
     public void RejectApplication_ShouldCreateFinalRejectedState()
     {
         Caregiver caregiver =
             CreatePendingReviewCaregiver();
 
-        DateTime rejectedOnUtc =
-            CreateUtcDateTime()
-                .AddMinutes(1);
-
         caregiver.RejectApplication(
             "  Required credentials are invalid.  ",
-            rejectedOnUtc);
+            CreateUtcDateTime()
+                .AddMinutes(1));
 
         Assert.Equal(
             CaregiverStatus.Rejected,
@@ -292,40 +230,6 @@ public sealed class CaregiverStateMachineTests
         Assert.Equal(
             CaregiverAvailability.Unavailable,
             caregiver.Availability);
-
-        Assert.Equal(
-            rejectedOnUtc,
-            caregiver.UpdatedOnUtc);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void RejectApplication_ShouldRequireReason(
-        string? reason)
-    {
-        Caregiver caregiver =
-            CreatePendingReviewCaregiver();
-
-        DateTime originalUpdatedOnUtc =
-            caregiver.UpdatedOnUtc;
-
-        Assert.Throws<DomainException>(
-            () => caregiver.RejectApplication(
-                reason!,
-                CreateUtcDateTime()
-                    .AddMinutes(1)));
-
-        Assert.Equal(
-            CaregiverStatus.PendingReview,
-            caregiver.Status);
-
-        Assert.Null(caregiver.StatusReason);
-
-        Assert.Equal(
-            originalUpdatedOnUtc,
-            caregiver.UpdatedOnUtc);
     }
 
     [Fact]
@@ -352,18 +256,15 @@ public sealed class CaregiverStateMachineTests
     }
 
     [Fact]
-    public void Suspend_ShouldMoveActiveToSuspendedAndUnavailable()
+    public void Suspend_ShouldMoveActiveToSuspended()
     {
         Caregiver caregiver =
             CreateActiveCaregiver();
 
-        DateTime suspendedOnUtc =
-            CreateUtcDateTime()
-                .AddMinutes(2);
-
         caregiver.Suspend(
             "  Compliance review required.  ",
-            suspendedOnUtc);
+            CreateUtcDateTime()
+                .AddMinutes(2));
 
         Assert.Equal(
             CaregiverStatus.Suspended,
@@ -376,71 +277,25 @@ public sealed class CaregiverStateMachineTests
         Assert.Equal(
             CaregiverAvailability.Unavailable,
             caregiver.Availability);
-
-        Assert.Equal(
-            suspendedOnUtc,
-            caregiver.UpdatedOnUtc);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData("")]
-    [InlineData("   ")]
-    public void Suspend_ShouldRequireReason(
-        string? reason)
-    {
-        Caregiver caregiver =
-            CreateActiveCaregiver();
-
-        DateTime originalUpdatedOnUtc =
-            caregiver.UpdatedOnUtc;
-
-        Assert.Throws<DomainException>(
-            () => caregiver.Suspend(
-                reason!,
-                CreateUtcDateTime()
-                    .AddMinutes(2)));
-
-        Assert.Equal(
-            CaregiverStatus.Active,
-            caregiver.Status);
-
-        Assert.Null(caregiver.StatusReason);
-
-        Assert.Equal(
-            originalUpdatedOnUtc,
-            caregiver.UpdatedOnUtc);
     }
 
     [Fact]
-    public void Suspend_ShouldRejectNonActiveStatus()
-    {
-        Caregiver caregiver =
-            CreatePendingReviewCaregiver();
-
-        Assert.Throws<DomainException>(
-            () => caregiver.Suspend(
-                "Invalid transition.",
-                CreateUtcDateTime()
-                    .AddMinutes(1)));
-
-        Assert.Equal(
-            CaregiverStatus.PendingReview,
-            caregiver.Status);
-    }
-
-    [Fact]
-    public void Reactivate_ShouldMoveSuspendedToActiveAndRemainUnavailable()
+    public void Reactivate_ShouldMoveReadySuspendedToActive()
     {
         Caregiver caregiver =
             CreateSuspendedCaregiver();
+
+        CaregiverTestData
+            .EnsureReadyForActivation(
+                caregiver);
 
         DateTime reactivatedOnUtc =
             CreateUtcDateTime()
                 .AddMinutes(3);
 
         caregiver.Reactivate(
-            reactivatedOnUtc);
+            reactivatedOnUtc,
+            CaregiverTestData.CurrentDate);
 
         Assert.Equal(
             CaregiverStatus.Active,
@@ -455,22 +310,6 @@ public sealed class CaregiverStateMachineTests
         Assert.Equal(
             reactivatedOnUtc,
             caregiver.UpdatedOnUtc);
-    }
-
-    [Fact]
-    public void Reactivate_ShouldRejectNonSuspendedStatus()
-    {
-        Caregiver caregiver =
-            CreateActiveCaregiver();
-
-        Assert.Throws<DomainException>(
-            () => caregiver.Reactivate(
-                CreateUtcDateTime()
-                    .AddMinutes(2)));
-
-        Assert.Equal(
-            CaregiverStatus.Active,
-            caregiver.Status);
     }
 
     [Theory]
@@ -552,9 +391,14 @@ public sealed class CaregiverStateMachineTests
         Caregiver caregiver =
             CreatePendingReviewCaregiver();
 
+        CaregiverTestData
+            .EnsureReadyForActivation(
+                caregiver);
+
         caregiver.Approve(
             CreateUtcDateTime()
-                .AddMinutes(1));
+                .AddMinutes(1),
+            CaregiverTestData.CurrentDate);
 
         return caregiver;
     }

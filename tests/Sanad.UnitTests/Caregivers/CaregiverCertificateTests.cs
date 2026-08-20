@@ -558,22 +558,45 @@ public sealed class CaregiverCertificateTests
     [Theory]
     [InlineData(CaregiverCertificateType.PracticeLicense)]
     [InlineData(CaregiverCertificateType.GraduationCertificate)]
-    public void RejectCertificate_ShouldMakeCaregiverUnavailable_WhenMandatory(
+    public void RejectCertificate_ShouldKeepCaregiverUnavailable_WhenMandatory(
         CaregiverCertificateType certificateType)
     {
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
-        CaregiverCertificate certificate =
-            AddCertificate(
-                caregiver,
-                certificateType);
-
         caregiver.TransitionToActive();
+
+        CaregiverCertificate certificate =
+            caregiver.Certificates.Single(
+                certificate =>
+                    certificate.Type ==
+                    certificateType);
+
+        caregiver.UpdateCertificateFile(
+            certificate.Id,
+            "certificates/replacement-document.jpg",
+            expiryDate: null,
+            CreateCurrentDate());
+
+        Assert.Equal(
+            CertificateVerificationStatus.Pending,
+            certificate.VerificationStatus);
+
+        Assert.Equal(
+            CaregiverAvailability.Unavailable,
+            caregiver.Availability);
 
         caregiver.RejectCertificate(
             certificate.Id,
             "Invalid mandatory Certificate.");
+
+        Assert.Equal(
+            CertificateVerificationStatus.Rejected,
+            certificate.VerificationStatus);
+
+        Assert.Equal(
+            "Invalid mandatory Certificate.",
+            certificate.ReviewReason);
 
         Assert.Equal(
             CaregiverAvailability.Unavailable,
