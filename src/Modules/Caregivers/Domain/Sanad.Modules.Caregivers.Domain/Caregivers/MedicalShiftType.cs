@@ -2,8 +2,10 @@ namespace Sanad.Modules.Caregivers.Domain.Caregivers;
 
 public enum MedicalShiftType
 {
-    HomeVisit = 1,
-    EightHours = 2,
-    TwelveHours = 3,
-    TwentyFourHours = 4
+    EightHourMorning = 1,
+    EightHourEvening = 2,
+    EightHourNight = 3,
+    TwelveHourDay = 4,
+    TwelveHourNight = 5,
+    TwentyFourHourLiveIn = 6
 }
