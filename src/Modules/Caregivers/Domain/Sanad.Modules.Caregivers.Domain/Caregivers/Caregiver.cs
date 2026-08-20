@@ -11,6 +11,9 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 {
     public const int MaximumAreaSelections = 10;
     public const int MaximumAdditionalCertificates = 5;
+    public const int MaximumDetailedAddressLength = 500;
+
+    public string? DetailedAddress { get; private set; }
 
     private readonly List<CaregiverServiceSelection> _serviceSelections = [];
     private readonly List<CaregiverLanguageSelection> _languageSelections = [];
@@ -587,6 +590,17 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         return certificate;
     }
 
+    public void UpdateDetailedAddress(
+        string? detailedAddress)
+    {
+        string? normalizedAddress =
+            NormalizeOptionalDetailedAddress(
+                detailedAddress);
+
+        DetailedAddress = normalizedAddress;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     private static bool IsMandatoryCertificate(CaregiverCertificateType type)
     {
         return type is
@@ -640,5 +654,28 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             throw new DomainException(
                 $"The {certificateType} has expired.");
         }
+    }
+
+    private static string? NormalizeOptionalDetailedAddress(
+        string? detailedAddress)
+    {
+        if (string.IsNullOrWhiteSpace(
+            detailedAddress))
+        {
+            return null;
+        }
+
+        string normalizedAddress =
+            detailedAddress.Trim();
+
+        if (normalizedAddress.Length >
+            MaximumDetailedAddressLength)
+        {
+            throw new DomainException(
+                $"Detailed address cannot exceed " +
+                $"{MaximumDetailedAddressLength} characters.");
+        }
+
+        return normalizedAddress;
     }
 }
