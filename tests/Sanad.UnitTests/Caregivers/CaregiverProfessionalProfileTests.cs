@@ -338,7 +338,7 @@ public sealed class CaregiverProfessionalProfileTests
             CreateCaregiver(
                 CaregiverType.Companion);
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             CreateCurrentDate());
@@ -379,7 +379,7 @@ public sealed class CaregiverProfessionalProfileTests
                 certificate.Id);
         }
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             currentDate);

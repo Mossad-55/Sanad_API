@@ -231,7 +231,7 @@ public sealed class CaregiverCompanionScheduleTests
             new TimeOnly(8, 0),
             new TimeOnly(16, 0));
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             CreateCurrentDate());
@@ -290,7 +290,7 @@ public sealed class CaregiverCompanionScheduleTests
             new TimeOnly(20, 0),
             new TimeOnly(8, 0));
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             CreateCurrentDate());
@@ -330,7 +330,7 @@ public sealed class CaregiverCompanionScheduleTests
             new TimeOnly(8, 0),
             new TimeOnly(12, 0));
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             CreateCurrentDate());

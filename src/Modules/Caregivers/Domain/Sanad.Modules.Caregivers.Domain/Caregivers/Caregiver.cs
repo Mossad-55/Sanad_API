@@ -58,6 +58,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public CompanionCaregiverProfile? CompanionProfile { get; private set; }
     public CaregiverType Type { get; private set; }
     public CaregiverStatus Status { get; private set; }
+    public string? StatusReason { get; private set; }
     public CaregiverAvailability Availability { get; private set; }
     public MedicalCaregiverPricing? MedicalPricing { get; private set; }
     public MedicalWeeklySchedule? MedicalSchedule { get; private set; }
@@ -192,17 +193,6 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
-    public void Activate()
-    {
-        Status = CaregiverStatus.Active;
-        UpdatedOnUtc = DateTime.UtcNow;
-    }
-
-    public void Suspend()
-    {
-        Status = CaregiverStatus.Suspended;
-        UpdatedOnUtc = DateTime.UtcNow;
-    }
     public void BecomeAvailable(DateOnly currentDate)
     {
         if (Status != CaregiverStatus.Active)
@@ -794,6 +784,148 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void SubmitForReview(
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.Onboarding,
+            "Only an Onboarding caregiver can submit for review.");
+
+        ValidateUtc(utcNow);
+
+        Status = CaregiverStatus.PendingReview;
+        StatusReason = null;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void RequestCorrection(
+        string reason,
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.PendingReview,
+            "Only a Pending Review caregiver can need correction.");
+
+        ValidateUtc(utcNow);
+
+        string normalizedReason =
+            NormalizeRequiredStatusReason(
+                reason,
+                "Correction reason");
+
+        Status = CaregiverStatus.NeedsCorrection;
+        StatusReason = normalizedReason;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void ResubmitForReview(
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.NeedsCorrection,
+            "Only a Needs Correction caregiver can resubmit.");
+
+        ValidateUtc(utcNow);
+
+        Status = CaregiverStatus.PendingReview;
+        StatusReason = null;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void Approve(
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.PendingReview,
+            "Only a Pending Review caregiver can be approved.");
+
+        ValidateUtc(utcNow);
+
+        Status = CaregiverStatus.Active;
+        StatusReason = null;
+
+        // Approval does not automatically accept work.
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void RejectApplication(
+        string reason,
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.PendingReview,
+            "Only a Pending Review caregiver can be rejected.");
+
+        ValidateUtc(utcNow);
+
+        string normalizedReason =
+            NormalizeRequiredStatusReason(
+                reason,
+                "Rejection reason");
+
+        Status = CaregiverStatus.Rejected;
+        StatusReason = normalizedReason;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void Suspend(
+        string reason,
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.Active,
+            "Only an Active caregiver can be suspended.");
+
+        ValidateUtc(utcNow);
+
+        string normalizedReason =
+            NormalizeRequiredStatusReason(
+                reason,
+                "Suspension reason");
+
+        Status = CaregiverStatus.Suspended;
+        StatusReason = normalizedReason;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void Reactivate(
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.Suspended,
+            "Only a Suspended caregiver can be reactivated.");
+
+        ValidateUtc(utcNow);
+
+        Status = CaregiverStatus.Active;
+        StatusReason = null;
+
+        // Admin reactivation does not override
+        // the caregiver's work-availability choice.
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+    }
+
     private static bool IsMandatoryCertificate(CaregiverCertificateType type)
     {
         return type is
@@ -901,6 +1033,40 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             throw new DomainException(
                 "An Active caregiver must have " +
                 "at least one availability entry.");
+        }
+    }
+
+    private void EnsureStatus(
+        CaregiverStatus requiredStatus,
+        string errorMessage)
+    {
+        if (Status != requiredStatus)
+        {
+            throw new DomainException(
+                errorMessage);
+        }
+    }
+
+    private static string NormalizeRequiredStatusReason(
+        string reason,
+        string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new DomainException(
+                $"{fieldName} is required.");
+        }
+
+        return reason.Trim();
+    }
+
+    private static void ValidateUtc(
+        DateTime utcNow)
+    {
+        if (utcNow.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException(
+                "Transition time must be in UTC.");
         }
     }
 }

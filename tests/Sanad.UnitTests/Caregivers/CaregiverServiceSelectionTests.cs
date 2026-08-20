@@ -235,7 +235,7 @@ public sealed class CaregiverServiceSelectionTests
 
         caregiver.SelectService(firstService);
         caregiver.SelectService(secondService);
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.RemoveService(firstService.Id);
 
@@ -265,7 +265,7 @@ public sealed class CaregiverServiceSelectionTests
                 isActive: true);
 
         caregiver.SelectService(service);
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         DateTime updatedOnUtcBeforeRemoval =
             caregiver.UpdatedOnUtc;
@@ -365,8 +365,8 @@ public sealed class CaregiverServiceSelectionTests
                 isActive: true);
 
         caregiver.SelectService(service);
-        caregiver.Activate();
-        caregiver.Suspend();
+        caregiver.TransitionToActive();
+        caregiver.TransitionToSuspended();
 
         caregiver.RemoveService(service.Id);
 

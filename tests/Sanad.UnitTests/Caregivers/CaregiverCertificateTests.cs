@@ -569,7 +569,7 @@ public sealed class CaregiverCertificateTests
                 caregiver,
                 certificateType);
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.RejectCertificate(
             certificate.Id,
@@ -1275,7 +1275,7 @@ public sealed class CaregiverCertificateTests
         if (caregiver.Status !=
             CaregiverStatus.Active)
         {
-            caregiver.Activate();
+            caregiver.TransitionToActive();
         }
 
         caregiver.BecomeAvailable(

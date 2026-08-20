@@ -236,7 +236,7 @@ public sealed class CaregiverAreaSelectionTests
 
         caregiver.SelectArea(firstArea);
         caregiver.SelectArea(secondArea);
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.RemoveArea(firstArea.Id);
 
@@ -263,7 +263,7 @@ public sealed class CaregiverAreaSelectionTests
         Area area = CreateArea();
 
         caregiver.SelectArea(area);
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         DateTime updatedOnUtcBeforeRemoval =
             caregiver.UpdatedOnUtc;
@@ -353,8 +353,8 @@ public sealed class CaregiverAreaSelectionTests
         Area area = CreateArea();
 
         caregiver.SelectArea(area);
-        caregiver.Activate();
-        caregiver.Suspend();
+        caregiver.TransitionToActive();
+        caregiver.TransitionToSuspended();
 
         caregiver.RemoveArea(area.Id);
 

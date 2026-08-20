@@ -211,7 +211,7 @@ public sealed class CaregiverLanguageSelectionTests
 
         caregiver.SelectLanguage(arabic);
         caregiver.SelectLanguage(english);
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.RemoveLanguage(arabic.Id);
 
@@ -242,7 +242,7 @@ public sealed class CaregiverLanguageSelectionTests
                 "Arabic");
 
         caregiver.SelectLanguage(language);
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         DateTime updatedOnUtcBeforeRemoval =
             caregiver.UpdatedOnUtc;
@@ -346,8 +346,8 @@ public sealed class CaregiverLanguageSelectionTests
                 "Arabic");
 
         caregiver.SelectLanguage(language);
-        caregiver.Activate();
-        caregiver.Suspend();
+        caregiver.TransitionToActive();
+        caregiver.TransitionToSuspended();
 
         caregiver.RemoveLanguage(language.Id);
 

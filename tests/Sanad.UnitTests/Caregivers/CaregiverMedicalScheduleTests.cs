@@ -487,7 +487,7 @@ public sealed class CaregiverMedicalScheduleTests
                 certificate.Id);
         }
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             currentDate);

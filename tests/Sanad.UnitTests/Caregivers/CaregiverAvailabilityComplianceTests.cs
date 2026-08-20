@@ -34,7 +34,7 @@ public sealed class CaregiverAvailabilityComplianceTests
         Caregiver caregiver =
             CreateCompanionCaregiver();
 
-        caregiver.Suspend();
+        caregiver.TransitionToSuspended();
 
         DateTime updatedOnUtcAfterSuspension =
             caregiver.UpdatedOnUtc;
@@ -58,7 +58,7 @@ public sealed class CaregiverAvailabilityComplianceTests
         Caregiver caregiver =
             CreateCompanionCaregiver();
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             CreateCurrentDate());
@@ -74,7 +74,7 @@ public sealed class CaregiverAvailabilityComplianceTests
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         DateTime updatedOnUtcBeforeAttempt =
             caregiver.UpdatedOnUtc;
@@ -115,7 +115,7 @@ public sealed class CaregiverAvailabilityComplianceTests
         caregiver.VerifyCertificate(
             existingCertificate.Id);
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         Assert.Throws<DomainException>(
             () => caregiver.BecomeAvailable(
@@ -154,7 +154,7 @@ public sealed class CaregiverAvailabilityComplianceTests
             practiceLicense,
             certificateStatus);
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         Assert.Throws<DomainException>(
             () => caregiver.BecomeAvailable(
@@ -174,7 +174,7 @@ public sealed class CaregiverAvailabilityComplianceTests
         AddAndVerifyMandatoryCertificates(
             caregiver);
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             CreateCurrentDate());
@@ -210,7 +210,7 @@ public sealed class CaregiverAvailabilityComplianceTests
         caregiver.VerifyCertificate(
             graduationCertificate.Id);
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         Assert.Throws<DomainException>(
             () => caregiver.BecomeAvailable(
@@ -248,7 +248,7 @@ public sealed class CaregiverAvailabilityComplianceTests
         caregiver.VerifyCertificate(
             graduationCertificate.Id);
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             currentDate);
@@ -283,7 +283,7 @@ public sealed class CaregiverAvailabilityComplianceTests
             additionalCertificate.Id,
             "Additional Certificate revoked.");
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             currentDate.AddDays(1));

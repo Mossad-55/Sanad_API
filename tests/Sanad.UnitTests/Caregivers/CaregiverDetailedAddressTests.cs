@@ -87,7 +87,7 @@ public sealed class CaregiverDetailedAddressTests
             CreateCaregiver(
                 CaregiverType.Companion);
 
-        caregiver.Activate();
+        caregiver.TransitionToActive();
 
         caregiver.BecomeAvailable(
             CreateCurrentDate());
