@@ -4,11 +4,206 @@ using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Domain.Users.Events;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Exceptions;
+using Sanad.Modules.Identity.Domain.Authentication;
 
 namespace Sanad.UnitTests.Identity.Users;
 
 public sealed class UserTests
 {
+    [Fact]
+    public void Create_ShouldStartWithoutPassword()
+    {
+        User user = CreateUser();
+
+        Assert.False(user.HasPassword);
+        Assert.Null(user.Password);
+    }
+
+    [Fact]
+    public void SetInitialPasswordHash_ShouldStoreCredential()
+    {
+        User user = CreateUser();
+
+        DateTime utcNow =
+            CreateUtcDateTime();
+
+        user.SetInitialPasswordHash(
+            "  initial-password-hash  ",
+            utcNow);
+
+        Assert.True(user.HasPassword);
+
+        Assert.Equal(
+            "initial-password-hash",
+            user.Password!.PasswordHash);
+
+        Assert.Equal(
+            utcNow,
+            user.UpdatedOnUtc);
+
+        Assert.Empty(
+            user.DomainEvents
+                .OfType<
+                    UserPasswordChangedDomainEvent>());
+    }
+
+    [Fact]
+    public void SetInitialPasswordHash_ShouldRejectExistingPassword()
+    {
+        User user = CreateUser();
+
+        user.SetInitialPasswordHash(
+            "first-hash",
+            CreateUtcDateTime());
+
+        PasswordCredential originalPassword =
+            user.Password!;
+
+        DateTime originalUpdatedOnUtc =
+            user.UpdatedOnUtc;
+
+        Assert.Throws<DomainException>(
+            () => user.SetInitialPasswordHash(
+                "second-hash",
+                CreateUtcDateTime()
+                    .AddMinutes(1)));
+
+        Assert.Same(
+            originalPassword,
+            user.Password);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            user.UpdatedOnUtc);
+    }
+
+    [Fact]
+    public void ChangePasswordHash_ShouldReplaceCredentialAndRaiseEvent()
+    {
+        User user = CreateUser();
+
+        user.SetInitialPasswordHash(
+            "initial-hash",
+            CreateUtcDateTime());
+
+        user.ClearDomainEvents();
+
+        DateTime changedOnUtc =
+            CreateUtcDateTime()
+                .AddMinutes(1);
+
+        user.ChangePasswordHash(
+            "changed-hash",
+            changedOnUtc);
+
+        Assert.Equal(
+            "changed-hash",
+            user.Password!.PasswordHash);
+
+        Assert.Equal(
+            changedOnUtc,
+            user.UpdatedOnUtc);
+
+        UserPasswordChangedDomainEvent domainEvent =
+            Assert.Single(
+                user.DomainEvents
+                    .OfType<
+                        UserPasswordChangedDomainEvent>());
+
+        Assert.Equal(user.Id, domainEvent.UserId);
+
+        Assert.Equal(
+            PasswordChangeReason.Changed,
+            domainEvent.Reason);
+    }
+
+    [Fact]
+    public void ChangePasswordHash_ShouldRejectUserWithoutPassword()
+    {
+        User user = CreateUser();
+
+        Assert.Throws<DomainException>(
+            () => user.ChangePasswordHash(
+                "changed-hash",
+                CreateUtcDateTime()));
+
+        Assert.False(user.HasPassword);
+
+        Assert.Empty(
+            user.DomainEvents
+                .OfType<
+                    UserPasswordChangedDomainEvent>());
+    }
+
+    [Fact]
+    public void ResetPasswordHash_ShouldSetCredentialAndRaiseResetEvent()
+    {
+        User user = CreateUser();
+
+        user.ClearDomainEvents();
+
+        DateTime resetOnUtc =
+            CreateUtcDateTime();
+
+        user.ResetPasswordHash(
+            "reset-password-hash",
+            resetOnUtc);
+
+        Assert.True(user.HasPassword);
+
+        Assert.Equal(
+            "reset-password-hash",
+            user.Password!.PasswordHash);
+
+        UserPasswordChangedDomainEvent domainEvent =
+            Assert.Single(
+                user.DomainEvents
+                    .OfType<
+                        UserPasswordChangedDomainEvent>());
+
+        Assert.Equal(
+            PasswordChangeReason.Reset,
+            domainEvent.Reason);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void PasswordOperations_ShouldRejectMissingHash(
+        string? passwordHash)
+    {
+        User user = CreateUser();
+
+        Assert.Throws<DomainException>(
+            () => user.SetInitialPasswordHash(
+                passwordHash!,
+                CreateUtcDateTime()));
+
+        Assert.False(user.HasPassword);
+    }
+
+    [Theory]
+    [InlineData(DateTimeKind.Local)]
+    [InlineData(DateTimeKind.Unspecified)]
+    public void SetInitialPasswordHash_ShouldRejectNonUtcTime(
+        DateTimeKind dateTimeKind)
+    {
+        User user = CreateUser();
+
+        DateTime invalidTime =
+            DateTime.SpecifyKind(
+                CreateUtcDateTime(),
+                dateTimeKind);
+
+        Assert.Throws<DomainException>(
+            () => user.SetInitialPasswordHash(
+                "password-hash",
+                invalidTime));
+
+        Assert.False(user.HasPassword);
+    }
+
     [Fact]
     public void Create_ShouldGenerateNonEmptyUserId()
     {
@@ -355,5 +550,17 @@ public sealed class UserTests
             2026,
             8,
             20);
+    }
+
+    private static DateTime CreateUtcDateTime()
+    {
+        return new DateTime(
+            2026,
+            8,
+            20,
+            10,
+            0,
+            0,
+            DateTimeKind.Utc);
     }
 }

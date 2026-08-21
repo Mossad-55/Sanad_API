@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Domain.Users.Events;
 using Sanad.BuildingBlocks.Domain.Enums;
+using Sanad.Modules.Identity.Domain.Authentication;
 
 namespace Sanad.Modules.Identity.Domain.Users;
 
@@ -46,6 +47,8 @@ public sealed class User : AggregateRoot<UserId>
     public Gender? Gender { get; private set; }
     public Email? Email { get; private set; }
     public PhoneNumber PhoneNumber { get; private set; } = default!;
+    public PasswordCredential? Password { get; private set; }
+    public bool HasPassword => Password is not null;
     public UserIdentityDocument? IdentityDocument { get; private set; }
     public string? AvatarUrl { get; private set; }
     public bool EmailVerified { get; private set; }
@@ -96,7 +99,7 @@ public sealed class User : AggregateRoot<UserId>
 
     public void VerifyEmail()
     {
-        if(Email is null)
+        if (Email is null)
         {
             throw new DomainException(UserErrors.EmailNotSet);
         }
@@ -142,7 +145,7 @@ public sealed class User : AggregateRoot<UserId>
         {
             throw new DomainException("Phone number must be verified.");
         }
-        
+
         Status = UserStatus.Active;
         UpdatedOnUtc = DateTime.UtcNow;
     }
@@ -231,6 +234,70 @@ public sealed class User : AggregateRoot<UserId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void SetInitialPasswordHash(
+        string passwordHash,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        if (Password is not null)
+        {
+            throw new DomainException(
+                "User already has a password.");
+        }
+
+        PasswordCredential credential =
+            PasswordCredential.Create(
+                passwordHash);
+
+        Password = credential;
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void ChangePasswordHash(
+        string passwordHash,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        if (Password is null)
+        {
+            throw new DomainException(
+                "User does not have a password.");
+        }
+
+        PasswordCredential credential =
+            PasswordCredential.Create(
+                passwordHash);
+
+        Password = credential;
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserPasswordChangedDomainEvent(
+                Id,
+                PasswordChangeReason.Changed));
+    }
+
+    public void ResetPasswordHash(
+        string passwordHash,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        PasswordCredential credential =
+            PasswordCredential.Create(
+                passwordHash);
+
+        Password = credential;
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserPasswordChangedDomainEvent(
+                Id,
+                PasswordChangeReason.Reset));
+    }
+
     private void EnsurePersonalInformationCompleted()
     {
         if (!DateOfBirth.HasValue ||
@@ -259,6 +326,16 @@ public sealed class User : AggregateRoot<UserId>
         {
             throw new DomainException(
                 "Gender is invalid.");
+        }
+    }
+
+    private static void ValidateUtc(
+        DateTime utcNow)
+    {
+        if (utcNow.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException(
+                "Operation time must be in UTC.");
         }
     }
 }
