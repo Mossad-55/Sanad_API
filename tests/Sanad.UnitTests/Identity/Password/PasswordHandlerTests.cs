@@ -99,16 +99,22 @@ public sealed class PasswordHandlerTests
     }
 
     [Fact]
-    public async Task RequestReset_ShouldReturnSuccess_WhenUserNotFound()
+    public async Task RequestReset_ShouldReturnSuccessWithoutSideEffects_WhenUserNotFound()
     {
         await using IdentityTestDbContext dbContext =
             CreateDbContext();
 
+        FakeOtpService otpService =
+            new();
+
+        RecordingEmailSender emailSender =
+            new();
+
         RequestPasswordResetCommandHandler handler =
             new(
                 dbContext,
-                new FakeOtpService(),
-                new RecordingEmailSender(),
+                otpService,
+                emailSender,
                 new FixedDateTimeProvider());
 
         Result result =
@@ -122,14 +128,189 @@ public sealed class PasswordHandlerTests
         Assert.Empty(
             dbContext.VerificationRequests);
 
+        Assert.Empty(
+            otpService.RequestedLengths);
+
+        Assert.Empty(
+            emailSender.Messages);
+
         Assert.Equal(
             0,
             dbContext.SaveChangesCalls);
     }
 
-    // ═══════════════════════════════════════════════════════════════
-    // ResetPasswordCommandHandler Tests
-    // ═══════════════════════════════════════════════════════════════
+    [Fact]
+    public async Task RequestReset_ShouldReturnSuccessWithoutSideEffects_WhenWithinCooldown()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedActiveUserWithPasswordAsync(
+                dbContext);
+
+        DateTime createdOnUtc =
+            FixedDateTimeProvider.UtcNowValue
+                .AddSeconds(-30);
+
+        VerificationRequest pendingRequest =
+            VerificationRequest.Create(
+                user.Id,
+                "mohamed@example.com",
+                "existing-otp-hash",
+                VerificationChannel.Email,
+                VerificationPurpose.ResetPassword,
+                createdOnUtc,
+                createdOnUtc.Add(
+                    OtpPolicy.Lifetime));
+
+        dbContext.VerificationRequests.Add(
+            pendingRequest);
+
+        await dbContext.SaveChangesAsync();
+
+        dbContext.ResetSaveChangesCalls();
+
+        FakeOtpService otpService =
+            new();
+
+        RecordingEmailSender emailSender =
+            new();
+
+        RequestPasswordResetCommandHandler handler =
+            new(
+                dbContext,
+                otpService,
+                emailSender,
+                new FixedDateTimeProvider());
+
+        Result result =
+            await handler.Handle(
+                new RequestPasswordResetCommand(
+                    "mohamed@example.com"),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Empty(
+            otpService.RequestedLengths);
+
+        Assert.Empty(
+            emailSender.Messages);
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            pendingRequest.Status);
+
+        VerificationRequest storedRequest =
+            Assert.Single(
+                dbContext.VerificationRequests);
+
+        Assert.Equal(
+            pendingRequest.Id,
+            storedRequest.Id);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
+    }
+
+    [Fact]
+    public async Task RequestReset_ShouldReplacePendingRequest_WhenCooldownHasElapsed()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedActiveUserWithPasswordAsync(
+                dbContext);
+
+        DateTime createdOnUtc =
+            FixedDateTimeProvider.UtcNowValue
+                .Subtract(
+                    OtpPolicy.ResendCooldown);
+
+        VerificationRequest pendingRequest =
+            VerificationRequest.Create(
+                user.Id,
+                "mohamed@example.com",
+                "existing-otp-hash",
+                VerificationChannel.Email,
+                VerificationPurpose.ResetPassword,
+                createdOnUtc,
+                createdOnUtc.Add(
+                    OtpPolicy.Lifetime));
+
+        dbContext.VerificationRequests.Add(
+            pendingRequest);
+
+        await dbContext.SaveChangesAsync();
+
+        dbContext.ResetSaveChangesCalls();
+
+        FakeOtpService otpService =
+            new();
+
+        RecordingEmailSender emailSender =
+            new();
+
+        RequestPasswordResetCommandHandler handler =
+            new(
+                dbContext,
+                otpService,
+                emailSender,
+                new FixedDateTimeProvider());
+
+        Result result =
+            await handler.Handle(
+                new RequestPasswordResetCommand(
+                    "mohamed@example.com"),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(
+            VerificationStatus.Invalidated,
+            pendingRequest.Status);
+
+        Assert.Equal(
+            FixedDateTimeProvider.UtcNowValue,
+            pendingRequest.InvalidatedOnUtc);
+
+        VerificationRequest[] requests =
+            await dbContext.VerificationRequests
+                .ToArrayAsync();
+
+        Assert.Equal(
+            2,
+            requests.Length);
+
+        VerificationRequest replacementRequest =
+            Assert.Single(
+                requests,
+                item =>
+                    item.Status ==
+                    VerificationStatus.Pending);
+
+        Assert.Equal(
+            FixedDateTimeProvider.UtcNowValue,
+            replacementRequest.CreatedOnUtc);
+
+        Assert.Equal(
+            FixedDateTimeProvider.UtcNowValue
+                .Add(OtpPolicy.Lifetime),
+            replacementRequest.ExpiresOnUtc);
+
+        Assert.Single(
+            otpService.RequestedLengths);
+
+        Assert.Single(
+            emailSender.Messages);
+
+        Assert.Equal(
+            1,
+            dbContext.SaveChangesCalls);
+    }
 
     [Fact]
     public async Task Reset_ShouldUpdatePasswordAndRevokeAllSessions()
@@ -174,10 +355,12 @@ public sealed class PasswordHandlerTests
         dbContext.ResetSaveChangesCalls();
 
         FakeOtpService otpService =
-            new(verifyResult: true);
+            new(
+                verifyResult: true);
 
         FakePasswordHasher passwordHasher =
-            new();
+            new(
+                PasswordVerificationResult.Failed);
 
         ResetPasswordCommandHandler handler =
             new(
@@ -196,17 +379,35 @@ public sealed class PasswordHandlerTests
 
         Assert.True(result.IsSuccess);
 
-        Assert.True(session1.IsRevoked);
+        Assert.Equal(
+            new[] { "NewPassword1" },
+            passwordHasher.HashedPasswords);
 
-        Assert.True(session2.IsRevoked);
+        Assert.Equal(
+            "hashed::NewPassword1",
+            user.Password!.PasswordHash);
+
+        Assert.True(
+            session1.IsRevoked);
+
+        Assert.True(
+            session2.IsRevoked);
 
         Assert.Equal(
             "Password was reset.",
             session1.RevocationReason);
 
         Assert.Equal(
+            "Password was reset.",
+            session2.RevocationReason);
+
+        Assert.Equal(
             VerificationStatus.Verified,
             resetRequest.Status);
+
+        Assert.Equal(
+            utcNow,
+            resetRequest.VerifiedOnUtc);
 
         Assert.Equal(
             1,
@@ -241,11 +442,17 @@ public sealed class PasswordHandlerTests
 
         await dbContext.SaveChangesAsync();
 
+        dbContext.ResetSaveChangesCalls();
+
+        FakePasswordHasher passwordHasher =
+            new();
+
         ResetPasswordCommandHandler handler =
             new(
                 dbContext,
-                new FakePasswordHasher(),
-                new FakeOtpService(verifyResult: false),
+                passwordHasher,
+                new FakeOtpService(
+                    verifyResult: false),
                 new FixedDateTimeProvider());
 
         Result result =
@@ -259,6 +466,28 @@ public sealed class PasswordHandlerTests
         Assert.Equal(
             PasswordErrors.OtpVerificationFailed,
             result.Error);
+
+        Assert.Equal(
+            1,
+            resetRequest.Attempts);
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            resetRequest.Status);
+
+        Assert.Empty(
+            passwordHasher.VerificationRequests);
+
+        Assert.Empty(
+            passwordHasher.HashedPasswords);
+
+        Assert.Equal(
+            "hashed::CurrentPass1",
+            user.Password!.PasswordHash);
+
+        Assert.Equal(
+            1,
+            dbContext.SaveChangesCalls);
     }
 
     [Fact]
@@ -267,14 +496,21 @@ public sealed class PasswordHandlerTests
         await using IdentityTestDbContext dbContext =
             CreateDbContext();
 
-        await SeedActiveUserWithPasswordAsync(
-            dbContext);
+        User user =
+            await SeedActiveUserWithPasswordAsync(
+                dbContext);
+
+        dbContext.ResetSaveChangesCalls();
+
+        FakePasswordHasher passwordHasher =
+            new();
 
         ResetPasswordCommandHandler handler =
             new(
                 dbContext,
-                new FakePasswordHasher(),
-                new FakeOtpService(verifyResult: true),
+                passwordHasher,
+                new FakeOtpService(
+                    verifyResult: true),
                 new FixedDateTimeProvider());
 
         Result result =
@@ -288,6 +524,193 @@ public sealed class PasswordHandlerTests
         Assert.Equal(
             PasswordErrors.PendingRequestNotFound,
             result.Error);
+
+        Assert.Empty(
+            passwordHasher.VerificationRequests);
+
+        Assert.Empty(
+            passwordHasher.HashedPasswords);
+
+        Assert.Equal(
+            "hashed::CurrentPass1",
+            user.Password!.PasswordHash);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
+    }
+
+    [Fact]
+    public async Task Reset_ShouldRejectWhenUserIsNoLongerActive()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedActiveUserWithPasswordAsync(
+                dbContext);
+
+        DateTime utcNow =
+            FixedDateTimeProvider.UtcNowValue;
+
+        DateTime createdOnUtc =
+            utcNow.AddSeconds(-30);
+
+        VerificationRequest resetRequest =
+            VerificationRequest.Create(
+                user.Id,
+                "mohamed@example.com",
+                "otp-hash",
+                VerificationChannel.Email,
+                VerificationPurpose.ResetPassword,
+                createdOnUtc,
+                createdOnUtc.Add(
+                    OtpPolicy.Lifetime));
+
+        dbContext.VerificationRequests.Add(
+            resetRequest);
+
+        await dbContext.SaveChangesAsync();
+
+        user.Suspend(
+            "Security review.",
+            utcNow.AddSeconds(-10));
+
+        await dbContext.SaveChangesAsync();
+
+        dbContext.ResetSaveChangesCalls();
+
+        FakeOtpService otpService =
+            new(
+                verifyResult: true);
+
+        FakePasswordHasher passwordHasher =
+            new();
+
+        ResetPasswordCommandHandler handler =
+            new(
+                dbContext,
+                passwordHasher,
+                otpService,
+                new FixedDateTimeProvider());
+
+        Result result =
+            await handler.Handle(
+                new ResetPasswordCommand(
+                    "mohamed@example.com",
+                    "123456",
+                    "NewPassword1"),
+                CancellationToken.None);
+
+        Assert.Equal(
+            PasswordErrors.UserNotActive,
+            result.Error);
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            resetRequest.Status);
+
+        Assert.Empty(
+            otpService.VerificationRequests);
+
+        Assert.Empty(
+            passwordHasher.VerificationRequests);
+
+        Assert.Empty(
+            passwordHasher.HashedPasswords);
+
+        Assert.Equal(
+            "hashed::CurrentPass1",
+            user.Password!.PasswordHash);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
+    }
+
+    [Fact]
+    public async Task Reset_ShouldRejectCurrentPasswordReuse()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedActiveUserWithPasswordAsync(
+                dbContext);
+
+        DeviceSession session =
+            await SeedSessionAsync(
+                dbContext,
+                user.Id,
+                "session-hash");
+
+        DateTime utcNow =
+            FixedDateTimeProvider.UtcNowValue;
+
+        VerificationRequest resetRequest =
+            VerificationRequest.Create(
+                user.Id,
+                "mohamed@example.com",
+                "otp-hash",
+                VerificationChannel.Email,
+                VerificationPurpose.ResetPassword,
+                utcNow.AddMinutes(-2),
+                utcNow.AddMinutes(3));
+
+        dbContext.VerificationRequests.Add(
+            resetRequest);
+
+        await dbContext.SaveChangesAsync();
+
+        dbContext.ResetSaveChangesCalls();
+
+        FakePasswordHasher passwordHasher =
+            new(
+                PasswordVerificationResult.Success);
+
+        ResetPasswordCommandHandler handler =
+            new(
+                dbContext,
+                passwordHasher,
+                new FakeOtpService(
+                    verifyResult: true),
+                new FixedDateTimeProvider());
+
+        Result result =
+            await handler.Handle(
+                new ResetPasswordCommand(
+                    "mohamed@example.com",
+                    "123456",
+                    "CurrentPass1"),
+                CancellationToken.None);
+
+        Assert.Equal(
+            PasswordErrors.NewPasswordMustDiffer,
+            result.Error);
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            resetRequest.Status);
+
+        Assert.Null(
+            resetRequest.VerifiedOnUtc);
+
+        Assert.False(
+            session.IsRevoked);
+
+        Assert.Empty(
+            passwordHasher.HashedPasswords);
+
+        Assert.Equal(
+            "hashed::CurrentPass1",
+            user.Password!.PasswordHash);
+
+        Assert.Single(
+            passwordHasher.VerificationRequests);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
     }
 
     [Fact]
@@ -316,8 +739,9 @@ public sealed class PasswordHandlerTests
 
         FakePasswordHasher passwordHasher =
             new(
-                verifyResult:
-                    PasswordVerificationResult.Success);
+                PasswordVerificationResult
+                    .SuccessRehashNeeded,
+                PasswordVerificationResult.Failed);
 
         ChangePasswordCommandHandler handler =
             new(
@@ -335,13 +759,31 @@ public sealed class PasswordHandlerTests
 
         Assert.True(result.IsSuccess);
 
-        Assert.True(session1.IsRevoked);
+        Assert.Equal(
+            2,
+            passwordHasher.VerificationRequests.Count);
 
-        Assert.True(session2.IsRevoked);
+        Assert.Equal(
+            new[] { "NewPassword1" },
+            passwordHasher.HashedPasswords);
+
+        Assert.Equal(
+            "hashed::NewPassword1",
+            user.Password!.PasswordHash);
+
+        Assert.True(
+            session1.IsRevoked);
+
+        Assert.True(
+            session2.IsRevoked);
 
         Assert.Equal(
             "Password was changed.",
             session1.RevocationReason);
+
+        Assert.Equal(
+            "Password was changed.",
+            session2.RevocationReason);
 
         Assert.Equal(
             1,
@@ -358,12 +800,14 @@ public sealed class PasswordHandlerTests
             await SeedActiveUserWithPasswordAsync(
                 dbContext);
 
+        FakePasswordHasher passwordHasher =
+            new(
+                PasswordVerificationResult.Failed);
+
         ChangePasswordCommandHandler handler =
             new(
                 dbContext,
-                new FakePasswordHasher(
-                    verifyResult:
-                        PasswordVerificationResult.Failed),
+                passwordHasher,
                 new FixedDateTimeProvider());
 
         Result result =
@@ -377,6 +821,16 @@ public sealed class PasswordHandlerTests
         Assert.Equal(
             PasswordErrors.InvalidCurrentPassword,
             result.Error);
+
+        Assert.Single(
+            passwordHasher.VerificationRequests);
+
+        Assert.Empty(
+            passwordHasher.HashedPasswords);
+
+        Assert.Equal(
+            "hashed::CurrentPass1",
+            user.Password!.PasswordHash);
     }
 
     [Fact]
@@ -389,10 +843,13 @@ public sealed class PasswordHandlerTests
             await SeedPendingUserWithPasswordAsync(
                 dbContext);
 
+        FakePasswordHasher passwordHasher =
+            new();
+
         ChangePasswordCommandHandler handler =
             new(
                 dbContext,
-                new FakePasswordHasher(),
+                passwordHasher,
                 new FixedDateTimeProvider());
 
         Result result =
@@ -406,6 +863,76 @@ public sealed class PasswordHandlerTests
         Assert.Equal(
             PasswordErrors.UserNotActive,
             result.Error);
+
+        Assert.Empty(
+            passwordHasher.VerificationRequests);
+
+        Assert.Empty(
+            passwordHasher.HashedPasswords);
+
+        Assert.Equal(
+            "hashed::CurrentPass1",
+            user.Password!.PasswordHash);
+    }
+
+    [Fact]
+    public async Task Change_ShouldRejectCurrentPasswordReuse()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedActiveUserWithPasswordAsync(
+                dbContext);
+
+        DeviceSession session =
+            await SeedSessionAsync(
+                dbContext,
+                user.Id,
+                "session-hash");
+
+        dbContext.ResetSaveChangesCalls();
+
+        FakePasswordHasher passwordHasher =
+            new(
+                PasswordVerificationResult.Success,
+                PasswordVerificationResult.Success);
+
+        ChangePasswordCommandHandler handler =
+            new(
+                dbContext,
+                passwordHasher,
+                new FixedDateTimeProvider());
+
+        Result result =
+            await handler.Handle(
+                new ChangePasswordCommand(
+                    user.Id,
+                    "CurrentPass1",
+                    "CurrentPass1"),
+                CancellationToken.None);
+
+        Assert.Equal(
+            PasswordErrors.NewPasswordMustDiffer,
+            result.Error);
+
+        Assert.Equal(
+            2,
+            passwordHasher.VerificationRequests.Count);
+
+        Assert.Empty(
+            passwordHasher.HashedPasswords);
+
+        Assert.Equal(
+            "hashed::CurrentPass1",
+            user.Password!.PasswordHash);
+
+        Assert.False(
+            session.IsRevoked);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
     }
 
     private static IdentityTestDbContext CreateDbContext()
@@ -444,7 +971,8 @@ public sealed class PasswordHandlerTests
             "hashed::CurrentPass1",
             FixedDateTimeProvider.UtcNowValue);
 
-        dbContext.Users.Add(user);
+        dbContext.Users.Add(
+            user);
 
         await dbContext.SaveChangesAsync();
 
@@ -486,7 +1014,8 @@ public sealed class PasswordHandlerTests
             "hashed::CurrentPass1",
             FixedDateTimeProvider.UtcNowValue);
 
-        dbContext.Users.Add(user);
+        dbContext.Users.Add(
+            user);
 
         await dbContext.SaveChangesAsync();
 
@@ -510,7 +1039,8 @@ public sealed class PasswordHandlerTests
                 FixedDateTimeProvider.UtcNowValue
                     .AddDays(29));
 
-        dbContext.DeviceSessions.Add(session);
+        dbContext.DeviceSessions.Add(
+            session);
 
         await dbContext.SaveChangesAsync();
 
@@ -542,16 +1072,29 @@ public sealed class PasswordHandlerTests
 
         private int _generatedCount;
 
-        internal List<int> RequestedLengths { get; } = [];
+        internal List<int> RequestedLengths
+        {
+            get;
+        } = [];
 
-        internal FakeOtpService(bool verifyResult = true)
+        internal List<(
+            string ProvidedCode,
+            string OtpHash)> VerificationRequests
+        {
+            get;
+        } = [];
+
+        internal FakeOtpService(
+            bool verifyResult = true)
         {
             _verifyResult = verifyResult;
         }
 
-        public GeneratedOtpCode Generate(int length)
+        public GeneratedOtpCode Generate(
+            int length)
         {
-            RequestedLengths.Add(length);
+            RequestedLengths.Add(
+                length);
 
             _generatedCount++;
 
@@ -564,6 +1107,11 @@ public sealed class PasswordHandlerTests
             string providedCode,
             string otpHash)
         {
+            VerificationRequests.Add(
+                (
+                    providedCode,
+                    otpHash));
+
             return _verifyResult;
         }
     }
@@ -571,18 +1119,39 @@ public sealed class PasswordHandlerTests
     private sealed class FakePasswordHasher :
         IPasswordHasher
     {
-        private readonly PasswordVerificationResult
-            _verifyResult;
+        private readonly Queue<
+            PasswordVerificationResult>
+            _verificationResults;
+
+        internal List<string> HashedPasswords
+        {
+            get;
+        } = [];
+
+        internal List<(
+            string PasswordHash,
+            string ProvidedPassword)>
+            VerificationRequests
+        {
+            get;
+        } = [];
 
         internal FakePasswordHasher(
-            PasswordVerificationResult verifyResult =
-                PasswordVerificationResult.Success)
+            params PasswordVerificationResult[]
+                verificationResults)
         {
-            _verifyResult = verifyResult;
+            _verificationResults =
+                new Queue<
+                    PasswordVerificationResult>(
+                        verificationResults);
         }
 
-        public string Hash(string password)
+        public string Hash(
+            string password)
         {
+            HashedPasswords.Add(
+                password);
+
             return $"hashed::{password}";
         }
 
@@ -590,14 +1159,29 @@ public sealed class PasswordHandlerTests
             string passwordHash,
             string providedPassword)
         {
-            return _verifyResult;
+            VerificationRequests.Add(
+                (
+                    passwordHash,
+                    providedPassword));
+
+            if (_verificationResults.Count == 0)
+            {
+                throw new InvalidOperationException(
+                    "No password verification result " +
+                    "was configured for this call.");
+            }
+
+            return _verificationResults.Dequeue();
         }
     }
 
     private sealed class RecordingEmailSender :
         IEmailSender
     {
-        internal List<EmailMessage> Messages { get; } = [];
+        internal List<EmailMessage> Messages
+        {
+            get;
+        } = [];
 
         public Task SendVerificationCodeAsync(
             string email,

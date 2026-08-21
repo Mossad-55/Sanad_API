@@ -33,4 +33,9 @@ public static class PasswordErrors
         new(
             "Identity.Password.PendingRequestNotFound",
             "No pending password reset request found.");
+
+    public static readonly Error NewPasswordMustDiffer =
+        new(
+            "Identity.Password.NewPasswordMustDiffer",
+            "New password must differ from the current password.");
 }

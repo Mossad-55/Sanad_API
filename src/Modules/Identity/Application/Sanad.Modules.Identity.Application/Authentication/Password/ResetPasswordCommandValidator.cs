@@ -17,7 +17,7 @@ public sealed class ResetPasswordCommandValidator :
         RuleFor(command =>
                 command.OtpCode)
             .NotEmpty()
-            .Matches(@"^\d{6}$")
+            .Matches(@"\A[0-9]{6}\z")
             .WithMessage(
                 "OTP code must contain " +
                 "exactly six digits.");

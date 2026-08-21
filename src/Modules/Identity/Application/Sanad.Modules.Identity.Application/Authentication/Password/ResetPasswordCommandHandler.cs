@@ -53,7 +53,17 @@ public sealed class ResetPasswordCommandHandler :
                 .UserNotFound);
         }
 
-        if (!user.HasPassword)
+        if (user.Status !=
+            UserStatus.Active)
+        {
+            return Result.Failure(PasswordErrors
+                .UserNotActive);
+        }
+
+        var password = user.Password;
+
+        if (!user.HasPassword ||
+            password is null)
         {
             return Result.Failure(PasswordErrors
                 .UserHasNoPassword);
@@ -111,6 +121,18 @@ public sealed class ResetPasswordCommandHandler :
 
             return Result.Failure(PasswordErrors
                 .OtpVerificationFailed);
+        }
+
+        PasswordVerificationResult newPasswordVerification =
+            _passwordHasher.Verify(
+                password.PasswordHash,
+                request.NewPassword);
+
+        if (newPasswordVerification !=
+            PasswordVerificationResult.Failed)
+        {
+            return Result.Failure(PasswordErrors
+                .NewPasswordMustDiffer);
         }
 
         string newPasswordHash =

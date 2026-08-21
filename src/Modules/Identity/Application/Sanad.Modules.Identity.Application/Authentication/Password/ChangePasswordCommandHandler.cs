@@ -63,29 +63,25 @@ public sealed class ChangePasswordCommandHandler :
         DateTime utcNow =
             _dateTimeProvider.UtcNow;
 
-        PasswordVerificationResult verification =
-            _passwordHasher.Verify(
-                password.PasswordHash,
-                request.CurrentPassword);
+        PasswordVerificationResult currentPasswordVerification = _passwordHasher.Verify(
+            password.PasswordHash,
+            request.CurrentPassword);
 
-        if (verification ==
-            PasswordVerificationResult.Failed)
+        if (currentPasswordVerification == PasswordVerificationResult.Failed)
         {
             return Result.Failure(PasswordErrors
                 .InvalidCurrentPassword);
         }
 
-        if (verification ==
-            PasswordVerificationResult
-                .SuccessRehashNeeded)
-        {
-            string rehashedPassword =
-                _passwordHasher.Hash(
-                    request.CurrentPassword);
+        PasswordVerificationResult newPasswordVerification = _passwordHasher.Verify(
+            password.PasswordHash,
+            request.NewPassword);
 
-            user.RehashPasswordHash(
-                rehashedPassword,
-                utcNow);
+        if (newPasswordVerification !=
+            PasswordVerificationResult.Failed)
+        {
+            return Result.Failure(PasswordErrors
+                .NewPasswordMustDiffer);
         }
 
         string newPasswordHash =

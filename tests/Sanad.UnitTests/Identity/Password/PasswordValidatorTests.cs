@@ -13,11 +13,13 @@ public sealed class PasswordValidatorTests
             new();
 
         RequestPasswordResetCommand command =
-            new("user@example.com");
+            new(
+                "user@example.com");
 
         TestValidationResult<RequestPasswordResetCommand>
             result =
-                validator.TestValidate(command);
+                validator.TestValidate(
+                    command);
 
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -33,10 +35,12 @@ public sealed class PasswordValidatorTests
             new();
 
         RequestPasswordResetCommand command =
-            new(email!);
+            new(
+                email!);
 
         validator
-            .TestValidate(command)
+            .TestValidate(
+                command)
             .ShouldHaveValidationErrorFor(
                 value =>
                     value.Email);
@@ -49,10 +53,12 @@ public sealed class PasswordValidatorTests
             new();
 
         RequestPasswordResetCommand command =
-            new("not-an-email");
+            new(
+                "not-an-email");
 
         validator
-            .TestValidate(command)
+            .TestValidate(
+                command)
             .ShouldHaveValidationErrorFor(
                 value =>
                     value.Email);
@@ -72,7 +78,8 @@ public sealed class PasswordValidatorTests
 
         TestValidationResult<ResetPasswordCommand>
             result =
-                validator.TestValidate(command);
+                validator.TestValidate(
+                    command);
 
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -88,10 +95,40 @@ public sealed class PasswordValidatorTests
             new();
 
         ResetPasswordCommand command =
-            new(email!, "123456", "NewPassword1");
+            new(
+                email!,
+                "123456",
+                "NewPassword1");
 
         validator
-            .TestValidate(command)
+            .TestValidate(
+                command)
+            .ShouldHaveValidationErrorFor(
+                value =>
+                    value.Email);
+    }
+
+    [Fact]
+    public void Reset_Validate_ShouldRejectLongEmail()
+    {
+        ResetPasswordCommandValidator validator =
+            new();
+
+        string longEmail =
+            new string(
+                'a',
+                245) +
+            "@example.com";
+
+        ResetPasswordCommand command =
+            new(
+                longEmail,
+                "123456",
+                "NewPassword1");
+
+        validator
+            .TestValidate(
+                command)
             .ShouldHaveValidationErrorFor(
                 value =>
                     value.Email);
@@ -104,6 +141,7 @@ public sealed class PasswordValidatorTests
     [InlineData("1234567")]
     [InlineData("abcdef")]
     [InlineData("123 56")]
+    [InlineData("１２３４５６")]
     public void Reset_Validate_ShouldRejectInvalidOtp(
         string? otp)
     {
@@ -111,10 +149,14 @@ public sealed class PasswordValidatorTests
             new();
 
         ResetPasswordCommand command =
-            new("user@example.com", otp!, "NewPassword1");
+            new(
+                "user@example.com",
+                otp!,
+                "NewPassword1");
 
         validator
-            .TestValidate(command)
+            .TestValidate(
+                command)
             .ShouldHaveValidationErrorFor(
                 value =>
                     value.OtpCode);
@@ -134,13 +176,45 @@ public sealed class PasswordValidatorTests
             new();
 
         ResetPasswordCommand command =
-            new("user@example.com", "123456", password!);
+            new(
+                "user@example.com",
+                "123456",
+                password!);
 
         validator
-            .TestValidate(command)
+            .TestValidate(
+                command)
             .ShouldHaveValidationErrorFor(
                 value =>
                     value.NewPassword);
+    }
+
+    [Fact]
+    public void Reset_Validate_ShouldAcceptPasswordAtMaximumLength()
+    {
+        ResetPasswordCommandValidator validator =
+            new();
+
+        string maximumLengthPassword =
+            "Aa1" +
+            new string(
+                'x',
+                125);
+
+        ResetPasswordCommand command =
+            new(
+                "user@example.com",
+                "123456",
+                maximumLengthPassword);
+
+        TestValidationResult<ResetPasswordCommand>
+            result =
+                validator.TestValidate(
+                    command);
+
+        result.ShouldNotHaveValidationErrorFor(
+            value =>
+                value.NewPassword);
     }
 
     [Fact]
@@ -150,13 +224,20 @@ public sealed class PasswordValidatorTests
             new();
 
         string longPassword =
-            new string('A', 128) + "a1";
+            "Aa1" +
+            new string(
+                'x',
+                126);
 
         ResetPasswordCommand command =
-            new("user@example.com", "123456", longPassword);
+            new(
+                "user@example.com",
+                "123456",
+                longPassword);
 
         validator
-            .TestValidate(command)
+            .TestValidate(
+                command)
             .ShouldHaveValidationErrorFor(
                 value =>
                     value.NewPassword);
@@ -176,7 +257,8 @@ public sealed class PasswordValidatorTests
 
         TestValidationResult<ChangePasswordCommand>
             result =
-                validator.TestValidate(command);
+                validator.TestValidate(
+                    command);
 
         result.ShouldNotHaveAnyValidationErrors();
     }
@@ -194,7 +276,8 @@ public sealed class PasswordValidatorTests
                 "NewPassword1");
 
         validator
-            .TestValidate(command)
+            .TestValidate(
+                command)
             .ShouldHaveValidationErrorFor(
                 value =>
                     value.CurrentUserId);
@@ -217,7 +300,8 @@ public sealed class PasswordValidatorTests
                 "NewPassword1");
 
         validator
-            .TestValidate(command)
+            .TestValidate(
+                command)
             .ShouldHaveValidationErrorFor(
                 value =>
                     value.CurrentPassword);
@@ -243,10 +327,39 @@ public sealed class PasswordValidatorTests
                 newPassword!);
 
         validator
-            .TestValidate(command)
+            .TestValidate(
+                command)
             .ShouldHaveValidationErrorFor(
                 value =>
                     value.NewPassword);
+    }
+
+    [Fact]
+    public void Change_Validate_ShouldAcceptNewPasswordAtMaximumLength()
+    {
+        ChangePasswordCommandValidator validator =
+            new();
+
+        string maximumLengthPassword =
+            "Aa1" +
+            new string(
+                'x',
+                125);
+
+        ChangePasswordCommand command =
+            new(
+                UserId.New(),
+                "CurrentPass1",
+                maximumLengthPassword);
+
+        TestValidationResult<ChangePasswordCommand>
+            result =
+                validator.TestValidate(
+                    command);
+
+        result.ShouldNotHaveValidationErrorFor(
+            value =>
+                value.NewPassword);
     }
 
     [Fact]
@@ -256,7 +369,10 @@ public sealed class PasswordValidatorTests
             new();
 
         string longPassword =
-            new string('A', 128) + "a1";
+            "Aa1" +
+            new string(
+                'x',
+                126);
 
         ChangePasswordCommand command =
             new(
@@ -265,7 +381,8 @@ public sealed class PasswordValidatorTests
                 longPassword);
 
         validator
-            .TestValidate(command)
+            .TestValidate(
+                command)
             .ShouldHaveValidationErrorFor(
                 value =>
                     value.NewPassword);

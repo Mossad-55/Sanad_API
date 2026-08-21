@@ -73,6 +73,14 @@ public sealed class RequestPasswordResetCommandHandler :
                 .FirstOrDefaultAsync(
                     cancellationToken);
 
+        if (pendingRequest is not null &&
+            utcNow <
+                pendingRequest.CreatedOnUtc.Add(
+                    OtpPolicy.ResendCooldown))
+        {
+            return Result.Success();
+        }
+
         if (pendingRequest is not null)
         {
             pendingRequest.Invalidate(
