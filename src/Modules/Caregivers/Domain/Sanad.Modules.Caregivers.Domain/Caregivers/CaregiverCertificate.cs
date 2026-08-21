@@ -75,7 +75,7 @@ public sealed class CaregiverCertificate :
 
     internal void Verify()
     {
-        if(VerificationStatus != CertificateVerificationStatus.Pending)
+        if (VerificationStatus != CertificateVerificationStatus.Pending)
         {
             throw new DomainException(
             "Only a Pending Certificate can be Verified.");
@@ -89,7 +89,7 @@ public sealed class CaregiverCertificate :
 
     internal void Reject(string reason)
     {
-        if(VerificationStatus != CertificateVerificationStatus.Pending)
+        if (VerificationStatus != CertificateVerificationStatus.Pending)
         {
             throw new DomainException(
                 "Only a Pending Certificate can be Rejected."
@@ -112,7 +112,7 @@ public sealed class CaregiverCertificate :
 
     internal void Revoke(string reason)
     {
-        if(VerificationStatus != CertificateVerificationStatus.Verified)
+        if (VerificationStatus != CertificateVerificationStatus.Verified)
         {
             throw new DomainException(
                 "Only a Verified Certificate can be Revoked."

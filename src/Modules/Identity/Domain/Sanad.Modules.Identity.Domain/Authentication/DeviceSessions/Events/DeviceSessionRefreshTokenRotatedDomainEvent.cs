@@ -3,8 +3,8 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
 namespace Sanad.Modules.Identity.Domain.Authentication.DeviceSessions.Events;
 
-public sealed record DeviceSessionRevokedDomainEvent(
-    DeviceSessionId DeviceSessionId,
-    UserId UserId,
-    string Reason)
+public sealed record DeviceSessionRefreshTokenRotatedDomainEvent(
+        DeviceSessionId DeviceSessionId,
+        int RotationCount,
+        DateTime ExpiresOnUtc)
     : DomainEvent;
