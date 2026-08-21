@@ -9,11 +9,14 @@ public interface IAuthTokenService
         User user,
         DateTime utcNow);
 
-    GeneratedAccessToken
-        GenerateRestrictedVerificationToken(
+    GeneratedAccessToken GenerateRestrictedVerificationToken(
             User user,
             DateTime utcNow);
 
     GeneratedRefreshToken GenerateRefreshToken(
         DateTime utcNow);
+
+    bool VerifyRefreshToken(
+        string providedToken,
+        string storedHash);
 }

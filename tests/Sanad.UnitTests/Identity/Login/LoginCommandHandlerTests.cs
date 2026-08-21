@@ -694,6 +694,16 @@ public sealed class LoginCommandHandlerTests
                 "refresh-token-hash",
                 utcNow.AddDays(30));
         }
+
+        public bool VerifyRefreshToken(
+            string providedToken,
+            string storedHash)
+        {
+            return providedToken ==
+                        "refresh-token" &&
+                   storedHash ==
+                        "refresh-token-hash";
+        }
     }
 
     private sealed class FixedDateTimeProvider :
