@@ -399,19 +399,141 @@ public sealed class User : AggregateRoot<UserId>
                 Reason: null));
     }
 
+    public void UploadIdentityDocument(
+        string frontImagePath,
+        string backImagePath,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+        EnsureNotBlocked();
+
+        if (IdentityDocument is not null)
+        {
+            throw new DomainException(
+                "Identity Document already exists. " +
+                "Update its images instead.");
+        }
+
+        IdentityDocument =
+            UserIdentityDocument.Create(
+                frontImagePath,
+                backImagePath,
+                utcNow);
+
+        UpdatedOnUtc = utcNow;
+    }
+
     public void UpdateIdentityDocument(
         string frontImagePath,
-        string backImagePath)
+        string backImagePath,
+        DateTime utcNow)
     {
+        ValidateUtc(utcNow);
+        EnsureNotBlocked();
+
         if (IdentityDocument is null)
         {
             throw new DomainException(
-                "Identity document does not exist.");
+                "Identity Document does not exist.");
         }
+
+        UserStatus previousStatus =
+            Status;
 
         IdentityDocument.UpdateImages(
             frontImagePath,
-            backImagePath);
+            backImagePath,
+            utcNow);
+
+        if (Status == UserStatus.Active)
+        {
+            Status =
+                UserStatus.PendingVerification;
+
+            StatusReason = null;
+        }
+
+        UpdatedOnUtc = utcNow;
+
+        if (previousStatus != Status)
+        {
+            RaiseDomainEvent(
+                new UserStatusChangedDomainEvent(
+                    Id,
+                    previousStatus,
+                    Status,
+                    Reason: null));
+        }
+    }
+
+    public void VerifyIdentityDocument(
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        if (IdentityDocument is null)
+        {
+            throw new DomainException(
+                "Identity Document does not exist.");
+        }
+
+        IdentityDocument.Verify(
+            utcNow);
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void RejectIdentityDocument(
+        string reason,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        if (IdentityDocument is null)
+        {
+            throw new DomainException(
+                "Identity Document does not exist.");
+        }
+
+        IdentityDocument.Reject(
+            reason,
+            utcNow);
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void RevokeIdentityDocument(
+        string reason,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        if (IdentityDocument is null)
+        {
+            throw new DomainException(
+                "Identity Document does not exist.");
+        }
+
+        IdentityDocument.Revoke(
+            reason,
+            utcNow);
+
+        string normalizedReason =
+            IdentityDocument.ReviewReason!;
+
+        UserStatus previousStatus =
+            Status;
+
+        Status = UserStatus.Blocked;
+        StatusReason = normalizedReason;
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                Status,
+                normalizedReason));
     }
 
     public void CompletePersonalInformation(
