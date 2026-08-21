@@ -12,4 +12,8 @@
     <ProjectReference Include="..\..\Domain\Sanad.Modules.Identity.Domain\Sanad.Modules.Identity.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="10.0.11" />
+  </ItemGroup>
+
 </Project>
