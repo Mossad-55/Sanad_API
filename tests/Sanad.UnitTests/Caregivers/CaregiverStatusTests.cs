@@ -1,5 +1,6 @@
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 
 namespace Sanad.UnitTests.Caregivers;
 
@@ -58,5 +59,23 @@ public sealed class CaregiverStatusTests
         Assert.Contains(
             CaregiverStatus.Rejected,
             statuses);
+    }
+
+    [Fact]
+    public void Create_ShouldRejectEmptyUserId()
+    {
+        Assert.Throws<DomainException>(
+            () => Caregiver.Create(
+                UserId.Empty,
+                CaregiverType.Companion));
+    }
+
+    [Fact]
+    public void Create_ShouldRejectInvalidCaregiverType()
+    {
+        Assert.Throws<DomainException>(
+            () => Caregiver.Create(
+                UserId.New(),
+                (CaregiverType)999));
     }
 }

@@ -419,6 +419,151 @@ public sealed class CaregiverDomainEventTests
         Assert.Empty(caregiver.DomainEvents);
     }
 
+    [Fact]
+    public void OnboardingMedicalProfileChange_ShouldNotRaiseReviewRequiredEvent()
+    {
+        Caregiver caregiver =
+            Caregiver.Create(
+                UserId.New(),
+                CaregiverType.Medical);
+
+        caregiver.ClearDomainEvents();
+
+        caregiver.UpdateMedicalProfile(
+            ProfessionalTitle.Create(
+                "ممرض مسجل",
+                "Registered Nurse"),
+            yearsOfExperience: 5,
+            Specialization.Create(
+                "تمريض كبار السن",
+                "Elderly Nursing",
+                CaregiverType.Medical),
+            AcademicDegree.Create(
+                "بكالوريوس تمريض",
+                "Bachelor of Nursing"),
+            currentWorkplace: null,
+            biography: null,
+            CaregiverTestData.CurrentUtc);
+
+        Assert.Empty(
+            caregiver.DomainEvents
+                .OfType<
+                    CaregiverReviewRequiredDomainEvent>());
+    }
+
+    [Fact]
+    public void AdditionalCertificateReplacement_ShouldNotRaiseReviewRequiredEvent()
+    {
+        Caregiver caregiver =
+            CreateActiveMedical();
+
+        caregiver.AddCertificate(
+            CaregiverCertificateType.AdditionalCertificate,
+            "certificates/additional.jpg",
+            expiryDate: null,
+            CaregiverTestData.CurrentDate);
+
+        CaregiverCertificate certificate =
+            GetCertificate(
+                caregiver,
+                CaregiverCertificateType.AdditionalCertificate);
+
+        caregiver.ClearDomainEvents();
+
+        caregiver.UpdateCertificateFile(
+            certificate.Id,
+            "certificates/new-additional.jpg",
+            expiryDate: null,
+            CaregiverTestData.CurrentDate,
+            CaregiverTestData.CurrentUtc
+                .AddHours(1));
+
+        Assert.Empty(
+            caregiver.DomainEvents
+                .OfType<
+                    CaregiverReviewRequiredDomainEvent>());
+
+        Assert.Equal(
+            CaregiverStatus.Active,
+            caregiver.Status);
+    }
+
+    [Fact]
+    public void AdditionalCertificateRevocation_ShouldNotRaiseSuspendedEvent()
+    {
+        Caregiver caregiver =
+            CreateActiveMedical();
+
+        caregiver.AddCertificate(
+            CaregiverCertificateType.AdditionalCertificate,
+            "certificates/additional.jpg",
+            expiryDate: null,
+            CaregiverTestData.CurrentDate);
+
+        CaregiverCertificate certificate =
+            GetCertificate(
+                caregiver,
+                CaregiverCertificateType.AdditionalCertificate);
+
+        caregiver.VerifyCertificate(
+            certificate.Id);
+
+        caregiver.ClearDomainEvents();
+
+        caregiver.RevokeCertificate(
+            certificate.Id,
+            "Additional Certificate revoked.",
+            CaregiverTestData.CurrentUtc
+                .AddHours(1));
+
+        Assert.Empty(
+            caregiver.DomainEvents
+                .OfType<
+                    CaregiverSuspendedDomainEvent>());
+
+        Assert.Equal(
+            CaregiverStatus.Active,
+            caregiver.Status);
+    }
+
+    [Fact]
+    public void OnboardingMandatoryCertificateReplacement_ShouldNotRaiseReviewRequiredEvent()
+    {
+        Caregiver caregiver =
+            Caregiver.Create(
+                UserId.New(),
+                CaregiverType.Medical);
+
+        caregiver.AddCertificate(
+            CaregiverCertificateType.PracticeLicense,
+            "certificates/practice-license.jpg",
+            expiryDate: null,
+            CaregiverTestData.CurrentDate);
+
+        CaregiverCertificate certificate =
+            GetCertificate(
+                caregiver,
+                CaregiverCertificateType.PracticeLicense);
+
+        caregiver.ClearDomainEvents();
+
+        caregiver.UpdateCertificateFile(
+            certificate.Id,
+            "certificates/new-practice-license.jpg",
+            expiryDate: null,
+            CaregiverTestData.CurrentDate,
+            CaregiverTestData.CurrentUtc);
+
+        Assert.Empty(
+            caregiver.DomainEvents
+                .OfType<
+                    CaregiverReviewRequiredDomainEvent>());
+
+        Assert.Equal(
+            CaregiverStatus.Onboarding,
+            caregiver.Status);
+    }
+
     private static Caregiver CreateReadyCompanion()
     {
         Caregiver caregiver =

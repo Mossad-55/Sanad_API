@@ -113,6 +113,18 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UserId userId,
         CaregiverType type)
     {
+        if (userId == UserId.Empty)
+        {
+            throw new DomainException(
+                "User ID is required.");
+        }
+
+        if (!Enum.IsDefined(type))
+        {
+            throw new DomainException(
+                "Caregiver type is invalid.");
+        }
+
         return new Caregiver(
             CaregiverId.New(),
             userId,
@@ -189,14 +201,13 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             StatusReason = null;
             Availability =
                 CaregiverAvailability.Unavailable;
+
+            RaiseDomainEvent(new CaregiverReviewRequiredDomainEvent(
+                Id,
+                CaregiverReviewTrigger.MedicalProfessionalProfileChanged));
         }
 
         UpdatedOnUtc = utcNow;
-
-        RaiseDomainEvent(new CaregiverReviewRequiredDomainEvent(
-            Id,
-            CaregiverReviewTrigger
-                .MedicalProfessionalProfileChanged));
     }
 
     public void UpdateCompanionProfile(
@@ -427,14 +438,14 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
                 StatusReason =
                     certificate.ReviewReason;
+
+                RaiseDomainEvent(new CaregiverSuspendedDomainEvent(
+                    Id,
+                    StatusReason!));
             }
         }
 
         UpdatedOnUtc = utcNow;
-
-        RaiseDomainEvent(new CaregiverSuspendedDomainEvent(
-            Id,
-            StatusReason!));
     }
 
     public void SuspendForExpiredMandatoryCertificate(
@@ -515,14 +526,14 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
                     CaregiverStatus.PendingReview;
 
                 StatusReason = null;
+
+                RaiseDomainEvent(new CaregiverReviewRequiredDomainEvent(
+                    Id,
+                    CaregiverReviewTrigger.MandatoryCertificateReplaced));
             }
         }
 
         UpdatedOnUtc = utcNow;
-
-        RaiseDomainEvent(new CaregiverReviewRequiredDomainEvent(
-            Id,
-            CaregiverReviewTrigger.MandatoryCertificateReplaced));
     }
 
     public void RemoveCertificate(CaregiverCertificateId certificateId)
