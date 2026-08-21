@@ -11,6 +11,8 @@ namespace Sanad.Modules.Identity.Domain.Users;
 
 public sealed class User : AggregateRoot<UserId>
 {
+    public const int MaximumStatusReasonLength = 1000;
+
     private readonly List<UserAccount> _accounts = [];
     private readonly List<UserExternalLogin> _externalLogins = [];
 
@@ -60,6 +62,7 @@ public sealed class User : AggregateRoot<UserId>
     public DateTime UpdatedOnUtc { get; private set; }
     public DateTime? LastLoginOnUtc { get; private set; }
     public bool HasExternalLogin => _externalLogins.Count > 0;
+    public string? StatusReason { get; private set; }
 
     public IReadOnlyCollection<UserAccount> Accounts => _accounts.AsReadOnly();
     public IReadOnlyCollection<UserExternalLogin> ExternalLogins => _externalLogins.AsReadOnly();
@@ -89,6 +92,12 @@ public sealed class User : AggregateRoot<UserId>
 
     public void AddAccount(AccountType accountType)
     {
+        if (!Enum.IsDefined(accountType))
+        {
+            throw new DomainException(
+                "Account type is invalid.");
+        }
+
         if (_accounts.Any(a => a.AccountType == accountType))
         {
             throw new DomainException(
@@ -143,37 +152,144 @@ public sealed class User : AggregateRoot<UserId>
         LastLoginOnUtc = DateTime.UtcNow;
     }
 
-    public void Activate()
+    public void Activate(
+        DateTime utcNow)
     {
-        if (!PhoneVerified)
-        {
-            throw new DomainException("Phone number must be verified.");
-        }
+        EnsureStatus(
+            UserStatus.PendingVerification,
+            "Only a Pending Verification User can be activated.");
+
+        ValidateUtc(utcNow);
+        ValidateActivationReadiness();
+
+        UserStatus previousStatus =
+            Status;
 
         Status = UserStatus.Active;
-        UpdatedOnUtc = DateTime.UtcNow;
+        StatusReason = null;
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                Status,
+                Reason: null));
     }
 
-    public void Suspend()
+    public void Suspend(
+        string reason,
+        DateTime utcNow)
     {
+        EnsureStatus(
+            UserStatus.Active,
+            "Only an Active User can be suspended.");
+
+        ValidateUtc(utcNow);
+
+        string normalizedReason =
+            NormalizeRequiredStatusReason(
+                reason,
+                "Suspension reason");
+
+        UserStatus previousStatus =
+            Status;
+
         Status = UserStatus.Suspended;
-        UpdatedOnUtc = DateTime.UtcNow;
+        StatusReason = normalizedReason;
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                Status,
+                normalizedReason));
     }
 
-    public void Block()
+    public void Block(
+        string reason,
+        DateTime utcNow)
     {
+        if (Status == UserStatus.Blocked)
+        {
+            throw new DomainException(
+                "User is already Blocked.");
+        }
+
+        ValidateUtc(utcNow);
+
+        string normalizedReason =
+            NormalizeRequiredStatusReason(
+                reason,
+                "Block reason");
+
+        UserStatus previousStatus =
+            Status;
+
         Status = UserStatus.Blocked;
-        UpdatedOnUtc = DateTime.UtcNow;
+        StatusReason = normalizedReason;
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                Status,
+                normalizedReason));
     }
 
-    public void UploadIdentityDocument(
-        string frontImagePath,
-        string backImagePath)
+    public void Reactivate(
+        DateTime utcNow)
     {
-        IdentityDocument =
-            UserIdentityDocument.Create(
-                frontImagePath,
-                backImagePath);
+        EnsureStatus(
+            UserStatus.Suspended,
+            "Only a Suspended User can be reactivated.");
+
+        ValidateUtc(utcNow);
+        ValidateActivationReadiness();
+
+        UserStatus previousStatus =
+            Status;
+
+        Status = UserStatus.Active;
+        StatusReason = null;
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                Status,
+                Reason: null));
+    }
+
+    public void Unblock(
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            UserStatus.Blocked,
+            "Only a Blocked User can be unblocked.");
+
+        ValidateUtc(utcNow);
+
+        UserStatus previousStatus =
+            Status;
+
+        Status =
+            UserStatus.PendingVerification;
+
+        StatusReason = null;
+        EmailVerified = false;
+        PhoneVerified = false;
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserStatusChangedDomainEvent(
+                Id,
+                previousStatus,
+                Status,
+                Reason: null));
     }
 
     public void UpdateIdentityDocument(
@@ -391,6 +507,54 @@ public sealed class User : AggregateRoot<UserId>
                 provider));
     }
 
+    internal void ValidateActivationReadiness()
+    {
+        if (_accounts.Count == 0)
+        {
+            throw new DomainException(
+                "User must have at least one account.");
+        }
+
+        if (!PhoneVerified)
+        {
+            throw new DomainException(
+                "Phone number must be verified.");
+        }
+
+        bool hasNonElderlyAccount =
+            _accounts.Any(
+                account =>
+                    account.AccountType !=
+                    AccountType.Elderly);
+
+        if (!hasNonElderlyAccount)
+        {
+            return;
+        }
+
+        if (Email is null)
+        {
+            throw new DomainException(
+                "Email is required.");
+        }
+
+        if (!EmailVerified)
+        {
+            throw new DomainException(
+                "Email must be verified.");
+        }
+
+        bool hasAuthenticationMethod =
+            HasPassword ||
+            HasExternalLogin;
+
+        if (!hasAuthenticationMethod)
+        {
+            throw new DomainException(
+                "Password or external login is required.");
+        }
+    }
+
     private void EnsurePersonalInformationCompleted()
     {
         if (!DateOfBirth.HasValue ||
@@ -430,5 +594,40 @@ public sealed class User : AggregateRoot<UserId>
             throw new DomainException(
                 "Operation time must be in UTC.");
         }
+    }
+
+    private void EnsureStatus(
+    UserStatus requiredStatus,
+    string errorMessage)
+    {
+        if (Status != requiredStatus)
+        {
+            throw new DomainException(
+                errorMessage);
+        }
+    }
+
+    private static string NormalizeRequiredStatusReason(
+        string reason,
+        string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new DomainException(
+                $"{fieldName} is required.");
+        }
+
+        string normalizedReason =
+            reason.Trim();
+
+        if (normalizedReason.Length >
+            MaximumStatusReasonLength)
+        {
+            throw new DomainException(
+                $"{fieldName} cannot exceed " +
+                $"{MaximumStatusReasonLength} characters.");
+        }
+
+        return normalizedReason;
     }
 }
