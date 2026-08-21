@@ -535,6 +535,39 @@ public sealed class UserTests
             user.UpdatedOnUtc);
     }
 
+    [Fact]
+    public void RehashPasswordHash_ShouldReplaceHashWithoutChangeEvent()
+    {
+        User user = CreateUser();
+
+        user.SetInitialPasswordHash(
+            "old-hash",
+            CreateUtcDateTime());
+
+        user.ClearDomainEvents();
+
+        DateTime rehashedOnUtc =
+            CreateUtcDateTime()
+                .AddMinutes(1);
+
+        user.RehashPasswordHash(
+            "new-rehashed-value",
+            rehashedOnUtc);
+
+        Assert.Equal(
+            "new-rehashed-value",
+            user.Password!.PasswordHash);
+
+        Assert.Equal(
+            rehashedOnUtc,
+            user.UpdatedOnUtc);
+
+        Assert.Empty(
+            user.DomainEvents
+                .OfType<
+                    UserPasswordChangedDomainEvent>());
+    }
+
     private static User CreateUser()
     {
         return User.Create(

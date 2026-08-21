@@ -628,6 +628,26 @@ public sealed class User : AggregateRoot<UserId>
                 PasswordChangeReason.Changed));
     }
 
+    public void RehashPasswordHash(
+        string passwordHash,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        if (Password is null)
+        {
+            throw new DomainException(
+                "User does not have a password.");
+        }
+
+        PasswordCredential credential =
+            PasswordCredential.Create(
+                passwordHash);
+
+        Password = credential;
+        UpdatedOnUtc = utcNow;
+    }
+
     public void ResetPasswordHash(
         string passwordHash,
         DateTime utcNow)
