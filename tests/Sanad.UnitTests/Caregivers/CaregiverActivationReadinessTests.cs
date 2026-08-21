@@ -149,7 +149,8 @@ public sealed class CaregiverActivationReadinessTests
             practiceLicense.Id,
             "certificates/practice-license.jpg",
             expiryDate: currentDate,
-            currentDate);
+            currentDate,
+            CaregiverTestData.CurrentUtc);
 
         caregiver.SubmitForReview(
             CreateUtcDateTime(),
@@ -158,6 +159,9 @@ public sealed class CaregiverActivationReadinessTests
         CaregiverTestData
             .EnsureReadyForActivation(
                 caregiver);
+
+        DateTime originalUpdatedOnUtc =
+            caregiver.UpdatedOnUtc;
 
         Assert.Throws<DomainException>(
             () => caregiver.Approve(
@@ -168,6 +172,10 @@ public sealed class CaregiverActivationReadinessTests
         Assert.Equal(
             CaregiverStatus.PendingReview,
             caregiver.Status);
+
+        Assert.Equal(
+            originalUpdatedOnUtc,
+            caregiver.UpdatedOnUtc);
     }
 
     [Fact]

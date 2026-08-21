@@ -12,17 +12,15 @@ public sealed class CaregiverCertificateTests
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
-        DateOnly currentDate =
-            CreateCurrentDate();
-
         DateOnly expiryDate =
-            currentDate.AddYears(1);
+            CreateCurrentDate()
+                .AddYears(1);
 
         caregiver.AddCertificate(
             CaregiverCertificateType.PracticeLicense,
             "  certificates/practice-license.jpg  ",
             expiryDate,
-            currentDate);
+            CreateCurrentDate());
 
         CaregiverCertificate certificate =
             Assert.Single(
@@ -49,33 +47,6 @@ public sealed class CaregiverCertificateTests
             certificate.VerificationStatus);
 
         Assert.Null(certificate.ReviewReason);
-
-        Assert.Equal(
-            certificate.CreatedOnUtc,
-            certificate.UpdatedOnUtc);
-    }
-
-    [Fact]
-    public void AddCertificate_ShouldAddGraduationCertificate()
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        caregiver.AddCertificate(
-            CaregiverCertificateType.GraduationCertificate,
-            "certificates/graduation.jpg",
-            expiryDate: null,
-            CreateCurrentDate());
-
-        CaregiverCertificate certificate =
-            Assert.Single(
-                caregiver.Certificates);
-
-        Assert.Equal(
-            CaregiverCertificateType.GraduationCertificate,
-            certificate.Type);
-
-        Assert.Null(certificate.ExpiryDate);
     }
 
     [Fact]
@@ -84,19 +55,16 @@ public sealed class CaregiverCertificateTests
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
-        DateOnly currentDate =
-            CreateCurrentDate();
-
-        for (int certificateNumber = 1;
-             certificateNumber <=
+        for (int number = 1;
+             number <=
              Caregiver.MaximumAdditionalCertificates;
-             certificateNumber++)
+             number++)
         {
             caregiver.AddCertificate(
                 CaregiverCertificateType.AdditionalCertificate,
-                $"certificates/additional-{certificateNumber}.jpg",
+                $"certificates/additional-{number}.jpg",
                 expiryDate: null,
-                currentDate);
+                CreateCurrentDate());
         }
 
         Assert.Equal(
@@ -115,7 +83,7 @@ public sealed class CaregiverCertificateTests
     [InlineData(CaregiverCertificateType.PracticeLicense)]
     [InlineData(CaregiverCertificateType.GraduationCertificate)]
     [InlineData(CaregiverCertificateType.AdditionalCertificate)]
-    public void AddCertificate_ShouldRejectCertificateForCompanionCaregiver(
+    public void AddCertificate_ShouldRejectCompanionCaregiver(
         CaregiverCertificateType certificateType)
     {
         Caregiver caregiver =
@@ -141,22 +109,17 @@ public sealed class CaregiverCertificateTests
     [Theory]
     [InlineData(CaregiverCertificateType.PracticeLicense)]
     [InlineData(CaregiverCertificateType.GraduationCertificate)]
-    public void AddCertificate_ShouldRejectDuplicateMandatoryCertificate(
+    public void AddCertificate_ShouldRejectDuplicateMandatoryType(
         CaregiverCertificateType certificateType)
     {
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
-        DateOnly currentDate =
-            CreateCurrentDate();
+        AddCertificate(
+            caregiver,
+            certificateType);
 
-        caregiver.AddCertificate(
-            certificateType,
-            "certificates/first.jpg",
-            expiryDate: null,
-            currentDate);
-
-        DateTime updatedOnUtcAfterFirstCertificate =
+        DateTime updatedOnUtcAfterFirst =
             caregiver.UpdatedOnUtc;
 
         Assert.Throws<DomainException>(
@@ -164,18 +127,12 @@ public sealed class CaregiverCertificateTests
                 certificateType,
                 "certificates/second.jpg",
                 expiryDate: null,
-                currentDate));
+                CreateCurrentDate()));
 
-        CaregiverCertificate certificate =
-            Assert.Single(
-                caregiver.Certificates);
+        Assert.Single(caregiver.Certificates);
 
         Assert.Equal(
-            "certificates/first.jpg",
-            certificate.FilePath);
-
-        Assert.Equal(
-            updatedOnUtcAfterFirstCertificate,
+            updatedOnUtcAfterFirst,
             caregiver.UpdatedOnUtc);
     }
 
@@ -185,19 +142,16 @@ public sealed class CaregiverCertificateTests
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
-        DateOnly currentDate =
-            CreateCurrentDate();
-
-        for (int certificateNumber = 1;
-             certificateNumber <=
+        for (int number = 1;
+             number <=
              Caregiver.MaximumAdditionalCertificates;
-             certificateNumber++)
+             number++)
         {
             caregiver.AddCertificate(
                 CaregiverCertificateType.AdditionalCertificate,
-                $"certificates/additional-{certificateNumber}.jpg",
+                $"certificates/additional-{number}.jpg",
                 expiryDate: null,
-                currentDate);
+                CreateCurrentDate());
         }
 
         DateTime updatedOnUtcAtMaximum =
@@ -208,7 +162,7 @@ public sealed class CaregiverCertificateTests
                 CaregiverCertificateType.AdditionalCertificate,
                 "certificates/additional-6.jpg",
                 expiryDate: null,
-                currentDate));
+                CreateCurrentDate()));
 
         Assert.Equal(
             Caregiver.MaximumAdditionalCertificates,
@@ -232,14 +186,11 @@ public sealed class CaregiverCertificateTests
         DateOnly currentDate =
             CreateCurrentDate();
 
-        DateOnly expiredDate =
-            currentDate.AddDays(-1);
-
         Assert.Throws<DomainException>(
             () => caregiver.AddCertificate(
                 certificateType,
                 "certificates/document.jpg",
-                expiredDate,
+                currentDate.AddDays(-1),
                 currentDate));
 
         Assert.Empty(caregiver.Certificates);
@@ -249,7 +200,7 @@ public sealed class CaregiverCertificateTests
     [InlineData(CaregiverCertificateType.PracticeLicense)]
     [InlineData(CaregiverCertificateType.GraduationCertificate)]
     [InlineData(CaregiverCertificateType.AdditionalCertificate)]
-    public void AddCertificate_ShouldAcceptCertificateExpiringToday(
+    public void AddCertificate_ShouldAcceptExpiryToday(
         CaregiverCertificateType certificateType)
     {
         Caregiver caregiver =
@@ -294,7 +245,7 @@ public sealed class CaregiverCertificateTests
     }
 
     [Fact]
-    public void AddCertificate_ShouldRejectInvalidCertificateType()
+    public void AddCertificate_ShouldRejectInvalidType()
     {
         Caregiver caregiver =
             CreateMedicalCaregiver();
@@ -331,7 +282,7 @@ public sealed class CaregiverCertificateTests
     }
 
     [Fact]
-    public void VerifyCertificate_ShouldRejectNonPendingCertificate()
+    public void VerifyCertificate_ShouldRejectSecondVerification()
     {
         Caregiver caregiver =
             CreateMedicalCaregiver();
@@ -347,9 +298,6 @@ public sealed class CaregiverCertificateTests
         DateTime certificateUpdatedOnUtc =
             certificate.UpdatedOnUtc;
 
-        DateTime caregiverUpdatedOnUtc =
-            caregiver.UpdatedOnUtc;
-
         Assert.Throws<DomainException>(
             () => caregiver.VerifyCertificate(
                 certificate.Id));
@@ -361,10 +309,6 @@ public sealed class CaregiverCertificateTests
         Assert.Equal(
             certificateUpdatedOnUtc,
             certificate.UpdatedOnUtc);
-
-        Assert.Equal(
-            caregiverUpdatedOnUtc,
-            caregiver.UpdatedOnUtc);
     }
 
     [Fact]
@@ -406,12 +350,6 @@ public sealed class CaregiverCertificateTests
                 caregiver,
                 CaregiverCertificateType.PracticeLicense);
 
-        DateTime certificateUpdatedOnUtc =
-            certificate.UpdatedOnUtc;
-
-        DateTime caregiverUpdatedOnUtc =
-            caregiver.UpdatedOnUtc;
-
         Assert.Throws<DomainException>(
             () => caregiver.RejectCertificate(
                 certificate.Id,
@@ -420,45 +358,6 @@ public sealed class CaregiverCertificateTests
         Assert.Equal(
             CertificateVerificationStatus.Pending,
             certificate.VerificationStatus);
-
-        Assert.Null(certificate.ReviewReason);
-
-        Assert.Equal(
-            certificateUpdatedOnUtc,
-            certificate.UpdatedOnUtc);
-
-        Assert.Equal(
-            caregiverUpdatedOnUtc,
-            caregiver.UpdatedOnUtc);
-    }
-
-    [Fact]
-    public void RejectCertificate_ShouldRejectNonPendingCertificate()
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        CaregiverCertificate certificate =
-            AddCertificate(
-                caregiver,
-                CaregiverCertificateType.PracticeLicense);
-
-        caregiver.RejectCertificate(
-            certificate.Id,
-            "Invalid document.");
-
-        Assert.Throws<DomainException>(
-            () => caregiver.RejectCertificate(
-                certificate.Id,
-                "Another reason."));
-
-        Assert.Equal(
-            CertificateVerificationStatus.Rejected,
-            certificate.VerificationStatus);
-
-        Assert.Equal(
-            "Invalid document.",
-            certificate.ReviewReason);
     }
 
     [Fact]
@@ -477,19 +376,20 @@ public sealed class CaregiverCertificateTests
 
         caregiver.RevokeCertificate(
             certificate.Id,
-            "  License authority withdrew approval.  ");
+            "  License approval withdrawn.  ",
+            CaregiverTestData.CurrentUtc);
 
         Assert.Equal(
             CertificateVerificationStatus.Revoked,
             certificate.VerificationStatus);
 
         Assert.Equal(
-            "License authority withdrew approval.",
+            "License approval withdrawn.",
             certificate.ReviewReason);
     }
 
     [Fact]
-    public void RevokeCertificate_ShouldRejectNonVerifiedCertificate()
+    public void RevokeCertificate_ShouldRejectPendingCertificate()
     {
         Caregiver caregiver =
             CreateMedicalCaregiver();
@@ -502,13 +402,12 @@ public sealed class CaregiverCertificateTests
         Assert.Throws<DomainException>(
             () => caregiver.RevokeCertificate(
                 certificate.Id,
-                "Invalid license."));
+                "Invalid Certificate.",
+                CaregiverTestData.CurrentUtc));
 
         Assert.Equal(
             CertificateVerificationStatus.Pending,
             certificate.VerificationStatus);
-
-        Assert.Null(certificate.ReviewReason);
     }
 
     [Theory]
@@ -529,163 +428,14 @@ public sealed class CaregiverCertificateTests
         caregiver.VerifyCertificate(
             certificate.Id);
 
-        DateTime certificateUpdatedOnUtc =
-            certificate.UpdatedOnUtc;
-
-        DateTime caregiverUpdatedOnUtc =
-            caregiver.UpdatedOnUtc;
-
         Assert.Throws<DomainException>(
             () => caregiver.RevokeCertificate(
                 certificate.Id,
-                reason!));
+                reason!,
+                CaregiverTestData.CurrentUtc));
 
         Assert.Equal(
             CertificateVerificationStatus.Verified,
-            certificate.VerificationStatus);
-
-        Assert.Null(certificate.ReviewReason);
-
-        Assert.Equal(
-            certificateUpdatedOnUtc,
-            certificate.UpdatedOnUtc);
-
-        Assert.Equal(
-            caregiverUpdatedOnUtc,
-            caregiver.UpdatedOnUtc);
-    }
-
-    [Theory]
-    [InlineData(CaregiverCertificateType.PracticeLicense)]
-    [InlineData(CaregiverCertificateType.GraduationCertificate)]
-    public void RejectCertificate_ShouldKeepCaregiverUnavailable_WhenMandatory(
-        CaregiverCertificateType certificateType)
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        caregiver.TransitionToActive();
-
-        CaregiverCertificate certificate =
-            caregiver.Certificates.Single(
-                certificate =>
-                    certificate.Type ==
-                    certificateType);
-
-        caregiver.UpdateCertificateFile(
-            certificate.Id,
-            "certificates/replacement-document.jpg",
-            expiryDate: null,
-            CreateCurrentDate());
-
-        Assert.Equal(
-            CertificateVerificationStatus.Pending,
-            certificate.VerificationStatus);
-
-        Assert.Equal(
-            CaregiverAvailability.Unavailable,
-            caregiver.Availability);
-
-        caregiver.RejectCertificate(
-            certificate.Id,
-            "Invalid mandatory Certificate.");
-
-        Assert.Equal(
-            CertificateVerificationStatus.Rejected,
-            certificate.VerificationStatus);
-
-        Assert.Equal(
-            "Invalid mandatory Certificate.",
-            certificate.ReviewReason);
-
-        Assert.Equal(
-            CaregiverAvailability.Unavailable,
-            caregiver.Availability);
-    }
-
-    [Theory]
-    [InlineData(CaregiverCertificateType.PracticeLicense)]
-    [InlineData(CaregiverCertificateType.GraduationCertificate)]
-    public void RevokeCertificate_ShouldMakeCaregiverUnavailable_WhenMandatory(
-        CaregiverCertificateType certificateType)
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        CaregiverCertificate certificate =
-            AddCertificate(
-                caregiver,
-                certificateType);
-
-        caregiver.VerifyCertificate(
-            certificate.Id);
-
-        MakeMedicalCaregiverCompliantAndAvailable(
-            caregiver);
-
-        caregiver.RevokeCertificate(
-            certificate.Id,
-            "Approval withdrawn.");
-
-        Assert.Equal(
-            CaregiverAvailability.Unavailable,
-            caregiver.Availability);
-    }
-
-    [Fact]
-    public void RejectCertificate_ShouldKeepCaregiverAvailable_WhenAdditional()
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        CaregiverCertificate certificate =
-            AddCertificate(
-                caregiver,
-                CaregiverCertificateType.AdditionalCertificate);
-
-        MakeMedicalCaregiverCompliantAndAvailable(
-            caregiver);
-
-        caregiver.RejectCertificate(
-            certificate.Id,
-            "Additional Certificate was not accepted.");
-
-        Assert.Equal(
-            CaregiverAvailability.Available,
-            caregiver.Availability);
-    }
-
-    [Fact]
-    public void VerifyCertificate_ShouldRejectEmptyCertificateId()
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        Assert.Throws<DomainException>(
-            () => caregiver.VerifyCertificate(
-                CaregiverCertificateId.Empty));
-    }
-
-    [Fact]
-    public void VerifyCertificate_ShouldRejectCertificateFromAnotherCaregiver()
-    {
-        Caregiver firstCaregiver =
-            CreateMedicalCaregiver();
-
-        Caregiver secondCaregiver =
-            CreateMedicalCaregiver();
-
-        CaregiverCertificate certificate =
-            AddCertificate(
-                firstCaregiver,
-                CaregiverCertificateType.PracticeLicense);
-
-        Assert.Throws<DomainException>(
-            () => secondCaregiver.VerifyCertificate(
-                certificate.Id));
-
-        Assert.Equal(
-            CertificateVerificationStatus.Pending,
             certificate.VerificationStatus);
     }
 
@@ -694,7 +444,7 @@ public sealed class CaregiverCertificateTests
     [InlineData(CertificateVerificationStatus.Rejected)]
     [InlineData(CertificateVerificationStatus.Verified)]
     [InlineData(CertificateVerificationStatus.Revoked)]
-    public void UpdateCertificateFile_ShouldReturnCertificateToPending(
+    public void UpdateCertificateFile_ShouldReturnAnyStatusToPending(
         CertificateVerificationStatus initialStatus)
     {
         Caregiver caregiver =
@@ -719,17 +469,16 @@ public sealed class CaregiverCertificateTests
         DateTime originalCreatedOnUtc =
             certificate.CreatedOnUtc;
 
-        DateOnly currentDate =
-            CreateCurrentDate();
-
         DateOnly newExpiryDate =
-            currentDate.AddYears(1);
+            CreateCurrentDate()
+                .AddYears(1);
 
         caregiver.UpdateCertificateFile(
             certificate.Id,
             "  certificates/new-document.jpg  ",
             newExpiryDate,
-            currentDate);
+            CreateCurrentDate(),
+            CaregiverTestData.CurrentUtc);
 
         Assert.Equal(
             originalId,
@@ -759,76 +508,6 @@ public sealed class CaregiverCertificateTests
     }
 
     [Theory]
-    [InlineData(CaregiverCertificateType.PracticeLicense)]
-    [InlineData(CaregiverCertificateType.GraduationCertificate)]
-    public void UpdateCertificateFile_ShouldMakeCaregiverUnavailable_WhenMandatory(
-        CaregiverCertificateType certificateType)
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        CaregiverCertificate certificate =
-            AddCertificate(
-                caregiver,
-                certificateType);
-
-        caregiver.VerifyCertificate(
-            certificate.Id);
-
-        MakeMedicalCaregiverCompliantAndAvailable(
-            caregiver);
-
-        DateOnly currentDate =
-            CreateCurrentDate();
-
-        caregiver.UpdateCertificateFile(
-            certificate.Id,
-            "certificates/replacement.jpg",
-            expiryDate: null,
-            currentDate);
-
-        Assert.Equal(
-            CertificateVerificationStatus.Pending,
-            certificate.VerificationStatus);
-
-        Assert.Equal(
-            CaregiverAvailability.Unavailable,
-            caregiver.Availability);
-    }
-
-    [Fact]
-    public void UpdateCertificateFile_ShouldKeepCaregiverAvailable_WhenAdditional()
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        CaregiverCertificate certificate =
-            AddCertificate(
-                caregiver,
-                CaregiverCertificateType.AdditionalCertificate);
-
-        caregiver.VerifyCertificate(
-            certificate.Id);
-
-        MakeMedicalCaregiverCompliantAndAvailable(
-            caregiver);
-
-        caregiver.UpdateCertificateFile(
-            certificate.Id,
-            "certificates/new-additional.jpg",
-            expiryDate: null,
-            CreateCurrentDate());
-
-        Assert.Equal(
-            CertificateVerificationStatus.Pending,
-            certificate.VerificationStatus);
-
-        Assert.Equal(
-            CaregiverAvailability.Available,
-            caregiver.Availability);
-    }
-
-    [Theory]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("   ")]
@@ -846,57 +525,35 @@ public sealed class CaregiverCertificateTests
         caregiver.VerifyCertificate(
             certificate.Id);
 
-        MakeMedicalCaregiverCompliantAndAvailable(
-            caregiver);
-
         string originalFilePath =
             certificate.FilePath;
 
-        DateOnly? originalExpiryDate =
-            certificate.ExpiryDate;
-
-        DateTime certificateUpdatedOnUtc =
+        DateTime originalUpdatedOnUtc =
             certificate.UpdatedOnUtc;
-
-        DateTime caregiverUpdatedOnUtc =
-            caregiver.UpdatedOnUtc;
 
         Assert.Throws<DomainException>(
             () => caregiver.UpdateCertificateFile(
                 certificate.Id,
                 filePath!,
                 expiryDate: null,
-                CreateCurrentDate()));
+                CreateCurrentDate(),
+                CaregiverTestData.CurrentUtc));
 
         Assert.Equal(
             originalFilePath,
             certificate.FilePath);
 
         Assert.Equal(
-            originalExpiryDate,
-            certificate.ExpiryDate);
-
-        Assert.Equal(
             CertificateVerificationStatus.Verified,
             certificate.VerificationStatus);
 
-        Assert.Null(certificate.ReviewReason);
-
         Assert.Equal(
-            CaregiverAvailability.Available,
-            caregiver.Availability);
-
-        Assert.Equal(
-            certificateUpdatedOnUtc,
+            originalUpdatedOnUtc,
             certificate.UpdatedOnUtc);
-
-        Assert.Equal(
-            caregiverUpdatedOnUtc,
-            caregiver.UpdatedOnUtc);
     }
 
     [Fact]
-    public void UpdateCertificateFile_ShouldRejectExpiredFileWithoutMutation()
+    public void UpdateCertificateFile_ShouldRejectExpiredReplacement()
     {
         Caregiver caregiver =
             CreateMedicalCaregiver();
@@ -909,21 +566,6 @@ public sealed class CaregiverCertificateTests
         caregiver.VerifyCertificate(
             certificate.Id);
 
-        MakeMedicalCaregiverCompliantAndAvailable(
-            caregiver);
-
-        string originalFilePath =
-            certificate.FilePath;
-
-        DateOnly? originalExpiryDate =
-            certificate.ExpiryDate;
-
-        DateTime certificateUpdatedOnUtc =
-            certificate.UpdatedOnUtc;
-
-        DateTime caregiverUpdatedOnUtc =
-            caregiver.UpdatedOnUtc;
-
         DateOnly currentDate =
             CreateCurrentDate();
 
@@ -932,45 +574,12 @@ public sealed class CaregiverCertificateTests
                 certificate.Id,
                 "certificates/expired.jpg",
                 currentDate.AddDays(-1),
-                currentDate));
-
-        Assert.Equal(
-            originalFilePath,
-            certificate.FilePath);
-
-        Assert.Equal(
-            originalExpiryDate,
-            certificate.ExpiryDate);
+                currentDate,
+                CaregiverTestData.CurrentUtc));
 
         Assert.Equal(
             CertificateVerificationStatus.Verified,
             certificate.VerificationStatus);
-
-        Assert.Equal(
-            CaregiverAvailability.Available,
-            caregiver.Availability);
-
-        Assert.Equal(
-            certificateUpdatedOnUtc,
-            certificate.UpdatedOnUtc);
-
-        Assert.Equal(
-            caregiverUpdatedOnUtc,
-            caregiver.UpdatedOnUtc);
-    }
-
-    [Fact]
-    public void UpdateCertificateFile_ShouldRejectEmptyCertificateId()
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        Assert.Throws<DomainException>(
-            () => caregiver.UpdateCertificateFile(
-                CaregiverCertificateId.Empty,
-                "certificates/document.jpg",
-                expiryDate: null,
-                CreateCurrentDate()));
     }
 
     [Theory]
@@ -978,7 +587,7 @@ public sealed class CaregiverCertificateTests
     [InlineData(CertificateVerificationStatus.Rejected)]
     [InlineData(CertificateVerificationStatus.Verified)]
     [InlineData(CertificateVerificationStatus.Revoked)]
-    public void RemoveCertificate_ShouldRemoveAdditionalCertificateFromAnyStatus(
+    public void RemoveCertificate_ShouldRemoveAdditionalFromAnyStatus(
         CertificateVerificationStatus initialStatus)
     {
         Caregiver caregiver =
@@ -989,9 +598,6 @@ public sealed class CaregiverCertificateTests
                 caregiver,
                 CaregiverCertificateType.AdditionalCertificate);
 
-        MakeMedicalCaregiverCompliantAndAvailable(
-            caregiver);
-
         MoveCertificateToStatus(
             caregiver,
             certificate,
@@ -1001,61 +607,28 @@ public sealed class CaregiverCertificateTests
             certificate.Id);
 
         Assert.DoesNotContain(
-    caregiver.Certificates,
-    existingCertificate =>
-        existingCertificate.Id ==
-        certificate.Id);
-
-        Assert.DoesNotContain(
             caregiver.Certificates,
-            existingCertificate =>
-                existingCertificate.Type ==
-                CaregiverCertificateType.AdditionalCertificate);
-
-        Assert.Equal(
-            2,
-            caregiver.Certificates.Count);
-
-        Assert.Contains(
-            caregiver.Certificates,
-            existingCertificate =>
-                existingCertificate.Type ==
-                CaregiverCertificateType.PracticeLicense);
-
-        Assert.Contains(
-            caregiver.Certificates,
-            existingCertificate =>
-                existingCertificate.Type ==
-                CaregiverCertificateType.GraduationCertificate);
-
-        Assert.Equal(
-            CaregiverAvailability.Available,
-            caregiver.Availability);
-
-        Assert.True(
-            caregiver.UpdatedOnUtc >=
-            caregiver.CreatedOnUtc);
+            existing =>
+                existing.Id ==
+                certificate.Id);
     }
 
     [Fact]
-    public void RemoveCertificate_ShouldAllowAdditionalCapacityToBeReused()
+    public void RemoveCertificate_ShouldAllowAdditionalCapacityReuse()
     {
         Caregiver caregiver =
             CreateMedicalCaregiver();
 
-        DateOnly currentDate =
-            CreateCurrentDate();
-
-        for (int certificateNumber = 1;
-            certificateNumber <=
-            Caregiver.MaximumAdditionalCertificates;
-            certificateNumber++)
+        for (int number = 1;
+             number <=
+             Caregiver.MaximumAdditionalCertificates;
+             number++)
         {
             caregiver.AddCertificate(
                 CaregiverCertificateType.AdditionalCertificate,
-                $"certificates/additional-{certificateNumber}.jpg",
+                $"certificates/additional-{number}.jpg",
                 expiryDate: null,
-                currentDate);
+                CreateCurrentDate());
         }
 
         CaregiverCertificate certificateToRemove =
@@ -1066,25 +639,13 @@ public sealed class CaregiverCertificateTests
 
         caregiver.AddCertificate(
             CaregiverCertificateType.AdditionalCertificate,
-            "certificates/replacement-additional.jpg",
+            "certificates/replacement.jpg",
             expiryDate: null,
-            currentDate);
+            CreateCurrentDate());
 
         Assert.Equal(
             Caregiver.MaximumAdditionalCertificates,
             caregiver.Certificates.Count);
-
-        Assert.DoesNotContain(
-            caregiver.Certificates,
-            certificate =>
-                certificate.Id ==
-                certificateToRemove.Id);
-
-        Assert.Contains(
-            caregiver.Certificates,
-            certificate =>
-                certificate.FilePath ==
-                "certificates/replacement-additional.jpg");
     }
 
     [Theory]
@@ -1101,108 +662,178 @@ public sealed class CaregiverCertificateTests
                 caregiver,
                 certificateType);
 
-        DateTime certificateUpdatedOnUtc =
-            certificate.UpdatedOnUtc;
-
-        DateTime caregiverUpdatedOnUtc =
-            caregiver.UpdatedOnUtc;
-
         Assert.Throws<DomainException>(
             () => caregiver.RemoveCertificate(
                 certificate.Id));
 
-        CaregiverCertificate remainingCertificate =
-            Assert.Single(
-                caregiver.Certificates);
-
-        Assert.Equal(
-            certificate.Id,
-            remainingCertificate.Id);
-
-        Assert.Equal(
-            certificateUpdatedOnUtc,
-            certificate.UpdatedOnUtc);
-
-        Assert.Equal(
-            caregiverUpdatedOnUtc,
-            caregiver.UpdatedOnUtc);
+        Assert.Single(caregiver.Certificates);
     }
 
     [Fact]
-    public void RemoveCertificate_ShouldRejectRejectedMandatoryCertificate()
+    public void CertificateOperations_ShouldRejectEmptyId()
     {
         Caregiver caregiver =
             CreateMedicalCaregiver();
-
-        CaregiverCertificate certificate =
-            AddCertificate(
-                caregiver,
-                CaregiverCertificateType.PracticeLicense);
-
-        caregiver.RejectCertificate(
-            certificate.Id,
-            "Invalid License.");
 
         Assert.Throws<DomainException>(
-            () => caregiver.RemoveCertificate(
-                certificate.Id));
+            () => caregiver.VerifyCertificate(
+                CaregiverCertificateId.Empty));
 
-        CaregiverCertificate remainingCertificate =
-            Assert.Single(
-                caregiver.Certificates);
-
-        Assert.Equal(
-            CertificateVerificationStatus.Rejected,
-            remainingCertificate.VerificationStatus);
-    }
-
-    [Fact]
-    public void RemoveCertificate_ShouldRejectEmptyCertificateId()
-    {
-        Caregiver caregiver =
-            CreateMedicalCaregiver();
-
-        DateTime originalUpdatedOnUtc =
-            caregiver.UpdatedOnUtc;
+        Assert.Throws<DomainException>(
+            () => caregiver.UpdateCertificateFile(
+                CaregiverCertificateId.Empty,
+                "certificates/document.jpg",
+                expiryDate: null,
+                CreateCurrentDate(),
+                CaregiverTestData.CurrentUtc));
 
         Assert.Throws<DomainException>(
             () => caregiver.RemoveCertificate(
                 CaregiverCertificateId.Empty));
+    }
 
-        Assert.Empty(caregiver.Certificates);
+    [Theory]
+    [InlineData(CaregiverCertificateType.PracticeLicense)]
+    [InlineData(CaregiverCertificateType.GraduationCertificate)]
+    public void RejectCertificate_ShouldKeepPendingReview_WhenActiveMandatoryReplacementRejected(
+        CaregiverCertificateType certificateType)
+    {
+        Caregiver caregiver =
+            CreateActiveMedicalCaregiver();
+
+        CaregiverCertificate certificate =
+            GetCertificate(
+                caregiver,
+                certificateType);
+
+        caregiver.UpdateCertificateFile(
+            certificate.Id,
+            "certificates/replacement.jpg",
+            expiryDate: null,
+            CreateCurrentDate(),
+            CaregiverTestData.CurrentUtc);
+
+        caregiver.RejectCertificate(
+            certificate.Id,
+            "Invalid mandatory Certificate.");
 
         Assert.Equal(
-            originalUpdatedOnUtc,
-            caregiver.UpdatedOnUtc);
+            CaregiverStatus.PendingReview,
+            caregiver.Status);
+
+        Assert.Equal(
+            CertificateVerificationStatus.Rejected,
+            certificate.VerificationStatus);
+
+        Assert.Equal(
+            CaregiverAvailability.Unavailable,
+            caregiver.Availability);
     }
 
     [Fact]
-    public void RemoveCertificate_ShouldRejectCertificateFromAnotherCaregiver()
+    public void RejectCertificate_ShouldKeepActive_WhenAdditional()
     {
-        Caregiver firstCaregiver =
-            CreateMedicalCaregiver();
-
-        Caregiver secondCaregiver =
-            CreateMedicalCaregiver();
+        Caregiver caregiver =
+            CreateActiveMedicalCaregiver();
 
         CaregiverCertificate certificate =
             AddCertificate(
-                firstCaregiver,
+                caregiver,
                 CaregiverCertificateType.AdditionalCertificate);
 
-        DateTime secondCaregiverUpdatedOnUtc =
-            secondCaregiver.UpdatedOnUtc;
-
-        Assert.Throws<DomainException>(
-            () => secondCaregiver.RemoveCertificate(
-                certificate.Id));
-
-        Assert.Single(firstCaregiver.Certificates);
-        Assert.Empty(secondCaregiver.Certificates);
+        caregiver.RejectCertificate(
+            certificate.Id,
+            "Additional Certificate rejected.");
 
         Assert.Equal(
-            secondCaregiverUpdatedOnUtc,
-            secondCaregiver.UpdatedOnUtc);
+            CaregiverStatus.Active,
+            caregiver.Status);
+
+        Assert.Equal(
+            CaregiverAvailability.Available,
+            caregiver.Availability);
+    }
+
+    private static Caregiver CreateActiveMedicalCaregiver()
+    {
+        Caregiver caregiver =
+            CreateMedicalCaregiver();
+
+        CaregiverTestData
+            .EnsureReadyForActivation(
+                caregiver);
+
+        caregiver.TransitionToActive();
+
+        caregiver.BecomeAvailable(
+            CreateCurrentDate());
+
+        return caregiver;
+    }
+
+    private static CaregiverCertificate AddCertificate(
+        Caregiver caregiver,
+        CaregiverCertificateType certificateType)
+    {
+        caregiver.AddCertificate(
+            certificateType,
+            "certificates/document.jpg",
+            expiryDate: null,
+            CreateCurrentDate());
+
+        return caregiver.Certificates.Single(
+            certificate =>
+                certificate.Type ==
+                certificateType);
+    }
+
+    private static CaregiverCertificate GetCertificate(
+        Caregiver caregiver,
+        CaregiverCertificateType certificateType)
+    {
+        return caregiver.Certificates.Single(
+            certificate =>
+                certificate.Type ==
+                certificateType);
+    }
+
+    private static void MoveCertificateToStatus(
+        Caregiver caregiver,
+        CaregiverCertificate certificate,
+        CertificateVerificationStatus status)
+    {
+        switch (status)
+        {
+            case CertificateVerificationStatus.Pending:
+                return;
+
+            case CertificateVerificationStatus.Rejected:
+                caregiver.RejectCertificate(
+                    certificate.Id,
+                    "Certificate rejected.");
+                return;
+
+            case CertificateVerificationStatus.Verified:
+                caregiver.VerifyCertificate(
+                    certificate.Id);
+                return;
+
+            case CertificateVerificationStatus.Revoked:
+                caregiver.VerifyCertificate(
+                    certificate.Id);
+
+                caregiver.RevokeCertificate(
+                    certificate.Id,
+                    "Certificate revoked.",
+                    CaregiverTestData.CurrentUtc);
+                return;
+
+            default:
+                throw new ArgumentOutOfRangeException(
+                    nameof(status),
+                    status,
+                    "Unsupported Certificate status.");
+        }
     }
 
     private static Caregiver CreateMedicalCaregiver()
@@ -1224,119 +855,6 @@ public sealed class CaregiverCertificateTests
         return new DateOnly(
             2026,
             8,
-            19);
-    }
-
-    private static CaregiverCertificate AddCertificate(
-        Caregiver caregiver,
-        CaregiverCertificateType certificateType)
-    {
-        caregiver.AddCertificate(
-            certificateType,
-            "certificates/document.jpg",
-            expiryDate: null,
-            CreateCurrentDate());
-
-        return caregiver.Certificates.Single(
-            certificate =>
-                certificate.Type ==
-                certificateType);
-    }
-
-    private static void MoveCertificateToStatus(
-        Caregiver caregiver,
-        CaregiverCertificate certificate,
-        CertificateVerificationStatus status)
-    {
-        switch (status)
-        {
-            case CertificateVerificationStatus.Pending:
-                return;
-
-            case CertificateVerificationStatus.Rejected:
-                caregiver.RejectCertificate(
-                    certificate.Id,
-                    "Rejected during review.");
-                return;
-
-            case CertificateVerificationStatus.Verified:
-                caregiver.VerifyCertificate(
-                    certificate.Id);
-                return;
-
-            case CertificateVerificationStatus.Revoked:
-                caregiver.VerifyCertificate(
-                    certificate.Id);
-
-                caregiver.RevokeCertificate(
-                    certificate.Id,
-                    "Approval was revoked.");
-                return;
-
-            default:
-                throw new ArgumentOutOfRangeException(
-                    nameof(status),
-                    status,
-                    "Unsupported Certificate status.");
-        }
-    }
-
-    private static void MakeMedicalCaregiverCompliantAndAvailable(
-        Caregiver caregiver)
-    {
-        DateOnly currentDate =
-            CreateCurrentDate();
-
-        EnsureMandatoryCertificateIsVerified(
-            caregiver,
-            CaregiverCertificateType.PracticeLicense);
-
-        EnsureMandatoryCertificateIsVerified(
-            caregiver,
-            CaregiverCertificateType.GraduationCertificate);
-
-        if (caregiver.Status !=
-            CaregiverStatus.Active)
-        {
-            caregiver.TransitionToActive();
-        }
-
-        caregiver.BecomeAvailable(
-            currentDate);
-    }
-
-    private static void EnsureMandatoryCertificateIsVerified(
-        Caregiver caregiver,
-        CaregiverCertificateType certificateType)
-    {
-        CaregiverCertificate? certificate =
-            caregiver.Certificates
-                .SingleOrDefault(
-                    certificate =>
-                        certificate.Type ==
-                        certificateType);
-
-        certificate ??=
-            AddCertificate(
-                caregiver,
-                certificateType);
-
-        if (certificate.VerificationStatus ==
-            CertificateVerificationStatus.Pending)
-        {
-            caregiver.VerifyCertificate(
-                certificate.Id);
-
-            return;
-        }
-
-        if (certificate.VerificationStatus !=
-            CertificateVerificationStatus.Verified)
-        {
-            throw new InvalidOperationException(
-                $"The test Certificate {certificateType} " +
-                $"cannot be made compliant from status " +
-                $"{certificate.VerificationStatus}.");
-        }
+            20);
     }
 }

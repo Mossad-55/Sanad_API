@@ -397,41 +397,115 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
-    public void RevokeCertificate(CaregiverCertificateId certificateId, string reason)
+    public void RevokeCertificate(
+        CaregiverCertificateId certificateId,
+        string reason,
+        DateTime utcNow)
     {
-        CaregiverCertificate certificate = GetCertificate(certificateId);
+        CaregiverCertificate certificate =
+            GetCertificate(certificateId);
+
+        ValidateUtc(utcNow);
 
         certificate.Revoke(reason);
 
-        if (IsMandatoryCertificate(certificate.Type))
+        if (IsMandatoryCertificate(
+            certificate.Type))
         {
             Availability =
                 CaregiverAvailability.Unavailable;
+
+            if (Status == CaregiverStatus.Active)
+            {
+                Status =
+                    CaregiverStatus.Suspended;
+
+                StatusReason =
+                    certificate.ReviewReason;
+            }
         }
 
-        UpdatedOnUtc = DateTime.UtcNow;
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void SuspendForExpiredMandatoryCertificate(
+        CaregiverCertificateId certificateId,
+        DateOnly currentDate,
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.Active,
+            "Only an Active caregiver can be suspended " +
+            "for Certificate expiry.");
+
+        ValidateUtc(utcNow);
+
+        CaregiverCertificate certificate =
+            GetCertificate(certificateId);
+
+        if (!IsMandatoryCertificate(
+            certificate.Type))
+        {
+            throw new DomainException(
+                "Only a mandatory Certificate can " +
+                "suspend the caregiver when expired.");
+        }
+
+        bool isExpired =
+            certificate.ExpiryDate.HasValue &&
+            certificate.ExpiryDate.Value <
+            currentDate;
+
+        if (!isExpired)
+        {
+            throw new DomainException(
+                "Certificate has not expired.");
+        }
+
+        Status = CaregiverStatus.Suspended;
+
+        StatusReason =
+            $"{certificate.Type} has expired.";
+
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
     }
 
     public void UpdateCertificateFile(
         CaregiverCertificateId certificateId,
         string filePath,
         DateOnly? expiryDate,
-        DateOnly currentDate)
+        DateOnly currentDate,
+        DateTime utcNow)
     {
         CaregiverCertificate certificate =
             GetCertificate(certificateId);
+
+        ValidateUtc(utcNow);
 
         certificate.UpdateFile(
             filePath,
             expiryDate,
             currentDate);
 
-        if (IsMandatoryCertificate(certificate.Type))
+        if (IsMandatoryCertificate(
+            certificate.Type))
         {
-            Availability = CaregiverAvailability.Unavailable;
+            Availability =
+                CaregiverAvailability.Unavailable;
+
+            if (Status == CaregiverStatus.Active)
+            {
+                Status =
+                    CaregiverStatus.PendingReview;
+
+                StatusReason = null;
+            }
         }
 
-        UpdatedOnUtc = DateTime.UtcNow;
+        UpdatedOnUtc = utcNow;
     }
 
     public void RemoveCertificate(CaregiverCertificateId certificateId)

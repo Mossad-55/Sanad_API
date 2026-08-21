@@ -134,7 +134,7 @@ public sealed class CaregiverSubmissionReadinessTests
         CertificateVerificationStatus certificateStatus)
     {
         Caregiver caregiver =
-            CreateMedicalCaregiver();
+        CreateMedicalCaregiver();
 
         CaregiverCertificate practiceLicense =
             caregiver.Certificates.Single(
@@ -156,7 +156,8 @@ public sealed class CaregiverSubmissionReadinessTests
 
             caregiver.RevokeCertificate(
                 practiceLicense.Id,
-                "Practice License revoked.");
+                "Practice License revoked.",
+                CaregiverTestData.CurrentUtc);
         }
 
         Assert.Throws<DomainException>(

@@ -82,7 +82,8 @@ public sealed class CaregiverAvailabilityComplianceTests
                     practiceLicense.Id,
                     "certificates/new-practice-license.jpg",
                     expiryDate: null,
-                    CreateCurrentDate());
+                    CreateCurrentDate(),
+                    CaregiverTestData.CurrentUtc);
                 break;
 
             case CertificateVerificationStatus.Rejected:
@@ -90,7 +91,8 @@ public sealed class CaregiverAvailabilityComplianceTests
                     practiceLicense.Id,
                     "certificates/new-practice-license.jpg",
                     expiryDate: null,
-                    CreateCurrentDate());
+                    CreateCurrentDate(),
+                    CaregiverTestData.CurrentUtc);
 
                 caregiver.RejectCertificate(
                     practiceLicense.Id,
@@ -100,7 +102,8 @@ public sealed class CaregiverAvailabilityComplianceTests
             case CertificateVerificationStatus.Revoked:
                 caregiver.RevokeCertificate(
                     practiceLicense.Id,
-                    "Practice License revoked.");
+                    "Practice License revoked.",
+                    CaregiverTestData.CurrentUtc);
                 break;
         }
 
@@ -233,7 +236,8 @@ public sealed class CaregiverAvailabilityComplianceTests
 
         caregiver.RevokeCertificate(
             additionalCertificate.Id,
-            "Additional Certificate revoked.");
+            "Additional Certificate revoked.",
+            CaregiverTestData.CurrentUtc);
 
         caregiver.TransitionToActive();
 
