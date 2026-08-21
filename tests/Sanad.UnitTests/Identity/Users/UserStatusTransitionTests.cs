@@ -17,7 +17,9 @@ public sealed class UserStatusTransitionTests
         user.AddAccount(
             AccountType.Elderly);
 
-        user.VerifyPhone();
+        user.VerifyPhone(
+            CreateUtcDateTime());
+
         user.ClearDomainEvents();
 
         user.Activate(
@@ -53,8 +55,10 @@ public sealed class UserStatusTransitionTests
         user.AddAccount(
             AccountType.Family);
 
-        user.VerifyEmail();
-        user.VerifyPhone();
+        user.VerifyEmail(
+            CreateUtcDateTime());
+        user.VerifyPhone(
+            CreateUtcDateTime());
 
         user.SetInitialPasswordHash(
             "password-hash",
@@ -78,8 +82,10 @@ public sealed class UserStatusTransitionTests
         user.AddAccount(
             AccountType.Family);
 
-        user.VerifyEmail();
-        user.VerifyPhone();
+        user.VerifyEmail(
+            CreateUtcDateTime());
+        user.VerifyPhone(
+            CreateUtcDateTime());
 
         user.LinkExternalLogin(
             ExternalLoginProvider.Google,
@@ -101,8 +107,10 @@ public sealed class UserStatusTransitionTests
         User user =
             CreateUser();
 
-        user.VerifyEmail();
-        user.VerifyPhone();
+        user.VerifyEmail(
+            CreateUtcDateTime());
+        user.VerifyPhone(
+            CreateUtcDateTime());
 
         user.SetInitialPasswordHash(
             "password-hash",
@@ -127,7 +135,8 @@ public sealed class UserStatusTransitionTests
         user.AddAccount(
             AccountType.MedicalCaregiver);
 
-        user.VerifyPhone();
+        user.VerifyPhone(
+            CreateUtcDateTime());
 
         user.SetInitialPasswordHash(
             "password-hash",
@@ -152,8 +161,10 @@ public sealed class UserStatusTransitionTests
         user.AddAccount(
             AccountType.CompanionCaregiver);
 
-        user.VerifyEmail();
-        user.VerifyPhone();
+        user.VerifyEmail(
+            CreateUtcDateTime());
+        user.VerifyPhone(
+            CreateUtcDateTime());
 
         Assert.Throws<DomainException>(
             () => user.Activate(
@@ -310,8 +321,10 @@ public sealed class UserStatusTransitionTests
         user.AddAccount(
             AccountType.Family);
 
-        user.VerifyEmail();
-        user.VerifyPhone();
+        user.VerifyEmail(
+            CreateUtcDateTime());
+        user.VerifyPhone(
+            CreateUtcDateTime());
 
         user.SetInitialPasswordHash(
             "password-hash",

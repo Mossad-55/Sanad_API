@@ -110,28 +110,91 @@ public sealed class User : AggregateRoot<UserId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
-    public void VerifyEmail()
+    public void VerifyEmail(
+        DateTime utcNow)
     {
+        ValidateUtc(utcNow);
+
         if (Email is null)
         {
             throw new DomainException(UserErrors.EmailNotSet);
         }
 
+        if (EmailVerified)
+        {
+            return;
+        }
+
         EmailVerified = true;
-        UpdatedOnUtc = DateTime.UtcNow;
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new UserContactVerifiedDomainEvent(
+            Id,
+            UserContactType.Email));
     }
 
-    public void VerifyPhone()
+    public void VerifyPhone(
+        DateTime utcNow)
     {
+        ValidateUtc(utcNow);
+
+        if (PhoneVerified)
+        {
+            return;
+        }
+
         PhoneVerified = true;
-        UpdatedOnUtc = DateTime.UtcNow;
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserContactVerifiedDomainEvent(
+                Id,
+                UserContactType.Phone));
     }
 
-    public void ChangeEmail(Email email)
+    public void ChangeEmail(
+        Email email,
+        DateTime utcNow)
     {
+        ArgumentNullException.ThrowIfNull(email);
+        ValidateUtc(utcNow);
+        EnsureNotBlocked();
+
+        if (Email == email)
+        {
+            return;
+        }
+
+        UserStatus previousStatus =
+            Status;
+
         Email = email;
         EmailVerified = false;
-        UpdatedOnUtc = DateTime.UtcNow;
+
+        if (Status == UserStatus.Active)
+        {
+            Status =
+                UserStatus.PendingVerification;
+
+            StatusReason = null;
+        }
+
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserContactChangedDomainEvent(
+                Id,
+                UserContactType.Email));
+
+        if (previousStatus != Status)
+        {
+            RaiseDomainEvent(
+                new UserStatusChangedDomainEvent(
+                    Id,
+                    previousStatus,
+                    Status,
+                    Reason: null));
+        }
     }
 
     public void ChangeAvatar(string? avatarUrl)
@@ -140,16 +203,60 @@ public sealed class User : AggregateRoot<UserId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
-    public void ChangePhoneNumber(PhoneNumber phoneNumber)
+    public void ChangePhoneNumber(
+        PhoneNumber phoneNumber,
+        DateTime utcNow)
     {
+        ArgumentNullException.ThrowIfNull(
+            phoneNumber);
+
+        ValidateUtc(utcNow);
+        EnsureNotBlocked();
+
+        if (PhoneNumber == phoneNumber)
+        {
+            return;
+        }
+
+        UserStatus previousStatus =
+            Status;
+
         PhoneNumber = phoneNumber;
         PhoneVerified = false;
-        UpdatedOnUtc = DateTime.UtcNow;
+
+        if (Status == UserStatus.Active)
+        {
+            Status =
+                UserStatus.PendingVerification;
+
+            StatusReason = null;
+        }
+
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new UserContactChangedDomainEvent(
+                Id,
+                UserContactType.Phone));
+
+        if (previousStatus != Status)
+        {
+            RaiseDomainEvent(
+                new UserStatusChangedDomainEvent(
+                    Id,
+                    previousStatus,
+                    Status,
+                    Reason: null));
+        }
     }
 
-    public void UpdateLastLogin()
+    public void UpdateLastLogin(
+        DateTime utcNow)
     {
-        LastLoginOnUtc = DateTime.UtcNow;
+        ValidateUtc(utcNow);
+
+        LastLoginOnUtc = utcNow;
+        UpdatedOnUtc = utcNow;
     }
 
     public void Activate(
@@ -629,5 +736,14 @@ public sealed class User : AggregateRoot<UserId>
         }
 
         return normalizedReason;
+    }
+
+    private void EnsureNotBlocked()
+    {
+        if (Status == UserStatus.Blocked)
+        {
+            throw new DomainException(
+                "Blocked User information cannot be changed.");
+        }
     }
 }
