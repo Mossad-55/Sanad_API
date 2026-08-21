@@ -2,11 +2,15 @@ using Sanad.BuildingBlocks.Domain.Abstractions;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests.Events;
+using Sanad.BuildingBlocks.Domain.ValueObjects;
 
 namespace Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 
 public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
 {
+    public const int MaximumAttemptsAllowed = 5;
+    public const int MaximumOtpHashLength = 2048;
+
     private VerificationRequest(
         VerificationRequestId id,
         UserId? userId,
@@ -27,7 +31,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
         Status = VerificationStatus.Pending;
 
         Attempts = 0;
-        MaxAttempts = 5;
+        MaxAttempts = MaximumAttemptsAllowed;
 
         CreatedOnUtc = createdOnUtc;
         ExpiresOnUtc = expiresOnUtc;
@@ -73,17 +77,26 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
         DateTime createdOnUtc,
         DateTime expiresOnUtc)
     {
-        if (string.IsNullOrWhiteSpace(target))
+        if (!Enum.IsDefined(channel))
         {
             throw new DomainException(
-                "Verification target cannot be empty.");
+                "Verification channel is invalid.");
         }
 
-        if (string.IsNullOrWhiteSpace(otpHash))
+        if (!Enum.IsDefined(purpose))
         {
             throw new DomainException(
-                "OTP hash cannot be empty.");
+                "Verification purpose is invalid.");
         }
+
+        ValidateChannelAndPurpose(channel, purpose);
+
+        string normalizedTarget = NormalizeTarget(
+            target,
+            channel);
+
+        string normalizedOtpHash = NormalizeOtpHash(
+            otpHash);
 
         if (createdOnUtc.Kind != DateTimeKind.Utc)
         {
@@ -106,8 +119,8 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
         return new VerificationRequest(
             VerificationRequestId.New(),
             userId,
-            target.Trim(),
-            otpHash,
+            normalizedTarget,
+            normalizedOtpHash,
             channel,
             purpose,
             createdOnUtc,
@@ -152,7 +165,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
     {
         EnsurePending();
 
-        if(utcNow.Kind != DateTimeKind.Utc)
+        if (utcNow.Kind != DateTimeKind.Utc)
         {
             throw new DomainException(
                 "Invalidation time must be in UTC."
@@ -170,7 +183,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
     {
         EnsurePending();
 
-        if(!IsExpired(utcNow))
+        if (!IsExpired(utcNow))
         {
             throw new DomainException(
                 "Verification request has not expired yet."
@@ -182,7 +195,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
 
     public bool IsExpired(DateTime utcNow)
     {
-        if(utcNow.Kind != DateTimeKind.Utc)
+        if (utcNow.Kind != DateTimeKind.Utc)
         {
             throw new DomainException(
                 "Current time must be in UTC."
@@ -199,5 +212,85 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
             throw new DomainException(
                 "Verification request is no longer pending.");
         }
+    }
+
+    private static void ValidateChannelAndPurpose(
+        VerificationChannel channel,
+        VerificationPurpose purpose)
+    {
+        bool isCompatible =
+            purpose switch
+            {
+                VerificationPurpose.ElderlyLogin =>
+                    channel ==
+                    VerificationChannel.Sms,
+
+                VerificationPurpose.VerifyPhone =>
+                    channel ==
+                    VerificationChannel.Sms,
+
+                VerificationPurpose.VerifyEmail =>
+                    channel ==
+                    VerificationChannel.Email,
+
+                VerificationPurpose.ResetPassword =>
+                    channel ==
+                    VerificationChannel.Email,
+
+                _ => false
+            };
+
+        if (!isCompatible)
+        {
+            throw new DomainException(
+                "Verification channel does not support " +
+                "the requested purpose.");
+        }
+    }
+
+    private static string NormalizeTarget(
+        string target,
+        VerificationChannel channel)
+    {
+        if (string.IsNullOrWhiteSpace(target))
+        {
+            throw new DomainException(
+                "Verification target is required.");
+        }
+
+        return channel switch
+        {
+            VerificationChannel.Email =>
+                Email.Create(target).Value,
+
+            VerificationChannel.Sms =>
+                PhoneNumber.Create(target).Value,
+
+            _ => throw new DomainException(
+                "Verification channel is invalid.")
+        };
+    }
+
+    private static string NormalizeOtpHash(
+        string otpHash)
+    {
+        if (string.IsNullOrWhiteSpace(otpHash))
+        {
+            throw new DomainException(
+                "OTP hash is required.");
+        }
+
+        string normalizedHash =
+            otpHash.Trim();
+
+        if (normalizedHash.Length >
+            MaximumOtpHashLength)
+        {
+            throw new DomainException(
+                $"OTP hash cannot exceed " +
+                $"{MaximumOtpHashLength} characters.");
+        }
+
+        return normalizedHash;
     }
 }

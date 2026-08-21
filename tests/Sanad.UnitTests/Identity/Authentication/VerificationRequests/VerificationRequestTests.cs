@@ -726,6 +726,196 @@ public sealed class VerificationRequestTests
             request.Status);
     }
 
+    [Fact]
+    public void Create_ShouldRejectInvalidVerificationChannel()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        Assert.Throws<DomainException>(
+            () => VerificationRequest.Create(
+                UserId.New(),
+                "user@example.com",
+                "otp-hash",
+                (VerificationChannel)999,
+                VerificationPurpose.VerifyEmail,
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5)));
+    }
+
+    [Fact]
+    public void Create_ShouldRejectInvalidVerificationPurpose()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        Assert.Throws<DomainException>(
+            () => VerificationRequest.Create(
+                UserId.New(),
+                "user@example.com",
+                "otp-hash",
+                VerificationChannel.Email,
+                (VerificationPurpose)999,
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5)));
+    }
+
+    [Theory]
+    [InlineData(
+        VerificationChannel.Email,
+        VerificationPurpose.ElderlyLogin)]
+    [InlineData(
+        VerificationChannel.Email,
+        VerificationPurpose.VerifyPhone)]
+    [InlineData(
+        VerificationChannel.Sms,
+        VerificationPurpose.VerifyEmail)]
+    [InlineData(
+        VerificationChannel.Sms,
+        VerificationPurpose.ResetPassword)]
+    public void Create_ShouldRejectIncompatibleChannelAndPurpose(
+        VerificationChannel channel,
+        VerificationPurpose purpose)
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        string target =
+            channel ==
+            VerificationChannel.Email
+                ? "user@example.com"
+                : "+201001234567";
+
+        Assert.Throws<DomainException>(
+            () => VerificationRequest.Create(
+                UserId.New(),
+                target,
+                "otp-hash",
+                channel,
+                purpose,
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5)));
+    }
+
+    [Fact]
+    public void Create_ShouldNormalizeEmailTarget()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            VerificationRequest.Create(
+                UserId.New(),
+                "  USER@EXAMPLE.COM  ",
+                "otp-hash",
+                VerificationChannel.Email,
+                VerificationPurpose.VerifyEmail,
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        Assert.Equal(
+            "user@example.com",
+            request.Target);
+    }
+
+    [Fact]
+    public void Create_ShouldAcceptE164SmsTarget()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            VerificationRequest.Create(
+                UserId.New(),
+                "+201001234567",
+                "otp-hash",
+                VerificationChannel.Sms,
+                VerificationPurpose.VerifyPhone,
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        Assert.Equal(
+            "+201001234567",
+            request.Target);
+    }
+
+    [Fact]
+    public void Create_ShouldRejectInvalidSmsTarget()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        Assert.Throws<DomainException>(
+            () => VerificationRequest.Create(
+                UserId.New(),
+                "01001234567",
+                "otp-hash",
+                VerificationChannel.Sms,
+                VerificationPurpose.VerifyPhone,
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5)));
+    }
+
+    [Fact]
+    public void Create_ShouldNormalizeOtpHash()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            VerificationRequest.Create(
+                UserId.New(),
+                "user@example.com",
+                "  otp-hash  ",
+                VerificationChannel.Email,
+                VerificationPurpose.VerifyEmail,
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        Assert.Equal(
+            "otp-hash",
+            request.OtpHash);
+    }
+
+    [Fact]
+    public void Create_ShouldRejectLongOtpHash()
+    {
+        string longHash = new(
+            'A',
+            VerificationRequest
+                .MaximumOtpHashLength + 1);
+
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        Assert.Throws<DomainException>(
+            () => VerificationRequest.Create(
+                UserId.New(),
+                "user@example.com",
+                longHash,
+                VerificationChannel.Email,
+                VerificationPurpose.VerifyEmail,
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5)));
+    }
+
+    [Fact]
+    public void Create_ShouldUseConfiguredMaximumAttempts()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        Assert.Equal(
+            VerificationRequest
+                .MaximumAttemptsAllowed,
+            request.MaxAttempts);
+    }
+
     private static VerificationRequest CreateRequest(
         DateTime createdOnUtc,
         DateTime expiresOnUtc)
