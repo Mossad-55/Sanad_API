@@ -192,6 +192,11 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         }
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverReviewRequiredDomainEvent(
+            Id,
+            CaregiverReviewTrigger
+                .MedicalProfessionalProfileChanged));
     }
 
     public void UpdateCompanionProfile(
@@ -426,6 +431,10 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         }
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverSuspendedDomainEvent(
+            Id,
+            StatusReason!));
     }
 
     public void SuspendForExpiredMandatoryCertificate(
@@ -471,6 +480,10 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             CaregiverAvailability.Unavailable;
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverSuspendedDomainEvent(
+            Id,
+            StatusReason!));
     }
 
     public void UpdateCertificateFile(
@@ -506,6 +519,10 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         }
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverReviewRequiredDomainEvent(
+            Id,
+            CaregiverReviewTrigger.MandatoryCertificateReplaced));
     }
 
     public void RemoveCertificate(CaregiverCertificateId certificateId)
@@ -917,6 +934,10 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         Availability = CaregiverAvailability.Unavailable;
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverSubmittedForReviewDomainEvent(
+            Id,
+            IsResubmission: false));
     }
 
     public void RequestCorrection(
@@ -940,6 +961,10 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             CaregiverAvailability.Unavailable;
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverCorrectionRequestedDomainEvent(
+            Id,
+            normalizedReason));
     }
 
     public void ResubmitForReview(
@@ -960,6 +985,10 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             CaregiverAvailability.Unavailable;
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverSubmittedForReviewDomainEvent(
+            Id,
+            IsResubmission: true));
     }
 
     public void Approve(
@@ -981,6 +1010,9 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             CaregiverAvailability.Unavailable;
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverApprovedDomainEvent(
+            Id));
     }
 
     public void RejectApplication(
@@ -1004,6 +1036,10 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             CaregiverAvailability.Unavailable;
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverRejectedDomainEvent(
+            Id,
+            normalizedReason));
     }
 
     public void Suspend(
@@ -1027,6 +1063,10 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             CaregiverAvailability.Unavailable;
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverSuspendedDomainEvent(
+            Id,
+            normalizedReason));
     }
 
     public void Reactivate(
@@ -1048,6 +1088,9 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             CaregiverAvailability.Unavailable;
 
         UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverReactivatedDomainEvent(
+            Id));
     }
 
     private static bool IsMandatoryCertificate(CaregiverCertificateType type)
