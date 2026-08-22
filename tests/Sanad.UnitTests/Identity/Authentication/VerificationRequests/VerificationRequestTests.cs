@@ -760,6 +760,35 @@ public sealed class VerificationRequestTests
                 createdOnUtc.AddMinutes(5)));
     }
 
+    [Fact]
+    public void Create_ShouldAcceptEmailForConfirmExternalLoginLink()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            VerificationRequest.Create(
+                UserId.New(),
+                "user@example.com",
+                "otp-hash",
+                VerificationChannel.Email,
+                VerificationPurpose.ConfirmExternalLoginLink,
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        Assert.Equal(
+            VerificationChannel.Email,
+            request.Channel);
+
+        Assert.Equal(
+            VerificationPurpose.ConfirmExternalLoginLink,
+            request.Purpose);
+
+        Assert.Equal(
+            "user@example.com",
+            request.Target);
+    }
+
     [Theory]
     [InlineData(
         VerificationChannel.Email,
@@ -773,6 +802,9 @@ public sealed class VerificationRequestTests
     [InlineData(
         VerificationChannel.Sms,
         VerificationPurpose.ResetPassword)]
+    [InlineData(
+        VerificationChannel.Sms,
+        VerificationPurpose.ConfirmExternalLoginLink)]
     public void Create_ShouldRejectIncompatibleChannelAndPurpose(
         VerificationChannel channel,
         VerificationPurpose purpose)

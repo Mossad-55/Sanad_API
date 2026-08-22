@@ -237,6 +237,10 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
                     channel ==
                     VerificationChannel.Email,
 
+                VerificationPurpose.ConfirmExternalLoginLink =>
+                    channel ==
+                    VerificationChannel.Email,
+
                 _ => false
             };
 
