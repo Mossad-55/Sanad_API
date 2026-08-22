@@ -11,6 +11,7 @@ using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 using Sanad.Modules.Identity.Domain.Users;
+using Sanad.Modules.Identity.Domain.Users.Events;
 using Sanad.UnitTests.Identity.Registration;
 
 namespace Sanad.UnitTests.Identity.ElderlyLogin;
@@ -433,6 +434,240 @@ public sealed class ElderlyLoginCommandHandlerTests
         Assert.Empty(dbContext.VerificationRequests);
         Assert.Empty(dbContext.DeviceSessions);
         Assert.Equal(0, dbContext.SaveChangesCalls);
+    }
+
+    [Fact]
+    public async Task Verify_ShouldAuthenticateActiveElderlyUserWithoutStatusTransition()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.Active,
+                AccountType.Elderly);
+
+        user.ClearDomainEvents();
+
+        VerificationRequest verificationRequest =
+            await SeedPendingRequestAsync(
+                dbContext,
+                user,
+                FixedDateTimeProvider.UtcNowValue);
+
+        dbContext.ResetSaveChangesCalls();
+
+        Result<LoginResponse> result =
+            await CreateVerifyHandler(
+                    dbContext,
+                    otpIsValid: true,
+                    new FakeAuthTokenService())
+                .Handle(
+                    CreateVerifyCommand(
+                        user.PhoneNumber.Value),
+                    CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(
+            AuthAccessType.Normal,
+            result.Value.AccessType);
+
+        Assert.Equal(
+            UserStatus.Active,
+            user.Status);
+
+        Assert.True(user.PhoneVerified);
+
+        Assert.Equal(
+            VerificationStatus.Verified,
+            verificationRequest.Status);
+
+        Assert.Empty(
+            user.DomainEvents.OfType<
+                UserStatusChangedDomainEvent>());
+
+        Assert.Single(
+            dbContext.DeviceSessions);
+
+        Assert.Equal(
+            1,
+            dbContext.SaveChangesCalls);
+    }
+
+    [Fact]
+    public async Task Verify_ShouldInvalidateRequestAfterMaximumFailedAttempts()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.PendingVerification,
+                AccountType.Elderly);
+
+        VerificationRequest verificationRequest =
+            await SeedPendingRequestAsync(
+                dbContext,
+                user,
+                FixedDateTimeProvider.UtcNowValue);
+
+        dbContext.ResetSaveChangesCalls();
+
+        VerifyElderlyLoginOtpCommandHandler handler =
+            CreateVerifyHandler(
+                dbContext,
+                otpIsValid: false,
+                new FakeAuthTokenService());
+
+        for (int attempt = 0;
+             attempt < VerificationRequest.MaximumAttemptsAllowed;
+             attempt++)
+        {
+            Result<LoginResponse> result =
+                await handler.Handle(
+                    CreateVerifyCommand(
+                        user.PhoneNumber.Value),
+                    CancellationToken.None);
+
+            Assert.False(result.IsSuccess);
+
+            Assert.Equal(
+                ElderlyLoginErrors.OtpVerificationFailed,
+                result.Error);
+        }
+
+        Assert.Equal(
+            VerificationRequest.MaximumAttemptsAllowed,
+            verificationRequest.Attempts);
+
+        Assert.Equal(
+            VerificationStatus.Invalidated,
+            verificationRequest.Status);
+
+        Assert.False(user.PhoneVerified);
+
+        Assert.Equal(
+            UserStatus.PendingVerification,
+            user.Status);
+
+        Assert.Empty(
+            dbContext.DeviceSessions);
+
+        Assert.Equal(
+            VerificationRequest.MaximumAttemptsAllowed,
+            dbContext.SaveChangesCalls);
+    }
+
+    [Fact]
+    public async Task Verify_ShouldReturnGenericFailureWithoutMutation_WhenPendingRequestIsMissing()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.PendingVerification,
+                AccountType.Elderly);
+
+        dbContext.ResetSaveChangesCalls();
+
+        Result<LoginResponse> result =
+            await CreateVerifyHandler(
+                    dbContext,
+                    otpIsValid: true,
+                    new FakeAuthTokenService())
+                .Handle(
+                    CreateVerifyCommand(
+                        user.PhoneNumber.Value),
+                    CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+
+        Assert.Equal(
+            ElderlyLoginErrors.OtpVerificationFailed,
+            result.Error);
+
+        Assert.False(user.PhoneVerified);
+
+        Assert.Equal(
+            UserStatus.PendingVerification,
+            user.Status);
+
+        Assert.Empty(
+            dbContext.VerificationRequests);
+
+        Assert.Empty(
+            dbContext.DeviceSessions);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
+    }
+
+    [Theory]
+    [InlineData(UserStatus.Suspended)]
+    [InlineData(UserStatus.Blocked)]
+    public async Task Verify_ShouldReturnGenericFailureWithoutMutation_ForIneligibleStatus(
+        UserStatus status)
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                status,
+                AccountType.Elderly);
+
+        VerificationRequest verificationRequest =
+            await SeedPendingRequestAsync(
+                dbContext,
+                user,
+                FixedDateTimeProvider.UtcNowValue);
+
+        bool originalPhoneVerified =
+            user.PhoneVerified;
+
+        dbContext.ResetSaveChangesCalls();
+
+        Result<LoginResponse> result =
+            await CreateVerifyHandler(
+                    dbContext,
+                    otpIsValid: true,
+                    new FakeAuthTokenService())
+                .Handle(
+                    CreateVerifyCommand(
+                        user.PhoneNumber.Value),
+                    CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+
+        Assert.Equal(
+            ElderlyLoginErrors.OtpVerificationFailed,
+            result.Error);
+
+        Assert.Equal(
+            status,
+            user.Status);
+
+        Assert.Equal(
+            originalPhoneVerified,
+            user.PhoneVerified);
+
+        Assert.Equal(
+            VerificationStatus.Pending,
+            verificationRequest.Status);
+
+        Assert.Empty(
+            dbContext.DeviceSessions);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
     }
 
     private static RequestElderlyLoginOtpCommandHandler CreateRequestHandler(
