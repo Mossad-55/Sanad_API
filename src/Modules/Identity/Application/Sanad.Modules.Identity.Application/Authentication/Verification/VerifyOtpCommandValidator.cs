@@ -16,9 +16,9 @@ public sealed class VerifyOtpCommandValidator :
         RuleFor(command =>
                 command.Code)
             .NotEmpty()
-            .Matches(@"^\d{6}$")
+            .Matches(
+                @"^[0-9]{6}$")
             .WithMessage(
-                "Verification code must contain " +
-                "exactly six digits.");
+                "Verification code must contain exactly six ASCII digits.");
     }
 }

@@ -104,6 +104,25 @@ public sealed class User : AggregateRoot<UserId>
                 UserErrors.UserAlreadyHasAccount);
         }
 
+        bool isAddingElderlyAccount =
+            accountType == AccountType.Elderly;
+
+        bool userAlreadyHasElderlyAccount =
+            _accounts.Any(
+                account =>
+                    account.AccountType ==
+                    AccountType.Elderly);
+
+        if ((isAddingElderlyAccount &&
+            _accounts.Count > 0) ||
+            (!isAddingElderlyAccount &&
+            userAlreadyHasElderlyAccount))
+        {
+            throw new DomainException(
+                "An Elderly account cannot be comined " +
+                "with another account type.");
+        }
+
         _accounts.Add(
             UserAccount.Create(accountType));
 
