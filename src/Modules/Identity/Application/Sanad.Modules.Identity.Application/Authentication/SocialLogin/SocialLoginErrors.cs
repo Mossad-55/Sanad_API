@@ -18,4 +18,9 @@ public static class SocialLoginErrors
         new(
             "Identity.SocialLogin.ExternalLinkConfirmationFailed",
             "External login confirmation failed.");
+
+    public static readonly Error SocialRegistrationFailed =
+        new(
+            "Identity.SocialLogin.RegistrationFailed",
+            "Social registration failed.");
 }
