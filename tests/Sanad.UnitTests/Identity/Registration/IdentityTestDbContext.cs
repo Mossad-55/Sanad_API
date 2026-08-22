@@ -155,9 +155,6 @@ internal sealed class IdentityTestDbContext :
             value.Accounts);
 
         user.Ignore(value =>
-            value.ExternalLogins);
-
-        user.Ignore(value =>
             value.HasExternalLogin);
 
         user.Ignore(value =>
