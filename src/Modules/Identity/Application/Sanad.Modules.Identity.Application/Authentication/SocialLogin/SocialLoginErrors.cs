@@ -13,4 +13,9 @@ public static class SocialLoginErrors
         new(
             "Identity.SocialLogin.SessionLimitReached",
             "Maximum active device sessions reached.");
+
+    public static readonly Error ExternalLinkConfirmationFailed =
+        new(
+            "Identity.SocialLogin.ExternalLinkConfirmationFailed",
+            "External login confirmation failed.");
 }
