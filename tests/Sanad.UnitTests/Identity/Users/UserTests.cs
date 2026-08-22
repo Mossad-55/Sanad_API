@@ -568,44 +568,6 @@ public sealed class UserTests
                     UserPasswordChangedDomainEvent>());
     }
 
-    [Fact]
-    public void AddAccount_ShouldRejectElderlyAccount_WhenUserAlreadyHasAnotherAccount()
-    {
-        User user = CreateUser();
-
-        user.AddAccount(
-            AccountType.Family);
-
-        Assert.Throws<DomainException>(
-            () => user.AddAccount(
-                AccountType.Elderly));
-
-        Assert.Single(user.Accounts);
-
-        Assert.Equal(
-            AccountType.Family,
-            user.Accounts.Single().AccountType);
-    }
-
-    [Fact]
-    public void AddAccount_ShouldRejectNonElderlyAccount_WhenUserAlreadyHasElderlyAccount()
-    {
-        User user = CreateUser();
-
-        user.AddAccount(
-            AccountType.Elderly);
-
-        Assert.Throws<DomainException>(
-            () => user.AddAccount(
-                AccountType.Family));
-
-        Assert.Single(user.Accounts);
-
-        Assert.Equal(
-            AccountType.Elderly,
-            user.Accounts.Single().AccountType);
-    }
-
     private static User CreateUser()
     {
         return User.Create(

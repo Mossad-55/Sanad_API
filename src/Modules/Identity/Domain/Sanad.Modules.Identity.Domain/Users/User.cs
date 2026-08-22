@@ -119,7 +119,7 @@ public sealed class User : AggregateRoot<UserId>
             userAlreadyHasElderlyAccount))
         {
             throw new DomainException(
-                "An Elderly account cannot be comined " +
+                "An Elderly account cannot be combined " +
                 "with another account type.");
         }
 
