@@ -1,12 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
-using Sanad.BuildingBlocks.Domain.Abstractions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 using Sanad.Modules.Identity.Domain.Users;
+using Sanad.Modules.Identity.Domain.Authentication.ExternalLogins;
 
 namespace Sanad.UnitTests.Identity.Registration;
 
@@ -108,6 +108,39 @@ internal sealed class IdentityTestDbContext :
                 phone => phone.Value,
                 value =>
                     PhoneNumber.Create(value));
+
+        user.OwnsMany(
+            value => value.ExternalLogins,
+            externalLogin =>
+            {
+                externalLogin.WithOwner();
+
+                externalLogin.HasKey(
+                    value => value.Id);
+
+                externalLogin.Property(
+                        value => value.Id)
+                    .HasConversion(
+                        id => id.Value,
+                        value =>
+                            new UserExternalLoginId(
+                                value));
+
+                externalLogin.Property(
+                        value => value.ProviderSubject)
+                    .HasMaxLength(
+                        UserExternalLogin
+                            .MaximumProviderSubjectLength)
+                    .IsRequired();
+
+                externalLogin.Property(
+                        value => value.Provider)
+                    .IsRequired();
+
+                externalLogin.Property(
+                        value => value.LinkedOnUtc)
+                    .IsRequired();
+            });
 
         user.Ignore(value =>
             value.Password);
