@@ -1,8 +1,13 @@
 using System.Text;
+using FluentValidation;
+using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Sanad.API.ProblemDetail;
+using Sanad.BuildingBlocks.Application.Behaviors;
+using Sanad.Modules.Identity.Application.Authentication.Registration;
 using Sanad.Modules.Identity.Infrastructure;
 using Sanad.Modules.Identity.Infrastructure.Security;
 
@@ -71,6 +76,20 @@ public static class DependencyInjection
             });
 
         services.AddAuthorization();
+
+        services.AddMediatR(configuration =>
+            configuration.RegisterServicesFromAssembly(
+                typeof(RegisterUserCommand).Assembly));
+
+        services.AddValidatorsFromAssembly(
+            typeof(RegisterUserCommand).Assembly);
+
+        services.AddTransient(
+            typeof(IPipelineBehavior<,>),
+            typeof(ValidationBehavior<,>));
+
+        services.AddExceptionHandler<
+            ValidationExceptionHandler>();
 
         return services;
     }
