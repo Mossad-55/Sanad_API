@@ -6,6 +6,7 @@ namespace Sanad.UnitTests.Identity.Infrastructure;
 public sealed class LocalPostgresIdentityFixture :
     IAsyncLifetime
 {
+    internal string ConnectionString { get; private set; } = string.Empty;
     private const string ConnectionStringEnvironmentVariable =
         "ConnectionStrings__IdentityIntegrationDatabase";
 
@@ -19,6 +20,8 @@ public sealed class LocalPostgresIdentityFixture :
         string? connectionString =
             Environment.GetEnvironmentVariable(
                 ConnectionStringEnvironmentVariable);
+
+        ConnectionString = connectionString!;
 
         if (string.IsNullOrWhiteSpace(
             connectionString))

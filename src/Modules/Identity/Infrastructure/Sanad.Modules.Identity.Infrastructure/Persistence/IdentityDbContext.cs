@@ -35,7 +35,7 @@ public sealed class IdentityDbContext :
             Set<SocialAuthenticationChallengeRecord>();
 
     internal DbSet<SocialRegistrationChallengeRecord>
-        SocialRegistrationChallengeRecords =>
+        SocialRegistrationChallenges =>
             Set<SocialRegistrationChallengeRecord>();
 
     protected override void OnModelCreating(
