@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/src/" />
+  <Folder Name="/src/API/">
+    <Project Path="src/API/Sanad.API/Sanad.API.csproj" />
+  </Folder>
   <Folder Name="/src/BuildingBlocks/" />
   <Folder Name="/src/BuildingBlocks/Application/">
     <Project Path="src/BuildingBlocks/Application/Sanad.BuildingBlocks.Application/Sanad.BuildingBlocks.Application.csproj" />
