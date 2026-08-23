@@ -5,6 +5,9 @@ using Sanad.API.Controllers.Requests;
 using Sanad.Modules.Identity.Application.Authentication.Registration;
 using Sanad.Modules.Identity.Application.Authentication.Verification;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Identity.Application.Authentication.ElderlyLogin;
+using Sanad.Modules.Identity.Application.Authentication.Login;
+using Sanad.Modules.Identity.Application.Authentication.Refresh;
 
 namespace Sanad.API.Controllers;
 
@@ -113,6 +116,123 @@ public sealed class AuthController :
             new ResendOtpCommand(
                 new VerificationRequestId(
                     request.VerificationRequestId));
+
+        var result =
+            await _sender.Send(
+                command,
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("login")]
+    [ProducesResponseType(
+        typeof(LoginResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Login(
+        [FromBody] LoginRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command =
+            new LoginCommand(
+                request.Email,
+                request.Password,
+                request.DeviceName,
+                request.DevicePlatform,
+                request.AppVersion);
+
+        var result =
+            await _sender.Send(
+                command,
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+    [AllowAnonymous]
+    [HttpPost("refresh")]
+    [ProducesResponseType(
+        typeof(RefreshTokenResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> Refresh(
+        [FromBody] RefreshTokenRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command =
+            new RefreshTokenCommand(
+                new DeviceSessionId(
+                    request.DeviceSessionId),
+                request.RefreshToken);
+
+        var result =
+            await _sender.Send(
+                command,
+            cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("elderly/request-otp")]
+    [ProducesResponseType(
+    StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RequestElderlyOtp(
+    [FromBody] RequestElderlyLoginOtpRequest request,
+    CancellationToken cancellationToken)
+    {
+        var command =
+            new RequestElderlyLoginOtpCommand(
+                request.PhoneNumber);
+
+        var result =
+            await _sender.Send(
+                command,
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("elderly/verify-otp")]
+    [ProducesResponseType(
+        typeof(LoginResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> VerifyElderlyOtp(
+        [FromBody] VerifyElderlyLoginOtpRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command =
+            new VerifyElderlyLoginOtpCommand(
+                request.PhoneNumber,
+                request.Code,
+                request.DeviceName,
+                request.DevicePlatform,
+                request.AppVersion);
 
         var result =
             await _sender.Send(
