@@ -1,0 +1,7 @@
+namespace Sanad.API.Authorization;
+
+public static class AuthorizationPolicies
+{
+    public const string NormalAccess =
+        "NormalAccess";
+}

@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sanad.API;
+using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 
 namespace Sanad.UnitTests.API;
@@ -68,6 +69,14 @@ public sealed class SanadApiDependencyInjectionTests
         Assert.NotNull(
             scope.ServiceProvider.GetRequiredService<
                 IAuthTokenService>());
+
+        Assert.NotNull(
+            scope.ServiceProvider.GetRequiredService<
+                IAuthTokenService>());
+
+        Assert.NotNull(
+            scope.ServiceProvider.GetRequiredService<
+                IDateTimeProvider>());
     }
 
     private static IConfiguration CreateConfiguration(

@@ -15,6 +15,8 @@ public static class ApplicationBuilderExtensions
 
         app.UseAuthorization();
 
+        app.MapControllers();
+
         app.MapOpenApi();
 
         return app;

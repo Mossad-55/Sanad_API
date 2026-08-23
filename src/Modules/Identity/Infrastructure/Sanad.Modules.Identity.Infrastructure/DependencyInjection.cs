@@ -9,6 +9,8 @@ using Sanad.Modules.Identity.Infrastructure.Challenges;
 using Sanad.Modules.Identity.Infrastructure.Messaging;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Security;
+using Sanad.BuildingBlocks.Application.Abstractions;
+using Sanad.BuildingBlocks.Infrastructure.Time;
 
 namespace Sanad.Modules.Identity.Infrastructure;
 
@@ -43,6 +45,10 @@ public static class DependencyInjection
             serviceProvider =>
                 serviceProvider.GetRequiredService<
                     IdentityDbContext>());
+
+        services.AddSingleton<
+            IDateTimeProvider,
+            SystemDateTimeProvider>();
 
         services.AddOptions<JwtOptions>()
             .Bind(

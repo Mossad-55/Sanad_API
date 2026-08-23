@@ -10,6 +10,7 @@ using Sanad.Modules.Identity.Application.Authentication.Login;
 using Sanad.Modules.Identity.Application.Authentication.Refresh;
 using Sanad.Modules.Identity.Application.Authentication.Password;
 using Sanad.Modules.Identity.Application.Authentication.Sessions;
+using Sanad.API.Authorization;
 
 namespace Sanad.API.Controllers;
 
@@ -286,7 +287,9 @@ public sealed class AuthController :
             result);
     }
 
-    [Authorize]
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
     [HttpPost("password/change")]
     [ProducesResponseType(
         StatusCodes.Status204NoContent)]
@@ -315,7 +318,9 @@ public sealed class AuthController :
             result);
     }
 
-    [Authorize]
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
     [HttpPost("sessions/logout")]
     [ProducesResponseType(
     StatusCodes.Status204NoContent)]
@@ -349,7 +354,9 @@ public sealed class AuthController :
             result);
     }
 
-    [Authorize]
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
     [HttpPost("sessions/logout-all")]
     [ProducesResponseType(
         StatusCodes.Status204NoContent)]
@@ -372,7 +379,9 @@ public sealed class AuthController :
             result);
     }
 
-    [Authorize]
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
     [HttpGet("sessions")]
     [ProducesResponseType(
         typeof(ActiveSessionsResponse),
@@ -396,7 +405,9 @@ public sealed class AuthController :
             result);
     }
 
-    [Authorize]
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
     [HttpDelete("sessions/{sessionId:guid}")]
     [ProducesResponseType(
         StatusCodes.Status204NoContent)]

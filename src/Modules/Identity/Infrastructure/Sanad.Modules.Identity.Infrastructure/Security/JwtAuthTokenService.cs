@@ -133,7 +133,7 @@ public sealed class JwtAuthTokenService :
                 user.Id.Value.ToString()),
 
             new(
-                "access_type",
+                AuthClaimNames.AccessType,
                 accessType.ToString()),
 
             new(
@@ -151,7 +151,7 @@ public sealed class JwtAuthTokenService :
             {
                 claims.Add(
                     new Claim(
-                        "account_type",
+                        AuthClaimNames.AccountType,
                         account.AccountType
                             .ToString()));
             }

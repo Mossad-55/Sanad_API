@@ -1,13 +1,14 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Text;
 using FluentValidation;
 using MediatR;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
+using Sanad.API.Authorization;
 using Sanad.API.ProblemDetail;
 using Sanad.BuildingBlocks.Application.Behaviors;
 using Sanad.Modules.Identity.Application.Authentication.Registration;
+using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Infrastructure;
 using Sanad.Modules.Identity.Infrastructure.Security;
 
@@ -19,6 +20,8 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        services.AddControllers();
+
         services.AddProblemDetails();
 
         services.AddOpenApi();
@@ -48,6 +51,9 @@ public static class DependencyInjection
                 JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
             {
+                options.MapInboundClaims =
+                    false;
+
                 options.RequireHttpsMetadata =
                     !string.Equals(
                         Environment.GetEnvironmentVariable(
@@ -71,11 +77,30 @@ public static class DependencyInjection
                         IssuerSigningKey =
                             new SymmetricSecurityKey(
                                 Encoding.UTF8.GetBytes(
-                                    jwtOptions.SigningKey))
+                                    jwtOptions.SigningKey)),
+
+                        NameClaimType =
+                            JwtRegisteredClaimNames.Sub,
+
+                        RoleClaimType =
+                            AuthClaimNames.AccountType
                     };
             });
 
-        services.AddAuthorization();
+        services.AddAuthorization(options =>
+        {
+            options.AddPolicy(
+                AuthorizationPolicies.NormalAccess,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AuthAccessType.Normal
+                            .ToString());
+                });
+        });
 
         services.AddMediatR(configuration =>
             configuration.RegisterServicesFromAssembly(
