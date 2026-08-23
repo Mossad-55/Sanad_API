@@ -8,6 +8,8 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Application.Authentication.ElderlyLogin;
 using Sanad.Modules.Identity.Application.Authentication.Login;
 using Sanad.Modules.Identity.Application.Authentication.Refresh;
+using Sanad.Modules.Identity.Application.Authentication.Password;
+using Sanad.Modules.Identity.Application.Authentication.Sessions;
 
 namespace Sanad.API.Controllers;
 
@@ -237,6 +239,186 @@ public sealed class AuthController :
         var result =
             await _sender.Send(
                 command,
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("password/reset/request")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RequestPasswordReset(
+        [FromBody] RequestPasswordResetRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new RequestPasswordResetCommand(
+                    request.Email),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [AllowAnonymous]
+    [HttpPost("password/reset")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ResetPassword(
+        [FromBody] ResetPasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new ResetPasswordCommand(
+                    request.Email,
+                    request.OtpCode,
+                    request.NewPassword),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [Authorize]
+    [HttpPost("password/change")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ChangePassword(
+        [FromBody] ChangePasswordRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+            out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new ChangePasswordCommand(
+                    userId,
+                    request.CurrentPassword,
+                    request.NewPassword),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [Authorize]
+    [HttpPost("sessions/logout")]
+    [ProducesResponseType(
+    StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+    typeof(ProblemDetails),
+    StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> LogoutCurrentSession(
+    CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+                out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        if (!TryGetCurrentDeviceSessionId(
+                out DeviceSessionId deviceSessionId))
+        {
+            return BadRequestWithCode(
+                "Api.Auth.InvalidDeviceSessionHeader");
+        }
+
+        var result =
+            await _sender.Send(
+                new LogoutCurrentSessionCommand(
+                    deviceSessionId,
+                    userId),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [Authorize]
+    [HttpPost("sessions/logout-all")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> LogoutAllSessions(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+                out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new LogoutAllSessionsCommand(
+                    userId),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [Authorize]
+    [HttpGet("sessions")]
+    [ProducesResponseType(
+        typeof(ActiveSessionsResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActiveSessions(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+                out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new GetActiveSessionsQuery(
+                    userId),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [Authorize]
+    [HttpDelete("sessions/{sessionId:guid}")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RevokeSession(
+        Guid sessionId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+                out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new RevokeSessionCommand(
+                    new DeviceSessionId(
+                        sessionId),
+                    userId),
                 cancellationToken);
 
         return ToActionResult(
