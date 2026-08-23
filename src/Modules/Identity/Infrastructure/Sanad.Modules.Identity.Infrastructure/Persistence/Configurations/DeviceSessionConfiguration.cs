@@ -16,13 +16,11 @@ public sealed class DeviceSessionConfiguration :
         builder.HasKey(session =>
             session.Id);
 
-        builder.Property(session =>
-                session.Id)
+        builder.Property(session => session.Id)
             .HasConversion(
                 id => id.Value,
-                value =>
-                    new DeviceSessionId(
-                        value))
+                value => new DeviceSessionId(value))
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         builder.Property(session =>

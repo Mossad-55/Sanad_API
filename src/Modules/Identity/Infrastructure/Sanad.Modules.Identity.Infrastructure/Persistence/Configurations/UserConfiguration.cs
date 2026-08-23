@@ -22,7 +22,8 @@ public sealed class UserConfiguration :
             .HasConversion(
                 id => id.Value,
                 value => new UserId(value))
-            .ValueGeneratedNever();
+                .HasColumnName("id")
+                .ValueGeneratedNever();
 
         builder.Property(user => user.ArabicFullName)
             .HasConversion(

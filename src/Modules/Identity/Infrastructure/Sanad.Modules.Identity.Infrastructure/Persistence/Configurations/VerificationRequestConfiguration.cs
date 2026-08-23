@@ -1,5 +1,7 @@
+using System.ComponentModel.DataAnnotations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 
@@ -16,13 +18,11 @@ public sealed class VerificationRequestConfiguration :
         builder.HasKey(request =>
             request.Id);
 
-        builder.Property(request =>
-                request.Id)
+        builder.Property(request => request.Id)
             .HasConversion(
                 id => id.Value,
-                value =>
-                    new VerificationRequestId(
-                        value))
+                value => new VerificationRequestId(value))
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         builder.Property(request =>

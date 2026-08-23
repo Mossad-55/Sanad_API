@@ -19,8 +19,8 @@ internal sealed class SocialRegistrationChallengeRecordConfiguration :
         builder.HasKey(record =>
             record.Id);
 
-        builder.Property(record =>
-                record.Id)
+        builder.Property(record => record.Id)
+            .HasColumnName("id")
             .ValueGeneratedNever();
 
         builder.Property(record =>
