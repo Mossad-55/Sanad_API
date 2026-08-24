@@ -45,6 +45,9 @@ public sealed class IdentityInfrastructureDependencyInjectionTests
         Assert.IsType<DevelopmentEmailSender>(scope.ServiceProvider.GetRequiredService<IEmailSender>());
         Assert.IsType<DevelopmentSmsSender>(scope.ServiceProvider.GetRequiredService<ISmsSender>());
         Assert.IsType<DevelopmentExternalIdentityVerifier>(scope.ServiceProvider.GetRequiredService<IExternalIdentityVerifier>());
+        Assert.NotNull(
+            scope.ServiceProvider.GetRequiredService<
+                IExternalAuthenticationNonceStore>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ISocialAuthenticationChallengeStore>());
         Assert.NotNull(scope.ServiceProvider.GetRequiredService<ISocialRegistrationChallengeStore>());
     }

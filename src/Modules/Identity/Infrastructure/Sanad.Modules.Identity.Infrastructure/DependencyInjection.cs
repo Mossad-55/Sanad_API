@@ -11,6 +11,7 @@ using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Security;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Infrastructure.Time;
+using Sanad.Modules.Identity.Infrastructure.Nonces;
 
 namespace Sanad.Modules.Identity.Infrastructure;
 
@@ -77,6 +78,10 @@ public static class DependencyInjection
 
         services.AddSingleton<IExternalIdentityVerifier,
             DevelopmentExternalIdentityVerifier>();
+
+        services.AddScoped<
+            IExternalAuthenticationNonceStore,
+            PostgresExternalAuthenticationNonceStore>();
 
         services.AddScoped<
             ISocialAuthenticationChallengeStore,

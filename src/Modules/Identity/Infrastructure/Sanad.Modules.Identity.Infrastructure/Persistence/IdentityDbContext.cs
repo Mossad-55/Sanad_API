@@ -4,6 +4,7 @@ using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Infrastructure.Persistence.Challenges;
+using Sanad.Modules.Identity.Infrastructure.Persistence.Nonces;
 
 namespace Sanad.Modules.Identity.Infrastructure.Persistence;
 
@@ -37,6 +38,10 @@ public sealed class IdentityDbContext :
     internal DbSet<SocialRegistrationChallengeRecord>
         SocialRegistrationChallenges =>
             Set<SocialRegistrationChallengeRecord>();
+
+    internal DbSet<ExternalAuthenticationNonceRecord>
+        ExternalAuthenticationNonces =>
+            Set<ExternalAuthenticationNonceRecord>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
