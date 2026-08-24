@@ -26,7 +26,7 @@ public sealed class LinkExternalLoginCommandHandlerTests
         db.ResetSaveChangesCalls();
 
         Result<LinkExternalLoginResponse> result = await CreateHandler(db, CreateIdentity())
-            .Handle(new LinkExternalLoginCommand(user.Id, ExternalLoginProvider.Google, "credential"), CancellationToken.None);
+            .Handle(new LinkExternalLoginCommand(user.Id, ExternalLoginProvider.Google, "credential", new string('n', ExternalAuthenticationNoncePolicy.EncodedLength)), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
         Assert.Equal(user.Id, result.Value.UserId);
@@ -54,7 +54,7 @@ public sealed class LinkExternalLoginCommandHandlerTests
         db.ResetSaveChangesCalls();
 
         Result<LinkExternalLoginResponse> result = await CreateHandler(db, CreateIdentity())
-            .Handle(new LinkExternalLoginCommand(user.Id, ExternalLoginProvider.Google, "credential"), CancellationToken.None);
+            .Handle(new LinkExternalLoginCommand(user.Id, ExternalLoginProvider.Google, "credential", new string('n', ExternalAuthenticationNoncePolicy.EncodedLength)), CancellationToken.None);
 
         Assert.False(result.IsSuccess);
         Assert.Equal(SocialLoginErrors.ExternalLinkFailed, result.Error);
@@ -69,10 +69,10 @@ public sealed class LinkExternalLoginCommandHandlerTests
         db.ResetSaveChangesCalls();
 
         Result<LinkExternalLoginResponse> missingUser = await CreateHandler(db, CreateIdentity())
-            .Handle(new LinkExternalLoginCommand(UserId.New(), ExternalLoginProvider.Google, "credential"), CancellationToken.None);
+            .Handle(new LinkExternalLoginCommand(UserId.New(), ExternalLoginProvider.Google, "credential", new string('n', ExternalAuthenticationNoncePolicy.EncodedLength)), CancellationToken.None);
 
         Result<LinkExternalLoginResponse> invalidCredential = await CreateHandler(db, null)
-            .Handle(new LinkExternalLoginCommand(UserId.New(), ExternalLoginProvider.Google, "credential"), CancellationToken.None);
+            .Handle(new LinkExternalLoginCommand(UserId.New(), ExternalLoginProvider.Google, "credential", new string('n', ExternalAuthenticationNoncePolicy.EncodedLength)), CancellationToken.None);
 
         Assert.False(missingUser.IsSuccess);
         Assert.False(invalidCredential.IsSuccess);
@@ -92,7 +92,7 @@ public sealed class LinkExternalLoginCommandHandlerTests
         db.ResetSaveChangesCalls();
 
         Result<LinkExternalLoginResponse> result = await CreateHandler(db, CreateIdentity())
-            .Handle(new LinkExternalLoginCommand(caller.Id, ExternalLoginProvider.Google, "credential"), CancellationToken.None);
+            .Handle(new LinkExternalLoginCommand(caller.Id, ExternalLoginProvider.Google, "credential", new string('n', ExternalAuthenticationNoncePolicy.EncodedLength)), CancellationToken.None);
 
         Assert.False(result.IsSuccess);
         Assert.Equal(SocialLoginErrors.ExternalLinkFailed, result.Error);
@@ -131,13 +131,18 @@ public sealed class LinkExternalLoginCommandHandlerTests
         "google-subject",
         "mohamed@example.com");
 
-    private sealed class Verifier(VerifiedExternalIdentity? identity) : IExternalIdentityVerifier
+    private sealed class Verifier(
+        VerifiedExternalIdentity? identity) :
+        IExternalIdentityVerifier
     {
         public Task<VerifiedExternalIdentity?> VerifyAsync(
             ExternalLoginProvider provider,
-            string providerCredential,
+            ExternalIdentityCredential credential,
             CancellationToken cancellationToken)
-                => Task.FromResult(identity);
+        {
+            return Task.FromResult(
+                identity);
+        }
     }
 
     private sealed class FixedClock : IDateTimeProvider

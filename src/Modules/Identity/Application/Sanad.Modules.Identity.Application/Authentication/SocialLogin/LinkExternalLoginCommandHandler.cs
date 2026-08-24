@@ -35,7 +35,9 @@ public sealed class LinkExternalLoginCommandHandler :
         VerifiedExternalIdentity? externalIdentity =
             await _externalIdentityVerifier.VerifyAsync(
                 request.Provider,
-                request.ProviderCredential,
+                new ExternalIdentityCredential(
+                    request.ProviderCredential,
+                    request.Nonce),
                 cancellationToken);
 
         if (!TryNormalizeExternalIdentity(

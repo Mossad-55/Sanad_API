@@ -43,7 +43,16 @@ public sealed class LinkExternalLoginCommandValidatorTests
             .ShouldHaveValidationErrorFor(command => command.ProviderCredential);
     }
 
-    private static LinkExternalLoginCommand CreateCommand() => new(
-        UserId.New(), ExternalLoginProvider.Google, "provider-credential");
+    private static LinkExternalLoginCommand CreateCommand()
+    {
+        return new LinkExternalLoginCommand(
+            UserId.New(),
+            ExternalLoginProvider.Google,
+            "provider-credential",
+            new string(
+                'n',
+                ExternalAuthenticationNoncePolicy
+                    .EncodedLength));
+    }
 
 }

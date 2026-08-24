@@ -2,10 +2,8 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Application.Authentication.SocialLogin;
-using Sanad.Modules.Identity.Domain.Authentication.ExternalLogins;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence.Challenges;
 
@@ -44,7 +42,8 @@ public sealed class PostgresSocialAuthenticationChallengeStore :
                 LinkVerificationRequestId =
                     challenge.LinkVerificationRequestId,
                 CreatedOnUtc = DateTime.UtcNow,
-                ExpiresOnUtc = challenge.ExpiresOnUtc
+                ExpiresOnUtc = challenge.ExpiresOnUtc,
+                EmailIsAuthoritative = challenge.EmailIsAuthoritative
             };
 
         _dbContext.SocialAuthenticationChallenges.Add(
@@ -139,7 +138,8 @@ public sealed class PostgresSocialAuthenticationChallengeStore :
             record.VerifiedEmail,
             record.ExistingUserId,
             record.LinkVerificationRequestId,
-            record.ExpiresOnUtc);
+            record.ExpiresOnUtc,
+            record.EmailIsAuthoritative);
     }
     private static string CreateOpaqueChallenge()
     {

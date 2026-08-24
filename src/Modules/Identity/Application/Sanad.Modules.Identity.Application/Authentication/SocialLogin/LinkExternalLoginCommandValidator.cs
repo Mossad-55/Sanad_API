@@ -7,13 +7,15 @@ namespace Sanad.Modules.Identity.Application.Authentication.SocialLogin;
 public sealed class LinkExternalLoginCommandValidator :
     AbstractValidator<LinkExternalLoginCommand>
 {
-    public const int MaximumProviderCredentialLength = 16_384;
+    public const int MaximumProviderCredentialLength =
+        16_384;
 
     public LinkExternalLoginCommandValidator()
     {
         RuleFor(command =>
                 command.UserId)
-            .NotEqual(UserId.Empty);
+            .NotEqual(
+                UserId.Empty);
 
         RuleFor(command =>
                 command.Provider)
@@ -29,5 +31,12 @@ public sealed class LinkExternalLoginCommandValidator :
             .NotEmpty()
             .MaximumLength(
                 MaximumProviderCredentialLength);
+
+        RuleFor(command =>
+                command.Nonce)
+            .NotEmpty()
+            .Length(
+                ExternalAuthenticationNoncePolicy
+                    .EncodedLength);
     }
 }

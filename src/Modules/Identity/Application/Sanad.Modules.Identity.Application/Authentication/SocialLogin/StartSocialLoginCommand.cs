@@ -9,5 +9,6 @@ public sealed record StartSocialLoginCommand(
     string ProviderCredential,
     string DeviceName,
     DevicePlatform DevicePlatform,
-    string AppVersion)
+    string AppVersion,
+    string Nonce = "")
     : ICommand<StartSocialLoginResponse>;

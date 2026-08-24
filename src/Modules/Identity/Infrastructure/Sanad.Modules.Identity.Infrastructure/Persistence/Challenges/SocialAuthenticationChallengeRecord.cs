@@ -28,4 +28,6 @@ internal sealed class SocialAuthenticationChallengeRecord
     public DateTime ExpiresOnUtc { get; set; }
 
     public DateTime? ConsumedOnUtc { get; set; }
+
+    public bool EmailIsAuthoritative { get; set; }
 }

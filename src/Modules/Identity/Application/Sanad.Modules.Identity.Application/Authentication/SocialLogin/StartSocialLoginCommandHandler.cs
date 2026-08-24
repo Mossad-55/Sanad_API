@@ -53,7 +53,9 @@ public sealed class StartSocialLoginCommandHandler :
         VerifiedExternalIdentity? externalIdentity =
             await _externalIdentityVerifier.VerifyAsync(
                 request.Provider,
-                request.ProviderCredential,
+                new ExternalIdentityCredential(
+                    request.ProviderCredential,
+                    request.Nonce),
                 cancellationToken);
 
         if (!TryNormalizeExternalIdentity(
@@ -112,6 +114,8 @@ public sealed class StartSocialLoginCommandHandler :
                     request.Provider,
                     providerSubject,
                     verifiedEmail,
+                    emailIsAuthoritative:
+                        externalIdentity!.EmailIsAuthoritative,
                     utcNow,
                     cancellationToken);
             }
@@ -121,6 +125,7 @@ public sealed class StartSocialLoginCommandHandler :
             request.Provider,
             providerSubject,
             verifiedEmail,
+            externalIdentity!.EmailIsAuthoritative,
             utcNow,
             cancellationToken);
     }
@@ -223,6 +228,7 @@ public sealed class StartSocialLoginCommandHandler :
             ExternalLoginProvider provider,
             string providerSubject,
             Email verifiedEmail,
+            bool emailIsAuthoritative,
             DateTime utcNow,
             CancellationToken cancellationToken)
     {
@@ -236,19 +242,36 @@ public sealed class StartSocialLoginCommandHandler :
                 verifiedEmail.Value,
                 generatedOtp.Hash,
                 VerificationChannel.Email,
-                VerificationPurpose.ConfirmExternalLoginLink,
+                VerificationPurpose
+                    .ConfirmExternalLoginLink,
                 utcNow,
-                utcNow.Add(OtpPolicy.Lifetime));
+                utcNow.Add(
+                    OtpPolicy.Lifetime));
 
         SocialAuthenticationChallenge challenge =
             new(
-                provider,
-                providerSubject,
-                verifiedEmail.Value,
-                user.Id,
-                otpRequest.Id,
-                utcNow.Add(
-                    SocialLoginPolicy.ChallengeLifetime));
+                Provider:
+                    provider,
+
+                ProviderSubject:
+                    providerSubject,
+
+                VerifiedEmail:
+                    verifiedEmail.Value,
+
+                ExistingUserId:
+                    user.Id,
+
+                LinkVerificationRequestId:
+                    otpRequest.Id,
+
+                ExpiresOnUtc:
+                    utcNow.Add(
+                        SocialLoginPolicy
+                            .ChallengeLifetime),
+
+                EmailIsAuthoritative:
+                    emailIsAuthoritative);
 
         string opaqueChallenge =
             await _challengeStore.CreateAsync(
@@ -264,7 +287,8 @@ public sealed class StartSocialLoginCommandHandler :
         await _emailSender.SendVerificationCodeAsync(
             verifiedEmail.Value,
             generatedOtp.PlainTextCode,
-            VerificationPurpose.ConfirmExternalLoginLink,
+            VerificationPurpose
+                .ConfirmExternalLoginLink,
             cancellationToken);
 
         return CreateChallengeResponse(
@@ -272,22 +296,38 @@ public sealed class StartSocialLoginCommandHandler :
     }
 
     private async Task<Result<StartSocialLoginResponse>>
-        CreateNewSocialUserChallengeAsync(
-            ExternalLoginProvider provider,
-            string providerSubject,
-            Email? verifiedEmail,
-            DateTime utcNow,
-            CancellationToken cancellationToken)
+    CreateNewSocialUserChallengeAsync(
+        ExternalLoginProvider provider,
+        string providerSubject,
+        Email? verifiedEmail,
+        bool emailIsAuthoritative,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
     {
         SocialAuthenticationChallenge challenge =
             new(
-                provider,
-                providerSubject,
-                verifiedEmail?.Value,
-                ExistingUserId: null,
-                LinkVerificationRequestId: null,
-                utcNow.Add(
-                    SocialLoginPolicy.ChallengeLifetime));
+                Provider:
+                    provider,
+
+                ProviderSubject:
+                    providerSubject,
+
+                VerifiedEmail:
+                    verifiedEmail?.Value,
+
+                ExistingUserId:
+                    null,
+
+                LinkVerificationRequestId:
+                    null,
+
+                ExpiresOnUtc:
+                    utcNow.Add(
+                        SocialLoginPolicy
+                            .ChallengeLifetime),
+
+                EmailIsAuthoritative:
+                    emailIsAuthoritative);
 
         string opaqueChallenge =
             await _challengeStore.CreateAsync(

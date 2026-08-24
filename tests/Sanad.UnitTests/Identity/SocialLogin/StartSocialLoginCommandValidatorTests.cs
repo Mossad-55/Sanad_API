@@ -159,6 +159,10 @@ public sealed class StartSocialLoginCommandValidatorTests
             "provider-credential",
             "Ahmed's iPhone",
             DevicePlatform.iOS,
-            "1.0.0");
+            "1.0.0",
+            new string(
+                'n',
+                ExternalAuthenticationNoncePolicy
+                    .EncodedLength));
     }
 }

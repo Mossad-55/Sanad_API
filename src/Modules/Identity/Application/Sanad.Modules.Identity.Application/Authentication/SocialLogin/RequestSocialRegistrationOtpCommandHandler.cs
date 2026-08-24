@@ -194,6 +194,7 @@ public sealed class RequestSocialRegistrationOtpCommandHandler :
         if (challenge is null ||
             challenge.ExistingUserId.HasValue ||
             challenge.LinkVerificationRequestId.HasValue ||
+            !challenge.EmailIsAuthoritative ||
             string.IsNullOrWhiteSpace(
                 challenge.VerifiedEmail))
         {

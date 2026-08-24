@@ -5,4 +5,5 @@ namespace Sanad.Modules.Identity.Application.Abstractions.Security;
 public sealed record VerifiedExternalIdentity(
     ExternalLoginProvider Provider,
     string ProviderSubject,
-    string? VerifiedEmail);
+    string? VerifiedEmail,
+    bool EmailIsAuthoritative = true);

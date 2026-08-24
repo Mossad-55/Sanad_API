@@ -9,14 +9,13 @@ using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Domain.Authentication.ExternalLogins;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence.Nonces;
+using Sanad.Modules.Identity.Application.Authentication.SocialLogin;
 
 namespace Sanad.Modules.Identity.Infrastructure.Nonces;
 
 public sealed class PostgresExternalAuthenticationNonceStore :
     IExternalAuthenticationNonceStore
 {
-    private const int NonceSize = 32;
-
     private readonly IdentityDbContext
         _dbContext;
 
@@ -43,7 +42,8 @@ public sealed class PostgresExternalAuthenticationNonceStore :
         string nonce =
             Base64UrlEncoder.Encode(
                 RandomNumberGenerator.GetBytes(
-                    NonceSize));
+                    ExternalAuthenticationNoncePolicy
+                        .ByteLength));
 
         var record =
             new ExternalAuthenticationNonceRecord

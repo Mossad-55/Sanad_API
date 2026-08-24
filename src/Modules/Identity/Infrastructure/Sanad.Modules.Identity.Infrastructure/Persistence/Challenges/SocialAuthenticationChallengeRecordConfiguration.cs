@@ -47,6 +47,13 @@ internal sealed class SocialAuthenticationChallengeRecordConfiguration :
             .HasMaxLength(256);
 
         builder.Property(record =>
+            record.EmailIsAuthoritative)
+                .HasColumnName(
+                    "email_is_authoritative")
+                .HasDefaultValue(true)
+                .IsRequired();
+
+        builder.Property(record =>
                 record.ExistingUserId)
             .HasConversion(
                 id => id.HasValue

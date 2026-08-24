@@ -6,6 +6,6 @@ public interface IExternalIdentityVerifier
 {
     Task<VerifiedExternalIdentity?> VerifyAsync(
         ExternalLoginProvider provider,
-        string providerCredential,
+        ExternalIdentityCredential credential,
         CancellationToken cancellationToken);
 }

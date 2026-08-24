@@ -55,7 +55,7 @@ public sealed class ExternalAuthenticationNonceCommandTests
     }
 
     [Theory]
-    [InlineData(ExternalLoginProvider.Unknown)]
+    [InlineData((ExternalLoginProvider)0)]
     [InlineData((ExternalLoginProvider)999)]
     public void Validator_ShouldRejectUnsupportedProvider(
         ExternalLoginProvider provider)

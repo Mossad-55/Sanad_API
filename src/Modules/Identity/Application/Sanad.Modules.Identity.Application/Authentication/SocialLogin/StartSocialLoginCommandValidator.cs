@@ -7,7 +7,8 @@ namespace Sanad.Modules.Identity.Application.Authentication.SocialLogin;
 public sealed class StartSocialLoginCommandValidator :
     AbstractValidator<StartSocialLoginCommand>
 {
-    public const int MaximumProviderCredentialLength = 16_384;
+    public const int MaximumProviderCredentialLength =
+        16_384;
 
     public StartSocialLoginCommandValidator()
     {
@@ -24,6 +25,13 @@ public sealed class StartSocialLoginCommandValidator :
                 MaximumProviderCredentialLength);
 
         RuleFor(command =>
+                command.Nonce)
+            .NotEmpty()
+            .Length(
+                ExternalAuthenticationNoncePolicy
+                    .EncodedLength);
+
+        RuleFor(command =>
                 command.DeviceName)
             .NotEmpty()
             .MaximumLength(
@@ -33,7 +41,8 @@ public sealed class StartSocialLoginCommandValidator :
                 command.DevicePlatform)
             .Must(platform =>
                 Enum.IsDefined(platform) &&
-                platform != DevicePlatform.Unknown)
+                platform !=
+                    DevicePlatform.Unknown)
             .WithMessage(
                 "Device platform is invalid.");
 

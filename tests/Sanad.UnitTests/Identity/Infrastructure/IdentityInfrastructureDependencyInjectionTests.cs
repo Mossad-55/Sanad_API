@@ -44,7 +44,9 @@ public sealed class IdentityInfrastructureDependencyInjectionTests
         Assert.IsType<JwtAuthTokenService>(scope.ServiceProvider.GetRequiredService<IAuthTokenService>());
         Assert.IsType<DevelopmentEmailSender>(scope.ServiceProvider.GetRequiredService<IEmailSender>());
         Assert.IsType<DevelopmentSmsSender>(scope.ServiceProvider.GetRequiredService<ISmsSender>());
-        Assert.IsType<DevelopmentExternalIdentityVerifier>(scope.ServiceProvider.GetRequiredService<IExternalIdentityVerifier>());
+        Assert.IsType<ProductionExternalIdentityVerifier>(scope.ServiceProvider.GetRequiredService<IExternalIdentityVerifier>());
+        Assert.IsType<ExternalIdentityOpenIdConfigurationProvider>(scope.ServiceProvider.
+            GetRequiredService<IExternalIdentityOpenIdConfigurationProvider>());
         Assert.NotNull(
             scope.ServiceProvider.GetRequiredService<
                 IExternalAuthenticationNonceStore>());

@@ -9,4 +9,5 @@ public sealed record SocialAuthenticationChallenge(
     string? VerifiedEmail,
     UserId? ExistingUserId,
     VerificationRequestId? LinkVerificationRequestId,
-    DateTime ExpiresOnUtc);
+    DateTime ExpiresOnUtc,
+    bool EmailIsAuthoritative = true);

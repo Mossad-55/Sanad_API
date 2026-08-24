@@ -577,7 +577,11 @@ public sealed class StartSocialLoginCommandHandlerTests
             "provider-credential",
             "Ahmed's iPhone",
             DevicePlatform.iOS,
-            "1.0.0");
+            "1.0.0",
+            new string(
+                'n',
+                ExternalAuthenticationNoncePolicy
+                    .EncodedLength));
     }
 
     private static VerifiedExternalIdentity CreateVerifiedIdentity(
@@ -602,13 +606,24 @@ public sealed class StartSocialLoginCommandHandlerTests
 
         public Task<VerifiedExternalIdentity?> VerifyAsync(
             ExternalLoginProvider provider,
-            string providerCredential,
+            ExternalIdentityCredential credential,
             CancellationToken cancellationToken)
         {
-            Assert.Equal(ExternalLoginProvider.Google, provider);
-            Assert.Equal("provider-credential", providerCredential);
+            Assert.Equal(
+                ExternalLoginProvider.Google,
+                provider);
 
-            return Task.FromResult(_externalIdentity);
+            Assert.Equal(
+                "provider-credential",
+                credential.IdentityToken);
+
+            Assert.Equal(
+                ExternalAuthenticationNoncePolicy
+                    .EncodedLength,
+                credential.Nonce.Length);
+
+            return Task.FromResult(
+                _externalIdentity);
         }
     }
 

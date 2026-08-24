@@ -61,6 +61,19 @@ public static class DependencyInjection
             IValidateOptions<JwtOptions>,
             JwtOptionsValidator>();
 
+        services.AddOptions<
+            ExternalIdentityProviderOptions>()
+                .Bind(
+                    configuration.GetSection(
+                        ExternalIdentityProviderOptions
+                            .SectionName))
+                .ValidateOnStart();
+
+        services.AddSingleton<
+            IValidateOptions<
+                ExternalIdentityProviderOptions>,
+            ExternalIdentityProviderOptionsValidator>();
+
         services.AddSingleton<IPasswordHasher,
             AspNetPasswordHasher>();
 
@@ -76,8 +89,13 @@ public static class DependencyInjection
         services.AddSingleton<ISmsSender,
             DevelopmentSmsSender>();
 
-        services.AddSingleton<IExternalIdentityVerifier,
-            DevelopmentExternalIdentityVerifier>();
+        services.AddSingleton<
+            IExternalIdentityOpenIdConfigurationProvider,
+            ExternalIdentityOpenIdConfigurationProvider>();
+
+        services.AddScoped<
+            IExternalIdentityVerifier,
+            ProductionExternalIdentityVerifier>();
 
         services.AddScoped<
             IExternalAuthenticationNonceStore,

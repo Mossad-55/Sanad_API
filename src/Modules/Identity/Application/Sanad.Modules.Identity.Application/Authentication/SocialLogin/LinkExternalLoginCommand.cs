@@ -7,5 +7,6 @@ namespace Sanad.Modules.Identity.Application.Authentication.SocialLogin;
 public sealed record LinkExternalLoginCommand(
     UserId UserId,
     ExternalLoginProvider Provider,
-    string ProviderCredential)
+    string ProviderCredential,
+    string Nonce = "")
     : ICommand<LinkExternalLoginResponse>;
