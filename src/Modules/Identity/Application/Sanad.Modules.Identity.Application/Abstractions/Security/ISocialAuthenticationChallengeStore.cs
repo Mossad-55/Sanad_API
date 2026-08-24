@@ -8,7 +8,12 @@ public interface ISocialAuthenticationChallengeStore
         SocialAuthenticationChallenge challenge,
         CancellationToken cancellationToken);
 
-    Task<SocialAuthenticationChallenge?> ConsumeAsync(
+    Task<SocialAuthenticationChallenge?> GetActiveAsync(
+        string opaqueChallenge,
+        DateTime utcNow,
+        CancellationToken cancellationToken);
+
+    Task<bool> StageConsumeAsync(
         string opaqueChallenge,
         DateTime utcNow,
         CancellationToken cancellationToken);

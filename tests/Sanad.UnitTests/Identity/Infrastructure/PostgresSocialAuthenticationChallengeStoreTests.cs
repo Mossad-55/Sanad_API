@@ -12,195 +12,449 @@ namespace Sanad.UnitTests.Identity.Infrastructure;
 [Collection("LocalPostgres")]
 public sealed class PostgresSocialAuthenticationChallengeStoreTests
 {
-    private readonly LocalPostgresIdentityFixture _fixture;
+    private readonly LocalPostgresIdentityFixture
+        _fixture;
 
     public PostgresSocialAuthenticationChallengeStoreTests(
         LocalPostgresIdentityFixture fixture)
     {
-        _fixture = fixture;
+        _fixture =
+            fixture;
     }
 
     [LocalPostgresFact]
-    public async Task CreateAsync_ShouldStoreHashAndReturnOpaqueChallenge()
+    public async Task CreateAsync_ShouldStageHashUntilCallerSaves()
     {
         await ResetDatabaseAsync();
 
-        var store = new PostgresSocialAuthenticationChallengeStore(
-            _fixture.DbContext);
+        var store =
+            new PostgresSocialAuthenticationChallengeStore(
+                _fixture.DbContext);
 
-        SocialAuthenticationChallenge challenge = CreateChallenge(
-            FixedUtcNow.AddMinutes(10));
+        SocialAuthenticationChallenge challenge =
+            CreateChallenge(
+                FixedUtcNow.AddMinutes(10));
 
-        string opaqueChallenge = await store.CreateAsync(
-            challenge,
-            CancellationToken.None);
+        string opaqueChallenge =
+            await store.CreateAsync(
+                challenge,
+                CancellationToken.None);
 
-        Assert.False(string.IsNullOrWhiteSpace(opaqueChallenge));
+        Assert.False(
+            string.IsNullOrWhiteSpace(
+                opaqueChallenge));
 
-        string storedHash = await GetSingleStringAsync(
-            "SELECT challenge_hash FROM identity.social_authentication_challenges;");
+        long countBeforeSave =
+            await GetChallengeCountAsync();
 
-        Assert.NotEqual(opaqueChallenge, storedHash);
-        Assert.Equal(64, storedHash.Length);
+        Assert.Equal(
+            0,
+            countBeforeSave);
+
+        await _fixture.DbContext
+            .SaveChangesAsync();
+
+        string storedHash =
+            await GetSingleStringAsync(
+                """
+                SELECT challenge_hash
+                FROM identity.social_authentication_challenges;
+                """);
+
+        Assert.NotEqual(
+            opaqueChallenge,
+            storedHash);
+
+        Assert.Equal(
+            64,
+            storedHash.Length);
     }
 
     [LocalPostgresFact]
-    public async Task ConsumeAsync_ShouldReturnStoredChallengeAndAllowOnlyOneConsume()
+    public async Task StageConsumeAsync_ShouldReturnStoredChallengeAndAllowOnlyOneConsume()
     {
         await ResetDatabaseAsync();
 
-        var store = new PostgresSocialAuthenticationChallengeStore(
-            _fixture.DbContext);
+        var store =
+            new PostgresSocialAuthenticationChallengeStore(
+                _fixture.DbContext);
 
-        UserId existingUserId = UserId.New();
-        VerificationRequestId requestId = VerificationRequestId.New();
+        UserId existingUserId =
+            UserId.New();
 
-        SocialAuthenticationChallenge challenge = new(
+        VerificationRequestId requestId =
+            VerificationRequestId.New();
+
+        SocialAuthenticationChallenge challenge =
+            new(
+                ExternalLoginProvider.Google,
+                "google-subject",
+                "user@example.com",
+                existingUserId,
+                requestId,
+                FixedUtcNow.AddMinutes(10));
+
+        string opaqueChallenge =
+            await store.CreateAsync(
+                challenge,
+                CancellationToken.None);
+
+        await _fixture.DbContext
+            .SaveChangesAsync();
+
+        SocialAuthenticationChallenge? activeChallenge =
+            await store.GetActiveAsync(
+                opaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
+
+        Assert.NotNull(
+            activeChallenge);
+
+        Assert.Equal(
             ExternalLoginProvider.Google,
+            activeChallenge.Provider);
+
+        Assert.Equal(
             "google-subject",
+            activeChallenge.ProviderSubject);
+
+        Assert.Equal(
             "user@example.com",
+            activeChallenge.VerifiedEmail);
+
+        Assert.Equal(
             existingUserId,
+            activeChallenge.ExistingUserId);
+
+        Assert.Equal(
             requestId,
-            FixedUtcNow.AddMinutes(10));
+            activeChallenge.LinkVerificationRequestId);
 
-        string opaqueChallenge = await store.CreateAsync(
-            challenge,
-            CancellationToken.None);
+        bool consumptionStaged =
+            await store.StageConsumeAsync(
+                opaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
 
-        SocialAuthenticationChallenge? first = await store.ConsumeAsync(
-            opaqueChallenge,
-            FixedUtcNow,
-            CancellationToken.None);
+        Assert.True(
+            consumptionStaged);
 
-        SocialAuthenticationChallenge? second = await store.ConsumeAsync(
-            opaqueChallenge,
-            FixedUtcNow,
-            CancellationToken.None);
+        await _fixture.DbContext
+            .SaveChangesAsync();
 
-        Assert.NotNull(first);
-        Assert.Null(second);
-        Assert.Equal(ExternalLoginProvider.Google, first!.Provider);
-        Assert.Equal("google-subject", first.ProviderSubject);
-        Assert.Equal("user@example.com", first.VerifiedEmail);
-        Assert.Equal(existingUserId, first.ExistingUserId);
-        Assert.Equal(requestId, first.LinkVerificationRequestId);
+        SocialAuthenticationChallenge? consumedChallenge =
+            await store.GetActiveAsync(
+                opaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
+
+        Assert.Null(
+            consumedChallenge);
+
+        bool secondConsumptionStaged =
+            await store.StageConsumeAsync(
+                opaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
+
+        Assert.False(
+            secondConsumptionStaged);
     }
 
     [LocalPostgresFact]
-    public async Task ConsumeAsync_ShouldReturnNull_ForWrongOrExpiredChallenge()
+    public async Task GetActiveAsync_ShouldReturnNull_ForWrongOrExpiredChallenge()
     {
         await ResetDatabaseAsync();
 
-        var store = new PostgresSocialAuthenticationChallengeStore(
-            _fixture.DbContext);
+        var store =
+            new PostgresSocialAuthenticationChallengeStore(
+                _fixture.DbContext);
 
-        string validOpaqueChallenge = await store.CreateAsync(
-            CreateChallenge(FixedUtcNow.AddMinutes(10)),
-            CancellationToken.None);
+        string validOpaqueChallenge =
+            await store.CreateAsync(
+                CreateChallenge(
+                    FixedUtcNow.AddMinutes(10)),
+                CancellationToken.None);
 
-        string expiredOpaqueChallenge = await store.CreateAsync(
-            CreateChallenge(FixedUtcNow),
-            CancellationToken.None);
+        string expiredOpaqueChallenge =
+            await store.CreateAsync(
+                CreateChallenge(
+                    FixedUtcNow),
+                CancellationToken.None);
 
-        SocialAuthenticationChallenge? wrong = await store.ConsumeAsync(
-            "wrong-opaque-challenge",
-            FixedUtcNow,
-            CancellationToken.None);
+        await _fixture.DbContext
+            .SaveChangesAsync();
 
-        SocialAuthenticationChallenge? expired = await store.ConsumeAsync(
-            expiredOpaqueChallenge,
-            FixedUtcNow,
-            CancellationToken.None);
+        SocialAuthenticationChallenge? wrong =
+            await store.GetActiveAsync(
+                "wrong-opaque-challenge",
+                FixedUtcNow,
+                CancellationToken.None);
 
-        SocialAuthenticationChallenge? valid = await store.ConsumeAsync(
-            validOpaqueChallenge,
-            FixedUtcNow,
-            CancellationToken.None);
+        SocialAuthenticationChallenge? expired =
+            await store.GetActiveAsync(
+                expiredOpaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
 
-        Assert.Null(wrong);
-        Assert.Null(expired);
-        Assert.NotNull(valid);
+        SocialAuthenticationChallenge? valid =
+            await store.GetActiveAsync(
+                validOpaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
+
+        Assert.Null(
+            wrong);
+
+        Assert.Null(
+            expired);
+
+        Assert.NotNull(
+            valid);
     }
 
     [LocalPostgresFact]
-    public async Task ConsumeAsync_ShouldAllowExactlyOneConcurrentConsumer()
+    public async Task StageConsumeAsync_ShouldAllowExactlyOneConcurrentSave()
     {
         await ResetDatabaseAsync();
 
-        var creationStore = new PostgresSocialAuthenticationChallengeStore(
-            _fixture.DbContext);
+        var creationStore =
+            new PostgresSocialAuthenticationChallengeStore(
+                _fixture.DbContext);
 
-        string opaqueChallenge = await creationStore.CreateAsync(
-            CreateChallenge(FixedUtcNow.AddMinutes(10)),
-            CancellationToken.None);
+        string opaqueChallenge =
+            await creationStore.CreateAsync(
+                CreateChallenge(
+                    FixedUtcNow.AddMinutes(10)),
+                CancellationToken.None);
 
-        string connectionString = _fixture.ConnectionString;
+        await _fixture.DbContext
+            .SaveChangesAsync();
 
-        await using IdentityDbContext firstContext = CreateContext(connectionString);
-        await using IdentityDbContext secondContext = CreateContext(connectionString);
+        string connectionString =
+            _fixture.ConnectionString;
 
-        var firstStore = new PostgresSocialAuthenticationChallengeStore(firstContext);
-        var secondStore = new PostgresSocialAuthenticationChallengeStore(secondContext);
+        await using IdentityDbContext firstContext =
+            CreateContext(
+                connectionString);
 
-        Task<SocialAuthenticationChallenge?> firstTask = firstStore.ConsumeAsync(
-            opaqueChallenge,
-            FixedUtcNow,
-            CancellationToken.None);
+        await using IdentityDbContext secondContext =
+            CreateContext(
+                connectionString);
 
-        Task<SocialAuthenticationChallenge?> secondTask = secondStore.ConsumeAsync(
-            opaqueChallenge,
-            FixedUtcNow,
-            CancellationToken.None);
+        var firstStore =
+            new PostgresSocialAuthenticationChallengeStore(
+                firstContext);
 
-        SocialAuthenticationChallenge?[] results = await Task.WhenAll(
-            firstTask,
-            secondTask);
+        var secondStore =
+            new PostgresSocialAuthenticationChallengeStore(
+                secondContext);
 
-        Assert.Single(results, result => result is not null);
-        Assert.Single(results, result => result is null);
+        SocialAuthenticationChallenge? firstChallenge =
+            await firstStore.GetActiveAsync(
+                opaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
+
+        SocialAuthenticationChallenge? secondChallenge =
+            await secondStore.GetActiveAsync(
+                opaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
+
+        Assert.NotNull(
+            firstChallenge);
+
+        Assert.NotNull(
+            secondChallenge);
+
+        bool firstConsumptionStaged =
+            await firstStore.StageConsumeAsync(
+                opaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
+
+        bool secondConsumptionStaged =
+            await secondStore.StageConsumeAsync(
+                opaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
+
+        Assert.True(
+            firstConsumptionStaged);
+
+        Assert.True(
+            secondConsumptionStaged);
+
+        bool[] saveResults =
+            await Task.WhenAll(
+                TrySaveAsync(
+                    firstContext),
+                TrySaveAsync(
+                    secondContext));
+
+        Assert.Single(
+            saveResults,
+            result =>
+                result);
+
+        Assert.Single(
+            saveResults,
+            result =>
+                !result);
+
+        await using IdentityDbContext verificationContext =
+            CreateContext(
+                connectionString);
+
+        var verificationStore =
+            new PostgresSocialAuthenticationChallengeStore(
+                verificationContext);
+
+        SocialAuthenticationChallenge? finalChallenge =
+            await verificationStore.GetActiveAsync(
+                opaqueChallenge,
+                FixedUtcNow,
+                CancellationToken.None);
+
+        Assert.Null(
+            finalChallenge);
     }
 
     private async Task ResetDatabaseAsync()
     {
-        _fixture.DbContext.ChangeTracker.Clear();
+        _fixture.DbContext
+            .ChangeTracker
+            .Clear();
 
-        await _fixture.DbContext.Database.EnsureDeletedAsync();
-        await _fixture.DbContext.Database.EnsureCreatedAsync();
+        await _fixture.DbContext
+            .Database
+            .EnsureDeletedAsync();
 
-        _fixture.DbContext.ChangeTracker.Clear();
+        await _fixture.DbContext
+            .Database
+            .EnsureCreatedAsync();
+
+        _fixture.DbContext
+            .ChangeTracker
+            .Clear();
     }
 
-    private async Task<string> GetSingleStringAsync(string sql)
+    private async Task<long> GetChallengeCountAsync()
     {
-        NpgsqlConnection connection = (NpgsqlConnection)_fixture.DbContext
-            .Database.GetDbConnection();
+        NpgsqlConnection connection =
+            (NpgsqlConnection)_fixture
+                .DbContext
+                .Database
+                .GetDbConnection();
 
-        await connection.OpenAsync();
+        bool shouldClose =
+            connection.State !=
+            ConnectionState.Open;
+
+        if (shouldClose)
+        {
+            await connection.OpenAsync();
+        }
 
         try
         {
-            await using NpgsqlCommand command = new(sql, connection);
-            object? value = await command.ExecuteScalarAsync();
+            await using NpgsqlCommand command =
+                new(
+                    """
+                    SELECT COUNT(*)
+                    FROM identity.social_authentication_challenges;
+                    """,
+                    connection);
 
-            return Assert.IsType<string>(value);
+            object? value =
+                await command.ExecuteScalarAsync();
+
+            return Convert.ToInt64(
+                value);
         }
         finally
         {
-            await connection.CloseAsync();
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
         }
     }
 
-    private static IdentityDbContext CreateContext(string connectionString)
+    private async Task<string> GetSingleStringAsync(
+        string sql)
     {
-        var options = new DbContextOptionsBuilder<IdentityDbContext>()
-            .UseNpgsql(connectionString)
-            .Options;
+        NpgsqlConnection connection =
+            (NpgsqlConnection)_fixture
+                .DbContext
+                .Database
+                .GetDbConnection();
 
-        return new IdentityDbContext(options);
+        bool shouldClose =
+            connection.State !=
+            ConnectionState.Open;
+
+        if (shouldClose)
+        {
+            await connection.OpenAsync();
+        }
+
+        try
+        {
+            await using NpgsqlCommand command =
+                new(
+                    sql,
+                    connection);
+
+            object? value =
+                await command.ExecuteScalarAsync();
+
+            return Assert.IsType<string>(
+                value);
+        }
+        finally
+        {
+            if (shouldClose)
+            {
+                await connection.CloseAsync();
+            }
+        }
     }
 
-    private static SocialAuthenticationChallenge CreateChallenge(
-        DateTime expiresOnUtc)
+    private static async Task<bool> TrySaveAsync(
+        IdentityDbContext dbContext)
+    {
+        try
+        {
+            await dbContext.SaveChangesAsync();
+
+            return true;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return false;
+        }
+    }
+
+    private static IdentityDbContext CreateContext(
+        string connectionString)
+    {
+        DbContextOptions<IdentityDbContext> options =
+            new DbContextOptionsBuilder<
+                IdentityDbContext>()
+                .UseNpgsql(
+                    connectionString)
+                .Options;
+
+        return new IdentityDbContext(
+            options);
+    }
+
+    private static SocialAuthenticationChallenge
+        CreateChallenge(
+            DateTime expiresOnUtc)
     {
         return new SocialAuthenticationChallenge(
             ExternalLoginProvider.Google,
@@ -211,6 +465,13 @@ public sealed class PostgresSocialAuthenticationChallengeStoreTests
             expiresOnUtc);
     }
 
-    private static readonly DateTime FixedUtcNow = new(
-        2026, 8, 23, 10, 0, 0, DateTimeKind.Utc);
+    private static readonly DateTime FixedUtcNow =
+        new(
+            2026,
+            8,
+            23,
+            10,
+            0,
+            0,
+            DateTimeKind.Utc);
 }

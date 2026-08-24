@@ -98,6 +98,17 @@ public sealed class IdentityDbContextModelTests
                     index.Properties.Count == 1 &&
                     index.Properties[0].Name ==
                         "ChallengeHash");
+
+            var consumedOnUtc =
+                entityType.FindProperty(
+                    "ConsumedOnUtc");
+
+            Assert.NotNull(
+                consumedOnUtc);
+
+            Assert.True(
+                consumedOnUtc!
+                    .IsConcurrencyToken);
         }
     }
 

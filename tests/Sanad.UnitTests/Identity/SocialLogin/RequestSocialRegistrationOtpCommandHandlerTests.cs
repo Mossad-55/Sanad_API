@@ -19,41 +19,128 @@ public sealed class RequestSocialRegistrationOtpCommandHandlerTests
     [Fact]
     public async Task Handle_ShouldCreateBoundSmsOtpAndRegistrationChallenge_ForValidNewUserChallenge()
     {
-        await using IdentityTestDbContext dbContext = CreateDbContext();
-        RecordingRegistrationChallengeStore registrationStore = new();
-        RecordingSmsSender smsSender = new();
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        var authenticationStore =
+            new FakeSocialAuthenticationChallengeStore(
+                CreateNewUserChallenge());
+
+        var registrationStore =
+            new RecordingRegistrationChallengeStore();
+
+        var smsSender =
+            new RecordingSmsSender();
+
         dbContext.ResetSaveChangesCalls();
 
-        Result<RequestSocialRegistrationOtpResponse> result = await CreateHandler(
-            dbContext, CreateNewUserChallenge(), registrationStore, smsSender)
-            .Handle(CreateCommand(), CancellationToken.None);
+        RequestSocialRegistrationOtpCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                authenticationStore,
+                registrationStore,
+                smsSender);
 
-        Assert.True(result.IsSuccess);
-        Assert.Equal("registration-challenge", result.Value.OpaqueRegistrationChallenge);
-        Assert.Equal(FixedDateTimeProvider.UtcNowValue.Add(SocialLoginPolicy.ChallengeLifetime), result.Value.ExpiresOnUtc);
+        Result<RequestSocialRegistrationOtpResponse> result =
+            await handler.Handle(
+                CreateCommand(),
+                CancellationToken.None);
 
-        VerificationRequest otpRequest = Assert.Single(dbContext.VerificationRequests);
-        Assert.Null(otpRequest.UserId);
-        Assert.Equal("+201001234567", otpRequest.Target);
-        Assert.Equal("otp-hash", otpRequest.OtpHash);
-        Assert.NotEqual("123456", otpRequest.OtpHash);
-        Assert.Equal(VerificationChannel.Sms, otpRequest.Channel);
-        Assert.Equal(VerificationPurpose.VerifyPhone, otpRequest.Purpose);
+        Assert.True(
+            result.IsSuccess);
 
-        SocialRegistrationChallenge registrationChallenge = Assert.Single(registrationStore.CreatedChallenges);
-        Assert.Equal(otpRequest.Id, registrationChallenge.PhoneVerificationRequestId);
-        Assert.Equal("mohamed@example.com", registrationChallenge.VerifiedEmail);
-        Assert.Equal("محمد أحمد", registrationChallenge.ArabicFullName);
-        Assert.Equal("Mohamed Ahmed", registrationChallenge.EnglishFullName);
-        Assert.Equal(AccountType.Family, registrationChallenge.AccountType);
-        Assert.Equal("+201001234567", registrationChallenge.PhoneNumber);
+        Assert.Equal(
+            "registration-challenge",
+            result.Value
+                .OpaqueRegistrationChallenge);
 
-        SentSms sms = Assert.Single(smsSender.SentMessages);
-        Assert.Equal("+201001234567", sms.PhoneNumber);
-        Assert.Equal("123456", sms.Code);
-        Assert.Equal(VerificationPurpose.VerifyPhone, sms.Purpose);
-        Assert.Empty(dbContext.Users);
-        Assert.Equal(1, dbContext.SaveChangesCalls);
+        Assert.Equal(
+            FixedDateTimeProvider.UtcNowValue.Add(
+                SocialLoginPolicy.ChallengeLifetime),
+            result.Value.ExpiresOnUtc);
+
+        VerificationRequest otpRequest =
+            Assert.Single(
+                dbContext.VerificationRequests);
+
+        Assert.Null(
+            otpRequest.UserId);
+
+        Assert.Equal(
+            "+201001234567",
+            otpRequest.Target);
+
+        Assert.Equal(
+            "otp-hash",
+            otpRequest.OtpHash);
+
+        Assert.NotEqual(
+            "123456",
+            otpRequest.OtpHash);
+
+        Assert.Equal(
+            VerificationChannel.Sms,
+            otpRequest.Channel);
+
+        Assert.Equal(
+            VerificationPurpose.VerifyPhone,
+            otpRequest.Purpose);
+
+        SocialRegistrationChallenge registrationChallenge =
+            Assert.Single(
+                registrationStore.CreatedChallenges);
+
+        Assert.Equal(
+            otpRequest.Id,
+            registrationChallenge
+                .PhoneVerificationRequestId);
+
+        Assert.Equal(
+            "mohamed@example.com",
+            registrationChallenge.VerifiedEmail);
+
+        Assert.Equal(
+            "محمد أحمد",
+            registrationChallenge.ArabicFullName);
+
+        Assert.Equal(
+            "Mohamed Ahmed",
+            registrationChallenge.EnglishFullName);
+
+        Assert.Equal(
+            AccountType.Family,
+            registrationChallenge.AccountType);
+
+        Assert.Equal(
+            "+201001234567",
+            registrationChallenge.PhoneNumber);
+
+        Assert.Equal(
+            1,
+            authenticationStore.StageConsumeCalls);
+
+        SentSms sms =
+            Assert.Single(
+                smsSender.SentMessages);
+
+        Assert.Equal(
+            "+201001234567",
+            sms.PhoneNumber);
+
+        Assert.Equal(
+            "123456",
+            sms.Code);
+
+        Assert.Equal(
+            VerificationPurpose.VerifyPhone,
+            sms.Purpose);
+
+        Assert.Empty(
+            dbContext.Users);
+
+        Assert.Equal(
+            1,
+            dbContext.SaveChangesCalls);
     }
 
     [Theory]
@@ -65,107 +152,268 @@ public sealed class RequestSocialRegistrationOtpCommandHandlerTests
         bool missingEmail,
         bool missingChallenge)
     {
-        await using IdentityTestDbContext dbContext = CreateDbContext();
-        RecordingRegistrationChallengeStore registrationStore = new();
-        RecordingSmsSender smsSender = new();
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        var registrationStore =
+            new RecordingRegistrationChallengeStore();
+
+        var smsSender =
+            new RecordingSmsSender();
+
         dbContext.ResetSaveChangesCalls();
 
-        SocialAuthenticationChallenge? challenge = missingChallenge
-            ? null
-            : new SocialAuthenticationChallenge(
-                ExternalLoginProvider.Google,
-                "google-subject",
-                missingEmail ? null : "mohamed@example.com",
-                existingUserChallenge ? UserId.New() : null,
-                existingUserChallenge ? VerificationRequestId.New() : null,
-                FixedDateTimeProvider.UtcNowValue.AddMinutes(10));
+        SocialAuthenticationChallenge? challenge =
+            missingChallenge
+                ? null
+                : new SocialAuthenticationChallenge(
+                    ExternalLoginProvider.Google,
+                    "google-subject",
+                    missingEmail
+                        ? null
+                        : "mohamed@example.com",
+                    existingUserChallenge
+                        ? UserId.New()
+                        : null,
+                    existingUserChallenge
+                        ? VerificationRequestId.New()
+                        : null,
+                    FixedDateTimeProvider.UtcNowValue
+                        .AddMinutes(10));
 
-        Result<RequestSocialRegistrationOtpResponse> result = await CreateHandler(
-            dbContext, challenge, registrationStore, smsSender)
-            .Handle(CreateCommand(), CancellationToken.None);
+        var authenticationStore =
+            new FakeSocialAuthenticationChallengeStore(
+                challenge);
 
-        Assert.False(result.IsSuccess);
-        Assert.Equal(SocialLoginErrors.SocialRegistrationFailed, result.Error);
-        Assert.Empty(dbContext.Users);
-        Assert.Empty(dbContext.VerificationRequests);
-        Assert.Empty(registrationStore.CreatedChallenges);
-        Assert.Empty(smsSender.SentMessages);
-        Assert.Equal(0, dbContext.SaveChangesCalls);
+        Result<RequestSocialRegistrationOtpResponse> result =
+            await CreateHandler(
+                    dbContext,
+                    authenticationStore,
+                    registrationStore,
+                    smsSender)
+                .Handle(
+                    CreateCommand(),
+                    CancellationToken.None);
+
+        Assert.False(
+            result.IsSuccess);
+
+        Assert.Equal(
+            SocialLoginErrors.SocialRegistrationFailed,
+            result.Error);
+
+        Assert.Empty(
+            dbContext.Users);
+
+        Assert.Empty(
+            dbContext.VerificationRequests);
+
+        Assert.Empty(
+            registrationStore.CreatedChallenges);
+
+        Assert.Empty(
+            smsSender.SentMessages);
+
+        Assert.Equal(
+            0,
+            authenticationStore.StageConsumeCalls);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
     }
 
     [Fact]
     public async Task Handle_ShouldReturnGenericFailureWithoutSideEffects_ForDuplicateEmail()
     {
-        await using IdentityTestDbContext dbContext = CreateDbContext();
-        await SeedUserAsync(dbContext, "mohamed@example.com", "+201009999999");
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        await SeedUserAsync(
+            dbContext,
+            "mohamed@example.com",
+            "+201009999999");
+
         dbContext.ResetSaveChangesCalls();
-        RecordingRegistrationChallengeStore registrationStore = new();
-        RecordingSmsSender smsSender = new();
 
-        Result<RequestSocialRegistrationOtpResponse> result = await CreateHandler(
-            dbContext, CreateNewUserChallenge(), registrationStore, smsSender)
-            .Handle(CreateCommand(), CancellationToken.None);
+        var authenticationStore =
+            new FakeSocialAuthenticationChallengeStore(
+                CreateNewUserChallenge());
 
-        Assert.False(result.IsSuccess);
-        Assert.Equal(SocialLoginErrors.SocialRegistrationFailed, result.Error);
-        Assert.Empty(dbContext.VerificationRequests);
-        Assert.Empty(registrationStore.CreatedChallenges);
-        Assert.Empty(smsSender.SentMessages);
-        Assert.Equal(0, dbContext.SaveChangesCalls);
+        var registrationStore =
+            new RecordingRegistrationChallengeStore();
+
+        var smsSender =
+            new RecordingSmsSender();
+
+        Result<RequestSocialRegistrationOtpResponse> result =
+            await CreateHandler(
+                    dbContext,
+                    authenticationStore,
+                    registrationStore,
+                    smsSender)
+                .Handle(
+                    CreateCommand(),
+                    CancellationToken.None);
+
+        Assert.False(
+            result.IsSuccess);
+
+        Assert.Equal(
+            SocialLoginErrors.SocialRegistrationFailed,
+            result.Error);
+
+        Assert.Empty(
+            dbContext.VerificationRequests);
+
+        Assert.Empty(
+            registrationStore.CreatedChallenges);
+
+        Assert.Empty(
+            smsSender.SentMessages);
+
+        Assert.Equal(
+            0,
+            authenticationStore.StageConsumeCalls);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
     }
 
     [Fact]
     public async Task Handle_ShouldReturnGenericFailureWithoutSideEffects_ForDuplicatePhone()
     {
-        await using IdentityTestDbContext dbContext = CreateDbContext();
-        await SeedUserAsync(dbContext, "other@example.com", "+201001234567");
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        await SeedUserAsync(
+            dbContext,
+            "other@example.com",
+            "+201001234567");
+
         dbContext.ResetSaveChangesCalls();
-        RecordingRegistrationChallengeStore registrationStore = new();
-        RecordingSmsSender smsSender = new();
 
-        Result<RequestSocialRegistrationOtpResponse> result = await CreateHandler(
-            dbContext, CreateNewUserChallenge(), registrationStore, smsSender)
-            .Handle(CreateCommand(), CancellationToken.None);
+        var authenticationStore =
+            new FakeSocialAuthenticationChallengeStore(
+                CreateNewUserChallenge());
 
-        Assert.False(result.IsSuccess);
-        Assert.Equal(SocialLoginErrors.SocialRegistrationFailed, result.Error);
-        Assert.Empty(dbContext.VerificationRequests);
-        Assert.Empty(registrationStore.CreatedChallenges);
-        Assert.Empty(smsSender.SentMessages);
-        Assert.Equal(0, dbContext.SaveChangesCalls);
+        var registrationStore =
+            new RecordingRegistrationChallengeStore();
+
+        var smsSender =
+            new RecordingSmsSender();
+
+        Result<RequestSocialRegistrationOtpResponse> result =
+            await CreateHandler(
+                    dbContext,
+                    authenticationStore,
+                    registrationStore,
+                    smsSender)
+                .Handle(
+                    CreateCommand(),
+                    CancellationToken.None);
+
+        Assert.False(
+            result.IsSuccess);
+
+        Assert.Equal(
+            SocialLoginErrors.SocialRegistrationFailed,
+            result.Error);
+
+        Assert.Empty(
+            dbContext.VerificationRequests);
+
+        Assert.Empty(
+            registrationStore.CreatedChallenges);
+
+        Assert.Empty(
+            smsSender.SentMessages);
+
+        Assert.Equal(
+            0,
+            authenticationStore.StageConsumeCalls);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
     }
 
     [Theory]
     [InlineData(AccountType.Elderly)]
     [InlineData((AccountType)999)]
-    public async Task Handle_ShouldReturnGenericFailure_ForUnsupportedAccountType(AccountType accountType)
+    public async Task Handle_ShouldReturnGenericFailure_ForUnsupportedAccountType(
+        AccountType accountType)
     {
-        await using IdentityTestDbContext dbContext = CreateDbContext();
-        RecordingRegistrationChallengeStore registrationStore = new();
-        RecordingSmsSender smsSender = new();
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        var authenticationStore =
+            new FakeSocialAuthenticationChallengeStore(
+                CreateNewUserChallenge());
+
+        var registrationStore =
+            new RecordingRegistrationChallengeStore();
+
+        var smsSender =
+            new RecordingSmsSender();
+
         dbContext.ResetSaveChangesCalls();
 
-        Result<RequestSocialRegistrationOtpResponse> result = await CreateHandler(
-            dbContext, CreateNewUserChallenge(), registrationStore, smsSender)
-            .Handle(CreateCommand() with { AccountType = accountType }, CancellationToken.None);
+        RequestSocialRegistrationOtpCommand command =
+            CreateCommand() with
+            {
+                AccountType =
+                    accountType
+            };
 
-        Assert.False(result.IsSuccess);
-        Assert.Equal(SocialLoginErrors.SocialRegistrationFailed, result.Error);
-        Assert.Empty(dbContext.VerificationRequests);
-        Assert.Empty(registrationStore.CreatedChallenges);
-        Assert.Empty(smsSender.SentMessages);
-        Assert.Equal(0, dbContext.SaveChangesCalls);
+        Result<RequestSocialRegistrationOtpResponse> result =
+            await CreateHandler(
+                    dbContext,
+                    authenticationStore,
+                    registrationStore,
+                    smsSender)
+                .Handle(
+                    command,
+                    CancellationToken.None);
+
+        Assert.False(
+            result.IsSuccess);
+
+        Assert.Equal(
+            SocialLoginErrors.SocialRegistrationFailed,
+            result.Error);
+
+        Assert.Empty(
+            dbContext.VerificationRequests);
+
+        Assert.Empty(
+            registrationStore.CreatedChallenges);
+
+        Assert.Empty(
+            smsSender.SentMessages);
+
+        Assert.Equal(
+            0,
+            authenticationStore.StageConsumeCalls);
+
+        Assert.Equal(
+            0,
+            dbContext.SaveChangesCalls);
     }
 
-    private static RequestSocialRegistrationOtpCommandHandler CreateHandler(
-        IdentityTestDbContext dbContext,
-        SocialAuthenticationChallenge? socialChallenge,
-        ISocialRegistrationChallengeStore registrationStore,
-        ISmsSender smsSender)
+    private static RequestSocialRegistrationOtpCommandHandler
+        CreateHandler(
+            IdentityTestDbContext dbContext,
+            ISocialAuthenticationChallengeStore
+                authenticationStore,
+            ISocialRegistrationChallengeStore
+                registrationStore,
+            ISmsSender smsSender)
     {
         return new RequestSocialRegistrationOtpCommandHandler(
             dbContext,
-            new FakeSocialAuthenticationChallengeStore(socialChallenge),
+            authenticationStore,
             registrationStore,
             new FakeOtpService(),
             smsSender,
@@ -174,83 +422,222 @@ public sealed class RequestSocialRegistrationOtpCommandHandlerTests
 
     private static IdentityTestDbContext CreateDbContext()
     {
+        DbContextOptions<IdentityTestDbContext> options =
+            new DbContextOptionsBuilder<
+                IdentityTestDbContext>()
+                .UseInMemoryDatabase(
+                    Guid.NewGuid()
+                        .ToString())
+                .Options;
+
         return new IdentityTestDbContext(
-            new DbContextOptionsBuilder<IdentityTestDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options);
+            options);
     }
 
-    private static async Task SeedUserAsync(IdentityTestDbContext dbContext, string email, string phoneNumber)
+    private static async Task SeedUserAsync(
+        IdentityTestDbContext dbContext,
+        string email,
+        string phoneNumber)
     {
-        User user = User.Create(
-            FullName.Create("محمد أحمد"),
-            FullName.Create("Mohamed Ahmed"),
-            Email.Create(email),
-            PhoneNumber.Create(phoneNumber));
-        user.AddAccount(AccountType.Family);
-        dbContext.Users.Add(user);
+        User user =
+            User.Create(
+                FullName.Create(
+                    "محمد أحمد"),
+                FullName.Create(
+                    "Mohamed Ahmed"),
+                Email.Create(
+                    email),
+                PhoneNumber.Create(
+                    phoneNumber));
+
+        user.AddAccount(
+            AccountType.Family);
+
+        dbContext.Users.Add(
+            user);
+
         await dbContext.SaveChangesAsync();
     }
 
-    private static RequestSocialRegistrationOtpCommand CreateCommand()
+    private static RequestSocialRegistrationOtpCommand
+        CreateCommand()
     {
         return new RequestSocialRegistrationOtpCommand(
-            "initial-challenge", "محمد أحمد", "Mohamed Ahmed",
-            AccountType.Family, "+201001234567");
+            "initial-challenge",
+            "محمد أحمد",
+            "Mohamed Ahmed",
+            AccountType.Family,
+            "+201001234567");
     }
 
-    private static SocialAuthenticationChallenge CreateNewUserChallenge()
+    private static SocialAuthenticationChallenge
+        CreateNewUserChallenge()
     {
         return new SocialAuthenticationChallenge(
-            ExternalLoginProvider.Google, "google-subject", "mohamed@example.com",
-            ExistingUserId: null, LinkVerificationRequestId: null,
-            FixedDateTimeProvider.UtcNowValue.AddMinutes(10));
+            ExternalLoginProvider.Google,
+            "google-subject",
+            "mohamed@example.com",
+            ExistingUserId: null,
+            LinkVerificationRequestId: null,
+            FixedDateTimeProvider.UtcNowValue
+                .AddMinutes(10));
     }
 
-    private sealed class FakeSocialAuthenticationChallengeStore : ISocialAuthenticationChallengeStore
+    private sealed class
+        FakeSocialAuthenticationChallengeStore :
+            ISocialAuthenticationChallengeStore
     {
-        private readonly SocialAuthenticationChallenge? _challenge;
-        internal FakeSocialAuthenticationChallengeStore(SocialAuthenticationChallenge? challenge) => _challenge = challenge;
-        public Task<string> CreateAsync(SocialAuthenticationChallenge challenge, CancellationToken cancellationToken) => throw new NotSupportedException();
-        public Task<SocialAuthenticationChallenge?> ConsumeAsync(string opaqueChallenge, DateTime utcNow, CancellationToken cancellationToken) => Task.FromResult(_challenge);
-    }
+        private readonly SocialAuthenticationChallenge?
+            _challenge;
 
-    private sealed class RecordingRegistrationChallengeStore : ISocialRegistrationChallengeStore
-    {
-        internal List<SocialRegistrationChallenge> CreatedChallenges { get; } = [];
-        public Task<string> CreateAsync(SocialRegistrationChallenge challenge, CancellationToken cancellationToken)
+        internal FakeSocialAuthenticationChallengeStore(
+            SocialAuthenticationChallenge? challenge)
         {
-            CreatedChallenges.Add(challenge);
-            return Task.FromResult("registration-challenge");
+            _challenge =
+                challenge;
         }
-        public Task<SocialRegistrationChallenge?> ConsumeAsync(string opaqueChallenge, DateTime utcNow, CancellationToken cancellationToken) => throw new NotSupportedException();
-    }
 
-    private sealed class FakeOtpService : IOtpService
-    {
-        public GeneratedOtpCode Generate(int length)
+        internal int StageConsumeCalls
         {
-            Assert.Equal(OtpPolicy.CodeLength, length);
-            return new GeneratedOtpCode("123456", "otp-hash");
+            get;
+            private set;
         }
-        public bool Verify(string providedCode, string otpHash) => throw new NotSupportedException();
+
+        public Task<string> CreateAsync(
+            SocialAuthenticationChallenge challenge,
+            CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<SocialAuthenticationChallenge?>
+            GetActiveAsync(
+                string opaqueChallenge,
+                DateTime utcNow,
+                CancellationToken cancellationToken)
+        {
+            return Task.FromResult(
+                _challenge);
+        }
+
+        public Task<bool> StageConsumeAsync(
+            string opaqueChallenge,
+            DateTime utcNow,
+            CancellationToken cancellationToken)
+        {
+            StageConsumeCalls++;
+
+            return Task.FromResult(
+                true);
+        }
     }
 
-    private sealed class RecordingSmsSender : ISmsSender
+    private sealed class
+        RecordingRegistrationChallengeStore :
+            ISocialRegistrationChallengeStore
     {
-        internal List<SentSms> SentMessages { get; } = [];
-        public Task SendVerificationCodeAsync(string phoneNumber, string code, VerificationPurpose purpose, CancellationToken cancellationToken)
+        internal List<SocialRegistrationChallenge>
+            CreatedChallenges
         {
-            SentMessages.Add(new SentSms(phoneNumber, code, purpose));
+            get;
+        } = [];
+
+        public Task<string> CreateAsync(
+            SocialRegistrationChallenge challenge,
+            CancellationToken cancellationToken)
+        {
+            CreatedChallenges.Add(
+                challenge);
+
+            return Task.FromResult(
+                "registration-challenge");
+        }
+
+        public Task<SocialRegistrationChallenge?>
+            GetActiveAsync(
+                string opaqueChallenge,
+                DateTime utcNow,
+                CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> StageConsumeAsync(
+            string opaqueChallenge,
+            DateTime utcNow,
+            CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class FakeOtpService :
+        IOtpService
+    {
+        public GeneratedOtpCode Generate(
+            int length)
+        {
+            Assert.Equal(
+                OtpPolicy.CodeLength,
+                length);
+
+            return new GeneratedOtpCode(
+                "123456",
+                "otp-hash");
+        }
+
+        public bool Verify(
+            string providedCode,
+            string otpHash)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class RecordingSmsSender :
+        ISmsSender
+    {
+        internal List<SentSms> SentMessages
+        {
+            get;
+        } = [];
+
+        public Task SendVerificationCodeAsync(
+            string phoneNumber,
+            string code,
+            VerificationPurpose purpose,
+            CancellationToken cancellationToken)
+        {
+            SentMessages.Add(
+                new SentSms(
+                    phoneNumber,
+                    code,
+                    purpose));
+
             return Task.CompletedTask;
         }
     }
 
-    private sealed record SentSms(string PhoneNumber, string Code, VerificationPurpose Purpose);
+    private sealed record SentSms(
+        string PhoneNumber,
+        string Code,
+        VerificationPurpose Purpose);
 
-    private sealed class FixedDateTimeProvider : IDateTimeProvider
+    private sealed class FixedDateTimeProvider :
+        IDateTimeProvider
     {
-        internal static readonly DateTime UtcNowValue = new(2026, 8, 22, 10, 0, 0, DateTimeKind.Utc);
-        public DateTime UtcNow => UtcNowValue;
+        internal static readonly DateTime
+            UtcNowValue =
+                new(
+                    2026,
+                    8,
+                    22,
+                    10,
+                    0,
+                    0,
+                    DateTimeKind.Utc);
+
+        public DateTime UtcNow =>
+            UtcNowValue;
     }
 }

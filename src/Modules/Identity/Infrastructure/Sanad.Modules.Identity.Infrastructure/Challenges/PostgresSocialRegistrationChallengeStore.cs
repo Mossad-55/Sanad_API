@@ -2,7 +2,6 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Npgsql;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Application.Authentication.SocialLogin;
@@ -24,10 +23,12 @@ public sealed class PostgresSocialRegistrationChallengeStore :
         _dbContext = dbContext;
     }
 
-    public async Task<string> CreateAsync(
+    public Task<string> CreateAsync(
         SocialRegistrationChallenge challenge,
         CancellationToken cancellationToken)
     {
+        cancellationToken.ThrowIfCancellationRequested();
+
         string opaqueChallenge =
             CreateOpaqueChallenge();
 
@@ -53,93 +54,100 @@ public sealed class PostgresSocialRegistrationChallengeStore :
         _dbContext.SocialRegistrationChallenges.Add(
             record);
 
-        await _dbContext.SaveChangesAsync(
-            cancellationToken);
-
-        return opaqueChallenge;
+        return Task.FromResult(
+            opaqueChallenge);
     }
 
-    public async Task<SocialRegistrationChallenge?> ConsumeAsync(
-        string opaqueChallenge,
-        DateTime utcNow,
-        CancellationToken cancellationToken)
+    public async Task<SocialRegistrationChallenge?>
+        GetActiveAsync(
+            string opaqueChallenge,
+            DateTime utcNow,
+            CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(
-            opaqueChallenge))
+                opaqueChallenge))
         {
             return null;
         }
 
         string challengeHash =
-            Hash(opaqueChallenge);
+            Hash(
+                opaqueChallenge);
 
-        NpgsqlConnection connection =
-            (NpgsqlConnection)_dbContext.Database
-                .GetDbConnection();
-
-        await connection.OpenAsync(
-            cancellationToken);
-
-        try
-        {
-            await using NpgsqlCommand command =
-                connection.CreateCommand();
-
-            command.CommandText = """
-                UPDATE identity.social_registration_challenges
-                SET consumed_on_utc = @utcNow
-                WHERE challenge_hash = @challengeHash
-                  AND consumed_on_utc IS NULL
-                  AND expires_on_utc > @utcNow
-                RETURNING
-                    provider,
-                    provider_subject,
-                    verified_email,
-                    arabic_full_name,
-                    english_full_name,
-                    account_type,
-                    phone_number,
-                    phone_verification_request_id,
-                    expires_on_utc;
-                """;
-
-            command.Parameters.AddWithValue(
-                "utcNow",
-                utcNow);
-
-            command.Parameters.AddWithValue(
-                "challengeHash",
-                challengeHash);
-
-            await using NpgsqlDataReader reader =
-                await command.ExecuteReaderAsync(
+        SocialRegistrationChallengeRecord? record =
+            await _dbContext
+                .SocialRegistrationChallenges
+                .AsTracking()
+                .SingleOrDefaultAsync(
+                    item =>
+                        item.ChallengeHash ==
+                            challengeHash &&
+                        item.ConsumedOnUtc ==
+                            null &&
+                        item.ExpiresOnUtc >
+                            utcNow,
                     cancellationToken);
 
-            if (!await reader.ReadAsync(
-                cancellationToken))
-            {
-                return null;
-            }
-
-            return new SocialRegistrationChallenge(
-                (ExternalLoginProvider)
-                    reader.GetInt32(0),
-                reader.GetString(1),
-                reader.GetString(2),
-                reader.GetString(3),
-                reader.GetString(4),
-                (AccountType)reader.GetInt32(5),
-                reader.GetString(6),
-                new VerificationRequestId(
-                    reader.GetGuid(7)),
-                reader.GetDateTime(8));
-        }
-        finally
-        {
-            await connection.CloseAsync();
-        }
+        return record is null
+            ? null
+            : Map(record);
     }
 
+    public async Task<bool> StageConsumeAsync(
+        string opaqueChallenge,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(
+                opaqueChallenge))
+        {
+            return false;
+        }
+
+        string challengeHash =
+            Hash(
+                opaqueChallenge);
+
+        SocialRegistrationChallengeRecord? record =
+            await _dbContext
+                .SocialRegistrationChallenges
+                .AsTracking()
+                .SingleOrDefaultAsync(
+                    item =>
+                        item.ChallengeHash ==
+                            challengeHash &&
+                        item.ConsumedOnUtc ==
+                            null &&
+                        item.ExpiresOnUtc >
+                            utcNow,
+                    cancellationToken);
+
+        if (record is null ||
+            record.ConsumedOnUtc is not null)
+        {
+            return false;
+        }
+
+        record.ConsumedOnUtc =
+            utcNow;
+
+        return true;
+    }
+
+    private static SocialRegistrationChallenge Map(
+        SocialRegistrationChallengeRecord record)
+    {
+        return new SocialRegistrationChallenge(
+            record.Provider,
+            record.ProviderSubject,
+            record.VerifiedEmail,
+            record.ArabicFullName,
+            record.EnglishFullName,
+            record.AccountType,
+            record.PhoneNumber,
+            record.PhoneVerificationRequestId,
+            record.ExpiresOnUtc);
+    }
     private static string CreateOpaqueChallenge()
     {
         return Base64UrlEncoder.Encode(

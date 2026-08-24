@@ -434,7 +434,9 @@ public sealed class StartSocialLoginCommandHandlerTests
         Assert.Empty(dbContext.VerificationRequests);
         Assert.Empty(dbContext.DeviceSessions);
         Assert.Empty(emailSender.SentMessages);
-        Assert.Equal(0, dbContext.SaveChangesCalls);
+        Assert.Equal(
+            1,
+            dbContext.SaveChangesCalls);
     }
 
     [Fact]
@@ -469,7 +471,8 @@ public sealed class StartSocialLoginCommandHandlerTests
         Assert.Empty(dbContext.Users);
         Assert.Empty(dbContext.VerificationRequests);
         Assert.Empty(dbContext.DeviceSessions);
-        Assert.Equal(0, dbContext.SaveChangesCalls);
+        Assert.Equal(1,
+        dbContext.SaveChangesCalls);
     }
 
     private static StartSocialLoginCommandHandler CreateHandler(
@@ -623,7 +626,16 @@ public sealed class StartSocialLoginCommandHandlerTests
             return Task.FromResult("opaque-challenge");
         }
 
-        public Task<SocialAuthenticationChallenge?> ConsumeAsync(
+        public Task<SocialAuthenticationChallenge?>
+        GetActiveAsync(
+            string opaqueChallenge,
+            DateTime utcNow,
+            CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<bool> StageConsumeAsync(
             string opaqueChallenge,
             DateTime utcNow,
             CancellationToken cancellationToken)

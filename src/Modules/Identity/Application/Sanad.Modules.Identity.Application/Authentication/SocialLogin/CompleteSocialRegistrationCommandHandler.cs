@@ -44,7 +44,7 @@ public sealed class CompleteSocialRegistrationCommandHandler :
         DateTime utcNow = _dateTimeProvider.UtcNow;
 
         SocialRegistrationChallenge? challenge =
-            await _challengeStore.ConsumeAsync(
+            await _challengeStore.GetActiveAsync(
                 request.OpaqueRegistrationChallenge,
                 utcNow,
                 cancellationToken);
@@ -100,6 +100,18 @@ public sealed class CompleteSocialRegistrationCommandHandler :
             return SocialLoginErrors.SocialRegistrationFailed;
         }
 
+        bool consumtionStaged =
+            await _challengeStore.StageConsumeAsync(
+                request.OpaqueRegistrationChallenge,
+                utcNow,
+                cancellationToken);
+
+        if (!consumtionStaged)
+        {
+            return SocialLoginErrors
+                .SocialRegistrationFailed;
+        }
+
         DeviceSessionPolicy.EnsureCanCreateSession(0);
 
         User user = User.Create(arabicName, englishName, email, phone);
@@ -124,7 +136,16 @@ public sealed class CompleteSocialRegistrationCommandHandler :
         _dbContext.Users.Add(user);
         _dbContext.DeviceSessions.Add(session);
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(
+                cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return SocialLoginErrors
+                .SocialRegistrationFailed;
+        }
 
         return new StartSocialLoginResponse(
             AuthAccessType.Normal,

@@ -56,7 +56,7 @@ public sealed class RequestSocialRegistrationOtpCommandHandler :
 
         SocialAuthenticationChallenge? socialChallenge =
             await _socialAuthenticationChallengeStore
-                .ConsumeAsync(
+                .GetActiveAsync(
                     request.OpaqueChallenge,
                     utcNow,
                     cancellationToken);
@@ -150,8 +150,29 @@ public sealed class RequestSocialRegistrationOtpCommandHandler :
         _dbContext.VerificationRequests.Add(
             phoneVerificationRequest);
 
-        await _dbContext.SaveChangesAsync(
-            cancellationToken);
+        bool consumptionStaged =
+            await _socialAuthenticationChallengeStore
+                .StageConsumeAsync(
+                    request.OpaqueChallenge,
+                    utcNow,
+                    cancellationToken);
+
+        if (!consumptionStaged)
+        {
+            return SocialLoginErrors
+                .SocialRegistrationFailed;
+        }
+
+        try
+        {
+            await _dbContext.SaveChangesAsync(
+                cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return SocialLoginErrors
+                .SocialRegistrationFailed;
+        }
 
         await _smsSender.SendVerificationCodeAsync(
             phoneNumber.Value,

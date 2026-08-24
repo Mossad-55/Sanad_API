@@ -46,7 +46,7 @@ public sealed class ConfirmExternalLoginLinkCommandHandler :
         DateTime utcNow = _dateTimeProvider.UtcNow;
 
         SocialAuthenticationChallenge? challenge =
-            await _challengeStore.ConsumeAsync(
+            await _challengeStore.GetActiveAsync(
                 request.OpaqueChallenge,
                 utcNow,
                 cancellationToken);
@@ -150,6 +150,18 @@ public sealed class ConfirmExternalLoginLinkCommandHandler :
                 ? _tokenService.GenerateAccessToken(user, utcNow)
                 : _tokenService.GenerateRestrictedVerificationToken(user, utcNow);
 
+        bool consumtionStaged =
+            await _challengeStore.StageConsumeAsync(
+                request.OpaqueChallenge,
+                utcNow,
+                cancellationToken);
+
+        if (!consumtionStaged)
+        {
+            return SocialLoginErrors
+                .ExternalLinkConfirmationFailed;
+        }
+
         GeneratedRefreshToken? refreshToken =
             normalAccess
                 ? _tokenService.GenerateRefreshToken(utcNow)
@@ -186,7 +198,16 @@ public sealed class ConfirmExternalLoginLinkCommandHandler :
 
         user.UpdateLastLogin(utcNow);
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(
+                cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return SocialLoginErrors
+                .ExternalLinkConfirmationFailed;
+        }
 
         return new StartSocialLoginResponse(
             normalAccess

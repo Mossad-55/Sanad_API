@@ -294,6 +294,9 @@ public sealed class StartSocialLoginCommandHandler :
                 challenge,
                 cancellationToken);
 
+        await _dbContext.SaveChangesAsync(
+            cancellationToken);
+
         return CreateChallengeResponse(
             opaqueChallenge);
     }

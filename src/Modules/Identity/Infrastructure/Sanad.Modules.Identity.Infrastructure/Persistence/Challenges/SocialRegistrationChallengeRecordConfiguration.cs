@@ -94,7 +94,8 @@ internal sealed class SocialRegistrationChallengeRecordConfiguration :
 
         builder.Property(record =>
                 record.ConsumedOnUtc)
-            .HasColumnName("consumed_on_utc");
+            .HasColumnName("consumed_on_utc")
+            .IsConcurrencyToken();
 
         builder.HasIndex(record =>
                 record.ChallengeHash)

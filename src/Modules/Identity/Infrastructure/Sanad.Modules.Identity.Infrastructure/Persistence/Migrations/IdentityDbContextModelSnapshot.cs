@@ -262,6 +262,7 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnName("challenge_hash");
 
                     b.Property<DateTime?>("ConsumedOnUtc")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("consumed_on_utc");
 
@@ -329,6 +330,7 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnName("challenge_hash");
 
                     b.Property<DateTime?>("ConsumedOnUtc")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("consumed_on_utc");
 

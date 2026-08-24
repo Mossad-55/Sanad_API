@@ -281,12 +281,44 @@ public sealed class ConfirmExternalLoginLinkCommandHandlerTests
             DevicePlatform.iOS, "1.0.0");
     }
 
-    private sealed class FakeChallengeStore : ISocialAuthenticationChallengeStore
+    private sealed class FakeChallengeStore :
+        ISocialAuthenticationChallengeStore
     {
-        private readonly SocialAuthenticationChallenge? _challenge;
-        internal FakeChallengeStore(SocialAuthenticationChallenge? challenge) => _challenge = challenge;
-        public Task<string> CreateAsync(SocialAuthenticationChallenge challenge, CancellationToken cancellationToken) => throw new NotSupportedException();
-        public Task<SocialAuthenticationChallenge?> ConsumeAsync(string opaqueChallenge, DateTime utcNow, CancellationToken cancellationToken) => Task.FromResult(_challenge);
+        private readonly SocialAuthenticationChallenge?
+            _challenge;
+
+        internal FakeChallengeStore(
+            SocialAuthenticationChallenge? challenge)
+        {
+            _challenge =
+                challenge;
+        }
+
+        public Task<string> CreateAsync(
+            SocialAuthenticationChallenge challenge,
+            CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<SocialAuthenticationChallenge?>
+            GetActiveAsync(
+                string opaqueChallenge,
+                DateTime utcNow,
+                CancellationToken cancellationToken)
+        {
+            return Task.FromResult(
+                _challenge);
+        }
+
+        public Task<bool> StageConsumeAsync(
+            string opaqueChallenge,
+            DateTime utcNow,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(
+                true);
+        }
     }
 
     private sealed class FakeOtpService : IOtpService

@@ -142,10 +142,35 @@ public sealed class CompleteSocialRegistrationCommandHandlerTests
 
     private static CompleteSocialRegistrationCommand CreateCommand() => new("registration-challenge", "123456", "iPhone", DevicePlatform.iOS, "1.0.0");
 
-    private sealed class ChallengeStore(SocialRegistrationChallenge? challenge) : ISocialRegistrationChallengeStore
+    private sealed class ChallengeStore(
+        SocialRegistrationChallenge? challenge) :
+        ISocialRegistrationChallengeStore
     {
-        public Task<string> CreateAsync(SocialRegistrationChallenge challenge, CancellationToken cancellationToken) => throw new NotSupportedException();
-        public Task<SocialRegistrationChallenge?> ConsumeAsync(string opaqueChallenge, DateTime utcNow, CancellationToken cancellationToken) => Task.FromResult(challenge);
+        public Task<string> CreateAsync(
+            SocialRegistrationChallenge challenge,
+            CancellationToken cancellationToken)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<SocialRegistrationChallenge?>
+            GetActiveAsync(
+                string opaqueChallenge,
+                DateTime utcNow,
+                CancellationToken cancellationToken)
+        {
+            return Task.FromResult(
+                challenge);
+        }
+
+        public Task<bool> StageConsumeAsync(
+            string opaqueChallenge,
+            DateTime utcNow,
+            CancellationToken cancellationToken)
+        {
+            return Task.FromResult(
+                true);
+        }
     }
 
     private sealed class OtpService(bool valid) : IOtpService
