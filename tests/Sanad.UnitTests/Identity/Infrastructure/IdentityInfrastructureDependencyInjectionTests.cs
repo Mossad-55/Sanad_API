@@ -1,12 +1,13 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using Sanad.Modules.Identity.Application.Abstractions.Data;
-using Sanad.Modules.Identity.Application.Abstractions.Messaging;
-using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Infrastructure;
-using Sanad.Modules.Identity.Infrastructure.Messaging;
 using Sanad.Modules.Identity.Infrastructure.Security;
+using Sanad.BuildingBlocks.Application.Abstractions;
+using Sanad.Modules.Identity.Application.Abstractions.Data;
+using Sanad.Modules.Identity.Application.Abstractions.Security;
+using Sanad.Modules.Identity.Infrastructure.Messaging;
+using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 
 namespace Sanad.UnitTests.Identity.Infrastructure;
 
@@ -20,6 +21,58 @@ public sealed class IdentityInfrastructureDependencyInjectionTests
 
         Assert.Throws<InvalidOperationException>(
             () => services.AddIdentityInfrastructure(configuration));
+    }
+
+    [Fact]
+    public void AddIdentityInfrastructure_ShouldResolveRemainingProviders()
+    {
+        IServiceCollection services =
+            new ServiceCollection();
+
+        IConfiguration configuration =
+            CreateValidConfiguration();
+
+        services.AddIdentityInfrastructure(
+            configuration);
+
+        using ServiceProvider serviceProvider =
+            services.BuildServiceProvider(
+                new ServiceProviderOptions
+                {
+                    ValidateScopes =
+                        true
+                });
+
+        using IServiceScope scope =
+            serviceProvider.CreateScope();
+
+        Assert.NotNull(
+            scope.ServiceProvider.GetRequiredService<
+                IIdentityDbContext>());
+
+        Assert.NotNull(
+            scope.ServiceProvider.GetRequiredService<
+                IDateTimeProvider>());
+
+        Assert.IsType<AspNetPasswordHasher>(
+            scope.ServiceProvider.GetRequiredService<
+                IPasswordHasher>());
+
+        Assert.IsType<Pbkdf2OtpService>(
+            scope.ServiceProvider.GetRequiredService<
+                IOtpService>());
+
+        Assert.IsType<JwtAuthTokenService>(
+            scope.ServiceProvider.GetRequiredService<
+                IAuthTokenService>());
+
+        Assert.IsType<DevelopmentEmailSender>(
+            scope.ServiceProvider.GetRequiredService<
+                IEmailSender>());
+
+        Assert.IsType<DevelopmentSmsSender>(
+            scope.ServiceProvider.GetRequiredService<
+                ISmsSender>());
     }
 
     [Theory]

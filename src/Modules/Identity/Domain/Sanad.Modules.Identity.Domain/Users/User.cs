@@ -723,7 +723,7 @@ public sealed class User : AggregateRoot<UserId>
         if (!HasPassword)
         {
             throw new DomainException(
-                "Passord is required.");
+                "Password is required.");
         }
     }
 

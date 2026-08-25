@@ -19,12 +19,9 @@ public sealed class IdentityDbContextModelTests
     [Theory]
     [InlineData("users")]
     [InlineData("user_accounts")]
-    [InlineData("user_external_logins")]
     [InlineData("user_identity_documents")]
     [InlineData("verification_requests")]
     [InlineData("device_sessions")]
-    [InlineData("social_authentication_challenges")]
-    [InlineData("social_registration_challenges")]
     public void Model_ShouldContainExpectedIdentityTables(
         string tableName)
     {
