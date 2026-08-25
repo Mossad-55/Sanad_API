@@ -4,7 +4,9 @@ public sealed class SmsMisrOptions
 {
     public const string SectionName = "Identity:Sms:SmsMisr";
 
-    public const string SuccessCode = "4901";
+    public const string OtpSuccessCode = "4901";
+
+    public const string SmsSuccessCode = "1901";
 
     public string Username { get; init; } = string.Empty;
 
@@ -21,6 +23,8 @@ public sealed class SmsMisrOptions
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(Username) &&
         !string.IsNullOrWhiteSpace(Password) &&
-        !string.IsNullOrWhiteSpace(Sender) &&
+        !string.IsNullOrWhiteSpace(Sender);
+
+    public bool UseOtpApi =>
         !string.IsNullOrWhiteSpace(Template);
 }

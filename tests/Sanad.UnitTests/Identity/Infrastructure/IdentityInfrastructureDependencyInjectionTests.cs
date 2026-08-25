@@ -111,9 +111,6 @@ public sealed class IdentityInfrastructureDependencyInjectionTests
                 new KeyValuePair<string, string?>(
                     "Identity:Sms:SmsMisr:Sender",
                     "test-sender"),
-                new KeyValuePair<string, string?>(
-                    "Identity:Sms:SmsMisr:Template",
-                    "test-template")
             ]);
 
         services.AddIdentityInfrastructure(

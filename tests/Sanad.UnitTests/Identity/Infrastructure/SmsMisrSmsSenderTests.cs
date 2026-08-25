@@ -58,6 +58,50 @@ public sealed class SmsMisrSmsSenderTests
         Assert.Equal("123456", form["otp"]);
     }
 
+    [Fact]
+    public async Task SendVerificationCodeAsync_ShouldPostFreeTextSmsWhenTemplateMissing()
+    {
+        var handler =
+            new RecordingHandler(
+                """{"code":"1901","SMSID":"1","Cost":"1"}""");
+
+        using var httpClient =
+            new HttpClient(handler);
+
+        var sender =
+            new SmsMisrSmsSender(
+                httpClient,
+                Options.Create(
+                    new SmsMisrOptions
+                    {
+                        Username = "test-user",
+                        Password = "test-password",
+                        Sender = "test-sender",
+                        Environment = 2,
+                        BaseUrl = "https://smsmisr.com"
+                    }));
+
+        await sender.SendVerificationCodeAsync(
+            "+201001234567",
+            "123456",
+            VerificationPurpose.VerifyPhone,
+            CancellationToken.None);
+
+        Assert.Equal(
+            "https://smsmisr.com/api/SMS/",
+            handler.Request?.RequestUri?.ToString());
+
+        Dictionary<string, string> form =
+            ParseForm(handler.Body);
+
+        Assert.Equal("2", form["environment"]);
+        Assert.Equal("201001234567", form["mobile"]);
+        Assert.Equal("3", form["language"]);
+        Assert.Contains("123456", form["message"]);
+        Assert.False(form.ContainsKey("template"));
+        Assert.False(form.ContainsKey("otp"));
+    }
+
     private static Dictionary<string, string> ParseForm(
         string body)
     {

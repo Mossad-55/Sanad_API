@@ -20,41 +20,24 @@ public sealed class SmsMisrSmsSender : ISmsSender
     }
 
     public async Task SendVerificationCodeAsync(
-        string phoneNumber,
-        string code,
-        VerificationPurpose purpose,
-        CancellationToken cancellationToken)
+    string phoneNumber,
+    string code,
+    VerificationPurpose purpose,
+    CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
 
+        bool useOtpApi = _options.UseOtpApi;
+
         using var content = new FormUrlEncodedContent(
-        [
-            new KeyValuePair<string, string>(
-                "environment",
-                _options.Environment.ToString()),
-            new KeyValuePair<string, string>(
-                "username",
-                _options.Username),
-            new KeyValuePair<string, string>(
-                "password",
-                _options.Password),
-            new KeyValuePair<string, string>(
-                "sender",
-                _options.Sender),
-            new KeyValuePair<string, string>(
-                "mobile",
-                NormalizeMobile(phoneNumber)),
-            new KeyValuePair<string, string>(
-                "template",
-                _options.Template),
-            new KeyValuePair<string, string>(
-                "otp",
-                code)
-        ]);
+            CreateForm(
+                phoneNumber,
+                code,
+                useOtpApi));
 
         using var request = new HttpRequestMessage(
             HttpMethod.Post,
-            GetOtpEndpoint())
+            GetEndpoint(useOtpApi))
         {
             Content = content
         };
@@ -71,11 +54,88 @@ public sealed class SmsMisrSmsSender : ISmsSender
         string body = await response.Content.ReadAsStringAsync(
             cancellationToken);
 
+        string expectedCode = useOtpApi
+            ? SmsMisrOptions.OtpSuccessCode
+            : SmsMisrOptions.SmsSuccessCode;
+
         if (!response.IsSuccessStatusCode ||
-            !IsSuccessPayload(body))
+            !IsSuccessPayload(body, expectedCode))
         {
             throw new InvalidOperationException(
                 "SMS Misr OTP delivery failed.");
+        }
+    }
+
+    private List<KeyValuePair<string, string>> CreateForm(
+        string phoneNumber,
+        string code,
+        bool useOtpApi)
+    {
+        var form = new List<KeyValuePair<string, string>>
+        {
+            new("environment", _options.Environment.ToString()),
+            new("username", _options.Username),
+            new("password", _options.Password),
+            new("sender", _options.Sender),
+            new("mobile", NormalizeMobile(phoneNumber))
+        };
+
+        if (useOtpApi)
+        {
+            form.Add(new("template", _options.Template));
+            form.Add(new("otp", code));
+            return form;
+        }
+
+        form.Add(new("language", "3"));
+        form.Add(new("message", CreateSmsMessage(code)));
+        return form;
+    }
+
+    private Uri GetEndpoint(
+        bool useOtpApi)
+    {
+        string baseUrl = string.IsNullOrWhiteSpace(_options.BaseUrl)
+            ? "https://smsmisr.com"
+            : _options.BaseUrl.TrimEnd('/');
+
+        string path = useOtpApi
+            ? "/api/OTP/"
+            : "/api/SMS/";
+
+        return new Uri(
+            $"{baseUrl}{path}");
+    }
+
+    private static string CreateSmsMessage(
+        string code)
+    {
+        return
+            $"رمز التحقق من سند: {code}{Environment.NewLine}" +
+            $"Sanad Care code: {code}";
+    }
+
+    private static bool IsSuccessPayload(
+        string body,
+        string expectedCode)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return false;
+        }
+
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(body);
+
+            return document.RootElement.TryGetProperty(
+                       "code",
+                       out JsonElement code) &&
+                   code.GetString() == expectedCode;
+        }
+        catch (JsonException)
+        {
+            return false;
         }
     }
 
@@ -113,7 +173,7 @@ public sealed class SmsMisrSmsSender : ISmsSender
             return document.RootElement.TryGetProperty(
                        "code",
                        out JsonElement code) &&
-                   code.GetString() == SmsMisrOptions.SuccessCode;
+                   code.GetString() == SmsMisrOptions.SmsSuccessCode;
         }
         catch (JsonException)
         {

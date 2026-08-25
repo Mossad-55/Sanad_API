@@ -132,8 +132,6 @@ public static class DependencyInjection
                !string.IsNullOrWhiteSpace(
                    section["Password"]) &&
                !string.IsNullOrWhiteSpace(
-                   section["Sender"]) &&
-               !string.IsNullOrWhiteSpace(
-                   section["Template"]);
+                   section["Sender"]);
     }
 }
