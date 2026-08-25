@@ -5,13 +5,11 @@ using Microsoft.Extensions.Options;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
-using Sanad.Modules.Identity.Infrastructure.Challenges;
 using Sanad.Modules.Identity.Infrastructure.Messaging;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Security;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Infrastructure.Time;
-using Sanad.Modules.Identity.Infrastructure.Nonces;
 
 namespace Sanad.Modules.Identity.Infrastructure;
 
@@ -61,19 +59,6 @@ public static class DependencyInjection
             IValidateOptions<JwtOptions>,
             JwtOptionsValidator>();
 
-        services.AddOptions<
-            ExternalIdentityProviderOptions>()
-                .Bind(
-                    configuration.GetSection(
-                        ExternalIdentityProviderOptions
-                            .SectionName))
-                .ValidateOnStart();
-
-        services.AddSingleton<
-            IValidateOptions<
-                ExternalIdentityProviderOptions>,
-            ExternalIdentityProviderOptionsValidator>();
-
         services.AddSingleton<IPasswordHasher,
             AspNetPasswordHasher>();
 
@@ -88,26 +73,6 @@ public static class DependencyInjection
 
         services.AddSingleton<ISmsSender,
             DevelopmentSmsSender>();
-
-        services.AddSingleton<
-            IExternalIdentityOpenIdConfigurationProvider,
-            ExternalIdentityOpenIdConfigurationProvider>();
-
-        services.AddScoped<
-            IExternalIdentityVerifier,
-            ProductionExternalIdentityVerifier>();
-
-        services.AddScoped<
-            IExternalAuthenticationNonceStore,
-            PostgresExternalAuthenticationNonceStore>();
-
-        services.AddScoped<
-            ISocialAuthenticationChallengeStore,
-            PostgresSocialAuthenticationChallengeStore>();
-
-        services.AddScoped<
-            ISocialRegistrationChallengeStore,
-            PostgresSocialRegistrationChallengeStore>();
 
         return services;
     }

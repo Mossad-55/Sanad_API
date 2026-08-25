@@ -1,6 +1,5 @@
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
-using Sanad.Modules.Identity.Domain.Authentication.ExternalLogins;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Domain.Users.Events;
 
@@ -73,33 +72,6 @@ public sealed class UserStatusTransitionTests
             user.Status);
     }
 
-    [Fact]
-    public void Activate_ShouldAllowVerifiedFamilyWithExternalLogin()
-    {
-        User user =
-            CreateUser();
-
-        user.AddAccount(
-            AccountType.Family);
-
-        user.VerifyEmail(
-            CreateUtcDateTime());
-        user.VerifyPhone(
-            CreateUtcDateTime());
-
-        user.LinkExternalLogin(
-            ExternalLoginProvider.Google,
-            "google-subject",
-            CreateUtcDateTime());
-
-        user.Activate(
-            CreateUtcDateTime()
-                .AddMinutes(1));
-
-        Assert.Equal(
-            UserStatus.Active,
-            user.Status);
-    }
 
     [Fact]
     public void Activate_ShouldRejectUserWithoutAccount()

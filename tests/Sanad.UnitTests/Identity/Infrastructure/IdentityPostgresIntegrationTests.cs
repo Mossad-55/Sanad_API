@@ -1,6 +1,5 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
-using Sanad.Modules.Identity.Domain.Authentication.ExternalLogins;
 using Sanad.Modules.Identity.Domain.Users;
 
 namespace Sanad.UnitTests.Identity.Infrastructure;
@@ -14,60 +13,6 @@ public sealed class IdentityPostgresIntegrationTests
         LocalPostgresIdentityFixture fixture)
     {
         _fixture = fixture;
-    }
-
-    [LocalPostgresFact]
-    public async Task User_ShouldRoundTripWithOwnedChildren()
-    {
-        await ResetDatabaseAsync();
-
-        User user =
-            User.Create(
-                FullName.Create("محمد أحمد"),
-                FullName.Create("Mohamed Ahmed"),
-                Email.Create("mohamed@example.com"),
-                PhoneNumber.Create("+201001234567"));
-
-        user.AddAccount(
-            AccountType.Family);
-
-        user.LinkExternalLogin(
-            ExternalLoginProvider.Google,
-            "google-subject",
-            new DateTime(
-                2026,
-                8,
-                23,
-                10,
-                0,
-                0,
-                DateTimeKind.Utc));
-
-        _fixture.DbContext.Users.Add(user);
-
-        await _fixture.DbContext.SaveChangesAsync();
-
-        _fixture.DbContext.ChangeTracker.Clear();
-
-        User storedUser =
-            await _fixture.DbContext.Users
-                .SingleAsync(
-                    item =>
-                        item.Id == user.Id);
-
-        Assert.Equal(
-            "mohamed@example.com",
-            storedUser.Email!.Value);
-
-        Assert.Equal(
-            "+201001234567",
-            storedUser.PhoneNumber.Value);
-
-        Assert.Single(
-            storedUser.Accounts);
-
-        Assert.Single(
-            storedUser.ExternalLogins);
     }
 
     [LocalPostgresFact]

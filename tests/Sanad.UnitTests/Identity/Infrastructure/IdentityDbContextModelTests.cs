@@ -72,46 +72,6 @@ public sealed class IdentityDbContextModelTests
                     "PhoneNumber");
     }
 
-    [Fact]
-    public void Model_ShouldMapChallengeHashAsUnique()
-    {
-        using IdentityDbContext dbContext =
-            CreateDbContext();
-
-        foreach (string tableName in new[]
-        {
-            "social_authentication_challenges",
-            "social_registration_challenges"
-        })
-        {
-            var entityType =
-                dbContext.Model
-                    .GetEntityTypes()
-                    .Single(entity =>
-                        entity.GetTableName() ==
-                        tableName);
-
-            Assert.Contains(
-                entityType.GetIndexes(),
-                index =>
-                    index.IsUnique &&
-                    index.Properties.Count == 1 &&
-                    index.Properties[0].Name ==
-                        "ChallengeHash");
-
-            var consumedOnUtc =
-                entityType.FindProperty(
-                    "ConsumedOnUtc");
-
-            Assert.NotNull(
-                consumedOnUtc);
-
-            Assert.True(
-                consumedOnUtc!
-                    .IsConcurrencyToken);
-        }
-    }
-
     private static IdentityDbContext CreateDbContext()
     {
         DbContextOptions<IdentityDbContext> options =

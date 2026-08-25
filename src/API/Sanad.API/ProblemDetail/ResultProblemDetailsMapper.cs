@@ -42,12 +42,6 @@ public static class ResultProblemDetailsMapper
             ["Identity.Sessions.SessionNotOwned"] = 404,
             ["Identity.Sessions.UserNotFound"] = 404,
 
-            ["Identity.SocialLogin.AuthenticationFailed"] = 401,
-            ["Identity.SocialLogin.SessionLimitReached"] = 409,
-            ["Identity.SocialLogin.ExternalLinkConfirmationFailed"] = 401,
-            ["Identity.SocialLogin.RegistrationFailed"] = 401,
-            ["Identity.SocialLogin.ExternalLinkFailed"] = 401,
-
             ["Identity.Verification.ResendRequestNotFound"] = 404,
             ["Identity.Verification.ResendRequestNotPending"] = 400,
             ["Identity.Verification.RequestSuperseded"] = 409,

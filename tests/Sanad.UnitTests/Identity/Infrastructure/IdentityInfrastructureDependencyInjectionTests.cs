@@ -22,38 +22,6 @@ public sealed class IdentityInfrastructureDependencyInjectionTests
             () => services.AddIdentityInfrastructure(configuration));
     }
 
-    [Fact]
-    public void AddIdentityInfrastructure_ShouldResolveAllProviders()
-    {
-        IServiceCollection services = new ServiceCollection();
-        IConfiguration configuration = CreateValidConfiguration();
-
-        services.AddIdentityInfrastructure(configuration);
-
-        using ServiceProvider serviceProvider = services.BuildServiceProvider(
-            new ServiceProviderOptions
-            {
-                ValidateScopes = true
-            });
-
-        using IServiceScope scope = serviceProvider.CreateScope();
-
-        Assert.NotNull(scope.ServiceProvider.GetRequiredService<IIdentityDbContext>());
-        Assert.IsType<AspNetPasswordHasher>(scope.ServiceProvider.GetRequiredService<IPasswordHasher>());
-        Assert.IsType<Pbkdf2OtpService>(scope.ServiceProvider.GetRequiredService<IOtpService>());
-        Assert.IsType<JwtAuthTokenService>(scope.ServiceProvider.GetRequiredService<IAuthTokenService>());
-        Assert.IsType<DevelopmentEmailSender>(scope.ServiceProvider.GetRequiredService<IEmailSender>());
-        Assert.IsType<DevelopmentSmsSender>(scope.ServiceProvider.GetRequiredService<ISmsSender>());
-        Assert.IsType<ProductionExternalIdentityVerifier>(scope.ServiceProvider.GetRequiredService<IExternalIdentityVerifier>());
-        Assert.IsType<ExternalIdentityOpenIdConfigurationProvider>(scope.ServiceProvider.
-            GetRequiredService<IExternalIdentityOpenIdConfigurationProvider>());
-        Assert.NotNull(
-            scope.ServiceProvider.GetRequiredService<
-                IExternalAuthenticationNonceStore>());
-        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ISocialAuthenticationChallengeStore>());
-        Assert.NotNull(scope.ServiceProvider.GetRequiredService<ISocialRegistrationChallengeStore>());
-    }
-
     [Theory]
     [InlineData("", "sanad-clients", "12345678901234567890123456789012")]
     [InlineData("sanad-api", "", "12345678901234567890123456789012")]

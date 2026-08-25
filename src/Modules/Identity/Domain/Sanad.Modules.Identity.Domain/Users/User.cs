@@ -5,7 +5,6 @@ using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Domain.Users.Events;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.Modules.Identity.Domain.Authentication;
-using Sanad.Modules.Identity.Domain.Authentication.ExternalLogins;
 
 namespace Sanad.Modules.Identity.Domain.Users;
 
@@ -14,7 +13,6 @@ public sealed class User : AggregateRoot<UserId>
     public const int MaximumStatusReasonLength = 1000;
 
     private readonly List<UserAccount> _accounts = [];
-    private readonly List<UserExternalLogin> _externalLogins = [];
 
     private User()
     {
@@ -61,11 +59,9 @@ public sealed class User : AggregateRoot<UserId>
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
     public DateTime? LastLoginOnUtc { get; private set; }
-    public bool HasExternalLogin => _externalLogins.Count > 0;
     public string? StatusReason { get; private set; }
 
     public IReadOnlyCollection<UserAccount> Accounts => _accounts.AsReadOnly();
-    public IReadOnlyCollection<UserExternalLogin> ExternalLogins => _externalLogins.AsReadOnly();
 
     public static User Create(
         FullName arabicFullName,
@@ -686,94 +682,6 @@ public sealed class User : AggregateRoot<UserId>
                 PasswordChangeReason.Reset));
     }
 
-    public void LinkExternalLogin(
-        ExternalLoginProvider provider,
-        string providerSubject,
-        DateTime utcNow)
-    {
-        ValidateUtc(utcNow);
-
-        if (!Enum.IsDefined(provider))
-        {
-            throw new DomainException(
-                "External login provider is invalid.");
-        }
-
-        bool providerAlreadyLinked =
-            _externalLogins.Any(
-                externalLogin =>
-                    externalLogin.Provider ==
-                    provider);
-
-        if (providerAlreadyLinked)
-        {
-            throw new DomainException(
-                "This external login provider is " +
-                "already linked.");
-        }
-
-        UserExternalLogin externalLogin =
-            UserExternalLogin.Create(
-                provider,
-                providerSubject,
-                utcNow);
-
-        _externalLogins.Add(
-            externalLogin);
-
-        UpdatedOnUtc = utcNow;
-
-        RaiseDomainEvent(
-            new UserExternalLoginLinkedDomainEvent(
-                Id,
-                externalLogin.Id,
-                provider));
-    }
-
-    public void UnlinkExternalLogin(
-        ExternalLoginProvider provider,
-        DateTime utcNow)
-    {
-        ValidateUtc(utcNow);
-
-        if (!Enum.IsDefined(provider))
-        {
-            throw new DomainException(
-                "External login provider is invalid.");
-        }
-
-        UserExternalLogin? externalLogin =
-            _externalLogins.SingleOrDefault(
-                externalLogin =>
-                    externalLogin.Provider ==
-                    provider);
-
-        if (externalLogin is null)
-        {
-            throw new DomainException(
-                "External login provider is not linked.");
-        }
-
-        bool wouldRemoveLastAuthenticationMethod =
-            Password is null &&
-            _externalLogins.Count == 1;
-
-        if (wouldRemoveLastAuthenticationMethod)
-        {
-            throw new DomainException(
-                "Cannot remove the final authentication method.");
-        }
-
-        _externalLogins.Remove(
-            externalLogin);
-
-        UpdatedOnUtc = utcNow;
-
-        RaiseDomainEvent(
-            new UserExternalLoginUnlinkedDomainEvent(
-                Id,
-                provider));
-    }
 
     internal void ValidateActivationReadiness()
     {
@@ -812,14 +720,10 @@ public sealed class User : AggregateRoot<UserId>
                 "Email must be verified.");
         }
 
-        bool hasAuthenticationMethod =
-            HasPassword ||
-            HasExternalLogin;
-
-        if (!hasAuthenticationMethod)
+        if (!HasPassword)
         {
             throw new DomainException(
-                "Password or external login is required.");
+                "Passord is required.");
         }
     }
 

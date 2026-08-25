@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Domain.Authentication;
-using Sanad.Modules.Identity.Domain.Authentication.ExternalLogins;
 using Sanad.Modules.Identity.Domain.Users;
 
 namespace Sanad.Modules.Identity.Infrastructure.Persistence.Configurations;
@@ -160,65 +159,6 @@ public sealed class UserConfiguration :
                 .IsUnique();
             });
 
-        builder.OwnsMany(
-            user => user.ExternalLogins,
-            login =>
-            {
-                login.ToTable("user_external_logins");
-
-                login.WithOwner()
-                    .HasForeignKey("UserId");
-
-                login.Property<UserId>("UserId")
-                    .HasConversion(
-                        id => id.Value,
-                        value => new UserId(value))
-                    .HasColumnName("user_id")
-                    .IsRequired();
-
-                login.HasKey(value => value.Id);
-
-                login.Property(value => value.Id)
-                    .HasConversion(
-                        id => id.Value,
-                        value =>
-                            new UserExternalLoginId(
-                                value))
-                    .HasColumnName("id")
-                    .ValueGeneratedNever();
-
-                login.Property(value =>
-                        value.Provider)
-                    .HasColumnName("provider")
-                    .HasConversion<int>()
-                    .IsRequired();
-
-                login.Property(value =>
-                        value.ProviderSubject)
-                    .HasColumnName("provider_subject")
-                    .HasMaxLength(
-                        UserExternalLogin
-                            .MaximumProviderSubjectLength)
-                    .IsRequired();
-
-                login.Property(value =>
-                        value.LinkedOnUtc)
-                    .HasColumnName("linked_on_utc")
-                    .IsRequired();
-
-                login.HasIndex(
-                        value => new
-                        {
-                            value.Provider,
-                            value.ProviderSubject
-                        })
-                    .IsUnique();
-
-                login.HasIndex(
-                    "UserId",
-                    nameof(UserExternalLogin.Provider))
-                .IsUnique();
-            });
 
         builder.OwnsOne(
             user => user.IdentityDocument,
@@ -293,7 +233,6 @@ public sealed class UserConfiguration :
             });
 
         builder.Ignore(user => user.HasPassword);
-        builder.Ignore(user => user.HasExternalLogin);
         builder.Ignore(user => user.DomainEvents);
     }
 }
