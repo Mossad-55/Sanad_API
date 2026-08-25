@@ -75,6 +75,70 @@ public sealed class IdentityInfrastructureDependencyInjectionTests
                 ISmsSender>());
     }
 
+    [Fact]
+    public void AddIdentityInfrastructure_ShouldResolveConfiguredMessagingProviders()
+    {
+        IServiceCollection services =
+            new ServiceCollection();
+
+        IConfiguration configuration =
+            CreateConfiguration(
+            [
+                new KeyValuePair<string, string?>(
+                    "ConnectionStrings:IdentityDatabase",
+                    "Host=localhost;Database=test;Username=test;Password=test"),
+                new KeyValuePair<string, string?>(
+                    "Identity:Jwt:Issuer",
+                    "sanad-api"),
+                new KeyValuePair<string, string?>(
+                    "Identity:Jwt:Audience",
+                    "sanad-clients"),
+                new KeyValuePair<string, string?>(
+                    "Identity:Jwt:SigningKey",
+                    "12345678901234567890123456789012"),
+                new KeyValuePair<string, string?>(
+                    "Identity:Email:Smtp:Host",
+                    "smtp.example.com"),
+                new KeyValuePair<string, string?>(
+                    "Identity:Email:Smtp:FromAddress",
+                    "noreply@example.com"),
+                new KeyValuePair<string, string?>(
+                    "Identity:Sms:SmsMisr:Username",
+                    "test-user"),
+                new KeyValuePair<string, string?>(
+                    "Identity:Sms:SmsMisr:Password",
+                    "test-password"),
+                new KeyValuePair<string, string?>(
+                    "Identity:Sms:SmsMisr:Sender",
+                    "test-sender"),
+                new KeyValuePair<string, string?>(
+                    "Identity:Sms:SmsMisr:Template",
+                    "test-template")
+            ]);
+
+        services.AddIdentityInfrastructure(
+            configuration);
+
+        using ServiceProvider serviceProvider =
+            services.BuildServiceProvider(
+                new ServiceProviderOptions
+                {
+                    ValidateScopes =
+                        true
+                });
+
+        using IServiceScope scope =
+            serviceProvider.CreateScope();
+
+        Assert.IsType<SmtpEmailSender>(
+            scope.ServiceProvider.GetRequiredService<
+                IEmailSender>());
+
+        Assert.IsType<SmsMisrSmsSender>(
+            scope.ServiceProvider.GetRequiredService<
+                ISmsSender>());
+    }
+
     [Theory]
     [InlineData("", "sanad-clients", "12345678901234567890123456789012")]
     [InlineData("sanad-api", "", "12345678901234567890123456789012")]

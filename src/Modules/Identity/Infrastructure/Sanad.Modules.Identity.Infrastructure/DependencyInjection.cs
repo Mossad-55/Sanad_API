@@ -68,12 +68,72 @@ public static class DependencyInjection
         services.AddSingleton<IAuthTokenService,
             JwtAuthTokenService>();
 
-        services.AddSingleton<IEmailSender,
-            DevelopmentEmailSender>();
+        services.AddOptions<EmailOptions>()
+            .Bind(
+                configuration.GetSection(
+                    EmailOptions.SectionName));
 
-        services.AddSingleton<ISmsSender,
-            DevelopmentSmsSender>();
+        services.AddOptions<SmsMisrOptions>()
+            .Bind(
+                configuration.GetSection(
+                    SmsMisrOptions.SectionName));
+
+        if (IsEmailConfigured(configuration))
+        {
+            services.AddSingleton<IEmailSender,
+                SmtpEmailSender>();
+        }
+        else
+        {
+            services.AddSingleton<IEmailSender,
+                DevelopmentEmailSender>();
+        }
+
+        if (IsSmsMisrConfigured(configuration))
+        {
+            services.AddHttpClient<ISmsSender, SmsMisrSmsSender>(
+                client =>
+                {
+                    client.Timeout =
+                        TimeSpan.FromSeconds(30);
+                });
+        }
+        else
+        {
+            services.AddSingleton<ISmsSender,
+                DevelopmentSmsSender>();
+        }
 
         return services;
+    }
+
+    private static bool IsEmailConfigured(
+        IConfiguration configuration)
+    {
+        IConfiguration section =
+            configuration.GetSection(
+                EmailOptions.SectionName);
+
+        return !string.IsNullOrWhiteSpace(
+                   section["Host"]) &&
+               !string.IsNullOrWhiteSpace(
+                   section["FromAddress"]);
+    }
+
+    private static bool IsSmsMisrConfigured(
+        IConfiguration configuration)
+    {
+        IConfiguration section =
+            configuration.GetSection(
+                SmsMisrOptions.SectionName);
+
+        return !string.IsNullOrWhiteSpace(
+                   section["Username"]) &&
+               !string.IsNullOrWhiteSpace(
+                   section["Password"]) &&
+               !string.IsNullOrWhiteSpace(
+                   section["Sender"]) &&
+               !string.IsNullOrWhiteSpace(
+                   section["Template"]);
     }
 }
