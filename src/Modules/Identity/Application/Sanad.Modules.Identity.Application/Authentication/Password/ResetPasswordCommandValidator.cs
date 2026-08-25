@@ -17,7 +17,7 @@ public sealed class ResetPasswordCommandValidator :
         RuleFor(command =>
                 command.OtpCode)
             .NotEmpty()
-            .Matches(@"^[0-9]{6}$")
+            .Matches(@"\A[0-9]{6}\z")
             .WithMessage(
                 "Verification code must contain exactly six ASCII digits.");
 

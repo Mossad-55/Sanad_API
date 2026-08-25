@@ -26,6 +26,7 @@ public sealed class ElderlyLoginCommandValidatorTests
     [InlineData("+001001234567")]
     [InlineData("+20 1001234567")]
     [InlineData("+201001234567890123")]
+    [InlineData("+2٠١٠٠١٢٣٤٥٦٧")]
     public void RequestValidator_ShouldRejectInvalidPhoneNumber(
         string phoneNumber)
     {
@@ -60,6 +61,7 @@ public sealed class ElderlyLoginCommandValidatorTests
     [InlineData("12 456")]
     [InlineData("١٢٣٤٥٦")]
     [InlineData("１２３４５６")]
+    [InlineData("123456\n")]
     public void VerifyValidator_ShouldRejectNonAsciiSixDigitCode(
         string code)
     {
@@ -81,6 +83,7 @@ public sealed class ElderlyLoginCommandValidatorTests
     [InlineData("")]
     [InlineData("201001234567")]
     [InlineData("+20 1001234567")]
+    [InlineData("+201001234567\n")]
     public void VerifyValidator_ShouldRejectInvalidPhoneNumber(
         string phoneNumber)
     {

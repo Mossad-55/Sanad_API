@@ -142,6 +142,7 @@ public sealed class PasswordValidatorTests
     [InlineData("abcdef")]
     [InlineData("123 56")]
     [InlineData("１２３４５６")]
+    [InlineData("123456\n")]
     public void Reset_Validate_ShouldRejectInvalidOtp(
         string? otp)
     {

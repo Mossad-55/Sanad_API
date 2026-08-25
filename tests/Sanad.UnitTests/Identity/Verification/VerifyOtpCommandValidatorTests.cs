@@ -47,6 +47,7 @@ public sealed class VerifyOtpCommandValidatorTests
     [InlineData("1234567")]
     [InlineData("12A456")]
     [InlineData("123 56")]
+    [InlineData("123456\n")]
     public void Validate_ShouldRejectInvalidCode(
         string? code)
     {

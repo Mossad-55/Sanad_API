@@ -90,6 +90,7 @@ public sealed class RegisterUserCommandValidatorTests
     [InlineData("")]
     [InlineData("01001234567")]
     [InlineData("+0201001234567")]
+    [InlineData("+2٠١٠٠١٢٣٤٥٦٧")]
     public void Validate_ShouldRejectInvalidPhone(
         string phoneNumber)
     {

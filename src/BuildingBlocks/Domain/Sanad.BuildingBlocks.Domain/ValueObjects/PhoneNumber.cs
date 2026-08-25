@@ -8,7 +8,7 @@ public sealed class PhoneNumber : ValueObject
 {
     private static readonly Regex E164Regex =
         new(
-            @"^\+[1-9]\d{1,14}$",
+            @"\A\+[1-9][0-9]{1,14}\z",
             RegexOptions.Compiled);
 
     private PhoneNumber()

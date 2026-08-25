@@ -33,7 +33,7 @@ public sealed class RegisterUserCommandValidator :
                 command.PhoneNumber)
             .NotEmpty()
             .Matches(
-                @"^\+[1-9]\d{1,14}$")
+                @"\A\+[1-9][0-9]{1,14}\z")
             .WithMessage(
                 "Phone number must use E.164 format.");
 
