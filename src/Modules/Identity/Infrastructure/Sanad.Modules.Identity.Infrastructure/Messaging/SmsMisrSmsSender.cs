@@ -58,11 +58,13 @@ public sealed class SmsMisrSmsSender : ISmsSender
             ? SmsMisrOptions.OtpSuccessCode
             : SmsMisrOptions.SmsSuccessCode;
 
+        string? providerCode = ReadProviderCode(body);
+
         if (!response.IsSuccessStatusCode ||
-            !IsSuccessPayload(body, expectedCode))
+            providerCode != expectedCode)
         {
             throw new InvalidOperationException(
-                "SMS Misr OTP delivery failed.");
+                $"SMS Misr OTP delivery failed. HTTP {(int)response.StatusCode}. Provider code: {providerCode ?? "none"}.");
         }
     }
 
@@ -87,7 +89,7 @@ public sealed class SmsMisrSmsSender : ISmsSender
             return form;
         }
 
-        form.Add(new("language", "3"));
+        form.Add(new("language", "1"));
         form.Add(new("message", CreateSmsMessage(code)));
         return form;
     }
@@ -111,42 +113,7 @@ public sealed class SmsMisrSmsSender : ISmsSender
         string code)
     {
         return
-            $"رمز التحقق من سند: {code}{Environment.NewLine}" +
-            $"Sanad Care code: {code}";
-    }
-
-    private static bool IsSuccessPayload(
-        string body,
-        string expectedCode)
-    {
-        if (string.IsNullOrWhiteSpace(body))
-        {
-            return false;
-        }
-
-        try
-        {
-            using JsonDocument document = JsonDocument.Parse(body);
-
-            return document.RootElement.TryGetProperty(
-                       "code",
-                       out JsonElement code) &&
-                   code.GetString() == expectedCode;
-        }
-        catch (JsonException)
-        {
-            return false;
-        }
-    }
-
-    private Uri GetOtpEndpoint()
-    {
-        string baseUrl = string.IsNullOrWhiteSpace(_options.BaseUrl)
-            ? "https://smsmisr.com"
-            : _options.BaseUrl.TrimEnd('/');
-
-        return new Uri(
-            $"{baseUrl}/api/OTP/");
+            $"Your Sanad Care code is {code}. It will expire after 5 mins.";
     }
 
     private static string NormalizeMobile(
@@ -158,26 +125,37 @@ public sealed class SmsMisrSmsSender : ISmsSender
             : phoneNumber;
     }
 
-    private static bool IsSuccessPayload(
+    private static string? ReadProviderCode(
         string body)
     {
         if (string.IsNullOrWhiteSpace(body))
         {
-            return false;
+            return null;
         }
 
         try
         {
             using JsonDocument document = JsonDocument.Parse(body);
 
-            return document.RootElement.TryGetProperty(
-                       "code",
-                       out JsonElement code) &&
-                   code.GetString() == SmsMisrOptions.SmsSuccessCode;
+            if (!document.RootElement.TryGetProperty(
+                    "code",
+                    out JsonElement code))
+            {
+                return null;
+            }
+
+            return code.ValueKind switch
+            {
+                JsonValueKind.String =>
+                    code.GetString(),
+                JsonValueKind.Number =>
+                    code.GetRawText(),
+                _ => null
+            };
         }
         catch (JsonException)
         {
-            return false;
+            return null;
         }
     }
 }
