@@ -1,5 +1,8 @@
 namespace Sanad.API;
 
+using Microsoft.EntityFrameworkCore;
+using Sanad.Modules.Identity.Infrastructure.Persistence;
+
 public static class ApplicationBuilderExtensions
 {
     public static WebApplication UseSanadApi(
@@ -29,6 +32,21 @@ public static class ApplicationBuilderExtensions
             });
         }
 
+        ApplyIdentityMigrations(app);
+
         return app;
+    }
+
+    private static void ApplyIdentityMigrations(
+        WebApplication app)
+    {
+        using IServiceScope scope =
+            app.Services.CreateScope();
+
+        IdentityDbContext dbContext =
+            scope.ServiceProvider.GetRequiredService<
+                IdentityDbContext>();
+
+        dbContext.Database.Migrate();
     }
 }
