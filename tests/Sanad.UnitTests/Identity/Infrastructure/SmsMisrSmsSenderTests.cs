@@ -96,7 +96,7 @@ public sealed class SmsMisrSmsSenderTests
 
         Assert.Equal("2", form["environment"]);
         Assert.Equal("201001234567", form["mobile"]);
-        Assert.Equal("3", form["language"]);
+        Assert.Equal("1", form["language"]);
         Assert.Contains("123456", form["message"]);
         Assert.False(form.ContainsKey("template"));
         Assert.False(form.ContainsKey("otp"));

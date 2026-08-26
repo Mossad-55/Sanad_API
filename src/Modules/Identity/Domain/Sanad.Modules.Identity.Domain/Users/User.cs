@@ -119,6 +119,26 @@ public sealed class User : AggregateRoot<UserId>
                 "with another account type.");
         }
 
+        bool isAddingAdministrativeAccount =
+            IsAdministrativeAccount(
+               accountType);
+
+        bool userAlreadyHasAdministrativeAccount =
+            _accounts.Any(
+                account =>
+                    IsAdministrativeAccount(
+                        account.AccountType));
+
+        if ((isAddingAdministrativeAccount &&
+            _accounts.Count > 0) ||
+            (!isAddingAdministrativeAccount &&
+            userAlreadyHasAdministrativeAccount))
+        {
+            throw new DomainException(
+                "An administrative account cannot be combined " +
+                "with another account type.");
+        }
+
         _accounts.Add(
             UserAccount.Create(accountType));
 
@@ -810,5 +830,14 @@ public sealed class User : AggregateRoot<UserId>
             throw new DomainException(
                 "Blocked User information cannot be changed.");
         }
+    }
+
+    private static bool IsAdministrativeAccount(
+        AccountType accountType)
+    {
+        return accountType is
+            AccountType.SuperAdmin or
+            AccountType.ContentAdmin or
+            AccountType.SupportAdmin;
     }
 }

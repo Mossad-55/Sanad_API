@@ -30,6 +30,9 @@ public sealed class RegisterUserCommandValidatorTests
 
     [Theory]
     [InlineData(AccountType.Elderly)]
+    [InlineData(AccountType.SuperAdmin)]
+    [InlineData(AccountType.ContentAdmin)]
+    [InlineData(AccountType.SupportAdmin)]
     [InlineData((AccountType)999)]
     public void Validate_ShouldRejectUnsupportedAccountType(
         AccountType accountType)
