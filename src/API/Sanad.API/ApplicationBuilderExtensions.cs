@@ -2,6 +2,7 @@ namespace Sanad.API;
 
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
+using Sanad.Modules.Identity.Infrastructure.Persistence.Seeding;
 
 public static class ApplicationBuilderExtensions
 {
@@ -33,6 +34,7 @@ public static class ApplicationBuilderExtensions
         }
 
         ApplyIdentityMigrations(app);
+        SeedSuperAdmin(app);
 
         return app;
     }
@@ -48,5 +50,20 @@ public static class ApplicationBuilderExtensions
                 IdentityDbContext>();
 
         dbContext.Database.Migrate();
+    }
+
+    private static void SeedSuperAdmin(
+        WebApplication app)
+    {
+        using IServiceScope scope =
+            app.Services.CreateScope();
+
+        SuperAdminSeeder seeder =
+            scope.ServiceProvider.GetRequiredService<
+                SuperAdminSeeder>();
+
+        seeder.SeedAsync()
+            .GetAwaiter()
+            .GetResult();
     }
 }

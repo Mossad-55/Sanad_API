@@ -10,6 +10,7 @@ using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Security;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Infrastructure.Time;
+using Sanad.Modules.Identity.Infrastructure.Persistence.Seeding;
 
 namespace Sanad.Modules.Identity.Infrastructure;
 
@@ -54,6 +55,13 @@ public static class DependencyInjection
                 configuration.GetSection(
                     JwtOptions.SectionName))
             .ValidateOnStart();
+
+        services.AddOptions<AdminSeedOptions>()
+            .Bind(
+                configuration.GetSection(
+                    AdminSeedOptions.SectionName));
+
+        services.AddScoped<SuperAdminSeeder>();
 
         services.AddSingleton<
             IValidateOptions<JwtOptions>,
