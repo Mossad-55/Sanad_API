@@ -8,7 +8,7 @@ The active development branch is `develop`.
 
 The Caregivers Domain and the non-social Authentication vertical slice are implemented.
 
-Implemented Auth HTTP surface:
+Implemented HTTP surface:
 
 - Family / Medical Caregiver / Companion Caregiver registration
 - Dual-channel email and SMS OTP verification and resend
@@ -40,6 +40,7 @@ src/
 ├── BuildingBlocks/                       Shared Domain, Application, Infrastructure
 └── Modules/
     ├── Identity/                         Auth Domain, Application, Infrastructure
+    ├── Cms/                              Shared splash Domain, Application, Infrastructure, HTTP
     ├── Caregivers/                       Domain complete; other layers are shells
     └── Families/                         Domain foundation; other layers are shells
 tests/
@@ -48,8 +49,12 @@ tests/
 docs/
 ├── architecture/
 ├── auth/
+├── users/                                App-facing (non-admin) HTTP
+├── admin/                                Admin HTTP
 ├── operations/
 └── postman/
+    ├── users/
+    └── admin/
 ```
 
 Dependency direction:
