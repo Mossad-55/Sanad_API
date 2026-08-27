@@ -20,6 +20,7 @@
     <ProjectReference Include="..\..\src\Modules\Identity\Domain\Sanad.Modules.Identity.Domain\Sanad.Modules.Identity.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Families\Domain\Sanad.Modules.Families.Domain\Sanad.Modules.Families.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Caregivers\Domain\Sanad.Modules.Caregivers.Domain\Sanad.Modules.Caregivers.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Cms\Domain\Sanad.Modules.Cms.Domain\Sanad.Modules.Cms.Domain.csproj" />
   </ItemGroup>
 
   <ItemGroup>

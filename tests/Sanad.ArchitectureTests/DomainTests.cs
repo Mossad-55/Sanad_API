@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Domain.Abstractions;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Identity.Domain.Users;
+using Sanad.Modules.Cms.Domain.Splash;
 
 namespace Sanad.ArchitectureTests;
 
@@ -15,7 +16,8 @@ public sealed class DomainTests
         typeof(AggregateRoot<>).Assembly,
         typeof(User).Assembly,
         typeof(Family).Assembly,
-        typeof(Caregiver).Assembly
+        typeof(Caregiver).Assembly,
+        typeof(SplashScreen).Assembly
     ];
 
     [Fact]
