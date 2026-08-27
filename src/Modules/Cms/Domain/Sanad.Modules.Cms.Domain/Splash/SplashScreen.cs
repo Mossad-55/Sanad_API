@@ -24,7 +24,6 @@ public sealed class SplashScreen : AggregateRoot<SplashScreenId>
     private SplashScreen(
         SplashScreenId id,
         string internalName,
-        SplashAudience audience,
         string arabicTitle,
         string englishTitle,
         string arabicDescription,
@@ -38,7 +37,6 @@ public sealed class SplashScreen : AggregateRoot<SplashScreenId>
         : base(id)
     {
         InternalName = internalName;
-        Audience = audience;
         ArabicTitle = arabicTitle;
         EnglishTitle = englishTitle;
         ArabicDescription = arabicDescription;
@@ -54,7 +52,6 @@ public sealed class SplashScreen : AggregateRoot<SplashScreenId>
     }
 
     public string InternalName { get; private set; } = string.Empty;
-    public SplashAudience Audience { get; private set; }
     public string ArabicTitle { get; private set; } = string.Empty;
     public string EnglishTitle { get; private set; } = string.Empty;
     public string ArabicDescription { get; private set; } = string.Empty;
@@ -70,7 +67,6 @@ public sealed class SplashScreen : AggregateRoot<SplashScreenId>
 
     public static SplashScreen Create(
         string internalName,
-        SplashAudience audience,
         string arabicTitle,
         string englishTitle,
         string arabicDescription,
@@ -86,12 +82,6 @@ public sealed class SplashScreen : AggregateRoot<SplashScreenId>
                 internalName,
                 "Internal name",
                 MaximumInternalNameLength);
-
-        if (!Enum.IsDefined(audience))
-        {
-            throw new DomainException(
-                "Splash audience is invalid.");
-        }
 
         string normalizedArabicTitle =
             NormalizeRequiredText(
@@ -148,7 +138,6 @@ public sealed class SplashScreen : AggregateRoot<SplashScreenId>
         return new SplashScreen(
             SplashScreenId.New(),
             normalizedInternalName,
-            audience,
             normalizedArabicTitle,
             normalizedEnglishTitle,
             normalizedArabicDescription,

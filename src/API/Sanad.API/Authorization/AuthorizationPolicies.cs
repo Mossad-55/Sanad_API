@@ -4,4 +4,7 @@ public static class AuthorizationPolicies
 {
     public const string NormalAccess =
         "NormalAccess";
+
+    public const string CmsContent =
+        "CmsContent";
 }

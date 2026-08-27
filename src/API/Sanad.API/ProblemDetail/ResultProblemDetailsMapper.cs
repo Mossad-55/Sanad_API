@@ -51,7 +51,10 @@ public static class ResultProblemDetailsMapper
             ["Identity.Verification.RequestExpired"] = 401,
             ["Identity.Verification.InvalidCode"] = 401,
             ["Identity.Verification.UnsupportedPurpose"] = 400,
-            ["Identity.Verification.UserNotFound"] = 401
+            ["Identity.Verification.UserNotFound"] = 401,
+
+            ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
+            ["Cms.Splash.NotFound"] = 404,
         };
 
     public static ProblemDetails Create(

@@ -16,10 +16,6 @@ public sealed class SplashScreenTests
             screen.Status);
 
         Assert.Equal(
-            SplashAudience.Family,
-            screen.Audience);
-
-        Assert.Equal(
             "#1A73E8",
             screen.BackgroundColor);
     }
@@ -33,14 +29,6 @@ public sealed class SplashScreenTests
         Assert.Throws<DomainException>(
             () => CreateValid(
                 internalName: internalName));
-    }
-
-    [Fact]
-    public void Create_ShouldRejectInvalidAudience()
-    {
-        Assert.Throws<DomainException>(
-            () => CreateValid(
-                audience: (SplashAudience)99));
     }
 
     [Theory]
@@ -119,13 +107,11 @@ public sealed class SplashScreenTests
 
     private static SplashScreen CreateValid(
         string internalName = "family-welcome",
-        SplashAudience audience = SplashAudience.Family,
         string backgroundColor = "#1a73e8",
         int displayOrder = 0)
     {
         return SplashScreen.Create(
             internalName,
-            audience,
             "مرحبا",
             "Welcome",
             "وصف قصير",

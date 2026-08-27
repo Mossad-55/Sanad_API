@@ -30,11 +30,6 @@ public sealed class SplashScreenConfiguration :
         builder.HasIndex(screen => screen.InternalName)
             .IsUnique();
 
-        builder.Property(screen => screen.Audience)
-            .HasColumnName("audience")
-            .HasConversion<int>()
-            .IsRequired();
-
         builder.Property(screen => screen.ArabicTitle)
             .HasColumnName("arabic_title")
             .HasMaxLength(SplashScreen.MaximumTitleLength)
@@ -94,7 +89,6 @@ public sealed class SplashScreenConfiguration :
 
         builder.HasIndex(screen => new
         {
-            screen.Audience,
             screen.Status,
             screen.DisplayOrder
         });

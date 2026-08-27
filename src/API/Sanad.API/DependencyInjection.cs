@@ -12,6 +12,8 @@ using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Infrastructure;
 using Sanad.Modules.Identity.Infrastructure.Security;
 using Sanad.Modules.Cms.Infrastructure;
+using Sanad.Modules.Identity.Domain.Users;
+using Sanad.Modules.Cms.Application.Splash;
 
 namespace Sanad.API;
 
@@ -103,15 +105,29 @@ public static class DependencyInjection
                         AuthClaimNames.AccessType,
                         AuthAccessType.Normal
                             .ToString());
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccountType,
+                        AccountType.SuperAdmin.ToString(),
+                        AccountType.ContentAdmin.ToString());
                 });
         });
 
         services.AddMediatR(configuration =>
+        {
             configuration.RegisterServicesFromAssembly(
-                typeof(RegisterUserCommand).Assembly));
+                typeof(RegisterUserCommand).Assembly);
+
+            configuration.RegisterServicesFromAssembly(
+                typeof(CreateSplashScreenCommand).Assembly);
+        });
+
 
         services.AddValidatorsFromAssembly(
             typeof(RegisterUserCommand).Assembly);
+
+        services.AddValidatorsFromAssembly(
+            typeof(CreateSplashScreenCommand).Assembly);
 
         services.AddTransient(
             typeof(IPipelineBehavior<,>),
