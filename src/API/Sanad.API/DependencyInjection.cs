@@ -105,6 +105,18 @@ public static class DependencyInjection
                         AuthClaimNames.AccessType,
                         AuthAccessType.Normal
                             .ToString());
+                });
+
+            options.AddPolicy(
+                AuthorizationPolicies.CmsContent,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AuthAccessType.Normal
+                            .ToString());
 
                     policy.RequireClaim(
                         AuthClaimNames.AccountType,
