@@ -17,6 +17,8 @@ Implemented HTTP surface:
 - Refresh-token rotation and reuse detection
 - Session list, current logout, logout-all, and owned-session revoke
 - Password reset and authenticated password change
+- Shared splash screens (anonymous GET)
+- Admin splash CMS (create/update as multipart with image in the same request)
 
 Email and SMS delivery:
 

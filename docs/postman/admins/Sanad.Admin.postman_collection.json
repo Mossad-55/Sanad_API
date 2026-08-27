@@ -62,8 +62,19 @@
               { "key": "Authorization", "value": "Bearer {{accessToken}}" }
             ],
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"internalName\": \"welcome\",\n  \"arabicTitle\": \"مرحبا\",\n  \"englishTitle\": \"Welcome\",\n  \"arabicDescription\": \"وصف قصير\",\n  \"englishDescription\": \"Short description\",\n  \"arabicButtonText\": \"التالي\",\n  \"englishButtonText\": \"Next\",\n  \"imagePath\": \"splash/welcome.png\",\n  \"backgroundColor\": \"#1A73E8\",\n  \"displayOrder\": 0\n}"
+              "mode": "formdata",
+              "formdata": [
+                { "key": "internalName", "type": "text", "value": "welcome" },
+                { "key": "arabicTitle", "type": "text", "value": "مرحبا" },
+                { "key": "englishTitle", "type": "text", "value": "Welcome" },
+                { "key": "arabicDescription", "type": "text", "value": "وصف قصير" },
+                { "key": "englishDescription", "type": "text", "value": "Short description" },
+                { "key": "arabicButtonText", "type": "text", "value": "التالي" },
+                { "key": "englishButtonText", "type": "text", "value": "Next" },
+                { "key": "backgroundColor", "type": "text", "value": "#1A73E8" },
+                { "key": "displayOrder", "type": "text", "value": "0" },
+                { "key": "file", "type": "file", "src": "", "value": "" }
+              ]
             },
             "url": "{{baseUrl}}/api/v1/admin/splash-screens"
           }
@@ -77,8 +88,17 @@
               { "key": "Authorization", "value": "Bearer {{accessToken}}" }
             ],
             "body": {
-              "mode": "raw",
-              "raw": "{\n  \"arabicTitle\": \"مرحبا بكم\",\n  \"englishTitle\": \"Welcome\",\n  \"arabicDescription\": \"وصف محدث\",\n  \"englishDescription\": \"Updated description\",\n  \"arabicButtonText\": \"ابدأ\",\n  \"englishButtonText\": \"Start\",\n  \"imagePath\": \"splash/welcome.png\",\n  \"backgroundColor\": \"#1A73E8\",\n  \"displayOrder\": 0\n}"
+              "mode": "formdata",
+              "formdata": [
+                { "key": "arabicTitle", "type": "text", "value": "مرحبا بكم" },
+                { "key": "englishTitle", "type": "text", "value": "Welcome" },
+                { "key": "arabicDescription", "type": "text", "value": "وصف محدث" },
+                { "key": "englishDescription", "type": "text", "value": "Updated description" },
+                { "key": "arabicButtonText", "type": "text", "value": "ابدأ" },
+                { "key": "englishButtonText", "type": "text", "value": "Start" },
+                { "key": "backgroundColor", "type": "text", "value": "#1A73E8" },
+                { "key": "displayOrder", "type": "text", "value": "0" }
+              ]
             },
             "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}"
           }

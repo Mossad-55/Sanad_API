@@ -34,7 +34,11 @@ GET /api/v1/splash-screens
 
 `id` is a strongly typed id: JSON object `{ "value": "<guid>" }`.
 
-`imagePath` is a storage **key**, not a file on the caller's laptop and not a served URL yet. File upload to the VPS disk is the next slice. Until then, treat the key as opaque (or a bundled asset name).
+`imagePath` is a storage **key** such as `splash/{guid}.jpg`.  
+The image is publicly readable at:
+
+```text
+GET {baseUrl}/files/{imagePath}
 
 `backgroundColor` is `#RRGGBB`.
 

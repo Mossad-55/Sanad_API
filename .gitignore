@@ -5,6 +5,7 @@
 
 # dotenv files
 .env
+sanad-files/
 
 # User-specific files
 *.rsuser

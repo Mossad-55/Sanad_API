@@ -17,6 +17,15 @@ The host will not start if JWT is missing or the signing key is too short.
 
 EF design-time migrations also read `ConnectionStrings__IdentityDatabase`.
 
+## Local file storage
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `Storage__Local__RootPath` | `{appBase}/sanad-files` | Disk root for uploaded files |
+
+On Hostinger use `/var/sanad/files`.  
+Public URL path is `/files/{key}`. Do not commit uploaded files.
+
 ## Optional SMTP
 
 Enabled only when `Host` and `FromAddress` are set.

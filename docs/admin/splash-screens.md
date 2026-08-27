@@ -22,35 +22,39 @@ Delete → row removed
 
 ## Create
 
-`POST /api/v1/admin/splash-screens` → `201`
+`POST /api/v1/admin/splash-screens` → `201`  
+`Content-Type: multipart/form-data`  
+Image is uploaded **in the same request**. There is no `imagePath` field and no separate files endpoint.
 
-```json
-{
-  "internalName": "welcome",
-  "arabicTitle": "مرحبا",
-  "englishTitle": "Welcome",
-  "arabicDescription": "وصف قصير",
-  "englishDescription": "Short description",
-  "arabicButtonText": "التالي",
-  "englishButtonText": "Next",
-  "imagePath": "splash/welcome.png",
-  "backgroundColor": "#1A73E8",
-  "displayOrder": 0
-}
-```
+Form fields:
 
-`backgroundColor` must match `#RRGGBB`. `displayOrder` >= 0. `imagePath` is a key (max 500), not a local disk path.
+| Field | Required | Notes |
+|---|---|---|
+| `internalName` | yes | Unique, immutable after create |
+| `arabicTitle` | yes | |
+| `englishTitle` | yes | |
+| `arabicDescription` | yes | |
+| `englishDescription` | yes | |
+| `arabicButtonText` | yes | |
+| `englishButtonText` | yes | |
+| `backgroundColor` | yes | `#RRGGBB` |
+| `displayOrder` | yes | integer >= 0 |
+| `file` | yes | `image/jpeg`, `image/png`, or `image/webp`. Max 2 MB |
+
+The API stores the file on disk and persists a generated key such as `splash/{guid}.jpg`. The client file name is never used in the path.
 
 Duplicate `internalName` → `409` `Cms.Splash.InternalNameAlreadyInUse`.
 
-Response includes `status`: `1` Draft, `2` Published. `id` is `{ "value": "<guid>" }`.
+Missing/empty file → `400` `Storage.File.Empty`.  
+Too large → `400` `Storage.File.TooLarge`.  
+Wrong type (for example GIF) → `400` `Storage.File.UnsupportedType`.
 
-## Update content
+Response includes `status`: `1` Draft, `2` Published. `id` is `{ "value": "<guid>" }`. `imagePath` in the response is the server key, not a laptop path.
 
-`PUT /api/v1/admin/splash-screens/{id}` → `200`  
-`id` is the raw GUID (not the `{ value }` object).
+Public image URL:
 
-Does not change `internalName`. Missing id → `404` `Cms.Splash.NotFound`.
+```text
+{baseUrl}/files/{imagePath}
 
 ## Publish / unpublish
 
@@ -79,7 +83,7 @@ sequenceDiagram
     participant App
     Admin->>API: POST /api/v1/auth/login
     API-->>Admin: accessToken (Normal, SuperAdmin)
-    Admin->>API: POST /api/v1/admin/splash-screens
+    Admin->>API: POST /api/v1/admin/splash-screens (multipart + file)
     API-->>Admin: 201 Draft
     Admin->>API: POST /api/v1/admin/splash-screens/{id}/publish
     API-->>Admin: 200 Published
