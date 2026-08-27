@@ -14,6 +14,8 @@ using Sanad.Modules.Identity.Infrastructure.Security;
 using Sanad.Modules.Cms.Infrastructure;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Cms.Application.Splash;
+using Sanad.BuildingBlocks.Infrastructure.Storage;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 
 namespace Sanad.API;
 
@@ -34,6 +36,14 @@ public static class DependencyInjection
 
         services.AddCmsInfrastructure(
             configuration);
+
+        services.AddOptions<LocalStorageOptions>()
+            .Bind(
+                configuration.GetSection(
+                    LocalStorageOptions.SectionName));
+
+        services.AddSingleton<IFileStorage,
+            LocalDiskFileStorage>();
 
         JwtOptions jwtOptions =
             configuration

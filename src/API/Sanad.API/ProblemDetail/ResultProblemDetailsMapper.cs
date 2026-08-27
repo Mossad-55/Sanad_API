@@ -55,6 +55,10 @@ public static class ResultProblemDetailsMapper
 
             ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
             ["Cms.Splash.NotFound"] = 404,
+
+            ["Storage.File.Empty"] = 400,
+            ["Storage.File.TooLarge"] = 400,
+            ["Storage.File.UnsupportedType"] = 400,
         };
 
     public static ProblemDetails Create(

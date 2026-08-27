@@ -51,7 +51,6 @@ public sealed class UpdateSplashScreenCommandValidator :
 
         RuleFor(command =>
                 command.ImagePath)
-            .NotEmpty()
             .MaximumLength(
                 SplashScreen.MaximumImagePathLength);
 

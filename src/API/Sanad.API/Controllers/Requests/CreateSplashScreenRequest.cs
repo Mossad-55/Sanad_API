@@ -8,6 +8,5 @@ public sealed record CreateSplashScreenRequest(
     string EnglishDescription,
     string ArabicButtonText,
     string EnglishButtonText,
-    string ImagePath,
     string BackgroundColor,
     int DisplayOrder);

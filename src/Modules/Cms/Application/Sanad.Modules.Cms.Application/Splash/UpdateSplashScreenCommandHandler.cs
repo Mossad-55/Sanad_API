@@ -35,6 +35,11 @@ public sealed class UpdateSplashScreenCommandHandler :
             return SplashErrors.NotFound;
         }
 
+        string imagePath =
+            string.IsNullOrWhiteSpace(request.ImagePath)
+                ? screen.ImagePath
+                : request.ImagePath;
+
         screen.UpdateContent(
             request.ArabicTitle,
             request.EnglishTitle,
@@ -42,7 +47,7 @@ public sealed class UpdateSplashScreenCommandHandler :
             request.EnglishDescription,
             request.ArabicButtonText,
             request.EnglishButtonText,
-            request.ImagePath,
+            imagePath,
             request.BackgroundColor,
             request.DisplayOrder);
 

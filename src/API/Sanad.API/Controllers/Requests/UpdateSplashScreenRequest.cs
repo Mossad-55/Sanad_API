@@ -7,6 +7,5 @@ public sealed record UpdateSplashScreenRequest(
     string EnglishDescription,
     string ArabicButtonText,
     string EnglishButtonText,
-    string ImagePath,
     string BackgroundColor,
     int DisplayOrder);

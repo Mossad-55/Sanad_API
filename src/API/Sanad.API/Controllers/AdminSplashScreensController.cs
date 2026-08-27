@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers.Requests;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Cms.Application.Splash;
 
@@ -14,24 +16,35 @@ public sealed class AdminSplashScreensController :
     ApiControllerBase
 {
     private readonly ISender _sender;
+    private readonly IFileStorage _fileStorage;
 
     public AdminSplashScreensController(
-        ISender sender)
+        ISender sender,
+        IFileStorage fileStorage)
     {
         _sender = sender;
+        _fileStorage = fileStorage;
     }
 
     [HttpPost]
-    [ProducesResponseType(
-        typeof(SplashScreenResponse),
-        StatusCodes.Status201Created)]
-    [ProducesResponseType(
-        typeof(ProblemDetails),
-        StatusCodes.Status409Conflict)]
+    [RequestSizeLimit(2_097_152)]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(SplashScreenResponse), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(
-        [FromBody] CreateSplashScreenRequest request,
-        CancellationToken cancellationToken)
+    [FromForm] CreateSplashScreenRequest request,
+    IFormFile file,
+    CancellationToken cancellationToken)
     {
+        var upload =
+            await SaveSplashImageAsync(
+                file,
+                cancellationToken);
+
+        if (upload.IsFailure)
+        {
+            return ToActionResult(upload);
+        }
+
         var result =
             await _sender.Send(
                 new CreateSplashScreenCommand(
@@ -42,15 +55,14 @@ public sealed class AdminSplashScreensController :
                     request.EnglishDescription,
                     request.ArabicButtonText,
                     request.EnglishButtonText,
-                    request.ImagePath,
+                    upload.Value.Key,
                     request.BackgroundColor,
                     request.DisplayOrder),
                 cancellationToken);
 
         if (result.IsFailure)
         {
-            return ToActionResult(
-                result);
+            return ToActionResult(result);
         }
 
         return StatusCode(
@@ -59,17 +71,31 @@ public sealed class AdminSplashScreensController :
     }
 
     [HttpPut("{id:guid}")]
-    [ProducesResponseType(
-        typeof(SplashScreenResponse),
-        StatusCodes.Status200OK)]
-    [ProducesResponseType(
-        typeof(ProblemDetails),
-        StatusCodes.Status404NotFound)]
+    [RequestSizeLimit(2_097_152)]
+    [Consumes("multipart/form-data")]
     public async Task<IActionResult> Update(
         Guid id,
-        [FromBody] UpdateSplashScreenRequest request,
+        [FromForm] UpdateSplashScreenRequest request,
+        IFormFile? file,
         CancellationToken cancellationToken)
     {
+        string? imagePath = null;
+
+        if (file is not null)
+        {
+            var upload =
+                await SaveSplashImageAsync(
+                    file,
+                    cancellationToken);
+
+            if (upload.IsFailure)
+            {
+                return ToActionResult(upload);
+            }
+
+            imagePath = upload.Value.Key;
+        }
+
         var result =
             await _sender.Send(
                 new UpdateSplashScreenCommand(
@@ -80,13 +106,12 @@ public sealed class AdminSplashScreensController :
                     request.EnglishDescription,
                     request.ArabicButtonText,
                     request.EnglishButtonText,
-                    request.ImagePath,
+                    imagePath,
                     request.BackgroundColor,
                     request.DisplayOrder),
                 cancellationToken);
 
-        return ToActionResult(
-            result);
+        return ToActionResult(result);
     }
 
     [HttpPost("{id:guid}/publish")]
@@ -140,5 +165,26 @@ public sealed class AdminSplashScreensController :
 
         return ToActionResult(
             result);
+    }
+
+    private async Task<Result<StoredFile>> SaveSplashImageAsync(
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        if (file is null)
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.Empty);
+        }
+
+        await using Stream stream =
+            file.OpenReadStream();
+
+        return await _fileStorage.SaveAsync(
+            stream,
+            file.ContentType,
+            file.Length,
+            folder: "splash",
+            cancellationToken);
     }
 }

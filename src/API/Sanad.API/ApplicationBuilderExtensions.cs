@@ -1,6 +1,9 @@
 namespace Sanad.API;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Options;
+using Sanad.BuildingBlocks.Infrastructure.Storage;
 using Sanad.Modules.Cms.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence.Seeding;
@@ -13,6 +16,8 @@ public static class ApplicationBuilderExtensions
         app.UseExceptionHandler();
 
         app.UseStatusCodePages();
+
+        UseLocalFiles(app);
 
         app.UseHttpsRedirection();
 
@@ -81,5 +86,28 @@ public static class ApplicationBuilderExtensions
                 CmsDbContext>();
 
         dbContext.Database.Migrate();
+    }
+
+    private static void UseLocalFiles(
+    WebApplication app)
+    {
+        LocalStorageOptions storageOptions =
+            app.Services
+                .GetRequiredService<
+                    IOptions<LocalStorageOptions>>()
+                .Value;
+
+        string root =
+            storageOptions.GetEffectiveRootPath();
+
+        Directory.CreateDirectory(root);
+
+        app.UseStaticFiles(
+            new StaticFileOptions
+            {
+                FileProvider =
+                    new PhysicalFileProvider(root),
+                RequestPath = "/files"
+            });
     }
 }

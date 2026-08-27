@@ -11,7 +11,7 @@ public sealed record UpdateSplashScreenCommand(
     string EnglishDescription,
     string ArabicButtonText,
     string EnglishButtonText,
-    string ImagePath,
+    string? ImagePath,
     string BackgroundColor,
     int DisplayOrder)
     : ICommand<SplashScreenResponse>;
