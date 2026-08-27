@@ -11,6 +11,7 @@ using Sanad.Modules.Identity.Application.Authentication.Registration;
 using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Infrastructure;
 using Sanad.Modules.Identity.Infrastructure.Security;
+using Sanad.Modules.Cms.Infrastructure;
 
 namespace Sanad.API;
 
@@ -27,6 +28,9 @@ public static class DependencyInjection
         services.AddOpenApi();
 
         services.AddIdentityInfrastructure(
+            configuration);
+
+        services.AddCmsInfrastructure(
             configuration);
 
         JwtOptions jwtOptions =

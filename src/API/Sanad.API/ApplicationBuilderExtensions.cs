@@ -1,6 +1,7 @@
 namespace Sanad.API;
 
 using Microsoft.EntityFrameworkCore;
+using Sanad.Modules.Cms.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence.Seeding;
 
@@ -34,6 +35,8 @@ public static class ApplicationBuilderExtensions
         }
 
         ApplyIdentityMigrations(app);
+        ApplyCmsMigrations(app);
+
         SeedSuperAdmin(app);
 
         return app;
@@ -65,5 +68,18 @@ public static class ApplicationBuilderExtensions
         seeder.SeedAsync()
             .GetAwaiter()
             .GetResult();
+    }
+
+    private static void ApplyCmsMigrations(
+        WebApplication app)
+    {
+        using IServiceScope scope =
+            app.Services.CreateScope();
+
+        CmsDbContext dbContext =
+            scope.ServiceProvider.GetRequiredService<
+                CmsDbContext>();
+
+        dbContext.Database.Migrate();
     }
 }

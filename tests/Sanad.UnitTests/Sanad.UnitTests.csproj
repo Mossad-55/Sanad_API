@@ -26,6 +26,7 @@
     <ProjectReference Include="..\..\src\Modules\Identity\Infrastructure\Sanad.Modules.Identity.Infrastructure\Sanad.Modules.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\API\Sanad.API\Sanad.API.csproj" />
     <ProjectReference Include="..\..\src\Modules\Cms\Domain\Sanad.Modules.Cms.Domain\Sanad.Modules.Cms.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Cms\Infrastructure\Sanad.Modules.Cms.Infrastructure\Sanad.Modules.Cms.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
