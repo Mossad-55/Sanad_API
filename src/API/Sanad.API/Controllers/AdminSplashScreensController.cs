@@ -45,6 +45,9 @@ public sealed class AdminSplashScreensController :
             return ToActionResult(upload);
         }
 
+        string imageKey =
+            upload.Value.Key;
+
         var result =
             await _sender.Send(
                 new CreateSplashScreenCommand(
@@ -62,6 +65,10 @@ public sealed class AdminSplashScreensController :
 
         if (result.IsFailure)
         {
+            await _fileStorage.DeleteAsync(
+                imageKey,
+                cancellationToken);
+
             return ToActionResult(result);
         }
 
@@ -110,6 +117,14 @@ public sealed class AdminSplashScreensController :
                     request.BackgroundColor,
                     request.DisplayOrder),
                 cancellationToken);
+
+        if (result.IsFailure &&
+            imagePath is not null)
+        {
+            await _fileStorage.DeleteAsync(
+                imagePath,
+                cancellationToken);
+        }
 
         return ToActionResult(result);
     }

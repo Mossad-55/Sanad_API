@@ -14,8 +14,10 @@ using Sanad.Modules.Identity.Infrastructure.Security;
 using Sanad.Modules.Cms.Infrastructure;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Cms.Application.Splash;
+using Sanad.Modules.Caregivers.Infrastructure;
 using Sanad.BuildingBlocks.Infrastructure.Storage;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
+using Sanad.Modules.Caregivers.Application.Lookups;
 
 namespace Sanad.API;
 
@@ -35,6 +37,9 @@ public static class DependencyInjection
             configuration);
 
         services.AddCmsInfrastructure(
+            configuration);
+
+        services.AddCaregiversInfrastructure(
             configuration);
 
         services.AddOptions<LocalStorageOptions>()
@@ -133,6 +138,23 @@ public static class DependencyInjection
                         AccountType.SuperAdmin.ToString(),
                         AccountType.ContentAdmin.ToString());
                 });
+
+            options.AddPolicy(
+                AuthorizationPolicies.CaregiversAdmin,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AuthAccessType.Normal
+                            .ToString());
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccountType,
+                        AccountType.SuperAdmin.ToString(),
+                        AccountType.ContentAdmin.ToString());
+                });
         });
 
         services.AddMediatR(configuration =>
@@ -142,6 +164,9 @@ public static class DependencyInjection
 
             configuration.RegisterServicesFromAssembly(
                 typeof(CreateSplashScreenCommand).Assembly);
+
+            configuration.RegisterServicesFromAssembly(
+                typeof(CreateServiceCommand).Assembly);
         });
 
 
@@ -150,6 +175,9 @@ public static class DependencyInjection
 
         services.AddValidatorsFromAssembly(
             typeof(CreateSplashScreenCommand).Assembly);
+
+        services.AddValidatorsFromAssembly(
+            typeof(CreateServiceCommand).Assembly);
 
         services.AddTransient(
             typeof(IPipelineBehavior<,>),

@@ -84,4 +84,47 @@ public sealed class LocalDiskFileStorage : IFileStorage
 
         return new StoredFile(key);
     }
+    public async Task<Result> DeleteAsync(
+    string key,
+    CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(
+                key))
+        {
+            return Result.Failure(
+                StorageErrors.Empty);
+        }
+
+        string normalizedKey =
+            key.Trim()
+                .Replace('\\', '/')
+                .Trim('/');
+
+        if (normalizedKey.Contains(
+                "..",
+                StringComparison.Ordinal) ||
+            Path.IsPathRooted(
+                normalizedKey))
+        {
+            return Result.Failure(
+                StorageErrors.UnsafePath);
+        }
+
+        string root =
+            _options.GetEffectiveRootPath();
+
+        string fullPath =
+            Path.Combine(
+                root,
+                normalizedKey.Replace(
+                    '/',
+                    Path.DirectorySeparatorChar));
+
+        if (File.Exists(fullPath))
+        {
+            File.Delete(fullPath);
+        }
+
+        return Result.Success();
+    }
 }

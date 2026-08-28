@@ -12,4 +12,7 @@ public static class StorageErrors
 
     public static readonly Error UnsupportedType =
         new("Storage.File.UnsupportedType", "File type is not allowed.");
+
+    public static readonly Error UnsafePath =
+        new("Storage.File.UnsafePath", "The file path is not allowed.");
 }

@@ -153,6 +153,57 @@ public sealed class LocalDiskFileStorageTests : IDisposable
                 SearchOption.AllDirectories));
     }
 
+    [Fact]
+    public async Task Delete_ShouldRemoveSavedFile()
+    {
+        using MemoryStream content =
+            new([0x1, 0x2, 0x3, 0x4]);
+
+        Result<StoredFile> saved =
+            await _storage.SaveAsync(
+                content,
+                "image/jpeg",
+                4,
+                "splash",
+                CancellationToken.None);
+
+        Assert.True(saved.IsSuccess);
+
+        string key =
+            saved.Value.Key;
+
+        string storedPath =
+            Path.Combine(
+                _rootPath,
+                key.Replace(
+                    '/',
+                    Path.DirectorySeparatorChar));
+
+        Assert.True(File.Exists(storedPath));
+
+        Result delete =
+            await _storage.DeleteAsync(
+                key,
+                CancellationToken.None);
+
+        Assert.True(delete.IsSuccess);
+        Assert.False(File.Exists(storedPath));
+    }
+
+    [Fact]
+    public async Task Delete_ShouldRejectEmptyKey()
+    {
+        Result delete =
+            await _storage.DeleteAsync(
+                "",
+                CancellationToken.None);
+
+        Assert.True(delete.IsFailure);
+        Assert.Equal(
+            StorageErrors.Empty.Code,
+            delete.Error.Code);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_rootPath))

@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
 using Sanad.BuildingBlocks.Infrastructure.Storage;
+using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 using Sanad.Modules.Cms.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence.Seeding;
@@ -41,6 +42,7 @@ public static class ApplicationBuilderExtensions
 
         ApplyIdentityMigrations(app);
         ApplyCmsMigrations(app);
+        ApplyCaregiversMigrations(app);
 
         SeedSuperAdmin(app);
 
@@ -88,8 +90,21 @@ public static class ApplicationBuilderExtensions
         dbContext.Database.Migrate();
     }
 
+    private static void ApplyCaregiversMigrations(
+        WebApplication app)
+    {
+        using IServiceScope scope =
+            app.Services.CreateScope();
+
+        CaregiversDbContext dbContext =
+            scope.ServiceProvider.GetRequiredService<
+                CaregiversDbContext>();
+
+        dbContext.Database.Migrate();
+    }
+
     private static void UseLocalFiles(
-    WebApplication app)
+        WebApplication app)
     {
         LocalStorageOptions storageOptions =
             app.Services

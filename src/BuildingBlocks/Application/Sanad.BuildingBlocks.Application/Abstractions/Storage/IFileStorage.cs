@@ -10,6 +10,10 @@ public interface IFileStorage
         long contentLength,
         string folder,
         CancellationToken cancellationToken = default);
+
+    Task<Result> DeleteAsync(
+        string key,
+        CancellationToken cancellationToken = default);
 }
 
 public sealed record StoredFile(
