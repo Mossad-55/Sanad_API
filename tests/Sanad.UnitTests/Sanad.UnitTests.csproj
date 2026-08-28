@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\src\API\Sanad.API\Sanad.API.csproj" />
     <ProjectReference Include="..\..\src\Modules\Cms\Domain\Sanad.Modules.Cms.Domain\Sanad.Modules.Cms.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Cms\Infrastructure\Sanad.Modules.Cms.Infrastructure\Sanad.Modules.Cms.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Caregivers\Infrastructure\Sanad.Modules.Caregivers.Infrastructure\Sanad.Modules.Caregivers.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>
