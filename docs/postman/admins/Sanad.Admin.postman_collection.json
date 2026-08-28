@@ -134,6 +134,75 @@
           }
         }
       ]
+    },
+    {
+      "name": "Caregiver lookups",
+      "item": [
+        {
+          "name": "Create service",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id && body.id.value) { pm.environment.set('serviceId', body.id.value); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "arabicName", "type": "text", "value": "طبيب" },
+                { "key": "englishName", "type": "text", "value": "Doctor" },
+                { "key": "caregiverType", "type": "text", "value": "1" },
+                { "key": "isActive", "type": "text", "value": "true" },
+                { "key": "file", "type": "file", "src": "", "value": "" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/services"
+          }
+        },
+        {
+          "name": "Rename service",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arabicName\": \"طبيب ممارس\",\n  \"englishName\": \"Practicing Doctor\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/services/{{serviceId}}"
+          }
+        },
+        {
+          "name": "Deactivate service",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/services/{{serviceId}}/deactivate"
+          }
+        },
+        {
+          "name": "Activate service",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/services/{{serviceId}}/activate"
+          }
+        }
+      ]
     }
   ]
 }

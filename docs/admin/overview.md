@@ -15,11 +15,14 @@ All admin splash writes also require `access_type` = `Normal`. Restricted verifi
 
 First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public admin register.
 
+Caregiver lookup writes use the `CaregiversAdmin` policy — same role/token requirements as `CmsContent`.
+
 ## Current admin surface
 
 | Area | Doc |
 |---|---|
 | Splash screens | `docs/admin/splash-screens.md` |
-| Postman | `docs/postman/admin/Sanad.Admin.postman_collection.json` |
+| Service lookups | `docs/admin/service-lookups.md` |
+| Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
 
 App-facing (non-admin) splash GET: `docs/users/splash-screens.md`.

@@ -18,6 +18,20 @@
           }
         }
       ]
+    },
+    {
+      "name": "Lookups",
+      "item": [
+        {
+          "name": "Get active services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/services",
+            "description": "Anonymous. Active services only. Empty list is 200 []."
+          }
+        }
+      ]
     }
   ]
 }
