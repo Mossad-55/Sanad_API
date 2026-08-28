@@ -203,6 +203,141 @@
           }
         }
       ]
+    },
+        {
+      "name": "Lookups — languages & governorates",
+      "item": [
+        {
+          "name": "List all services (admin)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/services"
+          }
+        },
+        {
+          "name": "List all languages (admin)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/languages"
+          }
+        },
+        {
+          "name": "Create language",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id && body.id.value) { pm.environment.set('languageId', body.id.value); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"code\": \"ar\",\n  \"arabicName\": \"العربية\",\n  \"englishName\": \"Arabic\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/languages"
+          }
+        },
+        {
+          "name": "Rename language",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"العربية الفصحى\",\n  \"englishName\": \"Modern Standard Arabic\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/languages/{{languageId}}"
+          }
+        },
+        {
+          "name": "Deactivate language",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/languages/{{languageId}}/deactivate"
+          }
+        },
+        {
+          "name": "Activate language",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/languages/{{languageId}}/activate"
+          }
+        },
+        {
+          "name": "List all governorates (admin)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/governorates"
+          }
+        },
+        {
+          "name": "Create governorate",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id && body.id.value) { pm.environment.set('governorateId', body.id.value); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"البحيرة\",\n  \"englishName\": \"Beheira\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/governorates"
+          }
+        },
+        {
+          "name": "Rename governorate",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"البحيرة\",\n  \"englishName\": \"Beheira Governorate\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/governorates/{{governorateId}}"
+          }
+        },
+        {
+          "name": "Deactivate governorate",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/governorates/{{governorateId}}/deactivate"
+          }
+        },
+        {
+          "name": "Activate governorate",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/governorates/{{governorateId}}/activate"
+          }
+        }
+      ]
     }
   ]
 }

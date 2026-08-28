@@ -23,6 +23,9 @@ Caregiver lookup writes use the `CaregiversAdmin` policy — same role/token req
 |---|---|
 | Splash screens | `docs/admin/splash-screens.md` |
 | Service lookups | `docs/admin/service-lookups.md` |
+| Language & governorate lookups | `docs/admin/lookups-languages-governorates.md` |
 | Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
+
+Admin lookup management uses list-all endpoints (`GET /api/v1/admin/lookups/{services|languages|governorates}`) that return active **and** inactive records with `isActive`, separate from the public active-only app reads.
 
 App-facing (non-admin) splash GET: `docs/users/splash-screens.md`.

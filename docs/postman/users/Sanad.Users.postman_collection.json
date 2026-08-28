@@ -30,6 +30,24 @@
             "url": "{{baseUrl}}/api/v1/lookups/services",
             "description": "Anonymous. Active services only. Empty list is 200 []."
           }
+        },
+                {
+          "name": "Get active languages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/languages",
+            "description": "Anonymous. Active languages only."
+          }
+        },
+        {
+          "name": "Get active governorates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/governorates",
+            "description": "Anonymous. Active governorates only."
+          }
         }
       ]
     }

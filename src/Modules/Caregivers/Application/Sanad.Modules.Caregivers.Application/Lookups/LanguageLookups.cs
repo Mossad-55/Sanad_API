@@ -291,36 +291,36 @@ public sealed class GetActiveLanguagesQueryHandler :
 
         return Result<IReadOnlyList<LanguagePublicItem>>.Success(items);
     }
+}
 
-    public sealed record GetAllLanguagesQuery()
+public sealed record GetAllLanguagesQuery()
         : IQuery<IReadOnlyList<LanguageResponse>>;
 
-    public sealed class GetAllLanguagesQueryHandler :
-        IQueryHandler<GetAllLanguagesQuery, IReadOnlyList<LanguageResponse>>
+public sealed class GetAllLanguagesQueryHandler :
+    IQueryHandler<GetAllLanguagesQuery, IReadOnlyList<LanguageResponse>>
+{
+    private readonly ICaregiversDbContext _dbContext;
+
+    public GetAllLanguagesQueryHandler(ICaregiversDbContext dbContext)
     {
-        private readonly ICaregiversDbContext _dbContext;
+        _dbContext = dbContext;
+    }
 
-        public GetAllLanguagesQueryHandler(ICaregiversDbContext dbContext)
-        {
-            _dbContext = dbContext;
-        }
+    public async Task<Result<IReadOnlyList<LanguageResponse>>> Handle(
+        GetAllLanguagesQuery request,
+        CancellationToken cancellationToken)
+    {
+        List<Language> languages =
+            await _dbContext.Languages
+                .AsNoTracking()
+                .OrderBy(language => language.Code)
+                .ToListAsync(cancellationToken);
 
-        public async Task<Result<IReadOnlyList<LanguageResponse>>> Handle(
-            GetAllLanguagesQuery request,
-            CancellationToken cancellationToken)
-        {
-            List<Language> languages =
-                await _dbContext.Languages
-                    .AsNoTracking()
-                    .OrderBy(language => language.Code)
-                    .ToListAsync(cancellationToken);
+        IReadOnlyList<LanguageResponse> items =
+            languages
+                .Select(language => language.ToResponse())
+                .ToList();
 
-            IReadOnlyList<LanguageResponse> items =
-                languages
-                    .Select(language => language.ToResponse())
-                    .ToList();
-
-            return Result<IReadOnlyList<LanguageResponse>>.Success(items);
-        }
+        return Result<IReadOnlyList<LanguageResponse>>.Success(items);
     }
 }

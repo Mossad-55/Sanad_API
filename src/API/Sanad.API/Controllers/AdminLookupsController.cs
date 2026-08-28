@@ -7,9 +7,6 @@ using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Lookups;
-using static Sanad.Modules.Caregivers.Application.Lookups.GetActiveGovernoratesQueryHandler;
-using static Sanad.Modules.Caregivers.Application.Lookups.GetActiveLanguagesQueryHandler;
-using static Sanad.Modules.Caregivers.Application.Lookups.GetActiveServicesQueryHandler;
 
 namespace Sanad.API.Controllers;
 

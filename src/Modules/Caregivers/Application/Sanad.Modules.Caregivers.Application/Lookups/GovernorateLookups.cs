@@ -268,36 +268,36 @@ public sealed class GetActiveGovernoratesQueryHandler :
 
         return Result<IReadOnlyList<GovernoratePublicItem>>.Success(items);
     }
+}
 
-    public sealed record GetAllGovernoratesQuery()
+public sealed record GetAllGovernoratesQuery()
         : IQuery<IReadOnlyList<GovernorateResponse>>;
 
-    public sealed class GetAllGovernoratesQueryHandler :
-        IQueryHandler<GetAllGovernoratesQuery, IReadOnlyList<GovernorateResponse>>
+public sealed class GetAllGovernoratesQueryHandler :
+    IQueryHandler<GetAllGovernoratesQuery, IReadOnlyList<GovernorateResponse>>
+{
+    private readonly ICaregiversDbContext _dbContext;
+
+    public GetAllGovernoratesQueryHandler(ICaregiversDbContext dbContext)
     {
-        private readonly ICaregiversDbContext _dbContext;
+        _dbContext = dbContext;
+    }
 
-        public GetAllGovernoratesQueryHandler(ICaregiversDbContext dbContext)
-        {
-            _dbContext = dbContext;
-        }
+    public async Task<Result<IReadOnlyList<GovernorateResponse>>> Handle(
+        GetAllGovernoratesQuery request,
+        CancellationToken cancellationToken)
+    {
+        List<Governorate> governorates =
+            await _dbContext.Governorates
+                .AsNoTracking()
+                .OrderBy(governorate => governorate.ArabicName)
+                .ToListAsync(cancellationToken);
 
-        public async Task<Result<IReadOnlyList<GovernorateResponse>>> Handle(
-            GetAllGovernoratesQuery request,
-            CancellationToken cancellationToken)
-        {
-            List<Governorate> governorates =
-                await _dbContext.Governorates
-                    .AsNoTracking()
-                    .OrderBy(governorate => governorate.ArabicName)
-                    .ToListAsync(cancellationToken);
+        IReadOnlyList<GovernorateResponse> items =
+            governorates
+                .Select(governorate => governorate.ToResponse())
+                .ToList();
 
-            IReadOnlyList<GovernorateResponse> items =
-                governorates
-                    .Select(governorate => governorate.ToResponse())
-                    .ToList();
-
-            return Result<IReadOnlyList<GovernorateResponse>>.Success(items);
-        }
+        return Result<IReadOnlyList<GovernorateResponse>>.Success(items);
     }
 }

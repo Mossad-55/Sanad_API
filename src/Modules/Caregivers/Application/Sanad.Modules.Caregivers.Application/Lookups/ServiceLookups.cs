@@ -1,6 +1,5 @@
 using FluentValidation;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Infrastructure;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
@@ -337,38 +336,37 @@ public sealed class GetActiveServicesQueryHandler :
         return Result<IReadOnlyList<ServicePublicItem>>
             .Success(items);
     }
+}
+public sealed record GetAllServicesQuery()
+    : IQuery<IReadOnlyList<ServiceResponse>>;
 
-    public sealed record GetAllServicesQuery()
-        : IQuery<IReadOnlyList<ServiceResponse>>;
+public sealed class GetAllServicesQueryHandler :
+    IQueryHandler<GetAllServicesQuery, IReadOnlyList<ServiceResponse>>
+{
+    private readonly ICaregiversDbContext _dbContext;
 
-    public sealed class GetAllServicesQueryHandler :
-        IQueryHandler<GetAllServicesQuery, IReadOnlyList<ServiceResponse>>
+    public GetAllServicesQueryHandler(
+        ICaregiversDbContext dbContext)
     {
-        private readonly ICaregiversDbContext _dbContext;
+        _dbContext = dbContext;
+    }
 
-        public GetAllServicesQueryHandler(
-            ICaregiversDbContext dbContext)
-        {
-            _dbContext = dbContext;
-        }
+    public async Task<Result<IReadOnlyList<ServiceResponse>>> Handle(
+        GetAllServicesQuery request,
+        CancellationToken cancellationToken)
+    {
+        List<Service> services =
+            await _dbContext.Services
+                .AsNoTracking()
+                .OrderBy(service => service.CaregiverType)
+                .ThenBy(service => service.ArabicName)
+                .ToListAsync(cancellationToken);
 
-        public async Task<Result<IReadOnlyList<ServiceResponse>>> Handle(
-            GetAllServicesQuery request,
-            CancellationToken cancellationToken)
-        {
-            List<Service> services =
-                await _dbContext.Services
-                    .AsNoTracking()
-                    .OrderBy(service => service.CaregiverType)
-                    .ThenBy(service => service.ArabicName)
-                    .ToListAsync(cancellationToken);
+        IReadOnlyList<ServiceResponse> items =
+            services.Select(
+                service => service.ToResponse())
+                .ToList();
 
-            IReadOnlyList<ServiceResponse> items =
-                services.Select(
-                    service => service.ToResponse())
-                    .ToList();
-
-            return Result<IReadOnlyList<ServiceResponse>>.Success(items);
-        }
+        return Result<IReadOnlyList<ServiceResponse>>.Success(items);
     }
 }
