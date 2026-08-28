@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sanad Admin",
-    "description": "Admin CMS. Login as seeded Super Admin first. Splash writes require CmsContent (Normal + SuperAdmin or ContentAdmin).",
+    "description": "Admin CMS and Caregiver lookups. Login as the seeded Super Admin first. Splash writes use CmsContent; lookup writes use CaregiversAdmin (both require a Normal token with account_type SuperAdmin or ContentAdmin).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -21,7 +21,8 @@
                   "  if (body.refreshToken) { pm.environment.set('refreshToken', body.refreshToken); }",
                   "  if (body.deviceSessionId && body.deviceSessionId.value) { pm.environment.set('deviceSessionId', body.deviceSessionId.value); }",
                   "}"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
@@ -51,7 +52,8 @@
                   "  const body = pm.response.json();",
                   "  if (body.id && body.id.value) { pm.environment.set('splashScreenId', body.id.value); }",
                   "}"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
@@ -73,7 +75,7 @@
                 { "key": "englishButtonText", "type": "text", "value": "Next" },
                 { "key": "backgroundColor", "type": "text", "value": "#1A73E8" },
                 { "key": "displayOrder", "type": "text", "value": "0" },
-                { "key": "file", "type": "file", "src": "", "value": "" }
+                { "key": "file", "type": "file", "src": [], "value": "" }
               ]
             },
             "url": "{{baseUrl}}/api/v1/admin/splash-screens"
@@ -107,9 +109,7 @@
           "name": "Publish splash screen",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
             "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}/publish"
           }
         },
@@ -117,9 +117,7 @@
           "name": "Unpublish splash screen",
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
             "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}/unpublish"
           }
         },
@@ -127,17 +125,23 @@
           "name": "Delete splash screen",
           "request": {
             "method": "DELETE",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
             "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}"
           }
         }
       ]
     },
     {
-      "name": "Caregiver lookups",
+      "name": "Caregiver lookups — services",
       "item": [
+        {
+          "name": "List all services (admin)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/services"
+          }
+        },
         {
           "name": "Create service",
           "event": [
@@ -149,7 +153,8 @@
                   "  const body = pm.response.json();",
                   "  if (body.id && body.id.value) { pm.environment.set('serviceId', body.id.value); }",
                   "}"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
@@ -165,7 +170,7 @@
                 { "key": "englishName", "type": "text", "value": "Doctor" },
                 { "key": "caregiverType", "type": "text", "value": "1" },
                 { "key": "isActive", "type": "text", "value": "true" },
-                { "key": "file", "type": "file", "src": "", "value": "" }
+                { "key": "file", "type": "file", "src": [], "value": "" }
               ]
             },
             "url": "{{baseUrl}}/api/v1/admin/lookups/services"
@@ -204,17 +209,9 @@
         }
       ]
     },
-        {
-      "name": "Lookups — languages & governorates",
+    {
+      "name": "Caregiver lookups — languages & governorates",
       "item": [
-        {
-          "name": "List all services (admin)",
-          "request": {
-            "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
-            "url": "{{baseUrl}}/api/v1/admin/lookups/services"
-          }
-        },
         {
           "name": "List all languages (admin)",
           "request": {
@@ -234,7 +231,8 @@
                   "  const body = pm.response.json();",
                   "  if (body.id && body.id.value) { pm.environment.set('languageId', body.id.value); }",
                   "}"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
@@ -295,7 +293,8 @@
                   "  const body = pm.response.json();",
                   "  if (body.id && body.id.value) { pm.environment.set('governorateId', body.id.value); }",
                   "}"
-                ]
+                ],
+                "type": "text/javascript"
               }
             }
           ],
@@ -335,6 +334,145 @@
             "method": "POST",
             "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
             "url": "{{baseUrl}}/api/v1/admin/lookups/governorates/{{governorateId}}/activate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Caregiver lookups — cities & areas",
+      "item": [
+        {
+          "name": "List cities of governorate (admin)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/lookups/cities?governorateId={{governorateId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "v1", "admin", "lookups", "cities" ],
+              "query": [ { "key": "governorateId", "value": "{{governorateId}}" } ]
+            }
+          }
+        },
+        {
+          "name": "Create city",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id && body.id.value) { pm.environment.set('cityId', body.id.value); }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"governorateId\": \"{{governorateId}}\",\n  \"arabicName\": \"دمنهور\",\n  \"englishName\": \"Damanhur\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/cities"
+          }
+        },
+        {
+          "name": "Rename city",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"دمنهور\",\n  \"englishName\": \"Damanhur City\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/cities/{{cityId}}"
+          }
+        },
+        {
+          "name": "Deactivate city",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/cities/{{cityId}}/deactivate"
+          }
+        },
+        {
+          "name": "Activate city",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/cities/{{cityId}}/activate"
+          }
+        },
+        {
+          "name": "List areas of city (admin)",
+          "request": {
+            "method": "GET",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/lookups/areas?cityId={{cityId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "v1", "admin", "lookups", "areas" ],
+              "query": [ { "key": "cityId", "value": "{{cityId}}" } ]
+            }
+          }
+        },
+        {
+          "name": "Create area",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id && body.id.value) { pm.environment.set('areaId', body.id.value); }",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"cityId\": \"{{cityId}}\",\n  \"arabicName\": \"مركز دمنهور\",\n  \"englishName\": \"Damanhur Markaz\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/areas"
+          }
+        },
+        {
+          "name": "Rename area",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"مركز دمنهور\",\n  \"englishName\": \"Damanhur Center\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/areas/{{areaId}}"
+          }
+        },
+        {
+          "name": "Deactivate area",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/areas/{{areaId}}/deactivate"
+          }
+        },
+        {
+          "name": "Activate area",
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/areas/{{areaId}}/activate"
           }
         }
       ]

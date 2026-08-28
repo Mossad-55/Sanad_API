@@ -6,7 +6,7 @@ The active development branch is `develop`.
 
 ## Current status
 
-The Caregivers Domain and the non-social Authentication vertical slice are implemented.
+The Caregivers Domain, the non-social Authentication vertical slice, the shared splash CMS, and the Caregivers **lookups** HTTP surface are implemented.
 
 Implemented HTTP surface:
 
@@ -17,8 +17,11 @@ Implemented HTTP surface:
 - Refresh-token rotation and reuse detection
 - Session list, current logout, logout-all, and owned-session revoke
 - Password reset and authenticated password change
-- Shared splash screens (anonymous GET)
-- Admin splash CMS (create/update as multipart with image in the same request)
+- Shared splash screens (anonymous GET) plus admin splash CMS (multipart image create/update, publish, delete)
+- Anonymous file serving at `GET /files/{key}`
+- Caregiver **lookups**:
+  - Public active reads for services, languages, governorates, cities, and areas
+  - Admin management (create / rename / activate / deactivate / list-all) for the same lookups
 
 Email and SMS delivery:
 
@@ -30,7 +33,8 @@ Email and SMS delivery:
 
 Not in this repository yet:
 
-- Caregivers Application / Infrastructure / HTTP endpoints
+- Caregiver onboarding commands/queries HTTP (submission, review, certificates)
+- Specialization, Professional Title, and Academic Degree lookup endpoints
 - Families Application / Infrastructure / HTTP endpoints
 - Social / Google / Apple authentication (cancelled and removed)
 
@@ -43,7 +47,7 @@ src/
 └── Modules/
     ├── Identity/                         Auth Domain, Application, Infrastructure
     ├── Cms/                              Shared splash Domain, Application, Infrastructure, HTTP
-    ├── Caregivers/                       Domain complete; other layers are shells
+    ├── Caregivers/                       Domain complete; lookups Application/Infrastructure/HTTP live
     └── Families/                         Domain foundation; other layers are shells
 tests/
 ├── Sanad.ArchitectureTests
@@ -56,7 +60,7 @@ docs/
 ├── operations/
 └── postman/
     ├── users/
-    └── admin/
+    └── admins/
 ```
 
 Dependency direction:
@@ -95,6 +99,18 @@ export Identity__Jwt__SigningKey="REPLACE_WITH_AT_LEAST_32_UTF8_BYTES"
 
 Design-time EF migrations also require `ConnectionStrings__IdentityDatabase`.
 
+Caregivers and CMS fall back to `ConnectionStrings__IdentityDatabase` when their own connection strings are not set.
+
+### Optional local file storage
+
+Uploaded splash images and service icons are stored on local disk. The default root is `{AppContext.BaseDirectory}/sanad-files`; override with:
+
+```bash
+export Storage__Local__RootPath="/var/sanad/files"
+```
+
+Files are served anonymously at `GET /files/{key}`. The upload limit is 2 MB per file (jpeg/png/webp for images).
+
 ### Optional SMTP
 
 Omit this block to keep the development email sender.
@@ -132,7 +148,7 @@ Never put SMS Misr or SMTP credentials in a mobile app or in Git.
 
 ## Database
 
-Identity uses PostgreSQL schema `identity`. EF Core stores its history in `identity.__EFMigrationsHistory`.
+Identity uses PostgreSQL schema `identity`, CMS uses schema `cms`, and Caregivers uses schema `caregivers`. The API applies module migrations at startup (`Database.Migrate()` per module), so `dotnet ef` is not required on the server. EF history tables live per schema (for example `identity.__EFMigrationsHistory`).
 
 Historical social-authentication migrations remain in the project and must be applied in order. The last Identity migration, `RemoveSocialAuthentication`, drops those tables.
 
@@ -204,6 +220,45 @@ X-Device-Session-Id: <device session guid>
 
 A missing or invalid header returns `400` with code `Api.Auth.InvalidDeviceSessionHeader`.
 
+## Caregiver lookup endpoints
+
+Public reads are anonymous, active-only, and return `200 []` when empty.
+
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| GET | `/api/v1/lookups/services` | Anonymous | Active services, ordered by Arabic name |
+| GET | `/api/v1/lookups/languages` | Anonymous | Active languages, ordered by code |
+| GET | `/api/v1/lookups/governorates` | Anonymous | Active governorates |
+| GET | `/api/v1/lookups/cities?governorateId={id}` | Anonymous | Active cities whose governorate is active |
+| GET | `/api/v1/lookups/areas?cityId={id}` | Anonymous | Active areas whose city + governorate are active |
+
+Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` SuperAdmin or ContentAdmin):
+
+| Method | Path | Success |
+|---|---|---|
+| POST | `/api/v1/admin/lookups/services` | 201 (multipart with icon) |
+| PUT | `/api/v1/admin/lookups/services/{id}` | 200 |
+| POST | `/api/v1/admin/lookups/services/{id}/activate` · `/deactivate` | 200 |
+| GET | `/api/v1/admin/lookups/services` | 200 (active + inactive) |
+| POST | `/api/v1/admin/lookups/languages` | 201 |
+| PUT | `/api/v1/admin/lookups/languages/{id}` | 200 |
+| POST | `/api/v1/admin/lookups/languages/{id}/activate` · `/deactivate` | 200 |
+| GET | `/api/v1/admin/lookups/languages` | 200 (active + inactive) |
+| POST | `/api/v1/admin/lookups/governorates` | 201 |
+| PUT | `/api/v1/admin/lookups/governorates/{id}` | 200 |
+| POST | `/api/v1/admin/lookups/governorates/{id}/activate` · `/deactivate` | 200 |
+| GET | `/api/v1/admin/lookups/governorates` | 200 (active + inactive) |
+| POST | `/api/v1/admin/lookups/cities` | 201 (requires active governorate) |
+| PUT | `/api/v1/admin/lookups/cities/{id}` | 200 |
+| POST | `/api/v1/admin/lookups/cities/{id}/activate` · `/deactivate` | 200 |
+| GET | `/api/v1/admin/lookups/cities?governorateId={id}` | 200 (active + inactive) |
+| POST | `/api/v1/admin/lookups/areas` | 201 (requires active city + governorate) |
+| PUT | `/api/v1/admin/lookups/areas/{id}` | 200 |
+| POST | `/api/v1/admin/lookups/areas/{id}/activate` · `/deactivate` | 200 |
+| GET | `/api/v1/admin/lookups/areas?cityId={id}` | 200 (active + inactive) |
+
+Lookup error codes: `Caregivers.Lookups.NameAlreadyInUse` (409), `Caregivers.Lookups.LanguageCodeInUse` (409), `Caregivers.Lookups.ParentNotActive` (409), `Caregivers.Lookups.NotFound` (404), `Caregivers.Lookups.ParentNotFound` (404).
+
 ## Important Auth rules
 
 - Non-Elderly registration is Family (`1`), MedicalCaregiver (`2`), or CompanionCaregiver (`3`) only. Elderly cannot self-register.
@@ -230,9 +285,14 @@ dotnet test Sanad.slnx
 
 ```text
 docs/architecture/overview.md
-docs/auth/
-docs/operations/
-docs/postman/
+docs/auth/                              Auth flows, claims/policies, error catalog
+docs/admin/                             Admin HTTP (splash, caregiver lookups)
+docs/users/                             App-facing HTTP (splash, public lookups)
+docs/operations/                        Configuration, migrations, security
+docs/postman/admins/                    Admin Postman collection
+docs/postman/users/                     App Postman collection
+docs/postman/Sanad.hostinger.postman_environment.json
+docs/postman/Sanad.local.postman_environment.json
 ```
 
 ## Security

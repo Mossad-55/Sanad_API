@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sanad Users",
-    "description": "App-facing routes. Splash GET is anonymous. Auth login is included so Family/Caregiver flows can reuse this collection later.",
+    "description": "App-facing (anonymous) routes. Splash and active lookups are public. Auth login is included so Family/Caregiver flows can reuse this collection later.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -31,13 +31,13 @@
             "description": "Anonymous. Active services only. Empty list is 200 []."
           }
         },
-                {
+        {
           "name": "Get active languages",
           "request": {
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/lookups/languages",
-            "description": "Anonymous. Active languages only."
+            "description": "Anonymous. Active languages only, ordered by code."
           }
         },
         {
@@ -46,7 +46,35 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/lookups/governorates",
-            "description": "Anonymous. Active governorates only."
+            "description": "Anonymous. Active governorates only, ordered by English name."
+          }
+        },
+        {
+          "name": "Get active cities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/lookups/cities?governorateId={{governorateId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "v1", "lookups", "cities" ],
+              "query": [ { "key": "governorateId", "value": "{{governorateId}}" } ]
+            },
+            "description": "Anonymous. Required governorateId. Returns cities where both city and governorate are active."
+          }
+        },
+        {
+          "name": "Get active areas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/lookups/areas?cityId={{cityId}}",
+              "host": [ "{{baseUrl}}" ],
+              "path": [ "api", "v1", "lookups", "areas" ],
+              "query": [ { "key": "cityId", "value": "{{cityId}}" } ]
+            },
+            "description": "Anonymous. Required cityId. Returns areas only when area + city + governorate are all active."
           }
         }
       ]
