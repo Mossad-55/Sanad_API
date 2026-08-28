@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 
 namespace Sanad.Modules.Caregivers.Application.Abstractions.Data;
 
 public interface ICaregiversDbContext
 {
+    DbSet<Caregiver> Caregivers { get; }
     DbSet<Service> Services { get; }
     DbSet<Language> Languages { get; }
     DbSet<Governorate> Governorates { get; }

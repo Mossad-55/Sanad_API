@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
+using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 
 namespace Sanad.Modules.Caregivers.Infrastructure.Persistence;
@@ -16,6 +17,7 @@ public sealed class CaregiversDbContext :
     {
     }
 
+    public DbSet<Caregiver> Caregivers => throw new NotImplementedException();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<Language> Languages => Set<Language>();
     public DbSet<Governorate> Governorates => Set<Governorate>();

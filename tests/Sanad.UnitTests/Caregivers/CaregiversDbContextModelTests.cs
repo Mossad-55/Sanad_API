@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
+using Sanad.Modules.Caregivers.Domain.Caregivers.Selections;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 
 namespace Sanad.UnitTests.Caregivers;
@@ -58,6 +60,44 @@ public sealed class CaregiversDbContextModelTests
 
         Assert.NotNull(property);
         Assert.Equal("governorate_id", property!.GetColumnName());
+    }
+
+    [Fact]
+    public void Model_ShouldMapCaregiversTable()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        bool exists = dbContext.Model.GetEntityTypes()
+            .Any(t => t.GetTableName() == "caregivers");
+
+        Assert.True(exists);
+    }
+
+    [Fact]
+    public void Model_ShouldIgnoreComputedShiftProperties()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(MedicalShiftAvailability));
+
+        Assert.NotNull(entityType);
+        Assert.DoesNotContain(entityType!.GetProperties(),
+            p => p.Name is "StartTime" or "EndTime" or "Duration" or "EndsNextDay");
+    }
+
+    [Fact]
+    public void Model_ShouldUseCompositeKeyForServiceSelections()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(CaregiverServiceSelection));
+
+        Assert.NotNull(entityType);
+        var key = entityType!.FindPrimaryKey();
+        Assert.NotNull(key);
+        Assert.Equal(2, key!.Properties.Count);
     }
 
     private static CaregiversDbContext CreateDbContext()
