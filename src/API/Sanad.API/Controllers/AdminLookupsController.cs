@@ -7,10 +7,13 @@ using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Lookups;
+using static Sanad.Modules.Caregivers.Application.Lookups.GetActiveGovernoratesQueryHandler;
+using static Sanad.Modules.Caregivers.Application.Lookups.GetActiveLanguagesQueryHandler;
+using static Sanad.Modules.Caregivers.Application.Lookups.GetActiveServicesQueryHandler;
 
 namespace Sanad.API.Controllers;
 
-[Authorize(Policy = AuthorizationPolicies.CmsContent)]
+[Authorize(Policy = AuthorizationPolicies.CaregiversAdmin)]
 [Route("api/v1/admin")]
 public sealed class AdminLookupsController :
     ApiControllerBase
@@ -24,6 +27,51 @@ public sealed class AdminLookupsController :
     {
         _sender = sender;
         _fileStorage = fileStorage;
+    }
+
+    [HttpGet("lookups/services")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<ServiceResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllServices(
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new GetAllServicesQuery(),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpGet("lookups/languages")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<LanguageResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllLanguages(
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new GetAllLanguagesQuery(),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpGet("lookups/governorates")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<GovernorateResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllGovernorates(
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new GetAllGovernoratesQuery(),
+                cancellationToken);
+
+        return ToActionResult(result);
     }
 
     [HttpPost("lookups/services")]
@@ -131,6 +179,153 @@ public sealed class AdminLookupsController :
 
         return ToActionResult(
             result);
+    }
+
+    [HttpPost("lookups/languages")]
+    [Consumes("application/json")]
+    [ProducesResponseType(
+    typeof(LanguageResponse),
+    StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateLanguage(
+    [FromBody] CreateLanguageRequest request,
+    CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new CreateLanguageCommand(
+                    request.Code,
+                    request.ArabicName,
+                    request.EnglishName),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            result.Value);
+    }
+
+    [HttpPut("lookups/languages/{id:guid}")]
+    public async Task<IActionResult> RenameLanguage(
+        Guid id,
+        [FromBody] RenameLanguageRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new RenameLanguageCommand(
+                    new LanguageId(id),
+                    request.ArabicName,
+                    request.EnglishName),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("lookups/languages/{id:guid}/activate")]
+    public async Task<IActionResult> ActivateLanguage(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new SetLanguageActiveCommand(
+                    new LanguageId(id),
+                    true),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("lookups/languages/{id:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateLanguage(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new SetLanguageActiveCommand(
+                    new LanguageId(id),
+                    false),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("lookups/governorates")]
+    [Consumes("application/json")]
+    [ProducesResponseType(
+        typeof(GovernorateResponse),
+        StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateGovernorate(
+        [FromBody] CreateGovernorateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new CreateGovernorateCommand(
+                    request.ArabicName,
+                    request.EnglishName),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            result.Value);
+    }
+
+    [HttpPut("lookups/governorates/{id:guid}")]
+    public async Task<IActionResult> RenameGovernorate(
+        Guid id,
+        [FromBody] RenameGovernorateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new RenameGovernorateCommand(
+                    new GovernorateId(id),
+                    request.ArabicName,
+                    request.EnglishName),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("lookups/governorates/{id:guid}/activate")]
+    public async Task<IActionResult> ActivateGovernorate(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new SetGovernorateActiveCommand(
+                    new GovernorateId(id),
+                    true),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("lookups/governorates/{id:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateGovernorate(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new SetGovernorateActiveCommand(
+                    new GovernorateId(id),
+                    false),
+                cancellationToken);
+
+        return ToActionResult(result);
     }
 
     private async Task<Result<StoredFile>> SaveIconAsync(

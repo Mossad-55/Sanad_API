@@ -18,4 +18,9 @@ public static class LookupsErrors
         new(
             "Caregivers.Lookups.ParentNotFound",
             "The referenced parent lookup was not found.");
+
+    public static readonly Error LanguageCodeInUse =
+        new(
+            "Caregivers.Lookups.LanguageCodeInUse",
+            "A language with this code already exists.");
 }

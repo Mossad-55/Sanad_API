@@ -35,6 +35,10 @@ public sealed class ResultProblemDetailsMapperTests
         "Caregivers.Lookups.NotFound",
         StatusCodes.Status404NotFound,
         "The requested resource was not found.")]
+    [InlineData(
+        "Caregivers.Lookups.LanguageCodeInUse",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
     public void Create_ShouldMapStableErrorCode(
         string errorCode,
         int expectedStatusCode,
