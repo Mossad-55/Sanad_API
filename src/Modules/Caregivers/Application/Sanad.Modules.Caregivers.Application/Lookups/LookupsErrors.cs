@@ -23,4 +23,9 @@ public static class LookupsErrors
         new(
             "Caregivers.Lookups.LanguageCodeInUse",
             "A language with this code already exists.");
+
+    public static readonly Error ParentNotActive =
+    new(
+        "Caregivers.Lookups.ParentNotActive",
+        "The referenced parent lookup is not active.");
 }

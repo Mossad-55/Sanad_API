@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Lookups;
 
 namespace Sanad.API.Controllers;
@@ -66,4 +67,25 @@ public sealed class LookupsController :
         return ToActionResult(result);
     }
 
+    [AllowAnonymous]
+    [HttpGet("lookups/cities")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<CityPublicItem>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActiveCities(
+        [FromQuery] Guid governorateId,
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(
+                new GetActiveCitiesQuery(new GovernorateId(governorateId)), cancellationToken));
+
+    [AllowAnonymous]
+    [HttpGet("lookups/areas")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<AreaPublicItem>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActiveAreas(
+        [FromQuery] Guid cityId,
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(
+                new GetActiveAreasQuery(new CityId(cityId)), cancellationToken));
 }

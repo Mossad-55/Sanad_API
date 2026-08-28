@@ -325,6 +325,138 @@ public sealed class AdminLookupsController :
         return ToActionResult(result);
     }
 
+    [HttpPost("lookups/cities")]
+    [Consumes("application/json")]
+    [ProducesResponseType(
+        typeof(CityResponse),
+        StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateCity(
+        [FromBody] CreateCityRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new CreateCityCommand(
+                    new GovernorateId(request.GovernorateId),
+                    request.ArabicName,
+                    request.EnglishName),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        return StatusCode(StatusCodes.Status201Created, result.Value);
+    }
+
+    [HttpPut("lookups/cities/{id:guid}")]
+    public async Task<IActionResult> RenameCity(
+        Guid id,
+        [FromBody] RenameCityRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new RenameCityCommand(
+                    new CityId(id),
+                    request.ArabicName,
+                    request.EnglishName),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("lookups/cities/{id:guid}/activate")]
+    public async Task<IActionResult> ActivateCity(
+        Guid id,
+        CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(
+            new SetCityActiveCommand(new CityId(id), true), cancellationToken));
+
+    [HttpPost("lookups/cities/{id:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateCity(
+        Guid id,
+        CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(
+            new SetCityActiveCommand(new CityId(id), false), cancellationToken));
+
+    [HttpGet("lookups/cities")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<CityResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllCities(
+        [FromQuery] Guid governorateId,
+        CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(
+            new GetAllCitiesQuery(new GovernorateId(governorateId)), cancellationToken));
+
+    [HttpPost("lookups/areas")]
+    [Consumes("application/json")]
+    [ProducesResponseType(
+        typeof(AreaResponse),
+        StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateArea(
+        [FromBody] CreateAreaRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new CreateAreaCommand(
+                    new CityId(request.CityId),
+                    request.ArabicName,
+                    request.EnglishName),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        return StatusCode(StatusCodes.Status201Created, result.Value);
+    }
+
+    [HttpPut("lookups/areas/{id:guid}")]
+    public async Task<IActionResult> RenameArea(
+        Guid id,
+        [FromBody] RenameAreaRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new RenameAreaCommand(
+                    new AreaId(id),
+                    request.ArabicName,
+                    request.EnglishName),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("lookups/areas/{id:guid}/activate")]
+    public async Task<IActionResult> ActivateArea(
+        Guid id,
+        CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(
+            new SetAreaActiveCommand(new AreaId(id), true), cancellationToken));
+
+    [HttpPost("lookups/areas/{id:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateArea(
+        Guid id,
+        CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(
+            new SetAreaActiveCommand(new AreaId(id), false), cancellationToken));
+
+    [HttpGet("lookups/areas")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<AreaResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllAreas(
+        [FromQuery] Guid cityId,
+        CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(
+            new GetAllAreasQuery(new CityId(cityId)), cancellationToken));
+
     private async Task<Result<StoredFile>> SaveIconAsync(
         IFormFile? file,
         CancellationToken cancellationToken)

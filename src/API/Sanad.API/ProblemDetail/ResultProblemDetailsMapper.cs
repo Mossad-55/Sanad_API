@@ -59,6 +59,9 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Lookups.NameAlreadyInUse"] = 409,
             ["Caregivers.Lookups.LanguageCodeInUse"] = 409,
             ["Caregivers.Lookups.NotFound"] = 404,
+            ["Caregivers.Lookups.ParentNotFound"] = 404,
+            ["Caregivers.Lookups.ParentNotActive"] = 409,
+
 
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,
