@@ -155,6 +155,23 @@ public static class DependencyInjection
                         AccountType.SuperAdmin.ToString(),
                         AccountType.ContentAdmin.ToString());
                 });
+
+            options.AddPolicy(
+                AuthorizationPolicies.CaregiverAccess,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AuthAccessType.Normal
+                            .ToString());
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccountType,
+                        AccountType.MedicalCaregiver.ToString(),
+                        AccountType.CompanionCaregiver.ToString());
+                });
         });
 
         services.AddMediatR(configuration =>

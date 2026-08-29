@@ -10,4 +10,7 @@ public static class AuthorizationPolicies
 
     public const string CaregiversAdmin =
         "CaregiversAdmin";
+
+    public const string CaregiverAccess =
+        "CaregiverAccess";
 }

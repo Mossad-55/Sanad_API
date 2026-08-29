@@ -3,6 +3,9 @@ using Microsoft.AspNetCore.Mvc;
 using Sanad.API.ProblemDetail;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.Modules.Identity.Application.Authentication.Tokens;
+using Sanad.Modules.Identity.Domain.Users;
 
 namespace Sanad.API.Controllers;
 
@@ -66,6 +69,29 @@ public abstract class ApiControllerBase :
             value != Guid.Empty &&
             (userId = new UserId(value)) !=
                 UserId.Empty;
+    }
+
+    protected bool TryGetCaregiverTypeFromClaims(
+        out CaregiverType caregiverType)
+    {
+        caregiverType = default;
+
+        string? accountType =
+            User.FindFirst(
+                AuthClaimNames.AccountType)?.Value;
+
+        caregiverType = accountType switch
+        {
+            nameof(AccountType.MedicalCaregiver) =>
+                CaregiverType.Medical,
+            nameof(AccountType.CompanionCaregiver) =>
+                CaregiverType.Companion,
+            _ => default
+        };
+
+        return caregiverType is
+            CaregiverType.Medical or
+            CaregiverType.Companion;
     }
 
     protected bool TryGetCurrentDeviceSessionId(
