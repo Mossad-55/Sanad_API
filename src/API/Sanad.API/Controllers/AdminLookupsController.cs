@@ -457,6 +457,173 @@ public sealed class AdminLookupsController :
         ToActionResult(await _sender.Send(
             new GetAllAreasQuery(new CityId(cityId)), cancellationToken));
 
+    [HttpPost("lookups/specializations")]
+    [Consumes("application/json")]
+    [ProducesResponseType(
+        typeof(SpecializationResponse),
+        StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateSpecialization(
+        [FromBody] CreateSpecializationRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new CreateSpecializationCommand(
+                request.ArabicName, request.EnglishName,
+                request.CaregiverType, request.IsActive),
+            cancellationToken);
+        return result.IsFailure
+            ? ToActionResult(result)
+            : StatusCode(StatusCodes.Status201Created, result.Value);
+    }
+
+    [HttpPut("lookups/specializations/{id:guid}")]
+    public async Task<IActionResult> RenameSpecialization(
+        Guid id,
+        [FromBody] RenameSpecializationRequest request,
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(
+                new RenameSpecializationCommand(
+                    new SpecializationId(id),
+                    request.ArabicName,
+                    request.EnglishName),
+                    cancellationToken));
+
+    [HttpPost("lookups/specializations/{id:guid}/activate")]
+    public async Task<IActionResult> ActivateSpecialization(
+        Guid id,
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(new SetSpecializationActiveCommand(
+                new SpecializationId(id),
+                true),
+                cancellationToken));
+
+    [HttpPost("lookups/specializations/{id:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateSpecialization(Guid id, CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(new SetSpecializationActiveCommand(
+            new SpecializationId(id),
+            false),
+            cancellationToken));
+
+    [HttpGet("lookups/specializations")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<SpecializationResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllSpecializations(
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(
+                new GetAllSpecializationsQuery(),
+                cancellationToken));
+
+    // ----- Professional titles -----
+    [HttpPost("lookups/professional-titles")]
+    [Consumes("application/json")]
+    [ProducesResponseType(
+        typeof(ProfessionalTitleResponse),
+        StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateProfessionalTitle(
+        [FromBody] CreateProfessionalTitleRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new CreateProfessionalTitleCommand(
+                request.ArabicName, request.EnglishName, request.IsActive),
+            cancellationToken);
+        return result.IsFailure
+            ? ToActionResult(result)
+            : StatusCode(StatusCodes.Status201Created, result.Value);
+    }
+
+    [HttpPut("lookups/professional-titles/{id:guid}")]
+    public async Task<IActionResult> RenameProfessionalTitle(
+        Guid id,
+        [FromBody] RenameProfessionalTitleRequest request,
+        CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(
+            new RenameProfessionalTitleCommand(
+                new ProfessionalTitleId(id),
+                request.ArabicName,
+                request.EnglishName),
+                cancellationToken));
+
+    [HttpPost("lookups/professional-titles/{id:guid}/activate")]
+    public async Task<IActionResult> ActivateProfessionalTitle(
+        Guid id,
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(new SetProfessionalTitleActiveCommand(
+                new ProfessionalTitleId(id),
+                true),
+                cancellationToken));
+
+    [HttpPost("lookups/professional-titles/{id:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateProfessionalTitle(
+        Guid id,
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(new SetProfessionalTitleActiveCommand(
+                new ProfessionalTitleId(id),
+                false),
+                cancellationToken));
+
+    [HttpGet("lookups/professional-titles")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<ProfessionalTitleResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllProfessionalTitles(CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(new GetAllProfessionalTitlesQuery(), cancellationToken));
+
+    // ----- Academic degrees -----
+    [HttpPost("lookups/academic-degrees")]
+    [Consumes("application/json")]
+    [ProducesResponseType(
+        typeof(AcademicDegreeResponse),
+        StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateAcademicDegree(
+        [FromBody] CreateAcademicDegreeRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new CreateAcademicDegreeCommand(
+                request.ArabicName, request.EnglishName, request.IsActive),
+            cancellationToken);
+        return result.IsFailure
+            ? ToActionResult(result)
+            : StatusCode(StatusCodes.Status201Created, result.Value);
+    }
+
+    [HttpPut("lookups/academic-degrees/{id:guid}")]
+    public async Task<IActionResult> RenameAcademicDegree(
+        Guid id,
+        [FromBody] RenameAcademicDegreeRequest request,
+        CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(
+            new RenameAcademicDegreeCommand(new AcademicDegreeId(id),
+            request.ArabicName,
+            request.EnglishName),
+            cancellationToken));
+
+    [HttpPost("lookups/academic-degrees/{id:guid}/activate")]
+    public async Task<IActionResult> ActivateAcademicDegree(
+        Guid id,
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(new SetAcademicDegreeActiveCommand(
+                new AcademicDegreeId(id),
+                true),
+                cancellationToken));
+
+    [HttpPost("lookups/academic-degrees/{id:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateAcademicDegree(
+        Guid id,
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(new SetAcademicDegreeActiveCommand(
+                new AcademicDegreeId(id),
+                false),
+                cancellationToken));
+
+    [HttpGet("lookups/academic-degrees")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<AcademicDegreeResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllAcademicDegrees(CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(new GetAllAcademicDegreesQuery(), cancellationToken));
     private async Task<Result<StoredFile>> SaveIconAsync(
         IFormFile? file,
         CancellationToken cancellationToken)

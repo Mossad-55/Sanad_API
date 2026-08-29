@@ -110,6 +110,7 @@ internal static class CaregiverTestData
                 Specialization.Create(
                     "رعاية كبار السن",
                     "Elderly Care",
+                    true,
                     CaregiverType.Companion),
                 biography: null);
         }
@@ -142,15 +143,18 @@ internal static class CaregiverTestData
             caregiver.UpdateMedicalProfile(
                 ProfessionalTitle.Create(
                     "ممرض مسجل",
-                    "Registered Nurse"),
+                    "Registered Nurse",
+                    true),
                 yearsOfExperience: 8,
                 Specialization.Create(
                     "تمريض كبار السن",
                     "Elderly Nursing",
+                    true,
                     CaregiverType.Medical),
                 AcademicDegree.Create(
                     "بكالوريوس تمريض",
-                    "Bachelor of Nursing"),
+                    "Bachelor of Nursing",
+                    true),
                 currentWorkplace: null,
                 biography: null,
                 CurrentUtc);

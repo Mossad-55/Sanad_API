@@ -16,6 +16,7 @@ public sealed class Specialization : AggregateRoot<SpecializationId>
         SpecializationId id,
         string arabicName,
         string englishName,
+        bool isActive,
         CaregiverType caregiverType,
         DateTime createdOnUtc)
         : base(id)
@@ -23,7 +24,7 @@ public sealed class Specialization : AggregateRoot<SpecializationId>
         ArabicName = arabicName;
         EnglishName = englishName;
         CaregiverType = caregiverType;
-        IsActive = true;
+        IsActive = isActive;
         CreatedOnUtc = createdOnUtc;
         UpdatedOnUtc = createdOnUtc;
     }
@@ -45,6 +46,7 @@ public sealed class Specialization : AggregateRoot<SpecializationId>
     public static Specialization Create(
         string arabicName,
         string englishName,
+        bool isActive,
         CaregiverType caregiverType)
     {
         string normalizedArabicName =
@@ -70,6 +72,7 @@ public sealed class Specialization : AggregateRoot<SpecializationId>
             SpecializationId.New(),
             normalizedArabicName,
             normalizedEnglishName,
+            isActive,
             caregiverType,
             createdOnUtc);
     }

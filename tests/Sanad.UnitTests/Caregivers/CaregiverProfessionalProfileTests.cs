@@ -499,7 +499,8 @@ public sealed class CaregiverProfessionalProfileTests
     {
         return ProfessionalTitle.Create(
             "ممرض مسجل",
-            "Registered Nurse");
+            "Registered Nurse",
+            true);
     }
 
     private static Specialization CreateSpecialization(
@@ -508,6 +509,7 @@ public sealed class CaregiverProfessionalProfileTests
         return Specialization.Create(
             "رعاية كبار السن",
             "Elderly Care",
+            true,
             caregiverType);
     }
 
@@ -515,7 +517,8 @@ public sealed class CaregiverProfessionalProfileTests
     {
         return AcademicDegree.Create(
             "بكالوريوس تمريض",
-            "Bachelor of Nursing");
+            "Bachelor of Nursing",
+            true);
     }
 
     private static DateOnly CreateCurrentDate()

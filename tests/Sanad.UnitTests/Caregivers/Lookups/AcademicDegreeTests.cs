@@ -12,7 +12,8 @@ public sealed class AcademicDegreeTests
         AcademicDegree degree =
             AcademicDegree.Create(
                 "بكالوريوس تمريض",
-                "Bachelor of Nursing");
+                "Bachelor of Nursing",
+                true);
 
         Assert.NotEqual(
             AcademicDegreeId.Empty,
@@ -39,7 +40,8 @@ public sealed class AcademicDegreeTests
         AcademicDegree degree =
             AcademicDegree.Create(
                 "  بكالوريوس تمريض  ",
-                "  Bachelor of Nursing  ");
+                "  Bachelor of Nursing  ",
+                true);
 
         Assert.Equal(
             "بكالوريوس تمريض",
@@ -64,7 +66,8 @@ public sealed class AcademicDegreeTests
         Assert.Throws<DomainException>(
             () => AcademicDegree.Create(
                 arabicName!,
-                englishName!));
+                englishName!,
+                true));
     }
 
     [Fact]
@@ -77,7 +80,8 @@ public sealed class AcademicDegreeTests
         Assert.Throws<DomainException>(
             () => AcademicDegree.Create(
                 "بكالوريوس تمريض",
-                longName));
+                longName,
+                true));
     }
 
     [Fact]
@@ -86,7 +90,8 @@ public sealed class AcademicDegreeTests
         AcademicDegree degree =
             AcademicDegree.Create(
                 "بكالوريوس تمريض",
-                "Bachelor of Nursing");
+                "Bachelor of Nursing",
+                true);
 
         AcademicDegreeId originalId =
             degree.Id;
@@ -114,7 +119,8 @@ public sealed class AcademicDegreeTests
         AcademicDegree degree =
             AcademicDegree.Create(
                 "بكالوريوس تمريض",
-                "Bachelor of Nursing");
+                "Bachelor of Nursing",
+                true);
 
         DateTime originalUpdatedOnUtc =
             degree.UpdatedOnUtc;
@@ -143,7 +149,8 @@ public sealed class AcademicDegreeTests
         AcademicDegree degree =
             AcademicDegree.Create(
                 "بكالوريوس تمريض",
-                "Bachelor of Nursing");
+                "Bachelor of Nursing",
+                false);
 
         degree.Deactivate();
 

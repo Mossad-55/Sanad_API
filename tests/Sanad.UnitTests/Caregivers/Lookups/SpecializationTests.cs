@@ -17,6 +17,7 @@ public sealed class SpecializationTests
             Specialization.Create(
                 "رعاية كبار السن",
                 "Elderly Care",
+                true,
                 caregiverType);
 
         Assert.NotEqual(
@@ -49,6 +50,7 @@ public sealed class SpecializationTests
             Specialization.Create(
                 "  رعاية كبار السن  ",
                 "  Elderly Care  ",
+                true,
                 CaregiverType.Companion);
 
         Assert.Equal(
@@ -75,6 +77,7 @@ public sealed class SpecializationTests
             () => Specialization.Create(
                 arabicName!,
                 englishName!,
+                true,
                 CaregiverType.Companion));
     }
 
@@ -89,6 +92,7 @@ public sealed class SpecializationTests
             () => Specialization.Create(
                 "رعاية كبار السن",
                 longName,
+                false,
                 CaregiverType.Companion));
     }
 
@@ -99,6 +103,7 @@ public sealed class SpecializationTests
             () => Specialization.Create(
                 "رعاية كبار السن",
                 "Elderly Care",
+                true,
                 (CaregiverType)999));
     }
 
@@ -109,6 +114,7 @@ public sealed class SpecializationTests
             Specialization.Create(
                 "رعاية كبار السن",
                 "Elderly Care",
+                true,
                 CaregiverType.Medical);
 
         specialization.UpdateNames(
@@ -135,6 +141,7 @@ public sealed class SpecializationTests
             Specialization.Create(
                 "رعاية كبار السن",
                 "Elderly Care",
+                true,
                 CaregiverType.Companion);
 
         DateTime originalUpdatedOnUtc =
@@ -165,6 +172,7 @@ public sealed class SpecializationTests
             Specialization.Create(
                 "رعاية كبار السن",
                 "Elderly Care",
+                false,
                 CaregiverType.Companion);
 
         specialization.Deactivate();

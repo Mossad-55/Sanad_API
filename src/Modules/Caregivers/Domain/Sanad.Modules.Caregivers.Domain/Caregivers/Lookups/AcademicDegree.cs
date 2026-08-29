@@ -17,6 +17,7 @@ public sealed class AcademicDegree :
         AcademicDegreeId id,
         string arabicName,
         string englishName,
+        bool isActive,
         DateTime createdOnUtc)
         : base(id)
     {
@@ -41,7 +42,8 @@ public sealed class AcademicDegree :
 
     public static AcademicDegree Create(
         string arabicName,
-        string englishName)
+        string englishName,
+        bool isActive)
     {
         string normalizedArabicName =
             NormalizeName(
@@ -60,6 +62,7 @@ public sealed class AcademicDegree :
             AcademicDegreeId.New(),
             normalizedArabicName,
             normalizedEnglishName,
+            isActive,
             createdOnUtc);
     }
 

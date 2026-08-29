@@ -17,12 +17,13 @@ public sealed class ProfessionalTitle :
         ProfessionalTitleId id,
         string arabicName,
         string englishName,
+        bool isActive,
         DateTime createdOnUtc)
         : base(id)
     {
         ArabicName = arabicName;
         EnglishName = englishName;
-        IsActive = true;
+        IsActive = isActive;
         CreatedOnUtc = createdOnUtc;
         UpdatedOnUtc = createdOnUtc;
     }
@@ -41,7 +42,8 @@ public sealed class ProfessionalTitle :
 
     public static ProfessionalTitle Create(
         string arabicName,
-        string englishName)
+        string englishName,
+        bool isActive)
     {
         string normalizedArabicName =
             NormalizeName(
@@ -60,6 +62,7 @@ public sealed class ProfessionalTitle :
             ProfessionalTitleId.New(),
             normalizedArabicName,
             normalizedEnglishName,
+            isActive,
             createdOnUtc);
     }
 

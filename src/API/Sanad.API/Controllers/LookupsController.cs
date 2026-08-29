@@ -88,4 +88,37 @@ public sealed class LookupsController :
         CancellationToken cancellationToken) =>
             ToActionResult(await _sender.Send(
                 new GetActiveAreasQuery(new CityId(cityId)), cancellationToken));
+
+    [AllowAnonymous]
+    [HttpGet("lookups/specializations")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<SpecializationPublicItem>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActiveSpecializations(
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(
+                new GetActiveSpecializationsQuery(),
+                cancellationToken));
+
+    [AllowAnonymous]
+    [HttpGet("lookups/professional-titles")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<ProfessionalTitlePublicItem>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActiveProfessionalTitles(
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(
+                new GetActiveProfessionalTitlesQuery(),
+                cancellationToken));
+
+    [AllowAnonymous]
+    [HttpGet("lookups/academic-degrees")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<AcademicDegreePublicItem>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActiveAcademicDegrees(
+        CancellationToken cancellationToken) =>
+        ToActionResult(await _sender.Send(
+            new GetActiveAcademicDegreesQuery(),
+            cancellationToken));
 }

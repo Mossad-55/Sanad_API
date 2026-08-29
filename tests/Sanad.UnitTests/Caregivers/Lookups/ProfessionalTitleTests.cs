@@ -12,7 +12,8 @@ public sealed class ProfessionalTitleTests
         ProfessionalTitle title =
             ProfessionalTitle.Create(
                 "ممرض مسجل",
-                "Registered Nurse");
+                "Registered Nurse",
+                true);
 
         Assert.NotEqual(
             ProfessionalTitleId.Empty,
@@ -39,7 +40,8 @@ public sealed class ProfessionalTitleTests
         ProfessionalTitle title =
             ProfessionalTitle.Create(
                 "  ممرض مسجل  ",
-                "  Registered Nurse  ");
+                "  Registered Nurse  ",
+                true);
 
         Assert.Equal(
             "ممرض مسجل",
@@ -64,7 +66,8 @@ public sealed class ProfessionalTitleTests
         Assert.Throws<DomainException>(
             () => ProfessionalTitle.Create(
                 arabicName!,
-                englishName!));
+                englishName!,
+                true));
     }
 
     [Fact]
@@ -77,7 +80,8 @@ public sealed class ProfessionalTitleTests
         Assert.Throws<DomainException>(
             () => ProfessionalTitle.Create(
                 "ممرض مسجل",
-                longName));
+                longName,
+                false));
     }
 
     [Fact]
@@ -86,7 +90,8 @@ public sealed class ProfessionalTitleTests
         ProfessionalTitle title =
             ProfessionalTitle.Create(
                 "ممرض مسجل",
-                "Registered Nurse");
+                "Registered Nurse",
+                true);
 
         ProfessionalTitleId originalId =
             title.Id;
@@ -114,7 +119,8 @@ public sealed class ProfessionalTitleTests
         ProfessionalTitle title =
             ProfessionalTitle.Create(
                 "ممرض مسجل",
-                "Registered Nurse");
+                "Registered Nurse",
+                true);
 
         DateTime originalUpdatedOnUtc =
             title.UpdatedOnUtc;
@@ -143,7 +149,8 @@ public sealed class ProfessionalTitleTests
         ProfessionalTitle title =
             ProfessionalTitle.Create(
                 "ممرض مسجل",
-                "Registered Nurse");
+                "Registered Nurse",
+                false);
 
         title.Deactivate();
 

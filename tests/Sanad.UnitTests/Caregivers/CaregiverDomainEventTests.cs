@@ -222,15 +222,18 @@ public sealed class CaregiverDomainEventTests
         caregiver.UpdateMedicalProfile(
             ProfessionalTitle.Create(
                 "ممرض أول",
-                "Senior Nurse"),
+                "Senior Nurse",
+                true),
             yearsOfExperience: 10,
             Specialization.Create(
                 "تمريض منزلي",
                 "Home Nursing",
+                true,
                 CaregiverType.Medical),
             AcademicDegree.Create(
                 "ماجستير تمريض",
-                "Master of Nursing"),
+                "Master of Nursing",
+                true),
             currentWorkplace: null,
             biography: null,
             CaregiverTestData.CurrentUtc
@@ -402,15 +405,17 @@ public sealed class CaregiverDomainEventTests
             () => caregiver.UpdateMedicalProfile(
                 ProfessionalTitle.Create(
                     "ممرض أول",
-                    "Senior Nurse"),
+                    "Senior Nurse",
+                    true),
                 yearsOfExperience: -1,
                 Specialization.Create(
                     "تمريض منزلي",
                     "Home Nursing",
+                    true,
                     CaregiverType.Medical),
                 AcademicDegree.Create(
                     "ماجستير تمريض",
-                    "Master of Nursing"),
+                    "Master of Nursing", true),
                 currentWorkplace: null,
                 biography: null,
                 CaregiverTestData.CurrentUtc
@@ -432,15 +437,18 @@ public sealed class CaregiverDomainEventTests
         caregiver.UpdateMedicalProfile(
             ProfessionalTitle.Create(
                 "ممرض مسجل",
-                "Registered Nurse"),
+                "Registered Nurse",
+                true),
             yearsOfExperience: 5,
             Specialization.Create(
                 "تمريض كبار السن",
                 "Elderly Nursing",
+                true,
                 CaregiverType.Medical),
             AcademicDegree.Create(
                 "بكالوريوس تمريض",
-                "Bachelor of Nursing"),
+                "Bachelor of Nursing",
+                true),
             currentWorkplace: null,
             biography: null,
             CaregiverTestData.CurrentUtc);
