@@ -18,7 +18,7 @@ public sealed class LanguageConfiguration :
             .ValueGeneratedNever();
         builder.Property(language => language.Code)
             .HasColumnName("code")
-            .HasMaxLength(Language.MaximumNameLength)
+            .HasMaxLength(Language.MaximumCodeLength)
             .IsRequired();
         builder.HasIndex(language => language.Code).IsUnique();
         builder.Property(language => language.ArabicName)

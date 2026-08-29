@@ -7,6 +7,7 @@ namespace Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 public sealed class Language : AggregateRoot<LanguageId>
 {
     public const int MaximumNameLength = 100;
+    public const int MaximumCodeLength = 3;
 
     private Language()
     {
@@ -121,7 +122,7 @@ public sealed class Language : AggregateRoot<LanguageId>
             code.Trim().ToLowerInvariant();
 
         bool hasInvalidLength =
-            normalizedCode.Length is < 2 or > 3;
+            normalizedCode.Length is < 2 or > MaximumCodeLength;
 
         bool hasInvalidCharacters =
             normalizedCode.Any(

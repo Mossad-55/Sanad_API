@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CaregiversDbContext))]
-    partial class CaregiversDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260829015650_ShortenLanguageCodeLength")]
+    partial class ShortenLanguageCodeLength
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

@@ -17,7 +17,7 @@ public sealed class CaregiversDbContext :
     {
     }
 
-    public DbSet<Caregiver> Caregivers => throw new NotImplementedException();
+    public DbSet<Caregiver> Caregivers => Set<Caregiver>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<Language> Languages => Set<Language>();
     public DbSet<Governorate> Governorates => Set<Governorate>();

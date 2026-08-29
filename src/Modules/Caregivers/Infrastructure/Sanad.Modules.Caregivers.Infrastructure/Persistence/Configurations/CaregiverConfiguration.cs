@@ -211,7 +211,6 @@ public sealed class CaregiverConfiguration :
         });
 
         // ---- Owned schedules: their own tables + nested owned collections ----
-        // ---- Owned schedules: their own tables + nested owned collections ----
         builder.OwnsOne(c => c.MedicalSchedule, schedule =>
         {
             schedule.ToTable("medical_schedules");

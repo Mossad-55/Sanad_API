@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Selections;
@@ -100,11 +101,56 @@ public sealed class CaregiversDbContextModelTests
         Assert.Equal(2, key!.Properties.Count);
     }
 
-    private static CaregiversDbContext CreateDbContext()
+    [Fact]
+    public void CaregiversDbSet_ShouldPersistAndReloadCaregiver()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+
+        Caregiver caregiver =
+            Caregiver.Create(
+                UserId.New(),
+                CaregiverType.Companion);
+
+        using (CaregiversDbContext arrangeContext =
+                   CreateDbContext(databaseName))
+        {
+            arrangeContext.Caregivers.Add(caregiver);
+            arrangeContext.SaveChanges();
+        }
+
+        using CaregiversDbContext assertContext =
+            CreateDbContext(databaseName);
+
+        Caregiver? reloaded = assertContext.Caregivers
+            .AsNoTracking()
+            .SingleOrDefault(c => c.Id == caregiver.Id);
+
+        Assert.NotNull(reloaded);
+        Assert.Equal(CaregiverType.Companion, reloaded!.Type);
+        Assert.Equal(CaregiverStatus.Onboarding, reloaded.Status);
+    }
+
+    [Fact]
+    public void Model_ShouldMapLanguageCodeMaxLength()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var property = dbContext.Model.FindEntityType(
+            typeof(Language))
+            ?.FindProperty(nameof(Language.Code));
+
+        Assert.NotNull(property);
+        Assert.Equal(
+            Language.MaximumCodeLength,
+            property!.GetMaxLength());
+    }
+
+    private static CaregiversDbContext CreateDbContext(
+        string? databaseName = null)
     {
         DbContextOptions<CaregiversDbContext> options =
             new DbContextOptionsBuilder<CaregiversDbContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .UseInMemoryDatabase(databaseName ?? Guid.NewGuid().ToString())
                 .Options;
 
         return new CaregiversDbContext(options);
