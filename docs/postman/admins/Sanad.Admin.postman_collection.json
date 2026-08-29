@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sanad Admin",
-    "description": "Admin CMS and Caregiver lookups. Login as the seeded Super Admin first. Splash writes use CmsContent; lookup writes use CaregiversAdmin (both require a Normal token with account_type SuperAdmin or ContentAdmin).",
+    "description": "Admin CMS and all Caregiver lookups. Login as the seeded Super Admin first. Splash writes use CmsContent; lookup writes use CaregiversAdmin (both require a Normal token with account_type SuperAdmin or ContentAdmin).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -14,6 +14,7 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "if (pm.response.code === 200) {",
                   "  const body = pm.response.json();",
@@ -21,8 +22,7 @@
                   "  if (body.refreshToken) { pm.environment.set('refreshToken', body.refreshToken); }",
                   "  if (body.deviceSessionId && body.deviceSessionId.value) { pm.environment.set('deviceSessionId', body.deviceSessionId.value); }",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -47,13 +47,13 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "  const body = pm.response.json();",
                   "  if (body.id && body.id.value) { pm.environment.set('splashScreenId', body.id.value); }",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -82,34 +82,10 @@
           }
         },
         {
-          "name": "Update splash screen",
-          "request": {
-            "method": "PUT",
-            "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
-            "body": {
-              "mode": "formdata",
-              "formdata": [
-                { "key": "arabicTitle", "type": "text", "value": "مرحبا بكم" },
-                { "key": "englishTitle", "type": "text", "value": "Welcome" },
-                { "key": "arabicDescription", "type": "text", "value": "وصف محدث" },
-                { "key": "englishDescription", "type": "text", "value": "Updated description" },
-                { "key": "arabicButtonText", "type": "text", "value": "ابدأ" },
-                { "key": "englishButtonText", "type": "text", "value": "Start" },
-                { "key": "backgroundColor", "type": "text", "value": "#1A73E8" },
-                { "key": "displayOrder", "type": "text", "value": "0" }
-              ]
-            },
-            "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}"
-          }
-        },
-        {
           "name": "Publish splash screen",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}/publish"
           }
         },
@@ -117,7 +93,7 @@
           "name": "Unpublish splash screen",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}/unpublish"
           }
         },
@@ -125,20 +101,20 @@
           "name": "Delete splash screen",
           "request": {
             "method": "DELETE",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}"
           }
         }
       ]
     },
     {
-      "name": "Caregiver lookups — services",
+      "name": "Lookups — services",
       "item": [
         {
           "name": "List all services (admin)",
           "request": {
             "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/services"
           }
         },
@@ -148,21 +124,19 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "  const body = pm.response.json();",
                   "  if (body.id && body.id.value) { pm.environment.set('serviceId', body.id.value); }",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
           "request": {
             "method": "POST",
-            "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
-            ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -184,10 +158,7 @@
               { "key": "Content-Type", "value": "application/json" },
               { "key": "Authorization", "value": "Bearer {{accessToken}}" }
             ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"arabicName\": \"طبيب ممارس\",\n  \"englishName\": \"Practicing Doctor\"\n}"
-            },
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"طبيب ممارس\",\n  \"englishName\": \"Practicing Doctor\"\n}" },
             "url": "{{baseUrl}}/api/v1/admin/lookups/services/{{serviceId}}"
           }
         },
@@ -195,7 +166,7 @@
           "name": "Deactivate service",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/services/{{serviceId}}/deactivate"
           }
         },
@@ -203,20 +174,20 @@
           "name": "Activate service",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/services/{{serviceId}}/activate"
           }
         }
       ]
     },
     {
-      "name": "Caregiver lookups — languages & governorates",
+      "name": "Lookups — languages & governorates",
       "item": [
         {
           "name": "List all languages (admin)",
           "request": {
             "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/languages"
           }
         },
@@ -226,13 +197,13 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "  const body = pm.response.json();",
                   "  if (body.id && body.id.value) { pm.environment.set('languageId', body.id.value); }",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -262,7 +233,7 @@
           "name": "Deactivate language",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/languages/{{languageId}}/deactivate"
           }
         },
@@ -270,7 +241,7 @@
           "name": "Activate language",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/languages/{{languageId}}/activate"
           }
         },
@@ -278,7 +249,7 @@
           "name": "List all governorates (admin)",
           "request": {
             "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/governorates"
           }
         },
@@ -288,13 +259,13 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "  const body = pm.response.json();",
                   "  if (body.id && body.id.value) { pm.environment.set('governorateId', body.id.value); }",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -324,7 +295,7 @@
           "name": "Deactivate governorate",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/governorates/{{governorateId}}/deactivate"
           }
         },
@@ -332,25 +303,25 @@
           "name": "Activate governorate",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/governorates/{{governorateId}}/activate"
           }
         }
       ]
     },
     {
-      "name": "Caregiver lookups — cities & areas",
+      "name": "Lookups — cities & areas",
       "item": [
         {
           "name": "List cities of governorate (admin)",
           "request": {
             "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/v1/admin/lookups/cities?governorateId={{governorateId}}",
-              "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "v1", "admin", "lookups", "cities" ],
-              "query": [ { "key": "governorateId", "value": "{{governorateId}}" } ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "lookups", "cities"],
+              "query": [{ "key": "governorateId", "value": "{{governorateId}}" }]
             }
           }
         },
@@ -360,13 +331,13 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "  const body = pm.response.json();",
                   "  if (body.id && body.id.value) { pm.environment.set('cityId', body.id.value); }",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -396,7 +367,7 @@
           "name": "Deactivate city",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/cities/{{cityId}}/deactivate"
           }
         },
@@ -404,7 +375,7 @@
           "name": "Activate city",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/cities/{{cityId}}/activate"
           }
         },
@@ -412,12 +383,12 @@
           "name": "List areas of city (admin)",
           "request": {
             "method": "GET",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": {
               "raw": "{{baseUrl}}/api/v1/admin/lookups/areas?cityId={{cityId}}",
-              "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "v1", "admin", "lookups", "areas" ],
-              "query": [ { "key": "cityId", "value": "{{cityId}}" } ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "admin", "lookups", "areas"],
+              "query": [{ "key": "cityId", "value": "{{cityId}}" }]
             }
           }
         },
@@ -427,13 +398,13 @@
             {
               "listen": "test",
               "script": {
+                "type": "text/javascript",
                 "exec": [
                   "if (pm.response.code === 201) {",
                   "  const body = pm.response.json();",
                   "  if (body.id && body.id.value) { pm.environment.set('areaId', body.id.value); }",
                   "}"
-                ],
-                "type": "text/javascript"
+                ]
               }
             }
           ],
@@ -463,7 +434,7 @@
           "name": "Deactivate area",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/areas/{{areaId}}/deactivate"
           }
         },
@@ -471,8 +442,199 @@
           "name": "Activate area",
           "request": {
             "method": "POST",
-            "header": [ { "key": "Authorization", "value": "Bearer {{accessToken}}" } ],
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": "{{baseUrl}}/api/v1/admin/lookups/areas/{{areaId}}/activate"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Lookups — specializations, titles & degrees",
+      "item": [
+        {
+          "name": "List all specializations (admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/specializations"
+          }
+        },
+        {
+          "name": "Create specialization",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id && body.id.value) { pm.environment.set('specializationId', body.id.value); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"تمريض\",\n  \"englishName\": \"Nursing\",\n  \"caregiverType\": 1,\n  \"isActive\": true\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/specializations"
+          }
+        },
+        {
+          "name": "Rename specialization",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"تمريض متقدم\",\n  \"englishName\": \"Advanced Nursing\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/specializations/{{specializationId}}"
+          }
+        },
+        {
+          "name": "Deactivate specialization",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/specializations/{{specializationId}}/deactivate"
+          }
+        },
+        {
+          "name": "Activate specialization",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/specializations/{{specializationId}}/activate"
+          }
+        },
+        {
+          "name": "List all professional titles (admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/professional-titles"
+          }
+        },
+        {
+          "name": "Create professional title",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id && body.id.value) { pm.environment.set('professionalTitleId', body.id.value); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"أخصائي\",\n  \"englishName\": \"Specialist\",\n  \"isActive\": true\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/professional-titles"
+          }
+        },
+        {
+          "name": "Rename professional title",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"أخصائي\",\n  \"englishName\": \"Medical Specialist\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/professional-titles/{{professionalTitleId}}"
+          }
+        },
+        {
+          "name": "Deactivate professional title",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/professional-titles/{{professionalTitleId}}/deactivate"
+          }
+        },
+        {
+          "name": "Activate professional title",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/professional-titles/{{professionalTitleId}}/activate"
+          }
+        },
+        {
+          "name": "List all academic degrees (admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/academic-degrees"
+          }
+        },
+        {
+          "name": "Create academic degree",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id && body.id.value) { pm.environment.set('academicDegreeId', body.id.value); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"بكالوريوس\",\n  \"englishName\": \"Bachelor\",\n  \"isActive\": true\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/academic-degrees"
+          }
+        },
+        {
+          "name": "Rename academic degree",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"بكالوريوس\",\n  \"englishName\": \"Bachelor's Degree\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/academic-degrees/{{academicDegreeId}}"
+          }
+        },
+        {
+          "name": "Deactivate academic degree",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/academic-degrees/{{academicDegreeId}}/deactivate"
+          }
+        },
+        {
+          "name": "Activate academic degree",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/academic-degrees/{{academicDegreeId}}/activate"
           }
         }
       ]

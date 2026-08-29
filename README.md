@@ -6,7 +6,7 @@ The active development branch is `develop`.
 
 ## Current status
 
-The Caregivers Domain, the non-social Authentication vertical slice, the shared splash CMS, and the Caregivers **lookups** HTTP surface are implemented.
+The Caregivers Domain, the non-social Authentication vertical slice, the shared splash CMS, and the complete Caregivers **lookups** HTTP surface (all eight admin-managed lookups) are implemented.
 
 Implemented HTTP surface:
 
@@ -19,9 +19,10 @@ Implemented HTTP surface:
 - Password reset and authenticated password change
 - Shared splash screens (anonymous GET) plus admin splash CMS (multipart image create/update, publish, delete)
 - Anonymous file serving at `GET /files/{key}`
-- Caregiver **lookups**:
-  - Public active reads for services, languages, governorates, cities, and areas
-  - Admin management (create / rename / activate / deactivate / list-all) for the same lookups
+- Caregiver **lookups** (admin management + anonymous public reads) for:
+  - Services, Languages, Governorates
+  - Cities and Areas (parent-scoped)
+  - Specializations, Professional Titles, Academic Degrees
 
 Email and SMS delivery:
 
@@ -33,8 +34,7 @@ Email and SMS delivery:
 
 Not in this repository yet:
 
-- Caregiver onboarding commands/queries HTTP (submission, review, certificates)
-- Specialization, Professional Title, and Academic Degree lookup endpoints
+- Caregiver onboarding commands/queries HTTP (submission, review, certificates, schedules)
 - Families Application / Infrastructure / HTTP endpoints
 - Social / Google / Apple authentication (cancelled and removed)
 
@@ -152,14 +152,6 @@ Identity uses PostgreSQL schema `identity`, CMS uses schema `cms`, and Caregiver
 
 Historical social-authentication migrations remain in the project and must be applied in order. The last Identity migration, `RemoveSocialAuthentication`, drops those tables.
 
-```bash
-dotnet ef database update \
-  --project src/Modules/Identity/Infrastructure/Sanad.Modules.Identity.Infrastructure/Sanad.Modules.Identity.Infrastructure.csproj \
-  --startup-project src/API/Sanad.API/Sanad.API.csproj
-```
-
-Do not generate a new removal migration. Do not rewrite historical migrations.
-
 ## Run
 
 From the repository root:
@@ -212,50 +204,33 @@ Base route: `/api/v1/auth`
 
 Password change and all session actions require policy `NormalAccess`: an authenticated JWT whose `access_type` claim is `Normal`. Restricted verification tokens receive 403.
 
-Current-session logout also requires header:
-
-```text
-X-Device-Session-Id: <device session guid>
-```
-
-A missing or invalid header returns `400` with code `Api.Auth.InvalidDeviceSessionHeader`.
-
 ## Caregiver lookup endpoints
 
-Public reads are anonymous, active-only, and return `200 []` when empty.
+Public reads are anonymous, active-only, and return `200 []` when empty. `caregiverType`: `1` Medical, `2` Companion.
 
-| Method | Path | Access | Notes |
-|---|---|---|---|
-| GET | `/api/v1/lookups/services` | Anonymous | Active services, ordered by Arabic name |
-| GET | `/api/v1/lookups/languages` | Anonymous | Active languages, ordered by code |
-| GET | `/api/v1/lookups/governorates` | Anonymous | Active governorates |
-| GET | `/api/v1/lookups/cities?governorateId={id}` | Anonymous | Active cities whose governorate is active |
-| GET | `/api/v1/lookups/areas?cityId={id}` | Anonymous | Active areas whose city + governorate are active |
-
-Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` SuperAdmin or ContentAdmin):
-
-| Method | Path | Success |
+| Method | Path | Notes |
 |---|---|---|
-| POST | `/api/v1/admin/lookups/services` | 201 (multipart with icon) |
-| PUT | `/api/v1/admin/lookups/services/{id}` | 200 |
-| POST | `/api/v1/admin/lookups/services/{id}/activate` · `/deactivate` | 200 |
-| GET | `/api/v1/admin/lookups/services` | 200 (active + inactive) |
-| POST | `/api/v1/admin/lookups/languages` | 201 |
-| PUT | `/api/v1/admin/lookups/languages/{id}` | 200 |
-| POST | `/api/v1/admin/lookups/languages/{id}/activate` · `/deactivate` | 200 |
-| GET | `/api/v1/admin/lookups/languages` | 200 (active + inactive) |
-| POST | `/api/v1/admin/lookups/governorates` | 201 |
-| PUT | `/api/v1/admin/lookups/governorates/{id}` | 200 |
-| POST | `/api/v1/admin/lookups/governorates/{id}/activate` · `/deactivate` | 200 |
-| GET | `/api/v1/admin/lookups/governorates` | 200 (active + inactive) |
-| POST | `/api/v1/admin/lookups/cities` | 201 (requires active governorate) |
-| PUT | `/api/v1/admin/lookups/cities/{id}` | 200 |
-| POST | `/api/v1/admin/lookups/cities/{id}/activate` · `/deactivate` | 200 |
-| GET | `/api/v1/admin/lookups/cities?governorateId={id}` | 200 (active + inactive) |
-| POST | `/api/v1/admin/lookups/areas` | 201 (requires active city + governorate) |
-| PUT | `/api/v1/admin/lookups/areas/{id}` | 200 |
-| POST | `/api/v1/admin/lookups/areas/{id}/activate` · `/deactivate` | 200 |
-| GET | `/api/v1/admin/lookups/areas?cityId={id}` | 200 (active + inactive) |
+| GET | `/api/v1/lookups/services` | Active services with icons |
+| GET | `/api/v1/lookups/languages` | Active languages, ordered by code |
+| GET | `/api/v1/lookups/governorates` | Active governorates |
+| GET | `/api/v1/lookups/cities?governorateId={id}` | Active cities whose governorate is active |
+| GET | `/api/v1/lookups/areas?cityId={id}` | Active areas whose city + governorate are active |
+| GET | `/api/v1/lookups/specializations` | Active specializations (both types; carries `caregiverType`) |
+| GET | `/api/v1/lookups/professional-titles` | Active Medical professional titles |
+| GET | `/api/v1/lookups/academic-degrees` | Active Medical academic degrees |
+
+Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` SuperAdmin or ContentAdmin). Each lookup supports create, rename, activate, deactivate, and an admin list that returns active **and** inactive records:
+
+| Lookup | Create body | Admin list |
+|---|---|---|
+| services | multipart (names, `caregiverType`, `isActive`, icon file) | `GET /api/v1/admin/lookups/services` |
+| languages | `code`, names | `GET /api/v1/admin/lookups/languages` |
+| governorates | names | `GET /api/v1/admin/lookups/governorates` |
+| cities | `governorateId`, names (requires active governorate) | `GET /api/v1/admin/lookups/cities?governorateId={id}` |
+| areas | `cityId`, names (requires active city + governorate) | `GET /api/v1/admin/lookups/areas?cityId={id}` |
+| specializations | names, `caregiverType`, `isActive` | `GET /api/v1/admin/lookups/specializations` |
+| professional-titles | names, `isActive` | `GET /api/v1/admin/lookups/professional-titles` |
+| academic-degrees | names, `isActive` | `GET /api/v1/admin/lookups/academic-degrees` |
 
 Lookup error codes: `Caregivers.Lookups.NameAlreadyInUse` (409), `Caregivers.Lookups.LanguageCodeInUse` (409), `Caregivers.Lookups.ParentNotActive` (409), `Caregivers.Lookups.NotFound` (404), `Caregivers.Lookups.ParentNotFound` (404).
 
@@ -284,9 +259,8 @@ dotnet test Sanad.slnx
 ## Documentation
 
 ```text
-docs/architecture/overview.md
 docs/auth/                              Auth flows, claims/policies, error catalog
-docs/admin/                             Admin HTTP (splash, caregiver lookups)
+docs/admin/                             Admin HTTP (splash, all caregiver lookups)
 docs/users/                             App-facing HTTP (splash, public lookups)
 docs/operations/                        Configuration, migrations, security
 docs/postman/admins/                    Admin Postman collection

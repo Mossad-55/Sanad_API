@@ -28,7 +28,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/lookups/services",
-            "description": "Anonymous. Active services only. Empty list is 200 []."
+            "description": "Anonymous. Active services only."
           }
         },
         {
@@ -46,7 +46,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/lookups/governorates",
-            "description": "Anonymous. Active governorates only, ordered by English name."
+            "description": "Anonymous. Active governorates only."
           }
         },
         {
@@ -56,9 +56,9 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/lookups/cities?governorateId={{governorateId}}",
-              "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "v1", "lookups", "cities" ],
-              "query": [ { "key": "governorateId", "value": "{{governorateId}}" } ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "lookups", "cities"],
+              "query": [{ "key": "governorateId", "value": "{{governorateId}}" }]
             },
             "description": "Anonymous. Required governorateId. Returns cities where both city and governorate are active."
           }
@@ -70,11 +70,38 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/lookups/areas?cityId={{cityId}}",
-              "host": [ "{{baseUrl}}" ],
-              "path": [ "api", "v1", "lookups", "areas" ],
-              "query": [ { "key": "cityId", "value": "{{cityId}}" } ]
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "lookups", "areas"],
+              "query": [{ "key": "cityId", "value": "{{cityId}}" }]
             },
             "description": "Anonymous. Required cityId. Returns areas only when area + city + governorate are all active."
+          }
+        },
+        {
+          "name": "Get active specializations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/specializations",
+            "description": "Anonymous. Active specializations for both caregiver types; filter client-side by caregiverType (1 Medical, 2 Companion)."
+          }
+        },
+        {
+          "name": "Get active professional titles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/professional-titles",
+            "description": "Anonymous. Active Medical professional titles."
+          }
+        },
+        {
+          "name": "Get active academic degrees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/academic-degrees",
+            "description": "Anonymous. Active Medical academic degrees."
           }
         }
       ]

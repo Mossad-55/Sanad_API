@@ -23,16 +23,22 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Service lookups | `docs/admin/service-lookups.md` |
 | Language & governorate lookups | `docs/admin/lookups-languages-governorates.md` |
 | City & area lookups | `docs/admin/lookups-cities-areas.md` |
+| Specialization, title & degree lookups | `docs/admin/lookups-specializations-titles-degrees.md` |
 | Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
 
-Admin lookup management uses list endpoints that return active **and** inactive records with `isActive`, separate from the public active-only app reads:
+## Caregiver lookups
+
+Eight admin-managed lookups, each with create / rename / activate / deactivate and an admin list that returns active **and** inactive records with `isActive`:
 
 ```text
-GET /api/v1/admin/lookups/services                 (all)
-GET /api/v1/admin/lookups/languages                (all)
-GET /api/v1/admin/lookups/governorates             (all)
-GET /api/v1/admin/lookups/cities?governorateId=    (all under that governorate)
-GET /api/v1/admin/lookups/areas?cityId=            (all under that city)
+Services            POST/PUT/POST activate/POST deactivate  GET list (all)
+Languages           same shape
+Governorates        same shape
+Cities              parent = governorate (active chain); GET ?governorateId=
+Areas               parent = city + governorate (active chain); GET ?cityId=
+Specializations     typed (Medical/Companion); name unique per type
+Professional titles Medical only; name unique globally
+Academic degrees    Medical only; name unique globally
 ```
 
-App-facing (non-admin) reads live under `/api/v1/lookups/...` — see `docs/users/lookups.md` and `docs/users/service-lookups.md`.
+Public (app) reads are anonymous, active-only, and live under `/api/v1/lookups/...` — see `docs/users/lookups.md`.
