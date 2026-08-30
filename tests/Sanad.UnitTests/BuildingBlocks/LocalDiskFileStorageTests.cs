@@ -204,6 +204,84 @@ public sealed class LocalDiskFileStorageTests : IDisposable
             delete.Error.Code);
     }
 
+    [Fact]
+    public async Task SavePrivate_ShouldStorePdfUnderPrivateKey()
+    {
+        byte[] payload = [0x1, 0x2, 0x3, 0x4];
+
+        using MemoryStream content = new(payload);
+
+        Result<StoredFile> result =
+            await _storage.SavePrivateAsync(
+                content,
+                "application/pdf",
+                payload.Length,
+                "caregiver-certificates",
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.StartsWith(
+            "private/caregiver-certificates/",
+            result.Value.Key);
+        Assert.EndsWith(".pdf", result.Value.Key);
+    }
+
+    [Fact]
+    public async Task OpenRead_ShouldReturnSavedPrivateContent()
+    {
+        byte[] payload = [0x9, 0x8, 0x7];
+
+        using MemoryStream content = new(payload);
+
+        Result<StoredFile> saved =
+            await _storage.SavePrivateAsync(
+                content,
+                "application/pdf",
+                payload.Length,
+                "caregiver-certificates",
+                CancellationToken.None);
+
+        Assert.True(saved.IsSuccess);
+
+        Result<PrivateFileContent> read =
+            await _storage.OpenReadAsync(
+                saved.Value.Key,
+                CancellationToken.None);
+
+        Assert.True(read.IsSuccess);
+        Assert.Equal(
+            "application/pdf",
+            read.Value.ContentType);
+
+        await using Stream fileContent =
+            read.Value.Content;
+
+        using MemoryStream buffer = new();
+
+        await fileContent.CopyToAsync(buffer);
+
+        Assert.Equal(payload, buffer.ToArray());
+    }
+
+    [Fact]
+    public async Task SavePrivate_ShouldRejectUnsupportedContentType()
+    {
+        byte[] payload = [0x1];
+
+        using MemoryStream content = new(payload);
+
+        Result<StoredFile> result =
+            await _storage.SavePrivateAsync(
+                content,
+                "application/zip",
+                payload.Length,
+                "caregiver-certificates",
+                CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(StorageErrors.UnsupportedType, result.Error);
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_rootPath))

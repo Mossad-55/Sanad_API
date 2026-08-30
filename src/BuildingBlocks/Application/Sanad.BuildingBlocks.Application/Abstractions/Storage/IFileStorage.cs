@@ -11,6 +11,18 @@ public interface IFileStorage
         string folder,
         CancellationToken cancellationToken = default);
 
+    // For Private Documents Only.
+    Task<Result<StoredFile>> SavePrivateAsync(
+        Stream content,
+        string contentType,
+        long contentLength,
+        string folder,
+        CancellationToken cancellationToken = default);
+
+    Task<Result<PrivateFileContent>> OpenReadAsync(
+        string key,
+        CancellationToken cancellationToken = default);
+
     Task<Result> DeleteAsync(
         string key,
         CancellationToken cancellationToken = default);
@@ -18,3 +30,8 @@ public interface IFileStorage
 
 public sealed record StoredFile(
     string Key);
+
+public sealed record PrivateFileContent(
+    string Key,
+    string ContentType,
+    Stream Content);
