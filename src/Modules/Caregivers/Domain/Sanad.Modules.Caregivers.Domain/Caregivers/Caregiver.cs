@@ -926,6 +926,76 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void ReplaceMedicalSchedule(
+        IReadOnlyCollection<MedicalShiftInput> shifts,
+        IReadOnlyCollection<MedicalHomeVisitWindowInput>
+            homeVisitWindows)
+    {
+        EnsureMedicalCaregiver();
+
+        MedicalWeeklySchedule schedule =
+            MedicalWeeklySchedule.Create();
+
+        foreach (
+            MedicalShiftInput shift in
+                shifts ?? [])
+        {
+            schedule =
+                schedule.AddShift(
+                    shift.DayOfWeek,
+                    shift.ShiftType);
+        }
+
+        foreach (
+            MedicalHomeVisitWindowInput window in
+                homeVisitWindows ?? [])
+        {
+            schedule =
+                schedule.AddHomeVisitWindow(
+                    window.DayOfWeek,
+                    window.StartTime,
+                    window.EndTime);
+        }
+
+        EnsureActiveScheduleRemainsAvailable(
+            schedule.HasAvailability);
+
+        MedicalSchedule =
+            schedule.HasAvailability ? schedule : null;
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void ReplaceCompanionSchedule(
+        IReadOnlyCollection<CompanionAvailabilityWindowInput>
+            windows)
+    {
+        EnsureCompanionCaregiver();
+
+        CompanionWeeklySchedule schedule =
+            CompanionWeeklySchedule.Create();
+
+        foreach (
+            CompanionAvailabilityWindowInput window in
+                windows ?? [])
+        {
+            schedule =
+                schedule.AddWindow(
+                    window.BookingType,
+                    window.DayOfWeek,
+                    window.StartTime,
+                    window.EndTime);
+        }
+
+        EnsureActiveScheduleRemainsAvailable(
+            schedule.HasAvailability);
+
+        CompanionSchedule =
+            schedule.HasAvailability ? schedule : null;
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     public void SubmitForReview(
         DateTime utcNow,
         DateOnly currentDate

@@ -23,4 +23,14 @@ public static class OnboardingErrors
         new(
             "Caregivers.Onboarding.InactiveLookup",
             "One of the referenced lookups is inactive.");
+
+    public static readonly Error InvalidSchedule =
+        new(
+            "Caregivers.Onboarding.InvalidSchedule",
+            "The weekly schedule is invalid.");
+
+    public static readonly Error NotActive =
+        new(
+            "Caregivers.Onboarding.NotActive",
+            "Only an Active caregiver can perform this action.");
 }

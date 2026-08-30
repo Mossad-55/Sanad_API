@@ -65,6 +65,8 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Onboarding.NotFound"] = 404,
             ["Caregivers.Onboarding.WrongCaregiverType"] = 409,
             ["Caregivers.Onboarding.InactiveLookup"] = 409,
+            ["Caregivers.Onboarding.InvalidSchedule"] = 409,
+            ["Caregivers.Onboarding.NotActive"] = 409,
 
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,

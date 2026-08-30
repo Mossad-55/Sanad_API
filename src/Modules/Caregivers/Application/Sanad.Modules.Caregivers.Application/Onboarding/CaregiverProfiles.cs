@@ -26,7 +26,9 @@ public sealed record CaregiverProfileResponse(
     IReadOnlyList<LanguageId> LanguageIds,
     IReadOnlyList<AreaId> AreaIds,
     MedicalPricingResponse? MedicalPricing,
-    CompanionPricingResponse? CompanionPricing);
+    CompanionPricingResponse? CompanionPricing,
+    MedicalScheduleResponse? MedicalSchedule,
+    CompanionScheduleResponse? CompanionSchedule);
 
 public sealed record MedicalPricingResponse(
     decimal HomeVisitPrice,
@@ -38,6 +40,28 @@ public sealed record CompanionPricingResponse(
     decimal HourlyPrice,
     decimal EightHourDayPrice,
     decimal OvernightPrice);
+
+public sealed record MedicalScheduleResponse(
+    IReadOnlyList<MedicalShiftItemResponse> Shifts,
+    IReadOnlyList<MedicalHomeVisitWindowItemResponse> HomeVisitWindows);
+
+public sealed record MedicalShiftItemResponse(
+    DayOfWeek DayOfWeek,
+    MedicalShiftType ShiftType);
+
+public sealed record MedicalHomeVisitWindowItemResponse(
+    DayOfWeek DayOfWeek,
+    TimeOnly StartTime,
+    TimeOnly EndTime);
+
+public sealed record CompanionScheduleResponse(
+    IReadOnlyList<CompanionAvailabilityWindowItemResponse> Windows);
+
+public sealed record CompanionAvailabilityWindowItemResponse(
+    CompanionBookingType BookingType,
+    DayOfWeek DayOfWeek,
+    TimeOnly StartTime,
+    TimeOnly EndTime);
 
 public sealed record MedicalProfileResponse(
     ProfessionalTitleId ProfessionalTitleId,
@@ -113,7 +137,32 @@ internal static class CaregiverProfileMappings
                 : new CompanionPricingResponse(
                     caregiver.CompanionPricing.HourlyPrice,
                     caregiver.CompanionPricing.EightHourDayPrice,
-                    caregiver.CompanionPricing.OvernightPrice));
+                    caregiver.CompanionPricing.OvernightPrice),
+            caregiver.MedicalSchedule is null
+                ? null
+                : new MedicalScheduleResponse(
+                    caregiver.MedicalSchedule.Shifts
+                        .Select(shift => new MedicalShiftItemResponse(
+                            shift.DayOfWeek,
+                            shift.ShiftType))
+                        .ToList(),
+                    caregiver.MedicalSchedule.HomeVisitWindows
+                        .Select(window => new MedicalHomeVisitWindowItemResponse(
+                            window.DayOfWeek,
+                            window.StartTime,
+                            window.EndTime))
+                        .ToList()),
+            caregiver.CompanionSchedule is null
+                ? null
+                : new CompanionScheduleResponse(
+                    caregiver.CompanionSchedule.Windows
+                        .Select(window =>
+                            new CompanionAvailabilityWindowItemResponse(
+                                window.BookingType,
+                                window.DayOfWeek,
+                                window.StartTime,
+                                window.EndTime))
+                        .ToList()));
 }
 
 // ----------------------------- Bootstrap ------------------------------

@@ -228,4 +228,111 @@ public sealed class CaregiverController :
 
         return ToActionResult(result);
     }
+
+    [HttpPut("schedule/medical")]
+    [ProducesResponseType(
+        typeof(CaregiverProfileResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateMedicalShedule(
+        [FromBody] UpdateMedicalScheduleRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new UpdateMedicalScheduleCommand(
+                    userId,
+                    (request.Shifts ?? [])
+                        .Select(shift =>
+                            new MedicalShiftItem(
+                                (DayOfWeek)shift.DayOfWeek,
+                                (MedicalShiftType)shift.ShiftType))
+                        .ToList(),
+                    (request.HomeVisitWindows ?? [])
+                        .Select(window =>
+                            new MedicalHomeVisitWindowItem(
+                                (DayOfWeek)window.DayOfWeek,
+                                window.StartTime,
+                                window.EndTime))
+                        .ToList()),
+                    cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPut("schedule/companion")]
+    [ProducesResponseType(
+        typeof(CaregiverProfileResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateCompanionSchedule(
+        [FromBody] UpdateCompanionScheduleRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new UpdateCompanionScheduleCommand(
+                    userId,
+                    (request.Windows ?? [])
+                        .Select(window =>
+                            new CompanionAvailabilityWindowItem(
+                                (CompanionBookingType)window.BookingType,
+                                (DayOfWeek)window.DayOfWeek,
+                                window.StartTime,
+                                window.EndTime))
+                        .ToList()),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("availability/available")]
+    [ProducesResponseType(
+        typeof(CaregiverProfileResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> BecomeAvailable(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new BecomeAvailableCommand(
+                    userId,
+                    DateOnly.FromDateTime(DateTime.UtcNow)),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("availability/unavailable")]
+    [ProducesResponseType(
+        typeof(CaregiverProfileResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> BecomeUnavailable(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new BecomeUnavailableCommand(userId),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
 }

@@ -31,3 +31,25 @@ public sealed record UpdateCompanionPricingRequest(
     decimal HourlyPrice,
     decimal EightHourDayPrice,
     decimal OvernightPrice);
+
+public sealed record MedicalShiftRequest(
+    int DayOfWeek,
+    int ShiftType);
+
+public sealed record MedicalHomeVisitWindowRequest(
+    int DayOfWeek,
+    TimeOnly StartTime,
+    TimeOnly EndTime);
+
+public sealed record UpdateMedicalScheduleRequest(
+    IReadOnlyList<MedicalShiftRequest>? Shifts,
+    IReadOnlyList<MedicalHomeVisitWindowRequest>? HomeVisitWindows);
+
+public sealed record CompanionAvailabilityWindowRequest(
+    int BookingType,
+    int DayOfWeek,
+    TimeOnly StartTime,
+    TimeOnly EndTime);
+
+public sealed record UpdateCompanionScheduleRequest(
+    IReadOnlyList<CompanionAvailabilityWindowRequest>? Windows);
