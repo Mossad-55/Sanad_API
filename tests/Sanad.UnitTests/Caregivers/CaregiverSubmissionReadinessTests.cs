@@ -217,7 +217,8 @@ public sealed class CaregiverSubmissionReadinessTests
                     "Elderly Care",
                     true,
                     CaregiverType.Companion),
-                biography: null);
+                biography: null,
+                CaregiverTestData.CurrentUtc);
         }
 
         if (includePricing)

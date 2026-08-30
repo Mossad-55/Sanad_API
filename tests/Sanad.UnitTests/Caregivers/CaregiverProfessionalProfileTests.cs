@@ -81,7 +81,8 @@ public sealed class CaregiverProfessionalProfileTests
         caregiver.UpdateCompanionProfile(
             yearsOfExperience: 5,
             specialization,
-            "  Experienced Companion caregiver.  ");
+            "  Experienced Companion caregiver.  ",
+            CaregiverTestData.CurrentUtc);
 
         Assert.NotNull(caregiver.CompanionProfile);
         Assert.Null(caregiver.MedicalProfile);
@@ -146,7 +147,8 @@ public sealed class CaregiverProfessionalProfileTests
                 5,
                 CreateSpecialization(
                     CaregiverType.Companion),
-                null));
+                null,
+                CaregiverTestData.CurrentUtc));
 
         Assert.Null(caregiver.MedicalProfile);
         Assert.Null(caregiver.CompanionProfile);
@@ -267,7 +269,8 @@ public sealed class CaregiverProfessionalProfileTests
                 5,
                 CreateSpecialization(
                     CaregiverType.Medical),
-                null));
+                null,
+                CaregiverTestData.CurrentUtc));
 
         Assert.Null(caregiver.CompanionProfile);
     }
@@ -434,11 +437,10 @@ public sealed class CaregiverProfessionalProfileTests
     }
 
     [Fact]
-    public void UpdateCompanionProfile_ShouldKeepActiveCaregiverAvailable()
+    public void UpdateCompanionProfile_ShouldReturnActiveCaregiverToPendingReview()
     {
         Caregiver caregiver =
-            CreateCaregiver(
-                CaregiverType.Companion);
+            CreateCaregiver(CaregiverType.Companion);
 
         caregiver.TransitionToActive();
 
@@ -447,12 +449,16 @@ public sealed class CaregiverProfessionalProfileTests
 
         caregiver.UpdateCompanionProfile(
             5,
-            CreateSpecialization(
-                CaregiverType.Companion),
-            null);
+            CreateSpecialization(CaregiverType.Companion),
+            null,
+            CaregiverTestData.CurrentUtc);
 
         Assert.Equal(
-            CaregiverAvailability.Available,
+            CaregiverStatus.PendingReview,
+            caregiver.Status);
+        Assert.Null(caregiver.StatusReason);
+        Assert.Equal(
+            CaregiverAvailability.Unavailable,
             caregiver.Availability);
     }
 

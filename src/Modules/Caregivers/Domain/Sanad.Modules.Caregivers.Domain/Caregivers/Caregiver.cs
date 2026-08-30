@@ -213,10 +213,13 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public void UpdateCompanionProfile(
         int yearsOfExperience,
         Specialization specialization,
-        string? biography)
+        string? biography,
+        DateTime utcNow)
     {
         ArgumentNullException.ThrowIfNull(
             specialization);
+
+        ValidateUtc(utcNow);
 
         if (Type != CaregiverType.Companion)
         {
@@ -246,7 +249,22 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
                 biography);
 
         CompanionProfile = profile;
-        UpdatedOnUtc = DateTime.UtcNow;
+
+        if (Status == CaregiverStatus.Active)
+        {
+            Status = CaregiverStatus.PendingReview;
+            StatusReason = null;
+            Availability =
+                CaregiverAvailability.Unavailable;
+
+            RaiseDomainEvent(
+                new CaregiverReviewRequiredDomainEvent(
+                    Id,
+                    CaregiverReviewTrigger
+                        .CompanionProfessionalProfileChanged));
+        }
+
+        UpdatedOnUtc = utcNow;
     }
 
     public void BecomeAvailable(DateOnly currentDate)

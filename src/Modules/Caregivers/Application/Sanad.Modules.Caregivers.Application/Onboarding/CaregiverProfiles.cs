@@ -388,7 +388,8 @@ public sealed record UpdateCompanionProfileCommand(
     UserId UserId,
     int YearsOfExperience,
     SpecializationId SpecializationId,
-    string? Biography)
+    string? Biography,
+    DateTime UtcNow)
     : ICommand<CaregiverProfileResponse>;
 
 public sealed class UpdateCompanionProfileCommandValidator
@@ -460,7 +461,8 @@ public sealed class UpdateCompanionProfileCommandHandler
             specialization,
             string.IsNullOrWhiteSpace(request.Biography)
                 ? null
-                : request.Biography.Trim());
+                : request.Biography.Trim(),
+            request.UtcNow);
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 

@@ -572,6 +572,64 @@ public sealed class CaregiverDomainEventTests
             caregiver.Status);
     }
 
+    [Fact]
+    public void ActiveCompanionProfileChange_ShouldRaiseReviewRequiredEvent()
+    {
+        Caregiver caregiver =
+            CreateActiveCompanion();
+
+        caregiver.ClearDomainEvents();
+
+        caregiver.UpdateCompanionProfile(
+            yearsOfExperience: 10,
+            Specialization.Create(
+                "رعاية كبار السن",
+                "Elderly Care",
+                true,
+                CaregiverType.Companion),
+            biography: null,
+            CaregiverTestData.CurrentUtc.AddHours(1));
+
+        CaregiverReviewRequiredDomainEvent domainEvent =
+            Assert.Single(
+                caregiver.DomainEvents
+                    .OfType<CaregiverReviewRequiredDomainEvent>());
+
+        Assert.Equal(
+            caregiver.Id,
+            domainEvent.CaregiverId);
+
+        Assert.Equal(
+            CaregiverReviewTrigger
+                .CompanionProfessionalProfileChanged,
+            domainEvent.Trigger);
+    }
+
+    [Fact]
+    public void OnboardingCompanionProfileChange_ShouldNotRaiseReviewRequiredEvent()
+    {
+        Caregiver caregiver =
+            Caregiver.Create(
+                UserId.New(),
+                CaregiverType.Companion);
+
+        caregiver.UpdateCompanionProfile(
+            yearsOfExperience: 5,
+            Specialization.Create(
+                "رعاية كبار السن",
+                "Elderly Care",
+                true,
+                CaregiverType.Companion),
+            biography: null,
+            CaregiverTestData.CurrentUtc);
+
+        Assert.DoesNotContain(
+            caregiver.DomainEvents,
+            domainEvent =>
+                domainEvent is
+                    CaregiverReviewRequiredDomainEvent);
+    }
+
     private static Caregiver CreateReadyCompanion()
     {
         Caregiver caregiver =

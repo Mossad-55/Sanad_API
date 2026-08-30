@@ -129,7 +129,8 @@ public sealed class CaregiverController :
                     request.YearsOfExperience,
                     new SpecializationId(
                         request.SpecializationId),
-                    request.Biography),
+                    request.Biography,
+                    DateTime.UtcNow),
                 cancellationToken);
 
         return ToActionResult(result);
@@ -462,6 +463,29 @@ public sealed class CaregiverController :
                 new RemoveCertificateCommand(
                     userId,
                     new CaregiverCertificateId(certificateId)),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("submit")]
+    [ProducesResponseType(
+        typeof(CaregiverProfileResponse),
+            StatusCodes.Status200OK)]
+    public async Task<IActionResult> SubmitForReview(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new SubmitCaregiverCommand(
+                    userId,
+                    DateOnly.FromDateTime(DateTime.UtcNow),
+                    DateTime.UtcNow),
                 cancellationToken);
 
         return ToActionResult(result);

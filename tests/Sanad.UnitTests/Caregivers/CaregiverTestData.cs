@@ -112,7 +112,8 @@ internal static class CaregiverTestData
                     "Elderly Care",
                     true,
                     CaregiverType.Companion),
-                biography: null);
+                biography: null,
+                CurrentUtc);
         }
 
         if (caregiver.CompanionPricing is null)

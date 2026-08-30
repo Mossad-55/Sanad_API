@@ -43,4 +43,9 @@ public static class OnboardingErrors
         new(
             "Caregivers.Onboarding.InvalidCertificateOperation",
             "The certificate operation is not allowed for its current state.");
+
+    public static readonly Error InvalidState =
+        new(
+            "Caregivers.Onboarding.InvalidState",
+            "The caregiver cannot perform this actiono in its current status.");
 }
