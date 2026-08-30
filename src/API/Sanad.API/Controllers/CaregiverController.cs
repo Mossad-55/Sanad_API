@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers.Requests;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
@@ -15,11 +17,14 @@ public sealed class CaregiverController :
     ApiControllerBase
 {
     private readonly ISender _sender;
+    private readonly IFileStorage _fileStorage;
 
     public CaregiverController(
-        ISender sender)
+        ISender sender,
+        IFileStorage fileStorage)
     {
         _sender = sender;
+        _fileStorage = fileStorage;
     }
 
     [HttpPost("profile")]
@@ -334,5 +339,153 @@ public sealed class CaregiverController :
                 cancellationToken);
 
         return ToActionResult(result);
+    }
+
+    [HttpPost("certificates")]
+    [RequestSizeLimit(5_242_880)] // 5 MB, matches private storage limit
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(
+    typeof(CaregiverProfileResponse),
+    StatusCodes.Status200OK)]
+    public async Task<IActionResult> AddCertificate(
+    [FromForm] AddCertificateRequest request,
+    IFormFile? file,
+    CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        Result<StoredFile> upload =
+            await SavePrivateCertificateAsync(
+                file,
+                cancellationToken);
+
+        if (upload.IsFailure)
+        {
+            return ToActionResult(upload);
+        }
+
+        string fileKey = upload.Value.Key;
+
+        var result =
+            await _sender.Send(
+                new AddCertificateCommand(
+                    userId,
+                    request.Type,
+                    fileKey,
+                    request.ExpiryDate,
+                    DateOnly.FromDateTime(DateTime.UtcNow),
+                    DateTime.UtcNow),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            await _fileStorage.DeleteAsync(
+                fileKey,
+                cancellationToken);
+
+            return ToActionResult(result);
+        }
+
+        return ToActionResult(result);
+    }
+
+    [HttpPut("certificates/{certificateId:guid}/file")]
+    [RequestSizeLimit(5_242_880)]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(
+        typeof(CaregiverProfileResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> ReplaceCertificateFile(
+        Guid certificateId,
+        [FromForm] ReplaceCertificateFileRequest request,
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        Result<StoredFile> upload =
+            await SavePrivateCertificateAsync(
+                file,
+                cancellationToken);
+
+        if (upload.IsFailure)
+        {
+            return ToActionResult(upload);
+        }
+
+        string fileKey = upload.Value.Key;
+
+        var result =
+            await _sender.Send(
+                new ReplaceCertificateFileCommand(
+                    userId,
+                    new CaregiverCertificateId(certificateId),
+                    fileKey,
+                    request.ExpiryDate,
+                    DateOnly.FromDateTime(DateTime.UtcNow),
+                    DateTime.UtcNow),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            await _fileStorage.DeleteAsync(
+                fileKey,
+                cancellationToken);
+
+            return ToActionResult(result);
+        }
+
+        return ToActionResult(result);
+    }
+
+    [HttpDelete("certificates/{certificateId:guid}")]
+    [ProducesResponseType(
+        typeof(CaregiverProfileResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> RemoveCertificate(
+        Guid certificateId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new RemoveCertificateCommand(
+                    userId,
+                    new CaregiverCertificateId(certificateId)),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    private async Task<Result<StoredFile>>
+        SavePrivateCertificateAsync(
+            IFormFile? file,
+            CancellationToken cancellationToken)
+    {
+        if (file is null)
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.Empty);
+        }
+
+        await using Stream stream =
+            file.OpenReadStream();
+
+        return await _fileStorage.SavePrivateAsync(
+            stream,
+            file.ContentType,
+            file.Length,
+            folder: CertificateStorage.Folder,
+            cancellationToken);
     }
 }

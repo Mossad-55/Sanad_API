@@ -67,6 +67,8 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Onboarding.InactiveLookup"] = 409,
             ["Caregivers.Onboarding.InvalidSchedule"] = 409,
             ["Caregivers.Onboarding.NotActive"] = 409,
+            ["Caregivers.Onboarding.CertificateNotFound"] = 404,
+            ["Caregivers.Onboarding.InvalidCertificateOperation"] = 409,
 
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,

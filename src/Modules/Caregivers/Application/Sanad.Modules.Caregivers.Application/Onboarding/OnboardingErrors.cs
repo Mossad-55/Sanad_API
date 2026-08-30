@@ -33,4 +33,14 @@ public static class OnboardingErrors
         new(
             "Caregivers.Onboarding.NotActive",
             "Only an Active caregiver can perform this action.");
+
+    public static readonly Error CertificateNotFound =
+        new(
+            "Caregivers.Onboarding.CertificateNotFound",
+            "The certificate was not found.");
+
+    public static readonly Error InvalidCertificateOperation =
+        new(
+            "Caregivers.Onboarding.InvalidCertificateOperation",
+            "The certificate operation is not allowed for its current state.");
 }

@@ -1,3 +1,5 @@
+using Sanad.Modules.Caregivers.Domain.Caregivers;
+
 namespace Sanad.API.Controllers.Requests;
 
 public sealed record UpdateMedicalProfileRequest(
@@ -53,3 +55,13 @@ public sealed record CompanionAvailabilityWindowRequest(
 
 public sealed record UpdateCompanionScheduleRequest(
     IReadOnlyList<CompanionAvailabilityWindowRequest>? Windows);
+
+public sealed record AddCertificateRequest(
+    CaregiverCertificateType Type,
+    DateOnly? ExpiryDate);
+
+public sealed record ReplaceCertificateFileRequest(
+    DateOnly? ExpiryDate);
+
+public sealed record ReviewCertificateRequest(
+    string Reason);
