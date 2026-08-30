@@ -21,7 +21,23 @@ public sealed record CaregiverProfileResponse(
     string? StatusReason,
     MedicalProfileResponse? MedicalProfile,
     CompanionProfileResponse? CompanionProfile,
-    IReadOnlyList<CertificateItemResponse> Certificates);
+    IReadOnlyList<CertificateItemResponse> Certificates,
+    IReadOnlyList<ServiceId> ServiceIds,
+    IReadOnlyList<LanguageId> LanguageIds,
+    IReadOnlyList<AreaId> AreaIds,
+    MedicalPricingResponse? MedicalPricing,
+    CompanionPricingResponse? CompanionPricing);
+
+public sealed record MedicalPricingResponse(
+    decimal HomeVisitPrice,
+    decimal EightHourShiftPrice,
+    decimal TwelveHourShiftPrice,
+    decimal TwentyFourHourShiftPrice);
+
+public sealed record CompanionPricingResponse(
+    decimal HourlyPrice,
+    decimal EightHourDayPrice,
+    decimal OvernightPrice);
 
 public sealed record MedicalProfileResponse(
     ProfessionalTitleId ProfessionalTitleId,
@@ -75,7 +91,29 @@ internal static class CaregiverProfileMappings
                     certificate.Type,
                     certificate.ExpiryDate,
                     certificate.VerificationStatus))
-                .ToList());
+                .ToList(),
+            caregiver.ServiceSelections
+                .Select(selection => selection.Id)
+                .ToList(),
+            caregiver.LanguageSelections
+                .Select(selection => selection.Id)
+                .ToList(),
+            caregiver.AreaSelections
+                .Select(selection => selection.Id)
+                .ToList(),
+            caregiver.MedicalPricing is null
+                ? null
+                : new MedicalPricingResponse(
+                    caregiver.MedicalPricing.HomeVisitPrice,
+                    caregiver.MedicalPricing.EightHourShiftPrice,
+                    caregiver.MedicalPricing.TwelveHourShiftPrice,
+                    caregiver.MedicalPricing.TwentyFourHourShiftPrice),
+            caregiver.CompanionPricing is null
+                ? null
+                : new CompanionPricingResponse(
+                    caregiver.CompanionPricing.HourlyPrice,
+                    caregiver.CompanionPricing.EightHourDayPrice,
+                    caregiver.CompanionPricing.OvernightPrice));
 }
 
 // ----------------------------- Bootstrap ------------------------------

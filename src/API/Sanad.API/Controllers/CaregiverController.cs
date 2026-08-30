@@ -152,4 +152,80 @@ public sealed class CaregiverController :
 
         return ToActionResult(result);
     }
+
+    [HttpPut("selections")]
+    [ProducesResponseType(
+    typeof(CaregiverProfileResponse),
+    StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateSelections(
+    [FromBody] UpdateCaregiverSelectionsRequest request,
+    CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new UpdateCaregiverSelectionsCommand(
+                    userId,
+                    request.ServiceIds,
+                    request.LanguageIds,
+                    request.AreaIds),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPut("pricing/medical")]
+    [ProducesResponseType(
+        typeof(CaregiverProfileResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateMedicalPricing(
+        [FromBody] UpdateMedicalPricingRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new UpdateMedicalPricingCommand(
+                    userId,
+                    request.HomeVisitPrice,
+                    request.EightHourShiftPrice,
+                    request.TwelveHourShiftPrice,
+                    request.TwentyFourHourShiftPrice),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPut("pricing/companion")]
+    [ProducesResponseType(
+        typeof(CaregiverProfileResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateCompanionPricing(
+        [FromBody] UpdateCompanionPricingRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new UpdateCompanionPricingCommand(
+                    userId,
+                    request.HourlyPrice,
+                    request.EightHourDayPrice,
+                    request.OvernightPrice),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
 }
