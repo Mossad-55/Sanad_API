@@ -1,0 +1,517 @@
+{
+  "info": {
+    "_postman_id": "b3f1c2a4-0001-4a10-care-000000000001",
+    "name": "Sanad App — Caregiver onboarding",
+    "description": "Caregiver self-service onboarding. Requires a Normal JWT for a MedicalCaregiver or CompanionCaregiver account (policy CaregiverAccess). Restricted-verification tokens (before email/phone OTP) receive 403. Run 0. Auth first, then the folders in order.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "Register (Medical caregiver)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arabicFullName\": \"أحمد الممرض\",\n  \"englishFullName\": \"Ahmed Nurse\",\n  \"email\": \"{{caregiverEmail}}\",\n  \"phoneNumber\": \"{{caregiverPhone}}\",\n  \"password\": \"{{caregiverPassword}}\",\n  \"accountType\": 2,\n  \"avatarUrl\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Login caregiver",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{caregiverEmail}}\",\n  \"password\": \"{{caregiverPassword}}\",\n  \"deviceName\": \"{{deviceName}}\",\n  \"devicePlatform\": {{devicePlatform}},\n  \"appVersion\": \"{{appVersion}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.accessToken) { pm.environment.set('caregiverToken', body.accessToken); }",
+                  "  if (body.refreshToken) { pm.environment.set('caregiverRefreshToken', body.refreshToken); }",
+                  "  if (body.deviceSessionId && body.deviceSessionId.value) { pm.environment.set('caregiverDeviceSessionId', body.deviceSessionId.value); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP (only if login returns accessType 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/verification/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verificationRequestId\": \"{{verificationRequestId}}\",\n  \"code\": \"{{otpCode}}\"\n}"
+            }
+          }
+        }
+      ],
+      "description": "Register a Medical caregiver (accountType 2) or use an existing one, then Login. Login captures caregiverToken. If the account is not verified, login returns accessType 2 (restricted) — verify OTPs first."
+    },
+    {
+      "name": "1. Bootstrap & profile",
+      "item": [
+        {
+          "name": "Bootstrap profile (POST, no body)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/profile",
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) { pm.environment.set('caregiverId', body.id); }",
+                  "  const cert = (body.certificates || [])[0];",
+                  "  if (cert && cert.id) { pm.environment.set('certificateId', cert.id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get own profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/profile"
+          }
+        },
+        {
+          "name": "Update medical profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/profile/medical",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"professionalTitleId\": \"{{professionalTitleId}}\",\n  \"yearsOfExperience\": 7,\n  \"specializationId\": \"{{specializationId}}\",\n  \"academicDegreeId\": \"{{academicDegreeId}}\",\n  \"currentWorkplace\": \"Cairo Hospital\",\n  \"biography\": \"Senior home nurse.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update companion profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/profile/companion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"yearsOfExperience\": 5,\n  \"specializationId\": \"{{specializationId}}\",\n  \"biography\": \"Companion for elderly care.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Update detailed address",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/profile/address",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"detailedAddress\": \"12 Tahrir Street, apartment 4\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Selections & pricing",
+      "item": [
+        {
+          "name": "Update selections (services/languages/areas)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/selections",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"serviceIds\": [\"{{serviceId}}\"],\n  \"languageIds\": [\"{{languageId}}\"],\n  \"areaIds\": [\"{{areaId}}\"]\n}"
+            }
+          }
+        },
+        {
+          "name": "Update medical pricing",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/pricing/medical",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"homeVisitPrice\": 150.00,\n  \"eightHourShiftPrice\": 500.00,\n  \"twelveHourShiftPrice\": 700.50,\n  \"twentyFourHourShiftPrice\": 1200.00\n}"
+            }
+          }
+        },
+        {
+          "name": "Update companion pricing",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/pricing/companion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hourlyPrice\": 40.00,\n  \"eightHourDayPrice\": 300.00,\n  \"overnightPrice\": 450.00\n}"
+            }
+          }
+        }
+      ],
+      "description": "Ids come from the public lookup endpoints (serviceId, languageId, areaId, specializationId, professionalTitleId, academicDegreeId)."
+    },
+    {
+      "name": "3. Schedule & availability",
+      "item": [
+        {
+          "name": "Update medical schedule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/schedule/medical",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"shifts\": [\n    { \"dayOfWeek\": 0, \"shiftType\": 1 },\n    { \"dayOfWeek\": 2, \"shiftType\": 4 }\n  ],\n  \"homeVisitWindows\": [\n    { \"dayOfWeek\": 1, \"startTime\": \"09:00\", \"endTime\": \"12:00\" }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Update companion schedule",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/schedule/companion",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"windows\": [\n    { \"bookingType\": 1, \"dayOfWeek\": 0, \"startTime\": \"10:00\", \"endTime\": \"14:00\" },\n    { \"bookingType\": 3, \"dayOfWeek\": 4, \"startTime\": \"20:00\", \"endTime\": \"08:00\" }\n  ]\n}"
+            }
+          }
+        },
+        {
+          "name": "Become available",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/availability/available",
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            }
+          }
+        },
+        {
+          "name": "Become unavailable",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/availability/unavailable",
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Certificates (Medical only, multipart)",
+      "item": [
+        {
+          "name": "Add certificate (multipart: Practice License)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/certificates",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "expiryDate",
+                  "value": "2028-12-31",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  const cert = (body.certificates || []).find(c => c.type === 1);",
+                  "  if (cert && cert.id) { pm.environment.set('certificateId', cert.id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Add certificate (multipart: Graduation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/certificates",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "2",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Replace certificate file (multipart)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/certificates/{{certificateId}}/file",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "expiryDate",
+                  "value": "2029-01-01",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Remove (additional) certificate",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/certificates/{{certificateId}}"
+          }
+        }
+      ],
+      "description": "Pick a PDF/image file for the file field in each multipart request. Max 5 MB. Practice License type=1, Graduation type=2, Additional type=3."
+    },
+    {
+      "name": "5. Submit",
+      "item": [
+        {
+          "name": "Submit for review (or resubmit after correction)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/submit",
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            }
+          }
+        }
+      ],
+      "description": "After submit, an admin verifies certificates and approves in the Admin collection > Caregiver review."
+    }
+  ]
+}

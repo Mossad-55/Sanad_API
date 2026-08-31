@@ -72,7 +72,7 @@ Hard delete. Missing id → `404`.
 
 ## Public read (no admin token)
 
-Apps call `GET /api/v1/splash-screens`. See `docs/users/splash-screens.md`.
+Apps call `GET /api/v1/splash-screens`. See `docs/app/public/splash-screens.md`.
 
 ## Sequence
 

@@ -5,7 +5,7 @@ Active lookup lists for caregiver onboarding dropdowns. All anonymous, active-on
 Strongly typed ids are returned as `{ "id": { "value": "<guid>" }, ... }`.
 
 ## Services
-`GET /api/v1/lookups/services` — active services with icons. See `docs/users/service-lookups.md`.
+`GET /api/v1/lookups/services` — active services with icons. See `docs/app/public/service-lookups.md`.
 
 ## Languages
 `GET /api/v1/lookups/languages` — ordered by `code`.

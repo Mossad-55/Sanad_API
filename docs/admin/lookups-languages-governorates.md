@@ -75,4 +75,4 @@ POST /api/v1/admin/lookups/governorates/{id}/deactivate   → 200
 | `Caregivers.Lookups.NameAlreadyInUse` | 409 | Arabic/English name already used |
 | `Caregivers.Lookups.NotFound` | 404 | Lookup id does not exist |
 
-Public (app) reads: `GET /api/v1/lookups/languages` and `/governorates` — see `docs/users/lookups.md`.
+Public (app) reads: `GET /api/v1/lookups/languages` and `/governorates` — see `docs/app/public/lookups.md`.

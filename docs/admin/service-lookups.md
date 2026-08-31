@@ -64,7 +64,7 @@ Idempotent at Domain level (already active/inactive is a no-op success). Unknown
 
 ## Public read (no admin token)
 
-Apps call `GET /api/v1/lookups/services`. See `docs/users/service-lookups.md`.
+Apps call `GET /api/v1/lookups/services`. See `docs/app/public/service-lookups.md`.
 
 ## Errors
 

@@ -105,4 +105,4 @@ POST /api/v1/admin/lookups/academic-degrees/{id}/deactivate   → 200
 | `Caregivers.Lookups.NameAlreadyInUse` | 409 | Name already used in the same scope (per type for specialization, global for title/degree) |
 | `Caregivers.Lookups.NotFound` | 404 | Lookup id does not exist |
 
-Public (app) reads: `GET /api/v1/lookups/{specializations|professional-titles|academic-degrees}` — see `docs/users/lookups.md`.
+Public (app) reads: `GET /api/v1/lookups/{specializations|professional-titles|academic-degrees}` — see `docs/app/public/lookups.md`.

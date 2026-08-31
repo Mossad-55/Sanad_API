@@ -1,6 +1,6 @@
 {
   "info": {
-    "name": "Sanad Users",
+    "name": "Sanad App — Public",
     "description": "App-facing (anonymous) routes. Splash and active lookups are public. Auth login is included so Family/Caregiver flows can reuse this collection later.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
@@ -56,9 +56,21 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/lookups/cities?governorateId={{governorateId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "lookups", "cities"],
-              "query": [{ "key": "governorateId", "value": "{{governorateId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lookups",
+                "cities"
+              ],
+              "query": [
+                {
+                  "key": "governorateId",
+                  "value": "{{governorateId}}"
+                }
+              ]
             },
             "description": "Anonymous. Required governorateId. Returns cities where both city and governorate are active."
           }
@@ -70,9 +82,21 @@
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/api/v1/lookups/areas?cityId={{cityId}}",
-              "host": ["{{baseUrl}}"],
-              "path": ["api", "v1", "lookups", "areas"],
-              "query": [{ "key": "cityId", "value": "{{cityId}}" }]
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lookups",
+                "areas"
+              ],
+              "query": [
+                {
+                  "key": "cityId",
+                  "value": "{{cityId}}"
+                }
+              ]
             },
             "description": "Anonymous. Required cityId. Returns areas only when area + city + governorate are all active."
           }

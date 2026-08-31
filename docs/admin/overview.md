@@ -4,12 +4,12 @@ Admin routes live under `/api/v1/admin/...`.
 
 ## Access
 
-| Role | JWT `account_type` | Splash write (`CmsContent`) | Lookup write (`CaregiversAdmin`) |
-|---|---|---|---|
-| Super Admin | `SuperAdmin` | Yes | Yes |
-| Content Admin | `ContentAdmin` | Yes | Yes |
-| Support Admin | `SupportAdmin` | No | No |
-| Family / Caregiver / Elderly | app types | No | No |
+| Role | JWT `account_type` | Splash write (`CmsContent`) | Lookup write (`CaregiversAdmin`) | Caregiver review (`CaregiversAdmin`) |
+|---|---|---|---|---|
+| Super Admin | `SuperAdmin` | Yes | Yes | Yes |
+| Content Admin | `ContentAdmin` | Yes | Yes | Yes |
+| Support Admin | `SupportAdmin` | No | No | No |
+| Family / Caregiver / Elderly | app types | No | No | No |
 
 All admin writes also require `access_type` = `Normal`. Restricted verification tokens cannot call admin routes.
 
@@ -24,6 +24,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Language & governorate lookups | `docs/admin/lookups-languages-governorates.md` |
 | City & area lookups | `docs/admin/lookups-cities-areas.md` |
 | Specialization, title & degree lookups | `docs/admin/lookups-specializations-titles-degrees.md` |
+| Caregiver review | `docs/admin/caregivers-review.md` |
 | Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
 
 ## Caregiver lookups
@@ -41,4 +42,24 @@ Professional titles Medical only; name unique globally
 Academic degrees    Medical only; name unique globally
 ```
 
-Public (app) reads are anonymous, active-only, and live under `/api/v1/lookups/...` — see `docs/users/lookups.md`.
+Public (app) reads are anonymous, active-only, and live under `/api/v1/lookups/...` — see `docs/app/public/lookups.md`.
+
+## Caregiver review
+
+Under `/api/v1/admin/caregivers/...`:
+
+```text
+GET    /caregivers?page=&pageSize=&status=&type=        paged list (reviewer name/phone joined from Identity)
+GET    /caregivers/{id}                                 full caregiver profile
+POST   /caregivers/{id}/approve
+POST   /caregivers/{id}/reject
+POST   /caregivers/{id}/request-correction
+POST   /caregivers/{id}/suspend
+POST   /caregivers/{id}/reactivate
+POST   /caregivers/{id}/certificates/{certId}/verify
+POST   /caregivers/{id}/certificates/{certId}/reject
+POST   /caregivers/{id}/certificates/{certId}/revoke
+GET    /caregivers/{id}/certificates/{certId}/file      private scan download (the only file-access path)
+```
+
+See `docs/admin/caregivers-review.md`. Caregiver self-service onboarding routes are separate, under `/api/v1/caregiver/...` (see `docs/app/caregivers/`).

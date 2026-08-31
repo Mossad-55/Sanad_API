@@ -97,4 +97,4 @@ POST /api/v1/admin/lookups/areas/{id}/deactivate   → 200
 | `Caregivers.Lookups.NameAlreadyInUse` | 409 | Name already used under the same parent |
 | `Caregivers.Lookups.NotFound` | 404 | City/Area id does not exist |
 
-Public (app) reads use the parent-filtered, active-chain endpoints — see `docs/users/lookups.md`.
+Public (app) reads use the parent-filtered, active-chain endpoints — see `docs/app/public/lookups.md`.

@@ -6,7 +6,7 @@ The active development branch is `develop`.
 
 ## Current status
 
-The Caregivers Domain, the non-social Authentication vertical slice, the shared splash CMS, and the complete Caregivers **lookups** HTTP surface (all eight admin-managed lookups) are implemented.
+The Caregivers Domain, the non-social Authentication vertical slice, the shared splash CMS, the complete Caregivers **lookups** HTTP surface (all eight admin-managed lookups), and the complete Caregiver **onboarding** HTTP surface (self-service onboarding + admin review) are implemented.
 
 Implemented HTTP surface:
 
@@ -18,11 +18,20 @@ Implemented HTTP surface:
 - Session list, current logout, logout-all, and owned-session revoke
 - Password reset and authenticated password change
 - Shared splash screens (anonymous GET) plus admin splash CMS (multipart image create/update, publish, delete)
-- Anonymous file serving at `GET /files/{key}`
+- Anonymous public file serving at `GET /files/{key}` (public assets only)
 - Caregiver **lookups** (admin management + anonymous public reads) for:
   - Services, Languages, Governorates
   - Cities and Areas (parent-scoped)
   - Specializations, Professional Titles, Academic Degrees
+- Caregiver **onboarding** (self-service, `CaregiverAccess` policy):
+  - profile bootstrap/get, medical & companion professional profile, detailed address
+  - bulk selections (services/languages/areas), medical & companion pricing
+  - bulk weekly schedules (shifts/home-visit windows; companion availability windows), availability toggle
+  - certificate upload/replace/remove (multipart, private storage) and submit/resubmit for review
+- Caregiver **admin review** (`CaregiversAdmin` policy):
+  - paged caregiver list (reviewer name/phone joined from Identity), caregiver detail
+  - approve / reject / request-correction / suspend / reactivate
+  - certificate verify / reject / revoke and private certificate file download
 
 Email and SMS delivery:
 
@@ -34,8 +43,8 @@ Email and SMS delivery:
 
 Not in this repository yet:
 
-- Caregiver onboarding commands/queries HTTP (submission, review, certificates, schedules)
 - Families Application / Infrastructure / HTTP endpoints
+- Bookings (ratings/reviews surface also starts there)
 - Social / Google / Apple authentication (cancelled and removed)
 
 ## Solution layout
@@ -47,20 +56,22 @@ src/
 └── Modules/
     ├── Identity/                         Auth Domain, Application, Infrastructure
     ├── Cms/                              Shared splash Domain, Application, Infrastructure, HTTP
-    ├── Caregivers/                       Domain complete; lookups Application/Infrastructure/HTTP live
+    ├── Caregivers/                       Domain complete; lookups + onboarding + admin review HTTP live
     └── Families/                         Domain foundation; other layers are shells
 tests/
 ├── Sanad.ArchitectureTests
 └── Sanad.UnitTests
 docs/
 ├── architecture/
-├── auth/
-├── users/                                App-facing (non-admin) HTTP
-├── admin/                                Admin HTTP
-├── operations/
+├── auth/                                 Authentication flows, claims/policies, error catalog
+├── app/                                  Mobile-app HTTP (one area per consumer inside)
+│   ├── public/                           Anonymous app surfaces (splash, active lookups)
+│   └── caregivers/                       Caregiver self-service onboarding
+├── admin/                                Admin HTTP (splash, lookups, caregiver review)
+├── operations/                           Configuration, migrations, security
 └── postman/
-    ├── users/
-    └── admins/
+    ├── admins/                           Admin Postman collection
+    └── app/                              App Postman collections (Public + Caregiver)
 ```
 
 Dependency direction:
@@ -97,19 +108,20 @@ export Identity__Jwt__SigningKey="REPLACE_WITH_AT_LEAST_32_UTF8_BYTES"
 
 `Identity__Jwt__SigningKey` must contain at least 32 UTF-8 bytes or the host will not start.
 
-Design-time EF migrations also require `ConnectionStrings__IdentityDatabase`.
+Design-time EF migrations also require `ConnectionStrings__IdentityDatabase` (the Caregivers design-time factory falls back to `ConnectionStrings__CaregiversDatabase` then `IdentityDatabase`).
 
 Caregivers and CMS fall back to `ConnectionStrings__IdentityDatabase` when their own connection strings are not set.
 
-### Optional local file storage
+### CORS
 
-Uploaded splash images and service icons are stored on local disk. The default root is `{AppContext.BaseDirectory}/sanad-files`; override with:
+A single default CORS policy currently allows any origin, header, and method (mobile development). Lock it down to known origins before production launch. It is registered in `AddSanadApi` (`AddCors`) and applied in `UseSanadApi` (`UseCors`, between authentication and authorization).
 
-```bash
-export Storage__Local__RootPath="/var/sanad/files"
-```
+### Local file storage
 
-Files are served anonymously at `GET /files/{key}`. The upload limit is 2 MB per file (jpeg/png/webp for images).
+Public uploads (splash images, service icons) and private uploads (caregiver certificate scans) are stored on local disk:
+
+- Public root: `{AppContext.BaseDirectory}/sanad-files`; override with `Storage__Local__RootPath="/var/sanad/files"`. Served anonymously at `GET /files/{key}`. Limit 2 MB; jpeg/png/webp.
+- Private root: a sibling directory (`<root>-private`) that is **not** served statically. Certificate scans (pdf/jpeg/png/webp, 5 MB limit) are only reachable through the admin download endpoint `GET /api/v1/admin/caregivers/{id}/certificates/{certId}/file`.
 
 ### Optional SMTP
 
@@ -204,12 +216,13 @@ Base route: `/api/v1/auth`
 
 Password change and all session actions require policy `NormalAccess`: an authenticated JWT whose `access_type` claim is `Normal`. Restricted verification tokens receive 403.
 
-## Caregiver lookup endpoints
+## App — public endpoints
 
-Public reads are anonymous, active-only, and return `200 []` when empty. `caregiverType`: `1` Medical, `2` Companion.
+Anonymous app reads (splash, active lookups) return `200 []` when empty. `caregiverType`: `1` Medical, `2` Companion.
 
 | Method | Path | Notes |
 |---|---|---|
+| GET | `/api/v1/splash-screens` | Published splash screens |
 | GET | `/api/v1/lookups/services` | Active services with icons |
 | GET | `/api/v1/lookups/languages` | Active languages, ordered by code |
 | GET | `/api/v1/lookups/governorates` | Active governorates |
@@ -219,18 +232,42 @@ Public reads are anonymous, active-only, and return `200 []` when empty. `caregi
 | GET | `/api/v1/lookups/professional-titles` | Active Medical professional titles |
 | GET | `/api/v1/lookups/academic-degrees` | Active Medical academic degrees |
 
-Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` SuperAdmin or ContentAdmin). Each lookup supports create, rename, activate, deactivate, and an admin list that returns active **and** inactive records:
+See `docs/app/public/`. Postman: `docs/postman/app/Sanad.App.Public.postman_collection.json`.
 
-| Lookup | Create body | Admin list |
+## App — caregiver onboarding endpoints
+
+Self-service routes under `/api/v1/caregiver/...` require policy `CaregiverAccess` (Normal JWT with `account_type` MedicalCaregiver or CompanionCaregiver). Restricted-verification tokens receive 403. Full reference: `docs/app/caregivers/`.
+
+| Method | Path | Notes |
 |---|---|---|
-| services | multipart (names, `caregiverType`, `isActive`, icon file) | `GET /api/v1/admin/lookups/services` |
-| languages | `code`, names | `GET /api/v1/admin/lookups/languages` |
-| governorates | names | `GET /api/v1/admin/lookups/governorates` |
-| cities | `governorateId`, names (requires active governorate) | `GET /api/v1/admin/lookups/cities?governorateId={id}` |
-| areas | `cityId`, names (requires active city + governorate) | `GET /api/v1/admin/lookups/areas?cityId={id}` |
-| specializations | names, `caregiverType`, `isActive` | `GET /api/v1/admin/lookups/specializations` |
-| professional-titles | names, `isActive` | `GET /api/v1/admin/lookups/professional-titles` |
-| academic-degrees | names, `isActive` | `GET /api/v1/admin/lookups/academic-degrees` |
+| POST | `/caregiver/profile` | Bootstrap (no body); 201, 409 if already exists |
+| GET | `/caregiver/profile` | Full own state; 404 until bootstrapped |
+| PUT | `/caregiver/profile/medical` | Medical professional profile |
+| PUT | `/caregiver/profile/companion` | Companion professional profile |
+| PUT | `/caregiver/profile/address` | Detailed address |
+| PUT | `/caregiver/selections` | Bulk services/languages/areas |
+| PUT | `/caregiver/pricing/medical` | Four medical prices |
+| PUT | `/caregiver/pricing/companion` | Three companion prices |
+| PUT | `/caregiver/schedule/medical` | Shifts + home-visit windows (bulk) |
+| PUT | `/caregiver/schedule/companion` | Availability windows (bulk) |
+| POST | `/caregiver/availability/available` | Active + compliant only |
+| POST | `/caregiver/availability/unavailable` | Always allowed |
+| POST | `/caregiver/certificates` | Multipart add (Medical only, ≤5 MB) |
+| PUT | `/caregiver/certificates/{certificateId}/file` | Multipart replace |
+| DELETE | `/caregiver/certificates/{certificateId}` | Additional certificates only |
+| POST | `/caregiver/submit` | Submit (Onboarding) / resubmit (NeedsCorrection) |
+
+Postman: `docs/postman/app/Sanad.App.Caregiver.postman_collection.json`.
+
+## Admin endpoints
+
+Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` SuperAdmin or ContentAdmin).
+
+- Splash CMS: `docs/admin/splash-screens.md`
+- Caregiver lookups (create/rename/activate/deactivate + admin list-all for all eight lookups): `docs/admin/`
+- Caregiver review: `docs/admin/caregivers-review.md` — paged list (reviewer name/phone joined from Identity), detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, private certificate file download.
+
+Postman: `docs/postman/admins/Sanad.Admin.postman_collection.json`.
 
 Lookup error codes: `Caregivers.Lookups.NameAlreadyInUse` (409), `Caregivers.Lookups.LanguageCodeInUse` (409), `Caregivers.Lookups.ParentNotActive` (409), `Caregivers.Lookups.NotFound` (404), `Caregivers.Lookups.ParentNotFound` (404).
 
@@ -260,11 +297,14 @@ dotnet test Sanad.slnx
 
 ```text
 docs/auth/                              Auth flows, claims/policies, error catalog
-docs/admin/                             Admin HTTP (splash, all caregiver lookups)
-docs/users/                             App-facing HTTP (splash, public lookups)
+docs/app/public/                        Anonymous mobile-app HTTP (splash, public lookups)
+docs/app/caregivers/                    Caregiver self-service onboarding HTTP
+docs/admin/                             Admin HTTP (splash, lookups, caregiver review)
+docs/architecture/                      Architecture notes
 docs/operations/                        Configuration, migrations, security
-docs/postman/admins/                    Admin Postman collection
-docs/postman/users/                     App Postman collection
+docs/postman/app/Sanad.App.Public.postman_collection.json
+docs/postman/app/Sanad.App.Caregiver.postman_collection.json
+docs/postman/admins/Sanad.Admin.postman_collection.json
 docs/postman/Sanad.hostinger.postman_environment.json
 docs/postman/Sanad.local.postman_environment.json
 ```
