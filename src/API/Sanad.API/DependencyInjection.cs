@@ -29,6 +29,17 @@ public static class DependencyInjection
     {
         services.AddControllers();
 
+        // Temporary: allow any client during mobile development.
+        // Lock down to known origins before production launch.
+        services.AddCors(options =>
+        {
+            options.AddDefaultPolicy(policy =>
+                policy
+                    .AllowAnyOrigin()
+                    .AllowAnyHeader()
+                    .AllowAnyMethod());
+        });
+
         services.AddProblemDetails();
 
         services.AddOpenApi();

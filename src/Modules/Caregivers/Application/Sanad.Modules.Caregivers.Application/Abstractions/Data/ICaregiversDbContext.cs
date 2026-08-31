@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 
@@ -15,6 +16,18 @@ public interface ICaregiversDbContext
     DbSet<Specialization> Specializations { get; }
     DbSet<ProfessionalTitle> ProfessionalTitles { get; }
     DbSet<AcademicDegree> AcademicDegrees { get; }
+
+    Task<IReadOnlyList<AdminCaregiverListItem>> GetAdminCaregiversAsync(
+        int page,
+        int pageSize,
+        int? status,
+        int? type,
+        CancellationToken cancellationToken = default);
+
+    Task<int> CountAdminCaregiversAsync(
+        int? status,
+        int? type,
+        CancellationToken cancellationToken = default);
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

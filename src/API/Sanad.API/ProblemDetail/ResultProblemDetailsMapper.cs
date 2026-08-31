@@ -70,6 +70,7 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Onboarding.CertificateNotFound"] = 404,
             ["Caregivers.Onboarding.InvalidCertificateOperation"] = 409,
             ["Caregivers.Onboarding.InvalidState"] = 409,
+            ["Caregivers.Onboarding.CaregiverNotFound"] = 404,
 
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,

@@ -65,3 +65,6 @@ public sealed record ReplaceCertificateFileRequest(
 
 public sealed record ReviewCertificateRequest(
     string Reason);
+
+public sealed record ReviewCaregiverRequest(
+    string Reason);

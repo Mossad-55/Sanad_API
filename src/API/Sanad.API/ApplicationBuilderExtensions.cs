@@ -24,6 +24,8 @@ public static class ApplicationBuilderExtensions
 
         app.UseAuthentication();
 
+        app.UseCors();
+
         app.UseAuthorization();
 
         app.MapControllers();

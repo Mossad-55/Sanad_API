@@ -48,4 +48,9 @@ public static class OnboardingErrors
         new(
             "Caregivers.Onboarding.InvalidState",
             "The caregiver cannot perform this actiono in its current status.");
+
+    public static readonly Error CaregiverNotFound =
+        new(
+            "Caregivers.Onboarding.CaregiverNotFound",
+            "The caregiver was not found.");
 }

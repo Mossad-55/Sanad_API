@@ -80,7 +80,8 @@ public sealed record CertificateItemResponse(
     CaregiverCertificateId Id,
     CaregiverCertificateType Type,
     DateOnly? ExpiryDate,
-    CertificateVerificationStatus VerificationStatus);
+    CertificateVerificationStatus VerificationStatus,
+    string? ReviewReason);
 
 internal static class CaregiverProfileMappings
 {
@@ -114,7 +115,8 @@ internal static class CaregiverProfileMappings
                     certificate.Id,
                     certificate.Type,
                     certificate.ExpiryDate,
-                    certificate.VerificationStatus))
+                    certificate.VerificationStatus,
+                    certificate.ReviewReason))
                 .ToList(),
             caregiver.ServiceSelections
                 .Select(selection => selection.Id)
