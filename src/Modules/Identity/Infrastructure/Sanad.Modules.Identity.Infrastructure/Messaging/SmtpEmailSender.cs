@@ -119,4 +119,82 @@ public sealed class SmtpEmailSender : IEmailSender
             $"Your Sanad Care {englishPurpose} code is: {code}{Environment.NewLine}" +
             $"It expires in {lifetimeMinutes} minutes.";
     }
+
+    public async Task SendFamilyInvitationAsync(
+    string email,
+    string familyName,
+    string inviteLink,
+    CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        MimeMessage message =
+            CreateInvitationMessage(
+                email,
+                familyName,
+                inviteLink);
+
+        using var client = new SmtpClient();
+
+        await client.ConnectAsync(
+            _options.Host,
+            _options.Port,
+            _options.UseSsl
+                ? SecureSocketOptions.Auto
+                : SecureSocketOptions.None,
+            cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(_options.Username))
+        {
+            await client.AuthenticateAsync(
+                _options.Username,
+                _options.Password,
+                cancellationToken);
+        }
+
+        await client.SendAsync(
+            message,
+            cancellationToken);
+
+        await client.DisconnectAsync(
+            true,
+            cancellationToken);
+    }
+
+    private MimeMessage CreateInvitationMessage(
+        string email,
+        string familyName,
+        string inviteLink)
+    {
+        var message = new MimeMessage();
+
+        message.From.Add(
+            new MailboxAddress(
+                string.IsNullOrWhiteSpace(_options.FromName)
+                    ? "Sanad Care"
+                    : _options.FromName,
+                _options.FromAddress));
+
+        message.To.Add(
+            MailboxAddress.Parse(email));
+
+        message.Subject =
+            "You're invited to join a family on Sanad Care | دعوة للانضمام إلى عائلة في سند";
+
+        message.Body = new TextPart("plain")
+        {
+            Text =
+                $"You have been invited to join the family " +
+                $"\"{familyName}\" on Sanad Care.\n\n" +
+                $"Open this link in the Sanad Care app to accept:\n" +
+                $"{inviteLink}\n\n" +
+                $"The invitation expires in 7 days.\n\n" +
+                $"— Sanad Care\n\n" +
+                $"تمت دعوتك للانضمام إلى عائلة \"{familyName}\" " +
+                $"في تطبيق سند. افتح الرابط داخل التطبيق للموافقة، " +
+                $"علماً بأن الدعوة تنتهي خلال 7 أيام."
+        };
+
+        return message;
+    }
 }

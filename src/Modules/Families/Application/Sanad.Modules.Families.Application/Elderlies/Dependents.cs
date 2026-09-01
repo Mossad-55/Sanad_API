@@ -9,6 +9,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Identity;
+using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Elderlies;
 
 namespace Sanad.Modules.Families.Application.Elderlies;
@@ -118,6 +119,11 @@ public sealed class AddDependentCommandHandler
             return ElderlyErrors.FamilyNotFound;
         }
 
+        if (!FamilyAccess.CanManage(family, request.OwnerUserId))
+        {
+            return ElderlyErrors.AccessDenied;
+        }
+
         PhoneNumber phone;
         FullName arabicName;
         FullName englishName;
@@ -134,7 +140,7 @@ public sealed class AddDependentCommandHandler
 
         // One elderly -> one family. Resolve the Identity account first.
         Result<ElderlyIdentityAccount> lookup =
-            await _identityGateway.GetByPhoneAsync(
+            await _identityGateway.GetElderlyByPhoneAsync(
                 phone.Value,
                 cancellationToken);
 
@@ -218,7 +224,7 @@ public sealed class AddDependentCommandHandler
         {
             if (identityCreated)
             {
-                await _identityGateway.DeleteAsync(
+                await _identityGateway.DeleteElderlyAsync(
                     identityUserId,
                     cancellationToken);
             }
@@ -238,7 +244,7 @@ public sealed class AddDependentCommandHandler
             // fresh Identity user was created.
             if (identityCreated)
             {
-                await _identityGateway.DeleteAsync(
+                await _identityGateway.DeleteElderlyAsync(
                     identityUserId,
                     cancellationToken);
             }

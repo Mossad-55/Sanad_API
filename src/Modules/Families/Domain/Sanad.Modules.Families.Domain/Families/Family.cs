@@ -111,4 +111,16 @@ public sealed class Family : AggregateRoot<FamilyId>
         _members.Remove(member);
         UpdatedOnUtc = DateTime.UtcNow;
     }
+
+    public FamilyRole? GetRole(UserId userId)
+    {
+        if (OwnerUserId == userId)
+        {
+            return FamilyRole.Owner;
+        }
+
+        return _members
+            .FirstOrDefault(member => member.Id == userId)
+            ?.Role;
+    }
 }

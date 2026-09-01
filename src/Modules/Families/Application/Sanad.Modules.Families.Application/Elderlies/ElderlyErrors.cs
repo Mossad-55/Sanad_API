@@ -8,6 +8,10 @@ public static class ElderlyErrors
         new("Families.Elderly.FamilyNotFound",
             "The family was not found.");
 
+    public static readonly Error AccessDenied =
+        new("Families.Elderly.AccessDenied",
+            "Your family role does not permit this action.");
+
     public static readonly Error PhoneLinkedToAnotherFamily =
         new("Families.Elderly.PhoneLinkedToAnotherFamily",
             "This dependent is already linked to another family.");

@@ -9,4 +9,10 @@ public interface IEmailSender
         string code,
         VerificationPurpose purpose,
         CancellationToken cancellationToken);
+
+    Task SendFamilyInvitationAsync(
+        string email,
+        string familyName,
+        string inviteLink,
+        CancellationToken cancellationToken);
 }

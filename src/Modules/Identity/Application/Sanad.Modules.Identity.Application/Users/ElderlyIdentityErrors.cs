@@ -15,6 +15,7 @@ public static class ElderlyIdentityErrors
             "No elderly account exists for this phone number.");
 
     public static readonly Error InvalidProfile =
-        new("Identity.Elderly.InvalidProfile",
+        new(
+            "Identity.Elderly.InvalidProfile",
             "The elderly profile is invalid.");
 }

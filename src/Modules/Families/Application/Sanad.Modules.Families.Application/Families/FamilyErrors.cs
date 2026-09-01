@@ -15,4 +15,12 @@ public static class FamilyErrors
     public static readonly Error InvalidName =
         new("Families.Family.InvalidName",
             "The family name is invalid.");
+
+    public static readonly Error NotOwner =
+        new("Families.Family.NotOwner",
+            "Only the family owner can perform this action.");
+
+    public static readonly Error AccessDenied =
+        new("Families.Family.AccessDenied",
+            "Your family role does not permit this action.");
 }

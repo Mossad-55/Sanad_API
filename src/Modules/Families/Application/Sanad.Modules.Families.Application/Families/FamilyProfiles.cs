@@ -117,13 +117,11 @@ public sealed class GetMyFamilyQueryHandler
         GetMyFamilyQuery request,
         CancellationToken cancellationToken)
     {
-        // Owner-only in F2; F3 broadens to any member.
         Family? family =
-            await _dbContext.Families
-                .AsNoTracking()
-                .SingleOrDefaultAsync(
-                    f => f.OwnerUserId == request.UserId,
-                    cancellationToken);
+            await FamilyAccess.ResolveFamilyAsync(
+                _dbContext,
+                request.UserId,
+                cancellationToken);
 
         if (family is null)
         {
@@ -176,6 +174,11 @@ public sealed class RenameFamilyCommandHandler
         if (family is null)
         {
             return FamilyErrors.NotFound;
+        }
+
+        if (!FamilyAccess.IsOwner(family, request.UserId))
+        {
+            return FamilyErrors.NotOwner;
         }
 
         try
