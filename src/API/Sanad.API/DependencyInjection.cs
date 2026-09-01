@@ -205,7 +205,7 @@ public static class DependencyInjection
                             .ToString());
 
                     policy.RequireClaim(
-                        AuthClaimNames.AccessType,
+                        AuthClaimNames.AccountType,
                         AccountType.Family
                             .ToString());
                 });
@@ -223,7 +223,7 @@ public static class DependencyInjection
                 typeof(CreateServiceCommand).Assembly);
 
             configuration.RegisterServicesFromAssembly(
-                typeof(BootstrapCaregiverCommand).Assembly);
+                typeof(BootstrapFamilyCommand).Assembly);
         });
 
 

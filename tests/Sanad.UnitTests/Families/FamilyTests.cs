@@ -9,7 +9,7 @@ public sealed class FamilyTests
     [Fact]
     public void Create_WithoutName_DefaultsToMyFamily()
     {
-        Family family = Family.Create(UserId.New(), "My Family");
+        Family family = Family.Create(UserId.New());
 
         Assert.Equal("My Family", family.Name);
         Assert.Single(family.Members);
@@ -21,7 +21,7 @@ public sealed class FamilyTests
     [Fact]
     public void Rename_RejectsEmpty_AndEnforcesMaxLength()
     {
-        Family family = Family.Create(UserId.New(), "My Family");
+        Family family = Family.Create(UserId.New());
 
         Assert.Throws<DomainException>(
             () => family.Rename("   "));

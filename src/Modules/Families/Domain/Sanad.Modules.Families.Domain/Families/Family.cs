@@ -52,7 +52,7 @@ public sealed class Family : AggregateRoot<FamilyId>
 
     public static Family Create(
         UserId ownerUserId,
-        string? familyName)
+        string? familyName = null)
     {
         var name = string.IsNullOrWhiteSpace(familyName)
             ? "My Family"
