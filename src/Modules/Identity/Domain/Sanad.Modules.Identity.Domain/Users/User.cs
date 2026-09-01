@@ -86,6 +86,56 @@ public sealed class User : AggregateRoot<UserId>
         return user;
     }
 
+    public static User CreateElderly(
+        FullName arabicFullName,
+        FullName englishFullName,
+        PhoneNumber phoneNumber,
+        Gender gender,
+        DateOnly dateOfBirth,
+        DateTime createdOnUtc)
+    {
+        if (createdOnUtc.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException(
+                "Operation time must be in UTC.");
+        }
+
+        if (dateOfBirth > DateOnly.FromDateTime(createdOnUtc))
+        {
+            throw new DomainException(
+                "Date of birth cannot be in the future.");
+        }
+
+        if (!Enum.IsDefined(gender))
+        {
+            throw new DomainException("Gender is invalid.");
+        }
+
+        var user = new User(
+            UserId.New(),
+            arabicFullName,
+            englishFullName,
+            email: null,
+            phoneNumber,
+            avatarUrl: null,
+            UserStatus.Active,
+            createdOnUtc);
+
+        // The inviting family is a trusted, verified account; the elderly
+        // phone is therefore treated as verified so phone-OTP login works
+        // immediately without an out-of-band verification step.
+        user.PhoneVerified = true;
+        user.DateOfBirth = dateOfBirth;
+        user.Gender = gender;
+
+        user.AddAccount(AccountType.Elderly);
+
+        user.RaiseDomainEvent(
+            new UserRegisteredDomainEvent(user.Id));
+
+        return user;
+    }
+
     public void AddAccount(AccountType accountType)
     {
         if (!Enum.IsDefined(accountType))

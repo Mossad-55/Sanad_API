@@ -15,6 +15,7 @@ using Sanad.Modules.Cms.Infrastructure;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Cms.Application.Splash;
 using Sanad.Modules.Caregivers.Infrastructure;
+using Sanad.Modules.Families.Infrastructure;
 using Sanad.BuildingBlocks.Infrastructure.Storage;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.Modules.Caregivers.Application.Lookups;
@@ -51,6 +52,9 @@ public static class DependencyInjection
             configuration);
 
         services.AddCaregiversInfrastructure(
+            configuration);
+
+        services.AddFamiliesInfrastructure(
             configuration);
 
         services.AddOptions<LocalStorageOptions>()

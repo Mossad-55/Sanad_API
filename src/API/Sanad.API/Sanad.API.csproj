@@ -11,6 +11,7 @@
     <ProjectReference Include="..\..\Modules\Identity\Infrastructure\Sanad.Modules.Identity.Infrastructure\Sanad.Modules.Identity.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Cms\Infrastructure\Sanad.Modules.Cms.Infrastructure\Sanad.Modules.Cms.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Caregivers\Infrastructure\Sanad.Modules.Caregivers.Infrastructure\Sanad.Modules.Caregivers.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Families\Infrastructure\Sanad.Modules.Families.Infrastructure\Sanad.Modules.Families.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -7,8 +7,8 @@ namespace Sanad.Modules.Families.Domain.Families;
 
 public sealed class Family : AggregateRoot<FamilyId>
 {
+    public const int MaximumNameLength = 100;
     private readonly List<FamilyMember> _members = [];
-    private readonly List<ElderlyId> _elderlyIds = [];
 
     private Family()
     {
@@ -40,24 +40,17 @@ public sealed class Family : AggregateRoot<FamilyId>
     }
 
     public string Name { get; private set; } = string.Empty;
-
     public UserId OwnerUserId { get; private set; }
-
     public DateTime CreatedOnUtc { get; private set; }
-
     public DateTime UpdatedOnUtc { get; private set; }
-
     public IReadOnlyCollection<FamilyMember> Members => _members.AsReadOnly();
-
-    public IReadOnlyCollection<ElderlyId> ElderlyIds => _elderlyIds.AsReadOnly();
 
     public static Family Create(
         UserId ownerUserId,
-        string ownerDisplayName,
         string? familyName)
     {
         var name = string.IsNullOrWhiteSpace(familyName)
-            ? $"{ownerDisplayName}'s Family"
+            ? " My Family"
             : familyName.Trim();
 
         return new Family(
@@ -73,7 +66,15 @@ public sealed class Family : AggregateRoot<FamilyId>
             throw new DomainException("Family name cannot be empty.");
         }
 
-        Name = name.Trim();
+        string normalized = name.Trim();
+
+        if (normalized.Length > MaximumNameLength)
+        {
+            throw new DomainException(
+                $"Family name cannot exceed {MaximumNameLength} characters.");
+        }
+
+        Name = normalized;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
@@ -103,27 +104,6 @@ public sealed class Family : AggregateRoot<FamilyId>
         }
 
         _members.Remove(member);
-        UpdatedOnUtc = DateTime.UtcNow;
-    }
-
-    public void AddElderly(ElderlyId elderlyId)
-    {
-        if (_elderlyIds.Contains(elderlyId))
-        {
-            throw new DomainException("Elderly already exists.");
-        }
-
-        _elderlyIds.Add(elderlyId);
-        UpdatedOnUtc = DateTime.UtcNow;
-    }
-
-    public void RemoveElderly(ElderlyId elderlyId)
-    {
-        if (!_elderlyIds.Remove(elderlyId))
-        {
-            return;
-        }
-
         UpdatedOnUtc = DateTime.UtcNow;
     }
 }
