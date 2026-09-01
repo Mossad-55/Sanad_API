@@ -1198,6 +1198,15 @@ public sealed class PasswordHandlerTests
             return Task.CompletedTask;
         }
 
+        public Task SendFamilyInvitationAsync(
+            string email,
+            string familyName,
+            string inviteLink,
+            CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
         internal sealed record EmailMessage(
             string Email,
             string Code,

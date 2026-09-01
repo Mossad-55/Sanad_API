@@ -478,6 +478,15 @@ public sealed class RegisterUserCommandHandlerTests
 
             return Task.CompletedTask;
         }
+
+        public Task SendFamilyInvitationAsync(
+            string email,
+            string familyName,
+            string inviteLink,
+            CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class RecordingSmsSender :

@@ -499,7 +499,6 @@ public sealed class ResendOtpCommandHandlerTests
         public DateTime UtcNow =>
             UtcNowValue;
     }
-
     private sealed class RecordingEmailSender :
         IEmailSender
     {
@@ -520,6 +519,15 @@ public sealed class ResendOtpCommandHandlerTests
                     code,
                     purpose));
 
+            return Task.CompletedTask;
+        }
+
+        public Task SendFamilyInvitationAsync(
+            string email,
+            string familyName,
+            string inviteLink,
+            CancellationToken cancellationToken)
+        {
             return Task.CompletedTask;
         }
     }
