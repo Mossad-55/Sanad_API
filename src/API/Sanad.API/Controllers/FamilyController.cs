@@ -9,6 +9,7 @@ using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Elderlies;
 using Sanad.Modules.Families.Application.Families;
+using Sanad.Modules.Families.Application.Invitations;
 
 namespace Sanad.API.Controllers;
 
@@ -365,5 +366,131 @@ public sealed class FamilyController :
             photo.Length,
             folder: DependentPhotoStorage.Folder,
             cancellationToken);
+    }
+
+    // --------------------------- Invitations ---------------------------
+
+    [HttpPost("invitations")]
+    [ProducesResponseType(
+        typeof(FamilyInvitationResponse),
+        StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateInvitation(
+        [FromBody] CreateFamilyInvitationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new CreateFamilyInvitationCommand(
+                    userId,
+                    request.Email,
+                    request.Role,
+                    request.RelationshipType,
+                    DateTime.UtcNow),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            result.Value);
+    }
+
+    [HttpGet("invitations")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<FamilyInvitationResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListMyInvitations(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new ListMyFamilyInvitationsQuery(
+                    userId,
+                    DateTime.UtcNow),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("invitations/accept")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> AcceptInvitation(
+        [FromBody] AcceptFamilyInvitationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new AcceptFamilyInvitationCommand(
+                    userId,
+                    request.Token,
+                    DateTime.UtcNow),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("invitations/decline")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> DeclineInvitation(
+        [FromBody] DeclineFamilyInvitationRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new DeclineFamilyInvitationCommand(
+                    userId,
+                    request.Token,
+                    DateTime.UtcNow),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpDelete("invitations/{invitationId:guid}")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RevokeInvitation(
+        Guid invitationId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new RevokeFamilyInvitationCommand(
+                    userId,
+                    new FamilyInvitationId(invitationId),
+                    DateTime.UtcNow),
+                cancellationToken);
+
+        return ToActionResult(result);
     }
 }

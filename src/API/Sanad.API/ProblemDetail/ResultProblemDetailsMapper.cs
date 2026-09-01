@@ -52,9 +52,13 @@ public static class ResultProblemDetailsMapper
             ["Identity.Verification.InvalidCode"] = 401,
             ["Identity.Verification.UnsupportedPurpose"] = 400,
             ["Identity.Verification.UserNotFound"] = 401,
+
             ["Identity.Elderly.PhoneAlreadyInUse"] = 409,
             ["Identity.Elderly.NotFound"] = 404,
             ["Identity.Elderly.InvalidProfile"] = 400,
+
+            ["Identity.User.EmailNotFound"] = 404,
+
 
             ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
             ["Cms.Splash.NotFound"] = 404,
@@ -64,6 +68,7 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Lookups.NotFound"] = 404,
             ["Caregivers.Lookups.ParentNotFound"] = 404,
             ["Caregivers.Lookups.ParentNotActive"] = 409,
+
             ["Caregivers.Onboarding.AlreadyExists"] = 409,
             ["Caregivers.Onboarding.NotFound"] = 404,
             ["Caregivers.Onboarding.WrongCaregiverType"] = 409,
@@ -78,12 +83,30 @@ public static class ResultProblemDetailsMapper
             ["Families.Family.AlreadyExists"] = 409,
             ["Families.Family.NotFound"] = 404,
             ["Families.Family.InvalidName"] = 400,
+            ["Families.Family.NotOwner"] = 403,
+            ["Families.Family.AccessDenied"] = 403,
+
             ["Families.Elderly.FamilyNotFound"] = 404,
             ["Families.Elderly.NotFound"] = 404,
             ["Families.Elderly.PhoneLinkedToAnotherFamily"] = 409,
             ["Families.Elderly.PhoneBelongsToNonElderly"] = 409,
             ["Families.Elderly.IdentityCreationFailed"] = 409,
             ["Families.Elderly.InvalidProfile"] = 400,
+            ["Families.Elderly.AccessDenied"] = 403,
+
+            ["Families.Invitation.FamilyNotFound"] = 404,
+            ["Families.Invitation.AccessDenied"] = 403,
+            ["Families.Invitation.RecipientNotRegistered"] = 409,
+            ["Families.Invitation.RecipientMissingFamilyAccount"] = 409,
+            ["Families.Invitation.CannotInviteYourself"] = 409,
+            ["Families.Invitation.AlreadyMember"] = 409,
+            ["Families.Invitation.PendingInvitationExists"] = 409,
+            ["Families.Invitation.InvalidRole"] = 400,
+            ["Families.Invitation.InvalidToken"] = 400,
+            ["Families.Invitation.NotFound"] = 404,
+            ["Families.Invitation.NotPending"] = 409,
+            ["Families.Invitation.NotInvitee"] = 403,
+            ["Families.Invitation.Expired"] = 409,
 
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,

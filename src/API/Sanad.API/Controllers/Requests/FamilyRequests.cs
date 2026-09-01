@@ -1,4 +1,5 @@
 using Sanad.BuildingBlocks.Domain.Enums;
+using Sanad.Modules.Families.Domain.Families;
 
 namespace Sanad.API.Controllers.Requests;
 
@@ -26,3 +27,14 @@ public sealed record UpdateDependentRequest(
     DateOnly DateOfBirth,
     string? DetailedAddress,
     string? HealthNotes);
+
+public sealed record CreateFamilyInvitationRequest(
+    string Email,
+    FamilyRole Role,
+    FamilyRelationshipType RelationshipType);
+
+public sealed record AcceptFamilyInvitationRequest(
+    string Token);
+
+public sealed record DeclineFamilyInvitationRequest(
+    string Token);
