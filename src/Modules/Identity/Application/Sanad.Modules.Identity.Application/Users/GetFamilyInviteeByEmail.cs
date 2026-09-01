@@ -9,36 +9,38 @@ using Sanad.Modules.Identity.Domain.Users;
 
 namespace Sanad.Modules.Identity.Application.Users;
 
-public sealed record FamilyEmailUser(
+public sealed record FamilyInviteeLookup(
     UserId UserId,
-    bool IsFamily);
+    bool HasFamilyAccount);
 
-public sealed record GetUserByEmailQuery(
+public sealed record GetFamilyInviteeByEmailQuery(
     string Email)
-    : IQuery<FamilyEmailUser>;
+    : IQuery<FamilyInviteeLookup>;
 
-public sealed class GetUserByEmailQueryValidator
-    : AbstractValidator<GetUserByEmailQuery>
+public sealed class GetFamilyInviteeByEmailQueryValidator
+    : AbstractValidator<GetFamilyInviteeByEmailQuery>
 {
-    public GetUserByEmailQueryValidator()
+    public GetFamilyInviteeByEmailQueryValidator()
     {
         RuleFor(q => q.Email).NotEmpty();
     }
 }
 
-public sealed class GetUserByEmailQueryHandler
-    : IQueryHandler<GetUserByEmailQuery, FamilyEmailUser>
+public sealed class GetFamilyInviteeByEmailQueryHandler
+    : IQueryHandler<
+        GetFamilyInviteeByEmailQuery,
+        FamilyInviteeLookup>
 {
     private readonly IIdentityDbContext _dbContext;
 
-    public GetUserByEmailQueryHandler(
+    public GetFamilyInviteeByEmailQueryHandler(
         IIdentityDbContext dbContext)
     {
         _dbContext = dbContext;
     }
 
-    public async Task<Result<FamilyEmailUser>> Handle(
-        GetUserByEmailQuery request,
+    public async Task<Result<FamilyInviteeLookup>> Handle(
+        GetFamilyInviteeByEmailQuery request,
         CancellationToken cancellationToken)
     {
         Email email = Email.Create(request.Email);
@@ -52,16 +54,18 @@ public sealed class GetUserByEmailQueryHandler
 
         if (user is null)
         {
-            return Result<FamilyEmailUser>.Failure(
+            return Result<FamilyInviteeLookup>.Failure(
                 UserLookupErrors.EmailNotFound);
         }
 
-        bool isFamily =
+        bool hasFamilyAccount =
             user.Accounts.Any(
                 account =>
                     account.AccountType ==
                         AccountType.Family);
 
-        return new FamilyEmailUser(user.Id, isFamily);
+        return new FamilyInviteeLookup(
+            user.Id,
+            hasFamilyAccount);
     }
 }

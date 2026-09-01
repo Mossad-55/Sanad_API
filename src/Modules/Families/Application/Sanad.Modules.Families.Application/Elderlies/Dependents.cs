@@ -29,7 +29,8 @@ public sealed record DependentResponse(
 
 internal static class DependentMappings
 {
-    public static DependentResponse ToResponse(this Elderly elderly) =>
+    public static DependentResponse ToResponse(
+        this Elderly elderly) =>
         new(
             elderly.Id,
             elderly.FamilyId,
@@ -88,7 +89,7 @@ public sealed class AddDependentCommandValidator
 public sealed class AddDependentCommandHandler
     : ICommandHandler<AddDependentCommand, DependentResponse>
 {
-    // Mirror of Identity's ElderlyIdentityErrors.ElderlyUserNotFound code;
+    // Mirror of Identity's UserLookupErrors.EmailNotFound code;
     // Families.Application cannot reference Identity.Application.
     private const string ElderlyIdentityNotFoundCode =
         "Identity.Elderly.NotFound";
@@ -109,16 +110,17 @@ public sealed class AddDependentCommandHandler
         CancellationToken cancellationToken)
     {
         Domain.Families.Family? family =
-            await _dbContext.Families
-                .SingleOrDefaultAsync(
-                    f => f.OwnerUserId == request.OwnerUserId,
-                    cancellationToken);
+            await FamilyAccess.ResolveFamilyAsync(
+                _dbContext,
+                request.OwnerUserId,
+                cancellationToken);
 
         if (family is null)
         {
             return ElderlyErrors.FamilyNotFound;
         }
 
+        // Owner or Editor only.
         if (!FamilyAccess.CanManage(family, request.OwnerUserId))
         {
             return ElderlyErrors.AccessDenied;
@@ -259,11 +261,13 @@ public sealed class AddDependentCommandHandler
 // ------------------------------- List ---------------------------------
 
 public sealed record ListDependentsQuery(
-    UserId OwnerUserId)
+    UserId UserId)
     : IQuery<IReadOnlyList<DependentResponse>>;
 
 public sealed class ListDependentsQueryHandler
-    : IQueryHandler<ListDependentsQuery, IReadOnlyList<DependentResponse>>
+    : IQueryHandler<
+        ListDependentsQuery,
+        IReadOnlyList<DependentResponse>>
 {
     private readonly IFamiliesDbContext _dbContext;
 
@@ -277,11 +281,10 @@ public sealed class ListDependentsQueryHandler
         CancellationToken cancellationToken)
     {
         Domain.Families.Family? family =
-            await _dbContext.Families
-                .AsNoTracking()
-                .SingleOrDefaultAsync(
-                    f => f.OwnerUserId == request.OwnerUserId,
-                    cancellationToken);
+            await FamilyAccess.ResolveFamilyAsync(
+                _dbContext,
+                request.UserId,
+                cancellationToken);
 
         if (family is null)
         {
@@ -289,6 +292,7 @@ public sealed class ListDependentsQueryHandler
                 ElderlyErrors.FamilyNotFound);
         }
 
+        // Any family member can view dependents.
         List<Elderly> dependents =
             await _dbContext.Elderlies
                 .AsNoTracking()
@@ -308,7 +312,7 @@ public sealed class ListDependentsQueryHandler
 // -------------------------------- Get ---------------------------------
 
 public sealed record GetDependentQuery(
-    UserId OwnerUserId,
+    UserId UserId,
     ElderlyId DependentId)
     : IQuery<DependentResponse>;
 
@@ -317,7 +321,7 @@ public sealed class GetDependentQueryValidator
 {
     public GetDependentQueryValidator()
     {
-        RuleFor(c => c.OwnerUserId).NotEqual(UserId.Empty);
+        RuleFor(c => c.UserId).NotEqual(UserId.Empty);
         RuleFor(c => c.DependentId).NotEqual(ElderlyId.Empty);
     }
 }
@@ -336,12 +340,23 @@ public sealed class GetDependentQueryHandler
         GetDependentQuery request,
         CancellationToken cancellationToken)
     {
+        Domain.Families.Family? family =
+            await FamilyAccess.ResolveFamilyAsync(
+                _dbContext,
+                request.UserId,
+                cancellationToken);
+
+        if (family is null)
+        {
+            return ElderlyErrors.FamilyNotFound;
+        }
+
         Elderly? elderly =
             await _dbContext.Elderlies
                 .AsNoTracking()
                 .SingleOrDefaultAsync(
                     e => e.Id == request.DependentId &&
-                         e.OwnerUserId == request.OwnerUserId,
+                         e.FamilyId == family.Id,
                     cancellationToken);
 
         if (elderly is null)
@@ -356,7 +371,7 @@ public sealed class GetDependentQueryHandler
 // ------------------------------- Update -------------------------------
 
 public sealed record UpdateDependentCommand(
-    UserId OwnerUserId,
+    UserId UserId,
     ElderlyId DependentId,
     string ArabicFullName,
     string EnglishFullName,
@@ -372,7 +387,7 @@ public sealed class UpdateDependentCommandValidator
 {
     public UpdateDependentCommandValidator()
     {
-        RuleFor(c => c.OwnerUserId).NotEqual(UserId.Empty);
+        RuleFor(c => c.UserId).NotEqual(UserId.Empty);
         RuleFor(c => c.DependentId).NotEqual(ElderlyId.Empty);
         RuleFor(c => c.ArabicFullName).NotEmpty().MaximumLength(200);
         RuleFor(c => c.EnglishFullName).NotEmpty().MaximumLength(200);
@@ -403,11 +418,27 @@ public sealed class UpdateDependentCommandHandler
         UpdateDependentCommand request,
         CancellationToken cancellationToken)
     {
+        Domain.Families.Family? family =
+            await FamilyAccess.ResolveFamilyAsync(
+                _dbContext,
+                request.UserId,
+                cancellationToken);
+
+        if (family is null)
+        {
+            return ElderlyErrors.FamilyNotFound;
+        }
+
+        if (!FamilyAccess.CanManage(family, request.UserId))
+        {
+            return ElderlyErrors.AccessDenied;
+        }
+
         Elderly? elderly =
             await _dbContext.Elderlies
                 .SingleOrDefaultAsync(
                     e => e.Id == request.DependentId &&
-                         e.OwnerUserId == request.OwnerUserId,
+                         e.FamilyId == family.Id,
                     cancellationToken);
 
         if (elderly is null)
@@ -458,7 +489,7 @@ public sealed class UpdateDependentCommandHandler
 // ------------------------------- Remove -------------------------------
 
 public sealed record RemoveDependentCommand(
-    UserId OwnerUserId,
+    UserId UserId,
     ElderlyId DependentId)
     : ICommand;
 
@@ -467,7 +498,7 @@ public sealed class RemoveDependentCommandValidator
 {
     public RemoveDependentCommandValidator()
     {
-        RuleFor(c => c.OwnerUserId).NotEqual(UserId.Empty);
+        RuleFor(c => c.UserId).NotEqual(UserId.Empty);
         RuleFor(c => c.DependentId).NotEqual(ElderlyId.Empty);
     }
 }
@@ -490,11 +521,27 @@ public sealed class RemoveDependentCommandHandler
         RemoveDependentCommand request,
         CancellationToken cancellationToken)
     {
+        Domain.Families.Family? family =
+            await FamilyAccess.ResolveFamilyAsync(
+                _dbContext,
+                request.UserId,
+                cancellationToken);
+
+        if (family is null)
+        {
+            return Result.Failure(ElderlyErrors.FamilyNotFound);
+        }
+
+        if (!FamilyAccess.CanManage(family, request.UserId))
+        {
+            return Result.Failure(ElderlyErrors.AccessDenied);
+        }
+
         Elderly? elderly =
             await _dbContext.Elderlies
                 .SingleOrDefaultAsync(
                     e => e.Id == request.DependentId &&
-                         e.OwnerUserId == request.OwnerUserId,
+                         e.FamilyId == family.Id,
                     cancellationToken);
 
         if (elderly is null)

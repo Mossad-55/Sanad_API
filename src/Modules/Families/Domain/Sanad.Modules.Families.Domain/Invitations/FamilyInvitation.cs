@@ -132,8 +132,7 @@ public sealed class FamilyInvitation :
     {
         EnsurePendingDecision(
             actingUserId,
-            utcNow,
-            nameof(Accept));
+            utcNow);
 
         Status = FamilyInvitationStatus.Accepted;
         DecidedOnUtc = utcNow;
@@ -145,8 +144,7 @@ public sealed class FamilyInvitation :
     {
         EnsurePendingDecision(
             actingUserId,
-            utcNow,
-            nameof(Decline));
+            utcNow);
 
         Status = FamilyInvitationStatus.Declined;
         DecidedOnUtc = utcNow;
@@ -175,8 +173,7 @@ public sealed class FamilyInvitation :
 
     private void EnsurePendingDecision(
         UserId actingUserId,
-        DateTime utcNow,
-        string operation)
+        DateTime utcNow)
     {
         if (actingUserId != InvitedUserId)
         {

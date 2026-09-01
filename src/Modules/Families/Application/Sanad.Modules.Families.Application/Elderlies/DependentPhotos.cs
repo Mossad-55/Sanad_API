@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Elderlies;
 
 namespace Sanad.Modules.Families.Application.Elderlies;
@@ -22,7 +23,7 @@ public sealed record DependentPhotoContent(
 // --------------------------- Set / replace ----------------------------
 
 public sealed record SetDependentPhotoCommand(
-    UserId OwnerUserId,
+    UserId UserId,
     ElderlyId DependentId,
     string PhotoKey)
     : ICommand<DependentResponse>;
@@ -32,7 +33,7 @@ public sealed class SetDependentPhotoCommandValidator
 {
     public SetDependentPhotoCommandValidator()
     {
-        RuleFor(c => c.OwnerUserId).NotEqual(UserId.Empty);
+        RuleFor(c => c.UserId).NotEqual(UserId.Empty);
         RuleFor(c => c.DependentId).NotEqual(ElderlyId.Empty);
         RuleFor(c => c.PhotoKey)
             .NotEmpty()
@@ -58,11 +59,27 @@ public sealed class SetDependentPhotoCommandHandler
         SetDependentPhotoCommand request,
         CancellationToken cancellationToken)
     {
+        Domain.Families.Family? family =
+            await FamilyAccess.ResolveFamilyAsync(
+                _dbContext,
+                request.UserId,
+                cancellationToken);
+
+        if (family is null)
+        {
+            return ElderlyErrors.FamilyNotFound;
+        }
+
+        if (!FamilyAccess.CanManage(family, request.UserId))
+        {
+            return ElderlyErrors.AccessDenied;
+        }
+
         Elderly? elderly =
             await _dbContext.Elderlies
                 .SingleOrDefaultAsync(
                     e => e.Id == request.DependentId &&
-                         e.OwnerUserId == request.OwnerUserId,
+                         e.FamilyId == family.Id,
                     cancellationToken);
 
         if (elderly is null)
@@ -92,7 +109,7 @@ public sealed class SetDependentPhotoCommandHandler
 // ------------------------------ Download ------------------------------
 
 public sealed record GetDependentPhotoQuery(
-    UserId OwnerUserId,
+    UserId UserId,
     ElderlyId DependentId)
     : IQuery<DependentPhotoContent>;
 
@@ -101,13 +118,15 @@ public sealed class GetDependentPhotoQueryValidator
 {
     public GetDependentPhotoQueryValidator()
     {
-        RuleFor(c => c.OwnerUserId).NotEqual(UserId.Empty);
+        RuleFor(c => c.UserId).NotEqual(UserId.Empty);
         RuleFor(c => c.DependentId).NotEqual(ElderlyId.Empty);
     }
 }
 
 public sealed class GetDependentPhotoQueryHandler
-    : IQueryHandler<GetDependentPhotoQuery, DependentPhotoContent>
+    : IQueryHandler<
+        GetDependentPhotoQuery,
+        DependentPhotoContent>
 {
     private readonly IFamiliesDbContext _dbContext;
     private readonly IFileStorage _fileStorage;
@@ -124,12 +143,25 @@ public sealed class GetDependentPhotoQueryHandler
         GetDependentPhotoQuery request,
         CancellationToken cancellationToken)
     {
+        Domain.Families.Family? family =
+            await FamilyAccess.ResolveFamilyAsync(
+                _dbContext,
+                request.UserId,
+                cancellationToken);
+
+        if (family is null)
+        {
+            return Result<DependentPhotoContent>.Failure(
+                ElderlyErrors.FamilyNotFound);
+        }
+
+        // Any family member can view photos.
         Elderly? elderly =
             await _dbContext.Elderlies
                 .AsNoTracking()
                 .SingleOrDefaultAsync(
                     e => e.Id == request.DependentId &&
-                         e.OwnerUserId == request.OwnerUserId,
+                         e.FamilyId == family.Id,
                     cancellationToken);
 
         if (elderly is null ||
