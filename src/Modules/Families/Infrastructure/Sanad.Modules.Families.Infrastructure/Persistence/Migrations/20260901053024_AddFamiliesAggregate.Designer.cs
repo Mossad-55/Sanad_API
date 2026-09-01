@@ -12,7 +12,7 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FamiliesDbContext))]
-    [Migration("20260831143005_AddFamiliesAggregate")]
+    [Migration("20260901053024_AddFamiliesAggregate")]
     partial class AddFamiliesAggregate
     {
         /// <inheritdoc />
@@ -70,14 +70,18 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("health_notes");
 
+                    b.Property<Guid>("IdentityUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("identity_user_id");
+
                     b.Property<Guid>("OwnerUserId")
                         .HasColumnType("uuid")
                         .HasColumnName("owner_user_id");
 
-                    b.Property<string>("ProfileImageUrl")
+                    b.Property<string>("ProfileImageKey")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
-                        .HasColumnName("profile_image_url");
+                        .HasColumnName("profile_image_key");
 
                     b.Property<DateTime>("UpdatedOnUtc")
                         .HasColumnType("timestamp with time zone")
@@ -86,6 +90,11 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("FamilyId");
+
+                    b.HasIndex("IdentityUserId")
+                        .IsUnique();
+
+                    b.HasIndex("OwnerUserId");
 
                     b.ToTable("elderlies", "families");
                 });
@@ -102,8 +111,8 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 
                     b.Property<string>("Name")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
                         .HasColumnName("name");
 
                     b.Property<Guid>("OwnerUserId")
@@ -127,7 +136,8 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.OwnsMany("Sanad.Modules.Families.Domain.Families.FamilyMember", "Members", b1 =>
                         {
                             b1.Property<Guid>("FamilyId")
-                                .HasColumnType("uuid");
+                                .HasColumnType("uuid")
+                                .HasColumnName("family_id");
 
                             b1.Property<Guid>("Id")
                                 .HasColumnType("uuid")

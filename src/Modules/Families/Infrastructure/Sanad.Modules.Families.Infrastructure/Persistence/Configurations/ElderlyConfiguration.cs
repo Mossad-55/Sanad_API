@@ -16,17 +16,32 @@ public sealed class ElderlyConfiguration :
         builder.HasKey(elderly => elderly.Id);
 
         builder.Property(elderly => elderly.Id)
-            .HasConversion(id => id.Value, value => new ElderlyId(value))
+            .HasConversion(
+                id => id.Value,
+                value => new ElderlyId(value))
             .HasColumnName("id")
             .ValueGeneratedNever();
 
         builder.Property(elderly => elderly.OwnerUserId)
-            .HasConversion(id => id.Value, value => new UserId(value))
+            .HasConversion(
+                id => id.Value,
+                value => new UserId(value))
             .HasColumnName("owner_user_id")
             .IsRequired();
 
+        // The Identity user of the dependent. Unique index enforces the
+        // one-elderly -> one-family rule at the database level.
+        builder.Property(elderly => elderly.IdentityUserId)
+            .HasConversion(
+                id => id.Value,
+                value => new UserId(value))
+            .HasColumnName("identity_user_id")
+            .IsRequired();
+
         builder.Property(elderly => elderly.FamilyId)
-            .HasConversion(id => id.Value, value => new FamilyId(value))
+            .HasConversion(
+                id => id.Value,
+                value => new FamilyId(value))
             .HasColumnName("family_id")
             .IsRequired();
 
@@ -55,9 +70,9 @@ public sealed class ElderlyConfiguration :
             .HasColumnName("date_of_birth")
             .IsRequired();
 
-        builder.Property(elderly => elderly.ProfileImageUrl)
-            .HasColumnName("profile_image_url")
-            .HasMaxLength(500);
+        builder.Property(elderly => elderly.ProfileImageKey)
+            .HasColumnName("profile_image_key")
+            .HasMaxLength(Elderly.MaximumProfileImageKeyLength);
 
         builder.Property(elderly => elderly.DetailedAddress)
             .HasColumnName("detailed_address")
@@ -75,9 +90,12 @@ public sealed class ElderlyConfiguration :
             .HasColumnName("updated_on_utc")
             .IsRequired();
 
+        builder.HasIndex(elderly => elderly.IdentityUserId)
+            .IsUnique();
+
         builder.HasIndex(elderly => elderly.FamilyId);
-        // owner_user_id uniqueness is enforced together with the Identity
-        // one-elderly-per-family rule (a family owner has at most one family).
+
+        builder.HasIndex(elderly => elderly.OwnerUserId);
 
         builder.Ignore(elderly => elderly.DomainEvents);
     }

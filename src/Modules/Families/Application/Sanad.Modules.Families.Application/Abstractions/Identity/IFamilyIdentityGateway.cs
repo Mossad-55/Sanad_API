@@ -6,7 +6,8 @@ namespace Sanad.Modules.Families.Application.Abstractions.Identity;
 
 public sealed record ElderlyIdentityAccount(
     UserId UserId,
-    bool Exists);
+    bool Exists,
+    bool IsElderly);
 
 /// <summary>
 /// Outbound port implemented by Sanad.API over MediatR. Lets the Families

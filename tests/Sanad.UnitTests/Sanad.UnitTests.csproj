@@ -29,6 +29,9 @@
     <ProjectReference Include="..\..\src\Modules\Cms\Infrastructure\Sanad.Modules.Cms.Infrastructure\Sanad.Modules.Cms.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Caregivers\Infrastructure\Sanad.Modules.Caregivers.Infrastructure\Sanad.Modules.Caregivers.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Caregivers\Application\Sanad.Modules.Caregivers.Application\Sanad.Modules.Caregivers.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Families\Domain\Sanad.Modules.Families.Domain\Sanad.Modules.Families.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Families\Application\Sanad.Modules.Families.Application\Sanad.Modules.Families.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Families\Infrastructure\Sanad.Modules.Families.Infrastructure\Sanad.Modules.Families.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

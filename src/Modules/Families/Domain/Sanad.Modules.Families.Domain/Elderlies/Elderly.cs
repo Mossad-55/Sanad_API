@@ -1,9 +1,9 @@
 using Sanad.BuildingBlocks.Domain.Abstractions;
+using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Domain.Elderlies.Events;
-using Sanad.BuildingBlocks.Domain.Enums;
 
 namespace Sanad.Modules.Families.Domain.Elderlies;
 
@@ -12,6 +12,10 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
     public const int MaximumDetailedAddressLength = 500;
     public const int MaximumHealthNotesLength = 2000;
     public const int MaximumProfileImageKeyLength = 500;
+
+    private Elderly()
+    {
+    }
 
     private Elderly(
         ElderlyId id,
@@ -22,7 +26,7 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         FullName englishFullName,
         Gender gender,
         DateOnly dateOfBirth,
-        string? profileImageUrl,
+        string? profileImageKey,
         string? detailedAddress,
         string? healthNotes)
         : base(id)
@@ -34,7 +38,7 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         EnglishFullName = englishFullName;
         Gender = gender;
         DateOfBirth = dateOfBirth;
-        ProfileImageUrl = profileImageUrl;
+        ProfileImageKey = profileImageKey;
         DetailedAddress = detailedAddress;
         HealthNotes = healthNotes;
 
@@ -44,22 +48,29 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         RaiseDomainEvent(new ElderlyCreatedDomainEvent(Id));
     }
 
-    private Elderly()
-    {
-    }
-
     public UserId OwnerUserId { get; private set; }
-    public FamilyId FamilyId { get; private set; }
+
     public UserId IdentityUserId { get; private set; }
+
+    public FamilyId FamilyId { get; private set; }
+
     public FullName ArabicFullName { get; private set; } = default!;
+
     public FullName EnglishFullName { get; private set; } = default!;
+
     public Gender Gender { get; private set; }
+
     public DateOnly DateOfBirth { get; private set; }
-    public string? ProfileImageUrl { get; private set; }
-    public DateTime CreatedOnUtc { get; private set; }
-    public DateTime UpdatedOnUtc { get; private set; }
+
+    public string? ProfileImageKey { get; private set; }
+
     public string? DetailedAddress { get; private set; }
+
     public string? HealthNotes { get; private set; }
+
+    public DateTime CreatedOnUtc { get; private set; }
+
+    public DateTime UpdatedOnUtc { get; private set; }
 
     public static Elderly Create(
         UserId ownerUserId,
@@ -69,19 +80,26 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         FullName englishFullName,
         Gender gender,
         DateOnly dateOfBirth,
-        string? profileImageUrl = null,
+        DateOnly currentDate,
+        string? profileImageKey = null,
         string? detailedAddress = null,
         string? healthNotes = null)
     {
         if (identityUserId == UserId.Empty)
         {
             throw new DomainException(
-                "Eldery identity user is required.");
+                "Elderly identity user is required.");
         }
 
-        if (dateOfBirth > DateOnly.FromDateTime(DateTime.UtcNow))
+        if (!Enum.IsDefined(gender))
         {
-            throw new DomainException("Date of birth cannot be in the future.");
+            throw new DomainException("Gender is invalid.");
+        }
+
+        if (dateOfBirth > currentDate)
+        {
+            throw new DomainException(
+                "Date of birth cannot be in the future.");
         }
 
         return new Elderly(
@@ -93,9 +111,18 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
             englishFullName,
             gender,
             dateOfBirth,
-            profileImageUrl,
-            NormalizeOptional(detailedAddress, MaximumDetailedAddressLength, "Detailed address"),
-            NormalizeOptional(healthNotes, MaximumHealthNotesLength, "Health notes"));
+            NormalizeOptional(
+                profileImageKey,
+                MaximumProfileImageKeyLength,
+                "Profile image"),
+            NormalizeOptional(
+                detailedAddress,
+                MaximumDetailedAddressLength,
+                "Detailed address"),
+            NormalizeOptional(
+                healthNotes,
+                MaximumHealthNotesLength,
+                "Health notes"));
     }
 
     public void UpdateProfile(
@@ -103,20 +130,25 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         FullName englishFullName,
         Gender gender,
         DateOnly dateOfBirth,
-        string? profileImageUrl,
+        DateOnly currentDate,
         string? detailedAddress,
         string? healthNotes)
     {
-        if (dateOfBirth > DateOnly.FromDateTime(DateTime.UtcNow))
+        if (!Enum.IsDefined(gender))
+        {
+            throw new DomainException("Gender is invalid.");
+        }
+
+        if (dateOfBirth > currentDate)
         {
             throw new DomainException(
                 "Date of birth cannot be in the future.");
         }
+
         ArabicFullName = arabicFullName;
         EnglishFullName = englishFullName;
         Gender = gender;
         DateOfBirth = dateOfBirth;
-        ProfileImageUrl = profileImageUrl;
 
         DetailedAddress = NormalizeOptional(
             detailedAddress,
@@ -127,6 +159,16 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
             healthNotes,
             MaximumHealthNotesLength,
             "Health notes");
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void ChangePhoto(string? photoKey)
+    {
+        ProfileImageKey = NormalizeOptional(
+            photoKey,
+            MaximumProfileImageKeyLength,
+            "Profile image");
 
         UpdatedOnUtc = DateTime.UtcNow;
     }

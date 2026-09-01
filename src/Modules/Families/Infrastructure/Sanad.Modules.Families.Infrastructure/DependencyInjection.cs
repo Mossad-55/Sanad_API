@@ -12,18 +12,32 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        string connectionString =
-            configuration.GetConnectionString("FamiliesDatabase")
-            ?? configuration.GetConnectionString("IdentityDatabase")
-            ?? throw new InvalidOperationException(
-                "ConnectionStrings:FamilyDatabase or IdentityDatabase is required.");
+        string? connectionString =
+            configuration.GetConnectionString(
+                "FamiliesDatabase")
+            ?? configuration.GetConnectionString(
+                "IdentityDatabase");
 
-        services.AddDbContext<FamiliesDbContext>(options =>
-            options.UseNpgsql(connectionString));
+        if (string.IsNullOrWhiteSpace(connectionString))
+        {
+            throw new InvalidOperationException(
+                "ConnectionStrings:FamiliesDatabase or " +
+                "ConnectionStrings:IdentityDatabase is required.");
+        }
+
+        services.AddDbContext<FamiliesDbContext>(
+            options =>
+                options.UseNpgsql(
+                    connectionString,
+                    npgsqlOptions =>
+                        npgsqlOptions.MigrationsHistoryTable(
+                            "__EFMigrationsHistory",
+                            FamiliesDbContext.Schema)));
 
         services.AddScoped<IFamiliesDbContext>(
             serviceProvider =>
-                serviceProvider.GetRequiredService<FamiliesDbContext>());
+                serviceProvider.GetRequiredService<
+                    FamiliesDbContext>());
 
         return services;
     }

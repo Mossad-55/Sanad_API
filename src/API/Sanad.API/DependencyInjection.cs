@@ -19,6 +19,11 @@ using Sanad.Modules.Families.Infrastructure;
 using Sanad.BuildingBlocks.Infrastructure.Storage;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.Modules.Caregivers.Application.Lookups;
+using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
+using Sanad.API.IdentityIntegration;
+using Sanad.Modules.Caregivers.Application.Onboarding;
+using Sanad.Modules.Families.Application.Families;
 
 namespace Sanad.API;
 
@@ -187,6 +192,23 @@ public static class DependencyInjection
                         AccountType.MedicalCaregiver.ToString(),
                         AccountType.CompanionCaregiver.ToString());
                 });
+
+            options.AddPolicy(
+                AuthorizationPolicies.FamilyAccess,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AuthAccessType.Normal
+                            .ToString());
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AccountType.Family
+                            .ToString());
+                });
         });
 
         services.AddMediatR(configuration =>
@@ -199,6 +221,9 @@ public static class DependencyInjection
 
             configuration.RegisterServicesFromAssembly(
                 typeof(CreateServiceCommand).Assembly);
+
+            configuration.RegisterServicesFromAssembly(
+                typeof(BootstrapCaregiverCommand).Assembly);
         });
 
 
@@ -211,12 +236,18 @@ public static class DependencyInjection
         services.AddValidatorsFromAssembly(
             typeof(CreateServiceCommand).Assembly);
 
+        services.AddValidatorsFromAssembly(
+            typeof(BootstrapFamilyCommand).Assembly);
+
         services.AddTransient(
             typeof(IPipelineBehavior<,>),
             typeof(ValidationBehavior<,>));
 
         services.AddExceptionHandler<
             ValidationExceptionHandler>();
+
+        services.AddScoped<
+            IFamilyIdentityGateway, FamilyIdentityGateway>();
 
         return services;
     }

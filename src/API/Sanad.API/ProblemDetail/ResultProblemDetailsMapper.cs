@@ -52,6 +52,9 @@ public static class ResultProblemDetailsMapper
             ["Identity.Verification.InvalidCode"] = 401,
             ["Identity.Verification.UnsupportedPurpose"] = 400,
             ["Identity.Verification.UserNotFound"] = 401,
+            ["Identity.Elderly.PhoneAlreadyInUse"] = 409,
+            ["Identity.Elderly.NotFound"] = 404,
+            ["Identity.Elderly.InvalidProfile"] = 400,
 
             ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
             ["Cms.Splash.NotFound"] = 404,
@@ -71,6 +74,16 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Onboarding.InvalidCertificateOperation"] = 409,
             ["Caregivers.Onboarding.InvalidState"] = 409,
             ["Caregivers.Onboarding.CaregiverNotFound"] = 404,
+
+            ["Families.Family.AlreadyExists"] = 409,
+            ["Families.Family.NotFound"] = 404,
+            ["Families.Family.InvalidName"] = 400,
+            ["Families.Elderly.FamilyNotFound"] = 404,
+            ["Families.Elderly.NotFound"] = 404,
+            ["Families.Elderly.PhoneLinkedToAnotherFamily"] = 409,
+            ["Families.Elderly.PhoneBelongsToNonElderly"] = 409,
+            ["Families.Elderly.IdentityCreationFailed"] = 409,
+            ["Families.Elderly.InvalidProfile"] = 400,
 
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,

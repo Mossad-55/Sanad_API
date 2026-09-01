@@ -7,6 +7,7 @@ namespace Sanad.Modules.Families.Application.Abstractions.Data;
 public interface IFamiliesDbContext
 {
     DbSet<Family> Families { get; }
+
     DbSet<Elderly> Elderlies { get; }
 
     Task<int> SaveChangesAsync(

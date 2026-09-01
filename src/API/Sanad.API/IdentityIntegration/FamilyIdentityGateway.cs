@@ -33,7 +33,8 @@ public sealed class FamilyIdentityGateway : IFamilyIdentityGateway
 
         return new ElderlyIdentityAccount(
             result.Value.UserId,
-            Exists: true);
+            Exists: true,
+            IsElderly: result.Value.IsElderly);
     }
 
     public async Task<Result<ElderlyIdentityAccount>> CreateElderlyAsync(
@@ -64,14 +65,14 @@ public sealed class FamilyIdentityGateway : IFamilyIdentityGateway
 
         return new ElderlyIdentityAccount(
             result.Value.UserId,
-            Exists: true);
+            Exists: true,
+            IsElderly: true);
     }
 
     public async Task DeleteAsync(
         UserId userId,
         CancellationToken cancellationToken = default)
     {
-        // Best-effort compensation; result intentionally ignored.
         await _sender.Send(
             new DeleteIdentityUserCommand(userId),
             cancellationToken);

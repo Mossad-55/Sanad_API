@@ -15,18 +15,22 @@ public sealed class FamilyConfiguration :
         builder.HasKey(family => family.Id);
 
         builder.Property(family => family.Id)
-            .HasConversion(id => id.Value, value => new FamilyId(value))
+            .HasConversion(
+                id => id.Value,
+                value => new FamilyId(value))
             .HasColumnName("id")
             .ValueGeneratedNever();
 
         builder.Property(family => family.OwnerUserId)
-            .HasConversion(id => id.Value, value => new UserId(value))
+            .HasConversion(
+                id => id.Value,
+                value => new UserId(value))
             .HasColumnName("owner_user_id")
             .IsRequired();
 
         builder.Property(family => family.Name)
             .HasColumnName("name")
-            .HasMaxLength(200)
+            .HasMaxLength(Family.MaximumNameLength)
             .IsRequired();
 
         builder.Property(family => family.CreatedOnUtc)
@@ -45,26 +49,40 @@ public sealed class FamilyConfiguration :
             member =>
             {
                 member.ToTable("family_members");
-                member.WithOwner().HasForeignKey("FamilyId");
+
+                member.WithOwner()
+                    .HasForeignKey("FamilyId");
+
                 member.Property<FamilyId>("FamilyId")
-                    .HasConversion(id => id.Value, value => new FamilyId(value));
+                    .HasConversion(
+                        id => id.Value,
+                        value => new FamilyId(value))
+                    .HasColumnName("family_id")
+                    .IsRequired();
 
                 member.Property(m => m.Id)
-                    .HasConversion(id => id.Value, value => new UserId(value))
+                    .HasConversion(
+                        id => id.Value,
+                        value => new UserId(value))
                     .HasColumnName("user_id");
+
                 member.HasKey("FamilyId", "Id");
 
                 member.Property(m => m.AddedByUserId)
-                    .HasConversion(id => id.Value, value => new UserId(value))
+                    .HasConversion(
+                        id => id.Value,
+                        value => new UserId(value))
                     .HasColumnName("added_by_user_id")
                     .IsRequired();
 
                 member.Property(m => m.RelationshipType)
                     .HasColumnName("relationship_type")
+                    .HasConversion<int>()
                     .IsRequired();
 
                 member.Property(m => m.Role)
                     .HasColumnName("role")
+                    .HasConversion<int>()
                     .IsRequired();
 
                 member.Property(m => m.JoinedOnUtc)

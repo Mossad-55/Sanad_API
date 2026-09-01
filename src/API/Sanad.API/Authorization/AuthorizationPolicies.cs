@@ -13,4 +13,7 @@ public static class AuthorizationPolicies
 
     public const string CaregiverAccess =
         "CaregiverAccess";
+
+    public const string FamilyAccess =
+        "FamilyAccess";
 }

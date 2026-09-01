@@ -8,6 +8,7 @@ namespace Sanad.Modules.Families.Domain.Families;
 public sealed class Family : AggregateRoot<FamilyId>
 {
     public const int MaximumNameLength = 100;
+
     private readonly List<FamilyMember> _members = [];
 
     private Family()
@@ -40,9 +41,13 @@ public sealed class Family : AggregateRoot<FamilyId>
     }
 
     public string Name { get; private set; } = string.Empty;
+
     public UserId OwnerUserId { get; private set; }
+
     public DateTime CreatedOnUtc { get; private set; }
+
     public DateTime UpdatedOnUtc { get; private set; }
+
     public IReadOnlyCollection<FamilyMember> Members => _members.AsReadOnly();
 
     public static Family Create(
@@ -50,7 +55,7 @@ public sealed class Family : AggregateRoot<FamilyId>
         string? familyName)
     {
         var name = string.IsNullOrWhiteSpace(familyName)
-            ? " My Family"
+            ? "My Family"
             : familyName.Trim();
 
         return new Family(
