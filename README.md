@@ -259,6 +259,32 @@ Self-service routes under `/api/v1/caregiver/...` require policy `CaregiverAcces
 
 Postman: `docs/postman/app/Sanad.App.Caregiver.postman_collection.json`.
 
+## App — family endpoints
+
+Family routes under `/api/v1/family/...` require policy `FamilyAccess` (Normal JWT with `account_type` Family). Within a family, access is role-based (Owner/Editor/Viewer). Full reference: `docs/app/families/`.
+
+| Method | Path | Notes |
+|---|---|---|
+| POST | `/family` | Bootstrap family; 201, 409 if already exists |
+| GET | `/family` | Family + members; 404 until bootstrapped |
+| PUT | `/family/name` | Rename (Owner only) |
+| POST | `/family/dependents` | Add elderly dependent (multipart); provisions Elderly login |
+| GET | `/family/dependents` | List dependents |
+| GET | `/family/dependents/{id}` | One dependent |
+| PUT | `/family/dependents/{id}` | Update dependent profile |
+| DELETE | `/family/dependents/{id}` | Remove dependent (hard delete; Identity user kept) |
+| PUT | `/family/dependents/{id}/photo` | Set/replace private photo (multipart, ≤5 MB) |
+| GET | `/family/dependents/{id}/photo` | Authorized photo download (members only) |
+| POST | `/family/invitations` | Invite by email (Owner/Editor) |
+| GET | `/family/invitations` | My pending invitations |
+| POST | `/family/invitations/accept` | Accept by token (invitee) |
+| POST | `/family/invitations/decline` | Decline by token (invitee) |
+| DELETE | `/family/invitations/{id}` | Revoke (Owner) |
+
+Adding a dependent creates an Elderly Identity account server-side (no email/password, Active, phone verified) so SMS OTP login works immediately. One elderly identity is linked to at most one family. Invitations go to already-registered Family users by email with a `sanad://family/invite?token=...` deep link (7-day expiry, hashed token).
+
+Postman: `docs/postman/app/Sanad.App.Family.postman_collection.json`.
+
 ## Admin endpoints
 
 Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` SuperAdmin or ContentAdmin).
@@ -280,7 +306,7 @@ Lookup error codes: `Caregivers.Lookups.NameAlreadyInUse` (409), `Caregivers.Loo
 - Email/password login accepts email only, not phone.
 - PendingVerification users receive a 15-minute restricted access token and no refresh token.
 - Active users receive access + refresh tokens and a DeviceSession. Maximum five active sessions.
-- Elderly login is phone + SMS OTP only. Unknown numbers do not self-register and do not reveal whether an account exists.
+- Elderly login is phone + SMS OTP only. Unknown numbers do not self-register and do not reveal whether an account exists. Elderly accounts are created server-side when a family adds a dependent (no email/password; Active + phone-verified, so OTP login works immediately). See `docs/app/families/dependents.md`.
 - Password reset request is non-enumerating and always returns 204.
 - Successful password reset or change revokes every refresh session.
 - Development senders do not deliver codes. The API never returns the raw OTP.
@@ -299,11 +325,13 @@ dotnet test Sanad.slnx
 docs/auth/                              Auth flows, claims/policies, error catalog
 docs/app/public/                        Anonymous mobile-app HTTP (splash, public lookups)
 docs/app/caregivers/                    Caregiver self-service onboarding HTTP
+docs/app/families/                      Family app HTTP (family, dependents, invitations)
 docs/admin/                             Admin HTTP (splash, lookups, caregiver review)
 docs/architecture/                      Architecture notes
 docs/operations/                        Configuration, migrations, security
 docs/postman/app/Sanad.App.Public.postman_collection.json
 docs/postman/app/Sanad.App.Caregiver.postman_collection.json
+docs/postman/app/Sanad.App.Family.postman_collection.json
 docs/postman/admins/Sanad.Admin.postman_collection.json
 docs/postman/Sanad.hostinger.postman_environment.json
 docs/postman/Sanad.local.postman_environment.json

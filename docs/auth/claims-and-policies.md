@@ -67,6 +67,17 @@ Applied to all caregiver self-service routes (`/api/v1/caregiver/...`): profile 
 
 The caregiver type is derived from the `account_type` claim at bootstrap (`MedicalCaregiver` → Medical, `CompanionCaregiver` → Companion) and is fixed for the profile. A Family/Elderly/admin account receives `403`, as does any Restricted verification token.
 
+## Policy `FamilyAccess`
+
+Requires an authenticated user with:
+
+- Claim `access_type` = `Normal`
+- Claim `account_type` = `Family`
+
+Applied to all family self-service routes (`/api/v1/family/...`): family bootstrap/read/rename, elderly dependent management and photos, and family-member invitations. A caregiver/Elderly/admin account or any Restricted verification token receives `403`.
+
+Within the family, authorization is role-based (Owner / Editor / Viewer) and enforced by the Families module; `403 Families.*.AccessDenied` / `Families.Family.NotOwner` are returned for role violations. See `docs/app/families/overview.md`.
+
 ## Account types
 
 | Value | Name |

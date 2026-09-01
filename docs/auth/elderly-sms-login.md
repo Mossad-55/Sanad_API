@@ -106,6 +106,10 @@ Rules:
 | 401 | `Identity.ElderlyLogin.OtpVerificationFailed` |
 | 409 | `Identity.ElderlyLogin.SessionLimitReached` |
 
+## Elderly accounts are family-provisioned
+
+Elderly identities are not self-registered. They are created server-side when a family adds a dependent (`POST /api/v1/family/dependents`, see `docs/app/families/dependents.md`): the Identity user is created with no email and no password, `status = Active`, and phone already verified, so the very first SMS OTP request/verify cycle logs them in immediately. Removing a dependent does **not** delete the Identity user — the person keeps logging in by phone OTP and can be re-linked to a family.
+
 ## Local SMS
 
 For a test sender, do **not** set a template:

@@ -1,0 +1,386 @@
+{
+  "info": {
+    "_postman_id": "b3f1c2a4-0002-4a10-fam-000000000001",
+    "name": "Sanad App — Family",
+    "description": "Family app surface: family bootstrap/profile, elderly dependents (with server-provisioned Elderly login), and family-member invitations. Requires a Normal JWT for a Family account (policy FamilyAccess). Restricted-verification tokens and non-Family accounts receive 403. Run the 0. Auth folder first. Dependents use multipart/form-data for create/photo; everything else is JSON.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "Register (Family owner)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arabicFullName\": \"نور نصر\",\n  \"englishFullName\": \"Nour Nasr\",\n  \"email\": \"{{familyEmail}}\",\n  \"phoneNumber\": \"{{familyPhone}}\",\n  \"password\": \"{{familyPassword}}\",\n  \"accountType\": 1,\n  \"avatarUrl\": null\n}"
+            }
+          }
+        },
+        {
+          "name": "Register (Family member/invitee)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arabicFullName\": \"سلمى نصر\",\n  \"englishFullName\": \"Salma Nasr\",\n  \"email\": \"{{familyInviteeEmail}}\",\n  \"phoneNumber\": \"{{familyInviteePhone}}\",\n  \"password\": \"{{familyPassword}}\",\n  \"accountType\": 1,\n  \"avatarUrl\": null\n}"
+            }
+          },
+          "description": "The invitee must exist with a Family account before an invitation is created. Register this second user (or verify OTP for both) before folder 3."
+        },
+        {
+          "name": "Login (Family owner) — captures familyToken",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{familyEmail}}\",\n  \"password\": \"{{familyPassword}}\",\n  \"deviceName\": \"{{deviceName}}\",\n  \"devicePlatform\": {{devicePlatform}},\n  \"appVersion\": \"{{appVersion}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.accessToken) { pm.environment.set('familyToken', body.accessToken); }",
+                  "  if (body.refreshToken) { pm.environment.set('familyRefreshToken', body.refreshToken); }",
+                  "  if (body.deviceSessionId && body.deviceSessionId.value) { pm.environment.set('familyDeviceSessionId', body.deviceSessionId.value); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Login (Family invitee) — captures familyInviteeToken",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{familyInviteeEmail}}\",\n  \"password\": \"{{familyPassword}}\",\n  \"deviceName\": \"{{deviceName}}\",\n  \"devicePlatform\": {{devicePlatform}},\n  \"appVersion\": \"{{appVersion}}\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.accessToken) { pm.environment.set('familyInviteeToken', body.accessToken); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify OTP (only if login returns accessType 2)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/verification/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"verificationRequestId\": \"{{verificationRequestId}}\",\n  \"code\": \"{{otpCode}}\"\n}"
+            }
+          }
+        }
+      ],
+      "description": "Register a Family owner (accountType 1) and a second Family user as invitee, verify OTPs if login returns accessType 2 (restricted), then login. The owner login captures familyToken; the invitee login captures familyInviteeToken."
+    },
+    {
+      "name": "1. Family profile",
+      "item": [
+        {
+          "name": "Bootstrap family (POST, optional name)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"The Nasr Family\"\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) { pm.environment.set('familyId', body.id); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get family",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family"
+          }
+        },
+        {
+          "name": "Rename family (Owner only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/name",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"The Nasr Household\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Elderly dependents",
+      "item": [
+        {
+          "name": "Add dependent (multipart, optional photo)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "arabicFullName", "value": "سعيد نصر", "type": "text" },
+                { "key": "englishFullName", "value": "Saeed Nasr", "type": "text" },
+                { "key": "phoneNumber", "value": "{{dependentPhone}}", "type": "text" },
+                { "key": "gender", "value": "1", "type": "text" },
+                { "key": "dateOfBirth", "value": "1948-07-20", "type": "text" },
+                { "key": "detailedAddress", "value": "12 Nile Street, Damanhur", "type": "text" },
+                { "key": "healthNotes", "value": "Diabetes type 2; metformin.", "type": "text" },
+                { "key": "photo", "type": "file", "src": [] }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) { pm.environment.set('dependentId', body.id); }",
+                  "  if (body.identityUserId) { pm.environment.set('dependentIdentityUserId', body.identityUserId); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "description": "Creates the dependent AND provisions an Elderly Identity login (Active, phone verified) for phoneNumber. A second call with the same phone returns 409 PhoneLinkedToAnotherFamily."
+        },
+        {
+          "name": "List dependents",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents"
+          }
+        },
+        {
+          "name": "Get dependent",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}"
+          }
+        },
+        {
+          "name": "Update dependent",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arabicFullName\": \"سعيد نصر\",\n  \"englishFullName\": \"Saeed Nasser\",\n  \"gender\": 1,\n  \"dateOfBirth\": \"1948-07-20\",\n  \"detailedAddress\": \"18 Corniche Road, Damanhur\",\n  \"healthNotes\": \"Diabetes; penicillin allergy.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Set / replace dependent photo (multipart)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/photo",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "photo", "type": "file", "src": [] }
+              ]
+            }
+          },
+          "description": "Private storage (elderly-photos). image/jpeg|png|webp, max 5 MB. Replacing deletes the previous file."
+        },
+        {
+          "name": "Download dependent photo (member only)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/photo"
+          },
+          "description": "Returns the image bytes. 404 if no photo. Try with familyInviteeToken after accepting an invitation — Viewers can download."
+        },
+        {
+          "name": "Remove dependent (hard delete; identity kept)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}"
+          },
+          "description": "Deletes the families.elderlies row and photo file. The Elderly Identity user remains (can still log in by SMS OTP and can be re-added). Run last in the folder."
+        }
+      ]
+    },
+    {
+      "name": "3. Invitations",
+      "item": [
+        {
+          "name": "Create invitation (Owner/Editor)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/invitations",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{familyInviteeEmail}}\",\n  \"role\": 2,\n  \"relationshipType\": 6\n}"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) { pm.environment.set('invitationId', body.id); }",
+                  "}",
+                  "// The plaintext token is only delivered by email (development: server log",
+                  "// line '[DevEmail] Family invitation ... sanad://family/invite?token=...').",
+                  "// Copy it from the log into the invitationToken variable, then accept/decline."
+                ]
+              }
+            }
+          ],
+          "description": "role 2 = Editor, 3 = Viewer; relationshipType 6 = Sister. 409 RecipientNotRegistered (unknown email), RecipientMissingFamilyAccount, CannotInviteYourself, AlreadyMember, PendingInvitationExists. The token is returned only by email/log — paste it into invitationToken."
+        },
+        {
+          "name": "List my pending invitations (invitee)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyInviteeToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/invitations"
+          },
+          "description": "Use the invitee token. Returns the pending invitation(s) addressed to the logged-in user."
+        },
+        {
+          "name": "Accept invitation (invitee)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{ familyInviteeToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/invitations/accept",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{invitationToken}}\"\n}"
+            }
+          },
+          "description": "Adds the invitee to the family as an Editor/Viewer. 204 on success. Requires the invitee's own token (403 NotInvitee otherwise). Run decline instead to test the other branch."
+        },
+        {
+          "name": "Decline invitation (invitee)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{ familyInviteeToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/invitations/decline",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"{{invitationToken}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Revoke invitation (Owner, by id)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/invitations/{{invitationId}}"
+          },
+          "description": "Owner only. Run before accept/decline to test revocation (revoked tokens then return 409 NotPending)."
+        }
+      ],
+      "description": "Invitations are by email to existing Family users. Token arrives via deep link sanad://family/invite?token=... (development: the development mail sink prints it to the API log)."
+    }
+  ]
+}

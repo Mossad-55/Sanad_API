@@ -40,6 +40,14 @@ Enabled only when `Host` and `FromAddress` are set.
 | `Identity__Email__Smtp__FromAddress` | | From address |
 | `Identity__Email__Smtp__FromName` | `Sanad Care` | From display name |
 
+## Family invitations (deep link)
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `App__InviteBaseUrl` | `sanad://family/invite` (Development) | Base of the mobile deep link sent in invitation emails; the API appends `?token=<opaque-token>` |
+
+The deep link opens the mobile app's invitation screen; there is no web page. See `docs/app/families/invitations.md`.
+
 ## Optional SMS Misr
 
 Enabled when `Username`, `Password`, and `Sender` are set.
