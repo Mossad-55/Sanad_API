@@ -25,6 +25,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | City & area lookups | `docs/admin/lookups-cities-areas.md` |
 | Specialization, title & degree lookups | `docs/admin/lookups-specializations-titles-degrees.md` |
 | Caregiver review | `docs/admin/caregivers-review.md` |
+| Care-needs assessment quiz | `docs/admin/care-assessments.md` |
 | Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
 
 ## Caregiver lookups

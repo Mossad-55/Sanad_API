@@ -500,6 +500,73 @@
         }
       ],
       "description": "Invitations are by email to existing Family users. Token arrives via deep link sanad://family/invite?token=... (development: the development mail sink prints it to the API log)."
+    },
+    {
+      "name": "4. Care-Needs Assessment Quiz",
+      "item": [
+        {
+          "name": "Get active assessment questions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{familyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/assessment/questions"
+          }
+        },
+        {
+          "name": "Get care tiers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{familyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/assessment/tiers"
+          }
+        },
+        {
+          "name": "Submit care assessment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  const aId = body.assessmentId && body.assessmentId.value ? body.assessmentId.value : body.assessmentId;",
+                  "  if (aId) { pm.environment.set(\"assessmentId\", aId); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{familyToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elderlyId\": null,\n  \"answers\": [\n    {\n      \"questionId\": \"{{assessmentQuestionId}}\",\n      \"selectedOptionId\": \"00000000-0000-0000-0000-000000000000\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/family/assessment"
+          }
+        }
+      ]
     }
   ]
 }

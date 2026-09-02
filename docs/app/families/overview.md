@@ -56,6 +56,7 @@ Removing a dependent **hard-deletes** the Families row and the photo file. The E
 | Screen / flow | Doc |
 |---|---|
 | Bootstrap, get family, rename | `docs/app/families/family.md` |
+| Care-needs assessment quiz (Step 1) | `docs/app/families/assessment.md` |
 | Add/list/get/update/remove dependents, photos | `docs/app/families/dependents.md` |
 | Invitations by email, deep link, accept/decline/revoke | `docs/app/families/invitations.md` |
 | Postman | `docs/postman/app/Sanad.App.Family.postman_collection.json` |

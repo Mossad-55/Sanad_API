@@ -1254,6 +1254,373 @@
         }
       ],
       "description": "caregiverId/certificateId are captured by the Caregiver onboarding collection. Review order: verify certificates, then approve (or request correction/reject). Suspend/reactivate apply to Active/Suspended caregivers. File download is the only access path to certificate scans."
+    },
+    {
+      "name": "Assessment Quiz Management",
+      "item": [
+        {
+          "name": "Create question",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  const qId = body.id && body.id.value ? body.id.value : body.id;",
+                  "  if (qId) { pm.environment.set(\"assessmentQuestionId\", qId); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": 1,\n  \"arabicText\": \"هل يحتاج المسن إلى مساعدة في الحركة والتنقل اليومي؟\",\n  \"englishText\": \"Does the elderly person need assistance with daily mobility?\",\n  \"isRequired\": true,\n  \"isActive\": true,\n  \"options\": [\n    {\n      \"order\": 1,\n      \"arabicText\": \"يتحرك بشكل مستقل تماماً\",\n      \"englishText\": \"Moves completely independently\",\n      \"weight\": 0\n    },\n    {\n      \"order\": 2,\n      \"arabicText\": \"يحتاج إلى مساعدة بسيطة أو عكاز\",\n      \"englishText\": \"Needs slight assistance or a cane\",\n      \"weight\": 2\n    },\n    {\n      \"order\": 3,\n      \"arabicText\": \"يحتاج إلى مساعدة كاملة أو كرسي متحرك\",\n      \"englishText\": \"Needs full assistance or a wheelchair\",\n      \"weight\": 5\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/assessments/questions"
+          }
+        },
+        {
+          "name": "List questions (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/assessments/questions"
+          }
+        },
+        {
+          "name": "Get question by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/assessments/questions/{{assessmentQuestionId}}"
+          }
+        },
+        {
+          "name": "Update question",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"order\": 1,\n  \"arabicText\": \"هل يحتاج المسن إلى مساعدة في الحركة والتنقل اليومي؟ (محدث)\",\n  \"englishText\": \"Does the elderly person need assistance with daily mobility? (Updated)\",\n  \"isRequired\": true,\n  \"options\": [\n    {\n      \"order\": 1,\n      \"arabicText\": \"يتحرك بشكل مستقل تماماً\",\n      \"englishText\": \"Moves completely independently\",\n      \"weight\": 0\n    },\n    {\n      \"order\": 2,\n      \"arabicText\": \"يحتاج إلى مساعدة كاملة\",\n      \"englishText\": \"Needs full assistance\",\n      \"weight\": 5\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/assessments/questions/{{assessmentQuestionId}}"
+          }
+        },
+        {
+          "name": "Activate question",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/assessments/questions/{{assessmentQuestionId}}/activate"
+          }
+        },
+        {
+          "name": "Deactivate question",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/assessments/questions/{{assessmentQuestionId}}/deactivate"
+          }
+        },
+        {
+          "name": "Create tier (multipart)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  const tId = body.id && body.id.value ? body.id.value : body.id;",
+                  "  if (tId) { pm.environment.set(\"assessmentTierId\", tId); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "screenOrder",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicTitle",
+                  "value": "رعاية مستقلة",
+                  "type": "text"
+                },
+                {
+                  "key": "englishTitle",
+                  "value": "Independent Care",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicSubtitle",
+                  "value": "المسن يتمتع باستقلالية عالية وبحاجة لمتابعة دورية",
+                  "type": "text"
+                },
+                {
+                  "key": "englishSubtitle",
+                  "value": "The elderly has high independence and requires periodic follow-up",
+                  "type": "text"
+                },
+                {
+                  "key": "backgroundColor",
+                  "value": "#4CAF50",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicButtonText",
+                  "value": "متابعة",
+                  "type": "text"
+                },
+                {
+                  "key": "englishButtonText",
+                  "value": "Continue",
+                  "type": "text"
+                },
+                {
+                  "key": "minScore",
+                  "value": "0",
+                  "type": "text"
+                },
+                {
+                  "key": "maxScore",
+                  "value": "10",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicRecommendations[0]",
+                  "value": "زيارات تفقدية دورية",
+                  "type": "text"
+                },
+                {
+                  "key": "englishRecommendations[0]",
+                  "value": "Periodic check-ins",
+                  "type": "text"
+                },
+                {
+                  "key": "isActive",
+                  "value": "true",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "value": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/admin/assessments/tiers"
+          }
+        },
+        {
+          "name": "List tiers (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/assessments/tiers"
+          }
+        },
+        {
+          "name": "Get tier by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/assessments/tiers/{{assessmentTierId}}"
+          }
+        },
+        {
+          "name": "Update tier (multipart)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "screenOrder",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicTitle",
+                  "value": "رعاية مستقلة (محدث)",
+                  "type": "text"
+                },
+                {
+                  "key": "englishTitle",
+                  "value": "Independent Care (Updated)",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicSubtitle",
+                  "value": "المسن يتمتع باستقلالية",
+                  "type": "text"
+                },
+                {
+                  "key": "englishSubtitle",
+                  "value": "The elderly has high independence",
+                  "type": "text"
+                },
+                {
+                  "key": "backgroundColor",
+                  "value": "#4CAF50",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicButtonText",
+                  "value": "متابعة",
+                  "type": "text"
+                },
+                {
+                  "key": "englishButtonText",
+                  "value": "Continue",
+                  "type": "text"
+                },
+                {
+                  "key": "minScore",
+                  "value": "0",
+                  "type": "text"
+                },
+                {
+                  "key": "maxScore",
+                  "value": "10",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicRecommendations[0]",
+                  "value": "زيارات تفقدية دورية",
+                  "type": "text"
+                },
+                {
+                  "key": "englishRecommendations[0]",
+                  "value": "Periodic check-ins",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "value": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/admin/assessments/tiers/{{assessmentTierId}}"
+          }
+        },
+        {
+          "name": "Activate tier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/assessments/tiers/{{assessmentTierId}}/activate"
+          }
+        },
+        {
+          "name": "Deactivate tier",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/assessments/tiers/{{assessmentTierId}}/deactivate"
+          }
+        },
+        {
+          "name": "List family submissions (Paged)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/assessments/submissions?page=1&pageSize=10"
+          }
+        }
+      ]
     }
   ]
 }

@@ -21,8 +21,11 @@ public sealed class FamilyAssessmentController :
     }
 
     [HttpGet("questions")]
-    [ProducesResponseType(typeof(IReadOnlyList<FamilyAssessmentQuestionResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetQuestions(CancellationToken cancellationToken)
+    [ProducesResponseType(
+        typeof(IReadOnlyList<FamilyAssessmentQuestionResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetQuestions(
+        CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
             new GetFamilyAssessmentQuestionsQuery(),
@@ -32,8 +35,11 @@ public sealed class FamilyAssessmentController :
     }
 
     [HttpGet("tiers")]
-    [ProducesResponseType(typeof(IReadOnlyList<FamilyAssessmentTierResponse>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetTiers(CancellationToken cancellationToken)
+    [ProducesResponseType(
+        typeof(IReadOnlyList<FamilyAssessmentTierResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTiers(
+        CancellationToken cancellationToken)
     {
         var result = await _sender.Send(
             new GetFamilyAssessmentTiersQuery(),
@@ -50,8 +56,7 @@ public sealed class FamilyAssessmentController :
         [FromBody] SubmitAssessmentRequest request,
         CancellationToken cancellationToken)
     {
-        TryGetAuthenticatedUserId(out UserId userId);
-        if (userId == UserId.Empty)
+        if (!TryGetAuthenticatedUserId(out UserId userId))
         {
             return Unauthorized();
         }
@@ -65,13 +70,20 @@ public sealed class FamilyAssessmentController :
         var result = await _sender.Send(
             new SubmitAssessmentCommand(
                 userId,
-                request.ElderlyId.HasValue ? new ElderlyId(request.ElderlyId.Value) : null,
+                request.ElderlyId.HasValue
+                    ? new ElderlyId(request.ElderlyId.Value)
+                    : null,
                 answers,
                 DateTime.UtcNow),
             cancellationToken);
 
-        return result.IsFailure
-            ? ToActionResult(result)
-            : StatusCode(StatusCodes.Status201Created, result.Value);
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            result.Value);
     }
 }
