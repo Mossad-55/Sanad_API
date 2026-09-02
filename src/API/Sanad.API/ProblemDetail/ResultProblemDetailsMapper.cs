@@ -108,6 +108,13 @@ public static class ResultProblemDetailsMapper
             ["Families.Invitation.NotInvitee"] = 403,
             ["Families.Invitation.Expired"] = 409,
 
+            ["Families.Assessment.QuestionNotFound"] = 404,
+            ["Families.Assessment.TierNotFound"] = 404,
+            ["Families.Assessment.NotFound"] = 404,
+            ["Families.Assessment.InvalidQuestion"] = 409,
+            ["Families.Assessment.InvalidTier"] = 409,
+            ["Families.Assessment.InvalidSubmission"] = 409,
+
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,
             ["Storage.File.UnsupportedType"] = 400,
