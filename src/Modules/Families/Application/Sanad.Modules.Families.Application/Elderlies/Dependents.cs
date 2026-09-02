@@ -11,6 +11,7 @@ using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Elderlies;
+using Sanad.Modules.Families.Domain.Families;
 
 namespace Sanad.Modules.Families.Application.Elderlies;
 
@@ -21,6 +22,7 @@ public sealed record DependentResponse(
     string ArabicFullName,
     string EnglishFullName,
     Gender Gender,
+    FamilyRelationshipType RelationshipType,
     DateOnly DateOfBirth,
     bool HasPhoto,
     string? DetailedAddress,
@@ -38,6 +40,7 @@ internal static class DependentMappings
             elderly.ArabicFullName,
             elderly.EnglishFullName,
             elderly.Gender,
+            elderly.RelationshipType,
             elderly.DateOfBirth,
             !string.IsNullOrWhiteSpace(elderly.ProfileImageKey),
             elderly.DetailedAddress,
@@ -53,6 +56,7 @@ public sealed record AddDependentCommand(
     string EnglishFullName,
     string PhoneNumber,
     Gender Gender,
+    FamilyRelationshipType RelationshipType,
     DateOnly DateOfBirth,
     string? PhotoKey,
     string? DetailedAddress,
@@ -71,6 +75,7 @@ public sealed class AddDependentCommandValidator
         RuleFor(c => c.EnglishFullName).NotEmpty().MaximumLength(200);
         RuleFor(c => c.PhoneNumber).NotEmpty();
         RuleFor(c => c.Gender).IsInEnum();
+        RuleFor(c => c.RelationshipType).IsInEnum();
         RuleFor(c => c.DateOfBirth)
             .LessThanOrEqualTo(c => c.CurrentDate)
             .WithMessage("Date of birth cannot be in the future.");
@@ -207,6 +212,7 @@ public sealed class AddDependentCommandHandler
                 request.OwnerUserId,
                 identityUserId,
                 family.Id,
+                request.RelationshipType,
                 arabicName,
                 englishName,
                 request.Gender,
@@ -376,6 +382,7 @@ public sealed record UpdateDependentCommand(
     string ArabicFullName,
     string EnglishFullName,
     Gender Gender,
+    FamilyRelationshipType RelationshipType,
     DateOnly DateOfBirth,
     string? DetailedAddress,
     string? HealthNotes,
@@ -392,6 +399,7 @@ public sealed class UpdateDependentCommandValidator
         RuleFor(c => c.ArabicFullName).NotEmpty().MaximumLength(200);
         RuleFor(c => c.EnglishFullName).NotEmpty().MaximumLength(200);
         RuleFor(c => c.Gender).IsInEnum();
+        RuleFor(c => c.RelationshipType).IsInEnum();
         RuleFor(c => c.DateOfBirth)
             .LessThanOrEqualTo(c => c.CurrentDate)
             .WithMessage("Date of birth cannot be in the future.");
@@ -418,7 +426,7 @@ public sealed class UpdateDependentCommandHandler
         UpdateDependentCommand request,
         CancellationToken cancellationToken)
     {
-        Domain.Families.Family? family =
+        Family? family =
             await FamilyAccess.ResolveFamilyAsync(
                 _dbContext,
                 request.UserId,
@@ -463,6 +471,7 @@ public sealed class UpdateDependentCommandHandler
             // Photo is managed separately (SetDependentPhotoCommand) and
             // is intentionally untouched by a profile update.
             elderly.UpdateProfile(
+                request.RelationshipType,
                 arabicName,
                 englishName,
                 request.Gender,

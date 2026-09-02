@@ -3,6 +3,8 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Domain.Elderlies;
+using Sanad.Modules.Families.Domain.Families;
+using Xunit.Sdk;
 
 namespace Sanad.UnitTests.Families;
 
@@ -15,6 +17,7 @@ public sealed class ElderlyTests
             UserId.New(),
             identityUserId ?? UserId.New(),
             new FamilyId(Guid.NewGuid()),
+            FamilyRelationshipType.Mother,
             FullName.Create("فاطمة"),
             FullName.Create("Fatima"),
             Gender.Female,

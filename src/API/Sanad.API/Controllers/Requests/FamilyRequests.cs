@@ -16,11 +16,13 @@ public sealed record AddDependentRequest(
     string EnglishFullName,
     string PhoneNumber,
     Gender Gender,
+    FamilyRelationshipType RelationshipType,
     DateOnly DateOfBirth,
     string? DetailedAddress,
     string? HealthNotes);
 
 public sealed record UpdateDependentRequest(
+    FamilyRelationshipType RelationshipType,
     string ArabicFullName,
     string EnglishFullName,
     Gender Gender,

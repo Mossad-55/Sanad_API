@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Org.BouncyCastle.Ocsp;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers.Requests;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
@@ -147,6 +148,7 @@ public sealed class FamilyController :
                     request.EnglishFullName,
                     request.PhoneNumber,
                     request.Gender,
+                    request.RelationshipType,
                     request.DateOfBirth,
                     photoKey,
                     request.DetailedAddress,
@@ -237,6 +239,7 @@ public sealed class FamilyController :
                     request.ArabicFullName,
                     request.EnglishFullName,
                     request.Gender,
+                    request.RelationshipType,
                     request.DateOfBirth,
                     request.DetailedAddress,
                     request.HealthNotes,

@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Domain.Elderlies.Events;
+using Sanad.Modules.Families.Domain.Families;
 
 namespace Sanad.Modules.Families.Domain.Elderlies;
 
@@ -22,6 +23,7 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         UserId ownerUserId,
         UserId identityUserId,
         FamilyId familyId,
+        FamilyRelationshipType relationshipType,
         FullName arabicFullName,
         FullName englishFullName,
         Gender gender,
@@ -34,6 +36,7 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         OwnerUserId = ownerUserId;
         IdentityUserId = identityUserId;
         FamilyId = familyId;
+        RelationshipType = relationshipType;
         ArabicFullName = arabicFullName;
         EnglishFullName = englishFullName;
         Gender = gender;
@@ -49,33 +52,24 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
     }
 
     public UserId OwnerUserId { get; private set; }
-
     public UserId IdentityUserId { get; private set; }
-
     public FamilyId FamilyId { get; private set; }
-
+    public FamilyRelationshipType RelationshipType { get; private set; }
     public FullName ArabicFullName { get; private set; } = default!;
-
     public FullName EnglishFullName { get; private set; } = default!;
-
     public Gender Gender { get; private set; }
-
     public DateOnly DateOfBirth { get; private set; }
-
     public string? ProfileImageKey { get; private set; }
-
     public string? DetailedAddress { get; private set; }
-
     public string? HealthNotes { get; private set; }
-
     public DateTime CreatedOnUtc { get; private set; }
-
     public DateTime UpdatedOnUtc { get; private set; }
 
     public static Elderly Create(
         UserId ownerUserId,
         UserId identityUserId,
         FamilyId familyId,
+        FamilyRelationshipType relationshipType,
         FullName arabicFullName,
         FullName englishFullName,
         Gender gender,
@@ -89,6 +83,11 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         {
             throw new DomainException(
                 "Elderly identity user is required.");
+        }
+
+        if (!Enum.IsDefined(relationshipType))
+        {
+            throw new DomainException("Relationship type is invalid.");
         }
 
         if (!Enum.IsDefined(gender))
@@ -107,6 +106,7 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
             ownerUserId,
             identityUserId,
             familyId,
+            relationshipType,
             arabicFullName,
             englishFullName,
             gender,
@@ -126,6 +126,7 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
     }
 
     public void UpdateProfile(
+        FamilyRelationshipType relationshipType,
         FullName arabicFullName,
         FullName englishFullName,
         Gender gender,
@@ -134,6 +135,11 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         string? detailedAddress,
         string? healthNotes)
     {
+        if (!Enum.IsDefined(relationshipType))
+        {
+            throw new DomainException("Relationship type is invalid");
+        }
+
         if (!Enum.IsDefined(gender))
         {
             throw new DomainException("Gender is invalid.");
@@ -145,6 +151,7 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
                 "Date of birth cannot be in the future.");
         }
 
+        RelationshipType = relationshipType;
         ArabicFullName = arabicFullName;
         EnglishFullName = englishFullName;
         Gender = gender;

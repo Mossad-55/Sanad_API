@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
@@ -48,9 +50,10 @@ public sealed class FamiliesDbContextModelTests
             UserId.New(),
             UserId.New(),
             family.Id,
-            Sanad.BuildingBlocks.Domain.ValueObjects.FullName.Create("أحمد"),
-            Sanad.BuildingBlocks.Domain.ValueObjects.FullName.Create("Ahmed"),
-            Sanad.BuildingBlocks.Domain.Enums.Gender.Male,
+            FamilyRelationshipType.Father,
+            FullName.Create("أحمد"),
+            FullName.Create("Ahmed"),
+            Gender.Male,
             new DateOnly(1950, 5, 1),
             DateOnly.FromDateTime(DateTime.UtcNow),
             detailedAddress: "12 Nile Street",

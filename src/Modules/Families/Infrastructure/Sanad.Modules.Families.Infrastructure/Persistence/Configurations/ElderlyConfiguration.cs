@@ -82,6 +82,11 @@ public sealed class ElderlyConfiguration :
             .HasColumnName("health_notes")
             .HasMaxLength(Elderly.MaximumHealthNotesLength);
 
+        builder.Property(elderly => elderly.RelationshipType)
+            .HasConversion<int>()
+            .HasColumnName("relationship_type")
+            .IsRequired();
+
         builder.Property(elderly => elderly.CreatedOnUtc)
             .HasColumnName("created_on_utc")
             .IsRequired();
