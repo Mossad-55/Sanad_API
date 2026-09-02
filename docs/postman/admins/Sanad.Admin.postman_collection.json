@@ -134,6 +134,32 @@
           }
         },
         {
+          "name": "List all splash screens (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/splash-screens"
+          }
+        },
+        {
+          "name": "Get splash screen by ID (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}"
+          }
+        },
+        {
           "name": "Publish splash screen",
           "request": {
             "method": "POST",

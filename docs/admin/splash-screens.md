@@ -9,24 +9,78 @@ Support Admin, Family, Medical, Companion, Elderly, and restricted verification 
 
 Login first with `POST /api/v1/auth/login` using the seeded Super Admin, then send `Authorization: Bearer <accessToken>`.
 
+## Endpoints Summary
+
+```text
+POST   /api/v1/admin/splash-screens                 Create splash screen with image (multipart, Draft)
+GET    /api/v1/admin/splash-screens                 List all splash screens (Draft and Published)
+GET    /api/v1/admin/splash-screens/{id}            Get splash screen by ID
+PUT    /api/v1/admin/splash-screens/{id}            Update splash screen details & optional image (multipart)
+POST   /api/v1/admin/splash-screens/{id}/publish    Publish splash screen (status = Published)
+POST   /api/v1/admin/splash-screens/{id}/unpublish  Unpublish splash screen (status = Draft)
+DELETE /api/v1/admin/splash-screens/{id}            Delete splash screen (hard delete)
+```
+
 ## Lifecycle
 
 ```text
 Create → Draft
-Publish → Published (visible on GET /api/v1/splash-screens)
+Publish → Published (visible on public GET /api/v1/splash-screens)
 Unpublish → Draft (hidden from public GET)
 Delete → row removed
 ```
 
 `internalName` is unique and immutable after create.
 
-## Create
+---
 
-`POST /api/v1/admin/splash-screens` → `201`  
-`Content-Type: multipart/form-data`  
+## 1. List All Splash Screens (Admin)
+
+`GET /api/v1/admin/splash-screens` → `200 OK`
+
+Returns all splash screens (both `Draft` and `Published`), ordered by `displayOrder`.
+
+### Response Body (`application/json`)
+```json
+[
+  {
+    "id": "0191ae10-0000-7000-8000-000000000001",
+    "internalName": "welcome-screen",
+    "arabicTitle": "مرحباً بكم في سند",
+    "englishTitle": "Welcome to Sanad",
+    "arabicDescription": "منصة الرعاية المتكاملة لكبار السن",
+    "englishDescription": "Integrated care platform for the elderly",
+    "arabicButtonText": "التالي",
+    "englishButtonText": "Next",
+    "imagePath": "splash/0191ae10.png",
+    "backgroundColor": "#1A73E8",
+    "displayOrder": 1,
+    "status": 2
+  }
+]
+```
+
+*Note: `status` values: `1` = Draft, `2` = Published.*
+
+---
+
+## 2. Get Splash Screen by ID (Admin)
+
+`GET /api/v1/admin/splash-screens/{id}` → `200 OK`
+
+Returns the full details of a specific splash screen.
+
+Missing/unknown ID → `404` `Cms.Splash.NotFound`.
+
+---
+
+## 3. Create Splash Screen
+
+`POST /api/v1/admin/splash-screens` → `201 Created`
+`Content-Type: multipart/form-data`
 Image is uploaded **in the same request**. There is no `imagePath` field and no separate files endpoint.
 
-Form fields:
+### Form Fields:
 
 | Field | Required | Notes |
 |---|---|---|
@@ -37,56 +91,51 @@ Form fields:
 | `englishDescription` | yes | |
 | `arabicButtonText` | yes | |
 | `englishButtonText` | yes | |
-| `backgroundColor` | yes | `#RRGGBB` |
+| `backgroundColor` | yes | `#RRGGBB` hex code |
 | `displayOrder` | yes | integer >= 0 |
 | `file` | yes | `image/jpeg`, `image/png`, or `image/webp`. Max 2 MB |
 
-The API stores the file on disk and persists a generated key such as `splash/{guid}.jpg`. The client file name is never used in the path.
+The API stores the file on disk and persists a generated key such as `splash/{guid}.jpg`.
 
 Duplicate `internalName` → `409` `Cms.Splash.InternalNameAlreadyInUse`.
 
-Missing/empty file → `400` `Storage.File.Empty`.  
-Too large → `400` `Storage.File.TooLarge`.  
+Missing/empty file → `400` `Storage.File.Empty`.
+Too large → `400` `Storage.File.TooLarge`.
 Wrong type (for example GIF) → `400` `Storage.File.UnsupportedType`.
 
-Response includes `status`: `1` Draft, `2` Published. `id` is `{ "value": "<guid>" }`. `imagePath` in the response is the server key, not a laptop path.
-
 Public image URL:
-
 ```text
 {baseUrl}/files/{imagePath}
+```
 
-## Publish / unpublish
+---
+
+## 4. Update Splash Screen
+
+`PUT /api/v1/admin/splash-screens/{id}` → `200 OK`
+`Content-Type: multipart/form-data`
+`file` is optional. If provided, replaces the existing image on disk.
+
+---
+
+## 5. Publish / Unpublish
 
 ```text
-POST /api/v1/admin/splash-screens/{id}/publish     → 200
-POST /api/v1/admin/splash-screens/{id}/unpublish   → 200
+POST /api/v1/admin/splash-screens/{id}/publish     → 200 OK
+POST /api/v1/admin/splash-screens/{id}/unpublish   → 200 OK
 ```
 
 Idempotent at Domain level (already published / already draft is a no-op success).
 
-## Delete
+---
 
-`DELETE /api/v1/admin/splash-screens/{id}` → `204`  
-Hard delete. Missing id → `404`.
+## 6. Delete
 
-## Public read (no admin token)
+`DELETE /api/v1/admin/splash-screens/{id}` → `204 NoContent`
+Hard delete. Missing ID → `404` `Cms.Splash.NotFound`.
 
-Apps call `GET /api/v1/splash-screens`. See `docs/app/public/splash-screens.md`.
+---
 
-## Sequence
+## 7. Public Read (Anonymous Mobile App)
 
-```mermaid
-sequenceDiagram
-    participant Admin
-    participant API
-    participant App
-    Admin->>API: POST /api/v1/auth/login
-    API-->>Admin: accessToken (Normal, SuperAdmin)
-    Admin->>API: POST /api/v1/admin/splash-screens (multipart + file)
-    API-->>Admin: 201 Draft
-    Admin->>API: POST /api/v1/admin/splash-screens/{id}/publish
-    API-->>Admin: 200 Published
-    App->>API: GET /api/v1/splash-screens
-    API-->>App: 200 published list
-```
+Apps call anonymous `GET /api/v1/splash-screens` which returns only `Published` items without admin metadata. See `docs/app/public/splash-screens.md`.

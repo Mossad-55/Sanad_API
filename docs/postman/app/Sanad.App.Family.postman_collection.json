@@ -382,6 +382,40 @@
             "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}"
           },
           "description": "Deletes the families.elderlies row and photo file. The Elderly Identity user remains (can still log in by SMS OTP and can be re-added). Run last in the folder."
+        },
+        {
+          "name": "Get dependent medical profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{familyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-profile"
+          }
+        },
+        {
+          "name": "Update dependent medical profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{familyToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bloodType\": 1,\n  \"heightCm\": 170,\n  \"weightKg\": 75.5,\n  \"chronicConditions\": [\n    \"Diabetes Type 2\",\n    \"Hypertension\"\n  ],\n  \"allergies\": [\n    {\n      \"category\": 1,\n      \"allergen\": \"Penicillin\",\n      \"reaction\": \"Severe skin rash\"\n    }\n  ],\n  \"medicalHistory\": [\n    {\n      \"year\": 2018,\n      \"title\": \"Knee Arthroscopy\",\n      \"description\": \"Left knee procedure\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-profile"
+          }
         }
       ]
     },
