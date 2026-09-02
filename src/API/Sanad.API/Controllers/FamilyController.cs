@@ -496,4 +496,59 @@ public sealed class FamilyController :
 
         return ToActionResult(result);
     }
+
+    // -------------------------- Medical Profile -------------------------
+
+    [HttpGet("dependents/{dependentId:guid}/medical-profile")]
+    [ProducesResponseType(
+        typeof(ElderlyMedicalProfileResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMedicalProfile(
+        Guid dependentId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new GetElderlyMedicalProfileQuery(
+                    userId,
+                    new ElderlyId(dependentId)),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPut("dependents/{dependentId:guid}/medical-profile")]
+    [ProducesResponseType(
+        typeof(ElderlyMedicalProfileResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> UpdateMedicalProfile(
+        Guid dependentId,
+        [FromBody] UpdateElderlyMedicalProfileRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new UpdateElderlyMedicalProfileCommand(
+                    userId,
+                    new ElderlyId(dependentId),
+                    request.BloodType,
+                    request.HeightCm,
+                    request.WeightKg,
+                    request.ChronicConditions,
+                    request.Allergies,
+                    request.MedicalHistory),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
 }
