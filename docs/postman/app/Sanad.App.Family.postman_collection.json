@@ -14,7 +14,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/auth/register",
             "body": {
@@ -28,7 +31,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/auth/register",
             "body": {
@@ -43,7 +49,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/auth/login",
             "body": {
@@ -73,7 +82,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/auth/login",
             "body": {
@@ -101,7 +113,10 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/auth/verification/verify",
             "body": {
@@ -121,8 +136,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family",
             "body": {
@@ -150,7 +171,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family"
           }
@@ -160,8 +184,14 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/name",
             "body": {
@@ -180,20 +210,60 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/dependents",
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "arabicFullName", "value": "سعيد نصر", "type": "text" },
-                { "key": "englishFullName", "value": "Saeed Nasr", "type": "text" },
-                { "key": "phoneNumber", "value": "{{dependentPhone}}", "type": "text" },
-                { "key": "gender", "value": "1", "type": "text" },
-                { "key": "dateOfBirth", "value": "1948-07-20", "type": "text" },
-                { "key": "detailedAddress", "value": "12 Nile Street, Damanhur", "type": "text" },
-                { "key": "healthNotes", "value": "Diabetes type 2; metformin.", "type": "text" },
-                { "key": "photo", "type": "file", "src": [] }
+                {
+                  "key": "arabicFullName",
+                  "value": "سعيد نصر",
+                  "type": "text"
+                },
+                {
+                  "key": "englishFullName",
+                  "value": "Saeed Nasr",
+                  "type": "text"
+                },
+                {
+                  "key": "phoneNumber",
+                  "value": "{{dependentPhone}}",
+                  "type": "text"
+                },
+                {
+                  "key": "gender",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "relationshipType",
+                  "value": "7",
+                  "type": "text"
+                },
+                {
+                  "key": "dateOfBirth",
+                  "value": "1948-07-20",
+                  "type": "text"
+                },
+                {
+                  "key": "detailedAddress",
+                  "value": "12 Nile Street, Damanhur",
+                  "type": "text"
+                },
+                {
+                  "key": "healthNotes",
+                  "value": "Diabetes type 2; metformin.",
+                  "type": "text"
+                },
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": []
+                }
               ]
             }
           },
@@ -219,7 +289,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/dependents"
           }
@@ -229,7 +302,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}"
           }
@@ -239,13 +315,19 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"arabicFullName\": \"سعيد نصر\",\n  \"englishFullName\": \"Saeed Nasser\",\n  \"gender\": 1,\n  \"dateOfBirth\": \"1948-07-20\",\n  \"detailedAddress\": \"18 Corniche Road, Damanhur\",\n  \"healthNotes\": \"Diabetes; penicillin allergy.\"\n}"
+              "raw": "{\n  \"relationshipType\": 7,\n  \"arabicFullName\": \"سعيد نصر\",\n  \"englishFullName\": \"Saeed Nasser\",\n  \"gender\": 1,\n  \"dateOfBirth\": \"1948-07-20\",\n  \"detailedAddress\": \"18 Corniche Road, Damanhur\",\n  \"healthNotes\": \"Diabetes; penicillin allergy.\"\n}"
             }
           }
         },
@@ -254,13 +336,20 @@
           "request": {
             "method": "PUT",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/photo",
             "body": {
               "mode": "formdata",
               "formdata": [
-                { "key": "photo", "type": "file", "src": [] }
+                {
+                  "key": "photo",
+                  "type": "file",
+                  "src": []
+                }
               ]
             }
           },
@@ -271,7 +360,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/photo"
           },
@@ -282,7 +374,10 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}"
           },
@@ -298,8 +393,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/invitations",
             "body": {
@@ -331,7 +432,10 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ familyInviteeToken }}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyInviteeToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/invitations"
           },
@@ -342,8 +446,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{ familyInviteeToken }}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyInviteeToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/invitations/accept",
             "body": {
@@ -358,8 +468,14 @@
           "request": {
             "method": "POST",
             "header": [
-              { "key": "Content-Type", "value": "application/json" },
-              { "key": "Authorization", "value": "Bearer {{ familyInviteeToken }}" }
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyInviteeToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/invitations/decline",
             "body": {
@@ -373,7 +489,10 @@
           "request": {
             "method": "DELETE",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/family/invitations/{{invitationId}}"
           },

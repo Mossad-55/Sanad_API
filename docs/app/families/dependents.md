@@ -21,6 +21,7 @@ All routes require policy `FamilyAccess`. Permission matrix:
   "arabicFullName": "سعيد نصر",
   "englishFullName": "Saeed Nasr",
   "gender": 1,
+  "relationshipType": 7,
   "dateOfBirth": "1948-07-20",
   "hasPhoto": true,
   "detailedAddress": "12 Nile Street, Damanhur",
@@ -30,6 +31,7 @@ All routes require policy `FamilyAccess`. Permission matrix:
 ```
 
 - `gender`: `1` Male, `2` Female.
+- `relationshipType`: the dependent's relationship **to the family** (e.g. `7` Grandfather means the dependent is the family member's grandfather). Values: see the `relationshipType` table in `overview.md` (`1` Father, `2` Mother, `7` Grandfather, `8` Grandmother, `15` Spouse, `99` Other, …). Required on add and update.
 - `dateOfBirth`: `YYYY-MM-DD`, must not be in the future.
 - `detailedAddress`: optional, ≤ 500 characters.
 - `healthNotes`: optional, ≤ 2000 characters.
@@ -49,6 +51,7 @@ Content-Type: multipart/form-data
   englishFullName: Saeed Nasr
   phoneNumber: +201007654321
   gender: 1
+  relationshipType: 7
   dateOfBirth: 1948-07-20
   detailedAddress: 12 Nile Street, Damanhur     (optional)
   healthNotes: Diabetes type 2                   (optional)
@@ -58,7 +61,7 @@ Content-Type: multipart/form-data
 - `201` — `DependentResponse`.
 - `404 Families.Elderly.FamilyNotFound` — family not bootstrapped.
 - `403 Families.Elderly.AccessDenied` — Viewer role.
-- `400 Families.Elderly.InvalidProfile` — invalid name/phone/gender/date, or address/notes over their limits.
+- `400 Families.Elderly.InvalidProfile` — invalid name/phone/gender/relationshipType/date, or address/notes over their limits.
 - `409 Families.Elderly.PhoneBelongsToNonElderly` — the phone belongs to a family/caregiver/admin account.
 - `409 Families.Elderly.PhoneLinkedToAnotherFamily` — an elderly identity for this phone is already linked to a family.
 - `409 Identity.Elderly.PhoneAlreadyInUse` — identity-level phone conflict.
@@ -107,6 +110,7 @@ Authorization: Bearer {{familyToken}}
 Content-Type: application/json
 
 {
+  "relationshipType": 7,
   "arabicFullName": "سعيد نصر",
   "englishFullName": "Saeed Nasser",
   "gender": 1,
@@ -119,7 +123,7 @@ Content-Type: application/json
 - `200` — updated `DependentResponse`.
 - `404 Families.Elderly.NotFound` — not in this family.
 - `403 Families.Elderly.AccessDenied` — Viewer.
-- `400 Families.Elderly.InvalidProfile` — validation failure (including future date of birth).
+- `400 Families.Elderly.InvalidProfile` — validation failure (including invalid `relationshipType` or future date of birth).
 
 ## Remove a dependent
 
@@ -176,7 +180,7 @@ The stream is only ever returned to a member of the family that owns the depende
 
 | HTTP | code | When |
 |---|---|---|
-| 400 | `Families.Elderly.InvalidProfile` | Invalid field values / limits |
+| 400 | `Families.Elderly.InvalidProfile` | Invalid field values / limits (including invalid `relationshipType`) |
 | 400 | `Storage.File.Empty` / `TooLarge` / `UnsupportedType` | Photo problems |
 | 403 | `Families.Elderly.AccessDenied` | Viewer attempts a manage action |
 | 404 | `Families.Elderly.FamilyNotFound` | Family not bootstrapped |

@@ -77,6 +77,7 @@ public sealed class FamiliesDbContextModelTests
         Assert.NotNull(reloaded);
         Assert.Equal(elderly.IdentityUserId, reloaded!.IdentityUserId);
         Assert.Equal(family.Id, reloaded.FamilyId);
+        Assert.Equal(FamilyRelationshipType.Father, reloaded.RelationshipType);
         Assert.Equal("Diabetes", reloaded.HealthNotes);
         Assert.Equal("12 Nile Street", reloaded.DetailedAddress);
     }
