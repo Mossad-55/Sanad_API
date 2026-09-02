@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Domain.Elderlies.Events;
+using Sanad.Modules.Families.Domain.Elderlies.Medical;
 using Sanad.Modules.Families.Domain.Families;
 
 namespace Sanad.Modules.Families.Domain.Elderlies;
@@ -62,6 +63,7 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
     public string? ProfileImageKey { get; private set; }
     public string? DetailedAddress { get; private set; }
     public string? HealthNotes { get; private set; }
+    public ElderlyMedicalProfile? MedicalProfile { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
 
@@ -177,6 +179,15 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
             MaximumProfileImageKeyLength,
             "Profile image");
 
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void UpdateMedicalProfile(
+        ElderlyMedicalProfile medicalProfile)
+    {
+        ArgumentNullException.ThrowIfNull(medicalProfile);
+
+        MedicalProfile = medicalProfile;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
