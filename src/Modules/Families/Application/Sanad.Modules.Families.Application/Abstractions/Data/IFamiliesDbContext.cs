@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.Modules.Families.Domain.Assessments;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Invitations;
@@ -12,6 +13,12 @@ public interface IFamiliesDbContext
     DbSet<Elderly> Elderlies { get; }
 
     DbSet<FamilyInvitation> Invitations { get; }
+
+    DbSet<AssessmentQuestion> AssessmentQuestions { get; }
+
+    DbSet<AssessmentTier> AssessmentTiers { get; }
+
+    DbSet<CareAssessment> CareAssessments { get; }
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
