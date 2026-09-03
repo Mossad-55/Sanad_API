@@ -1,4 +1,6 @@
 using Sanad.BuildingBlocks.Domain.Enums;
+using Sanad.Modules.Families.Application.Elderlies;
+using Sanad.Modules.Families.Domain.Elderlies.Medical;
 using Sanad.Modules.Families.Domain.Families;
 
 namespace Sanad.API.Controllers.Requests;
@@ -40,3 +42,11 @@ public sealed record AcceptFamilyInvitationRequest(
 
 public sealed record DeclineFamilyInvitationRequest(
     string Token);
+
+public sealed record UpdateElderlyMedicalProfileRequest(
+    BloodType BloodType,
+    int? HeightCm,
+    decimal? WeightKg,
+    IReadOnlyList<string>? ChronicConditions,
+    IReadOnlyList<AllergyDto>? Allergies,
+    IReadOnlyList<MedicalHistoryDto>? MedicalHistory);

@@ -211,6 +211,64 @@ public sealed class SplashScreenHandlerTests
                 value.ArabicTitle);
     }
 
+    [Fact]
+    public async Task GetAll_ShouldReturnDraftAndPublishedSplashScreens_OrderedByDisplayOrder()
+    {
+        await using CmsDbContext dbContext = CreateDbContext();
+
+        var screen1 = SplashScreen.Create(
+            "screen-1",
+            "عربي 1",
+            "English 1",
+            "وصف 1",
+            "Desc 1",
+            "زر",
+            "Btn",
+            "splash/1.png",
+            "#111111",
+            2);
+
+        var screen2 = SplashScreen.Create(
+            "screen-2",
+            "عربي 2",
+            "English 2",
+            "وصف 2",
+            "Desc 2",
+            "زر",
+            "Btn",
+            "splash/2.png",
+            "#222222",
+            1);
+
+        screen1.Publish(); // Published
+        // screen2 stays Draft
+
+        dbContext.SplashScreens.AddRange(screen1, screen2);
+        await dbContext.SaveChangesAsync();
+
+        var handler = new GetAllSplashScreensQueryHandler(dbContext);
+        var result = await handler.Handle(new GetAllSplashScreensQuery(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Count);
+        Assert.Equal("screen-2", result.Value[0].InternalName); // DisplayOrder 1
+        Assert.Equal("screen-1", result.Value[1].InternalName); // DisplayOrder 2
+    }
+
+    [Fact]
+    public async Task GetById_ShouldReturnNotFound_WhenSplashScreenDoesNotExist()
+    {
+        await using CmsDbContext dbContext = CreateDbContext();
+
+        var handler = new GetSplashScreenByIdQueryHandler(dbContext);
+        var result = await handler.Handle(
+            new GetSplashScreenByIdQuery(SplashScreenId.New()),
+            CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Cms.Splash.NotFound", result.Error.Code);
+    }
+
     private static CreateSplashScreenCommand CreateCommand()
     {
         return new CreateSplashScreenCommand(

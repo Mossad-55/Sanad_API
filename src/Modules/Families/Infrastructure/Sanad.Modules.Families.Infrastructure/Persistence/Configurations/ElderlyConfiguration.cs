@@ -1,8 +1,11 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Domain.Elderlies;
+using Sanad.Modules.Families.Domain.Elderlies.Medical;
 
 namespace Sanad.Modules.Families.Infrastructure.Persistence.Configurations;
 
@@ -101,6 +104,86 @@ public sealed class ElderlyConfiguration :
         builder.HasIndex(elderly => elderly.FamilyId);
 
         builder.HasIndex(elderly => elderly.OwnerUserId);
+
+        builder.OwnsOne(
+            elderly => elderly.MedicalProfile,
+            profile =>
+            {
+                profile.ToTable("elderly_medical_profiles");
+
+                profile.WithOwner()
+                    .HasForeignKey("ElderlyId");
+
+                profile.Property<ElderlyId>("ElderlyId")
+                    .HasConversion(
+                        id => id.Value,
+                        value => new ElderlyId(value))
+                    .HasColumnName("elderly_id")
+                    .IsRequired();
+
+                profile.HasKey("ElderlyId");
+
+                profile.Property(p => p.BloodType)
+                    .HasColumnName("blood_type")
+                    .HasConversion<int>()
+                    .IsRequired();
+
+                profile.Property(p => p.HeightCm)
+                    .HasColumnName("height_cm");
+
+                profile.Property(p => p.WeightKg)
+                    .HasColumnName("weight_kg")
+                    .HasPrecision(5, 1);
+
+                profile.Property(p => p.UpdatedOnUtc)
+                    .HasColumnName("updated_on_utc")
+                    .IsRequired();
+
+                var stringListComparer = new ValueComparer<IReadOnlyList<string>>(
+                    (c1, c2) => (c1 == null && c2 == null) || (c1 != null && c2 != null && c1.SequenceEqual(c2)),
+                    c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                    c => c.ToList().AsReadOnly());
+
+                profile.Property(p => p.ChronicConditions)
+                    .HasConversion(
+                        v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                        v => JsonSerializer.Deserialize<List<string>>(v, (JsonSerializerOptions?)null) ?? new List<string>())
+                    .Metadata.SetValueComparer(stringListComparer);
+
+                profile.Property(p => p.ChronicConditions)
+                    .HasColumnName("chronic_conditions")
+                    .IsRequired();
+
+                var allergyListComparer = new ValueComparer<IReadOnlyList<AllergyEntry>>(
+                    (c1, c2) => (c1 == null && c2 == null) || (c1 != null && c2 != null && c1.SequenceEqual(c2)),
+                    c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                    c => c.ToList().AsReadOnly());
+
+                profile.Property(p => p.Allergies)
+                    .HasConversion(
+                        v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                        v => JsonSerializer.Deserialize<List<AllergyEntry>>(v, (JsonSerializerOptions?)null) ?? new List<AllergyEntry>())
+                    .Metadata.SetValueComparer(allergyListComparer);
+
+                profile.Property(p => p.Allergies)
+                    .HasColumnName("allergies")
+                    .IsRequired();
+
+                var historyListComparer = new ValueComparer<IReadOnlyList<MedicalHistoryEntry>>(
+                    (c1, c2) => (c1 == null && c2 == null) || (c1 != null && c2 != null && c1.SequenceEqual(c2)),
+                    c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
+                    c => c.ToList().AsReadOnly());
+
+                profile.Property(p => p.MedicalHistory)
+                    .HasConversion(
+                        v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                        v => JsonSerializer.Deserialize<List<MedicalHistoryEntry>>(v, (JsonSerializerOptions?)null) ?? new List<MedicalHistoryEntry>())
+                    .Metadata.SetValueComparer(historyListComparer);
+
+                profile.Property(p => p.MedicalHistory)
+                    .HasColumnName("medical_history")
+                    .IsRequired();
+            });
 
         builder.Ignore(elderly => elderly.DomainEvents);
     }

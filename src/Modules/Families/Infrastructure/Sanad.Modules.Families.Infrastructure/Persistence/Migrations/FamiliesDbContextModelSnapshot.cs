@@ -23,6 +23,41 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.Activities.ElderlyActivityLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("ActivityType")
+                        .HasColumnType("integer")
+                        .HasColumnName("activity_type");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<Guid>("ElderlyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("elderly_id");
+
+                    b.Property<string>("Summary")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("summary");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ElderlyId", "CreatedOnUtc");
+
+                    b.ToTable("elderly_activity_logs", "families");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Assessments.AssessmentQuestion", b =>
                 {
                     b.Property<Guid>("Id")
@@ -373,6 +408,202 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.ToTable("family_invitations", "families");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.Medications.Medication", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("Dosage")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("dosage");
+
+                    b.Property<int>("DoseQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("dose_quantity");
+
+                    b.PrimitiveCollection<TimeOnly[]>("DoseTimes")
+                        .IsRequired()
+                        .HasColumnType("time without time zone[]")
+                        .HasColumnName("dose_times");
+
+                    b.Property<string>("DoseUnit")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("dose_unit");
+
+                    b.Property<Guid>("ElderlyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("elderly_id");
+
+                    b.Property<DateOnly?>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<string>("Instructions")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("instructions");
+
+                    b.Property<int?>("LowStockThreshold")
+                        .HasColumnType("integer")
+                        .HasColumnName("low_stock_threshold");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<int?>("StockQuantity")
+                        .HasColumnType("integer")
+                        .HasColumnName("stock_quantity");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ElderlyId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("medications", "families");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.Medications.MedicationDoseLog", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<Guid>("ElderlyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("elderly_id");
+
+                    b.Property<Guid?>("LoggedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("logged_by_user_id");
+
+                    b.Property<Guid>("MedicationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("medication_id");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("notes");
+
+                    b.Property<DateOnly>("ScheduledDate")
+                        .HasColumnType("date")
+                        .HasColumnName("scheduled_date");
+
+                    b.Property<TimeOnly>("ScheduledTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("scheduled_time");
+
+                    b.Property<DateTime?>("SkippedAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("skipped_at_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime?>("TakenAtUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("taken_at_utc");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MedicationId");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("ElderlyId", "ScheduledDate");
+
+                    b.ToTable("medication_dose_logs", "families");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.Notes.ElderlyNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_user_id");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer")
+                        .HasColumnName("category");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<Guid>("ElderlyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("elderly_id");
+
+                    b.Property<int>("Priority")
+                        .HasColumnType("integer")
+                        .HasColumnName("priority");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("title");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedOnUtc");
+
+                    b.HasIndex("ElderlyId");
+
+                    b.ToTable("elderly_notes", "families");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Assessments.AssessmentQuestion", b =>
                 {
                     b.OwnsMany("Sanad.Modules.Families.Domain.Assessments.AssessmentOption", "Options", b1 =>
@@ -453,6 +684,57 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Answers");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.Elderlies.Elderly", b =>
+                {
+                    b.OwnsOne("Sanad.Modules.Families.Domain.Elderlies.Medical.ElderlyMedicalProfile", "MedicalProfile", b1 =>
+                        {
+                            b1.Property<Guid>("ElderlyId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("elderly_id");
+
+                            b1.Property<string>("Allergies")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("allergies");
+
+                            b1.Property<int>("BloodType")
+                                .HasColumnType("integer")
+                                .HasColumnName("blood_type");
+
+                            b1.Property<string>("ChronicConditions")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("chronic_conditions");
+
+                            b1.Property<int?>("HeightCm")
+                                .HasColumnType("integer")
+                                .HasColumnName("height_cm");
+
+                            b1.Property<string>("MedicalHistory")
+                                .IsRequired()
+                                .HasColumnType("text")
+                                .HasColumnName("medical_history");
+
+                            b1.Property<DateTime>("UpdatedOnUtc")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("updated_on_utc");
+
+                            b1.Property<decimal?>("WeightKg")
+                                .HasPrecision(5, 1)
+                                .HasColumnType("numeric(5,1)")
+                                .HasColumnName("weight_kg");
+
+                            b1.HasKey("ElderlyId");
+
+                            b1.ToTable("elderly_medical_profiles", "families");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ElderlyId");
+                        });
+
+                    b.Navigation("MedicalProfile");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Families.Family", b =>

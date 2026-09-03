@@ -7,7 +7,7 @@
   },
   "item": [
     {
-      "name": "0. Auth",
+      "name": "01. Auth",
       "item": [
         {
           "name": "Register (Family owner)",
@@ -129,7 +129,7 @@
       "description": "Register a Family owner (accountType 1) and a second Family user as invitee, verify OTPs if login returns accessType 2 (restricted), then login. The owner login captures familyToken; the invitee login captures familyInviteeToken."
     },
     {
-      "name": "1. Family profile",
+      "name": "02. Family Profile",
       "item": [
         {
           "name": "Bootstrap family (POST, optional name)",
@@ -203,7 +203,7 @@
       ]
     },
     {
-      "name": "2. Elderly dependents",
+      "name": "03. Elderly Dependents",
       "item": [
         {
           "name": "Add dependent (multipart, optional photo)",
@@ -386,7 +386,7 @@
       ]
     },
     {
-      "name": "3. Invitations",
+      "name": "04. Invitations",
       "item": [
         {
           "name": "Create invitation (Owner/Editor)",
@@ -502,7 +502,46 @@
       "description": "Invitations are by email to existing Family users. Token arrives via deep link sanad://family/invite?token=... (development: the development mail sink prints it to the API log)."
     },
     {
-      "name": "4. Care-Needs Assessment Quiz",
+      "name": "05. Medical Profile & Health",
+      "item": [
+        {
+          "name": "Get dependent medical profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{familyToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-profile"
+          }
+        },
+        {
+          "name": "Update dependent medical profile",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{familyToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bloodType\": 1,\n  \"heightCm\": 170,\n  \"weightKg\": 75.5,\n  \"chronicConditions\": [\n    \"Diabetes Type 2\",\n    \"Hypertension\"\n  ],\n  \"allergies\": [\n    {\n      \"category\": 1,\n      \"allergen\": \"Penicillin\",\n      \"reaction\": \"Severe skin rash\"\n    }\n  ],\n  \"medicalHistory\": [\n    {\n      \"year\": 2018,\n      \"title\": \"Knee Arthroscopy\",\n      \"description\": \"Left knee procedure\"\n    }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-profile"
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Care-Needs Assessment Quiz",
       "item": [
         {
           "name": "Get active assessment questions",
@@ -564,6 +603,659 @@
               "raw": "{\n  \"elderlyId\": null,\n  \"answers\": [\n    {\n      \"questionId\": \"{{assessmentQuestionId}}\",\n      \"selectedOptionId\": \"00000000-0000-0000-0000-000000000000\"\n    }\n  ]\n}"
             },
             "url": "{{baseUrl}}/api/v1/family/assessment"
+          }
+        }
+      ]
+    },
+    {
+      "name": "07. Medications & Stock Inventory",
+      "item": [
+        {
+          "name": "Add medication (with stock & schedule)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.environment.set(\"medicationId\", json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"أوميجا 3 (Omega 3)\",\n  \"dosage\": \"1000 ملغ\",\n  \"doseUnit\": \"كبسولة\",\n  \"doseQuantity\": 1,\n  \"doseTimes\": [\n    \"08:00\",\n    \"20:00\"\n  ],\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-12-31\",\n  \"instructions\": \"كبسولة بعد الأكل مع كوب ماء\",\n  \"stockQuantity\": 60,\n  \"lowStockThreshold\": 10\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List medications for dependent",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get medication details by id",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications",
+                "{{medicationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update medication details",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"أوميجا 3 بلس\",\n  \"dosage\": \"1000 ملغ\",\n  \"doseUnit\": \"كبسولة\",\n  \"doseQuantity\": 1,\n  \"doseTimes\": [\n    \"09:00\",\n    \"21:00\"\n  ],\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-12-31\",\n  \"instructions\": \"بعد الإفطار والعشاء\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications",
+                "{{medicationId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update stock inventory & low-stock threshold",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stockQuantity\": 90,\n  \"lowStockThreshold\": 15\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}/stock",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications",
+                "{{medicationId}}",
+                "stock"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Pause medication schedule",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}/pause",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications",
+                "{{medicationId}}",
+                "pause"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Resume medication schedule",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}/resume",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications",
+                "{{medicationId}}",
+                "resume"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Discontinue medication",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}/discontinue",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications",
+                "{{medicationId}}",
+                "discontinue"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Daily Schedule & Dashboard",
+      "item": [
+        {
+          "name": "Get daily medication dashboard (today timeline & low stock alerts)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/dashboard?date=2026-09-03",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications",
+                "dashboard"
+              ],
+              "query": [
+                {
+                  "key": "date",
+                  "value": "2026-09-03",
+                  "description": "Optional date YYYY-MM-DD"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Dose Logging & Adherence Actions",
+      "item": [
+        {
+          "name": "Record dose taken (auto-decrements stock)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scheduledDate\": \"2026-09-03\",\n  \"scheduledTime\": \"08:00:00\",\n  \"notes\": \"تم تناول الجرعة بعد وجبة الإفطار\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}/doses/take",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications",
+                "{{medicationId}}",
+                "doses",
+                "take"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Record dose skipped (with reason)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scheduledDate\": \"2026-09-03\",\n  \"scheduledTime\": \"20:00:00\",\n  \"reason\": \"المريض كان نائماً\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}/doses/skip",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications",
+                "{{medicationId}}",
+                "doses",
+                "skip"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "10. Elderly Care Notes",
+      "item": [
+        {
+          "name": "Add care note",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.environment.set(\"noteId\", json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"انخفاض الشهية اليوم\",\n  \"description\": \"لاحظت انخفاضاً في تناول الطعام أثناء وجبة الغداء.\",\n  \"category\": 1,\n  \"priority\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "notes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List care notes for dependent",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/notes?category=1&priority=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "notes"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "priority",
+                  "value": "2",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update care note",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"انخفاض الشهية اليوم (محدّث)\",\n  \"description\": \"تحسنت الشهية في وجبة العشاء.\",\n  \"category\": 1,\n  \"priority\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/notes/{{noteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "notes",
+                "{{noteId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete care note",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/notes/{{noteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "notes",
+                "{{noteId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Elderly Activity Access Log",
+      "item": [
+        {
+          "name": "Get activity access timeline & summary metrics (Owner only)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/activities?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
           }
         }
       ]

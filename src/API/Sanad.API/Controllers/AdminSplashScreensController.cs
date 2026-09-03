@@ -182,6 +182,35 @@ public sealed class AdminSplashScreensController :
             result);
     }
 
+    [HttpGet]
+    [ProducesResponseType(
+    typeof(IReadOnlyList<SplashScreenResponse>),
+    StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListAll(
+    CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new GetAllSplashScreensQuery(),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpGet("{id:guid}")]
+    [ProducesResponseType(
+        typeof(SplashScreenResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetById(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new GetSplashScreenByIdQuery(new SplashScreenId(id)),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
     private async Task<Result<StoredFile>> SaveSplashImageAsync(
         IFormFile? file,
         CancellationToken cancellationToken)

@@ -6,7 +6,7 @@
   },
   "item": [
     {
-      "name": "Splash",
+      "name": "01. Splash Screens",
       "item": [
         {
           "name": "Get published splash screens",
@@ -20,7 +20,7 @@
       ]
     },
     {
-      "name": "Lookups",
+      "name": "02. Public Lookups",
       "item": [
         {
           "name": "Get active services",
@@ -126,6 +126,24 @@
             "header": [],
             "url": "{{baseUrl}}/api/v1/lookups/academic-degrees",
             "description": "Anonymous. Active Medical academic degrees."
+          }
+        },
+        {
+          "name": "Get note categories & priorities lookup",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/lookups/note-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lookups",
+                "note-categories"
+              ]
+            }
           }
         }
       ]
