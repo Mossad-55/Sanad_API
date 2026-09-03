@@ -127,6 +127,24 @@
             "url": "{{baseUrl}}/api/v1/lookups/academic-degrees",
             "description": "Anonymous. Active Medical academic degrees."
           }
+        },
+        {
+          "name": "Get note categories & priorities lookup",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/lookups/note-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lookups",
+                "note-categories"
+              ]
+            }
+          }
         }
       ]
     }

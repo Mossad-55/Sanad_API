@@ -1042,6 +1042,223 @@
           }
         }
       ]
+    },
+    {
+      "name": "10. Elderly Care Notes",
+      "item": [
+        {
+          "name": "Add care note",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "var json = pm.response.json();",
+                  "if (json.id) {",
+                  "    pm.environment.set(\"noteId\", json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"انخفاض الشهية اليوم\",\n  \"description\": \"لاحظت انخفاضاً في تناول الطعام أثناء وجبة الغداء.\",\n  \"category\": 1,\n  \"priority\": 2\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/notes",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "notes"
+              ]
+            }
+          }
+        },
+        {
+          "name": "List care notes for dependent",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/notes?category=1&priority=2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "notes"
+              ],
+              "query": [
+                {
+                  "key": "category",
+                  "value": "1",
+                  "disabled": true
+                },
+                {
+                  "key": "priority",
+                  "value": "2",
+                  "disabled": true
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Update care note",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"انخفاض الشهية اليوم (محدّث)\",\n  \"description\": \"تحسنت الشهية في وجبة العشاء.\",\n  \"category\": 1,\n  \"priority\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/notes/{{noteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "notes",
+                "{{noteId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Delete care note",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/notes/{{noteId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "notes",
+                "{{noteId}}"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "11. Elderly Activity Access Log",
+      "item": [
+        {
+          "name": "Get activity access timeline & summary metrics (Owner only)",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/activities?limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "activities"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   ]
 }

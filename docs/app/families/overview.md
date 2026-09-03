@@ -60,6 +60,7 @@ Removing a dependent **hard-deletes** the Families row and the photo file. The E
 | Add/list/get/update/remove dependents, photos | `docs/app/families/dependents.md` |
 | Dependent medical profile (chronic, allergies, history) | `docs/app/families/medical-profile.md` |
 | Elderly medications, stock inventory & daily dose schedule | `docs/app/families/medications.md` |
+| Care notes, observations & activity access timeline | `docs/app/families/notes-and-activities.md` |
 | Invitations by email, deep link, accept/decline/revoke | `docs/app/families/invitations.md` |
 | Postman | `docs/postman/app/Sanad.App.Family.postman_collection.json` |
 

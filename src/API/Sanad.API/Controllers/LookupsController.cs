@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Lookups;
+using Sanad.Modules.Families.Application.Notes;
 
 namespace Sanad.API.Controllers;
 
@@ -121,4 +122,18 @@ public sealed class LookupsController :
         ToActionResult(await _sender.Send(
             new GetActiveAcademicDegreesQuery(),
             cancellationToken));
+
+    [HttpGet("note-categories")]
+    [ProducesResponseType(
+        typeof(NoteLookupsResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetNoteCategories(
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(
+            new GetNoteLookupsQuery(),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
 }
