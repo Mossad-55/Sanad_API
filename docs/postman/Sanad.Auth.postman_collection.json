@@ -6,13 +6,18 @@
   },
   "item": [
     {
-      "name": "Registration",
+      "name": "01. Registration",
       "item": [
         {
           "name": "Register",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/register",
             "description": "Anonymous. Family=1, MedicalCaregiver=2, CompanionCaregiver=3. Elderly=4 is rejected.",
             "body": {
@@ -23,11 +28,19 @@
           "response": [
             {
               "name": "201 Created",
-              "originalRequest": { "method": "POST", "url": "{{baseUrl}}/api/v1/auth/register" },
+              "originalRequest": {
+                "method": "POST",
+                "url": "{{baseUrl}}/api/v1/auth/register"
+              },
               "status": "Created",
               "code": 201,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"emailVerificationRequestId\": \"018f0000-0000-7000-8000-000000000002\",\n  \"phoneVerificationRequestId\": \"018f0000-0000-7000-8000-000000000003\"\n}"
             },
             {
@@ -35,7 +48,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/register\",\n  \"code\": \"Identity.Registration.UnsupportedAccountType\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -43,7 +61,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Validation Failed\",\n  \"status\": 400,\n  \"detail\": \"One or more validation errors occurred.\",\n  \"instance\": \"/api/v1/auth/register\",\n  \"code\": \"Api.Validation.Failed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\",\n  \"errors\": {\n    \"PhoneNumber\": [\"Phone number must use E.164 format.\"],\n    \"Password\": [\"Password must contain at least one uppercase letter.\"]\n  }\n}"
             },
             {
@@ -51,7 +74,12 @@
               "status": "Conflict",
               "code": 409,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/auth/register\",\n  \"code\": \"Identity.Registration.EmailAlreadyInUse\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -59,7 +87,12 @@
               "status": "Conflict",
               "code": 409,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/auth/register\",\n  \"code\": \"Identity.Registration.PhoneAlreadyInUse\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
@@ -67,13 +100,18 @@
       ]
     },
     {
-      "name": "Verification",
+      "name": "02. Verification",
       "item": [
         {
           "name": "Verify OTP",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/verification/verify",
             "description": "Anonymous. Code must be exactly six ASCII digits. Response property is attemptesRemaining.",
             "body": {
@@ -87,7 +125,12 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"emailVerified\": true,\n  \"phoneVerified\": false,\n  \"normalAccessAllowed\": false,\n  \"attemptesRemaining\": 4\n}"
             },
             {
@@ -95,7 +138,12 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"emailVerified\": true,\n  \"phoneVerified\": true,\n  \"normalAccessAllowed\": true,\n  \"attemptesRemaining\": 5\n}"
             },
             {
@@ -103,7 +151,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/verification/verify\",\n  \"code\": \"Identity.Verification.RequestNotPending\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -111,7 +164,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/verification/verify\",\n  \"code\": \"Identity.Verification.UnsupportedPurpose\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -119,7 +177,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Validation Failed\",\n  \"status\": 400,\n  \"detail\": \"One or more validation errors occurred.\",\n  \"instance\": \"/api/v1/auth/verification/verify\",\n  \"code\": \"Api.Validation.Failed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\",\n  \"errors\": {\n    \"Code\": [\"Verification code must contain exactly six ASCII digits.\"]\n  }\n}"
             },
             {
@@ -127,7 +190,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/verification/verify\",\n  \"code\": \"Identity.Verification.RequestNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -135,7 +203,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/verification/verify\",\n  \"code\": \"Identity.Verification.RequestExpired\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -143,7 +216,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/verification/verify\",\n  \"code\": \"Identity.Verification.InvalidCode\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -151,7 +229,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/verification/verify\",\n  \"code\": \"Identity.Verification.UserNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
@@ -160,7 +243,12 @@
           "name": "Resend OTP",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/verification/resend",
             "description": "Anonymous. 60-second cooldown. Use the new request ID to verify.",
             "body": {
@@ -174,7 +262,12 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"verificationRequestId\": \"018f0000-0000-7000-8000-000000000004\",\n  \"expiresOnUtc\": \"2026-08-25T12:05:00Z\"\n}"
             },
             {
@@ -182,7 +275,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/verification/resend\",\n  \"code\": \"Identity.Verification.ResendRequestNotPending\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -190,7 +288,12 @@
               "status": "Not Found",
               "code": 404,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/auth/verification/resend\",\n  \"code\": \"Identity.Verification.ResendRequestNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -198,7 +301,12 @@
               "status": "Conflict",
               "code": 409,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/auth/verification/resend\",\n  \"code\": \"Identity.Verification.RequestSuperseded\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -206,7 +314,12 @@
               "status": "Conflict",
               "code": 409,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/auth/verification/resend\",\n  \"code\": \"Identity.Verification.ResendCooldownActive\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
@@ -214,13 +327,18 @@
       ]
     },
     {
-      "name": "Email password login",
+      "name": "03. Email & Password Login",
       "item": [
         {
           "name": "Login",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/login",
             "description": "Anonymous. Email only. accessType JSON is 1=Normal, 2=RestrictedVerification.",
             "body": {
@@ -234,7 +352,12 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"accessType\": 1,\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example\",\n  \"accessTokenExpiresOnUtc\": \"2026-08-25T12:15:00Z\",\n  \"refreshToken\": \"opaque-refresh-token\",\n  \"refreshTokenExpiresOnUtc\": \"2026-09-24T12:00:00Z\",\n  \"deviceSessionId\": \"018f0000-0000-7000-8000-000000000010\",\n  \"emailVerified\": true,\n  \"phoneVerified\": true\n}"
             },
             {
@@ -242,7 +365,12 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"accessType\": 2,\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example\",\n  \"accessTokenExpiresOnUtc\": \"2026-08-25T12:15:00Z\",\n  \"refreshToken\": null,\n  \"refreshTokenExpiresOnUtc\": null,\n  \"deviceSessionId\": null,\n  \"emailVerified\": true,\n  \"phoneVerified\": false\n}"
             },
             {
@@ -250,7 +378,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/login\",\n  \"code\": \"Identity.Login.InvalidCredentials\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -258,7 +391,12 @@
               "status": "Forbidden",
               "code": 403,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/auth/login\",\n  \"code\": \"Identity.Login.UserSuspended\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -266,7 +404,12 @@
               "status": "Forbidden",
               "code": 403,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/auth/login\",\n  \"code\": \"Identity.Login.UserBlocked\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -274,7 +417,12 @@
               "status": "Conflict",
               "code": 409,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/auth/login\",\n  \"code\": \"Identity.Login.SessionLimitReached\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
@@ -282,13 +430,18 @@
       ]
     },
     {
-      "name": "Refresh",
+      "name": "05. Token Refresh",
       "item": [
         {
           "name": "Refresh",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/refresh",
             "description": "Anonymous. Send deviceSessionId + current refresh token. Reuse revokes every session.",
             "body": {
@@ -302,7 +455,12 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"deviceSessionId\": \"018f0000-0000-7000-8000-000000000010\",\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example\",\n  \"accessTokenExpiresOnUtc\": \"2026-08-25T12:15:00Z\",\n  \"refreshToken\": \"new-opaque-refresh-token\",\n  \"refreshTokenExpiresOnUtc\": \"2026-09-24T12:00:00Z\"\n}"
             },
             {
@@ -310,7 +468,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/refresh\",\n  \"code\": \"Identity.Refresh.SessionNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -318,7 +481,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/refresh\",\n  \"code\": \"Identity.Refresh.SessionRevoked\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -326,7 +494,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/refresh\",\n  \"code\": \"Identity.Refresh.SessionExpired\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -334,7 +507,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/refresh\",\n  \"code\": \"Identity.Refresh.UserNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -342,7 +520,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/refresh\",\n  \"code\": \"Identity.Refresh.ReuseDetected\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -350,7 +533,12 @@
               "status": "Forbidden",
               "code": 403,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/auth/refresh\",\n  \"code\": \"Identity.Refresh.UserNotActive\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
@@ -358,13 +546,18 @@
       ]
     },
     {
-      "name": "Elderly SMS login",
+      "name": "04. Elderly SMS Login",
       "item": [
         {
           "name": "Request Elderly OTP",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/elderly/request-otp",
             "description": "Anonymous. Always 204 for unknown, ineligible, and eligible phones.",
             "body": {
@@ -385,7 +578,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Validation Failed\",\n  \"status\": 400,\n  \"detail\": \"One or more validation errors occurred.\",\n  \"instance\": \"/api/v1/auth/elderly/request-otp\",\n  \"code\": \"Api.Validation.Failed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\",\n  \"errors\": {\n    \"PhoneNumber\": [\"Phone number must use E.164 format.\"]\n  }\n}"
             }
           ]
@@ -394,7 +592,12 @@
           "name": "Verify Elderly OTP",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/elderly/verify-otp",
             "description": "Anonymous. Invalid/unknown/expired use one generic 401.",
             "body": {
@@ -408,7 +611,12 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000021\",\n  \"accessType\": 1,\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example\",\n  \"accessTokenExpiresOnUtc\": \"2026-08-25T12:15:00Z\",\n  \"refreshToken\": \"opaque-refresh-token\",\n  \"refreshTokenExpiresOnUtc\": \"2026-09-24T12:00:00Z\",\n  \"deviceSessionId\": \"018f0000-0000-7000-8000-000000000022\",\n  \"emailVerified\": false,\n  \"phoneVerified\": true\n}"
             },
             {
@@ -416,7 +624,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Validation Failed\",\n  \"status\": 400,\n  \"detail\": \"One or more validation errors occurred.\",\n  \"instance\": \"/api/v1/auth/elderly/verify-otp\",\n  \"code\": \"Api.Validation.Failed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\",\n  \"errors\": {\n    \"Code\": [\"Verification code must contain exactly six ASCII digits.\"]\n  }\n}"
             },
             {
@@ -424,7 +637,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/elderly/verify-otp\",\n  \"code\": \"Identity.ElderlyLogin.OtpVerificationFailed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -432,7 +650,12 @@
               "status": "Conflict",
               "code": 409,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/auth/elderly/verify-otp\",\n  \"code\": \"Identity.ElderlyLogin.SessionLimitReached\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
@@ -440,13 +663,18 @@
       ]
     },
     {
-      "name": "Password",
+      "name": "06. Password Management",
       "item": [
         {
           "name": "Request Password Reset",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/password/reset/request",
             "description": "Anonymous. Always 204. Does not reveal whether the email exists.",
             "body": {
@@ -467,7 +695,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Validation Failed\",\n  \"status\": 400,\n  \"detail\": \"One or more validation errors occurred.\",\n  \"instance\": \"/api/v1/auth/password/reset/request\",\n  \"code\": \"Api.Validation.Failed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\",\n  \"errors\": {\n    \"Email\": [\"'Email' is not a valid email address.\"]\n  }\n}"
             }
           ]
@@ -476,7 +709,12 @@
           "name": "Reset Password",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/password/reset",
             "description": "Anonymous. Success revokes every DeviceSession.",
             "body": {
@@ -497,7 +735,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/password/reset\",\n  \"code\": \"Identity.Password.UserHasNoPassword\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -505,7 +748,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/password/reset\",\n  \"code\": \"Identity.Password.NewPasswordMustDiffer\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -513,7 +761,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/password/reset\",\n  \"code\": \"Identity.Password.UserNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -521,7 +774,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/password/reset\",\n  \"code\": \"Identity.Password.OtpVerificationFailed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -529,7 +787,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/password/reset\",\n  \"code\": \"Identity.Password.PendingRequestNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -537,7 +800,12 @@
               "status": "Forbidden",
               "code": 403,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/auth/password/reset\",\n  \"code\": \"Identity.Password.UserNotActive\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
@@ -545,9 +813,23 @@
         {
           "name": "Change Password",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/password/change",
             "description": "Requires Normal JWT. Restricted token gets framework 403.",
             "body": {
@@ -568,7 +850,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/password/change\",\n  \"code\": \"Identity.Password.NewPasswordMustDiffer\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -576,7 +863,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"title\": \"Unauthorized\",\n  \"status\": 401\n}"
             },
             {
@@ -584,7 +876,12 @@
               "status": "Unauthorized",
               "code": 401,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/password/change\",\n  \"code\": \"Identity.Password.InvalidCurrentPassword\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -592,7 +889,12 @@
               "status": "Forbidden",
               "code": 403,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"title\": \"Forbidden\",\n  \"status\": 403\n}"
             },
             {
@@ -600,7 +902,12 @@
               "status": "Not Found",
               "code": 404,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/auth/password/change\",\n  \"code\": \"Identity.Password.UserNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
@@ -608,12 +915,21 @@
       ]
     },
     {
-      "name": "Sessions",
+      "name": "07. Device Sessions",
       "item": [
         {
           "name": "List Sessions",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/auth/sessions",
             "description": "Requires Normal JWT. Returns non-revoked, non-expired sessions only."
@@ -624,7 +940,12 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"sessions\": [\n    {\n      \"deviceSessionId\": \"018f0000-0000-7000-8000-000000000010\",\n      \"deviceName\": \"Postman\",\n      \"platform\": 3,\n      \"appVersion\": \"1.0.0\",\n      \"createdOnUtc\": \"2026-08-25T11:00:00Z\",\n      \"expiresOnUtc\": \"2026-09-24T11:00:00Z\",\n      \"lastRotatedOnUtc\": null\n    }\n  ]\n}"
             },
             {
@@ -632,7 +953,12 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"sessions\": []\n}"
             },
             {
@@ -654,9 +980,23 @@
         {
           "name": "Logout Current Session",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
-            "header": [{ "key": "X-Device-Session-Id", "value": "{{deviceSessionId}}" }],
+            "header": [
+              {
+                "key": "X-Device-Session-Id",
+                "value": "{{deviceSessionId}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/auth/sessions/logout",
             "description": "Requires Normal JWT and X-Device-Session-Id."
           },
@@ -673,7 +1013,12 @@
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/sessions/logout\",\n  \"code\": \"Api.Auth.InvalidDeviceSessionHeader\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -695,7 +1040,12 @@
               "status": "Not Found",
               "code": 404,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/auth/sessions/logout\",\n  \"code\": \"Identity.Sessions.SessionNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
@@ -703,7 +1053,16 @@
         {
           "name": "Logout All Sessions",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
             "url": "{{baseUrl}}/api/v1/auth/sessions/logout-all"
           },
@@ -734,7 +1093,12 @@
               "status": "Not Found",
               "code": 404,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/auth/sessions/logout-all\",\n  \"code\": \"Identity.Sessions.UserNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
@@ -742,7 +1106,16 @@
         {
           "name": "Revoke Session",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "DELETE",
             "url": "{{baseUrl}}/api/v1/auth/sessions/{{deviceSessionId}}",
             "description": "Requires Normal JWT. Foreign sessions return 404, not 403."
@@ -774,7 +1147,12 @@
               "status": "Not Found",
               "code": 404,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/auth/sessions/018f0000-0000-7000-8000-000000000099\",\n  \"code\": \"Identity.Sessions.SessionNotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             },
             {
@@ -782,7 +1160,12 @@
               "status": "Not Found",
               "code": 404,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/problem+json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
               "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/auth/sessions/018f0000-0000-7000-8000-000000000099\",\n  \"code\": \"Identity.Sessions.SessionNotOwned\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]

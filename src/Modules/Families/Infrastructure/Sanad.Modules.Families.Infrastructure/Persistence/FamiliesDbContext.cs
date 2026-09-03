@@ -4,6 +4,7 @@ using Sanad.Modules.Families.Domain.Assessments;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Invitations;
+using Sanad.Modules.Families.Domain.Medications;
 
 namespace Sanad.Modules.Families.Infrastructure.Persistence;
 
@@ -25,6 +26,8 @@ public sealed class FamiliesDbContext :
     public DbSet<AssessmentQuestion> AssessmentQuestions => Set<AssessmentQuestion>();
     public DbSet<AssessmentTier> AssessmentTiers => Set<AssessmentTier>();
     public DbSet<CareAssessment> CareAssessments => Set<CareAssessment>();
+    public DbSet<Medication> Medications => Set<Medication>();
+    public DbSet<MedicationDoseLog> MedicationDoseLogs => Set<MedicationDoseLog>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

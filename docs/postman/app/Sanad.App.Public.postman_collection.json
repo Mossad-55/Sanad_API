@@ -6,7 +6,7 @@
   },
   "item": [
     {
-      "name": "Splash",
+      "name": "01. Splash Screens",
       "item": [
         {
           "name": "Get published splash screens",
@@ -20,7 +20,7 @@
       ]
     },
     {
-      "name": "Lookups",
+      "name": "02. Public Lookups",
       "item": [
         {
           "name": "Get active services",

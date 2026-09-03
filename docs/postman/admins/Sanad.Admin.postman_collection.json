@@ -6,7 +6,7 @@
   },
   "item": [
     {
-      "name": "Auth",
+      "name": "01. Auth",
       "item": [
         {
           "name": "Login Super Admin",
@@ -44,7 +44,7 @@
       ]
     },
     {
-      "name": "Splash screens",
+      "name": "02. Splash Screens CMS",
       "item": [
         {
           "name": "Create splash screen",
@@ -201,7 +201,7 @@
       ]
     },
     {
-      "name": "Lookups — services",
+      "name": "05. Lookups — Services",
       "item": [
         {
           "name": "List all services (admin)",
@@ -324,7 +324,7 @@
       ]
     },
     {
-      "name": "Lookups — languages & governorates",
+      "name": "06. Lookups — Languages & Governorates",
       "item": [
         {
           "name": "List all languages (admin)",
@@ -519,7 +519,7 @@
       ]
     },
     {
-      "name": "Lookups — cities & areas",
+      "name": "07. Lookups — Cities & Areas",
       "item": [
         {
           "name": "List cities of governorate (admin)",
@@ -750,7 +750,7 @@
       ]
     },
     {
-      "name": "Lookups — specializations, titles & degrees",
+      "name": "08. Lookups — Specializations, Titles & Degrees",
       "item": [
         {
           "name": "List all specializations (admin)",
@@ -1040,7 +1040,7 @@
       ]
     },
     {
-      "name": "Caregiver review",
+      "name": "03. Caregiver Review & Verification",
       "item": [
         {
           "name": "List caregivers (paged)",
@@ -1282,7 +1282,7 @@
       "description": "caregiverId/certificateId are captured by the Caregiver onboarding collection. Review order: verify certificates, then approve (or request correction/reject). Suspend/reactivate apply to Active/Suspended caregivers. File download is the only access path to certificate scans."
     },
     {
-      "name": "Assessment Quiz Management",
+      "name": "04. Care Assessment CMS",
       "item": [
         {
           "name": "Create question",
