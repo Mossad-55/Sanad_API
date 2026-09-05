@@ -26,7 +26,6 @@ public sealed record CreateBookingCheckoutRequest(
 
 public sealed record CreatePaymentIntentRequest(
     PaymentMethod Method,
-    string? WalletNumber,
     PaymobBillingData Billing);
 
 public sealed record CancelBookingRequest(
@@ -157,7 +156,6 @@ public sealed class FamilyBookingsController : ApiControllerBase
             new BookingId(bookingId),
             userId,
             request.Method,
-            request.WalletNumber,
             request.Billing,
             _dateTimeProvider.UtcNow);
 

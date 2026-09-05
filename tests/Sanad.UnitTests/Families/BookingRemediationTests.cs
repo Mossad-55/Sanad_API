@@ -75,7 +75,11 @@ public sealed class BookingRemediationTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Result<PaymobPaymentIntent>.Success(
-                new PaymobPaymentIntent($"dev-{Guid.NewGuid():N}", null, null)));
+                new PaymobPaymentIntent(
+                    input.BookingId.Value.ToString(),
+                    $"dev-intention-{Guid.NewGuid():N}",
+                    $"dev-secret-{Guid.NewGuid():N}",
+                    "pk_dev")));
         }
 
         public Task<Result<string?>> RefundPaymentAsync(

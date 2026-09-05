@@ -134,7 +134,7 @@ public sealed class BookingPaymentWebhookTests
 
         var handler = new ConfirmBookingPaymentCommandHandler(
             dbContext,
-            new FakePaymobClient(new PaymobPaymentIntent("PM-ORDER-1", null, null)));
+            new FakePaymobClient(new PaymobPaymentIntent("PM-ORDER-1", "pi_1", "dev-secret", "pk_dev")));
 
         var result = await handler.Handle(
             new ConfirmBookingPaymentCommand("PM-ORDER-1", 999888, 57500, true, false, DateTime.UtcNow),
@@ -162,7 +162,7 @@ public sealed class BookingPaymentWebhookTests
 
         var handler = new ConfirmBookingPaymentCommandHandler(
             dbContext,
-            new FakePaymobClient(new PaymobPaymentIntent("PM-ORDER-2", null, null)));
+            new FakePaymobClient(new PaymobPaymentIntent("PM-ORDER-2", "pi_2", "dev-secret", "pk_dev")));
 
         var first = await handler.Handle(
             new ConfirmBookingPaymentCommand("PM-ORDER-2", 111111, 57500, true, false, DateTime.UtcNow),
@@ -174,7 +174,7 @@ public sealed class BookingPaymentWebhookTests
 
         Assert.Equal("Paid", first.Value.Outcome);
         Assert.Equal("AlreadyProcessed", second.Value.Outcome);
-        Assert.Single(dbContext.Bookings.Single().PaymentTransactions);
+        Assert.Single(dbContext.Bookings.Single().PaymentTransactions, t => t.PaymobOrderId == "PM-ORDER-2");
     }
 
     [Fact]
@@ -188,7 +188,7 @@ public sealed class BookingPaymentWebhookTests
 
         var handler = new ConfirmBookingPaymentCommandHandler(
             dbContext,
-            new FakePaymobClient(new PaymobPaymentIntent("PM-ORDER-3", null, null)));
+            new FakePaymobClient(new PaymobPaymentIntent("PM-ORDER-3", "pi_3", "dev-secret", "pk_dev")));
 
         var result = await handler.Handle(
             new ConfirmBookingPaymentCommand("PM-ORDER-3", 999888, 999999, true, false, DateTime.UtcNow),
@@ -210,7 +210,7 @@ public sealed class BookingPaymentWebhookTests
 
         var handler = new ConfirmBookingPaymentCommandHandler(
             dbContext,
-            new FakePaymobClient(new PaymobPaymentIntent("PM-ORDER-4", null, "https://wallet")));
+            new FakePaymobClient(new PaymobPaymentIntent("PM-ORDER-4", "pi_4", "dev-secret", "pk_dev")));
 
         var result = await handler.Handle(
             new ConfirmBookingPaymentCommand("PM-ORDER-4", 444444, 57500, false, false, DateTime.UtcNow),
@@ -258,7 +258,7 @@ public sealed class BookingPaymentWebhookTests
         var handler = new ConfirmBookingPaymentCommandHandler(
             dbContext,
             new FakePaymobClient(
-                new PaymobPaymentIntent("PM-ORDER-5", null, null),
+                new PaymobPaymentIntent("PM-ORDER-5", "pi_5", "dev-secret", "pk_dev"),
                 refundId: "dev-refund-99"));
 
         var result = await handler.Handle(

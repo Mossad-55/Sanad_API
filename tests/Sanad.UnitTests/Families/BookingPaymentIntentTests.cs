@@ -119,46 +119,56 @@ public sealed class BookingPaymentIntentTests
     private static CreateBookingPaymentIntentCommand IntentCommand(
         Family family,
         Booking booking,
-        PaymentMethod method,
-        string? walletNumber = null)
+        PaymentMethod method)
     {
         return new CreateBookingPaymentIntentCommand(
             booking.Id,
             family.OwnerUserId,
             method,
-            walletNumber,
             ValidBilling(),
             DateTime.UtcNow);
     }
+
+    private static PaymobBillingData ValidBilling()
+    {
+        return new PaymobBillingData(
+            "Ahmed",
+            "Ali",
+            "ahmed@example.com",
+            "+201012345678");
+    }
+
     [Fact]
-    public async Task Intent_ShouldRecordTransaction_AndReturnGatewayPayload()
+    public async Task Intent_ShouldRecordTransaction_AndReturnSdkHandoff()
     {
         var (dbContext, family, elderly) = SeedFamily();
         var (_, booking) = await CheckoutAsync(dbContext, family, elderly);
 
-        var expectedIntent = new PaymobPaymentIntent(
-            "PM-ORDER-9",
-            "https://accept.paymob.com/api/acceptance/iframes/123?payment_token=abc",
-            null);
+        // The dev client echoes the booking id as the Paymob order id —
+        // the same contract as the real intention flow (special_reference).
+        string expectedOrderId = booking.Id.Value.ToString();
 
         var handler = new CreateBookingPaymentIntentCommandHandler(
             dbContext,
-            new FakePaymobClient(expectedIntent, null));
+            new FakePaymobClient(
+                new PaymobPaymentIntent(expectedOrderId, "pi_test_1", "egy_csk_test_abc", "pk_test_abc"),
+                null));
 
         var result = await handler.Handle(
             IntentCommand(family, booking, PaymentMethod.Card),
             CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal("PM-ORDER-9", result.Value.PaymobOrderId);
-        Assert.Equal(expectedIntent.IframeUrl, result.Value.IframeUrl);
+        Assert.Equal(expectedOrderId, result.Value.PaymobOrderId);
+        Assert.Equal("egy_csk_test_abc", result.Value.ClientSecret);
+        Assert.Equal("pk_test_abc", result.Value.PublicKey);
         Assert.Equal(575m, result.Value.Amount);
         Assert.Equal("EGP", result.Value.Currency);
 
         var transaction = Assert.Single(booking.PaymentTransactions);
         Assert.Equal(PaymentTransactionStatus.Pending, transaction.Status);
         Assert.Equal(PaymentMethod.Card, transaction.Method);
-        Assert.Equal("PM-ORDER-9", transaction.PaymobOrderId);
+        Assert.Equal(expectedOrderId, transaction.PaymobOrderId);
         Assert.Equal(575m, transaction.Amount);
     }
 
@@ -168,12 +178,17 @@ public sealed class BookingPaymentIntentTests
         var (dbContext, family, elderly) = SeedFamily();
         var (_, booking) = await CheckoutAsync(dbContext, family, elderly);
 
-        booking.MarkAsPaid("PM-ORDER-1", "PM-TXN-1", DateTime.UtcNow);
+        booking.MarkAsPaid(booking.Id.Value.ToString(), "PM-TXN-1", DateTime.UtcNow);
+        dbContext.SaveChanges();
 
         var handler = new CreateBookingPaymentIntentCommandHandler(
             dbContext,
             new FakePaymobClient(
-                new PaymobPaymentIntent("PM-ORDER-2", null, null),
+                new PaymobPaymentIntent(
+                    booking.Id.Value.ToString(),
+                    "pi_test_2",
+                    "egy_csk_test_abc",
+                    "pk_test_abc"),
                 null));
 
         var result = await handler.Handle(
@@ -193,20 +208,23 @@ public sealed class BookingPaymentIntentTests
         dbContext.Families.Add(attackerFamily);
         dbContext.SaveChanges();
 
-        var (response, booking) = await CheckoutAsync(dbContext, family, elderly);
+        var (_, booking) = await CheckoutAsync(dbContext, family, elderly);
 
         var command = new CreateBookingPaymentIntentCommand(
-            new BookingId(response.BookingId),
+            booking.Id,
             attackerFamily.OwnerUserId,
             PaymentMethod.Card,
-            null,
             new PaymobBillingData("Ali", "Hassan", "ali@example.com", "+201098765432"),
             DateTime.UtcNow);
 
         var handler = new CreateBookingPaymentIntentCommandHandler(
             dbContext,
             new FakePaymobClient(
-                new PaymobPaymentIntent("PM-ORDER-3", null, null),
+                new PaymobPaymentIntent(
+                    booking.Id.Value.ToString(),
+                    "pi_test_3",
+                    "egy_csk_test_abc",
+                    "pk_test_abc"),
                 null));
 
         var result = await handler.Handle(command, CancellationToken.None);
@@ -228,7 +246,7 @@ public sealed class BookingPaymentIntentTests
                 new Error("Paymob.MethodNotAvailable", "The selected payment method is not available.")));
 
         var result = await handler.Handle(
-            IntentCommand(family, booking, PaymentMethod.Wallet, "201012345678"),
+            IntentCommand(family, booking, PaymentMethod.Wallet),
             CancellationToken.None);
 
         Assert.False(result.IsSuccess);
@@ -237,47 +255,36 @@ public sealed class BookingPaymentIntentTests
     }
 
     [Fact]
-    public async Task Validator_ShouldRequireWalletNumber_ForWalletMethod()
+    public async Task Validator_ShouldAcceptAnyDefinedMethod()
     {
         var validator = new CreateBookingPaymentIntentCommandValidator();
 
-        var walletWithoutNumber = new CreateBookingPaymentIntentCommand(
+        // Wallet no longer needs a number inside the command — the SDK collects it.
+        var wallet = new CreateBookingPaymentIntentCommand(
             BookingId.New(),
             UserId.New(),
             PaymentMethod.Wallet,
-            null,
             ValidBilling(),
             DateTime.UtcNow);
 
-        Assert.False((await validator.ValidateAsync(walletWithoutNumber)).IsValid);
+        Assert.True((await validator.ValidateAsync(wallet)).IsValid);
 
-        var walletWithNumber = new CreateBookingPaymentIntentCommand(
+        var undefinedMethod = new CreateBookingPaymentIntentCommand(
             BookingId.New(),
             UserId.New(),
-            PaymentMethod.Wallet,
-            "201012345678",
+            (PaymentMethod)99,
             ValidBilling(),
             DateTime.UtcNow);
 
-        Assert.True((await validator.ValidateAsync(walletWithNumber)).IsValid);
+        Assert.False((await validator.ValidateAsync(undefinedMethod)).IsValid);
 
-        var cardWithNumber = new CreateBookingPaymentIntentCommand(
+        var missingBilling = new CreateBookingPaymentIntentCommand(
             BookingId.New(),
             UserId.New(),
             PaymentMethod.Card,
-            "201012345678",
-            ValidBilling(),
+            new PaymobBillingData("", "Ali", "not-an-email", "123"),
             DateTime.UtcNow);
 
-        Assert.False((await validator.ValidateAsync(cardWithNumber)).IsValid);
-    }
-
-    private static PaymobBillingData ValidBilling()
-    {
-        return new PaymobBillingData(
-            "Ahmed",
-            "Ali",
-            "ahmed@example.com",
-            "+201012345678");
+        Assert.False((await validator.ValidateAsync(missingBilling)).IsValid);
     }
 }

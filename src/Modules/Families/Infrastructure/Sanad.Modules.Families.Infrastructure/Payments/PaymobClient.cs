@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
@@ -12,10 +13,6 @@ public sealed class PaymobClient : IPaymobClient
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly PaymobOptions _options;
 
-    private readonly object _tokenLock = new();
-    private string? _authToken;
-    private DateTime _tokenAcquiredAtUtc;
-
     public PaymobClient(
         IHttpClientFactory httpClientFactory,
         IOptions<PaymobOptions> options)
@@ -28,7 +25,7 @@ public sealed class PaymobClient : IPaymobClient
         PaymobPaymentIntentInput input,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_options.ApiKey))
+        if (string.IsNullOrWhiteSpace(_options.SecretKey))
         {
             return Result<PaymobPaymentIntent>.Failure(
                 new Error("Paymob.NotConfigured", "The payment gateway is not configured."));
@@ -38,7 +35,6 @@ public sealed class PaymobClient : IPaymobClient
         {
             PaymentMethod.Card => _options.CardIntegrationId,
             PaymentMethod.Wallet => _options.WalletIntegrationId,
-            PaymentMethod.ApplePay => _options.ApplePayIntegrationId,
             _ => null
         };
 
@@ -52,32 +48,27 @@ public sealed class PaymobClient : IPaymobClient
         {
             HttpClient httpClient = _httpClientFactory.CreateClient("Paymob");
 
-            string authToken = await GetAuthTokenAsync(httpClient, cancellationToken);
-
             long amountCents = ToCents(input.Amount);
 
-            var orderPayload = new
+            // special_reference is returned in transaction callbacks as merchant_order_id,
+            // so it MUST be the booking id — that is the key the webhook confirms with.
+            string specialReference = input.BookingId.Value.ToString();
+
+            var payload = new
             {
-                auth_token = authToken,
-                delivery_needed = false,
-                amount_cents = amountCents,
+                amount = amountCents,
                 currency = input.Currency,
-                merchant_order_id = input.BookingId.Value.ToString(),
-                items = Array.Empty<object>()
-            };
-
-            using JsonDocument order = await PostJsonAsync(
-                httpClient, "/ecommerce/orders", orderPayload, cancellationToken);
-
-            long paymobOrderId = order.RootElement.GetProperty("id").GetInt64();
-
-            var paymentKeyPayload = new
-            {
-                auth_token = authToken,
-                amount_cents = amountCents,
-                currency = input.Currency,
-                order_id = paymobOrderId,
-                integration_id = long.Parse(integrationId),
+                payment_methods = new[] { long.Parse(integrationId) },
+                items = new[]
+                {
+                    new
+                    {
+                        name = "Care booking",
+                        amount = amountCents,
+                        description = "Sanad Care booking",
+                        quantity = 1
+                    }
+                },
                 billing_data = new
                 {
                     first_name = input.Billing.FirstName,
@@ -92,62 +83,43 @@ public sealed class PaymobClient : IPaymobClient
                     state = "NA",
                     country = "EG",
                     postal_code = "NA"
-                }
+                },
+                special_reference = specialReference,
+                expiration = 3600,
+                notification_url = string.IsNullOrWhiteSpace(_options.WebhookUrl)
+                    ? null
+                    : _options.WebhookUrl
             };
 
-            using JsonDocument paymentKey = await PostJsonAsync(
-                httpClient, "/acceptance/payment_keys", paymentKeyPayload, cancellationToken);
+            using HttpRequestMessage request = new(HttpMethod.Post, $"{_options.BaseUrl}/v1/intention/");
+            request.Headers.TryAddWithoutValidation("Authorization", $"Token {_options.SecretKey}");
+            request.Content = JsonContent.Create(payload);
 
-            string paymentKeyToken =
-                paymentKey.RootElement.GetProperty("token").GetString() ?? string.Empty;
+            using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+            string body = await response.Content.ReadAsStringAsync(cancellationToken);
 
-            if (input.Method == PaymentMethod.Wallet)
-            {
-                var walletPayload = new
-                {
-                    source = new
-                    {
-                        identifier = input.WalletNumber,
-                        subtype = "WALLET"
-                    },
-                    payment_token = paymentKeyToken
-                };
-
-                using JsonDocument wallet = await PostJsonAsync(
-                    httpClient, "/acceptance/payments/pay", walletPayload, cancellationToken);
-
-                string? redirectUrl = wallet.RootElement.TryGetProperty("redirect_url", out JsonElement url)
-                    ? url.GetString()
-                    : null;
-
-                return Result<PaymobPaymentIntent>.Success(
-                    new PaymobPaymentIntent(
-                        paymobOrderId.ToString(),
-                        null,
-                        redirectUrl));
-            }
-
-            if (input.Method == PaymentMethod.ApplePay)
+            if (!response.IsSuccessStatusCode)
             {
                 return Result<PaymobPaymentIntent>.Failure(
-                    new Error("Paymob.MethodNotAvailable", "Apple Pay is not enabled yet."));
+                    new Error("Paymob.GatewayError",
+                        $"Paymob intention request failed with status {(int)response.StatusCode}."));
             }
 
-            string iframeUrl =
-                $"{_options.BaseUrl}/acceptance/iframes/{_options.IframeId}?payment_token={paymentKeyToken}";
+            using JsonDocument document = JsonDocument.Parse(body);
+
+            string clientSecret =
+                document.RootElement.GetProperty("client_secret").GetString() ?? string.Empty;
+            string intentionOrderId =
+                document.RootElement.GetProperty("intention_order_id").GetRawText();
 
             return Result<PaymobPaymentIntent>.Success(
                 new PaymobPaymentIntent(
-                    paymobOrderId.ToString(),
-                    iframeUrl,
-                    null));
+                    specialReference,
+                    intentionOrderId,
+                    clientSecret,
+                    _options.PublicKey));
         }
-        catch (PaymobHttpException exception)
-        {
-            return Result<PaymobPaymentIntent>.Failure(
-                new Error("Paymob.GatewayError", exception.Message));
-        }
-        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+        catch (Exception exception) when (exception is JsonException or HttpRequestException)
         {
             return Result<PaymobPaymentIntent>.Failure(
                 new Error("Paymob.GatewayError", "Unexpected payment gateway response."));
@@ -159,7 +131,7 @@ public sealed class PaymobClient : IPaymobClient
         decimal amount,
         CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_options.ApiKey))
+        if (string.IsNullOrWhiteSpace(_options.SecretKey))
         {
             return Result<string?>.Failure(
                 new Error("Paymob.NotConfigured", "The payment gateway is not configured."));
@@ -169,102 +141,48 @@ public sealed class PaymobClient : IPaymobClient
         {
             HttpClient httpClient = _httpClientFactory.CreateClient("Paymob");
 
-            string authToken = await GetAuthTokenAsync(httpClient, cancellationToken);
-
-            var refundPayload = new
+            var payload = new
             {
-                auth_token = authToken,
-                amount_cents = ToCents(amount)
+                transaction_id = paymobTransactionId,
+                amount_cents = ToCents(amount).ToString()
             };
 
-            using JsonDocument response = await PostJsonAsync(
-                httpClient,
-                $"/acceptance/payments/{paymobTransactionId}/refund",
-                refundPayload,
-                cancellationToken);
+            using HttpRequestMessage request = new(
+                HttpMethod.Post,
+                $"{_options.BaseUrl}/api/acceptance/void_refund/refund");
+            request.Headers.TryAddWithoutValidation("Authorization", $"Token {_options.SecretKey}");
+            request.Content = new StringContent(
+                JsonSerializer.Serialize(payload),
+                Encoding.UTF8,
+                "application/json");
 
-            string? refundTransactionId = response.RootElement.TryGetProperty("id", out JsonElement id)
+            using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+            string body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Result<string?>.Failure(
+                    new Error("Paymob.GatewayError",
+                        $"Paymob refund request failed with status {(int)response.StatusCode}."));
+            }
+
+            using JsonDocument document = JsonDocument.Parse(body);
+
+            string? refundTransactionId = document.RootElement.TryGetProperty("id", out JsonElement id)
                 ? id.GetRawText()
                 : null;
 
             return Result<string?>.Success(refundTransactionId);
         }
-        catch (PaymobHttpException exception)
-        {
-            return Result<string?>.Failure(
-                new Error("Paymob.GatewayError", exception.Message));
-        }
-        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+        catch (Exception exception) when (exception is JsonException or HttpRequestException)
         {
             return Result<string?>.Failure(
                 new Error("Paymob.GatewayError", "Unexpected payment gateway response."));
         }
     }
 
-    private async Task<string> GetAuthTokenAsync(
-        HttpClient httpClient,
-        CancellationToken cancellationToken)
-    {
-        lock (_tokenLock)
-        {
-            if (_authToken is not null
-                && DateTime.UtcNow - _tokenAcquiredAtUtc < TimeSpan.FromMinutes(55))
-            {
-                return _authToken;
-            }
-        }
-
-        using JsonDocument response = await PostJsonAsync(
-            httpClient,
-            "/auth/tokens",
-            new { api_key = _options.ApiKey },
-            cancellationToken);
-
-        string token = response.RootElement.GetProperty("token").GetString() ?? string.Empty;
-
-        lock (_tokenLock)
-        {
-            _authToken = token;
-            _tokenAcquiredAtUtc = DateTime.UtcNow;
-        }
-
-        return token;
-    }
-
-    private static async Task<JsonDocument> PostJsonAsync(
-        HttpClient httpClient,
-        string path,
-        object payload,
-        CancellationToken cancellationToken)
-    {
-        using HttpResponseMessage response = await httpClient.PostAsync(
-            path,
-            new StringContent(
-                JsonSerializer.Serialize(payload),
-                Encoding.UTF8,
-                "application/json"),
-            cancellationToken);
-
-        string body = await response.Content.ReadAsStringAsync(cancellationToken);
-
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new PaymobHttpException(
-                $"Paymob request to '{path}' failed with status {(int)response.StatusCode}.");
-        }
-
-        return JsonDocument.Parse(body);
-    }
-
     private static long ToCents(decimal amount)
     {
         return (long)decimal.Round(amount * 100m, 0, MidpointRounding.ToEven);
-    }
-
-    private sealed class PaymobHttpException : Exception
-    {
-        public PaymobHttpException(string message) : base(message)
-        {
-        }
     }
 }

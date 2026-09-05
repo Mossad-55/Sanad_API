@@ -13,15 +13,15 @@ public sealed record PaymobBillingData(
 public sealed record PaymobPaymentIntentInput(
     BookingId BookingId,
     PaymentMethod Method,
-    string? WalletNumber,
     decimal Amount,
     string Currency,
     PaymobBillingData Billing);
 
 public sealed record PaymobPaymentIntent(
     string PaymobOrderId,
-    string? IframeUrl,
-    string? WalletRedirectUrl);
+    string IntentionOrderId,
+    string ClientSecret,
+    string PublicKey);
 
 public interface IPaymobClient
 {

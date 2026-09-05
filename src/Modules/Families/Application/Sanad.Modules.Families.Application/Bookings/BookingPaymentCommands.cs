@@ -15,14 +15,13 @@ public sealed record BookingPaymentIntentResponse(
     string PaymobOrderId,
     decimal Amount,
     string Currency,
-    string? IframeUrl,
-    string? WalletRedirectUrl);
+    string ClientSecret,
+    string PublicKey);
 
 public sealed record CreateBookingPaymentIntentCommand(
     BookingId BookingId,
     UserId UserId,
     PaymentMethod Method,
-    string? WalletNumber,
     PaymobBillingData Billing,
     DateTime UtcNow) : ICommand<BookingPaymentIntentResponse>;
 
@@ -32,16 +31,6 @@ public sealed class CreateBookingPaymentIntentCommandValidator : AbstractValidat
     {
         RuleFor(c => c.Method)
             .IsInEnum();
-
-        RuleFor(c => c.WalletNumber)
-            .NotEmpty()
-            .Matches(@"^\d{10,15}$")
-            .When(c => c.Method == PaymentMethod.Wallet)
-            .WithMessage("A wallet phone number of 10-15 digits is required.");
-
-        RuleFor(c => c.WalletNumber)
-            .Null()
-            .When(c => c.Method != PaymentMethod.Wallet);
 
         RuleFor(c => c.Billing.FirstName)
             .NotEmpty()
@@ -111,7 +100,6 @@ public sealed class CreateBookingPaymentIntentCommandHandler
             new PaymobPaymentIntentInput(
                 booking.Id,
                 request.Method,
-                request.WalletNumber,
                 booking.PriceSnapshot.TotalPayableAmount,
                 booking.PriceSnapshot.Currency,
                 request.Billing),
@@ -123,7 +111,9 @@ public sealed class CreateBookingPaymentIntentCommandHandler
         }
 
         // Best-effort compensation: if recording fails after the gateway call,
-        // the orphaned Paymob order is settled by ops (no charge without a payment key usage).
+        // the orphaned Paymob intention expires unused (expiration = 3600).
+        // PaymobOrderId is the booking id string: the exact key the webhook
+        // returns as merchant_order_id when confirming the payment.
         booking.RecordPaymentIntent(
             intent.Value.PaymobOrderId,
             request.Method,
@@ -137,8 +127,8 @@ public sealed class CreateBookingPaymentIntentCommandHandler
                 intent.Value.PaymobOrderId,
                 booking.PriceSnapshot.TotalPayableAmount,
                 booking.PriceSnapshot.Currency,
-                intent.Value.IframeUrl,
-                intent.Value.WalletRedirectUrl));
+                intent.Value.ClientSecret,
+                intent.Value.PublicKey));
     }
 }
 

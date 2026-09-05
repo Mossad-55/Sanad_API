@@ -11,9 +11,10 @@ public sealed class DevelopmentPaymobClient : IPaymobClient
     {
         return Task.FromResult(Result<PaymobPaymentIntent>.Success(
             new PaymobPaymentIntent(
-                $"dev-{Guid.NewGuid():N}",
-                null,
-                null)));
+                input.BookingId.Value.ToString(),
+                $"dev-intention-{Guid.NewGuid():N}",
+                $"dev-secret-{Guid.NewGuid():N}",
+                "pk_dev")));
     }
 
     public Task<Result<string?>> RefundPaymentAsync(

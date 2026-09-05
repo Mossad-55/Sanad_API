@@ -46,15 +46,11 @@ public static class DependencyInjection
         services.Configure<PaymobOptions>(
             configuration.GetSection(PaymobOptions.SectionName));
 
-        string? paymobApiKey = configuration.GetSection(PaymobOptions.SectionName)["ApiKey"];
+        string? paymobSecretKey = configuration.GetSection(PaymobOptions.SectionName)["SecretKey"];
 
-        if (string.IsNullOrWhiteSpace(paymobApiKey))
+        if (string.IsNullOrWhiteSpace(paymobSecretKey))
         {
             services.AddSingleton<IPaymobClient, DevelopmentPaymobClient>();
-        }
-        else
-        {
-            services.AddSingleton<IPaymobClient, PaymobClient>();
         }
 
         return services;
