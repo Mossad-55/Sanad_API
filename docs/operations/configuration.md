@@ -65,6 +65,23 @@ Enabled when `Username`, `Password`, and `Sender` are set.
 - Template set → `POST /api/OTP/`
 - Test senders usually have no template. Leave `Template` unset.
 
+## Optional Paymob (online payments)
+
+Enabled when `SecretKey` is set. Otherwise `DevelopmentPaymobClient` serves payment intents with dev orders (`dev-…` / instant fake refunds) — no real gateway calls.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `Paymob__BaseUrl` | `https://accept.paymob.com` | API host. Must **not** end in `/api` — the client appends `/v1/intention/` and `/api/acceptance/...` itself. |
+| `Paymob__SecretKey` | | Dashboard secret key (`sk_test_…` / `sk_live_…`); authorises intention and refund calls (`Authorization: Token …`). |
+| `Paymob__PublicKey` | | Dashboard public key (`pk_…`); handed to the mobile SDK together with the intent `clientSecret`. |
+| `Paymob__HmacSecret` | | HMAC-SHA512 secret verifying webhook callbacks; if unset the webhook endpoint answers `503`. |
+| `Paymob__CardIntegrationId` | | Card integration id (Dashboard → Developers → Payment Integrations). |
+| `Paymob__WalletIntegrationId` | | Mobile-wallet integration id (Vodafone/Etisalat/Orange). |
+| `Paymob__WebhookUrl` | | Public webhook URL; sent as the intention `notification_url` and must also be registered on each integration's *transaction processed callback* in the dashboard. |
+
+- Test-mode secret keys only pair with test-mode integration ids — mixing modes fails with `404 Integration ID/Name does not exist`.
+- See `docs/app/families/bookings.md` for the payment flow and `POST /api/v1/payments/webhooks/paymob` for the callback contract.
+
 ## Runtime selection
 
 | Config | Sender |
@@ -73,6 +90,8 @@ Enabled when `Username`, `Password`, and `Sender` are set.
 | SMTP configured | `SmtpEmailSender` |
 | SMS Misr not configured | `DevelopmentSmsSender` |
 | SMS Misr configured | `SmsMisrSmsSender` |
+| Paymob not configured | `DevelopmentPaymobClient` |
+| Paymob configured | `PaymobClient` |
 
 ## Example
 

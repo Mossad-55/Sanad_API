@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Families.Domain.Activities;
 using Sanad.Modules.Families.Domain.Assessments;
+using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Invitations;
@@ -14,6 +15,7 @@ public interface IFamiliesDbContext
     DbSet<Family> Families { get; }
     DbSet<Elderly> Elderlies { get; }
     DbSet<FamilyInvitation> Invitations { get; }
+    DbSet<Booking> Bookings { get; }
     DbSet<AssessmentQuestion> AssessmentQuestions { get; }
     DbSet<AssessmentTier> AssessmentTiers { get; }
     DbSet<CareAssessment> CareAssessments { get; }

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Activities;
 using Sanad.Modules.Families.Domain.Assessments;
+using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Invitations;
@@ -25,6 +26,7 @@ public sealed class FamiliesDbContext :
     public DbSet<Family> Families => Set<Family>();
     public DbSet<Elderly> Elderlies => Set<Elderly>();
     public DbSet<FamilyInvitation> Invitations => Set<FamilyInvitation>();
+    public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<AssessmentQuestion> AssessmentQuestions => Set<AssessmentQuestion>();
     public DbSet<AssessmentTier> AssessmentTiers => Set<AssessmentTier>();
     public DbSet<CareAssessment> CareAssessments => Set<CareAssessment>();

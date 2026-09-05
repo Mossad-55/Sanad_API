@@ -512,6 +512,88 @@
         }
       ],
       "description": "After submit, an admin verifies certificates and approves in the Admin collection > Caregiver review."
+    },
+    {
+      "name": "07. Booking Actions",
+      "item": [
+        {
+          "name": "Accept booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/accept"
+          },
+          "description": "Only from PendingCaregiverApproval and before the acceptance deadline."
+        },
+        {
+          "name": "Decline booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/decline",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"عدم توفر الموعد\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Start visit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/start"
+          }
+        },
+        {
+          "name": "Complete visit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/complete",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caregiverNotes\": \"الحالة العامة جيدة، تم إعطاء الدواء في موعده.\"\n}"
+            }
+          }
+        }
+      ]
     }
   ]
 }

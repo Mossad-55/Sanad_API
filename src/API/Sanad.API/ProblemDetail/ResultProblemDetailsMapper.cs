@@ -115,6 +115,22 @@ public static class ResultProblemDetailsMapper
             ["Families.Assessment.InvalidTier"] = 409,
             ["Families.Assessment.InvalidSubmission"] = 409,
 
+            ["Bookings.FamilyNotFound"] = 404,
+            ["Bookings.UnauthorizedRole"] = 403,
+            ["Bookings.ElderlyNotFound"] = 404,
+            ["Bookings.ScheduleConflict"] = 409,
+            ["Bookings.NotFound"] = 404,
+            ["Bookings.BookingNotInFamily"] = 404,
+            ["Bookings.Domain.InvalidOperation"] = 409,
+            ["Bookings.PriceUnavailable"] = 409,
+
+            ["Caregivers.Discovery.CaregiverNotFound"] = 404,
+            ["Caregivers.Discovery.QuoteNotAvailable"] = 409,
+
+            ["Paymob.NotConfigured"] = 503,
+            ["Paymob.MethodNotAvailable"] = 409,
+            ["Paymob.GatewayError"] = 502,
+
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,
             ["Storage.File.UnsupportedType"] = 400,

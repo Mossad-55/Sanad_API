@@ -1,4 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Domain.Enums;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Caregivers.Application.Discovery;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
@@ -29,6 +32,34 @@ public interface ICaregiversDbContext
         int? type,
         CancellationToken cancellationToken = default);
 
+    // Dynamic Search Method querying caregivers and joining identity.users
+    Task<(IReadOnlyList<CaregiverSearchCardResponse> Items, int TotalCount)> SearchActiveCaregiversAsync(
+        string? search,
+        int? type,
+        int? gender,
+        Guid? areaId,
+        Guid? specializationId,
+        int? availability,
+        decimal? minPrice,
+        decimal? maxPrice,
+        decimal? minRating,
+        int? minExperienceYears,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
+
+    // Dynamic User Header Method querying identity.users
+    Task<CaregiverUserHeader?> GetCaregiverUserHeaderAsync(
+        UserId userId,
+        CancellationToken cancellationToken = default);
+
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }
+
+public sealed record CaregiverUserHeader(
+    Guid UserId,
+    string ArabicFullName,
+    string EnglishFullName,
+    Gender? Gender,
+    string? AvatarUrl);

@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.Modules.Families.Application.Abstractions.Payments;
+using Sanad.Modules.Families.Infrastructure.Payments;
 
 namespace Sanad.Modules.Families.Infrastructure;
 
@@ -38,6 +40,18 @@ public static class DependencyInjection
             serviceProvider =>
                 serviceProvider.GetRequiredService<
                     FamiliesDbContext>());
+
+        services.AddHttpClient();
+
+        services.Configure<PaymobOptions>(
+            configuration.GetSection(PaymobOptions.SectionName));
+
+        string? paymobSecretKey = configuration.GetSection(PaymobOptions.SectionName)["SecretKey"];
+
+        if (string.IsNullOrWhiteSpace(paymobSecretKey))
+        {
+            services.AddSingleton<IPaymobClient, DevelopmentPaymobClient>();
+        }
 
         return services;
     }

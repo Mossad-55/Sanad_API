@@ -233,6 +233,141 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.ToTable("care_assessments", "families");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.Bookings.Booking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("AcceptanceDeadlineUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("acceptance_deadline_utc");
+
+                    b.Property<DateOnly>("BookingDate")
+                        .HasColumnType("date")
+                        .HasColumnName("booking_date");
+
+                    b.Property<string>("CancellationReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cancellation_reason");
+
+                    b.Property<DateTime?>("CancelledOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_on_utc");
+
+                    b.Property<Guid>("CaregiverId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caregiver_id");
+
+                    b.Property<string>("CaregiverNotes")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("caregiver_notes");
+
+                    b.Property<int>("CaregiverType")
+                        .HasColumnType("integer")
+                        .HasColumnName("caregiver_type");
+
+                    b.Property<DateTime?>("CompletedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_on_utc");
+
+                    b.Property<DateTime?>("ConfirmedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("confirmed_on_utc");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<Guid>("ElderlyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("elderly_id");
+
+                    b.Property<TimeOnly>("EndTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("end_time");
+
+                    b.Property<DateTime?>("ExpiredOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("expired_on_utc");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<DateTime?>("PaidOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("paid_on_utc");
+
+                    b.Property<string>("PaymobOrderId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("paymob_order_id");
+
+                    b.Property<string>("PaymobRefundTransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("paymob_refund_transaction_id");
+
+                    b.Property<string>("PaymobTransactionId")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("paymob_transaction_id");
+
+                    b.Property<DateTime?>("RefundedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refunded_on_utc");
+
+                    b.Property<string>("ServiceAddress")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("service_address");
+
+                    b.Property<int>("ShiftType")
+                        .HasColumnType("integer")
+                        .HasColumnName("shift_type");
+
+                    b.Property<string>("SpecialInstructions")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("special_instructions");
+
+                    b.Property<TimeOnly>("StartTime")
+                        .HasColumnType("time without time zone")
+                        .HasColumnName("start_time");
+
+                    b.Property<DateTime?>("StartedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("started_on_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CaregiverId");
+
+                    b.HasIndex("ElderlyId");
+
+                    b.HasIndex("FamilyId");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("bookings", "families");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Elderlies.Elderly", b =>
                 {
                     b.Property<Guid>("Id")
@@ -684,6 +819,121 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Answers");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.Bookings.Booking", b =>
+                {
+                    b.OwnsOne("Sanad.BuildingBlocks.Domain.ValueObjects.BookingPriceSnapshot", "PriceSnapshot", b1 =>
+                        {
+                            b1.Property<Guid>("BookingId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("BaseCaregiverFee")
+                                .HasPrecision(12, 2)
+                                .HasColumnType("numeric(12,2)")
+                                .HasColumnName("price_base_fee");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(10)
+                                .HasColumnType("character varying(10)")
+                                .HasColumnName("price_currency");
+
+                            b1.Property<decimal>("PlatformFeeAmount")
+                                .HasPrecision(12, 2)
+                                .HasColumnType("numeric(12,2)")
+                                .HasColumnName("price_platform_fee_amount");
+
+                            b1.Property<decimal>("PlatformFeePercentage")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("numeric(5,2)")
+                                .HasColumnName("price_platform_fee_percentage");
+
+                            b1.Property<decimal>("TotalPayableAmount")
+                                .HasPrecision(12, 2)
+                                .HasColumnType("numeric(12,2)")
+                                .HasColumnName("price_total_payable_amount");
+
+                            b1.HasKey("BookingId");
+
+                            b1.ToTable("bookings", "families");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BookingId");
+                        });
+
+                    b.OwnsMany("Sanad.Modules.Families.Domain.Bookings.PaymentTransaction", "PaymentTransactions", b1 =>
+                        {
+                            b1.Property<Guid>("BookingId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("booking_id");
+
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<decimal>("Amount")
+                                .HasPrecision(12, 2)
+                                .HasColumnType("numeric(12,2)")
+                                .HasColumnName("amount");
+
+                            b1.Property<DateTime>("CreatedOnUtc")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("created_on_utc");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(10)
+                                .HasColumnType("character varying(10)")
+                                .HasColumnName("currency");
+
+                            b1.Property<DateTime?>("FailedOnUtc")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("failed_on_utc");
+
+                            b1.Property<int>("Method")
+                                .HasColumnType("integer")
+                                .HasColumnName("method");
+
+                            b1.Property<string>("PaymobOrderId")
+                                .IsRequired()
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("paymob_order_id");
+
+                            b1.Property<string>("PaymobTransactionId")
+                                .HasMaxLength(100)
+                                .HasColumnType("character varying(100)")
+                                .HasColumnName("paymob_transaction_id");
+
+                            b1.Property<DateTime?>("RefundedOnUtc")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("refunded_on_utc");
+
+                            b1.Property<DateTime?>("SettledOnUtc")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("settled_on_utc");
+
+                            b1.Property<int>("Status")
+                                .HasColumnType("integer")
+                                .HasColumnName("status");
+
+                            b1.HasKey("BookingId", "Id");
+
+                            b1.HasIndex("PaymobOrderId");
+
+                            b1.HasIndex("PaymobTransactionId");
+
+                            b1.ToTable("payment_transactions", "families");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BookingId");
+                        });
+
+                    b.Navigation("PaymentTransactions");
+
+                    b.Navigation("PriceSnapshot")
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Elderlies.Elderly", b =>
