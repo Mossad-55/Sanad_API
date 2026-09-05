@@ -127,6 +127,10 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Discovery.CaregiverNotFound"] = 404,
             ["Caregivers.Discovery.QuoteNotAvailable"] = 409,
 
+            ["Paymob.NotConfigured"] = 503,
+            ["Paymob.MethodNotAvailable"] = 409,
+            ["Paymob.GatewayError"] = 502,
+
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,
             ["Storage.File.UnsupportedType"] = 400,

@@ -6,7 +6,9 @@ using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Bookings;
+using Sanad.Modules.Families.Domain.Bookings;
 
 namespace Sanad.API.Controllers;
 
@@ -21,6 +23,11 @@ public sealed record CreateBookingCheckoutRequest(
     string ServiceAddress,
     string? SpecialInstructions,
     decimal BaseCaregiverFee);
+
+public sealed record CreatePaymentIntentRequest(
+    PaymentMethod Method,
+    string? WalletNumber,
+    PaymobBillingData Billing);
 
 public sealed record CancelBookingRequest(
     string Reason);
@@ -41,7 +48,9 @@ public sealed class FamilyBookingsController : ApiControllerBase
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(IReadOnlyList<FamilyBookingListItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<FamilyBookingListItemResponse>),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBookings(
         [FromQuery] BookingTab tab = BookingTab.Upcoming,
         CancellationToken cancellationToken = default)
@@ -57,7 +66,9 @@ public sealed class FamilyBookingsController : ApiControllerBase
     }
 
     [HttpGet("{bookingId:guid}")]
-    [ProducesResponseType(typeof(BookingDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(BookingDetailResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> GetBookingDetail(
         Guid bookingId,
         CancellationToken cancellationToken)
@@ -73,7 +84,9 @@ public sealed class FamilyBookingsController : ApiControllerBase
     }
 
     [HttpPost("checkout")]
-    [ProducesResponseType(typeof(BookingCheckoutResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(BookingCheckoutResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> CreateCheckout(
         [FromBody] CreateBookingCheckoutRequest request,
         CancellationToken cancellationToken)
@@ -104,7 +117,8 @@ public sealed class FamilyBookingsController : ApiControllerBase
     }
 
     [HttpPost("{bookingId:guid}/cancel")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> CancelBooking(
         Guid bookingId,
         [FromBody] CancelBookingRequest request,
@@ -122,6 +136,33 @@ public sealed class FamilyBookingsController : ApiControllerBase
             _dateTimeProvider.UtcNow);
 
         var result = await _sender.Send(command, cancellationToken);
+        return ToActionResult(result);
+    }
+
+    [HttpPost("{bookingId:guid}/payments/intent")]
+    [ProducesResponseType(
+        typeof(BookingPaymentIntentResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> CreatePaymentIntent(
+        Guid bookingId,
+        [FromBody] CreatePaymentIntentRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var command = new CreateBookingPaymentIntentCommand(
+            new BookingId(bookingId),
+            userId,
+            request.Method,
+            request.WalletNumber,
+            request.Billing,
+            _dateTimeProvider.UtcNow);
+
+        var result = await _sender.Send(command, cancellationToken);
+
         return ToActionResult(result);
     }
 }

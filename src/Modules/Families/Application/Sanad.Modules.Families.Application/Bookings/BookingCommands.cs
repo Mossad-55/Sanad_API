@@ -19,8 +19,7 @@ public sealed record BookingCheckoutResponse(
     Guid BookingId,
     BookingStatus Status,
     decimal TotalPayableAmount,
-    string Currency,
-    string PaymentClientSecret);
+    string Currency);
 
 public sealed record FamilyBookingListItemResponse(
     Guid Id,
@@ -174,8 +173,7 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
                     booking.Id.Value,
                     booking.Status,
                     priceSnapshot.TotalPayableAmount,
-                    priceSnapshot.Currency,
-                    paymentClientSecret));
+                    priceSnapshot.Currency));
         }
         catch (DomainException exception)
         {
