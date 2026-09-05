@@ -154,6 +154,53 @@ public sealed class PaymobClient : IPaymobClient
         }
     }
 
+    public async Task<Result<string?>> RefundPaymentAsync(
+        string paymobTransactionId,
+        decimal amount,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            return Result<string?>.Failure(
+                new Error("Paymob.NotConfigured", "The payment gateway is not configured."));
+        }
+
+        try
+        {
+            HttpClient httpClient = _httpClientFactory.CreateClient("Paymob");
+
+            string authToken = await GetAuthTokenAsync(httpClient, cancellationToken);
+
+            var refundPayload = new
+            {
+                auth_token = authToken,
+                amount_cents = ToCents(amount)
+            };
+
+            using JsonDocument response = await PostJsonAsync(
+                httpClient,
+                $"/acceptance/payments/{paymobTransactionId}/refund",
+                refundPayload,
+                cancellationToken);
+
+            string? refundTransactionId = response.RootElement.TryGetProperty("id", out JsonElement id)
+                ? id.GetRawText()
+                : null;
+
+            return Result<string?>.Success(refundTransactionId);
+        }
+        catch (PaymobHttpException exception)
+        {
+            return Result<string?>.Failure(
+                new Error("Paymob.GatewayError", exception.Message));
+        }
+        catch (Exception exception) when (exception is JsonException or InvalidOperationException)
+        {
+            return Result<string?>.Failure(
+                new Error("Paymob.GatewayError", "Unexpected payment gateway response."));
+        }
+    }
+
     private async Task<string> GetAuthTokenAsync(
         HttpClient httpClient,
         CancellationToken cancellationToken)

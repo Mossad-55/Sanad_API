@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Domain.Bookings;
 
 namespace Sanad.Modules.Families.Application.Bookings;
@@ -69,10 +70,14 @@ public sealed record CaregiverDeclineBookingCommand(
 public sealed class CaregiverDeclineBookingCommandHandler : ICommandHandler<CaregiverDeclineBookingCommand>
 {
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IPaymobClient _paymobClient;
 
-    public CaregiverDeclineBookingCommandHandler(IFamiliesDbContext dbContext)
+    public CaregiverDeclineBookingCommandHandler(
+        IFamiliesDbContext dbContext,
+        IPaymobClient paymobClient)
     {
         _dbContext = dbContext;
+        _paymobClient = paymobClient;
     }
 
     public async Task<Result> Handle(
@@ -92,6 +97,24 @@ public sealed class CaregiverDeclineBookingCommandHandler : ICommandHandler<Care
             try
             {
                 booking.DeclineByCaregiver(request.Reason, request.UtcNow);
+
+                PaymentTransaction? paidTransaction = booking.PaymentTransactions.FirstOrDefault(
+                    t => t.Status == PaymentTransactionStatus.Succeeded
+                        && t.PaymobTransactionId is not null);
+
+                if (paidTransaction is not null)
+                {
+                    Result<string?> refund = await _paymobClient.RefundPaymentAsync(
+                        paidTransaction.PaymobTransactionId!,
+                        paidTransaction.Amount,
+                        cancellationToken);
+
+                    if (refund.IsSuccess)
+                    {
+                        booking.MarkRefunded(refund.Value, request.UtcNow);
+                    }
+                }
+
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 return Result.Success();
             }

@@ -141,3 +141,120 @@ public sealed class CreateBookingPaymentIntentCommandHandler
                 intent.Value.WalletRedirectUrl));
     }
 }
+
+// ----------------------------- Confirm Payment (Paymob webhook) -----------------------------
+// Machine-origin command: no validator. HMAC verification happens in the webhook
+// controller before this handler is reached; idempotency + amount check here.
+
+public sealed record ConfirmBookingPaymentCommand(
+    string PaymobOrderId,
+    long PaymobTransactionId,
+    long AmountCents,
+    bool Success,
+    bool Pending,
+    DateTime UtcNow) : ICommand<ConfirmBookingPaymentResponse>;
+
+public sealed record ConfirmBookingPaymentResponse(Guid BookingId, string Outcome);
+
+public sealed class ConfirmBookingPaymentCommandHandler
+    : ICommandHandler<ConfirmBookingPaymentCommand, ConfirmBookingPaymentResponse>
+{
+    private readonly IFamiliesDbContext _dbContext;
+    private readonly IPaymobClient _paymobClient;
+
+    public ConfirmBookingPaymentCommandHandler(
+        IFamiliesDbContext dbContext,
+        IPaymobClient paymobClient)
+    {
+        _dbContext = dbContext;
+        _paymobClient = paymobClient;
+    }
+
+    public async Task<Result<ConfirmBookingPaymentResponse>> Handle(
+        ConfirmBookingPaymentCommand request,
+        CancellationToken cancellationToken)
+    {
+        Booking? booking = await _dbContext.Bookings
+            .SingleOrDefaultAsync(
+                b => b.PaymentTransactions.Any(t => t.PaymobOrderId == request.PaymobOrderId),
+                cancellationToken);
+
+        if (booking is null)
+        {
+            return Result<ConfirmBookingPaymentResponse>.Failure(
+                new Error("Bookings.NotFound", "No booking matches this Paymob order."));
+        }
+
+        PaymentTransaction? transaction = booking.PaymentTransactions.FirstOrDefault(
+            t => t.PaymobOrderId == request.PaymobOrderId
+                && t.Status == PaymentTransactionStatus.Pending);
+
+        if (transaction is null)
+        {
+            // Duplicate/out-of-order webhook (already settled) — idempotent no-op.
+            return Result<ConfirmBookingPaymentResponse>.Success(
+                new ConfirmBookingPaymentResponse(booking.Id.Value, "AlreadyProcessed"));
+        }
+
+        long expectedCents = (long)decimal.Round(transaction.Amount * 100m, 0, MidpointRounding.ToEven);
+
+        if (expectedCents != request.AmountCents)
+        {
+            return Result<ConfirmBookingPaymentResponse>.Failure(
+                new Error("Paymob.AmountMismatch",
+                    "Webhook amount does not match the recorded payment intent."));
+        }
+
+        string paymobTransactionId = request.PaymobTransactionId.ToString();
+
+        if (!request.Success)
+        {
+            if (request.Pending)
+            {
+                return Result<ConfirmBookingPaymentResponse>.Success(
+                    new ConfirmBookingPaymentResponse(booking.Id.Value, "Pending"));
+            }
+
+            booking.RecordPaymentFailure(request.PaymobOrderId, paymobTransactionId, request.UtcNow);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
+            return Result<ConfirmBookingPaymentResponse>.Success(
+                new ConfirmBookingPaymentResponse(booking.Id.Value, "Failed"));
+        }
+
+        booking.MarkAsPaid(request.PaymobOrderId, paymobTransactionId, request.UtcNow);
+
+        string outcome;
+
+        // Late payment: the acceptance window closed while the gateway was processing.
+        if (booking.Status == BookingStatus.PendingCaregiverApproval
+            && request.UtcNow > booking.AcceptanceDeadlineUtc)
+        {
+            booking.Expire(request.UtcNow);
+
+            Result<string?> refund = await _paymobClient.RefundPaymentAsync(
+                paymobTransactionId,
+                transaction.Amount,
+                cancellationToken);
+
+            if (refund.IsSuccess)
+            {
+                booking.MarkRefunded(refund.Value, request.UtcNow);
+                outcome = "PaidExpired";
+            }
+            else
+            {
+                outcome = "PaidExpiredRefundPending";
+            }
+        }
+        else
+        {
+            outcome = "Paid";
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return Result<ConfirmBookingPaymentResponse>.Success(
+            new ConfirmBookingPaymentResponse(booking.Id.Value, outcome));
+    }
+}

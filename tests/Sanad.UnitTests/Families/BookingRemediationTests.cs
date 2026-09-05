@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Application.Abstractions.Caregivers;
+using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
@@ -64,6 +65,25 @@ public sealed class BookingRemediationTests
 
             return Task.FromResult(Result<CaregiverBookingPrice>.Success(
                 new CaregiverBookingPrice(type, fee)));
+        }
+    }
+
+    private sealed class StubPaymobClient : IPaymobClient
+    {
+        public Task<Result<PaymobPaymentIntent>> CreatePaymentIntentAsync(
+            PaymobPaymentIntentInput input,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result<PaymobPaymentIntent>.Success(
+                new PaymobPaymentIntent($"dev-{Guid.NewGuid():N}", null, null)));
+        }
+
+        public Task<Result<string?>> RefundPaymentAsync(
+            string paymobTransactionId,
+            decimal amount,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result<string?>.Success($"dev-refund-{Guid.NewGuid():N}"));
         }
     }
 
@@ -189,7 +209,10 @@ public sealed class BookingRemediationTests
 
         Assert.True(checkoutResult.IsSuccess);
 
-        var handler = new CancelBookingCommandHandler(dbContext);
+        var handler = new CancelBookingCommandHandler(
+            dbContext,
+            new StubPaymobClient());
+
         var result = await handler.Handle(
             new CancelBookingCommand(
                 new BookingId(checkoutResult.Value.BookingId),

@@ -1,4 +1,3 @@
-using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
@@ -8,6 +7,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Application.Abstractions.Caregivers;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Families;
 
@@ -166,8 +166,6 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
             _dbContext.Bookings.Add(booking);
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            string paymentClientSecret = $"paymob_sim_secret_{booking.Id.Value}";
-
             return Result<BookingCheckoutResponse>.Success(
                 new BookingCheckoutResponse(
                     booking.Id.Value,
@@ -183,51 +181,6 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
     }
 }
 
-// ------------------------- Payment Webhook/Confirm -----------------------
-// DEPLOY GATE (2026-09-05 ruling): this command must remain UNEXPOSED over
-// HTTP until the Paymob slice provides HMAC-verified, idempotent confirmation.
-
-public sealed record ConfirmBookingPaymentCommand(
-    BookingId BookingId,
-    string PaymobOrderId,
-    string PaymobTransactionId,
-    DateTime UtcNow) : ICommand;
-
-public sealed class ConfirmBookingPaymentCommandHandler : ICommandHandler<ConfirmBookingPaymentCommand>
-{
-    private readonly IFamiliesDbContext _dbContext;
-
-    public ConfirmBookingPaymentCommandHandler(IFamiliesDbContext dbContext)
-    {
-        _dbContext = dbContext;
-    }
-
-    public async Task<Result> Handle(
-        ConfirmBookingPaymentCommand request,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            Booking? booking = await _dbContext.Bookings
-                .SingleOrDefaultAsync(b => b.Id == request.BookingId, cancellationToken);
-
-            if (booking is null)
-            {
-                return Result.Failure(new Error("Bookings.NotFound", "Booking not found."));
-            }
-
-            booking.MarkAsPaid(request.PaymobOrderId, request.PaymobTransactionId, request.UtcNow);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-
-            return Result.Success();
-        }
-        catch (DomainException exception)
-        {
-            return Result.Failure(new Error("Bookings.Domain.InvalidOperation", exception.Message));
-        }
-    }
-}
-
 // --------------------------- Cancel Command ------------------------------
 
 public sealed record CancelBookingCommand(
@@ -239,10 +192,14 @@ public sealed record CancelBookingCommand(
 public sealed class CancelBookingCommandHandler : ICommandHandler<CancelBookingCommand>
 {
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IPaymobClient _paymobClient;
 
-    public CancelBookingCommandHandler(IFamiliesDbContext dbContext)
+    public CancelBookingCommandHandler(
+        IFamiliesDbContext dbContext,
+        IPaymobClient paymobClient)
     {
         _dbContext = dbContext;
+        _paymobClient = paymobClient;
     }
 
     public async Task<Result> Handle(
@@ -277,6 +234,24 @@ public sealed class CancelBookingCommandHandler : ICommandHandler<CancelBookingC
             }
 
             booking.CancelByFamily(request.Reason, request.UtcNow);
+
+            PaymentTransaction? paidTransaction = booking.PaymentTransactions.FirstOrDefault(
+                t => t.Status == PaymentTransactionStatus.Succeeded
+                    && t.PaymobTransactionId is not null);
+
+            if (paidTransaction is not null)
+            {
+                Result<string?> refund = await _paymobClient.RefundPaymentAsync(
+                    paidTransaction.PaymobTransactionId!,
+                    paidTransaction.Amount,
+                    cancellationToken);
+
+                if (refund.IsSuccess)
+                {
+                    booking.MarkRefunded(refund.Value, request.UtcNow);
+                }
+            }
+
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             return Result.Success();

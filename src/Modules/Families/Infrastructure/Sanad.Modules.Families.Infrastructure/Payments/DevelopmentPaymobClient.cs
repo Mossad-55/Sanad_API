@@ -15,4 +15,12 @@ public sealed class DevelopmentPaymobClient : IPaymobClient
                 null,
                 null)));
     }
+
+    public Task<Result<string?>> RefundPaymentAsync(
+        string paymobTransactionId,
+        decimal amount,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(Result<string?>.Success($"dev-refund-{Guid.NewGuid():N}"));
+    }
 }

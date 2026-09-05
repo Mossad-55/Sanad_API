@@ -75,6 +75,14 @@ public sealed class BookingPaymentIntentTests
 
             return Task.FromResult(Result<PaymobPaymentIntent>.Success(intent!));
         }
+
+        public Task<Result<string?>> RefundPaymentAsync(
+            string paymobTransactionId,
+            decimal amount,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result<string?>.Success($"dev-refund-{Guid.NewGuid():N}"));
+        }
     }
 
     private static async Task<(BookingCheckoutResponse Response, Booking Booking)> CheckoutAsync(

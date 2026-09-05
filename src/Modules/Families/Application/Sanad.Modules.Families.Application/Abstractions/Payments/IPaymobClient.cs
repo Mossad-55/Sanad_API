@@ -28,4 +28,9 @@ public interface IPaymobClient
     Task<Result<PaymobPaymentIntent>> CreatePaymentIntentAsync(
         PaymobPaymentIntentInput input,
         CancellationToken cancellationToken = default);
+
+    Task<Result<string?>> RefundPaymentAsync(
+        string paymobTransactionId,
+        decimal amount,
+        CancellationToken cancellationToken = default);
 }
