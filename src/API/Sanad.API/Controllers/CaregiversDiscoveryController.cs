@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sanad.API.Authorization;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Discovery;
@@ -8,7 +9,7 @@ using Sanad.Modules.Caregivers.Domain.Caregivers;
 
 namespace Sanad.API.Controllers;
 
-[AllowAnonymous]
+[Authorize(Policy = AuthorizationPolicies.NormalAccess)]
 [Route("api/v1/caregivers")]
 public sealed class CaregiversDiscoveryController : ApiControllerBase
 {

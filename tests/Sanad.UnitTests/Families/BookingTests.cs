@@ -22,7 +22,7 @@ public sealed class BookingTests
             UserId.New(),
             ElderlyId.New(),
             CaregiverId.New(),
-            CaregiverType.Medical,
+            BookingCaregiverType.Medical,
             BookingShiftType.HomeVisit,
             today.AddDays(1),
             new TimeOnly(10, 0),
@@ -30,6 +30,7 @@ public sealed class BookingTests
             "123 Nile St, Cairo",
             "Please bring blood pressure cuff",
             price,
+            now.AddHours(24),
             today,
             now);
 

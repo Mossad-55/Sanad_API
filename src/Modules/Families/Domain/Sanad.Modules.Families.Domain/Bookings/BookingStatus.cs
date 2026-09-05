@@ -10,5 +10,6 @@ public enum BookingStatus
     CancelledByFamily = 6,
     DeclinedByCaregiver = 7,
     CancelledByCaregiver = 8,
-    Refunded = 9
+    Refunded = 9,
+    Expired = 10
 }

@@ -90,14 +90,12 @@ public sealed class FamilyBookingsController : ApiControllerBase
             userId,
             new ElderlyId(request.ElderlyId),
             new CaregiverId(request.CaregiverId),
-            request.CaregiverType,
             request.ShiftType,
             request.BookingDate,
             request.StartTime,
             request.EndTime,
             request.ServiceAddress,
             request.SpecialInstructions,
-            request.BaseCaregiverFee,
             currentDate,
             utcNow);
 

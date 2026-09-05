@@ -1,10 +1,8 @@
-using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
-using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
@@ -20,10 +18,10 @@ public enum BookingTab
 
 public sealed record BookingElderlySummaryResponse(
     Guid ElderlyId,
-    string ArabicFullName,
-    string EnglishFullName,
-    Gender Gender,
-    DateOnly DateOfBirth,
+    string? ArabicFullName,
+    string? EnglishFullName,
+    Gender? Gender,
+    DateOnly? DateOfBirth,
     string? HealthNotes);
 
 public sealed record BookingDetailResponse(
@@ -31,7 +29,7 @@ public sealed record BookingDetailResponse(
     Guid FamilyId,
     Guid CreatedByUserId,
     Guid CaregiverId,
-    CaregiverType CaregiverType,
+    BookingCaregiverType CaregiverType,
     BookingShiftType ShiftType,
     DateOnly BookingDate,
     TimeOnly StartTime,
@@ -98,6 +96,7 @@ public sealed class GetFamilyBookingsQueryHandler : IQueryHandler<GetFamilyBooki
                                                 b.Status == BookingStatus.CancelledByFamily ||
                                                 b.Status == BookingStatus.DeclinedByCaregiver ||
                                                 b.Status == BookingStatus.CancelledByCaregiver ||
+                                                b.Status == BookingStatus.Expired ||
                                                 b.Status == BookingStatus.Refunded),
             _ => query
         };
@@ -119,11 +118,11 @@ public sealed class GetFamilyBookingsQueryHandler : IQueryHandler<GetFamilyBooki
             return new FamilyBookingListItemResponse(
                 b.Id.Value,
                 b.CaregiverId.Value,
-                string.Empty,
-                string.Empty,
                 null,
-                elderly?.ArabicFullName.Value ?? string.Empty,
-                elderly?.EnglishFullName.Value ?? string.Empty,
+                null,
+                null,
+                elderly?.ArabicFullName.Value,
+                elderly?.EnglishFullName.Value,
                 b.BookingDate,
                 b.StartTime,
                 b.EndTime,
@@ -189,10 +188,10 @@ public sealed class GetFamilyBookingDetailQueryHandler : IQueryHandler<GetFamily
                 elderly.HealthNotes)
             : new BookingElderlySummaryResponse(
                 booking.ElderlyId.Value,
-                string.Empty,
-                string.Empty,
-                Gender.Male,
-                DateOnly.MinValue,
+                null,
+                null,
+                null,
+                null,
                 null);
 
         var response = new BookingDetailResponse(

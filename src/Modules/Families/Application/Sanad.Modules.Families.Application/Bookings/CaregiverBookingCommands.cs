@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Bookings;
@@ -28,23 +29,31 @@ public sealed class CaregiverAcceptBookingCommandHandler : ICommandHandler<Careg
         CaregiverAcceptBookingCommand request,
         CancellationToken cancellationToken)
     {
-        Booking? booking = await _dbContext.Bookings
-            .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
-
-        if (booking is null)
-        {
-            return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
-        }
-
         try
         {
-            booking.AcceptByCaregiver(request.UtcNow);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            return Result.Success();
+
+            Booking? booking = await _dbContext.Bookings
+                .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
+
+            if (booking is null)
+            {
+                return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
+            }
+
+            try
+            {
+                booking.AcceptByCaregiver(request.UtcNow);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                return Result.Failure(new Error("Bookings.TransitionFailed", ex.Message));
+            }
         }
-        catch (Exception ex)
+        catch (DomainException exception)
         {
-            return Result.Failure(new Error("Bookings.TransitionFailed", ex.Message));
+            return Result.Failure(new Error("Bookings.Domain.InvalidOperation", exception.Message));
         }
     }
 }
@@ -70,23 +79,30 @@ public sealed class CaregiverDeclineBookingCommandHandler : ICommandHandler<Care
         CaregiverDeclineBookingCommand request,
         CancellationToken cancellationToken)
     {
-        Booking? booking = await _dbContext.Bookings
-            .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
-
-        if (booking is null)
-        {
-            return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
-        }
-
         try
         {
-            booking.DeclineByCaregiver(request.Reason, request.UtcNow);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            return Result.Success();
+            Booking? booking = await _dbContext.Bookings
+                .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
+
+            if (booking is null)
+            {
+                return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
+            }
+
+            try
+            {
+                booking.DeclineByCaregiver(request.Reason, request.UtcNow);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                return Result.Failure(new Error("Bookings.TransitionFailed", ex.Message));
+            }
         }
-        catch (Exception ex)
+        catch (DomainException exception)
         {
-            return Result.Failure(new Error("Bookings.TransitionFailed", ex.Message));
+            return Result.Failure(new Error("Bookings.Domain.InvalidOperation", exception.Message));
         }
     }
 }
@@ -111,23 +127,30 @@ public sealed class CaregiverStartBookingCommandHandler : ICommandHandler<Caregi
         CaregiverStartBookingCommand request,
         CancellationToken cancellationToken)
     {
-        Booking? booking = await _dbContext.Bookings
-            .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
-
-        if (booking is null)
-        {
-            return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
-        }
-
         try
         {
-            booking.StartVisit(request.UtcNow);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            return Result.Success();
+            Booking? booking = await _dbContext.Bookings
+                .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
+
+            if (booking is null)
+            {
+                return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
+            }
+
+            try
+            {
+                booking.StartVisit(request.UtcNow);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                return Result.Failure(new Error("Bookings.TransitionFailed", ex.Message));
+            }
         }
-        catch (Exception ex)
+        catch (DomainException exception)
         {
-            return Result.Failure(new Error("Bookings.TransitionFailed", ex.Message));
+            return Result.Failure(new Error("Bookings.Domain.InvalidOperation", exception.Message));
         }
     }
 }
@@ -153,23 +176,30 @@ public sealed class CaregiverCompleteBookingCommandHandler : ICommandHandler<Car
         CaregiverCompleteBookingCommand request,
         CancellationToken cancellationToken)
     {
-        Booking? booking = await _dbContext.Bookings
-            .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
-
-        if (booking is null)
-        {
-            return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
-        }
-
         try
         {
-            booking.CompleteVisit(request.Notes, request.UtcNow);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            return Result.Success();
+            Booking? booking = await _dbContext.Bookings
+                .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
+
+            if (booking is null)
+            {
+                return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
+            }
+
+            try
+            {
+                booking.CompleteVisit(request.Notes, request.UtcNow);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return Result.Success();
+            }
+            catch (Exception ex)
+            {
+                return Result.Failure(new Error("Bookings.TransitionFailed", ex.Message));
+            }
         }
-        catch (Exception ex)
+        catch (DomainException exception)
         {
-            return Result.Failure(new Error("Bookings.TransitionFailed", ex.Message));
+            return Result.Failure(new Error("Bookings.Domain.InvalidOperation", exception.Message));
         }
     }
 }

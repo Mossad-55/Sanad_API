@@ -59,6 +59,13 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasColumnName("end_time")
             .IsRequired();
 
+        builder.Property(b => b.AcceptanceDeadlineUtc)
+            .HasColumnName("acceptance_deadline_utc")
+            .IsRequired();
+
+        builder.Property(b => b.ExpiredOnUtc)
+            .HasColumnName("expired_on_utc");
+
         builder.Property(b => b.ServiceAddress)
             .HasColumnName("service_address")
             .HasMaxLength(Booking.MaximumAddressLength)

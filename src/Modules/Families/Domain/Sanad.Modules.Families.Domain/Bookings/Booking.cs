@@ -3,7 +3,6 @@ using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
-using Sanad.Modules.Caregivers.Domain.Caregivers;
 
 namespace Sanad.Modules.Families.Domain.Bookings;
 
@@ -24,7 +23,7 @@ public sealed class Booking : AggregateRoot<BookingId>
         UserId createdByUserId,
         ElderlyId elderlyId,
         CaregiverId caregiverId,
-        CaregiverType caregiverType,
+        BookingCaregiverType caregiverType,
         BookingShiftType shiftType,
         DateOnly bookingDate,
         TimeOnly startTime,
@@ -32,6 +31,7 @@ public sealed class Booking : AggregateRoot<BookingId>
         string serviceAddress,
         string? specialInstructions,
         BookingPriceSnapshot priceSnapshot,
+        DateTime acceptanceDeadlineUtc,
         DateTime createdOnUtc)
         : base(id)
     {
@@ -47,6 +47,7 @@ public sealed class Booking : AggregateRoot<BookingId>
         ServiceAddress = serviceAddress;
         SpecialInstructions = specialInstructions;
         PriceSnapshot = priceSnapshot;
+        AcceptanceDeadlineUtc = acceptanceDeadlineUtc;
         Status = BookingStatus.PendingPayment;
 
         CreatedOnUtc = createdOnUtc;
@@ -57,7 +58,7 @@ public sealed class Booking : AggregateRoot<BookingId>
     public UserId CreatedByUserId { get; private set; }
     public ElderlyId ElderlyId { get; private set; }
     public CaregiverId CaregiverId { get; private set; }
-    public CaregiverType CaregiverType { get; private set; }
+    public BookingCaregiverType CaregiverType { get; private set; }
     public BookingShiftType ShiftType { get; private set; }
     public DateOnly BookingDate { get; private set; }
     public TimeOnly StartTime { get; private set; }
@@ -65,6 +66,7 @@ public sealed class Booking : AggregateRoot<BookingId>
     public string ServiceAddress { get; private set; } = string.Empty;
     public string? SpecialInstructions { get; private set; }
     public BookingPriceSnapshot PriceSnapshot { get; private set; } = default!;
+    public DateTime AcceptanceDeadlineUtc { get; private set; }
     public BookingStatus Status { get; private set; }
     public string? PaymobOrderId { get; private set; }
     public string? PaymobTransactionId { get; private set; }
@@ -78,13 +80,14 @@ public sealed class Booking : AggregateRoot<BookingId>
     public DateTime? StartedOnUtc { get; private set; }
     public DateTime? CompletedOnUtc { get; private set; }
     public DateTime? CancelledOnUtc { get; private set; }
+    public DateTime? ExpiredOnUtc { get; private set; }
 
     public static Booking Create(
         FamilyId familyId,
         UserId createdByUserId,
         ElderlyId elderlyId,
         CaregiverId caregiverId,
-        CaregiverType caregiverType,
+        BookingCaregiverType caregiverType,
         BookingShiftType shiftType,
         DateOnly bookingDate,
         TimeOnly startTime,
@@ -92,6 +95,7 @@ public sealed class Booking : AggregateRoot<BookingId>
         string serviceAddress,
         string? specialInstructions,
         BookingPriceSnapshot priceSnapshot,
+        DateTime acceptanceDeadlineUtc,
         DateOnly currentDate,
         DateTime createdOnUtc)
     {
@@ -106,6 +110,9 @@ public sealed class Booking : AggregateRoot<BookingId>
 
         if (caregiverId == CaregiverId.Empty)
             throw new DomainException("Caregiver ID is required.");
+
+        if (!Enum.IsDefined(caregiverType))
+            throw new DomainException("Booking caregiver type is invalid.");
 
         if (bookingDate < currentDate)
             throw new DomainException("Booking date cannot be in the past.");
@@ -125,6 +132,9 @@ public sealed class Booking : AggregateRoot<BookingId>
                 throw new DomainException($"Special instructions cannot exceed {MaximumInstructionsLength} characters.");
         }
 
+        if (acceptanceDeadlineUtc <= createdOnUtc)
+            throw new DomainException("Acceptance deadline must be after the creation time.");
+
         return new Booking(
             BookingId.New(),
             familyId,
@@ -139,6 +149,7 @@ public sealed class Booking : AggregateRoot<BookingId>
             normalizedAddress,
             normalizedInstructions,
             priceSnapshot,
+            acceptanceDeadlineUtc,
             createdOnUtc);
     }
 
@@ -146,6 +157,9 @@ public sealed class Booking : AggregateRoot<BookingId>
     {
         if (Status != BookingStatus.PendingPayment)
             throw new DomainException("Only bookings in PendingPayment status can be marked as paid.");
+
+        if (utcNow > AcceptanceDeadlineUtc)
+            throw new DomainException("The payment window for this booking has expired.");
 
         PaymobOrderId = paymobOrderId;
         PaymobTransactionId = paymobTransactionId;
@@ -158,6 +172,9 @@ public sealed class Booking : AggregateRoot<BookingId>
     {
         if (Status != BookingStatus.PendingCaregiverApproval)
             throw new DomainException("Only paid bookings awaiting approval can be accepted.");
+
+        if (utcNow > AcceptanceDeadlineUtc)
+            throw new DomainException("The acceptance window for this booking has expired.");
 
         Status = BookingStatus.Confirmed;
         ConfirmedOnUtc = utcNow;
@@ -172,6 +189,19 @@ public sealed class Booking : AggregateRoot<BookingId>
         Status = BookingStatus.DeclinedByCaregiver;
         CancellationReason = NormalizeText(reason, MaximumReasonLength, "Decline reason");
         CancelledOnUtc = utcNow;
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void Expire(DateTime utcNow)
+    {
+        if (Status is not (BookingStatus.PendingPayment or BookingStatus.PendingCaregiverApproval))
+            throw new DomainException("Only pending bookings can expire.");
+
+        if (utcNow <= AcceptanceDeadlineUtc)
+            throw new DomainException("The acceptance window has not expired yet.");
+
+        Status = BookingStatus.Expired;
+        ExpiredOnUtc = utcNow;
         UpdatedOnUtc = utcNow;
     }
 
