@@ -8,6 +8,8 @@ namespace Sanad.Modules.Families.Domain.Bookings;
 
 public sealed class Booking : AggregateRoot<BookingId>
 {
+    private readonly List<PaymentTransaction> _paymentTransactions = [];
+
     public const int MaximumAddressLength = 500;
     public const int MaximumInstructionsLength = 1000;
     public const int MaximumNotesLength = 2000;
@@ -72,6 +74,7 @@ public sealed class Booking : AggregateRoot<BookingId>
     public string? PaymobTransactionId { get; private set; }
     public string? CancellationReason { get; private set; }
     public string? CaregiverNotes { get; private set; }
+    public string? PaymobRefundTransactionId { get; private set; }
 
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
@@ -81,6 +84,9 @@ public sealed class Booking : AggregateRoot<BookingId>
     public DateTime? CompletedOnUtc { get; private set; }
     public DateTime? CancelledOnUtc { get; private set; }
     public DateTime? ExpiredOnUtc { get; private set; }
+    public DateTime? RefundedOnUtc { get; private set; }
+
+    public IReadOnlyCollection<PaymentTransaction> PaymentTransactions => _paymentTransactions.AsReadOnly();
 
     public static Booking Create(
         FamilyId familyId,
@@ -158,14 +164,91 @@ public sealed class Booking : AggregateRoot<BookingId>
         if (Status != BookingStatus.PendingPayment)
             throw new DomainException("Only bookings in PendingPayment status can be marked as paid.");
 
-        if (utcNow > AcceptanceDeadlineUtc)
-            throw new DomainException("The payment window for this booking has expired.");
 
         PaymobOrderId = paymobOrderId;
         PaymobTransactionId = paymobTransactionId;
         Status = BookingStatus.PendingCaregiverApproval;
         PaidOnUtc = utcNow;
         UpdatedOnUtc = utcNow;
+
+        foreach (var transaction in _paymentTransactions)
+        {
+            if (transaction.PaymobOrderId == paymobOrderId)
+            {
+                transaction.MarkSucceeded(paymobTransactionId, utcNow);
+            }
+        }
+    }
+
+    public void RecordPaymentIntent(
+    string paymobOrderId,
+    PaymentMethod method,
+    DateTime utcNow)
+    {
+        if (Status != BookingStatus.PendingPayment)
+            throw new DomainException("Only bookings in PendingPayment status can start a payment.");
+
+        if (string.IsNullOrWhiteSpace(paymobOrderId))
+            throw new DomainException("Paymob order id is required.");
+
+        if (!Enum.IsDefined(method))
+            throw new DomainException("Payment method is invalid.");
+
+        if (_paymentTransactions.Any(t => t.PaymobOrderId == paymobOrderId && t.Status == PaymentTransactionStatus.Pending))
+            throw new DomainException("A pending payment attempt already exists for this order.");
+
+        _paymentTransactions.Add(
+            PaymentTransaction.Create(
+                paymobOrderId.Trim(),
+                method,
+                PriceSnapshot.TotalPayableAmount,
+                PriceSnapshot.Currency,
+                utcNow));
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void RecordPaymentFailure(
+        string paymobOrderId,
+        string? paymobTransactionId,
+        DateTime utcNow)
+    {
+        if (Status != BookingStatus.PendingPayment)
+            throw new DomainException("Only pending bookings can record a payment failure.");
+
+        foreach (PaymentTransaction transaction in _paymentTransactions)
+        {
+            if (transaction.PaymobOrderId == paymobOrderId)
+            {
+                transaction.MarkFailed(paymobTransactionId, utcNow);
+            }
+        }
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void MarkRefunded(string? paymobRefundTransactionId, DateTime utcNow)
+    {
+        if (Status is not (BookingStatus.DeclinedByCaregiver
+            or BookingStatus.Expired
+            or BookingStatus.CancelledByFamily
+            or BookingStatus.CancelledByCaregiver))
+        {
+            throw new DomainException("Only ended bookings can be marked as refunded.");
+        }
+
+        if (Status == BookingStatus.Refunded)
+            throw new DomainException("This booking is already refunded.");
+
+        PaymobRefundTransactionId = paymobRefundTransactionId;
+        Status = BookingStatus.Refunded;
+        RefundedOnUtc = utcNow;
+        UpdatedOnUtc = utcNow;
+
+        foreach (PaymentTransaction transaction in _paymentTransactions)
+        {
+            transaction.MarkRefunded(utcNow);
+        }
     }
 
     public void AcceptByCaregiver(DateTime utcNow)

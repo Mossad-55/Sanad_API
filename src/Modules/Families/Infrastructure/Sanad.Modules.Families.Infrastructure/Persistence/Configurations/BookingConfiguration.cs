@@ -103,6 +103,57 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
         builder.Property(b => b.StartedOnUtc).HasColumnName("started_on_utc");
         builder.Property(b => b.CompletedOnUtc).HasColumnName("completed_on_utc");
         builder.Property(b => b.CancelledOnUtc).HasColumnName("cancelled_on_utc");
+        builder.Property(b => b.RefundedOnUtc).HasColumnName("refunded_on_utc");
+
+        builder.Property(b => b.PaymobRefundTransactionId)
+            .HasColumnName("paymob_refund_transaction_id")
+            .HasMaxLength(100);
+
+        builder.OwnsMany(b => b.PaymentTransactions, transaction =>
+        {
+            transaction.ToTable("payment_transactions");
+            transaction.WithOwner().HasForeignKey("BookingId");
+            transaction.Property<BookingId>("BookingId")
+                .HasConversion(id => id.Value, value => new BookingId(value))
+                .HasColumnName("booking_id")
+                .IsRequired();
+            transaction.Property(t => t.Id)
+                .HasConversion(id => id.Value, value => new PaymentTransactionId(value))
+                .HasColumnName("id")
+                .IsRequired();
+            transaction.HasKey("BookingId", "Id");
+
+            transaction.Property(t => t.PaymobOrderId)
+                .HasColumnName("paymob_order_id")
+                .HasMaxLength(100)
+                .IsRequired();
+            transaction.Property(t => t.PaymobTransactionId)
+                .HasColumnName("paymob_transaction_id")
+                .HasMaxLength(100);
+            transaction.Property(t => t.Method)
+                .HasColumnName("method")
+                .HasConversion<int>()
+                .IsRequired();
+            transaction.Property(t => t.Amount)
+                .HasColumnName("amount")
+                .HasPrecision(12, 2)
+                .IsRequired();
+            transaction.Property(t => t.Currency)
+                .HasColumnName("currency")
+                .HasMaxLength(10)
+                .IsRequired();
+            transaction.Property(t => t.Status)
+                .HasColumnName("status")
+                .HasConversion<int>()
+                .IsRequired();
+            transaction.Property(t => t.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
+            transaction.Property(t => t.SettledOnUtc).HasColumnName("settled_on_utc");
+            transaction.Property(t => t.FailedOnUtc).HasColumnName("failed_on_utc");
+            transaction.Property(t => t.RefundedOnUtc).HasColumnName("refunded_on_utc");
+
+            transaction.HasIndex(t => t.PaymobOrderId);
+            transaction.HasIndex(t => t.PaymobTransactionId);
+        });
 
         builder.OwnsOne(b => b.PriceSnapshot, snapshot =>
         {
