@@ -3,6 +3,7 @@ namespace Sanad.API;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Options;
+using Sanad.API.Seeding;
 using Sanad.BuildingBlocks.Infrastructure.Storage;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 using Sanad.Modules.Cms.Infrastructure.Persistence;
@@ -49,6 +50,7 @@ public static class ApplicationBuilderExtensions
         ApplyFamiliesMigrations(app);
 
         SeedSuperAdmin(app);
+        SeedTestUsers(app);
 
         return app;
     }
@@ -75,6 +77,27 @@ public static class ApplicationBuilderExtensions
         SuperAdminSeeder seeder =
             scope.ServiceProvider.GetRequiredService<
                 SuperAdminSeeder>();
+
+        seeder.SeedAsync()
+            .GetAwaiter()
+            .GetResult();
+    }
+
+    private static void SeedTestUsers(
+        WebApplication app)
+    {
+        using IServiceScope scope =
+            app.Services.CreateScope();
+
+        // Minimal/test hosts may not register the optional seeder — skip there.
+        TestUserDataSeeder? seeder =
+            scope.ServiceProvider.GetService<
+                TestUserDataSeeder>();
+
+        if (seeder is null)
+        {
+            return;
+        }
 
         seeder.SeedAsync()
             .GetAwaiter()
