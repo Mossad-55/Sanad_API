@@ -1393,6 +1393,50 @@
           ]
         },
         {
+          "name": "Payment intent (Paymob SDK handoff)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('paymobOrderId equals bookingId', function () {",
+                  "    pm.expect(body.paymobOrderId).to.eql(body.bookingId);",
+                  "  });",
+                  "  pm.test('sdk handoff present', function () {",
+                  "    pm.expect(body.clientSecret).to.be.a('string').and.not.be.empty;",
+                  "    pm.expect(body.publicKey).to.be.a('string').and.not.be.empty;",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": 1,\n  \"billing\": {\n    \"firstName\": \"أحمد\",\n    \"lastName\": \"علي\",\n    \"email\": \"ahmed@example.com\",\n    \"phoneNumber\": \"+201012345678\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{baseUrl}}/api/v1/family/bookings/{{bookingId}}/payments/intent",
+            "description": "Creates a Paymob intention and returns clientSecret + publicKey for the Paymob mobile SDK (embedded checkout). The webhook — not the SDK callback — is the source of truth. method: 1 Card, 2 Wallet (3 ApplePay reserved)."
+          },
+          "response": []
+        },
+        {
           "name": "Cancel booking",
           "request": {
             "method": "POST",
