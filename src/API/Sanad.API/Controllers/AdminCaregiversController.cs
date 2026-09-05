@@ -6,8 +6,13 @@ using Sanad.API.Controllers.Requests;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.Modules.Families.Application.Bookings;
 
 namespace Sanad.API.Controllers;
+
+public sealed record CaregiverAdminDetailResponse(
+    CaregiverProfileResponse Profile,
+    CaregiverCancellationSummaryResponse? Cancellations);
 
 [Authorize(Policy = AuthorizationPolicies.CaregiversAdmin)]
 [Route("api/v1/admin/caregivers")]
@@ -126,7 +131,7 @@ public sealed class AdminCaregiversController :
 
     [HttpGet("{caregiverId:guid}")]
     [ProducesResponseType(
-       typeof(CaregiverProfileResponse),
+       typeof(CaregiverAdminDetailResponse),
        StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCaregiverDetail(
        Guid caregiverId,
@@ -138,7 +143,22 @@ public sealed class AdminCaregiversController :
                     new CaregiverId(caregiverId)),
                 cancellationToken);
 
-        return ToActionResult(result);
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        // Suspension-decision support data. A cancellations failure never
+        // fails the detail request — the field is simply null.
+        var cancellations =
+            await _sender.Send(
+                new GetCaregiverCancellationSummaryQuery(
+                    new CaregiverId(caregiverId)),
+                cancellationToken);
+
+        return Ok(new CaregiverAdminDetailResponse(
+            result.Value,
+            cancellations.IsSuccess ? cancellations.Value : null));
     }
 
     [HttpPost("{caregiverId:guid}/approve")]
