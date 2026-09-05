@@ -1091,7 +1091,31 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/admin/caregivers/{{caregiverId}}"
-          }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.test('profile envelope present', function () {",
+                  "    pm.expect(body).to.have.property('profile');",
+                  "    pm.expect(body.profile).to.be.an('object');",
+                  "  });",
+                  "  pm.test('cancellations summary present (object or null)', function () {",
+                  "    pm.expect(body).to.have.property('cancellations');",
+                  "    if (body.cancellations !== null) {",
+                  "      pm.expect(body.cancellations.cancellationCount).to.be.a('number');",
+                  "      pm.expect(body.cancellations.recent).to.be.an('array');",
+                  "    }",
+                  "  });",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Verify certificate",

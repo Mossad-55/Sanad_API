@@ -48,8 +48,32 @@ A fresh database returns `200` with `totalCount: 0` and an empty `items`. Invali
 GET /api/v1/admin/caregivers/{caregiverId}
 ```
 
-Returns the full `CaregiverProfileResponse` (same shape as the caregiver's own GET — profile, selections, pricing, schedule, certificates with verification status and `reviewReason`, status, `statusReason`).
+Returns `CaregiverAdminDetailResponse` — the full caregiver profile plus a **booking-cancellation summary** used for suspension decisions:
 
+```json
+{
+  "profile": { "…": "full CaregiverProfileResponse — profile, selections, pricing, schedule, certificates with verification status and reviewReason, status, statusReason" },
+  "cancellations": {
+    "cancellationCount": 3,
+    "recent": [
+      {
+        "bookingId": "0198e3f0-3333-7777-8888-000000000003",
+        "bookingDate": "2026-06-08",
+        "startTime": "10:00",
+        "endTime": "12:00",
+        "shiftType": 1,
+        "cancelledOnUtc": "2026-06-06T09:15:00Z",
+        "reason": "ظرف عائلي طارئ"
+      }
+    ]
+  }
+}
+```
+
+- `profile` — same shape as before this envelope was introduced (nothing removed).
+- `cancellations` — every booking this caregiver cancelled **after confirmation** (`CancelledByCaregiver`): `cancellationCount` is the lifetime total; `recent` holds the **5 most recent**, newest first, with the time window, shift type, cancellation timestamp and the stored reason (`null` when none was given). Families' cancellations are **not** counted.
+- `cancellations` is `null` when the cancellation lookup fails — that failure never fails the detail request.
+- A caregiver with no cancellations returns `cancellationCount: 0` and an empty `recent`.
 - `404 Caregivers.Onboarding.CaregiverNotFound` — no such caregiver.
 
 ## Application review actions
