@@ -1259,6 +1259,161 @@
           }
         }
       ]
+    },
+    {
+      "name": "12. Discovery",
+      "item": [
+        {
+          "name": "Search caregivers",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregivers?page=1&pageSize=10&type=1"
+          },
+          "description": "Requires any Normal JWT (family token works). Paged Active caregivers with filters."
+        },
+        {
+          "name": "Caregiver public profile",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}"
+          }
+        },
+        {
+          "name": "Caregiver price quote",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/quote?shiftType=1&startTime=10:00&endTime=12:00"
+          },
+          "description": "Server-side quote — the exact engine checkout uses."
+        }
+      ]
+    },
+    {
+      "name": "13. Bookings",
+      "item": [
+        {
+          "name": "List bookings by tab",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/bookings?tab=1"
+          },
+          "description": "tab: 1 Upcoming, 2 Current, 3 Past."
+        },
+        {
+          "name": "Booking detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/bookings/{{bookingId}}"
+          }
+        },
+        {
+          "name": "Checkout (create booking) — captures bookingId",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/bookings/checkout",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elderlyId\": \"{{dependentId}}\",\n  \"caregiverId\": \"{{caregiverId}}\",\n  \"shiftType\": 1,\n  \"bookingDate\": \"2026-06-08\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"serviceAddress\": \"14 شارع الكورنيش، الإسكندرية\",\n  \"specialInstructions\": \"المريض يعاني من ضغط الدم\"\n}"
+            }
+          },
+          "description": "No price/caregiver-type fields — pricing is server-side (base + 15% platform fee).",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.bookingId) { pm.environment.set('bookingId', body.bookingId); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/bookings/{{bookingId}}/cancel",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"ظرف طارئ\"\n}"
+            }
+          }
+        }
+      ]
     }
   ]
 }

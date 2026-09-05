@@ -1,6 +1,6 @@
 # Caregiver onboarding (mobile app)
 
-Caregiver self-service routes live under `/api/v1/caregiver/...`. They drive the caregiver onboarding wizard and the post-approval profile/calendar management screens.
+Caregiver self-service routes live under `/api/v1/caregiver/...`. They drive the caregiver onboarding wizard, the post-approval profile/calendar management screens, and the booking actions (accept / decline / start / complete).
 
 ## Access
 
@@ -54,6 +54,7 @@ Activation (admin approve / reactivate / BecomeAvailable) additionally requires 
 | Weekly schedule + availability toggle | `docs/app/caregivers/schedule-and-availability.md` |
 | Certificate upload/replace/remove | `docs/app/caregivers/certificates.md` |
 | Submit for review / corrections | `docs/app/caregivers/submission.md` |
+| Booking actions on family requests | `docs/app/caregivers/bookings.md` |
 | Postman | `docs/postman/app/Sanad.App.Caregiver.postman_collection.json` |
 
 Public app surfaces (splash screens, active lookups) that the wizard reads from are documented in `docs/app/public/` and collected in `docs/postman/app/Sanad.App.Public.postman_collection.json`.

@@ -1,6 +1,6 @@
 # Families (mobile app)
 
-Family routes live under `/api/v1/family/...`. They drive the family-side app: family bootstrap, elderly dependents (whose logins are provisioned server-side), and family-member invitations.
+Family routes live under `/api/v1/family/...`. They drive the family-side app: family bootstrap, elderly dependents (whose logins are provisioned server-side), family-member invitations, caregiver discovery, and the booking lifecycle (checkout → pay → caregiver response → care → completion).
 
 ## Access
 
@@ -34,6 +34,7 @@ The owner can never be removed or created by invitation; invited members are onl
 
 - `403 Families.Family.NotOwner` — rename, revoke invitation (owner-only actions).
 - `403 Families.Family.AccessDenied` / `Families.Elderly.AccessDenied` / `Families.Invitation.AccessDenied` — the acting user's role does not permit the action (e.g. a Viewer trying to add a dependent, a Viewer inviting).
+- `403 Bookings.UnauthorizedRole` — a Viewer attempting booking checkout (see `docs/app/families/bookings.md`).
 
 ### Elderly dependents vs. family members
 
@@ -62,6 +63,8 @@ Removing a dependent **hard-deletes** the Families row and the photo file. The E
 | Elderly medications, stock inventory & daily dose schedule | `docs/app/families/medications.md` |
 | Care notes, observations & activity access timeline | `docs/app/families/notes-and-activities.md` |
 | Invitations by email, deep link, accept/decline/revoke | `docs/app/families/invitations.md` |
+| Caregiver discovery: search, public profile, price quote | `docs/app/families/discovery.md` |
+| Bookings: checkout, tabs, detail, cancel | `docs/app/families/bookings.md` |
 | Postman | `docs/postman/app/Sanad.App.Family.postman_collection.json` |
 
 The Elderly SMS OTP login used by dependents is documented in `docs/auth/elderly-sms-login.md`.
