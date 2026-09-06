@@ -86,6 +86,8 @@ Implemented:
 - Families: bootstrap, dependents, invitations, medical profile, medications, notes/activities, care assessment
 - Caregiver discovery (authenticated) and server-side quotes
 - Bookings lifecycle + Paymob payment intent and webhook
+- Caregiver booking list/detail (including family and caregiver cancellations)
+- Admin closed-booking list (cancelled, failed refund, refunded)
 
 Not implemented yet:
 

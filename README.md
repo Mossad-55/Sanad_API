@@ -263,6 +263,8 @@ Self-service routes under `/api/v1/caregiver/...` require policy `CaregiverAcces
 | PUT | `/caregiver/certificates/{certificateId}/file` | Multipart replace |
 | DELETE | `/caregiver/certificates/{certificateId}` | Additional certificates only |
 | POST | `/caregiver/submit` | Submit (Onboarding) / resubmit (NeedsCorrection) |
+| GET | `/caregiver/bookings?tab=` | Own bookings (Past includes family and caregiver cancellations) |
+| GET | `/caregiver/bookings/{bookingId}` | Own booking detail |
 | POST | `/caregiver/bookings/{bookingId}/accept` | Accept paid booking awaiting approval |
 | POST | `/caregiver/bookings/{bookingId}/decline` | Decline (family refunded) |
 | POST | `/caregiver/bookings/{bookingId}/start` | Mark visit started |
@@ -318,6 +320,7 @@ Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` Supe
 - Caregiver lookups (create/rename/activate/deactivate + admin list-all for all eight lookups): `docs/admin/`
 - Caregiver review: `docs/admin/caregivers-review.md` — paged list (reviewer name/phone joined from Identity), detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, private certificate file download.
 - Care-needs assessment CMS: `docs/admin/care-assessments.md` — questions, scoring tiers, submissions.
+- Bookings (cancellations & refunds): `docs/admin/bookings.md` — paged closed bookings (`finance` = all / cancelled / failed refund / refunded) and detail.
 
 Postman: `docs/postman/admins/Sanad.Admin.postman_collection.json`.
 

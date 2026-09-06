@@ -31,6 +31,62 @@ public sealed class CaregiverBookingsController : ApiControllerBase
         _dateTimeProvider = dateTimeProvider;
     }
 
+    [HttpGet]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<CaregiverBookingListItemResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBookings(
+        [FromQuery] BookingTab tab = BookingTab.Upcoming,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var caregiver = await _caregiversDb.Caregivers
+            .SingleOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+
+        if (caregiver is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new GetCaregiverBookingsQuery(caregiver.Id, tab),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpGet("{bookingId:guid}")]
+    [ProducesResponseType(typeof(BookingDetailResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBookingDetail(
+        Guid bookingId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var caregiver = await _caregiversDb.Caregivers
+            .SingleOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+
+        if (caregiver is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new GetCaregiverBookingDetailQuery(
+                caregiver.Id,
+                new BookingId(bookingId)),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
     [HttpPost("{bookingId:guid}/accept")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> AcceptBooking(
