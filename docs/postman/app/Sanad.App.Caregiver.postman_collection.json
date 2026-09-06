@@ -517,6 +517,45 @@
       "name": "07. Booking Actions",
       "item": [
         {
+          "name": "List bookings (Upcoming)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings?tab=1"
+          }
+        },
+        {
+          "name": "List bookings (Past — cancellations)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings?tab=3"
+          }
+        },
+        {
+          "name": "Booking detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}"
+          }
+        },
+        {
           "name": "Accept booking",
           "request": {
             "method": "POST",

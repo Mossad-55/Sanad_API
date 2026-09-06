@@ -93,7 +93,7 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
 
 ### 3. Booking detail
 
-`GET /api/v1/family/bookings/{bookingId}` → full price breakdown (`baseCaregiverFee`, `platformFeePercentage`, `platformFeeAmount`, `totalPayableAmount`, `currency`), the elderly summary (fields are `null` when the dependent record is absent — the API never fabricates values), lifecycle timestamps (`paidOnUtc`, `confirmedOnUtc`, `startedOnUtc`, `completedOnUtc`, `cancelledOnUtc`), `cancellationReason`, and `caregiverNotes`.
+`GET /api/v1/family/bookings/{bookingId}` → full price breakdown (`baseCaregiverFee`, `platformFeePercentage`, `platformFeeAmount`, `totalPayableAmount`, `currency`), the elderly summary (fields are `null` when the dependent record is absent — the API never fabricates values), lifecycle timestamps (`paidOnUtc`, `confirmedOnUtc`, `startedOnUtc`, `completedOnUtc`, `cancelledOnUtc`, `refundedOnUtc`), `refundState` (`1` NotApplicable, `2` Failed Paymob refund, `3` Succeeded), `cancellationReason`, and `caregiverNotes`.
 
 ### 4. Cancel
 

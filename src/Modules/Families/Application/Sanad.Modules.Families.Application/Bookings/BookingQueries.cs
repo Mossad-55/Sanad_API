@@ -50,7 +50,9 @@ public sealed record BookingDetailResponse(
     DateTime? ConfirmedOnUtc,
     DateTime? StartedOnUtc,
     DateTime? CompletedOnUtc,
-    DateTime? CancelledOnUtc);
+    DateTime? CancelledOnUtc,
+    DateTime? RefundedOnUtc,
+    BookingRefundState RefundState);
 
 // ============================= Family Queries =============================
 
@@ -220,7 +222,9 @@ public sealed class GetFamilyBookingDetailQueryHandler : IQueryHandler<GetFamily
             booking.ConfirmedOnUtc,
             booking.StartedOnUtc,
             booking.CompletedOnUtc,
-            booking.CancelledOnUtc);
+            booking.CancelledOnUtc,
+            booking.RefundedOnUtc,
+            BookingRefundStates.Resolve(booking));
 
         return Result<BookingDetailResponse>.Success(response);
     }
