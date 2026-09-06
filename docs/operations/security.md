@@ -50,6 +50,14 @@ Use environment variables. User-secrets are not used in this repository. Identit
 - SMS Misr test senders should not set `Template`
 - Use `Identity__Sms__SmsMisr__Environment=2` until live sending is approved
 
+## Paymob webhook
+
+- `POST /api/v1/payments/webhooks/paymob` is anonymous (`[AllowAnonymous]`).
+- HMAC-SHA512 over Paymob `obj` fields in dashboard order (`PaymobHmacCalculator`).
+- Signature may arrive as `?hmac=`, JSON body `hmac`, or header `X-Paymob-Hmac`. Comparison is hex-normalized and constant-time.
+- If `Paymob__HmacSecret` is unset the endpoint returns `503`.
+- A valid HMAC for an unknown booking returns `200` so Paymob stops retrying.
+
 ## Swagger
 
 `/swagger` is Development only. Production must not serve it.

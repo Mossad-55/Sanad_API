@@ -1671,6 +1671,89 @@
           }
         }
       ]
+    },
+    {
+      "name": "09. Bookings (cancellations & refunds)",
+      "item": [
+        {
+          "name": "List closed bookings (all)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/bookings?page=1&pageSize=10&finance=0"
+          }
+        },
+        {
+          "name": "List cancelled bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/bookings?finance=1"
+          }
+        },
+        {
+          "name": "List failed refunds",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/bookings?finance=2"
+          }
+        },
+        {
+          "name": "List refunded bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/bookings?finance=3"
+          }
+        },
+        {
+          "name": "Booking detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/bookings/{{bookingId}}"
+          }
+        },
+        {
+          "name": "Retry failed refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/bookings/{{bookingId}}/refund"
+          }
+        }
+      ]
     }
   ]
 }

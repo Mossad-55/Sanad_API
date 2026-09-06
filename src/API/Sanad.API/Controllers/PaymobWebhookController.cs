@@ -1,6 +1,6 @@
-using System.Security.Cryptography;
 using System.Text.Json;
 using MediatR;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Sanad.Modules.Families.Application.Bookings;
@@ -8,10 +8,13 @@ using Sanad.Modules.Families.Infrastructure.Payments;
 
 namespace Sanad.API.Controllers;
 
+[AllowAnonymous]
 [ApiController]
 [Route("api/v1/payments/webhooks")]
 public sealed class PaymobWebhookController : ControllerBase
 {
+    private const string HmacHeaderName = "X-Paymob-Hmac";
+
     private readonly ISender _sender;
     private readonly PaymobOptions _paymobOptions;
 
@@ -40,32 +43,23 @@ public sealed class PaymobWebhookController : ControllerBase
             return BadRequest();
         }
 
-        string expected = PaymobHmacCalculator.Calculate(obj, _paymobOptions.HmacSecret);
+        Request.Headers.TryGetValue(HmacHeaderName, out var headerHmac);
 
-        bool signatureValid;
+        string? providedHmac = PaymobHmacCalculator.CoalesceProvidedHmac(
+            hmac,
+            body,
+            headerHmac.ToString());
 
-        try
-        {
-            signatureValid = hmac is not null
-                && CryptographicOperations.FixedTimeEquals(
-                    Convert.FromHexString(expected),
-                    Convert.FromHexString(hmac.Trim()));
-        }
-        catch (Exception exception) when (exception is FormatException or ArgumentException)
-        {
-            signatureValid = false;
-        }
-
-        if (!signatureValid)
+        if (!PaymobHmacCalculator.IsValid(obj, _paymobOptions.HmacSecret, providedHmac))
         {
             return Unauthorized();
         }
 
         bool isRefundCallback =
             obj.TryGetProperty("is_refunded", out JsonElement isRefunded)
-                && isRefunded.GetBoolean()
+                && isRefunded.ValueKind is JsonValueKind.True
             || obj.TryGetProperty("has_parent_transaction", out JsonElement hasParent)
-                && hasParent.GetBoolean();
+                && hasParent.ValueKind is JsonValueKind.True;
 
         if (isRefundCallback
             || !obj.TryGetProperty("order", out JsonElement order)
@@ -78,17 +72,23 @@ public sealed class PaymobWebhookController : ControllerBase
             merchantOrder.GetString() ?? string.Empty,
             obj.GetProperty("id").GetInt64(),
             obj.GetProperty("amount_cents").GetInt64(),
-            obj.GetProperty("success").GetBoolean(),
-            obj.TryGetProperty("pending", out JsonElement pending) && pending.GetBoolean(),
+            obj.TryGetProperty("success", out JsonElement success) && success.ValueKind is JsonValueKind.True,
+            obj.TryGetProperty("pending", out JsonElement pending) && pending.ValueKind is JsonValueKind.True,
             DateTime.UtcNow);
 
         var result = await _sender.Send(command, cancellationToken);
 
         if (!result.IsSuccess)
         {
-            if (result.Error.Code == "Paymob.AmountMismatch")
+            if (result.Error.Code is "Paymob.AmountMismatch")
             {
                 return BadRequest();
+            }
+
+            // Unknown order after a valid HMAC: acknowledge so Paymob stops retrying.
+            if (result.Error.Code is "Bookings.NotFound")
+            {
+                return Ok();
             }
 
             return StatusCode(StatusCodes.Status500InternalServerError);

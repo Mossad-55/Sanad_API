@@ -25,7 +25,7 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
 - **Acceptance window:** the caregiver must respond within `min(now + 24h, booking start)`; acceptance after the deadline is rejected. A payment whose success webhook arrives after the deadline is **not** honoured as a booking — the booking expires and the payment is refunded automatically (see refunds below).
 - **Slot reservation:** a booking in `PendingPayment` or `PendingCaregiverApproval` already blocks the same caregiver/date/overlapping-time slot (`409 Bookings.ScheduleConflict`).
 - **Snapshot immutability:** later caregiver price edits never change an existing booking.
-- **Payments (contract as of `b556c4e`):** checkout returns no payment data. The app starts a payment with the **payment intent** endpoint (section 5), which creates a Paymob **intention** server-side and returns `clientSecret` + `publicKey` for the **Paymob mobile SDK** (embedded card / wallet UI — card data never touches Sanad servers). The Paymob **webhook** (`POST /api/v1/payments/webhooks/paymob`, HMAC-SHA512-verified, idempotent, amount-checked) is the **single source of truth**: only the webhook can mark a booking paid. Refunds are **automatic** on caregiver decline, on family cancellation before acceptance, and when a late payment arrives after the deadline (pay → expire → refund).
+- **Payments (contract as of `b556c4e`):** checkout returns no payment data. The app starts a payment with the **payment intent** endpoint (section 5), which creates a Paymob **intention** server-side and returns `clientSecret` + `publicKey` for the **Paymob mobile SDK** (embedded card / wallet UI — card data never touches Sanad servers). The Paymob **webhook** (`POST /api/v1/payments/webhooks/paymob`, anonymous HMAC-SHA512 from query / JSON `hmac` / `X-Paymob-Hmac`, idempotent, amount-checked) is the **single source of truth**: only the webhook can mark a booking paid. Refunds are **automatic** on caregiver decline, on family cancellation before acceptance, and when a late payment arrives after the deadline (pay → expire → refund).
 
 ## Endpoints
 
@@ -93,7 +93,7 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
 
 ### 3. Booking detail
 
-`GET /api/v1/family/bookings/{bookingId}` → full price breakdown (`baseCaregiverFee`, `platformFeePercentage`, `platformFeeAmount`, `totalPayableAmount`, `currency`), the elderly summary (fields are `null` when the dependent record is absent — the API never fabricates values), lifecycle timestamps (`paidOnUtc`, `confirmedOnUtc`, `startedOnUtc`, `completedOnUtc`, `cancelledOnUtc`), `cancellationReason`, and `caregiverNotes`.
+`GET /api/v1/family/bookings/{bookingId}` → full price breakdown (`baseCaregiverFee`, `platformFeePercentage`, `platformFeeAmount`, `totalPayableAmount`, `currency`), the elderly summary (fields are `null` when the dependent record is absent — the API never fabricates values), lifecycle timestamps (`paidOnUtc`, `confirmedOnUtc`, `startedOnUtc`, `completedOnUtc`, `cancelledOnUtc`, `refundedOnUtc`), `refundState` (`1` NotApplicable, `2` Failed Paymob refund, `3` Succeeded), `cancellationReason`, and `caregiverNotes`.
 
 ### 4. Cancel
 

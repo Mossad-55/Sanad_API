@@ -11,10 +11,8 @@ public sealed class PaymobHmacCalculatorTests
     private const string ExpectedHmac =
         "27d715d42be3f250c758103dbd3cba6c54f0f7e862b996478add4f848dd1c605424049fcabc5bed93d193fa89823d0c982ab20af76cb8dcc677fdaa0119461d4";
 
-    [Fact]
-    public void Calculate_ShouldProduceOfficialConcatenationHmac()
-    {
-        var obj = JsonDocument.Parse(
+    private static JsonElement SampleObj() =>
+        JsonDocument.Parse(
             """
             {
               "id": 999888,
@@ -36,11 +34,44 @@ public sealed class PaymobHmacCalculatorTests
               "source_data": { "pan": "2346", "sub_type": "MasterCard", "type": "card" },
               "success": true
             }
-            """).RootElement;
+            """).RootElement.Clone();
 
-        string actual = PaymobHmacCalculator.Calculate(obj, Secret);
+    [Fact]
+    public void Calculate_ShouldProduceOfficialConcatenationHmac()
+    {
+        Assert.Equal(ExpectedHmac, PaymobHmacCalculator.Calculate(SampleObj(), Secret));
+    }
 
-        Assert.Equal(ExpectedHmac, actual);
+    [Fact]
+    public void IsValid_ShouldAcceptQueryHex_CaseAnd0xPrefix()
+    {
+        JsonElement obj = SampleObj();
+
+        Assert.True(PaymobHmacCalculator.IsValid(obj, Secret, ExpectedHmac));
+        Assert.True(PaymobHmacCalculator.IsValid(obj, Secret, ExpectedHmac.ToUpperInvariant()));
+        Assert.True(PaymobHmacCalculator.IsValid(obj, Secret, "0x" + ExpectedHmac));
+        Assert.False(PaymobHmacCalculator.IsValid(obj, Secret, "00" + ExpectedHmac[2..]));
+        Assert.False(PaymobHmacCalculator.IsValid(obj, Secret, null));
+        Assert.False(PaymobHmacCalculator.IsValid(obj, Secret, "not-hex"));
+    }
+
+    [Fact]
+    public void CoalesceProvidedHmac_ShouldPreferQuery_ThenBody_ThenHeader()
+    {
+        using var bodyWithHmac = JsonDocument.Parse("""{ "hmac": "from-body", "obj": {} }""");
+        using var bodyNoHmac = JsonDocument.Parse("""{ "obj": {} }""");
+
+        Assert.Equal(
+            "from-query",
+            PaymobHmacCalculator.CoalesceProvidedHmac("from-query", bodyWithHmac.RootElement, "from-header"));
+
+        Assert.Equal(
+            "from-body",
+            PaymobHmacCalculator.CoalesceProvidedHmac(null, bodyWithHmac.RootElement, "from-header"));
+
+        Assert.Equal(
+            "from-header",
+            PaymobHmacCalculator.CoalesceProvidedHmac(null, bodyNoHmac.RootElement, "from-header"));
     }
 
     [Fact]
