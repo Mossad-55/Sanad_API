@@ -197,7 +197,7 @@ public sealed class CaregiversDbContext :
                 ON s.id = COALESCE(c.medical_specialization_id, c.companion_specialization_id)
             LEFT JOIN caregivers.professional_titles pt 
                 ON pt.id = c.medical_professional_title_id
-            WHERE c.status = 3 -- Active only
+            WHERE c.status = 4 -- CaregiverStatus.Active (fix: 3 was NeedsCorrection)
               AND (@search IS NULL OR u.arabic_full_name ILIKE '%' || @search || '%' OR u.english_full_name ILIKE '%' || @search || '%')
               AND (@typeFilter IS NULL OR c.type = @typeFilter)
               AND (@genderFilter IS NULL OR u.gender = @genderFilter)

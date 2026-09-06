@@ -187,171 +187,173 @@ public sealed class TestUserDataSeeder
 
         // ---------------- Caregivers: lookups + two Active caregivers ----------------
 
-        bool caregiversSeeded = await _caregiversDbContext.Caregivers
-            .AnyAsync(c => c.UserId == medicalCaregiverUser.Id
-                || c.UserId == companionCaregiverUser.Id, cancellationToken);
+        // Load-or-create: a crashed earlier run may have persisted the caregivers
+        // but never reached the bookings section - never early-return past it.
+        Caregiver? medical = await _caregiversDbContext.Caregivers
+            .FirstOrDefaultAsync(c => c.UserId == medicalCaregiverUser.Id, cancellationToken);
 
-        if (caregiversSeeded)
+        Caregiver? companion = await _caregiversDbContext.Caregivers
+            .FirstOrDefaultAsync(c => c.UserId == companionCaregiverUser.Id, cancellationToken);
+
+        if (medical is null || companion is null)
         {
-            return;
-        }
-
-        Governorate governorate = await EnsureLookupAsync(
+            Governorate governorate = await EnsureLookupAsync(
             _caregiversDbContext,
             _caregiversDbContext.Governorates,
             g => g.EnglishName == "Alexandria",
             () => Governorate.Create("الإسكندرية", "Alexandria"),
             cancellationToken);
 
-        City city = await EnsureLookupAsync(
-            _caregiversDbContext,
-            _caregiversDbContext.Cities,
-            c => c.EnglishName == "Smouha" && c.GovernorateId == governorate.Id,
-            () => City.Create(governorate.Id, "سموحة", "Smouha"),
-            cancellationToken);
+            City city = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Cities,
+                c => c.EnglishName == "Smouha" && c.GovernorateId == governorate.Id,
+                () => City.Create(governorate.Id, "سموحة", "Smouha"),
+                cancellationToken);
 
-        Area area = await EnsureLookupAsync(
-            _caregiversDbContext,
-            _caregiversDbContext.Areas,
-            a => a.EnglishName == "Smouha Area" && a.CityId == city.Id,
-            () => Area.Create(city.Id, "سموحة", "Smouha Area"),
-            cancellationToken);
+            Area area = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Areas,
+                a => a.EnglishName == "Smouha Area" && a.CityId == city.Id,
+                () => Area.Create(city.Id, "سموحة", "Smouha Area"),
+                cancellationToken);
 
-        Language language = await EnsureLookupAsync(
-            _caregiversDbContext,
-            _caregiversDbContext.Languages,
-            l => l.EnglishName == "Arabic",
-            () => Language.Create("ar", "العربية", "Arabic"),
-            cancellationToken);
+            Language language = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Languages,
+                l => l.EnglishName == "Arabic",
+                () => Language.Create("ar", "العربية", "Arabic"),
+                cancellationToken);
 
-        Service medicalService = await EnsureLookupAsync(
-            _caregiversDbContext,
-            _caregiversDbContext.Services,
-            s => s.EnglishName == "Test Medical Care",
-            () => Service.Create("رعاية طبية تجريبية", "Test Medical Care", "test-data/icons/medical.png", CaregiverType.Medical, true),
-            cancellationToken);
+            Service medicalService = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Services,
+                s => s.EnglishName == "Test Medical Care",
+                () => Service.Create("رعاية طبية تجريبية", "Test Medical Care", "test-data/icons/medical.png", CaregiverType.Medical, true),
+                cancellationToken);
 
-        Service companionService = await EnsureLookupAsync(
-            _caregiversDbContext,
-            _caregiversDbContext.Services,
-            s => s.EnglishName == "Test Companion Care",
-            () => Service.Create("رعاية مرافقة تجريبية", "Test Companion Care", "test-data/icons/companion.png", CaregiverType.Companion, true),
-            cancellationToken);
+            Service companionService = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Services,
+                s => s.EnglishName == "Test Companion Care",
+                () => Service.Create("رعاية مرافقة تجريبية", "Test Companion Care", "test-data/icons/companion.png", CaregiverType.Companion, true),
+                cancellationToken);
 
-        Specialization medicalSpecialization = await EnsureLookupAsync(
-            _caregiversDbContext,
-            _caregiversDbContext.Specializations,
-            s => s.EnglishName == "Test Geriatric Care",
-            () => Specialization.Create("رعاية مسنين تجريبية", "Test Geriatric Care", true, CaregiverType.Medical),
-            cancellationToken);
+            Specialization medicalSpecialization = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Specializations,
+                s => s.EnglishName == "Test Geriatric Care",
+                () => Specialization.Create("رعاية مسنين تجريبية", "Test Geriatric Care", true, CaregiverType.Medical),
+                cancellationToken);
 
-        Specialization companionSpecialization = await EnsureLookupAsync(
-            _caregiversDbContext,
-            _caregiversDbContext.Specializations,
-            s => s.EnglishName == "Test Elderly Companionship",
-            () => Specialization.Create("مرافقة مسنين تجريبية", "Test Elderly Companionship", true, CaregiverType.Companion),
-            cancellationToken);
+            Specialization companionSpecialization = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Specializations,
+                s => s.EnglishName == "Test Elderly Companionship",
+                () => Specialization.Create("مرافقة مسنين تجريبية", "Test Elderly Companionship", true, CaregiverType.Companion),
+                cancellationToken);
 
-        ProfessionalTitle professionalTitle = await EnsureLookupAsync(
-            _caregiversDbContext,
-            _caregiversDbContext.ProfessionalTitles,
-            t => t.EnglishName == "Test Nurse",
-            () => ProfessionalTitle.Create("ممرض تجريبي", "Test Nurse", true),
-            cancellationToken);
+            ProfessionalTitle professionalTitle = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.ProfessionalTitles,
+                t => t.EnglishName == "Test Nurse",
+                () => ProfessionalTitle.Create("ممرض تجريبي", "Test Nurse", true),
+                cancellationToken);
 
-        AcademicDegree academicDegree = await EnsureLookupAsync(
-            _caregiversDbContext,
-            _caregiversDbContext.AcademicDegrees,
-            d => d.EnglishName == "Test BSc Nursing",
-            () => AcademicDegree.Create("بكالوريوس تمريض تجريبي", "Test BSc Nursing", true),
-            cancellationToken);
+            AcademicDegree academicDegree = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.AcademicDegrees,
+                d => d.EnglishName == "Test BSc Nursing",
+                () => AcademicDegree.Create("بكالوريوس تمريض تجريبي", "Test BSc Nursing", true),
+                cancellationToken);
 
-        // ---------------- Medical caregiver (real readiness flow) ----------------
+            // ---------------- Medical caregiver (real readiness flow) ----------------
 
-        Caregiver medical = Caregiver.Create(
+            medical = Caregiver.Create(
             medicalCaregiverUser.Id,
             CaregiverType.Medical);
 
-        medical.SelectService(medicalService);
-        medical.SelectLanguage(language);
-        medical.SelectArea(area);
+            medical.SelectService(medicalService);
+            medical.SelectLanguage(language);
+            medical.SelectArea(area);
 
-        medical.UpdateMedicalProfile(
-            professionalTitle,
-            yearsOfExperience: 8,
-            medicalSpecialization,
-            academicDegree,
-            currentWorkplace: "Test Clinic",
-            biography: "Seeded test medical caregiver.",
-            utcNow);
+            medical.UpdateMedicalProfile(
+                professionalTitle,
+                yearsOfExperience: 8,
+                medicalSpecialization,
+                academicDegree,
+                currentWorkplace: "Test Clinic",
+                biography: "Seeded test medical caregiver.",
+                utcNow);
 
-        medical.UpdateMedicalPricing(
-            homeVisitPrice: 500m,
-            eightHourShiftPrice: 900m,
-            twelveHourShiftPrice: 1300m,
-            twentyFourHourShiftPrice: 1800m);
+            medical.UpdateMedicalPricing(
+                homeVisitPrice: 500m,
+                eightHourShiftPrice: 900m,
+                twelveHourShiftPrice: 1300m,
+                twentyFourHourShiftPrice: 1800m);
 
-        medical.AddMedicalHomeVisitWindow(DayOfWeek.Saturday, new TimeOnly(8, 0), new TimeOnly(22, 0));
-        medical.AddMedicalHomeVisitWindow(DayOfWeek.Wednesday, new TimeOnly(8, 0), new TimeOnly(22, 0));
-        // A day cannot combine a shift with Home Visit windows (MedicalWeeklySchedule rule) —
-        // shift lives on Monday; windows on Saturday + Wednesday.
-        medical.AddMedicalShift(DayOfWeek.Monday, MedicalShiftType.EightHourMorning);
+            medical.AddMedicalHomeVisitWindow(DayOfWeek.Saturday, new TimeOnly(8, 0), new TimeOnly(22, 0));
+            medical.AddMedicalHomeVisitWindow(DayOfWeek.Wednesday, new TimeOnly(8, 0), new TimeOnly(22, 0));
+            // A day cannot combine a shift with Home Visit windows (MedicalWeeklySchedule rule) —
+            // shift lives on Monday; windows on Saturday + Wednesday.
+            medical.AddMedicalShift(DayOfWeek.Monday, MedicalShiftType.EightHourMorning);
 
-        medical.AddCertificate(
-            CaregiverCertificateType.PracticeLicense,
-            "test-data/certificates/practice-license.pdf",
-            expiryDate: today.AddYears(1),
-            today);
+            medical.AddCertificate(
+                CaregiverCertificateType.PracticeLicense,
+                "test-data/certificates/practice-license.pdf",
+                expiryDate: today.AddYears(1),
+                today);
 
-        medical.AddCertificate(
-            CaregiverCertificateType.GraduationCertificate,
-            "test-data/certificates/graduation.pdf",
-            expiryDate: null,
-            today);
+            medical.AddCertificate(
+                CaregiverCertificateType.GraduationCertificate,
+                "test-data/certificates/graduation.pdf",
+                expiryDate: null,
+                today);
 
-        medical.SubmitForReview(utcNow, today);
+            medical.SubmitForReview(utcNow, today);
 
-        foreach (CaregiverCertificate certificate in medical.Certificates)
-        {
-            medical.VerifyCertificate(certificate.Id);
-        }
+            foreach (CaregiverCertificate certificate in medical.Certificates)
+            {
+                medical.VerifyCertificate(certificate.Id);
+            }
 
-        medical.Approve(utcNow, today);
-        medical.BecomeAvailable(today);
+            medical.Approve(utcNow, today);
+            medical.BecomeAvailable(today);
 
-        _caregiversDbContext.Caregivers.Add(medical);
-        await _caregiversDbContext.SaveChangesAsync(cancellationToken);
+            _caregiversDbContext.Caregivers.Add(medical);
+            await _caregiversDbContext.SaveChangesAsync(cancellationToken);
 
-        // ---------------- Companion caregiver (real readiness flow) ----------------
+            // ---------------- Companion caregiver (real readiness flow) ----------------
 
-        Caregiver companion = Caregiver.Create(
+            companion = Caregiver.Create(
             companionCaregiverUser.Id,
             CaregiverType.Companion);
 
-        companion.SelectService(companionService);
-        companion.SelectLanguage(language);
-        companion.SelectArea(area);
+            companion.SelectService(companionService);
+            companion.SelectLanguage(language);
+            companion.SelectArea(area);
 
-        companion.UpdateCompanionProfile(
-            yearsOfExperience: 5,
-            companionSpecialization,
-            biography: "Seeded test companion caregiver.",
-            utcNow);
+            companion.UpdateCompanionProfile(
+                yearsOfExperience: 5,
+                companionSpecialization,
+                biography: "Seeded test companion caregiver.",
+                utcNow);
 
-        companion.UpdateCompanionPricing(
-            hourlyPrice: 80m,
-            eightHourDayPrice: 500m,
-            overnightPrice: 700m);
+            companion.UpdateCompanionPricing(
+                hourlyPrice: 80m,
+                eightHourDayPrice: 500m,
+                overnightPrice: 700m);
 
-        companion.AddCompanionAvailabilityWindow(CompanionBookingType.Hourly, DayOfWeek.Saturday, new TimeOnly(9, 0), new TimeOnly(18, 0));
-        companion.AddCompanionAvailabilityWindow(CompanionBookingType.Hourly, DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(18, 0));
+            companion.AddCompanionAvailabilityWindow(CompanionBookingType.Hourly, DayOfWeek.Saturday, new TimeOnly(9, 0), new TimeOnly(18, 0));
+            companion.AddCompanionAvailabilityWindow(CompanionBookingType.Hourly, DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(18, 0));
 
-        companion.SubmitForReview(utcNow, today);
-        companion.Approve(utcNow, today);
-        companion.BecomeAvailable(today);
+            companion.SubmitForReview(utcNow, today);
+            companion.Approve(utcNow, today);
+            companion.BecomeAvailable(today);
 
-        _caregiversDbContext.Caregivers.Add(companion);
-        await _caregiversDbContext.SaveChangesAsync(cancellationToken);
+            _caregiversDbContext.Caregivers.Add(companion);
+            await _caregiversDbContext.SaveChangesAsync(cancellationToken);
+        }
 
         // ---------------- Bookings portfolio (no slot conflicts: distinct dates per caregiver) ----------------
 
