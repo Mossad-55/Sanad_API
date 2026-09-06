@@ -357,7 +357,6 @@ docs/app/public/                        Anonymous mobile-app HTTP (splash, publi
 docs/app/caregivers/                    Caregiver self-service onboarding HTTP
 docs/app/families/                      Family app HTTP (family, dependents, invitations)
 docs/admin/                             Admin HTTP (splash, lookups, caregiver review)
-docs/PROMPT.md                          Session roadmap (update with README on every slice)
 docs/architecture/                      Architecture notes
 docs/operations/                        Configuration, migrations, security
 docs/postman/app/Sanad.App.Public.postman_collection.json
