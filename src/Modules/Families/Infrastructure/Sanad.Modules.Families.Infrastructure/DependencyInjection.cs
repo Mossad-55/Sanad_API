@@ -52,6 +52,10 @@ public static class DependencyInjection
         {
             services.AddSingleton<IPaymobClient, DevelopmentPaymobClient>();
         }
+        else
+        {
+            services.AddSingleton<IPaymobClient, PaymobClient>();
+        }
 
         return services;
     }
