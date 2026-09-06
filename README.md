@@ -34,8 +34,9 @@ Implemented HTTP surface:
   - certificate verify / reject / revoke and private certificate file download
 - **Families** (`FamilyAccess` policy): bootstrap/rename, dependents (incl. Elderly identity provision), invitations, medical profile, medications, notes, activity timeline, care-needs assessment
 - **Discovery** (`NormalAccess`): paged Active-caregiver search, public profile, server-side price quote
-- **Bookings**: family checkout / list / detail / cancel / Paymob payment intent; caregiver accept / decline / start / complete
-- **Paymob webhook** `POST /api/v1/payments/webhooks/paymob` (HMAC-verified; development client when Paymob is not configured)
+- **Bookings**: family checkout / list / detail / cancel / Paymob payment intent; caregiver list/detail (Past includes family and caregiver cancellations) + accept / decline / start / complete
+- **Admin bookings** (`CaregiversAdmin`): closed bookings with `finance` filter (cancelled / failed refund / refunded) and detail
+- **Paymob webhook** `POST /api/v1/payments/webhooks/paymob` (anonymous HMAC-SHA512; query, JSON `hmac`, or `X-Paymob-Hmac`; development client when Paymob is not configured)
 - **Admin care assessments**: questions, tiers, submissions (`docs/admin/care-assessments.md`)
 
 Email, SMS, and payments:
@@ -356,6 +357,7 @@ docs/app/public/                        Anonymous mobile-app HTTP (splash, publi
 docs/app/caregivers/                    Caregiver self-service onboarding HTTP
 docs/app/families/                      Family app HTTP (family, dependents, invitations)
 docs/admin/                             Admin HTTP (splash, lookups, caregiver review)
+docs/PROMPT.md                          Session roadmap (update with README on every slice)
 docs/architecture/                      Architecture notes
 docs/operations/                        Configuration, migrations, security
 docs/postman/app/Sanad.App.Public.postman_collection.json

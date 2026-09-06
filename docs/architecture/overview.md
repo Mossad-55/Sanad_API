@@ -71,7 +71,7 @@ Application depends only on `IEmailSender` and `ISmsSender`. Families bookings d
 | Paymob `SecretKey` set | `PaymobClient` |
 | Paymob not configured | `DevelopmentPaymobClient` |
 
-Webhook: `POST /api/v1/payments/webhooks/paymob` (HMAC-SHA512). `503` if `Paymob__HmacSecret` is unset.
+Webhook: `POST /api/v1/payments/webhooks/paymob` (anonymous HMAC-SHA512; query, body `hmac`, or `X-Paymob-Hmac`). `503` if `Paymob__HmacSecret` is unset.
 
 Credentials stay in environment variables. They are never committed.
 
