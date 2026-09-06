@@ -14,7 +14,7 @@ This surface is for **closed** bookings: family/caregiver cancel, caregiver decl
 | `2` `Failed` | Paid, then cancelled / declined / expired, and `MarkRefunded` never ran (gateway error). Status stays `CancelledByFamily` / `DeclinedByCaregiver` / `CancelledByCaregiver` / `Expired` |
 | `3` `Succeeded` | Status `Refunded (9)` and `refundedOnUtc` set |
 
-Automatic Paymob refund can fail silently; **Failed** is the queue for dashboard retry.
+Automatic Paymob refund can fail silently; **Failed** is the ops queue. Admin retries with `POST /api/v1/admin/bookings/{id}/refund` (Paymob dashboard remains a fallback if the gateway still rejects).
 
 ## List
 
@@ -48,5 +48,23 @@ GET /api/v1/admin/bookings/{bookingId}
 ```
 
 Same `BookingDetailResponse` as family/caregiver detail, including `refundedOnUtc` and `refundState`. `404 Bookings.NotFound` when unknown.
+
+## Retry refund
+
+```http
+POST /api/v1/admin/bookings/{bookingId}/refund
+Authorization: Bearer {{accessToken}}
+```
+
+No body. Allowed only when `refundState` is **Failed** (paid + cancelled/declined/expired + not yet `Refunded`).
+
+| Result | HTTP | Meaning |
+|---|---|---|
+| Success | `200` | Same detail payload; `status` `Refunded (9)`, `refundState` `3` |
+| `Bookings.NotFound` | 404 | Unknown id |
+| `Bookings.AlreadyRefunded` | 409 | Already `Refunded` |
+| `Bookings.RefundNotEligible` | 409 | Never paid, or still an open booking |
+| `Paymob.NotConfigured` | 503 | Gateway keys missing |
+| `Paymob.GatewayError` | 502 | Paymob rejected the refund; booking stays failed — retry again or use the dashboard |
 
 Postman: `docs/postman/admins/Sanad.Admin.postman_collection.json`.

@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
+using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
@@ -205,5 +207,114 @@ public sealed class BookingVisibilityTests
             CancellationToken.None);
         Assert.True(allResult.IsSuccess);
         Assert.Equal(3, allResult.Value.TotalCount);
+    }
+
+    private sealed class FakePaymobClient(string? refundId, Error? refundError = null) : IPaymobClient
+    {
+        public Task<Result<PaymobPaymentIntent>> CreatePaymentIntentAsync(
+            PaymobPaymentIntentInput input,
+            CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public Task<Result<string?>> RefundPaymentAsync(
+            string paymobTransactionId,
+            decimal amount,
+            CancellationToken cancellationToken = default)
+        {
+            if (refundError is not null)
+            {
+                return Task.FromResult(Result<string?>.Failure(refundError));
+            }
+
+            return Task.FromResult(Result<string?>.Success(refundId));
+        }
+    }
+
+    [Fact]
+    public async Task AdminRefund_ShouldMarkRefunded_WhenPaymobSucceeds()
+    {
+        var (db, family, elderly) = SeedFamily();
+        DateTime now = DateTime.UtcNow;
+        var failed = PaidBooking(family, elderly, CaregiverId.New(), now);
+        failed.DeclineByCaregiver("لا أستطيع", now.AddMinutes(1));
+        db.Bookings.Add(failed);
+        db.SaveChanges();
+
+        var handler = new AdminRefundBookingCommandHandler(
+            db,
+            new FakePaymobClient("admin-refund-1"));
+
+        var result = await handler.Handle(
+            new AdminRefundBookingCommand(failed.Id, now.AddMinutes(2)),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(BookingStatus.Refunded, result.Value.Status);
+        Assert.Equal(BookingRefundState.Succeeded, result.Value.RefundState);
+        Assert.Equal(BookingStatus.Refunded, db.Bookings.Single().Status);
+        Assert.Equal("admin-refund-1", db.Bookings.Single().PaymobRefundTransactionId);
+    }
+
+    [Fact]
+    public async Task AdminRefund_ShouldLeaveFailed_WhenPaymobFails()
+    {
+        var (db, family, elderly) = SeedFamily();
+        DateTime now = DateTime.UtcNow;
+        var failed = PaidBooking(family, elderly, CaregiverId.New(), now);
+        failed.CancelByFamily("الغاء", now.AddMinutes(1));
+        db.Bookings.Add(failed);
+        db.SaveChanges();
+
+        var handler = new AdminRefundBookingCommandHandler(
+            db,
+            new FakePaymobClient(
+                null,
+                new Error("Paymob.GatewayError", "Paymob refund request failed.")));
+
+        var result = await handler.Handle(
+            new AdminRefundBookingCommand(failed.Id, now.AddMinutes(2)),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Paymob.GatewayError", result.Error.Code);
+        Assert.Equal(BookingStatus.CancelledByFamily, db.Bookings.Single().Status);
+        Assert.Null(db.Bookings.Single().RefundedOnUtc);
+    }
+
+    [Fact]
+    public async Task AdminRefund_ShouldReject_UnpaidCancellation()
+    {
+        var (db, family, elderly) = SeedFamily();
+        DateTime now = DateTime.UtcNow;
+        var unpaid = Booking.Create(
+            family.Id,
+            family.OwnerUserId,
+            elderly.Id,
+            CaregiverId.New(),
+            BookingCaregiverType.Medical,
+            BookingShiftType.HomeVisit,
+            DateOnly.FromDateTime(now).AddDays(2),
+            new TimeOnly(10, 0),
+            new TimeOnly(12, 0),
+            "addr",
+            null,
+            BookingPriceSnapshot.Calculate(300m, 15m),
+            now.AddHours(24),
+            DateOnly.FromDateTime(now),
+            now);
+        unpaid.CancelByFamily("قبل الدفع", now.AddMinutes(1));
+        db.Bookings.Add(unpaid);
+        db.SaveChanges();
+
+        var handler = new AdminRefundBookingCommandHandler(
+            db,
+            new FakePaymobClient("should-not-run"));
+
+        var result = await handler.Handle(
+            new AdminRefundBookingCommand(unpaid.Id, now.AddMinutes(2)),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Bookings.RefundNotEligible", result.Error.Code);
     }
 }

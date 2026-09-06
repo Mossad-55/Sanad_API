@@ -1739,6 +1739,19 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/bookings/{{bookingId}}"
           }
+        },
+        {
+          "name": "Retry failed refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/bookings/{{bookingId}}/refund"
+          }
         }
       ]
     }
