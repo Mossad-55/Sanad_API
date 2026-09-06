@@ -293,7 +293,9 @@ public sealed class TestUserDataSeeder
 
         medical.AddMedicalHomeVisitWindow(DayOfWeek.Saturday, new TimeOnly(8, 0), new TimeOnly(22, 0));
         medical.AddMedicalHomeVisitWindow(DayOfWeek.Wednesday, new TimeOnly(8, 0), new TimeOnly(22, 0));
-        medical.AddMedicalShift(DayOfWeek.Saturday, MedicalShiftType.EightHourMorning);
+        // A day cannot combine a shift with Home Visit windows (MedicalWeeklySchedule rule) —
+        // shift lives on Monday; windows on Saturday + Wednesday.
+        medical.AddMedicalShift(DayOfWeek.Monday, MedicalShiftType.EightHourMorning);
 
         medical.AddCertificate(
             CaregiverCertificateType.PracticeLicense,
@@ -398,11 +400,20 @@ public sealed class TestUserDataSeeder
         cancelledByCaregiver.CancelByCaregiver("Seeded caregiver cancellation.", utcNow.AddMinutes(4));
         cancelledByCaregiver.MarkRefunded($"test-refund-{cancelledByCaregiver.Id.Value:N}", utcNow.AddMinutes(5));
 
-        // 6. DeclinedByCaregiver after payment → refunded
+        // 6. DeclinedByCaregiver after payment → refunded.
+        // DeclineByCaregiver is only valid from PendingCaregiverApproval, so this
+        // booking is paid but NOT accepted (the decline replaces the acceptance).
         Booking declined = NewBooking(family, owner, grandfather, medical, BookingCaregiverType.Medical,
             BookingShiftType.HomeVisit, today.AddDays(6), new TimeOnly(14, 0), new TimeOnly(16, 0),
             utcNow, medicalHomeVisitFee);
-        PayAndAccept(declined, utcNow);
+        declined.RecordPaymentIntent(
+            declined.Id.Value.ToString(),
+            PaymentMethod.Card,
+            utcNow);
+        declined.MarkAsPaid(
+            declined.Id.Value.ToString(),
+            $"test-txn-{declined.Id.Value:N}",
+            utcNow.AddMinutes(1));
         declined.DeclineByCaregiver("Seeded caregiver decline.", utcNow.AddMinutes(4));
         declined.MarkRefunded($"test-refund-{declined.Id.Value:N}", utcNow.AddMinutes(5));
 
