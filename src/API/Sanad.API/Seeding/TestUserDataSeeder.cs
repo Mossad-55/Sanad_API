@@ -383,6 +383,7 @@ public sealed class TestUserDataSeeder
         Booking confirmed = NewBooking(family, owner, grandfather, medical, BookingCaregiverType.Medical,
             BookingShiftType.HomeVisit, today.AddDays(3), new TimeOnly(14, 0), new TimeOnly(16, 0),
             utcNow, medicalHomeVisitFee);
+        PayAndAccept(confirmed, utcNow);
 
         // 3. PendingPayment (ready for the Postman payment-intent test)
         Booking pending = NewBooking(family, owner, grandfather, medical, BookingCaregiverType.Medical,
@@ -393,6 +394,7 @@ public sealed class TestUserDataSeeder
         Booking cancelledByFamily = NewBooking(family, owner, grandfather, medical, BookingCaregiverType.Medical,
             BookingShiftType.HomeVisit, today.AddDays(5), new TimeOnly(14, 0), new TimeOnly(16, 0),
             utcNow, medicalHomeVisitFee);
+        cancelledByFamily.CancelByFamily("Seeded family cancellation (unpaid).", utcNow);
 
         // 5. CancelledByCaregiver after payment → refunded (feeds the admin cancellation summary)
         Booking cancelledByCaregiver = NewBooking(family, owner, grandfather, companion, BookingCaregiverType.Companion,
