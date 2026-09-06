@@ -162,10 +162,11 @@ public sealed class TestUserDataSeeder
     {
         string normalizedEmail = Email.Create(email).Value;
 
-        User? user = await _identityDbContext.Users
-            .FirstOrDefaultAsync(
-                u => u.Email != null && u.Email.Value == normalizedEmail,
-                cancellationToken);
+        List<User> users =
+            await _identityDbContext.Users.ToListAsync(cancellationToken);
+
+        User? user = users.FirstOrDefault(
+            u => u.Email != null && u.Email.Value == normalizedEmail);
 
         if (user is not null)
         {
@@ -203,10 +204,11 @@ public sealed class TestUserDataSeeder
     {
         string normalizedPhoneNumber = PhoneNumber.Create(phoneNumber).Value;
 
-        User? user = await _identityDbContext.Users
-            .FirstOrDefaultAsync(
-                u => u.PhoneNumber.Value == normalizedPhoneNumber,
-                cancellationToken);
+        List<User> users =
+            await _identityDbContext.Users.ToListAsync(cancellationToken);
+
+        User? user = users.FirstOrDefault(
+            u => u.PhoneNumber.Value == normalizedPhoneNumber);
 
         if (user is not null)
         {

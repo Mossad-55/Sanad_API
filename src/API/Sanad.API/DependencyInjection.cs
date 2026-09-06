@@ -26,6 +26,7 @@ using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Application.Abstractions.Caregivers;
 using Sanad.API.CaregiversIntegration;
+using Sanad.API.Seeding;
 
 namespace Sanad.API;
 
@@ -36,6 +37,11 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.AddControllers();
+
+        services.AddOptions<TestUserSeedOptions>()
+            .Bind(configuration.GetSection(TestUserSeedOptions.SectionName));
+
+        services.AddScoped<TestUserDataSeeder>();
 
         // Temporary: allow any client during mobile development.
         // Lock down to known origins before production launch.

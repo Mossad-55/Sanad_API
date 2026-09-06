@@ -1,3 +1,4 @@
+using System.Data;
 using System.Data.Common;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Domain.Enums;
@@ -84,12 +85,13 @@ public sealed class CaregiversDbContext :
 
             AddFilterParameters(command, status, type);
             command.Parameters.Add(
-                CreateParameter(command, "take", pageSize));
+                CreateParameter(command, "take", pageSize, DbType.Int32));
             command.Parameters.Add(
                 CreateParameter(
                     command,
                     "skip",
-                    (page - 1) * pageSize));
+                    (page - 1) * pageSize,
+                    DbType.Int32));
 
             await using DbDataReader reader =
                 await command.ExecuteReaderAsync(cancellationToken);
@@ -145,7 +147,7 @@ public sealed class CaregiversDbContext :
         {
             using DbCommand command = Database.GetDbConnection().CreateCommand();
             command.CommandText = sql;
-            command.Parameters.Add(CreateParameter(command, "userId", userId.Value));
+            command.Parameters.Add(CreateParameter(command, "userId", userId.Value, DbType.Guid));
 
             await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
 
@@ -256,8 +258,8 @@ public sealed class CaregiversDbContext :
             {
                 selectCommand.CommandText = selectSql;
                 AddSearchParameters(selectCommand, search, type, gender, areaId, specializationId, availability, minPrice, maxPrice, minRating, minExperienceYears);
-                selectCommand.Parameters.Add(CreateParameter(selectCommand, "take", pageSize));
-                selectCommand.Parameters.Add(CreateParameter(selectCommand, "skip", (page - 1) * pageSize));
+                selectCommand.Parameters.Add(CreateParameter(selectCommand, "take", pageSize, DbType.Int32));
+                selectCommand.Parameters.Add(CreateParameter(selectCommand, "skip", (page - 1) * pageSize, DbType.Int32));
 
                 await using DbDataReader reader = await selectCommand.ExecuteReaderAsync(cancellationToken);
 
@@ -314,16 +316,16 @@ public sealed class CaregiversDbContext :
         decimal? minRating,
         int? minExperienceYears)
     {
-        command.Parameters.Add(CreateParameter(command, "search", (object?)search ?? DBNull.Value));
-        command.Parameters.Add(CreateParameter(command, "typeFilter", (object?)type ?? DBNull.Value));
-        command.Parameters.Add(CreateParameter(command, "genderFilter", (object?)gender ?? DBNull.Value));
-        command.Parameters.Add(CreateParameter(command, "areaFilter", (object?)areaId ?? DBNull.Value));
-        command.Parameters.Add(CreateParameter(command, "specFilter", (object?)specializationId ?? DBNull.Value));
-        command.Parameters.Add(CreateParameter(command, "availabilityFilter", (object?)availability ?? DBNull.Value));
-        command.Parameters.Add(CreateParameter(command, "minPrice", (object?)minPrice ?? DBNull.Value));
-        command.Parameters.Add(CreateParameter(command, "maxPrice", (object?)maxPrice ?? DBNull.Value));
-        command.Parameters.Add(CreateParameter(command, "minRating", (object?)minRating ?? DBNull.Value));
-        command.Parameters.Add(CreateParameter(command, "minExp", (object?)minExperienceYears ?? DBNull.Value));
+        command.Parameters.Add(CreateParameter(command, "search", (object?)search ?? DBNull.Value, DbType.String));
+        command.Parameters.Add(CreateParameter(command, "typeFilter", (object?)type ?? DBNull.Value, DbType.Int32));
+        command.Parameters.Add(CreateParameter(command, "genderFilter", (object?)gender ?? DBNull.Value, DbType.Int32));
+        command.Parameters.Add(CreateParameter(command, "areaFilter", (object?)areaId ?? DBNull.Value, DbType.Guid));
+        command.Parameters.Add(CreateParameter(command, "specFilter", (object?)specializationId ?? DBNull.Value, DbType.Guid));
+        command.Parameters.Add(CreateParameter(command, "availabilityFilter", (object?)availability ?? DBNull.Value, DbType.Int32));
+        command.Parameters.Add(CreateParameter(command, "minPrice", (object?)minPrice ?? DBNull.Value, DbType.Decimal));
+        command.Parameters.Add(CreateParameter(command, "maxPrice", (object?)maxPrice ?? DBNull.Value, DbType.Decimal));
+        command.Parameters.Add(CreateParameter(command, "minRating", (object?)minRating ?? DBNull.Value, DbType.Decimal));
+        command.Parameters.Add(CreateParameter(command, "minExp", (object?)minExperienceYears ?? DBNull.Value, DbType.Int32));
     }
 
     public async Task<int> CountAdminCaregiversAsync(
@@ -370,24 +372,28 @@ public sealed class CaregiversDbContext :
             CreateParameter(
                 command,
                 "statusFilter",
-                status.HasValue ? status.Value : DBNull.Value));
+                status.HasValue ? status.Value : DBNull.Value,
+                DbType.Int32));
 
         command.Parameters.Add(
             CreateParameter(
                 command,
                 "typeFilter",
-                type.HasValue ? type.Value : DBNull.Value));
+                type.HasValue ? type.Value : DBNull.Value,
+                DbType.Int32));
     }
 
     private static DbParameter CreateParameter(
         DbCommand command,
         string name,
-        object value)
+        object value,
+        DbType dbType)
     {
         DbParameter parameter =
             command.CreateParameter();
 
         parameter.ParameterName = name;
+        parameter.DbType = dbType;
         parameter.Value = value;
 
         return parameter;
