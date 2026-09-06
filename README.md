@@ -321,7 +321,7 @@ Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` Supe
 - Caregiver lookups (create/rename/activate/deactivate + admin list-all for all eight lookups): `docs/admin/`
 - Caregiver review: `docs/admin/caregivers-review.md` — paged list (reviewer name/phone joined from Identity), detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, private certificate file download.
 - Care-needs assessment CMS: `docs/admin/care-assessments.md` — questions, scoring tiers, submissions.
-- Bookings (cancellations & refunds): `docs/admin/bookings.md` — paged closed bookings (`finance` = all / cancelled / failed refund / refunded) and detail.
+- Bookings (cancellations & refunds): `docs/admin/bookings.md` — paged closed bookings (`finance` = all / cancelled / failed refund / refunded), detail, and `POST .../refund` to retry a failed Paymob refund.
 
 Postman: `docs/postman/admins/Sanad.Admin.postman_collection.json`.
 

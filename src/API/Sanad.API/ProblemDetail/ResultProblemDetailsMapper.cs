@@ -123,6 +123,8 @@ public static class ResultProblemDetailsMapper
             ["Bookings.BookingNotInFamily"] = 404,
             ["Bookings.Domain.InvalidOperation"] = 409,
             ["Bookings.PriceUnavailable"] = 409,
+            ["Bookings.AlreadyRefunded"] = 409,
+            ["Bookings.RefundNotEligible"] = 409,
 
             ["Caregivers.Discovery.CaregiverNotFound"] = 404,
             ["Caregivers.Discovery.QuoteNotAvailable"] = 409,
