@@ -5,7 +5,6 @@ using Sanad.API.Authorization;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
-using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Domain.Bookings;
@@ -15,14 +14,12 @@ namespace Sanad.API.Controllers;
 public sealed record CreateBookingCheckoutRequest(
     Guid ElderlyId,
     Guid CaregiverId,
-    CaregiverType CaregiverType,
     BookingShiftType ShiftType,
     DateOnly BookingDate,
     TimeOnly StartTime,
     TimeOnly EndTime,
     string ServiceAddress,
-    string? SpecialInstructions,
-    decimal BaseCaregiverFee);
+    string? SpecialInstructions);
 
 public sealed record CreatePaymentIntentRequest(
     PaymentMethod Method,

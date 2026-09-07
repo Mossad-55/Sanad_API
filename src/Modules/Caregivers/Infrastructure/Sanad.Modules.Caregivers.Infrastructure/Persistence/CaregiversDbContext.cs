@@ -231,7 +231,19 @@ public sealed class CaregiversDbContext :
                 c.reviews_count      AS "ReviewsCount",
                 c.availability       AS "Availability",
                 s.arabic_name        AS "SpecializationAr",
-                s.english_name       AS "SpecializationEn"
+                s.english_name       AS "SpecializationEn",
+                (
+                    SELECT string_agg(a.arabic_name, '|' ORDER BY a.arabic_name)
+                    FROM caregivers.caregiver_area_selections cas
+                    INNER JOIN caregivers.areas a ON a.id = cas.area_id
+                    WHERE cas.caregiver_id = c.id
+                ) AS "WorkingAreasAr",
+                (
+                    SELECT string_agg(a.english_name, '|' ORDER BY a.english_name)
+                    FROM caregivers.caregiver_area_selections cas
+                    INNER JOIN caregivers.areas a ON a.id = cas.area_id
+                    WHERE cas.caregiver_id = c.id
+                ) AS "WorkingAreasEn"
             {baseSql}
             ORDER BY c.average_rating DESC, c.reviews_count DESC, c.id
             LIMIT @take OFFSET @skip
@@ -291,7 +303,8 @@ public sealed class CaregiversDbContext :
                         (CaregiverAvailability)reader.GetInt32(reader.GetOrdinal("Availability")),
                         specAr != null ? new[] { specAr } : Array.Empty<string>(),
                         specEn != null ? new[] { specEn } : Array.Empty<string>(),
-                        Array.Empty<string>()));
+                        ReadDelimitedNames(reader, "WorkingAreasAr"),
+                        ReadDelimitedNames(reader, "WorkingAreasEn")));
                 }
             }
         }
@@ -408,5 +421,19 @@ public sealed class CaregiversDbContext :
         return reader.IsDBNull(ordinal)
             ? null
             : reader.GetString(ordinal);
+    }
+
+    private static IReadOnlyList<string> ReadDelimitedNames(
+        DbDataReader reader,
+        string columnName)
+    {
+        string? aggregated = GetNullableString(reader, columnName);
+
+        if (string.IsNullOrWhiteSpace(aggregated))
+        {
+            return Array.Empty<string>();
+        }
+
+        return aggregated.Split('|', StringSplitOptions.RemoveEmptyEntries);
     }
 }
