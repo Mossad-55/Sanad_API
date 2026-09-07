@@ -28,7 +28,8 @@ public sealed record CaregiverSearchCardResponse(
     CaregiverAvailability Availability,
     IReadOnlyList<string> SpecializationsAr,
     IReadOnlyList<string> SpecializationsEn,
-    IReadOnlyList<string> WorkingAreasAr);
+    IReadOnlyList<string> WorkingAreasAr,
+    IReadOnlyList<string> WorkingAreasEn);
 
 public sealed record PagedResult<T>(
     IReadOnlyList<T> Items,
