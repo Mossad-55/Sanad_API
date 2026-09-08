@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Caregivers.Application.Lookups;
@@ -128,14 +129,12 @@ public sealed class UpdateCaregiverSelectionsCommandHandler
             return OnboardingErrors.InactiveLookup;
         }
 
-        List<Guid> activeCityIds =
-            areas.Select(a => a.CityId).Distinct()
-                .Select(id => id.Value)
-                .ToList();
+        List<CityId> activeCityIds =
+            areas.Select(a => a.CityId).Distinct().ToList();
 
         List<City> chainCities =
             await _dbContext.Cities
-                .Where(c => activeCityIds.Contains(c.Id.Value))
+                .Where(c => activeCityIds.Contains(c.Id))
                 .ToListAsync(cancellationToken);
 
         if (chainCities.Count != activeCityIds.Count ||
@@ -144,14 +143,12 @@ public sealed class UpdateCaregiverSelectionsCommandHandler
             return OnboardingErrors.InactiveLookup;
         }
 
-        List<Guid> activeGovernorateIds =
-            chainCities.Select(c => c.GovernorateId).Distinct()
-                .Select(id => id.Value)
-                .ToList();
+        List<GovernorateId> activeGovernorateIds =
+            chainCities.Select(c => c.GovernorateId).Distinct().ToList();
 
         List<Governorate> chainGovernorates =
             await _dbContext.Governorates
-                .Where(g => activeGovernorateIds.Contains(g.Id.Value))
+                .Where(g => activeGovernorateIds.Contains(g.Id))
                 .ToListAsync(cancellationToken);
 
         if (chainGovernorates.Count != activeGovernorateIds.Count ||
@@ -160,56 +157,62 @@ public sealed class UpdateCaregiverSelectionsCommandHandler
             return OnboardingErrors.InactiveLookup;
         }
 
-        // Diff and apply: remove selections no longer desired, then add new ones.
-        foreach (ServiceId serviceId in
-                 caregiver.ServiceSelections
-                     .Select(s => s.Id)
-                     .Where(id => !desiredServiceIds.Contains(id))
-                     .ToList())
+        try
         {
-            caregiver.RemoveService(serviceId);
-        }
+            foreach (Service service in
+                     services.Where(s =>
+                         !caregiver.ServiceSelections
+                             .Any(selection => selection.Id == s.Id)))
+            {
+                caregiver.SelectService(service);
+            }
 
-        foreach (Service service in
-                 services.Where(s =>
-                     !caregiver.ServiceSelections
-                         .Any(selection => selection.Id == s.Id)))
-        {
-            caregiver.SelectService(service);
-        }
+            foreach (ServiceId serviceId in
+                     caregiver.ServiceSelections
+                         .Select(s => s.Id)
+                         .Where(id => !desiredServiceIds.Contains(id))
+                         .ToList())
+            {
+                caregiver.RemoveService(serviceId);
+            }
 
-        foreach (LanguageId languageId in
-                 caregiver.LanguageSelections
-                     .Select(l => l.Id)
-                     .Where(id => !desiredLanguageIds.Contains(id))
-                     .ToList())
-        {
-            caregiver.RemoveLanguage(languageId);
-        }
+            foreach (Language language in
+                     languages.Where(l =>
+                         !caregiver.LanguageSelections
+                             .Any(selection => selection.Id == l.Id)))
+            {
+                caregiver.SelectLanguage(language);
+            }
 
-        foreach (Language language in
-                 languages.Where(l =>
-                     !caregiver.LanguageSelections
-                         .Any(selection => selection.Id == l.Id)))
-        {
-            caregiver.SelectLanguage(language);
-        }
+            foreach (LanguageId languageId in
+                     caregiver.LanguageSelections
+                         .Select(l => l.Id)
+                         .Where(id => !desiredLanguageIds.Contains(id))
+                         .ToList())
+            {
+                caregiver.RemoveLanguage(languageId);
+            }
 
-        foreach (AreaId areaId in
-                 caregiver.AreaSelections
-                     .Select(a => a.Id)
-                     .Where(id => !desiredAreaIds.Contains(id))
-                     .ToList())
-        {
-            caregiver.RemoveArea(areaId);
-        }
+            foreach (Area area in
+                     areas.Where(a =>
+                         !caregiver.AreaSelections
+                             .Any(selection => selection.Id == a.Id)))
+            {
+                caregiver.SelectArea(area);
+            }
 
-        foreach (Area area in
-                 areas.Where(a =>
-                     !caregiver.AreaSelections
-                         .Any(selection => selection.Id == a.Id)))
+            foreach (AreaId areaId in
+                     caregiver.AreaSelections
+                         .Select(a => a.Id)
+                         .Where(id => !desiredAreaIds.Contains(id))
+                         .ToList())
+            {
+                caregiver.RemoveArea(areaId);
+            }
+        }
+        catch (DomainException)
         {
-            caregiver.SelectArea(area);
+            return OnboardingErrors.InvalidState;
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
