@@ -26,6 +26,11 @@ public static class IdentityDocumentErrors
             "Identity.IdentityDocument.UserNotFound",
             "User was not found.");
 
+    public static readonly Error NotFound =
+        new(
+            "Identity.IdentityDocument.NotFound",
+            "Identity document was not found.");
+
     public static readonly Error UnsupportedAccountType =
         new(
             "Identity.IdentityDocument.UnsupportedAccountType",

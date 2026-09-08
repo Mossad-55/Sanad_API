@@ -1754,6 +1754,207 @@
           }
         }
       ]
+    },
+    {
+      "name": "10. Identity Documents",
+      "item": [
+        {
+          "name": "GET Identity Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/identity-documents",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "identity-documents"
+              ]
+            },
+            "description": "CaregiversAdmin. Query page, pageSize, status (1 Pending, 2 Verified, 3 Rejected, 4 Revoked). Never returns file URLs."
+          }
+        },
+        {
+          "name": "GET Identity Document",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/identity-documents/{{identityUserId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "identity-documents",
+                "{{identityUserId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Front Image",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/identity-documents/{{identityUserId}}/front",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "identity-documents",
+                "{{identityUserId}}",
+                "front"
+              ]
+            }
+          }
+        },
+        {
+          "name": "GET Back Image",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/identity-documents/{{identityUserId}}/back",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "identity-documents",
+                "{{identityUserId}}",
+                "back"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST Verify",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/identity-documents/{{identityUserId}}/verify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "identity-documents",
+                "{{identityUserId}}",
+                "verify"
+              ]
+            }
+          }
+        },
+        {
+          "name": "POST Reject",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/identity-documents/{{identityUserId}}/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "identity-documents",
+                "{{identityUserId}}",
+                "reject"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Front image is unclear.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "POST Revoke",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/admin/identity-documents/{{identityUserId}}/revoke",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "admin",
+                "identity-documents",
+                "{{identityUserId}}",
+                "revoke"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Identity fraud detected.\"\n}"
+            }
+          }
+        }
+      ]
     }
   ]
 }

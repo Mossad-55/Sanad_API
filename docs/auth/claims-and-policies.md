@@ -60,6 +60,7 @@ Requires an authenticated user with `access_type` = `Normal` and `account_type` 
 
 - Caregiver lookup admin routes (`/api/v1/admin/lookups/...`)
 - Caregiver review routes (`/api/v1/admin/caregivers/...`): paged list, detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, certificate file download
+- National ID admin review (`/api/v1/admin/identity-documents/...`): paged list, detail, front/back download, verify/reject/revoke
 
 ## Policy `CaregiverAccess`
 

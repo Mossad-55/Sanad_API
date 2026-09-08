@@ -18,6 +18,7 @@ Implemented HTTP surface:
 - Session list, current logout, logout-all, and owned-session revoke
 - Password reset and authenticated password change
 - National ID self-service (`GET`/`PUT /api/v1/auth/identity-document`, Normal JWT, private storage; no file URLs)
+- Admin National ID review (`GET`/`POST /api/v1/admin/identity-documents/...`, `CaregiversAdmin`; private front/back download)
 - Shared splash screens (anonymous GET) plus admin splash CMS (multipart image create/update, publish, delete)
 - Anonymous public file serving at `GET /files/{key}` (public assets only)
 - Caregiver **lookups** (admin management + anonymous public reads) for:
@@ -54,7 +55,6 @@ Not in this repository yet:
 - Family/caregiver **ratings and reviews** HTTP (caregiver `average_rating` / `reviews_count` columns exist; no review API)
 - Booking cancellation **fee tiers** (cancel is allowed; no fee deducted yet)
 - Social / Google / Apple authentication (cancelled and removed)
-- Admin National ID review/download (self-service upload is live; reviewer HTTP is a later slice)
 
 ## Solution layout
 
@@ -324,6 +324,7 @@ Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` Supe
 - Splash CMS: `docs/admin/splash-screens.md`
 - Caregiver lookups (create/rename/activate/deactivate + admin list-all for all eight lookups): `docs/admin/`
 - Caregiver review: `docs/admin/caregivers-review.md` — paged list (reviewer name/phone joined from Identity), detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, private certificate file download.
+- National ID review: `docs/admin/identity-documents.md` — paged list, detail, private front/back download, verify/reject/revoke.
 - Care-needs assessment CMS: `docs/admin/care-assessments.md` — questions, scoring tiers, submissions.
 - Bookings (cancellations & refunds): `docs/admin/bookings.md` — paged closed bookings (`finance` = all / cancelled / failed refund / refunded), detail, and `POST .../refund` to retry a failed Paymob refund.
 
