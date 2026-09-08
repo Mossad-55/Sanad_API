@@ -34,7 +34,7 @@ JSON `accessType` is the enum value: `1` = Normal, `2` = RestrictedVerification.
 
 The JWT claim `access_type` is the enum name: `Normal` or `RestrictedVerification`.
 
-Restricted tokens have no refresh token and no DeviceSession. They cannot call password-change or session endpoints.
+Restricted tokens have no refresh token and no DeviceSession. They cannot call password-change, session, or National ID endpoints.
 
 Maximum five active DeviceSessions per user. The API does not silently revoke an old session.
 
@@ -71,6 +71,7 @@ flowchart TD
     pending -->|PendingVerification| restricted[Restricted JWT]
     pending -->|Active| normal[Access + refresh + DeviceSession]
     pending -->|Suspended or Blocked| denied[403]
+    normal --> idDoc[PUT /identity-document]
     role -->|Elderly| elderlyReq[POST /elderly/request-otp]
     elderlyReq --> elderlyVerify[POST /elderly/verify-otp]
     elderlyVerify --> elderlyTokens[Access + refresh + DeviceSession]
@@ -78,9 +79,12 @@ flowchart TD
     elderlyTokens --> refresh
 ```
 
+National ID is optional at activation. The app may call `PUT /identity-document` after a Normal login from any screen.
+
 Detailed documents:
 
 - [Registration and verification](registration-and-verification.md)
+- [National ID (identity document)](identity-document.md)
 - [Email/password login](email-password-login.md)
 - [Elderly SMS login](elderly-sms-login.md)
 - [Refresh and sessions](refresh-and-sessions.md)
@@ -106,3 +110,5 @@ Detailed documents:
 | POST | `/api/v1/auth/sessions/logout-all` | Normal JWT |
 | GET | `/api/v1/auth/sessions` | Normal JWT |
 | DELETE | `/api/v1/auth/sessions/{sessionId}` | Normal JWT |
+| GET | `/api/v1/auth/identity-document` | Normal JWT |
+| PUT | `/api/v1/auth/identity-document` | Normal JWT, multipart `front` + `back` |
