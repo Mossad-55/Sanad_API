@@ -16,7 +16,7 @@ Use `curl -k` against that host. `http://localhost:5235` redirects `307` to HTTP
 
 Requires policy `NormalAccess`. Restricted verification tokens receive framework `403`. Missing or invalid bearer tokens receive framework `401`.
 
-Files are stored in **private** storage (folder `identity-documents`, sibling root that `GET /files/{key}` never serves). Responses never include paths or URLs. Admin download/review is a later slice; until then status stays `Pending`.
+Files are stored in **private** storage (folder `identity-documents`, sibling root that `GET /files/{key}` never serves). User GET/PUT never include paths or URLs. Admins download and verify/reject/revoke on `GET/POST /api/v1/admin/identity-documents/...` — see `docs/admin/identity-documents.md`.
 
 Allowed content types: `image/jpeg` (`image/jpg` is accepted and stored as jpeg), `image/png`, `image/webp`. PDF is rejected. Maximum **5 MB per image**. The PUT request size limit is **10 MB** (two files).
 

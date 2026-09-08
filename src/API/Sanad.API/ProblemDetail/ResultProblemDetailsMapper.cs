@@ -60,6 +60,7 @@ public static class ResultProblemDetailsMapper
             ["Identity.User.EmailNotFound"] = 404,
 
             ["Identity.IdentityDocument.UserNotFound"] = 404,
+            ["Identity.IdentityDocument.NotFound"] = 404,
             ["Identity.IdentityDocument.UnsupportedAccountType"] = 409,
             ["Identity.IdentityDocument.InvalidOperation"] = 409,
 
