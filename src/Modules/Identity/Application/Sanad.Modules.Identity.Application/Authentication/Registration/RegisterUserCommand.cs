@@ -9,6 +9,5 @@ public sealed record RegisterUserCommand(
     string Email,
     string PhoneNumber,
     string Password,
-    AccountType AccountType,
-    string? AvatarUrl)
+    AccountType AccountType)
     : ICommand<RegisterUserResponse>;

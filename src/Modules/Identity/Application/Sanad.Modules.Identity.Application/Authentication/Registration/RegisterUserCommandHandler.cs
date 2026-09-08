@@ -97,9 +97,7 @@ public sealed class RegisterUserCommandHandler :
             arabiFullName,
             englishFullName,
             email,
-            phoneNumber,
-            NormalizedOptionalAvatar(
-                request.AvatarUrl));
+            phoneNumber);
 
         user.AddAccount(
             request.AccountType);
@@ -170,12 +168,4 @@ public sealed class RegisterUserCommandHandler :
             AccountType.CompanionCaregiver;
     }
 
-    private static string? NormalizedOptionalAvatar(
-        string? avatarUrl)
-    {
-        return string.IsNullOrWhiteSpace(
-            avatarUrl)
-                ? null
-                : avatarUrl.Trim();
-    }
 }

@@ -22,7 +22,7 @@
             "url": "{{baseUrl}}/api/v1/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"arabicFullName\": \"أحمد الممرض\",\n  \"englishFullName\": \"Ahmed Nurse\",\n  \"email\": \"{{caregiverEmail}}\",\n  \"phoneNumber\": \"{{caregiverPhone}}\",\n  \"password\": \"{{caregiverPassword}}\",\n  \"accountType\": 2,\n  \"avatarUrl\": null\n}"
+              "raw": "{\n  \"arabicFullName\": \"أحمد الممرض\",\n  \"englishFullName\": \"Ahmed Nurse\",\n  \"email\": \"{{caregiverEmail}}\",\n  \"phoneNumber\": \"{{caregiverPhone}}\",\n  \"password\": \"{{caregiverPassword}}\",\n  \"accountType\": 2\n}"
             }
           }
         },

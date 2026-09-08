@@ -22,7 +22,7 @@
             "url": "{{baseUrl}}/api/v1/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"arabicFullName\": \"نور نصر\",\n  \"englishFullName\": \"Nour Nasr\",\n  \"email\": \"{{familyEmail}}\",\n  \"phoneNumber\": \"{{familyPhone}}\",\n  \"password\": \"{{familyPassword}}\",\n  \"accountType\": 1,\n  \"avatarUrl\": null\n}"
+              "raw": "{\n  \"arabicFullName\": \"نور نصر\",\n  \"englishFullName\": \"Nour Nasr\",\n  \"email\": \"{{familyEmail}}\",\n  \"phoneNumber\": \"{{familyPhone}}\",\n  \"password\": \"{{familyPassword}}\",\n  \"accountType\": 1\n}"
             }
           }
         },
@@ -39,7 +39,7 @@
             "url": "{{baseUrl}}/api/v1/auth/register",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"arabicFullName\": \"سلمى نصر\",\n  \"englishFullName\": \"Salma Nasr\",\n  \"email\": \"{{familyInviteeEmail}}\",\n  \"phoneNumber\": \"{{familyInviteePhone}}\",\n  \"password\": \"{{familyPassword}}\",\n  \"accountType\": 1,\n  \"avatarUrl\": null\n}"
+              "raw": "{\n  \"arabicFullName\": \"سلمى نصر\",\n  \"englishFullName\": \"Salma Nasr\",\n  \"email\": \"{{familyInviteeEmail}}\",\n  \"phoneNumber\": \"{{familyInviteePhone}}\",\n  \"password\": \"{{familyPassword}}\",\n  \"accountType\": 1\n}"
             }
           },
           "description": "The invitee must exist with a Family account before an invitation is created. Register this second user (or verify OTP for both) before folder 3."
