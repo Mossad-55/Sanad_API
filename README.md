@@ -17,6 +17,7 @@ Implemented HTTP surface:
 - Refresh-token rotation and reuse detection
 - Session list, current logout, logout-all, and owned-session revoke
 - Password reset and authenticated password change
+- National ID self-service (`GET`/`PUT /api/v1/auth/identity-document`, Normal JWT, private storage; no file URLs)
 - Shared splash screens (anonymous GET) plus admin splash CMS (multipart image create/update, publish, delete)
 - Anonymous public file serving at `GET /files/{key}` (public assets only)
 - Caregiver **lookups** (admin management + anonymous public reads) for:
@@ -53,6 +54,7 @@ Not in this repository yet:
 - Family/caregiver **ratings and reviews** HTTP (caregiver `average_rating` / `reviews_count` columns exist; no review API)
 - Booking cancellation **fee tiers** (cancel is allowed; no fee deducted yet)
 - Social / Google / Apple authentication (cancelled and removed)
+- Admin National ID review/download (self-service upload is live; reviewer HTTP is a later slice)
 
 ## Solution layout
 
@@ -126,10 +128,10 @@ A single default CORS policy currently allows any origin, header, and method (mo
 
 ### Local file storage
 
-Public uploads (splash images, service icons) and private uploads (caregiver certificate scans) are stored on local disk:
+Public uploads (splash images, service icons) and private uploads (caregiver certificate scans, National ID front/back) are stored on local disk:
 
 - Public root: `{AppContext.BaseDirectory}/sanad-files`; override with `Storage__Local__RootPath="/var/sanad/files"`. Served anonymously at `GET /files/{key}`. Limit 2 MB; jpeg/png/webp.
-- Private root: a sibling directory (`<root>-private`) that is **not** served statically. Certificate scans (pdf/jpeg/png/webp, 5 MB limit) are only reachable through the admin download endpoint `GET /api/v1/admin/caregivers/{id}/certificates/{certId}/file`.
+- Private root: a sibling directory (`<root>-private`) that is **not** served statically. Certificate scans (pdf/jpeg/png/webp, 5 MB limit) are only reachable through the admin download endpoint `GET /api/v1/admin/caregivers/{id}/certificates/{certId}/file`. National ID images (jpeg/png/webp, 5 MB per side) are stored under folder `identity-documents` and are not downloadable in this slice.
 
 ### Optional SMTP
 
@@ -221,8 +223,10 @@ Base route: `/api/v1/auth`
 | POST | `/sessions/logout-all` | Normal JWT | 204 |
 | GET | `/sessions` | Normal JWT | 200 |
 | DELETE | `/sessions/{sessionId}` | Normal JWT | 204 |
+| GET | `/identity-document` | Normal JWT | 200 |
+| PUT | `/identity-document` | Normal JWT, multipart `front` + `back` | 200 |
 
-Password change and all session actions require policy `NormalAccess`: an authenticated JWT whose `access_type` claim is `Normal`. Restricted verification tokens receive 403.
+Password change, session actions, and National ID require policy `NormalAccess`: an authenticated JWT whose `access_type` claim is `Normal`. Restricted verification tokens receive 403. National ID is Family / Medical Caregiver / Companion Caregiver only; Elderly receives `409 Identity.IdentityDocument.UnsupportedAccountType`.
 
 ## App — public endpoints
 
@@ -339,6 +343,7 @@ Lookup error codes: `Caregivers.Lookups.NameAlreadyInUse` (409), `Caregivers.Loo
 - Elderly login is phone + SMS OTP only. Unknown numbers do not self-register and do not reveal whether an account exists. Elderly accounts are created server-side when a family adds a dependent (no email/password; Active + phone-verified, so OTP login works immediately). See `docs/app/families/dependents.md`.
 - Password reset request is non-enumerating and always returns 204.
 - Successful password reset or change revokes every refresh session.
+- National ID is a separate authenticated multipart endpoint (`GET`/`PUT /api/v1/auth/identity-document`). Do not send ID files on `POST /register`. Replacing an ID while Active returns the user to PendingVerification and revokes sessions.
 - Development senders do not deliver codes. The API never returns the raw OTP.
 
 Details live in `docs/`.
@@ -359,6 +364,7 @@ docs/app/families/                      Family app HTTP (family, dependents, inv
 docs/admin/                             Admin HTTP (splash, lookups, caregiver review)
 docs/architecture/                      Architecture notes
 docs/operations/                        Configuration, migrations, security
+docs/postman/Sanad.Auth.postman_collection.json
 docs/postman/app/Sanad.App.Public.postman_collection.json
 docs/postman/app/Sanad.App.Caregiver.postman_collection.json
 docs/postman/app/Sanad.App.Family.postman_collection.json
