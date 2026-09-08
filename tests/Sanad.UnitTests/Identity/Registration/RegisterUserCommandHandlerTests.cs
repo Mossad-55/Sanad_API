@@ -1,15 +1,12 @@
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.Results;
-using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Application.Authentication;
 using Sanad.Modules.Identity.Application.Authentication.Registration;
-using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 using Sanad.Modules.Identity.Domain.Users;
 
@@ -344,8 +341,7 @@ public sealed class RegisterUserCommandHandlerTests
             Email: "mohamed@example.com",
             PhoneNumber: "+201001234567",
             Password: "StrongPass123",
-            AccountType: accountType,
-            AvatarUrl: null);
+            AccountType: accountType);
     }
 
     private static IdentityTestDbContext CreateDbContext()

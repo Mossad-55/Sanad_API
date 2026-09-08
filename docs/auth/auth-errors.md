@@ -56,9 +56,12 @@ Validation failures are also Problem Details. `detail` is a safe public message.
 | `Identity.Sessions.SessionNotOwned` | 404 |
 | `Identity.Sessions.UserNotFound` | 404 |
 | `Identity.IdentityDocument.UserNotFound` | 404 |
-| `Identity.IdentityDocument.NotFound` | 404 |
 | `Identity.IdentityDocument.UnsupportedAccountType` | 409 |
 | `Identity.IdentityDocument.InvalidOperation` | 409 |
+| `Identity.Avatar.UserNotFound` | 404 |
+| `Identity.Avatar.NotFound` | 404 |
+| `Identity.Avatar.UnsupportedAccountType` | 409 |
+| `Identity.Avatar.InvalidOperation` | 409 |
 | `Storage.File.Empty` | 400 |
 | `Storage.File.TooLarge` | 400 |
 | `Storage.File.UnsupportedType` | 400 |

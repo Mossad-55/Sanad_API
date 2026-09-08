@@ -54,8 +54,7 @@ public sealed class AuthController :
                 request.Email,
                 request.PhoneNumber,
                 request.Password,
-                request.AccountType,
-                request.AvatarUrl);
+                request.AccountType);
 
         var result =
             await _sender.Send(
@@ -445,6 +444,95 @@ public sealed class AuthController :
     [Authorize(
         Policy =
             AuthorizationPolicies.NormalAccess)]
+    [HttpGet("avatar")]
+    public async Task<IActionResult> GetAvatar(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+            out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new GetUserAvatarQuery(
+                    userId),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(
+                result);
+        }
+
+        return File(
+            result.Value.Content,
+            result.Value.ContentType,
+            result.Value.FileName);
+    }
+
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
+    [HttpPut("avatar")]
+    [RequestSizeLimit(6_291_456)]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpsertAvatar(
+        IFormFile? file,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+            out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        Result<StoredFile> upload =
+            await SavePrivateAvatarImageAsync(
+                file,
+                cancellationToken);
+
+        if (upload.IsFailure)
+        {
+            return ToActionResult(
+                upload);
+        }
+
+        string imageKey = upload.Value.Key;
+
+        var result =
+            await _sender.Send(
+                new UpsertUserAvatarCommand(
+                    userId,
+                    imageKey),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            await _fileStorage.DeleteAsync(
+                imageKey,
+                cancellationToken);
+
+            return ToActionResult(
+                result);
+        }
+
+        return ToActionResult(
+            result);
+    }
+
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
     [HttpGet("identity-document")]
     [ProducesResponseType(
         typeof(IdentityDocumentResponse),
@@ -551,6 +639,38 @@ public sealed class AuthController :
 
         return ToActionResult(
             result);
+    }
+
+    private async Task<Result<StoredFile>>
+        SavePrivateAvatarImageAsync(
+            IFormFile? file,
+            CancellationToken cancellationToken)
+    {
+        if (file is null)
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.Empty);
+        }
+
+        string? contentType =
+            NormalizeIdentityImageContentType(
+                file.ContentType);
+
+        if (contentType is null)
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.UnsupportedType);
+        }
+
+        await using Stream stream =
+            file.OpenReadStream();
+
+        return await _fileStorage.SavePrivateAsync(
+            stream,
+            contentType,
+            file.Length,
+            folder: AvatarStorage.Folder,
+            cancellationToken);
     }
 
     private async Task<Result<StoredFile>>

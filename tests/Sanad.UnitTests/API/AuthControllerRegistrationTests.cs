@@ -32,8 +32,7 @@ public sealed class AuthControllerRegistrationTests
                 "mohamed@example.com",
                 "+201001234567",
                 "SecurePassword123",
-                AccountType.Family,
-                AvatarUrl: null),
+                AccountType.Family),
             CancellationToken.None);
 
         var created = Assert.IsType<ObjectResult>(result);
@@ -58,8 +57,7 @@ public sealed class AuthControllerRegistrationTests
                 "mohamed@example.com",
                 "+201001234567",
                 "SecurePassword123",
-                AccountType.Family,
-                AvatarUrl: null),
+                AccountType.Family),
             CancellationToken.None);
 
         var conflict = Assert.IsType<ObjectResult>(result);

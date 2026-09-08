@@ -22,7 +22,7 @@
             "description": "Anonymous. Family=1, MedicalCaregiver=2, CompanionCaregiver=3. Elderly=4 is rejected.",
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"arabicFullName\": \"محمد أحمد\",\n  \"englishFullName\": \"Mohamed Ahmed\",\n  \"email\": \"{{email}}\",\n  \"phoneNumber\": \"{{phoneNumber}}\",\n  \"password\": \"{{password}}\",\n  \"accountType\": {{accountType}},\n  \"avatarUrl\": null\n}"
+              "raw": "{\n  \"arabicFullName\": \"محمد أحمد\",\n  \"englishFullName\": \"Mohamed Ahmed\",\n  \"email\": \"{{email}}\",\n  \"phoneNumber\": \"{{phoneNumber}}\",\n  \"password\": \"{{password}}\",\n  \"accountType\": {{accountType}}\n}"
             }
           },
           "response": [
@@ -1452,6 +1452,62 @@
               "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/auth/identity-document\",\n  \"code\": \"Identity.IdentityDocument.InvalidOperation\"\n}"
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "09. Avatar",
+      "item": [
+        {
+          "name": "PUT Avatar",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "jpeg/png/webp, max 5 MB"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/avatar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "avatar"
+              ]
+            },
+            "description": "Normal JWT. Multipart field file. Success 204. Family / Medical / Companion only."
+          }
+        },
+        {
+          "name": "GET Avatar",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/avatar",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "avatar"
+              ]
+            },
+            "description": "Normal JWT. Streams the private image. 404 Identity.Avatar.NotFound when none uploaded."
+          }
         }
       ]
     }

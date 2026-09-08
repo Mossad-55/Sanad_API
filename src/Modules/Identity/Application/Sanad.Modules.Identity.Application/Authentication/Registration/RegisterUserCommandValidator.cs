@@ -7,7 +7,6 @@ public sealed class RegisterUserCommandValidator :
     AbstractValidator<RegisterUserCommand>
 {
     public const int MaximumPasswordLength = 128;
-    public const int MaximumAvatarUrlLength = 500;
 
     public RegisterUserCommandValidator()
     {
@@ -59,14 +58,6 @@ public sealed class RegisterUserCommandValidator :
             .WithMessage(
                 "Registration supports Family, " +
                 "Medical Caregiver, or Companion Caregiver only.");
-
-        RuleFor(command =>
-                command.AvatarUrl)
-            .MaximumLength(
-                MaximumAvatarUrlLength)
-            .When(command =>
-                !string.IsNullOrWhiteSpace(
-                    command.AvatarUrl));
     }
 
     private static bool IsSupportedAccountType(

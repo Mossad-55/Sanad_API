@@ -8,5 +8,4 @@ public sealed record RegisterRequest(
     string Email,
     string PhoneNumber,
     string Password,
-    AccountType AccountType,
-    string? AvatarUrl);
+    AccountType AccountType);

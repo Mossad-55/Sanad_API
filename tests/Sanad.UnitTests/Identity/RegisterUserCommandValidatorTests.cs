@@ -131,40 +131,7 @@ public sealed class RegisterUserCommandValidatorTests
                     value.Password);
     }
 
-    [Fact]
-    public void Validate_ShouldAllowMissingAvatar()
-    {
-        RegisterUserCommand command =
-            CreateValidCommand() with
-            {
-                AvatarUrl = null
-            };
 
-        _validator
-            .TestValidate(command)
-            .ShouldNotHaveValidationErrorFor(
-                value =>
-                    value.AvatarUrl);
-    }
-
-    [Fact]
-    public void Validate_ShouldRejectLongAvatarUrl()
-    {
-        RegisterUserCommand command =
-            CreateValidCommand() with
-            {
-                AvatarUrl = new string(
-                    'A',
-                    RegisterUserCommandValidator
-                        .MaximumAvatarUrlLength + 1)
-            };
-
-        _validator
-            .TestValidate(command)
-            .ShouldHaveValidationErrorFor(
-                value =>
-                    value.AvatarUrl);
-    }
 
     private static RegisterUserCommand CreateValidCommand(
         AccountType accountType =
@@ -176,7 +143,6 @@ public sealed class RegisterUserCommandValidatorTests
             Email: "mohamed@example.com",
             PhoneNumber: "+201001234567",
             Password: "StrongPass123",
-            AccountType: accountType,
-            AvatarUrl: null);
+            AccountType: accountType);
     }
 }

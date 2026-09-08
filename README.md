@@ -17,6 +17,7 @@ Implemented HTTP surface:
 - Refresh-token rotation and reuse detection
 - Session list, current logout, logout-all, and owned-session revoke
 - Password reset and authenticated password change
+- Avatar self-service (`GET`/`PUT /api/v1/auth/avatar`, Normal JWT, private storage)
 - National ID self-service (`GET`/`PUT /api/v1/auth/identity-document`, Normal JWT, private storage; no file URLs)
 - Admin National ID review (`GET`/`POST /api/v1/admin/identity-documents/...`, `CaregiversAdmin`; private front/back download)
 - Shared splash screens (anonymous GET) plus admin splash CMS (multipart image create/update, publish, delete)
@@ -223,6 +224,8 @@ Base route: `/api/v1/auth`
 | POST | `/sessions/logout-all` | Normal JWT | 204 |
 | GET | `/sessions` | Normal JWT | 200 |
 | DELETE | `/sessions/{sessionId}` | Normal JWT | 204 |
+| GET | `/avatar` | Normal JWT | 200 file |
+| PUT | `/avatar` | Normal JWT, multipart `file` | 204 |
 | GET | `/identity-document` | Normal JWT | 200 |
 | PUT | `/identity-document` | Normal JWT, multipart `front` + `back` | 200 |
 

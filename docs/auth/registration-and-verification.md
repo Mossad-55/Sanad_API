@@ -41,7 +41,7 @@ curl -k -sS https://localhost:7296/api/v1/auth/register \
   -d '{"firstName":"Ahmed","lastName":"Hassan","email":"ahmed@example.com","phone":"+201001234567","password":"Password1ab","accountType":1}'
 ```
 
-Do **not** send National ID photos on this request. The body is JSON only. After email + phone verification and a Normal login, use [National ID (identity document)](identity-document.md).
+Do **not** send avatar or National ID files on this request. The body is JSON only. After email + phone verification and a Normal login, use [Avatar](avatar.md) and [National ID (identity document)](identity-document.md).
 
 ## POST `/api/v1/auth/verification/verify`
 
@@ -75,6 +75,16 @@ Anonymous. Success `200`.
 Missing pending request `404`. Already verified `400`. Cooldown `409`.
 
 Resend supersedes the previous pending request of the same purpose.
+
+## Avatar
+
+Not part of register or verify. After a Normal login:
+
+```text
+PUT /api/v1/auth/avatar
+```
+
+See [avatar.md](avatar.md).
 
 ## National ID
 

@@ -40,6 +40,8 @@ Applied to:
 - `POST /api/v1/auth/sessions/logout-all`
 - `GET /api/v1/auth/sessions`
 - `DELETE /api/v1/auth/sessions/{sessionId}`
+- `GET /api/v1/auth/avatar`
+- `PUT /api/v1/auth/avatar`
 - `GET /api/v1/auth/identity-document`
 - `PUT /api/v1/auth/identity-document`
 - `GET /api/v1/caregivers` and `GET /api/v1/caregivers/{caregiverId}` and `GET /api/v1/caregivers/{caregiverId}/quote` — caregiver discovery (search, public profile, quote); any Normal account role may browse
