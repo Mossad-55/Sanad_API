@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Controllers;
 using Sanad.API.Controllers.Requests;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Application.Authentication.Sessions;
@@ -133,7 +134,7 @@ public sealed class AuthControllerPasswordAndSessionTests
 
     private static AuthController CreateController(CapturingSender sender, UserId? userId = null)
     {
-        var controller = new AuthController(sender)
+        var controller = new AuthController(sender, new UnusedFileStorage())
         {
             ControllerContext = new ControllerContext
             {
@@ -174,5 +175,43 @@ public sealed class AuthControllerPasswordAndSessionTests
         public Task<object?> Send(object request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class UnusedFileStorage :
+        IFileStorage
+    {
+        public Task<Result<StoredFile>> SaveAsync(
+            Stream content,
+            string contentType,
+            long contentLength,
+            string folder,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Result<StoredFile>> SavePrivateAsync(
+            Stream content,
+            string contentType,
+            long contentLength,
+            string folder,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Result<PrivateFileContent>> OpenReadAsync(
+            string key,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Result> DeleteAsync(
+            string key,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
     }
 }

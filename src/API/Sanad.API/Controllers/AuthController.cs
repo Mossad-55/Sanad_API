@@ -11,6 +11,9 @@ using Sanad.Modules.Identity.Application.Authentication.Refresh;
 using Sanad.Modules.Identity.Application.Authentication.Password;
 using Sanad.Modules.Identity.Application.Authentication.Sessions;
 using Sanad.API.Authorization;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
+using Sanad.BuildingBlocks.Application.Results;
+using Sanad.Modules.Identity.Application.Users;
 
 namespace Sanad.API.Controllers;
 
@@ -19,11 +22,14 @@ public sealed class AuthController :
     ApiControllerBase
 {
     private readonly ISender _sender;
+    private readonly IFileStorage _fileStorage;
 
     public AuthController(
-        ISender sender)
+        ISender sender,
+        IFileStorage fileStorage)
     {
         _sender = sender;
+        _fileStorage = fileStorage;
     }
 
     [AllowAnonymous]
@@ -434,5 +440,183 @@ public sealed class AuthController :
 
         return ToActionResult(
             result);
+    }
+
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
+    [HttpGet("identity-document")]
+    [ProducesResponseType(
+        typeof(IdentityDocumentResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetIdentityDocument(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+            out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new GetIdentityDocumentQuery(
+                    userId),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
+    [HttpPut("identity-document")]
+    [RequestSizeLimit(10_485_760)]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(
+        typeof(IdentityDocumentResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpsertIdentityDocument(
+        IFormFile? front,
+        IFormFile? back,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+            out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        Result<StoredFile> frontUpload =
+            await SavePrivateIdentityImageAsync(
+                front,
+                cancellationToken);
+
+        if (frontUpload.IsFailure)
+        {
+            return ToActionResult(
+                frontUpload);
+        }
+
+        string frontKey = frontUpload.Value.Key;
+
+        Result<StoredFile> backUpload =
+            await SavePrivateIdentityImageAsync(
+                back,
+                cancellationToken);
+
+        if (backUpload.IsFailure)
+        {
+            await _fileStorage.DeleteAsync(
+                frontKey,
+                cancellationToken);
+
+            return ToActionResult(
+                backUpload);
+        }
+
+        string backKey = backUpload.Value.Key;
+
+        var result =
+            await _sender.Send(
+                new UpsertIdentityDocumentCommand(
+                    userId,
+                    frontKey,
+                    backKey),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            await _fileStorage.DeleteAsync(
+                frontKey,
+                cancellationToken);
+
+            await _fileStorage.DeleteAsync(
+                backKey,
+                cancellationToken);
+
+            return ToActionResult(
+                result);
+        }
+
+        return ToActionResult(
+            result);
+    }
+
+    private async Task<Result<StoredFile>>
+        SavePrivateIdentityImageAsync(
+            IFormFile? file,
+            CancellationToken cancellationToken)
+    {
+        if (file is null)
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.Empty);
+        }
+
+        string? contentType =
+            NormalizeIdentityImageContentType(
+                file.ContentType);
+
+        if (contentType is null)
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.UnsupportedType);
+        }
+
+        await using Stream stream =
+            file.OpenReadStream();
+
+        return await _fileStorage.SavePrivateAsync(
+            stream,
+            contentType,
+            file.Length,
+            folder: IdentityDocumentStorage.Folder,
+            cancellationToken);
+    }
+
+    private static string? NormalizeIdentityImageContentType(
+        string? contentType)
+    {
+        if (string.IsNullOrWhiteSpace(
+            contentType))
+        {
+            return null;
+        }
+
+        string normalized =
+            contentType.Trim();
+
+        if (normalized.Equals(
+            "image/jpg",
+            StringComparison.OrdinalIgnoreCase))
+        {
+            return "image/jpeg";
+        }
+
+        if (normalized.Equals(
+                "image/jpeg",
+                StringComparison.OrdinalIgnoreCase) ||
+            normalized.Equals(
+                "image/png",
+                StringComparison.OrdinalIgnoreCase) ||
+            normalized.Equals(
+                "image/webp",
+                StringComparison.OrdinalIgnoreCase))
+        {
+            return normalized.ToLowerInvariant();
+        }
+
+        return null;
     }
 }

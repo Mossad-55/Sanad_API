@@ -1171,6 +1171,289 @@
           ]
         }
       ]
+    },
+    {
+      "name": "08. Identity Document",
+      "item": [
+        {
+          "name": "GET Identity Document",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/identity-document",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "identity-document"
+              ]
+            },
+            "description": "Normal JWT. Returns { uploaded, verificationStatus, reviewReason }. Never returns file URLs or paths. Missing document is uploaded:false, not 404."
+          },
+          "response": [
+            {
+              "name": "200 Not uploaded",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/v1/auth/identity-document"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"uploaded\": false,\n  \"verificationStatus\": null,\n  \"reviewReason\": null\n}"
+            },
+            {
+              "name": "200 Pending",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/v1/auth/identity-document"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"uploaded\": true,\n  \"verificationStatus\": 1,\n  \"reviewReason\": null\n}"
+            },
+            {
+              "name": "401 Missing token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/v1/auth/identity-document"
+              },
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/401\",\n  \"title\": \"Unauthorized\",\n  \"status\": 401,\n  \"detail\": \"Authentication failed.\",\n  \"instance\": \"/api/v1/auth/identity-document\"\n}"
+            },
+            {
+              "name": "403 Restricted token",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/v1/auth/identity-document"
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/auth/identity-document\"\n}"
+            },
+            {
+              "name": "409 Unsupported account type",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": "{{baseUrl}}/api/v1/auth/identity-document"
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/auth/identity-document\",\n  \"code\": \"Identity.IdentityDocument.UnsupportedAccountType\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "PUT Identity Document",
+          "request": {
+            "method": "PUT",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "front",
+                  "type": "file",
+                  "src": [],
+                  "description": "National ID front image. jpeg/png/webp, max 5 MB."
+                },
+                {
+                  "key": "back",
+                  "type": "file",
+                  "src": [],
+                  "description": "National ID back image. jpeg/png/webp, max 5 MB."
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/auth/identity-document",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "auth",
+                "identity-document"
+              ]
+            },
+            "description": "Normal JWT. Multipart fields front and back (both required). Upsert: first call creates Pending; later calls replace both images and return status to Pending. If the user is Active, a replace also sets PendingVerification and revokes every DeviceSession — log in again. First upload on an Active user does not change User status. Responses never include file URLs."
+          },
+          "response": [
+            {
+              "name": "200 Uploaded",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "front",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "back",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": "{{baseUrl}}/api/v1/auth/identity-document"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"uploaded\": true,\n  \"verificationStatus\": 1,\n  \"reviewReason\": null\n}"
+            },
+            {
+              "name": "400 Empty file",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "front",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": "{{baseUrl}}/api/v1/auth/identity-document"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/identity-document\",\n  \"code\": \"Storage.File.Empty\"\n}"
+            },
+            {
+              "name": "400 Unsupported type",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "front",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "back",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": "{{baseUrl}}/api/v1/auth/identity-document"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/identity-document\",\n  \"code\": \"Storage.File.UnsupportedType\"\n}"
+            },
+            {
+              "name": "409 Invalid operation",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "front",
+                      "type": "file",
+                      "src": []
+                    },
+                    {
+                      "key": "back",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": "{{baseUrl}}/api/v1/auth/identity-document"
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/auth/identity-document\",\n  \"code\": \"Identity.IdentityDocument.InvalidOperation\"\n}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }

@@ -59,6 +59,9 @@ public static class ResultProblemDetailsMapper
 
             ["Identity.User.EmailNotFound"] = 404,
 
+            ["Identity.IdentityDocument.UserNotFound"] = 404,
+            ["Identity.IdentityDocument.UnsupportedAccountType"] = 409,
+            ["Identity.IdentityDocument.InvalidOperation"] = 409,
 
             ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
             ["Cms.Splash.NotFound"] = 404,

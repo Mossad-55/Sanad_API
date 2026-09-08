@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Controllers;
 using Sanad.API.Controllers.Requests;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Application.Authentication.Login;
@@ -130,7 +131,8 @@ public sealed class AuthControllerLoginTests
         object response)
     {
         var controller = new AuthController(
-            new FakeSender(response));
+            new FakeSender(response),
+            new UnusedFileStorage());
 
         controller.ControllerContext =
             new ControllerContext
@@ -196,6 +198,44 @@ public sealed class AuthControllerLoginTests
 
         public IAsyncEnumerable<object?> CreateStream(
             object request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+    }
+
+    private sealed class UnusedFileStorage :
+        IFileStorage
+    {
+        public Task<Result<StoredFile>> SaveAsync(
+            Stream content,
+            string contentType,
+            long contentLength,
+            string folder,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Result<StoredFile>> SavePrivateAsync(
+            Stream content,
+            string contentType,
+            long contentLength,
+            string folder,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Result<PrivateFileContent>> OpenReadAsync(
+            string key,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<Result> DeleteAsync(
+            string key,
             CancellationToken cancellationToken = default)
         {
             throw new NotSupportedException();

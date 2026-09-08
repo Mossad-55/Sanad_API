@@ -40,11 +40,15 @@ Applied to:
 - `POST /api/v1/auth/sessions/logout-all`
 - `GET /api/v1/auth/sessions`
 - `DELETE /api/v1/auth/sessions/{sessionId}`
+- `GET /api/v1/auth/identity-document`
+- `PUT /api/v1/auth/identity-document`
 - `GET /api/v1/caregivers` and `GET /api/v1/caregivers/{caregiverId}` and `GET /api/v1/caregivers/{caregiverId}/quote` — caregiver discovery (search, public profile, quote); any Normal account role may browse
 
 A restricted verification token calling those routes receives `403`.
 
 A missing or invalid bearer token receives `401`.
+
+National ID upload additionally rejects Elderly and admin-only identities with `409 Identity.IdentityDocument.UnsupportedAccountType`. Family, Medical Caregiver, and Companion Caregiver may call it.
 
 ## Policy `CmsContent`
 
@@ -67,6 +71,8 @@ Requires an authenticated user with:
 Applied to all caregiver self-service routes (`/api/v1/caregiver/...`): profile bootstrap/read/update, selections, pricing, schedules, availability, certificates, and submit/resubmit.
 
 The caregiver type is derived from the `account_type` claim at bootstrap (`MedicalCaregiver` → Medical, `CompanionCaregiver` → Companion) and is fixed for the profile. A Family/Elderly/admin account receives `403`, as does any Restricted verification token.
+
+National ID is **not** a caregiver certificate. Caregivers upload it with `PUT /api/v1/auth/identity-document` (`NormalAccess`), not under `/caregiver/certificates`.
 
 ## Policy `FamilyAccess`
 
@@ -102,6 +108,7 @@ Elderly cannot self-register and cannot share an identity with another account t
 | Refresh token | No | Yes, 30 days |
 | DeviceSession | No | Yes |
 | Password change / sessions | No | Yes |
+| National ID (`/auth/identity-document`) | No (403) | Yes, for Family / Medical / Companion |
 | Caregiver onboarding (`CaregiverAccess`) | No (403) | Yes, for caregiver accounts |
 | Verify / resend | Yes, those routes are anonymous | Yes |
 
