@@ -56,6 +56,7 @@ public sealed class User : AggregateRoot<UserId>
     public bool EmailVerified { get; private set; }
     public bool PhoneVerified { get; private set; }
     public UserStatus Status { get; private set; }
+    public UiLanguage UiLanguage { get; private set; } = UiLanguage.Arabic;
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
     public DateTime? LastLoginOnUtc { get; private set; }
@@ -304,6 +305,28 @@ public sealed class User : AggregateRoot<UserId>
 
         ArabicFullName = arabicFullName;
         EnglishFullName = englishFullName;
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void ChangeUiLanguage(
+        UiLanguage language,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+        EnsureNotBlocked();
+
+        if (!Enum.IsDefined(language))
+        {
+            throw new DomainException(
+                "UI language is invalid.");
+        }
+
+        if (UiLanguage == language)
+        {
+            return;
+        }
+
+        UiLanguage = language;
         UpdatedOnUtc = utcNow;
     }
 

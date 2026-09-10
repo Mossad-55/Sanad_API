@@ -1682,6 +1682,82 @@
               "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/account\",\n  \"code\": \"Identity.Account.InvalidOperation\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
+        },
+        {
+          "name": "GET UI Language",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/account/language",
+            "description": "Requires Normal JWT. Returns the caller's UI language preference: 1 Arabic (default), 2 English."
+          },
+          "response": [
+            {
+              "name": "200 UI language",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"uiLanguage\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "PUT UI Language",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"uiLanguage\": 2\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/account/language",
+            "description": "Requires Normal JWT. Updates the caller's UI language preference: 1 Arabic (default), 2 English. Persisted per user; submitting the current language is a no-op."
+          },
+          "response": [
+            {
+              "name": "200 UI language updated",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"uiLanguage\": 2\n}"
+            }
+          ]
         }
       ]
     }

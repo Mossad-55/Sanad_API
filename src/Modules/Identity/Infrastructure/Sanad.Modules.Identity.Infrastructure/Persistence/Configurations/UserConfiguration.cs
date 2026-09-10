@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Domain.Authentication;
@@ -93,6 +94,13 @@ public sealed class UserConfiguration :
         builder.Property(user => user.Status)
             .HasConversion<int>()
             .HasColumnName("status")
+            .IsRequired();
+
+        builder.Property(user => user.UiLanguage)
+            .HasConversion<int>()
+            .HasColumnName("ui_language")
+            .HasDefaultValue(
+                UiLanguage.Arabic)
             .IsRequired();
 
         builder.Property(user => user.StatusReason)
