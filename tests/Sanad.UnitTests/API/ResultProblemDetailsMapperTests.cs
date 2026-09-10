@@ -24,6 +24,14 @@ public sealed class ResultProblemDetailsMapperTests
         StatusCodes.Status409Conflict,
         "The request conflicts with the current state.")]
     [InlineData(
+        "Identity.Account.UserNotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Identity.Account.InvalidOperation",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
         "Identity.Registration.UnsupportedAccountType",
         StatusCodes.Status400BadRequest,
         "The request could not be completed.")]

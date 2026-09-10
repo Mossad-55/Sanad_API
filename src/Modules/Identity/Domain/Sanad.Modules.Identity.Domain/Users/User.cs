@@ -282,6 +282,31 @@ public sealed class User : AggregateRoot<UserId>
         }
     }
 
+    public void ChangeName(
+        FullName arabicFullName,
+        FullName englishFullName,
+        DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(
+            arabicFullName);
+
+        ArgumentNullException.ThrowIfNull(
+            englishFullName);
+
+        ValidateUtc(utcNow);
+        EnsureNotBlocked();
+
+        if (ArabicFullName == arabicFullName &&
+            EnglishFullName == englishFullName)
+        {
+            return;
+        }
+
+        ArabicFullName = arabicFullName;
+        EnglishFullName = englishFullName;
+        UpdatedOnUtc = utcNow;
+    }
+
     public void ChangeAvatar(string? avatarUrl)
     {
         AvatarUrl = avatarUrl;
