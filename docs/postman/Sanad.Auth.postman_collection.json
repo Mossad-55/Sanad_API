@@ -1758,6 +1758,82 @@
               "body": "{\n  \"uiLanguage\": 2\n}"
             }
           ]
+        },
+        {
+          "name": "GET Notification Preferences",
+          "request": {
+            "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{accessToken}}",
+                "type": "string"
+              }
+            ]
+          },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/account/notification-preferences",
+            "description": "Requires Normal JWT. Returns the caller's notification preferences: checkInAlerts, medicationReminders, bookingUpdates, communityNotifications. All four default to ON. Storage only - nothing is sent yet."
+          },
+          "response": [
+            {
+              "name": "200 Notification preferences",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": true,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": true\n}"
+            }
+          ]
+        },
+        {
+          "name": "PUT Notification Preferences",
+          "request": {
+            "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{accessToken}}",
+                "type": "string"
+              }
+            ]
+          },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/account/notification-preferences",
+            "description": "Requires Normal JWT. Full replace of the caller's notification preferences; all four fields are required (a missing field is a 400). Submitting the current combination is a no-op. Storage only - delivery of notifications comes later."
+          },
+          "response": [
+            {
+              "name": "200 Notification preferences updated",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false\n}"
+            }
+          ]
         }
       ]
     }

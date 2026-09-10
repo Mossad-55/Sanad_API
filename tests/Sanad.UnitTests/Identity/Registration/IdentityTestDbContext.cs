@@ -108,6 +108,23 @@ internal sealed class IdentityTestDbContext :
                 value =>
                     PhoneNumber.Create(value));
 
+        user.OwnsOne(
+            value => value.NotificationPreferences,
+            preferences =>
+            {
+                preferences.Property(p =>
+                    p.CheckInAlerts);
+
+                preferences.Property(p =>
+                    p.MedicationReminders);
+
+                preferences.Property(p =>
+                    p.BookingUpdates);
+
+                preferences.Property(p =>
+                    p.CommunityNotifications);
+            });
+
         user.Ignore(value =>
             value.Password);
 

@@ -103,6 +103,35 @@ public sealed class UserConfiguration :
                 UiLanguage.Arabic)
             .IsRequired();
 
+        builder.OwnsOne(
+            user => user.NotificationPreferences,
+            preferences =>
+            {
+                preferences.Property(value =>
+                        value.CheckInAlerts)
+                    .HasColumnName("check_in_alerts")
+                    .HasDefaultValue(true)
+                    .IsRequired();
+
+                preferences.Property(value =>
+                        value.MedicationReminders)
+                    .HasColumnName("medication_reminders")
+                    .HasDefaultValue(true)
+                    .IsRequired();
+
+                preferences.Property(value =>
+                        value.BookingUpdates)
+                    .HasColumnName("booking_updates")
+                    .HasDefaultValue(true)
+                    .IsRequired();
+
+                preferences.Property(value =>
+                        value.CommunityNotifications)
+                    .HasColumnName("community_notifications")
+                    .HasDefaultValue(true)
+                    .IsRequired();
+            });
+
         builder.Property(user => user.StatusReason)
             .HasColumnName("status_reason")
             .HasMaxLength(
