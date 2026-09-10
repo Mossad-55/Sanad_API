@@ -78,3 +78,61 @@ Rules:
 | 409 | `Identity.Registration.EmailAlreadyInUse` |
 | 409 | `Identity.Registration.PhoneAlreadyInUse` |
 | 409 | `Identity.Account.InvalidOperation` |
+
+## GET `/api/v1/account/language`
+
+Returns the caller's UI language preference.
+
+```bash
+curl -sS https://localhost:7296/api/v1/account/language \
+  -H "Authorization: Bearer ACCESS_TOKEN"
+```
+
+`200` response:
+
+```json
+{
+  "uiLanguage": 1
+}
+```
+
+- `uiLanguage`: `1` Arabic (default), `2` English
+- The preference is stored per user; it is not a request-culture switcher and is separate from the caregiver Language lookup
+
+| HTTP | `code` |
+|---|---|
+| 404 | `Identity.Account.UserNotFound` |
+
+## PUT `/api/v1/account/language`
+
+Updates the caller's UI language preference.
+
+```bash
+curl -sS -X PUT https://localhost:7296/api/v1/account/language \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "uiLanguage": 2
+  }'
+```
+
+`200` response:
+
+```json
+{
+  "uiLanguage": 2
+}
+```
+
+Rules:
+
+- `uiLanguage` accepts `1` Arabic (default) or `2` English; any other value fails validation
+- Submitting the current language is a no-op
+- The preference is persisted per user and applies to the caller only (`UserId` comes from the JWT, never from the body)
+- Blocked users cannot update their preference
+
+| HTTP | `code` |
+|---|---|
+| 400 | `Api.Validation.Failed` |
+| 404 | `Identity.Account.UserNotFound` |
+| 409 | `Identity.Account.InvalidOperation` |

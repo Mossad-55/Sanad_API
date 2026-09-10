@@ -118,3 +118,5 @@ Detailed documents:
 | PUT | `/api/v1/auth/identity-document` | Normal JWT, multipart `front` + `back` |
 | GET | `/api/v1/account` | Normal JWT |
 | PUT | `/api/v1/account` | Normal JWT, partial `arabicFullName` / `englishFullName` / `email` / `phoneNumber` |
+| GET | `/api/v1/account/language` | Normal JWT |
+| PUT | `/api/v1/account/language` | Normal JWT, body `uiLanguage`: `1` Arabic / `2` English |

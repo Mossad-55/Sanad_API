@@ -91,4 +91,76 @@ public sealed class AccountController :
         return ToActionResult(
             result);
     }
+
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
+    [HttpGet("language")]
+    [ProducesResponseType(
+        typeof(UiLanguageResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMyUiLanguage(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+            out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new GetMyUiLanguageQuery(
+                    userId),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
+    [HttpPut("language")]
+    [ProducesResponseType(
+        typeof(UiLanguageResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateMyUiLanguage(
+        [FromBody] UpdateMyUiLanguageRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+            out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new UpdateMyUiLanguageCommand(
+                    userId,
+                    request.UiLanguage),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
 }
