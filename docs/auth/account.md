@@ -136,3 +136,71 @@ Rules:
 | 400 | `Api.Validation.Failed` |
 | 404 | `Identity.Account.UserNotFound` |
 | 409 | `Identity.Account.InvalidOperation` |
+
+## GET `/api/v1/account/notification-preferences`
+
+Returns the caller's notification preferences (screen F11).
+
+```bash
+curl -sS https://localhost:7296/api/v1/account/notification-preferences \
+  -H "Authorization: Bearer ACCESS_TOKEN"
+```
+
+`200` response:
+
+```json
+{
+  "checkInAlerts": true,
+  "medicationReminders": true,
+  "bookingUpdates": true,
+  "communityNotifications": true
+}
+```
+
+- All four toggles default to ON for existing and new users
+- Storage only: the preference is persisted per user; delivery of notifications comes later
+
+| HTTP | `code` |
+|---|---|
+| 404 | `Identity.Account.UserNotFound` |
+
+## PUT `/api/v1/account/notification-preferences`
+
+Full replace of the caller's notification preferences.
+
+```bash
+curl -sS -X PUT https://localhost:7296/api/v1/account/notification-preferences \
+  -H "Authorization: Bearer ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "checkInAlerts": true,
+    "medicationReminders": false,
+    "bookingUpdates": true,
+    "communityNotifications": false
+  }'
+```
+
+`200` response:
+
+```json
+{
+  "checkInAlerts": true,
+  "medicationReminders": false,
+  "bookingUpdates": true,
+  "communityNotifications": false
+}
+```
+
+Rules:
+
+- All four fields are required; omitting any field fails validation (full replace, not partial update)
+- Submitting the current combination is a no-op
+- The preference is persisted per user and applies to the caller only (`UserId` comes from the JWT, never from the body)
+- Blocked users cannot update their preference
+- Storage only: no notification is delivered by this endpoint (delivery comes later)
+
+| HTTP | `code` |
+|---|---|
+| 400 | `Api.Validation.Failed` |
+| 404 | `Identity.Account.UserNotFound` |
+| 409 | `Identity.Account.InvalidOperation` |

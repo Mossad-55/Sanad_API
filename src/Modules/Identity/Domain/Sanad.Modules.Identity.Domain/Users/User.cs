@@ -57,6 +57,8 @@ public sealed class User : AggregateRoot<UserId>
     public bool PhoneVerified { get; private set; }
     public UserStatus Status { get; private set; }
     public UiLanguage UiLanguage { get; private set; } = UiLanguage.Arabic;
+    public NotificationPreferences NotificationPreferences { get; private set; } =
+        NotificationPreferences.CreateDefault();
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
     public DateTime? LastLoginOnUtc { get; private set; }
@@ -327,6 +329,23 @@ public sealed class User : AggregateRoot<UserId>
         }
 
         UiLanguage = language;
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void ChangeNotificationPreferences(
+        NotificationPreferences preferences,
+        DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(preferences);
+        ValidateUtc(utcNow);
+        EnsureNotBlocked();
+
+        if (NotificationPreferences == preferences)
+        {
+            return;
+        }
+
+        NotificationPreferences = preferences;
         UpdatedOnUtc = utcNow;
     }
 

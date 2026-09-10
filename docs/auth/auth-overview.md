@@ -120,3 +120,5 @@ Detailed documents:
 | PUT | `/api/v1/account` | Normal JWT, partial `arabicFullName` / `englishFullName` / `email` / `phoneNumber` |
 | GET | `/api/v1/account/language` | Normal JWT |
 | PUT | `/api/v1/account/language` | Normal JWT, body `uiLanguage`: `1` Arabic / `2` English |
+| GET | `/api/v1/account/notification-preferences` | Normal JWT |
+| PUT | `/api/v1/account/notification-preferences` | Normal JWT, body all four bools `checkInAlerts` / `medicationReminders` / `bookingUpdates` / `communityNotifications` (full replace) |

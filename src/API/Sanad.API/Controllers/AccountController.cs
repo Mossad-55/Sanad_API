@@ -163,4 +163,79 @@ public sealed class AccountController :
         return ToActionResult(
             result);
     }
+
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
+    [HttpGet("notification-preferences")]
+    [ProducesResponseType(
+        typeof(NotificationPreferencesResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMyNotificationPreferences(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+            out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new GetMyNotificationPreferencesQuery(
+                    userId),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
+
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
+    [HttpPut("notification-preferences")]
+    [ProducesResponseType(
+        typeof(NotificationPreferencesResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdateMyNotificationPreferences(
+        [FromBody] UpdateNotificationPreferencesRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+            out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new UpdateMyNotificationPreferencesCommand(
+                    userId,
+                    request.CheckInAlerts,
+                    request.MedicationReminders,
+                    request.BookingUpdates,
+                    request.CommunityNotifications),
+                cancellationToken);
+
+        return ToActionResult(
+            result);
+    }
 }
