@@ -1543,7 +1543,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"arabicFullName\": \"محمد أحمد\",\n  \"englishFullName\": \"Mohamed Ahmed\",\n  \"email\": \"user@example.com\",\n  \"phoneNumber\": \"+201001234567\",\n  \"accountType\": 1,\n  \"emailVerified\": true,\n  \"phoneVerified\": true\n}"
+              "body": "{\n  \"arabicFullName\": \"محمد أحمد\",\n  \"englishFullName\": \"Mohamed Ahmed\",\n  \"email\": \"user@example.com\",\n  \"phoneNumber\": \"+201001234567\",\n  \"avatarUrl\": null,\n  \"accountType\": 1,\n  \"emailVerified\": true,\n  \"phoneVerified\": true\n}"
             },
             {
               "name": "401 Missing or invalid token",
@@ -1583,7 +1583,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"email\": \"new@example.com\"\n}"
+              "raw": "{\n  \"arabicFullName\": \"محمد أحمد\",\n  \"englishFullName\": \"Mohamed Ahmed\",\n  \"email\": \"new@example.com\",\n  \"phoneNumber\": \"+201001234567\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/account",
             "description": "Requires Normal JWT. Partial update of the caller's arabicFullName, englishFullName, email, and phoneNumber. Omitted fields stay unchanged. Role is never accepted. A changed email/phone becomes unverified and a fresh OTP is sent; complete it with Verify OTP. Submitting the current email/phone is a no-op."

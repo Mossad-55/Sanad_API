@@ -9,4 +9,5 @@ public sealed record MyProfileResponse(
     string PhoneNumber,
     AccountType? AccountType,
     bool EmailVerified,
-    bool PhoneVerified);
+    bool PhoneVerified,
+    string? AvatarUrl);
