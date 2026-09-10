@@ -58,6 +58,8 @@ Validation failures are also Problem Details. `detail` is a safe public message.
 | `Identity.IdentityDocument.UserNotFound` | 404 |
 | `Identity.IdentityDocument.UnsupportedAccountType` | 409 |
 | `Identity.IdentityDocument.InvalidOperation` | 409 |
+| `Identity.Account.UserNotFound` | 404 |
+| `Identity.Account.InvalidOperation` | 409 |
 | `Storage.File.Empty` | 400 |
 | `Storage.File.TooLarge` | 400 |
 | `Storage.File.UnsupportedType` | 400 |

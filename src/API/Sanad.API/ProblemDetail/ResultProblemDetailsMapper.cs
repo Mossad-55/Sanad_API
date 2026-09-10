@@ -69,6 +69,9 @@ public static class ResultProblemDetailsMapper
             ["Identity.Avatar.UnsupportedAccountType"] = 409,
             ["Identity.Avatar.InvalidOperation"] = 409,
 
+            ["Identity.Account.UserNotFound"] = 404,
+            ["Identity.Account.InvalidOperation"] = 409,
+
             ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
             ["Cms.Splash.NotFound"] = 404,
 

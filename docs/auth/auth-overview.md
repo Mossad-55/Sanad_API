@@ -90,6 +90,7 @@ Detailed documents:
 - [Elderly SMS login](elderly-sms-login.md)
 - [Refresh and sessions](refresh-and-sessions.md)
 - [Password reset and change](password-reset-and-change.md)
+- [Account self-edit](account.md)
 - [Claims and policies](claims-and-policies.md)
 - [Error catalog](errors.md)
 
@@ -115,3 +116,5 @@ Detailed documents:
 | PUT | `/api/v1/auth/avatar` | Normal JWT, multipart `file` |
 | GET | `/api/v1/auth/identity-document` | Normal JWT |
 | PUT | `/api/v1/auth/identity-document` | Normal JWT, multipart `front` + `back` |
+| GET | `/api/v1/account` | Normal JWT |
+| PUT | `/api/v1/account` | Normal JWT, partial `arabicFullName` / `englishFullName` / `email` / `phoneNumber` |

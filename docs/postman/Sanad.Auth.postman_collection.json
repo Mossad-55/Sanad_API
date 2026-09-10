@@ -1510,6 +1510,180 @@
           }
         }
       ]
+    },
+    {
+      "name": "10. Account",
+      "item": [
+        {
+          "name": "GET Account",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/account",
+            "description": "Requires Normal JWT. Returns the caller's own profile. accountType is display-only: 1 Family, 2 Medical Caregiver, 3 Companion Caregiver, 4 Elderly."
+          },
+          "response": [
+            {
+              "name": "200 Profile",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"arabicFullName\": \"محمد أحمد\",\n  \"englishFullName\": \"Mohamed Ahmed\",\n  \"email\": \"user@example.com\",\n  \"phoneNumber\": \"+201001234567\",\n  \"accountType\": 1,\n  \"emailVerified\": true,\n  \"phoneVerified\": true\n}"
+            },
+            {
+              "name": "401 Missing or invalid token",
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"title\": \"Unauthorized\",\n  \"status\": 401\n}"
+            },
+            {
+              "name": "403 Restricted token",
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"title\": \"Forbidden\",\n  \"status\": 403\n}"
+            }
+          ]
+        },
+        {
+          "name": "PUT Account",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"new@example.com\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/account",
+            "description": "Requires Normal JWT. Partial update of the caller's arabicFullName, englishFullName, email, and phoneNumber. Omitted fields stay unchanged. Role is never accepted. A changed email/phone becomes unverified and a fresh OTP is sent; complete it with Verify OTP. Submitting the current email/phone is a no-op."
+          },
+          "response": [
+            {
+              "name": "200 Email changed, re-verification required",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"emailVerified\": false,\n  \"phoneVerified\": true,\n  \"emailVerificationRequestId\": \"018f0000-0000-7000-8000-000000000020\",\n  \"phoneVerificationRequestId\": null\n}"
+            },
+            {
+              "name": "200 Names changed only",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"emailVerified\": true,\n  \"phoneVerified\": true,\n  \"emailVerificationRequestId\": null,\n  \"phoneVerificationRequestId\": null\n}"
+            },
+            {
+              "name": "400 Validation failed",
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Validation Failed\",\n  \"status\": 400,\n  \"detail\": \"One or more validation errors occurred.\",\n  \"instance\": \"/api/v1/account\",\n  \"code\": \"Api.Validation.Failed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\",\n  \"errors\": {\n    \"Email\": [\n      \"'Email' is not a valid email address.\"\n    ]\n  }\n}"
+            },
+            {
+              "name": "401 Missing or invalid token",
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"title\": \"Unauthorized\",\n  \"status\": 401\n}"
+            },
+            {
+              "name": "403 Restricted token",
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"title\": \"Forbidden\",\n  \"status\": 403\n}"
+            },
+            {
+              "name": "409 Email already in use",
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/account\",\n  \"code\": \"Identity.Registration.EmailAlreadyInUse\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
+            },
+            {
+              "name": "409 Phone already in use",
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/account\",\n  \"code\": \"Identity.Registration.PhoneAlreadyInUse\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
+            },
+            {
+              "name": "409 Blocked user",
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/account\",\n  \"code\": \"Identity.Account.InvalidOperation\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
+            }
+          ]
+        }
+      ]
     }
   ]
 }
