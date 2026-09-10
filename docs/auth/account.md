@@ -25,6 +25,7 @@ curl -sS https://localhost:7296/api/v1/account \
   "englishFullName": "Mohamed Ahmed",
   "email": "user@example.com",
   "phoneNumber": "+201001234567",
+  "avatarUrl": null,
   "accountType": 1,
   "emailVerified": true,
   "phoneVerified": true
@@ -33,6 +34,7 @@ curl -sS https://localhost:7296/api/v1/account \
 
 - `accountType`: `1` Family, `2` Medical Caregiver, `3` Companion Caregiver, `4` Elderly
 - `email` is `null` for Elderly users registered without an email
+- `avatarUrl` is `null` until an avatar is uploaded via `PUT /api/v1/auth/avatar`; the stored path is returned as-is and the image is fetched via `GET /api/v1/auth/avatar`
 
 | HTTP | `code` |
 |---|---|
@@ -47,9 +49,14 @@ curl -sS -X PUT https://localhost:7296/api/v1/account \
   -H "Authorization: Bearer ACCESS_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "email": "new@example.com"
+    "arabicFullName": "محمد أحمد",
+    "englishFullName": "Mohamed Ahmed",
+    "email": "new@example.com",
+    "phoneNumber": "+201001234567"
   }'
 ```
+
+Partial update: send only the fields you want to change; omitted/null fields are untouched.
 
 `200` response:
 

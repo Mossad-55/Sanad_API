@@ -50,6 +50,7 @@ public sealed class GetMyProfileQueryHandler :
             user.PhoneNumber.Value,
             accountType,
             user.EmailVerified,
-            user.PhoneVerified);
+            user.PhoneVerified,
+            user.AvatarUrl);
     }
 }

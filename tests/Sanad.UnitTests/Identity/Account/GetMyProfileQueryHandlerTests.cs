@@ -61,6 +61,44 @@ public sealed class GetMyProfileQueryHandlerTests
 
         Assert.True(result.Value.EmailVerified);
         Assert.False(result.Value.PhoneVerified);
+
+        Assert.Null(
+            result.Value.AvatarUrl);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnStoredAvatarPath()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            CreateUser();
+
+        user.AddAccount(
+            AccountType.Family);
+
+        user.ChangeAvatar(
+            "avatars/profile/test.png");
+
+        dbContext.Users.Add(user);
+
+        await dbContext.SaveChangesAsync();
+
+        GetMyProfileQueryHandler handler =
+            new(dbContext);
+
+        Result<MyProfileResponse> result =
+            await handler.Handle(
+                new GetMyProfileQuery(
+                    user.Id),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(
+            "avatars/profile/test.png",
+            result.Value.AvatarUrl);
     }
 
     private static IdentityTestDbContext CreateDbContext()
