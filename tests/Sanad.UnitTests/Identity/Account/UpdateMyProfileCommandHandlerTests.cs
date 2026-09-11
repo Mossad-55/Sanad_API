@@ -597,6 +597,18 @@ public sealed class UpdateMyProfileCommandHandlerTests
             get;
         } = [];
 
+        public Task SendSupportRequestAsync(
+            string senderName,
+            string? senderEmail,
+            string senderPhoneNumber,
+            string accountTypes,
+            string subject,
+            string message,
+            CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
         public Task SendVerificationCodeAsync(
             string email,
             string code,

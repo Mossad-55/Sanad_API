@@ -1,5 +1,6 @@
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
+using Sanad.Modules.Identity.Domain.Support;
 
 namespace Sanad.Modules.Identity.Infrastructure.Messaging;
 
@@ -22,6 +23,21 @@ public sealed class DevelopmentEmailSender :
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+
+        return Task.CompletedTask;
+    }
+
+    public Task SendSupportRequestAsync(
+        string senderName,
+        string? senderEmail,
+        string senderPhoneNumber,
+        string accountTypes,
+        string subject,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        Console.WriteLine(
+            $"[DevEmail] Support request from {senderName} ({senderEmail}) — {subject}");
 
         return Task.CompletedTask;
     }

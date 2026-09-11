@@ -1,4 +1,5 @@
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
+using Sanad.Modules.Identity.Domain.Support;
 
 namespace Sanad.Modules.Identity.Application.Abstractions.Messaging;
 
@@ -14,5 +15,14 @@ public interface IEmailSender
         string email,
         string familyName,
         string inviteLink,
+        CancellationToken cancellationToken);
+
+    Task SendSupportRequestAsync(
+        string senderName,
+        string? senderEmail,
+        string senderPhoneNumber,
+        string accountTypes,
+        string subject,
+        string message,
         CancellationToken cancellationToken);
 }

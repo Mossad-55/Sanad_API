@@ -18,6 +18,8 @@ public sealed class EmailOptions
 
     public string FromName { get; init; } = "Sanad Care";
 
+    public string SupportInboxAddress { get; init; } = string.Empty;
+
     public bool IsConfigured =>
         !string.IsNullOrWhiteSpace(Host) &&
         !string.IsNullOrWhiteSpace(FromAddress);

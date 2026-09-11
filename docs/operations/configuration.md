@@ -39,6 +39,7 @@ Enabled only when `Host` and `FromAddress` are set.
 | `Identity__Email__Smtp__Password` | | Optional SMTP password |
 | `Identity__Email__Smtp__FromAddress` | | From address |
 | `Identity__Email__Smtp__FromName` | `Sanad Care` | From display name |
+| `Identity__Email__Smtp__SupportInboxAddress` | (falls back to `FromAddress`) | Support inbox for `/api/v1/support/contact` |
 
 ## Family invitations (deep link)
 

@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
+using Sanad.Modules.Identity.Domain.Support;
 using Sanad.Modules.Identity.Domain.Users;
 
 namespace Sanad.Modules.Identity.Infrastructure.Persistence;
@@ -28,6 +29,10 @@ public sealed class IdentityDbContext :
     public DbSet<DeviceSession>
         DeviceSessions =>
             Set<DeviceSession>();
+
+    public DbSet<SupportTicket>
+        SupportTickets =>
+            Set<SupportTicket>();
 
 
     protected override void OnModelCreating(

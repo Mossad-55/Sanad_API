@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
+using Sanad.Modules.Identity.Domain.Support;
 using Sanad.Modules.Identity.Domain.Users;
 
 namespace Sanad.UnitTests.Identity.Registration;
@@ -30,6 +31,9 @@ internal sealed class IdentityTestDbContext :
     public DbSet<DeviceSession> DeviceSessions =>
         Set<DeviceSession>();
 
+    public DbSet<SupportTicket> SupportTickets =>
+        Set<SupportTicket>();
+
     internal int SaveChangesCalls { get; private set; }
 
     public override async Task<int> SaveChangesAsync(
@@ -52,6 +56,7 @@ internal sealed class IdentityTestDbContext :
         ConfigureUser(modelBuilder);
         ConfigureVerificationRequest(modelBuilder);
         ConfigureDeviceSession(modelBuilder);
+        ConfigureSupportTicket(modelBuilder);
     }
 
     private static void ConfigureUser(
@@ -207,5 +212,36 @@ internal sealed class IdentityTestDbContext :
 
         session.Ignore(value =>
             value.DomainEvents);
+    }
+
+    private static void ConfigureSupportTicket(
+        ModelBuilder modelBuilder)
+    {
+        var ticket =
+            modelBuilder.Entity<SupportTicket>();
+
+        ticket.HasKey(value =>
+            value.Id);
+
+        ticket.Property(value =>
+                value.Id)
+            .HasConversion(
+                id => id.Value,
+                value =>
+                    new SupportTicketId(
+                        value));
+
+        ticket.Property(value =>
+                value.UserId)
+            .HasConversion(
+                id => id.Value,
+                value =>
+                    new UserId(value));
+
+        ticket.Ignore(value =>
+            value.DomainEvents);
+
+        ticket.Ignore(value =>
+            value.IsNotified);
     }
 }

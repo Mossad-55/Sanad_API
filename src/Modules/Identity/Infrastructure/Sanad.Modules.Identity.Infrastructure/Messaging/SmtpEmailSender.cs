@@ -5,6 +5,7 @@ using MimeKit;
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.Modules.Identity.Application.Authentication;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
+using Sanad.Modules.Identity.Domain.Support;
 
 namespace Sanad.Modules.Identity.Infrastructure.Messaging;
 
@@ -196,5 +197,84 @@ public sealed class SmtpEmailSender : IEmailSender
         };
 
         return message;
+    }
+
+    public async Task SendSupportRequestAsync(
+        string senderName,
+        string? senderEmail,
+        string senderPhoneNumber,
+        string accountTypes,
+        string subject,
+        string message,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var mimeMessage = new MimeMessage();
+
+        mimeMessage.From.Add(
+            new MailboxAddress(
+                string.IsNullOrWhiteSpace(_options.FromName)
+                    ? "Sanad Care"
+                    : _options.FromName,
+                _options.FromAddress));
+
+        mimeMessage.To.Add(
+            MailboxAddress.Parse(
+                string.IsNullOrWhiteSpace(_options.SupportInboxAddress)
+                    ? _options.FromAddress
+                    : _options.SupportInboxAddress));
+
+        if (!string.IsNullOrWhiteSpace(senderEmail))
+        {
+            mimeMessage.ReplyTo.Add(
+                MailboxAddress.Parse(senderEmail));
+        }
+
+        mimeMessage.Subject =
+            "Sanad Care support request | طلب دعم من سند";
+
+        mimeMessage.Body = new TextPart("plain")
+        {
+            Text =
+                $"المرسل: {senderName}\n" +
+                $"البريد الإلكتروني: {senderEmail ?? "—"}\n" +
+                $"رقم الهاتف: {senderPhoneNumber}\n" +
+                $"نوع الحساب: {accountTypes}\n" +
+                $"الموضوع: {subject}\n" +
+                $"الرسالة: {message}\n\n" +
+                $"Sender: {senderName}\n" +
+                $"Email: {senderEmail ?? "—"}\n" +
+                $"Phone: {senderPhoneNumber}\n" +
+                $"Account types: {accountTypes}\n" +
+                $"Subject: {subject}\n" +
+                $"Message: {message}"
+        };
+
+        using var client = new SmtpClient();
+
+        await client.ConnectAsync(
+            _options.Host,
+            _options.Port,
+            _options.UseSsl
+                ? SecureSocketOptions.Auto
+                : SecureSocketOptions.None,
+            cancellationToken);
+
+        if (!string.IsNullOrWhiteSpace(_options.Username))
+        {
+            await client.AuthenticateAsync(
+                _options.Username,
+                _options.Password,
+                cancellationToken);
+        }
+
+        await client.SendAsync(
+            mimeMessage,
+            cancellationToken);
+
+        await client.DisconnectAsync(
+            true,
+            cancellationToken);
     }
 }
