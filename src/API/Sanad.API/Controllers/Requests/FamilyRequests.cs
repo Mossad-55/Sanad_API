@@ -43,6 +43,9 @@ public sealed record AcceptFamilyInvitationRequest(
 public sealed record DeclineFamilyInvitationRequest(
     string Token);
 
+public sealed record UpdateFamilyMemberRoleRequest(
+    FamilyRole Role);
+
 public sealed record UpdateElderlyMedicalProfileRequest(
     BloodType BloodType,
     int? HeightCm,

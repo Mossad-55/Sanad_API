@@ -97,6 +97,8 @@ public static class ResultProblemDetailsMapper
             ["Families.Family.InvalidName"] = 400,
             ["Families.Family.NotOwner"] = 403,
             ["Families.Family.AccessDenied"] = 403,
+            ["Families.Family.MemberNotFound"] = 404,
+            ["Families.Family.OwnerProtected"] = 409,
 
             ["Families.Elderly.FamilyNotFound"] = 404,
             ["Families.Elderly.NotFound"] = 404,

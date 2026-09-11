@@ -105,6 +105,77 @@ public sealed class FamilyController :
         return ToActionResult(result);
     }
 
+    // ----------------------------- Members ------------------------------
+
+    [HttpGet("members/{memberId:guid}")]
+    [ProducesResponseType(
+        typeof(FamilyMemberResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetFamilyMember(
+        Guid memberId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new GetFamilyMemberQuery(
+                    userId,
+                    new UserId(memberId)),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPut("members/{memberId:guid}/role")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UpdateFamilyMemberRole(
+        Guid memberId,
+        [FromBody] UpdateFamilyMemberRoleRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new ChangeFamilyMemberRoleCommand(
+                    userId,
+                    new UserId(memberId),
+                    request.Role),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpDelete("members/{memberId:guid}")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveFamilyMember(
+        Guid memberId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new RemoveFamilyMemberCommand(
+                    userId,
+                    new UserId(memberId)),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
     // ---------------------------- Dependents ----------------------------
 
     [HttpPost("dependents")]

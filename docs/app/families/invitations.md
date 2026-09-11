@@ -50,6 +50,8 @@ Content-Type: application/json
 - `role`: `2` Editor, `3` Viewer.
 - `relationshipType`: see the table in `overview.md` (e.g. `6` Sister).
 
+This is the Settings F6 "Invite member" action — the invitee's name enters via the invitee's own profile; the API is email-addressed (the "name + role" UI fields resolve to email + role here).
+
 - `201` — `FamilyInvitationResponse` (does **not** include the token; the token is only in the email).
 - `404 Families.Invitation.FamilyNotFound` — caller has no family.
 - `403 Families.Invitation.AccessDenied` — Viewer.
