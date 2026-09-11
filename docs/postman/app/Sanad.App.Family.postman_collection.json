@@ -177,7 +177,33 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/family"
-          }
+          },
+          "response": [
+            {
+              "name": "200 — Family with enriched members",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"3f2b1a4e-0002-4a10-fam-000000000001\",\n  \"name\": \"The Nasr Family\",\n  \"ownerUserId\": \"00000000-0000-0000-0000-000000000001\",\n  \"createdOnUtc\": \"2026-09-01T09:00:00Z\",\n  \"members\": [\n    {\n      \"userId\": \"00000000-0000-0000-0000-000000000001\",\n      \"role\": 1,\n      \"relationshipType\": 99,\n      \"addedByUserId\": \"00000000-0000-0000-0000-000000000001\",\n      \"joinedOnUtc\": \"2026-09-01T09:00:00Z\",\n      \"arabicFullName\": \"نور نصر\",\n      \"englishFullName\": \"Nour Nasr\",\n      \"email\": \"nour@example.com\"\n    },\n    {\n      \"userId\": \"00000000-0000-0000-0000-000000000002\",\n      \"role\": 2,\n      \"relationshipType\": 6,\n      \"addedByUserId\": \"00000000-0000-0000-0000-000000000001\",\n      \"joinedOnUtc\": \"2026-09-01T10:00:00Z\",\n      \"arabicFullName\": \"سلمى نصر\",\n      \"englishFullName\": \"Salma Nasr\",\n      \"email\": \"salma@example.com\"\n    }\n  ]\n}"
+            }
+          ]
         },
         {
           "name": "Rename family (Owner only)",
@@ -199,6 +225,370 @@
               "raw": "{\n  \"name\": \"The Nasr Household\"\n}"
             }
           }
+        },
+        {
+          "name": "Get family member (any member)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}"
+          },
+          "description": "familyMemberId is the member's UserId. Set it to the owner's own userId (from Get family ownerUserId) or the invitee's userId. Any member (Owner/Editor/Viewer) can read.",
+          "response": [
+            {
+              "name": "200 — FamilyMemberResponse (enriched)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"userId\": \"00000000-0000-0000-0000-000000000002\",\n  \"role\": 2,\n  \"relationshipType\": 6,\n  \"addedByUserId\": \"00000000-0000-0000-0000-000000000001\",\n  \"joinedOnUtc\": \"2026-09-01T10:00:00Z\",\n  \"arabicFullName\": \"سلمى نصر\",\n  \"englishFullName\": \"Salma Nasr\",\n  \"email\": \"salma@example.com\"\n}"
+            },
+            {
+              "name": "404 — Family not found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/family/members/00000000-0000-0000-0000-000000000002\",\n  \"code\": \"Families.Family.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "403 — Access denied (not a member)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}"
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/family/members/00000000-0000-0000-0000-000000000002\",\n  \"code\": \"Families.Family.AccessDenied\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "404 — Member not found",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/family/members/00000000-0000-0000-0000-000000000099\",\n  \"code\": \"Families.Family.MemberNotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Update family member role (Owner only)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}/role",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"role\": 2\n}"
+            }
+          },
+          "description": "Owner only. role: 2 Editor, 3 Viewer. Owner (1) is never assignable (400).",
+          "response": [
+            {
+              "name": "204 — Role updated",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}/role",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": 2\n}"
+                }
+              },
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "cookie": [],
+              "body": null
+            },
+            {
+              "name": "403 — Not owner",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}/role",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": 2\n}"
+                }
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/family/members/00000000-0000-0000-0000-000000000002/role\",\n  \"code\": \"Families.Family.NotOwner\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "409 — Owner protected",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}/role",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": 2\n}"
+                }
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/family/members/00000000-0000-0000-0000-000000000001/role\",\n  \"code\": \"Families.Family.OwnerProtected\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "404 — Member not found",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  },
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}/role",
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"role\": 2\n}"
+                }
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/family/members/00000000-0000-0000-0000-000000000099/role\",\n  \"code\": \"Families.Family.MemberNotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Remove family member (Owner only)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}"
+          },
+          "description": "Owner only. The owner can never be removed (409 OwnerProtected).",
+          "response": [
+            {
+              "name": "204 — Member removed",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}"
+              },
+              "status": "No Content",
+              "code": 204,
+              "header": [],
+              "cookie": [],
+              "body": null
+            },
+            {
+              "name": "403 — Not owner",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}"
+              },
+              "status": "Forbidden",
+              "code": 403,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/family/members/00000000-0000-0000-0000-000000000002\",\n  \"code\": \"Families.Family.NotOwner\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "409 — Owner protected",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}"
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/family/members/00000000-0000-0000-0000-000000000001\",\n  \"code\": \"Families.Family.OwnerProtected\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "404 — Member not found",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{ familyToken }}"
+                  }
+                ],
+                "url": "{{baseUrl}}/api/v1/family/members/{{familyMemberId}}"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/family/members/00000000-0000-0000-0000-000000000099\",\n  \"code\": \"Families.Family.MemberNotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
         }
       ]
     },

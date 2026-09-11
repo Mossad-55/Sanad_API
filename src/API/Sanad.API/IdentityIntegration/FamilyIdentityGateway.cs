@@ -107,6 +107,30 @@ public sealed class FamilyIdentityGateway : IFamilyIdentityGateway
             HasFamilyAccount: result.Value.HasFamilyAccount);
     }
 
+    public async Task<IReadOnlyList<FamilyMemberProfile>>
+        GetFamilyMemberProfilesAsync(
+            IReadOnlyCollection<UserId> userIds,
+            CancellationToken cancellationToken = default)
+    {
+        var result =
+            await _sender.Send(
+                new GetUserProfilesByIdsQuery(userIds),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return [];
+        }
+
+        return result.Value
+            .Select(profile => new FamilyMemberProfile(
+                profile.UserId,
+                profile.ArabicFullName,
+                profile.EnglishFullName,
+                profile.Email))
+            .ToList();
+    }
+
     public async Task SendFamilyInvitationEmailAsync(
         string email,
         string familyName,

@@ -123,4 +123,18 @@ public sealed class Family : AggregateRoot<FamilyId>
             .FirstOrDefault(member => member.Id == userId)
             ?.Role;
     }
+
+    public void ChangeMemberRole(UserId userId, FamilyRole role)
+    {
+        if (userId == OwnerUserId || role == FamilyRole.Owner)
+        {
+            throw new DomainException("The family owner's role cannot be changed.");
+        }
+
+        var member = _members.FirstOrDefault(x => x.Id == userId)
+            ?? throw new DomainException("The family member was not found.");
+
+        member.ChangeRole(role);
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
 }

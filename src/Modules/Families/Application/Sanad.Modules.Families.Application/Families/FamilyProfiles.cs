@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.Modules.Families.Domain.Families;
 
 namespace Sanad.Modules.Families.Application.Families;
@@ -14,7 +15,10 @@ public sealed record FamilyMemberResponse(
     FamilyRole Role,
     FamilyRelationshipType RelationshipType,
     UserId AddedByUserId,
-    DateTime JoinedOnUtc);
+    DateTime JoinedOnUtc,
+    string ArabicFullName,
+    string EnglishFullName,
+    string? Email);
 
 public sealed record FamilyResponse(
     FamilyId Id,
@@ -26,19 +30,37 @@ public sealed record FamilyResponse(
 internal static class FamilyMappings
 {
     public static FamilyResponse ToResponse(this Family family) =>
+        family.ToResponse(
+            new Dictionary<UserId, FamilyMemberProfile>());
+
+    public static FamilyResponse ToResponse(
+        this Family family,
+        IReadOnlyDictionary<UserId, FamilyMemberProfile> profiles) =>
         new(
             family.Id,
             family.Name,
             family.OwnerUserId,
             family.CreatedOnUtc,
             family.Members
-                .Select(m => new FamilyMemberResponse(
-                    m.Id,
-                    m.Role,
-                    m.RelationshipType,
-                    m.AddedByUserId,
-                    m.JoinedOnUtc))
+                .Select(m => m.ToResponse(profiles))
                 .ToList());
+
+    public static FamilyMemberResponse ToResponse(
+        this FamilyMember member,
+        IReadOnlyDictionary<UserId, FamilyMemberProfile> profiles)
+    {
+        profiles.TryGetValue(member.Id, out FamilyMemberProfile? profile);
+
+        return new FamilyMemberResponse(
+            member.Id,
+            member.Role,
+            member.RelationshipType,
+            member.AddedByUserId,
+            member.JoinedOnUtc,
+            profile?.ArabicFullName ?? string.Empty,
+            profile?.EnglishFullName ?? string.Empty,
+            profile?.Email);
+    }
 }
 
 // ------------------------------ Bootstrap -----------------------------
@@ -107,10 +129,14 @@ public sealed class GetMyFamilyQueryHandler
     : IQueryHandler<GetMyFamilyQuery, FamilyResponse>
 {
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IFamilyIdentityGateway _identityGateway;
 
-    public GetMyFamilyQueryHandler(IFamiliesDbContext dbContext)
+    public GetMyFamilyQueryHandler(
+        IFamiliesDbContext dbContext,
+        IFamilyIdentityGateway identityGateway)
     {
         _dbContext = dbContext;
+        _identityGateway = identityGateway;
     }
 
     public async Task<Result<FamilyResponse>> Handle(
@@ -128,7 +154,13 @@ public sealed class GetMyFamilyQueryHandler
             return FamilyErrors.NotFound;
         }
 
-        return family.ToResponse();
+        IReadOnlyDictionary<UserId, FamilyMemberProfile> profiles =
+            await FamilyMemberEnrichment.ResolveProfilesAsync(
+                _identityGateway,
+                family,
+                cancellationToken);
+
+        return family.ToResponse(profiles);
     }
 }
 

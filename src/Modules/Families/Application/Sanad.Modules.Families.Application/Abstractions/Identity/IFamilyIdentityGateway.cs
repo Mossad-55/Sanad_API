@@ -14,6 +14,12 @@ public sealed record FamilyInviteeAccount(
     bool Exists,
     bool HasFamilyAccount);
 
+public sealed record FamilyMemberProfile(
+    UserId UserId,
+    string ArabicFullName,
+    string EnglishFullName,
+    string? Email);
+
 /// <summary>
 /// Outbound port implemented by Sanad.API over MediatR. Lets the Families
 /// module interact with the Identity module without referencing it
@@ -41,6 +47,10 @@ public interface IFamilyIdentityGateway
 
     Task<Result<FamilyInviteeAccount>> GetFamilyInviteeByEmailAsync(
         string email,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<FamilyMemberProfile>> GetFamilyMemberProfilesAsync(
+        IReadOnlyCollection<UserId> userIds,
         CancellationToken cancellationToken = default);
 
     /// <summary>

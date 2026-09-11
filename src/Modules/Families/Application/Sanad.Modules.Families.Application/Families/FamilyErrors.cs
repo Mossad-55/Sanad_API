@@ -23,4 +23,12 @@ public static class FamilyErrors
     public static readonly Error AccessDenied =
         new("Families.Family.AccessDenied",
             "Your family role does not permit this action.");
+
+    public static readonly Error MemberNotFound =
+        new("Families.Family.MemberNotFound",
+            "The family member was not found.");
+
+    public static readonly Error OwnerProtected =
+        new("Families.Family.OwnerProtected",
+            "The family owner's role cannot be changed and the owner cannot be removed.");
 }
