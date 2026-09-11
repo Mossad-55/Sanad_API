@@ -169,12 +169,14 @@ public sealed class ChangeFamilyMemberRoleCommandHandler
 
         if (family is null)
         {
-            return FamilyErrors.NotFound;
+            return Result.Failure(
+                FamilyErrors.NotFound);
         }
 
         if (!FamilyAccess.IsOwner(family, request.CallerUserId))
         {
-            return FamilyErrors.NotOwner;
+            return Result.Failure(
+                FamilyErrors.NotOwner);
         }
 
         FamilyRole? currentRole =
@@ -182,12 +184,14 @@ public sealed class ChangeFamilyMemberRoleCommandHandler
 
         if (currentRole is null)
         {
-            return FamilyErrors.MemberNotFound;
+            return Result.Failure(
+                FamilyErrors.MemberNotFound);
         }
 
         if (currentRole == FamilyRole.Owner)
         {
-            return FamilyErrors.OwnerProtected;
+            return Result.Failure(
+                FamilyErrors.OwnerProtected);
         }
 
         try
@@ -198,10 +202,10 @@ public sealed class ChangeFamilyMemberRoleCommandHandler
         }
         catch (DomainException exception)
         {
-            return exception.Message ==
+            return Result.Failure(exception.Message ==
                 "The family member was not found."
                 ? FamilyErrors.MemberNotFound
-                : FamilyErrors.OwnerProtected;
+                : FamilyErrors.OwnerProtected);
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
@@ -250,12 +254,14 @@ public sealed class RemoveFamilyMemberCommandHandler
 
         if (family is null)
         {
-            return FamilyErrors.NotFound;
+            return Result.Failure(
+                FamilyErrors.NotFound);
         }
 
         if (!FamilyAccess.IsOwner(family, request.CallerUserId))
         {
-            return FamilyErrors.NotOwner;
+            return Result.Failure(
+                FamilyErrors.NotOwner);
         }
 
         FamilyRole? currentRole =
@@ -263,12 +269,14 @@ public sealed class RemoveFamilyMemberCommandHandler
 
         if (currentRole is null)
         {
-            return FamilyErrors.MemberNotFound;
+            return Result.Failure(
+                FamilyErrors.MemberNotFound);
         }
 
         if (currentRole == FamilyRole.Owner)
         {
-            return FamilyErrors.OwnerProtected;
+            return Result.Failure(
+                FamilyErrors.OwnerProtected);
         }
 
         family.RemoveMember(request.MemberUserId);
