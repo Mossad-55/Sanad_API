@@ -3,6 +3,7 @@ using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Activities;
 using Sanad.Modules.Families.Domain.Families;
@@ -17,7 +18,9 @@ public sealed record ElderlyActivityItemResponse(
     string ActivityTypeNameAr,
     string ActivityTypeNameEn,
     string Summary,
-    DateTime CreatedOnUtc);
+    DateTime CreatedOnUtc,
+    string ArabicFullName,
+    string EnglishFullName);
 
 public sealed record ElderlyActivityDashboardResponse(
     int TotalEventsCount,
@@ -27,8 +30,13 @@ public sealed record ElderlyActivityDashboardResponse(
 
 internal static class ElderlyActivityMappings
 {
-    public static ElderlyActivityItemResponse ToResponse(this ElderlyActivityLog log) =>
-        new(
+    public static ElderlyActivityItemResponse ToResponse(
+        this ElderlyActivityLog log,
+        IReadOnlyDictionary<UserId, FamilyMemberProfile> profiles)
+    {
+        profiles.TryGetValue(log.ActorUserId, out FamilyMemberProfile? profile);
+
+        return new(
             log.Id.Value,
             log.ElderlyId.Value,
             log.ActorUserId.Value,
@@ -36,7 +44,10 @@ internal static class ElderlyActivityMappings
             GetActivityNameAr(log.ActivityType),
             GetActivityNameEn(log.ActivityType),
             log.Summary,
-            log.CreatedOnUtc);
+            log.CreatedOnUtc,
+            profile?.ArabicFullName ?? string.Empty,
+            profile?.EnglishFullName ?? string.Empty);
+    }
 
     public static string GetActivityNameAr(ElderlyActivityType type) => type switch
     {
@@ -69,10 +80,12 @@ public sealed record GetElderlyActivityTimelineQuery(
 public sealed class GetElderlyActivityTimelineQueryHandler : IQueryHandler<GetElderlyActivityTimelineQuery, ElderlyActivityDashboardResponse>
 {
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IFamilyIdentityGateway _identityGateway;
 
-    public GetElderlyActivityTimelineQueryHandler(IFamiliesDbContext dbContext)
+    public GetElderlyActivityTimelineQueryHandler(IFamiliesDbContext dbContext, IFamilyIdentityGateway identityGateway)
     {
         _dbContext = dbContext;
+        _identityGateway = identityGateway;
     }
 
     public async Task<Result<ElderlyActivityDashboardResponse>> Handle(GetElderlyActivityTimelineQuery request, CancellationToken cancellationToken)
@@ -98,11 +111,17 @@ public sealed class GetElderlyActivityTimelineQueryHandler : IQueryHandler<GetEl
             .Take(Math.Max(1, Math.Min(request.Limit, 100)))
             .ToListAsync(cancellationToken);
 
+        IReadOnlyDictionary<UserId, FamilyMemberProfile> profiles =
+            await FamilyMemberEnrichment.ResolveProfilesAsync(
+                _identityGateway,
+                logs.Select(l => l.ActorUserId).Distinct(),
+                cancellationToken);
+
         var response = new ElderlyActivityDashboardResponse(
             totalEvents,
             thisWeekEvents,
             uniqueUsers,
-            logs.Select(l => l.ToResponse()).ToList());
+            logs.Select(l => l.ToResponse(profiles)).ToList());
 
         return Result<ElderlyActivityDashboardResponse>.Success(response);
     }

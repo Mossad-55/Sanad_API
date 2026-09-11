@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.Modules.Families.Application.Activities;
 using Sanad.Modules.Families.Application.Notes;
 using Sanad.Modules.Families.Domain.Activities;
@@ -14,6 +16,46 @@ namespace Sanad.UnitTests.Families;
 
 public sealed class ElderlyNoteHandlerTests
 {
+    private sealed class FakeIdentityGateway : IFamilyIdentityGateway
+    {
+        public Task<IReadOnlyList<FamilyMemberProfile>> GetFamilyMemberProfilesAsync(
+            IReadOnlyCollection<UserId> userIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<FamilyMemberProfile>>([]);
+
+        public Task<Result<ElderlyIdentityAccount>> GetElderlyByPhoneAsync(
+            string phoneNumber,
+            CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
+
+        public Task<Result<ElderlyIdentityAccount>> CreateElderlyAsync(
+            string arabicFullName,
+            string englishFullName,
+            string phoneNumber,
+            Gender gender,
+            DateOnly dateOfBirth,
+            DateTime utcNow,
+            CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
+
+        public Task DeleteElderlyAsync(
+            UserId userId,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<Result<FamilyInviteeAccount>> GetFamilyInviteeByEmailAsync(
+            string email,
+            CancellationToken cancellationToken = default) =>
+            throw new NotImplementedException();
+
+        public Task SendFamilyInvitationEmailAsync(
+            string email,
+            string familyName,
+            string invitationToken,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+    }
+
     private static FamiliesDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<FamiliesDbContext>()
@@ -93,7 +135,7 @@ public sealed class ElderlyNoteHandlerTests
 
         await db.SaveChangesAsync();
 
-        var handler = new GetElderlyActivityTimelineQueryHandler(db);
+        var handler = new GetElderlyActivityTimelineQueryHandler(db, new FakeIdentityGateway());
         var query = new GetElderlyActivityTimelineQuery(userId, elderly.Id);
 
         var result = await handler.Handle(query, CancellationToken.None);

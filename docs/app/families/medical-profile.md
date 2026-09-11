@@ -33,6 +33,8 @@ PUT    /api/v1/family/dependents/{dependentId}/medical-profile  Create or update
 
 If no medical profile has been configured yet, returns default/empty values with `bloodType: 0` (Unknown) and empty arrays.
 
+Every successful GET (any family member including Viewer) logs one `ViewMedicalProfile` event.
+
 ### Response Body (`application/json`)
 ```json
 {

@@ -1,3 +1,4 @@
+using System.Linq;
 using FluentValidation;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
@@ -26,6 +27,21 @@ internal static class FamilyMemberEnrichment
         IReadOnlyList<FamilyMemberProfile> profiles =
             await gateway.GetFamilyMemberProfilesAsync(
                 userIds,
+                cancellationToken);
+
+        return profiles.ToDictionary(
+            profile => profile.UserId);
+    }
+
+    internal static async Task<IReadOnlyDictionary<UserId, FamilyMemberProfile>>
+        ResolveProfilesAsync(
+            IFamilyIdentityGateway gateway,
+            IEnumerable<UserId> userIds,
+            CancellationToken cancellationToken)
+    {
+        IReadOnlyList<FamilyMemberProfile> profiles =
+            await gateway.GetFamilyMemberProfilesAsync(
+                userIds.Distinct().ToList(),
                 cancellationToken);
 
         return profiles.ToDictionary(

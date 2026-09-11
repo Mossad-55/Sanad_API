@@ -192,7 +192,9 @@ All routes live under `/api/v1/family/dependents/{dependentId}/notes` and `/api/
       "activityTypeNameAr": "عرض الملف الطبي",
       "activityTypeNameEn": "Viewed Medical Profile",
       "summary": "عرض السجل الطبي للمسن",
-      "createdOnUtc": "2026-09-03T11:00:00Z"
+      "createdOnUtc": "2026-09-03T11:00:00Z",
+      "arabicFullName": "أحمد محمد النصر",
+      "englishFullName": "Ahmed Mohamed El-Nasr"
     },
     {
       "id": "0191c42f-9988-7766-5544-33221100aabb",
@@ -202,7 +204,9 @@ All routes live under `/api/v1/family/dependents/{dependentId}/notes` and `/api/
       "activityTypeNameAr": "تحديث الأدوية",
       "activityTypeNameEn": "Updated Medications",
       "summary": "إضافة جرعة جديدة لدواء أوميجا 3",
-      "createdOnUtc": "2026-09-02T16:20:00Z"
+      "createdOnUtc": "2026-09-02T16:20:00Z",
+      "arabicFullName": "",
+      "englishFullName": ""
     },
     {
       "id": "0191c42a-5b12-78d1-94ef-112233445566",
@@ -212,11 +216,17 @@ All routes live under `/api/v1/family/dependents/{dependentId}/notes` and `/api/
       "activityTypeNameAr": "إضافة ملاحظة",
       "activityTypeNameEn": "Added Care Note",
       "summary": "إضافة ملاحظة: انخفاض الشهية اليوم",
-      "createdOnUtc": "2026-09-02T12:30:00Z"
+      "createdOnUtc": "2026-09-02T12:30:00Z",
+      "arabicFullName": "",
+      "englishFullName": ""
     }
   ]
 }
 ```
+
+> **Fallback note:** When the identity gateway lookup misses for an actor, `arabicFullName` and `englishFullName` default to `""` (empty string). The feed item is never dropped.
+
+> **Writer-truth table:** Activities written today = `AddNote`, `ViewMedicalProfile`. Activities defined but not yet written = `ShareMedicalProfile`, `ScheduleAppointment`, `ReviewMedications`, `UpdateMedications`.
 
 ---
 

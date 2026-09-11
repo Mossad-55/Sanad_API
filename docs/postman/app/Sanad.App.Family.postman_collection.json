@@ -1646,7 +1646,33 @@
                 }
               ]
             }
-          }
+          },
+          "response": [
+            {
+              "name": "200 — Activity timeline with actor names",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  {
+                    "key": "Authorization",
+                    "value": "Bearer {{familyToken}}"
+                  }
+                ],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/activities?limit=50",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["api", "v1", "family", "dependents", "{{dependentId}}", "activities"],
+                  "query": [{"key": "limit", "value": "50"}]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{"key": "Content-Type", "value": "application/json"}],
+              "cookie": [],
+              "body": "{\n  \"totalEventsCount\": 24,\n  \"thisWeekEventsCount\": 8,\n  \"uniqueUsersCount\": 5,\n  \"activities\": [\n    {\n      \"id\": \"0191c430-a1b2-7c3d-4e5f-112233445566\",\n      \"dependentId\": \"0191be84-5fca-7a13-882f-2d93b3f462a7\",\n      \"actorUserId\": \"0191be80-1a2b-7c3d-4e5f-6a7b8c9d0e1f\",\n      \"activityType\": 1,\n      \"activityTypeNameAr\": \"عرض الملف الطبي\",\n      \"activityTypeNameEn\": \"Viewed Medical Profile\",\n      \"summary\": \"عرض السجل الطبي للمسن\",\n      \"createdOnUtc\": \"2026-09-03T11:00:00Z\",\n      \"arabicFullName\": \"أحمد محمد النصر\",\n      \"englishFullName\": \"Ahmed Mohamed El-Nasr\"\n    },\n    {\n      \"id\": \"0191c42f-9988-7766-5544-33221100aabb\",\n      \"dependentId\": \"0191be84-5fca-7a13-882f-2d93b3f462a7\",\n      \"actorUserId\": \"0191be80-1a2b-7c3d-4e5f-6a7b8c9d0e1f\",\n      \"activityType\": 2,\n      \"activityTypeNameAr\": \"تحديث الأدوية\",\n      \"activityTypeNameEn\": \"Updated Medications\",\n      \"summary\": \"إضافة جرعة جديدة لدواء أوميجا 3\",\n      \"createdOnUtc\": \"2026-09-02T16:20:00Z\",\n      \"arabicFullName\": \"\",\n      \"englishFullName\": \"\"\n    }\n  ]\n}"
+            }
+          ]
         }
       ]
     },

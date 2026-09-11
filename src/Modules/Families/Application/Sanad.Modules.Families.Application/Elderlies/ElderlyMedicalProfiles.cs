@@ -6,6 +6,7 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Families;
+using Sanad.Modules.Families.Domain.Activities;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Elderlies.Medical;
 
@@ -122,6 +123,14 @@ public sealed class GetElderlyMedicalProfileQueryHandler
         {
             return ElderlyErrors.NotFound;
         }
+
+        _dbContext.ElderlyActivityLogs.Add(
+            ElderlyActivityLog.Create(
+                request.DependentId,
+                request.UserId,
+                ElderlyActivityType.ViewMedicalProfile,
+                "Viewed the medical profile."));
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return ElderlyMedicalProfileMappings.ToResponse(
             elderly.Id,

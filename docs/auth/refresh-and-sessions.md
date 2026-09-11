@@ -125,3 +125,7 @@ Revokes one owned session. A foreign or missing session returns `404` so ownersh
 | 404 | `Identity.Sessions.UserNotFound` |
 
 Revocation is idempotent. Maximum five active sessions. The user must remove an old session; the API does not pick one.
+
+## Multiple accounts on one device (F7 switcher)
+
+Client-side only. The app stores `{refreshToken, deviceSessionId}` per account. Switching accounts swaps the active token/session pair. Adding a new account follows the normal login flow. The 5-active-sessions cap applies **per account**. No server changes are required.
