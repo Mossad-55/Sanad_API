@@ -182,3 +182,40 @@ Content-Type: application/json
 | 404 | `Families.Family.MemberNotFound` | Member id not in the family |
 | 409 | `Families.Family.AlreadyExists` | Duplicate bootstrap |
 | 409 | `Families.Family.OwnerProtected` | Owner role change / owner removal |
+
+## Delete the whole family
+
+The family Owner can permanently delete the entire family in one call. This action is irreversible from the app.
+
+```http
+DELETE /api/v1/family
+Authorization: Bearer {{familyToken}}
+Content-Type: application/json
+
+{
+  "reason": "No longer needed",
+  "optionalMessage": "All data retained for record",
+  "acknowledgement": true
+}
+```
+
+- Owner only. Requires `"acknowledgement": true`.
+- `204` on success — the family is marked deleted and stops resolving for every member.
+- Rules: the family must not have an active booking (statuses `PendingPayment`, `PendingCaregiverApproval`, `Confirmed`, `InProgress`) and must not have an unsettled payment (a `Pending` transaction).
+- What happens:
+  - The family row is marked `deleted_on_utc`, `deletion_reason`, `deletion_message`; its name becomes `"Deleted family"`.
+  - The family no longer appears in any family endpoint (bootstrap, get, members, dependents, invitations, bookings, medical profile, etc.) for any member.
+  - Dependents' names, photo and detailed address are anonymized; medical profile, notes, medications, bookings and payments are retained as the record with no personal identifiers in the family/dependent rows.
+  - Any pending invitation is revoked.
+  - Member accounts are deactivated separately (later slice).
+- Error table:
+
+| HTTP | code | When |
+|---|---|---|
+| 400 | `Families.Family.AcknowledgementRequired` | `"acknowledgement"` is missing or `false` |
+| 403 | `Families.Family.NotOwner` | Caller is not the Owner |
+| 404 | `Families.Family.NotFound` | No family for this user (or already deleted) |
+| 409 | `Families.Family.ActiveBookingExists` | Family has an active booking |
+| 409 | `Families.Family.UnsettledPaymentExists` | Family has a pending payment transaction |
+
+This is irreversible from the app.

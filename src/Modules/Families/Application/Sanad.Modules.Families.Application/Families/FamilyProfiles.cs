@@ -98,7 +98,7 @@ public sealed class BootstrapFamilyCommandHandler
     {
         bool exists =
             await _dbContext.Families.AnyAsync(
-                f => f.OwnerUserId == request.OwnerUserId,
+                f => f.OwnerUserId == request.OwnerUserId && f.DeletedOnUtc == null,
                 cancellationToken);
 
         if (exists)

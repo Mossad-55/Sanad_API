@@ -49,6 +49,11 @@ public sealed record UpdateFamilyMemberRoleRequest(
 public sealed record LeaveFamilyRequest(
     Guid? TransferToMemberId);
 
+public sealed record DeleteFamilyRequest(
+    string? Reason,
+    string? OptionalMessage,
+    bool Acknowledgement);
+
 public sealed record UpdateElderlyMedicalProfileRequest(
     BloodType BloodType,
     int? HeightCm,

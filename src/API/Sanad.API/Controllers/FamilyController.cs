@@ -202,6 +202,32 @@ public sealed class FamilyController :
         return ToActionResult(result);
     }
 
+    [HttpDelete]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteFamily(
+        [FromBody] DeleteFamilyRequest? request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new DeleteFamilyCommand(
+                userId,
+                request?.Reason,
+                request?.OptionalMessage,
+                request?.Acknowledgement ?? false),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
     // ---------------------------- Dependents ----------------------------
 
     [HttpPost("dependents")]

@@ -590,30 +590,52 @@
             }
           ]
         },
-        {
-          "name": "Leave family (any member; owner transfers)",
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{ familyToken }}"
+{
+            "name": "Leave family (any member; owner transfers)",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{ familyToken }}"
+                }
+              ],
+              "url": "{{baseUrl}}/api/v1/family/leave",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"transferToMemberId\": \"…uuid…\"\n}"
               }
-            ],
-            "url": "{{baseUrl}}/api/v1/family/leave",
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"transferToMemberId\": \"…uuid…\"\n}"
-            }
+            },
+            "description": "Any member can leave. The caller always leaves; the role is irrelevant. An Owner must pass an existing member's id to transfer ownership first. For Editors/Viewers, transferToMemberId is ignored. 204 on success. 409 OwnerProtected when the owner leaves without a valid transfer target."
           },
-          "description": "Any member can leave. The caller always leaves; the role is irrelevant. An Owner must pass an existing member's id to transfer ownership first. For Editors/Viewers, transferToMemberId is ignored. 204 on success. 409 OwnerProtected when the owner leaves without a valid transfer target."
-        }
-      ]
-    },
+          {
+            "name": "Delete family (Owner, irreversible - run last)",
+            "request": {
+              "method": "DELETE",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{ familyToken }}"
+                }
+              ],
+              "url": "{{baseUrl}}/api/v1/family",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"reason\": \"manual smoke\",\n  \"optionalMessage\": \"keep this as the last request in the folder\",\n  \"acknowledgement\": false\n}"
+              }
+            },
+            "description": "Owner only. Irreversible: marks the family deleted, anonymizes dependents' names/photo/address and revokes pending invitations; bookings and payments are retained. Requires acknowledgement=true, and refuses while an active booking (409 ActiveBookingExists) or a pending payment (409 UnsettledPaymentExists) exists. The body above is deliberately acknowledgement=false so this request is SAFE to run in smoke (400) — flip it to true only when you really mean it."
+          }
+        ]
+      },
     {
       "name": "03. Elderly Dependents",
       "item": [
