@@ -176,6 +176,32 @@ public sealed class FamilyController :
         return ToActionResult(result);
     }
 
+    [HttpPost("leave")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> LeaveFamily(
+        [FromBody] LeaveFamilyRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        UserId? transferToUserId = request.TransferToMemberId is null
+            ? null
+            : new UserId(request.TransferToMemberId.Value);
+
+        var result = await _sender.Send(
+            new LeaveFamilyCommand(userId, transferToUserId),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
     // ---------------------------- Dependents ----------------------------
 
     [HttpPost("dependents")]

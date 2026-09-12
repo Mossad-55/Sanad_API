@@ -46,6 +46,9 @@ public sealed record DeclineFamilyInvitationRequest(
 public sealed record UpdateFamilyMemberRoleRequest(
     FamilyRole Role);
 
+public sealed record LeaveFamilyRequest(
+    Guid? TransferToMemberId);
+
 public sealed record UpdateElderlyMedicalProfileRequest(
     BloodType BloodType,
     int? HeightCm,

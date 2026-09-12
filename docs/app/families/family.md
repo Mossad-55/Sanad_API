@@ -131,6 +131,27 @@ Authorization: Bearer {{familyToken}}
 - `404 Families.Family.MemberNotFound` — no such member.
 - `409 Families.Family.OwnerProtected` — attempting to remove the owner.
 
+### Leave the family
+
+Any member can leave. The caller always leaves; the role is irrelevant. An Owner must pass an existing member's id to transfer ownership first — a family with no other member cannot leave via this route (the owner is protected). `transferToMemberId` is ignored for Editors/Viewers (it is only meaningful for an Owner). Delete-whole-family is a separate, later feature.
+
+```http
+POST /api/v1/family/leave
+Authorization: Bearer {{ACCESS_TOKEN}}
+Content-Type: application/json
+
+{
+  "transferToMemberId": "…uuid…"
+}
+```
+
+- `204` — caller removed (owner transferred if applicable).
+- `400` — missing or invalid request body.
+- `403 Families.Family.AccessDenied` — caller is not a member of the family.
+- `404 Families.Family.NotFound` — caller has no family.
+- `404 Families.Family.MemberNotFound` — owner transferred to an unknown member id.
+- `409 Families.Family.OwnerProtected` — owner leaving without a valid transfer target.
+
 ## Rename the family
 
 Owner only.

@@ -589,6 +589,28 @@
               "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/family/members/00000000-0000-0000-0000-000000000099\",\n  \"code\": \"Families.Family.MemberNotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
             }
           ]
+        },
+        {
+          "name": "Leave family (any member; owner transfers)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/leave",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transferToMemberId\": \"…uuid…\"\n}"
+            }
+          },
+          "description": "Any member can leave. The caller always leaves; the role is irrelevant. An Owner must pass an existing member's id to transfer ownership first. For Editors/Viewers, transferToMemberId is ignored. 204 on success. 409 OwnerProtected when the owner leaves without a valid transfer target."
         }
       ]
     },

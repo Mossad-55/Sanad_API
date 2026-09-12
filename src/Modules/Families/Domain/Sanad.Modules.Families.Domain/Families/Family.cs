@@ -137,4 +137,29 @@ public sealed class Family : AggregateRoot<FamilyId>
         member.ChangeRole(role);
         UpdatedOnUtc = DateTime.UtcNow;
     }
+
+    public void TransferOwnership(UserId newOwnerUserId)
+    {
+        if (newOwnerUserId == UserId.Empty)
+        {
+            throw new DomainException("The new family owner is required.");
+        }
+
+        if (newOwnerUserId == OwnerUserId)
+        {
+            throw new DomainException("The family owner cannot transfer ownership to themselves.");
+        }
+
+        FamilyMember target = _members.FirstOrDefault(x => x.Id == newOwnerUserId)
+            ?? throw new DomainException("The family member was not found.");
+
+        FamilyMember? currentOwner = _members.FirstOrDefault(x => x.Id == OwnerUserId);
+
+        currentOwner?.ChangeRole(FamilyRole.Editor);
+
+        target.ChangeRole(FamilyRole.Owner);
+
+        OwnerUserId = newOwnerUserId;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
 }
