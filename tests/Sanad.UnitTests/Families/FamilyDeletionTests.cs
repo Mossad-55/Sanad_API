@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
@@ -16,6 +17,67 @@ namespace Sanad.UnitTests.Families;
 
 public sealed class FamilyDeletionTests
 {
+    private sealed class FakeFamilyIdentityGateway : IFamilyIdentityGateway
+    {
+        internal List<IReadOnlyCollection<UserId>> ReceivedUserIds { get; } = [];
+
+        internal Result? FailureToReturn { get; set; }
+
+        public Task<Result<ElderlyIdentityAccount>> GetElderlyByPhoneAsync(
+            string phoneNumber,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<ElderlyIdentityAccount>.Failure(
+                new Error("Test.NotImplemented", "not implemented")));
+
+        public Task<Result<ElderlyIdentityAccount>> CreateElderlyAsync(
+            string arabicFullName,
+            string englishFullName,
+            string phoneNumber,
+            Gender gender,
+            DateOnly dateOfBirth,
+            DateTime utcNow,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<ElderlyIdentityAccount>.Failure(
+                new Error("Test.NotImplemented", "not implemented")));
+
+        public Task DeleteElderlyAsync(
+            UserId userId,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<Result<FamilyInviteeAccount>> GetFamilyInviteeByEmailAsync(
+            string email,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<FamilyInviteeAccount>.Failure(
+                new Error("Test.NotImplemented", "not implemented")));
+
+        public Task<IReadOnlyList<FamilyMemberProfile>> GetFamilyMemberProfilesAsync(
+            IReadOnlyCollection<UserId> userIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<FamilyMemberProfile>>([]);
+
+        public Task SendFamilyInvitationEmailAsync(
+            string email,
+            string familyName,
+            string invitationToken,
+            CancellationToken cancellationToken = default) =>
+            Task.CompletedTask;
+
+        public Task<Result> AnonymizeFamilyAccountsAsync(
+            IReadOnlyCollection<UserId> userIds,
+            CancellationToken cancellationToken = default)
+        {
+            ReceivedUserIds.Add(userIds);
+
+            if (FailureToReturn is not null)
+            {
+                return Task.FromResult(FailureToReturn);
+            }
+
+            return Task.FromResult(Result.Success());
+        }
+    }
+
     private static FamiliesDbContext CreateDbContext()
     {
         var options = new DbContextOptionsBuilder<FamiliesDbContext>()
@@ -69,7 +131,8 @@ public sealed class FamilyDeletionTests
         db.Families.Add(family);
         await db.SaveChangesAsync();
 
-        var handler = new DeleteFamilyCommandHandler(db);
+        var fake = new FakeFamilyIdentityGateway();
+        var handler = new DeleteFamilyCommandHandler(db, fake);
 
         Result result = await handler.Handle(
             new DeleteFamilyCommand(editor, "reason", "message", true),
@@ -89,7 +152,8 @@ public sealed class FamilyDeletionTests
         db.Families.Add(family);
         await db.SaveChangesAsync();
 
-        var handler = new DeleteFamilyCommandHandler(db);
+        var fake = new FakeFamilyIdentityGateway();
+        var handler = new DeleteFamilyCommandHandler(db, fake);
 
         Result result = await handler.Handle(
             new DeleteFamilyCommand(owner, "reason", "message", false),
@@ -145,7 +209,8 @@ public sealed class FamilyDeletionTests
         db.Bookings.Add(booking);
         await db.SaveChangesAsync();
 
-        var handler = new DeleteFamilyCommandHandler(db);
+        var fake = new FakeFamilyIdentityGateway();
+        var handler = new DeleteFamilyCommandHandler(db, fake);
 
         Result result = await handler.Handle(
             new DeleteFamilyCommand(owner, "reason", "message", true),
@@ -203,7 +268,8 @@ public sealed class FamilyDeletionTests
         db.Bookings.Add(booking);
         await db.SaveChangesAsync();
 
-        var handler = new DeleteFamilyCommandHandler(db);
+        var fake = new FakeFamilyIdentityGateway();
+        var handler = new DeleteFamilyCommandHandler(db, fake);
 
         Result result = await handler.Handle(
             new DeleteFamilyCommand(owner, "reason", "message", true),
@@ -264,7 +330,8 @@ public sealed class FamilyDeletionTests
         db.Invitations.Add(acceptedInvitation);
         await db.SaveChangesAsync();
 
-        var handler = new DeleteFamilyCommandHandler(db);
+        var fake = new FakeFamilyIdentityGateway();
+        var handler = new DeleteFamilyCommandHandler(db, fake);
 
         Result result = await handler.Handle(
             new DeleteFamilyCommand(owner, "manual smoke", "keep this as the last request in the folder", true),
@@ -303,7 +370,8 @@ public sealed class FamilyDeletionTests
         db.Families.Add(family);
         await db.SaveChangesAsync();
 
-        var handler = new DeleteFamilyCommandHandler(db);
+        var fake = new FakeFamilyIdentityGateway();
+        var handler = new DeleteFamilyCommandHandler(db, fake);
 
         Result result1 = await handler.Handle(
             new DeleteFamilyCommand(owner, "reason", "message", true),
@@ -368,12 +436,122 @@ public sealed class FamilyDeletionTests
         db.Bookings.Add(booking);
         await db.SaveChangesAsync();
 
-        var handler = new DeleteFamilyCommandHandler(db);
+        var fake = new FakeFamilyIdentityGateway();
+        var handler = new DeleteFamilyCommandHandler(db, fake);
 
         Result result = await handler.Handle(
             new DeleteFamilyCommand(owner, "reason", "message", true),
             CancellationToken.None);
 
         Assert.True(result.IsSuccess);
+    }
+
+    [Fact]
+    public async Task DeleteFamily_AnonymizesIdentityAccounts_WithMemberAndDependentIds()
+    {
+        using FamiliesDbContext db = CreateDbContext();
+        UserId owner = UserId.New();
+        UserId editor = UserId.New();
+        UserId dependentIdentity = UserId.New();
+
+        Family family = Family.Create(owner, "Test Family");
+        family.AddMember(FamilyMember.Create(editor, owner, FamilyRelationshipType.Other, FamilyRole.Editor));
+
+        Elderly elderly = Elderly.Create(
+            owner,
+            dependentIdentity,
+            family.Id,
+            FamilyRelationshipType.Grandfather,
+            FullName.Create("جد"),
+            FullName.Create("Grandfather"),
+            Gender.Male,
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-70)),
+            DateOnly.FromDateTime(DateTime.UtcNow));
+
+        db.Families.Add(family);
+        db.Elderlies.Add(elderly);
+        await db.SaveChangesAsync();
+
+        var fake = new FakeFamilyIdentityGateway();
+        var handler = new DeleteFamilyCommandHandler(db, fake);
+
+        Result result = await handler.Handle(
+            new DeleteFamilyCommand(owner, "reason", "message", true),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Single(fake.ReceivedUserIds);
+        IReadOnlyCollection<UserId> received = fake.ReceivedUserIds[0];
+
+        Assert.Equal(3, received.Count);
+        Assert.Contains(owner, received);
+        Assert.Contains(editor, received);
+        Assert.Contains(dependentIdentity, received);
+    }
+
+    [Fact]
+    public async Task DeleteFamily_ReturnsIdentityFailure_AndDeletesNothing()
+    {
+        using FamiliesDbContext db = CreateDbContext();
+        UserId owner = UserId.New();
+        Family family = Family.Create(owner, "Test Family");
+
+        Elderly elderly = Elderly.Create(
+            owner,
+            UserId.New(),
+            family.Id,
+            FamilyRelationshipType.Grandfather,
+            FullName.Create("جد"),
+            FullName.Create("Grandfather"),
+            Gender.Male,
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-70)),
+            DateOnly.FromDateTime(DateTime.UtcNow),
+            "photo_key",
+            "Detailed address",
+            "Health notes");
+
+        db.Families.Add(family);
+        db.Elderlies.Add(elderly);
+        await db.SaveChangesAsync();
+
+        var (invitation, _) = FamilyInvitation.Create(
+            family.Id,
+            Email.Create("invitee@example.com"),
+            UserId.New(),
+            FamilyRole.Editor,
+            FamilyRelationshipType.Sister,
+            owner,
+            DateTime.UtcNow);
+
+        db.Invitations.Add(invitation);
+        await db.SaveChangesAsync();
+
+        string originalArabic = elderly.ArabicFullName.Value;
+        string originalEnglish = elderly.EnglishFullName.Value;
+
+        var fake = new FakeFamilyIdentityGateway
+        {
+            FailureToReturn = Result.Failure(new Error("Test.IdentityFailure", "boom"))
+        };
+
+        var handler = new DeleteFamilyCommandHandler(db, fake);
+
+        Result result = await handler.Handle(
+            new DeleteFamilyCommand(owner, "reason", "message", true),
+            CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Test.IdentityFailure", result.Error.Code);
+
+        // Assert nothing deleted
+        Assert.Null(family.DeletedOnUtc);
+
+        Elderly persistedElderly = await db.Elderlies.SingleAsync(e => e.Id == elderly.Id);
+        Assert.Equal(originalArabic, persistedElderly.ArabicFullName.Value);
+        Assert.Equal(originalEnglish, persistedElderly.EnglishFullName.Value);
+
+        FamilyInvitation persistedInvitation = await db.Invitations.SingleAsync(i => i.Id == invitation.Id);
+        Assert.Equal(FamilyInvitationStatus.Pending, persistedInvitation.Status);
     }
 }

@@ -79,6 +79,11 @@ public sealed class ElderlyActivityHandlerTests
             string invitationToken,
             CancellationToken cancellationToken = default) =>
             throw new NotImplementedException();
+
+        public Task<Result> AnonymizeFamilyAccountsAsync(
+            IReadOnlyCollection<UserId> userIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result.Success());
     }
 
     [Fact]

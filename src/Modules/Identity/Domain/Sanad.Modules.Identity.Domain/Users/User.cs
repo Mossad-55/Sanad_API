@@ -957,4 +957,47 @@ public sealed class User : AggregateRoot<UserId>
             AccountType.ContentAdmin or
             AccountType.SupportAdmin;
     }
+
+    public void AnonymizeAndDeactivate(DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        if (Status != UserStatus.Blocked)
+        {
+            Block("The family was deleted; the account was anonymized.", utcNow);
+        }
+
+        ArabicFullName = FullName.Create("محذوف");
+        EnglishFullName = FullName.Create("Deleted");
+        Email = null;
+        EmailVerified = false;
+        PhoneNumber = CreateAnonymizedPhoneNumber();
+        PhoneVerified = false;
+        AvatarUrl = null;
+
+        if (IdentityDocument is not null
+            && IdentityDocument.VerificationStatus != Sanad.Modules.Identity.Domain.UserIdentityDocument.IdentityDocumentVerificationStatus.Revoked)
+        {
+            if (IdentityDocument.VerificationStatus == Sanad.Modules.Identity.Domain.UserIdentityDocument.IdentityDocumentVerificationStatus.Verified)
+            {
+                IdentityDocument.Revoke("The family was deleted; the account was anonymized.", utcNow);
+            }
+        }
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    private PhoneNumber CreateAnonymizedPhoneNumber()
+    {
+        // Unique per user (the phone index is UNIQUE), E164-valid, and not an
+        // assignable Egyptian number: "+200" prefix + 9 digits derived from the id.
+        string hex = Id.Value.ToString("N");
+
+        string digits = new string(
+            hex.Skip(6).Take(9)
+                .Select(c => (char)('0' + (int.Parse(c.ToString(), System.Globalization.NumberStyles.HexNumber) % 10)))
+                .ToArray());
+
+        return PhoneNumber.Create($"+200{digits}");
+    }
 }

@@ -54,6 +54,11 @@ public sealed class ElderlyNoteHandlerTests
             string invitationToken,
             CancellationToken cancellationToken = default) =>
             Task.CompletedTask;
+
+        public Task<Result> AnonymizeFamilyAccountsAsync(
+            IReadOnlyCollection<UserId> userIds,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result.Success());
     }
 
     private static FamiliesDbContext CreateDbContext()
