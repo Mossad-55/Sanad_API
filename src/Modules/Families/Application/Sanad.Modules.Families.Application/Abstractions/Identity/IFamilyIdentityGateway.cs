@@ -62,4 +62,13 @@ public interface IFamilyIdentityGateway
         string familyName,
         string invitationToken,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Blocks and PII-scrubs the given family member/dependent Identity accounts
+    /// (hybrid caregiver accounts are skipped). Called by the family-deletion
+    /// flow BEFORE the family-side changes are persisted.
+    /// </summary>
+    Task<Result> AnonymizeFamilyAccountsAsync(
+        IReadOnlyCollection<UserId> userIds,
+        CancellationToken cancellationToken = default);
 }

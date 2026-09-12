@@ -156,4 +156,13 @@ public sealed class FamilyIdentityGateway : IFamilyIdentityGateway
             inviteLink,
             cancellationToken);
     }
+
+    public async Task<Result> AnonymizeFamilyAccountsAsync(
+        IReadOnlyCollection<UserId> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        return await _sender.Send(
+            new AnonymizeFamilyAccountsCommand(userIds),
+            cancellationToken);
+    }
 }

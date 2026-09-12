@@ -207,7 +207,9 @@ Content-Type: application/json
   - The family no longer appears in any family endpoint (bootstrap, get, members, dependents, invitations, bookings, medical profile, etc.) for any member.
   - Dependents' names, photo and detailed address are anonymized; medical profile, notes, medications, bookings and payments are retained as the record with no personal identifiers in the family/dependent rows.
   - Any pending invitation is revoked.
-  - Member accounts are deactivated separately (later slice).
+  - Member and dependent Identity accounts are blocked and PII-scrubbed in the same call (a
+    hybrid account that also holds a caregiver account is kept intact); their device sessions
+    are revoked.
 - Error table:
 
 | HTTP | code | When |

@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Elderlies;
@@ -29,10 +30,12 @@ public sealed class DeleteFamilyCommandValidator : AbstractValidator<DeleteFamil
 public sealed class DeleteFamilyCommandHandler : ICommandHandler<DeleteFamilyCommand>
 {
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IFamilyIdentityGateway _identityGateway;
 
-    public DeleteFamilyCommandHandler(IFamiliesDbContext dbContext)
+    public DeleteFamilyCommandHandler(IFamiliesDbContext dbContext, IFamilyIdentityGateway identityGateway)
     {
         _dbContext = dbContext;
+        _identityGateway = identityGateway;
     }
 
     public async Task<Result> Handle(
@@ -89,6 +92,25 @@ public sealed class DeleteFamilyCommandHandler : ICommandHandler<DeleteFamilyCom
         List<Elderly> dependents = await _dbContext.Elderlies
             .Where(elderly => elderly.FamilyId == family.Id)
             .ToListAsync(cancellationToken);
+
+        // Identity-side anonymize & deactivate FIRST (fail-fast: nothing is
+        // deleted if this fails; the Identity command is idempotent on retry).
+        List<UserId> accountIds =
+            family.Members
+                .Select(member => member.Id)
+                .Concat(dependents.Select(dependent => dependent.IdentityUserId))
+                .Distinct()
+                .ToList();
+
+        Result identityResult =
+            await _identityGateway.AnonymizeFamilyAccountsAsync(
+                accountIds,
+                cancellationToken);
+
+        if (identityResult.IsFailure)
+        {
+            return Result.Failure(identityResult.Error);
+        }
 
         foreach (Elderly dependent in dependents)
         {
