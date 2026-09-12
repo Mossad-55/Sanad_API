@@ -1896,6 +1896,116 @@
           }
         }
       ]
+    },
+    {
+      "name": "14. Privacy & Security",
+      "item": [
+        {
+          "name": "Get Privacy Policy / Terms page (anonymous)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/splash-screens"
+          },
+          "description": "Published legal pages are admin-authored splash screens. Anonymous; 200 with [] when nothing is published."
+        },
+        {
+          "name": "List device sessions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/sessions"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  const first = body.sessions && body.sessions[0];",
+                  "  if (first && first.deviceSessionId && first.deviceSessionId.value) { pm.environment.set('sessionId', first.deviceSessionId.value); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "description": "Non-revoked, non-expired sessions only; no token hashes. Maximum five active sessions per account."
+        },
+        {
+          "name": "Change password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{familyPassword}}\",\n  \"newPassword\": \"NewPassword1234\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/auth/password/change"
+          },
+          "description": "204 revokes EVERY session, including the current one — log in again before running the logout requests below. 401 Identity.Password.InvalidCurrentPassword · 400 Identity.Password.NewPasswordMustDiffer · 404 Identity.Password.UserNotFound."
+        },
+        {
+          "name": "Revoke one session",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/sessions/{{sessionId}}"
+          },
+          "description": "204, idempotent. Unknown or foreign session → 404 so ownership is never leaked."
+        },
+        {
+          "name": "Log out this device",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              },
+              {
+                "key": "X-Device-Session-Id",
+                "value": "{{familyDeviceSessionId}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/sessions/logout"
+          },
+          "description": "204. Missing or invalid header → 400 Api.Auth.InvalidDeviceSessionHeader."
+        },
+        {
+          "name": "Log out all devices",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ familyToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/sessions/logout-all"
+          },
+          "description": "204; revokes every non-revoked session of the account."
+        }
+      ]
     }
   ]
 }

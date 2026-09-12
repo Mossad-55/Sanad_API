@@ -49,3 +49,7 @@ Order is `displayOrder` ascending.
 This GET has no business 4xx for “no screens”. Validation failures use `Api.Validation.Failed` (`400`) if they occur.
 
 Admin create/publish lives under `/api/v1/admin/splash-screens` and is documented in `docs/admin/splash-screens.md`.
+
+## Privacy Policy and Terms & Conditions
+
+The legal pages are published splash screens: an admin authors a page and publishes it (see `docs/admin/splash-screens.md`). The app renders them on the **Privacy & Security** settings screen — see `docs/app/settings/privacy-and-security.md`.
