@@ -9,6 +9,10 @@ public sealed class Family : AggregateRoot<FamilyId>
 {
     public const int MaximumNameLength = 100;
 
+    public const int MaximumDeletionReasonLength = 500;
+
+    public const int MaximumDeletionMessageLength = 1000;
+
     private readonly List<FamilyMember> _members = [];
 
     private Family()
@@ -47,6 +51,12 @@ public sealed class Family : AggregateRoot<FamilyId>
     public DateTime CreatedOnUtc { get; private set; }
 
     public DateTime UpdatedOnUtc { get; private set; }
+
+    public DateTime? DeletedOnUtc { get; private set; }
+
+    public string? DeletionReason { get; private set; }
+
+    public string? DeletionMessage { get; private set; }
 
     public IReadOnlyCollection<FamilyMember> Members => _members.AsReadOnly();
 
@@ -161,5 +171,40 @@ public sealed class Family : AggregateRoot<FamilyId>
 
         OwnerUserId = newOwnerUserId;
         UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void MarkDeleted(
+        string? reason,
+        string? message)
+    {
+        if (DeletedOnUtc is not null)
+        {
+            throw new DomainException("The family is already deleted.");
+        }
+
+        DeletionReason = NormalizeDeletionText(reason, MaximumDeletionReasonLength, "Deletion reason");
+        DeletionMessage = NormalizeDeletionText(message, MaximumDeletionMessageLength, "Deletion message");
+
+        Name = "Deleted family";
+        DeletedOnUtc = DateTime.UtcNow;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    private static string? NormalizeDeletionText(string? value, int maxLength, string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        string normalized = value.Trim();
+
+        if (normalized.Length > maxLength)
+        {
+            throw new DomainException(
+                $"{fieldName} cannot exceed {maxLength} characters.");
+        }
+
+        return normalized;
     }
 }

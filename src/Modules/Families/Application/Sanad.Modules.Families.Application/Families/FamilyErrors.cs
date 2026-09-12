@@ -31,4 +31,16 @@ public static class FamilyErrors
     public static readonly Error OwnerProtected =
         new("Families.Family.OwnerProtected",
             "The family owner's role cannot be changed and the owner cannot be removed.");
+
+    public static readonly Error AcknowledgementRequired =
+        new("Families.Family.AcknowledgementRequired",
+            "The deletion acknowledgement is required.");
+
+    public static readonly Error ActiveBookingExists =
+        new("Families.Family.ActiveBookingExists",
+            "The family has an active booking. Resolve it before deleting the family.");
+
+    public static readonly Error UnsettledPaymentExists =
+        new("Families.Family.UnsettledPaymentExists",
+            "The family has an unsettled payment. Resolve it before deleting the family.");
 }

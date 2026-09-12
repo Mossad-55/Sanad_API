@@ -211,4 +211,13 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
 
         return normalized;
     }
+
+    public void Anonymize()
+    {
+        ArabicFullName = FullName.Create("محذوف");
+        EnglishFullName = FullName.Create("Deleted");
+        ProfileImageKey = null;
+        DetailedAddress = null;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
 }

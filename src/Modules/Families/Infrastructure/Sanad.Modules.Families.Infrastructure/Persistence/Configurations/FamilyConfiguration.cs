@@ -41,6 +41,17 @@ public sealed class FamilyConfiguration :
             .HasColumnName("updated_on_utc")
             .IsRequired();
 
+        builder.Property(family => family.DeletedOnUtc)
+            .HasColumnName("deleted_on_utc");
+
+        builder.Property(family => family.DeletionReason)
+            .HasColumnName("deletion_reason")
+            .HasMaxLength(Family.MaximumDeletionReasonLength);
+
+        builder.Property(family => family.DeletionMessage)
+            .HasColumnName("deletion_message")
+            .HasMaxLength(Family.MaximumDeletionMessageLength);
+
         builder.HasIndex(family => family.OwnerUserId)
             .IsUnique();
 

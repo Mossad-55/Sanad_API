@@ -23,7 +23,7 @@ internal static class FamilyAccess
         Family? ownedFamily =
             await dbContext.Families
                 .SingleOrDefaultAsync(
-                    family => family.OwnerUserId == userId,
+                    family => family.OwnerUserId == userId && family.DeletedOnUtc == null,
                     cancellationToken);
 
         if (ownedFamily is not null)
@@ -33,7 +33,8 @@ internal static class FamilyAccess
 
         return await dbContext.Families
             .Where(family =>
-                family.Members.Any(member => member.Id == userId))
+                family.Members.Any(member => member.Id == userId)
+                && family.DeletedOnUtc == null)
             .OrderBy(family => family.CreatedOnUtc)
             .FirstOrDefaultAsync(cancellationToken);
     }
