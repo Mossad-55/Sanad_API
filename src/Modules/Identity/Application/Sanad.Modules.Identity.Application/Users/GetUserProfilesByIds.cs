@@ -11,7 +11,11 @@ public sealed record UserProfileById(
     UserId UserId,
     string ArabicFullName,
     string EnglishFullName,
-    string? Email);
+    string? Email,
+    string? PhoneNumber,
+    string? AvatarUrl,
+    int Status,
+    DateTime? LastLoginOnUtc);
 
 public sealed record GetUserProfilesByIdsQuery(
     IReadOnlyCollection<UserId> UserIds)
@@ -55,7 +59,11 @@ public sealed class GetUserProfilesByIdsQueryHandler
                     user.Id,
                     user.ArabicFullName.Value,
                     user.EnglishFullName.Value,
-                    user.Email?.Value))
+                    user.Email?.Value,
+                    user.PhoneNumber.Value,
+                    user.AvatarUrl,
+                    (int)user.Status,
+                    user.LastLoginOnUtc))
                 .ToList();
 
         return Result<IReadOnlyList<UserProfileById>>.Success(

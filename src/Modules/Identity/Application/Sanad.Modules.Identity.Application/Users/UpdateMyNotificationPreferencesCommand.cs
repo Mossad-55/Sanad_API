@@ -8,5 +8,9 @@ public sealed record UpdateMyNotificationPreferencesCommand(
     bool CheckInAlerts,
     bool MedicationReminders,
     bool BookingUpdates,
-    bool CommunityNotifications)
+    bool CommunityNotifications,
+    bool FamilyActivityAlerts,
+    bool NewOrders,
+    bool MessagesFromFamilies,
+    bool SystemNotifications)
     : ICommand<NotificationPreferencesResponse>;

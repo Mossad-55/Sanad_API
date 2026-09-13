@@ -160,11 +160,17 @@ curl -sS https://localhost:7296/api/v1/account/notification-preferences \
   "checkInAlerts": true,
   "medicationReminders": true,
   "bookingUpdates": true,
-  "communityNotifications": true
+  "communityNotifications": true,
+  "familyActivityAlerts": true,
+  "newOrders": true,
+  "messagesFromFamilies": true,
+  "systemNotifications": true
 }
 ```
 
-- All four toggles default to ON for existing and new users
+- All eight toggles default to ON for existing and new users
+- One superset object holds every toggle; each client surfaces the subset relevant to the signed-in role
+- Delivery is email and in-app only (no SMS)
 - Storage only: the preference is persisted per user; delivery of notifications comes later
 
 | HTTP | `code` |
@@ -183,7 +189,11 @@ curl -sS -X PUT https://localhost:7296/api/v1/account/notification-preferences \
     "checkInAlerts": true,
     "medicationReminders": false,
     "bookingUpdates": true,
-    "communityNotifications": false
+    "communityNotifications": false,
+    "familyActivityAlerts": true,
+    "newOrders": false,
+    "messagesFromFamilies": true,
+    "systemNotifications": false
   }'
 ```
 
@@ -194,13 +204,17 @@ curl -sS -X PUT https://localhost:7296/api/v1/account/notification-preferences \
   "checkInAlerts": true,
   "medicationReminders": false,
   "bookingUpdates": true,
-  "communityNotifications": false
+  "communityNotifications": false,
+  "familyActivityAlerts": true,
+  "newOrders": false,
+  "messagesFromFamilies": true,
+  "systemNotifications": false
 }
 ```
 
 Rules:
 
-- All four fields are required; omitting any field fails validation (full replace, not partial update)
+- All eight fields are required; omitting any field fails validation (full replace, not partial update)
 - Submitting the current combination is a no-op
 - The preference is persisted per user and applies to the caller only (`UserId` comes from the JWT, never from the body)
 - Blocked users cannot update their preference

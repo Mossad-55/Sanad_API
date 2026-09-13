@@ -26,11 +26,13 @@ All routes require policy `FamilyAccess`. Permission matrix:
   "hasPhoto": true,
   "detailedAddress": "12 Nile Street, Damanhur",
   "healthNotes": "Diabetes type 2; takes metformin.",
-  "createdOnUtc": "2026-09-01T09:05:00Z"
+  "createdOnUtc": "2026-09-01T09:05:00Z",
+  "phoneNumber": "+201007654321"
 }
 ```
 
 - `gender`: `1` Male, `2` Female.
+- `phoneNumber`: resolved from the dependent's Elderly Identity account (`identityUserId`) via the Families→Identity gateway; `null` if the lookup misses.
 - `relationshipType`: the dependent's relationship **to the family** (e.g. `7` Grandfather means the dependent is the family member's grandfather). Values: see the `relationshipType` table in `overview.md` (`1` Father, `2` Mother, `7` Grandfather, `8` Grandmother, `15` Spouse, `99` Other, …). Required on add and update.
 - `dateOfBirth`: `YYYY-MM-DD`, must not be in the future.
 - `detailedAddress`: optional, ≤ 500 characters.

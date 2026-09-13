@@ -18,7 +18,10 @@ public sealed record FamilyMemberResponse(
     DateTime JoinedOnUtc,
     string ArabicFullName,
     string EnglishFullName,
-    string? Email);
+    string? Email,
+    string? AvatarUrl,
+    int Status,
+    DateTime? LastActivityOnUtc);
 
 public sealed record FamilyResponse(
     FamilyId Id,
@@ -59,7 +62,10 @@ internal static class FamilyMappings
             member.JoinedOnUtc,
             profile?.ArabicFullName ?? string.Empty,
             profile?.EnglishFullName ?? string.Empty,
-            profile?.Email);
+            profile?.Email,
+            profile?.AvatarUrl,
+            profile?.Status ?? 0,
+            profile?.LastLoginOnUtc);
     }
 }
 

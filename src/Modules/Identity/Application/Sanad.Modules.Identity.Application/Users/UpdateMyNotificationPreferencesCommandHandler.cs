@@ -53,7 +53,11 @@ public sealed class UpdateMyNotificationPreferencesCommandHandler :
                 request.CheckInAlerts,
                 request.MedicationReminders,
                 request.BookingUpdates,
-                request.CommunityNotifications),
+                request.CommunityNotifications,
+                request.FamilyActivityAlerts,
+                request.NewOrders,
+                request.MessagesFromFamilies,
+                request.SystemNotifications),
             _dateTimeProvider.UtcNow);
 
         await _dbContext.SaveChangesAsync(
@@ -63,6 +67,10 @@ public sealed class UpdateMyNotificationPreferencesCommandHandler :
             user.NotificationPreferences.CheckInAlerts,
             user.NotificationPreferences.MedicationReminders,
             user.NotificationPreferences.BookingUpdates,
-            user.NotificationPreferences.CommunityNotifications);
+            user.NotificationPreferences.CommunityNotifications,
+            user.NotificationPreferences.FamilyActivityAlerts,
+            user.NotificationPreferences.NewOrders,
+            user.NotificationPreferences.MessagesFromFamilies,
+            user.NotificationPreferences.SystemNotifications);
     }
 }

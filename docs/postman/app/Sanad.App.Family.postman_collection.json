@@ -201,7 +201,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"id\": \"3f2b1a4e-0002-4a10-fam-000000000001\",\n  \"name\": \"The Nasr Family\",\n  \"ownerUserId\": \"00000000-0000-0000-0000-000000000001\",\n  \"createdOnUtc\": \"2026-09-01T09:00:00Z\",\n  \"members\": [\n    {\n      \"userId\": \"00000000-0000-0000-0000-000000000001\",\n      \"role\": 1,\n      \"relationshipType\": 99,\n      \"addedByUserId\": \"00000000-0000-0000-0000-000000000001\",\n      \"joinedOnUtc\": \"2026-09-01T09:00:00Z\",\n      \"arabicFullName\": \"نور نصر\",\n      \"englishFullName\": \"Nour Nasr\",\n      \"email\": \"nour@example.com\"\n    },\n    {\n      \"userId\": \"00000000-0000-0000-0000-000000000002\",\n      \"role\": 2,\n      \"relationshipType\": 6,\n      \"addedByUserId\": \"00000000-0000-0000-0000-000000000001\",\n      \"joinedOnUtc\": \"2026-09-01T10:00:00Z\",\n      \"arabicFullName\": \"سلمى نصر\",\n      \"englishFullName\": \"Salma Nasr\",\n      \"email\": \"salma@example.com\"\n    }\n  ]\n}"
+              "body": "{\n  \"id\": \"3f2b1a4e-0002-4a10-fam-000000000001\",\n  \"name\": \"The Nasr Family\",\n  \"ownerUserId\": \"00000000-0000-0000-0000-000000000001\",\n  \"createdOnUtc\": \"2026-09-01T09:00:00Z\",\n  \"members\": [\n    {\n      \"userId\": \"00000000-0000-0000-0000-000000000001\",\n      \"role\": 1,\n      \"relationshipType\": 99,\n      \"addedByUserId\": \"00000000-0000-0000-0000-000000000001\",\n      \"joinedOnUtc\": \"2026-09-01T09:00:00Z\",\n      \"arabicFullName\": \"نور نصر\",\n      \"englishFullName\": \"Nour Nasr\",\n      \"email\": \"nour@example.com\",\n      \"avatarUrl\": \"https://cdn.sanad.example/avatars/nour.png\",\n      \"status\": 2,\n      \"lastActivityOnUtc\": \"2026-09-12T18:30:00Z\"\n    },\n    {\n      \"userId\": \"00000000-0000-0000-0000-000000000002\",\n      \"role\": 2,\n      \"relationshipType\": 6,\n      \"addedByUserId\": \"00000000-0000-0000-0000-000000000001\",\n      \"joinedOnUtc\": \"2026-09-01T10:00:00Z\",\n      \"arabicFullName\": \"سلمى نصر\",\n      \"englishFullName\": \"Salma Nasr\",\n      \"email\": \"salma@example.com\",\n      \"avatarUrl\": null,\n      \"status\": 2,\n      \"lastActivityOnUtc\": \"2026-09-11T08:15:00Z\"\n    }\n  ]\n}"
             }
           ]
         },
@@ -262,7 +262,7 @@
                 }
               ],
               "cookie": [],
-              "body": "{\n  \"userId\": \"00000000-0000-0000-0000-000000000002\",\n  \"role\": 2,\n  \"relationshipType\": 6,\n  \"addedByUserId\": \"00000000-0000-0000-0000-000000000001\",\n  \"joinedOnUtc\": \"2026-09-01T10:00:00Z\",\n  \"arabicFullName\": \"سلمى نصر\",\n  \"englishFullName\": \"Salma Nasr\",\n  \"email\": \"salma@example.com\"\n}"
+              "body": "{\n  \"userId\": \"00000000-0000-0000-0000-000000000002\",\n  \"role\": 2,\n  \"relationshipType\": 6,\n  \"addedByUserId\": \"00000000-0000-0000-0000-000000000001\",\n  \"joinedOnUtc\": \"2026-09-01T10:00:00Z\",\n  \"arabicFullName\": \"سلمى نصر\",\n  \"englishFullName\": \"Salma Nasr\",\n  \"email\": \"salma@example.com\",\n  \"avatarUrl\": null,\n  \"status\": 2,\n  \"lastActivityOnUtc\": \"2026-09-11T08:15:00Z\"\n}"
             },
             {
               "name": "404 — Family not found",

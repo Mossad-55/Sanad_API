@@ -13,12 +13,20 @@ public sealed class NotificationPreferences :
         bool checkInAlerts,
         bool medicationReminders,
         bool bookingUpdates,
-        bool communityNotifications)
+        bool communityNotifications,
+        bool familyActivityAlerts,
+        bool newOrders,
+        bool messagesFromFamilies,
+        bool systemNotifications)
     {
         CheckInAlerts = checkInAlerts;
         MedicationReminders = medicationReminders;
         BookingUpdates = bookingUpdates;
         CommunityNotifications = communityNotifications;
+        FamilyActivityAlerts = familyActivityAlerts;
+        NewOrders = newOrders;
+        MessagesFromFamilies = messagesFromFamilies;
+        SystemNotifications = systemNotifications;
     }
 
     public bool CheckInAlerts { get; private set; }
@@ -29,17 +37,33 @@ public sealed class NotificationPreferences :
 
     public bool CommunityNotifications { get; private set; }
 
+    public bool FamilyActivityAlerts { get; private set; }
+
+    public bool NewOrders { get; private set; }
+
+    public bool MessagesFromFamilies { get; private set; }
+
+    public bool SystemNotifications { get; private set; }
+
     public static NotificationPreferences Create(
         bool checkInAlerts,
         bool medicationReminders,
         bool bookingUpdates,
-        bool communityNotifications)
+        bool communityNotifications,
+        bool familyActivityAlerts,
+        bool newOrders,
+        bool messagesFromFamilies,
+        bool systemNotifications)
     {
         return new NotificationPreferences(
             checkInAlerts,
             medicationReminders,
             bookingUpdates,
-            communityNotifications);
+            communityNotifications,
+            familyActivityAlerts,
+            newOrders,
+            messagesFromFamilies,
+            systemNotifications);
     }
 
     public static NotificationPreferences CreateDefault()
@@ -48,7 +72,11 @@ public sealed class NotificationPreferences :
             checkInAlerts: true,
             medicationReminders: true,
             bookingUpdates: true,
-            communityNotifications: true);
+            communityNotifications: true,
+            familyActivityAlerts: true,
+            newOrders: true,
+            messagesFromFamilies: true,
+            systemNotifications: true);
     }
 
     protected override IEnumerable<object?>
@@ -61,5 +89,13 @@ public sealed class NotificationPreferences :
         yield return BookingUpdates;
 
         yield return CommunityNotifications;
+
+        yield return FamilyActivityAlerts;
+
+        yield return NewOrders;
+
+        yield return MessagesFromFamilies;
+
+        yield return SystemNotifications;
     }
 }

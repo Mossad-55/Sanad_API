@@ -27,12 +27,14 @@ public sealed record DependentResponse(
     bool HasPhoto,
     string? DetailedAddress,
     string? HealthNotes,
-    DateTime CreatedOnUtc);
+    DateTime CreatedOnUtc,
+    string? PhoneNumber);
 
 internal static class DependentMappings
 {
     public static DependentResponse ToResponse(
-        this Elderly elderly) =>
+        this Elderly elderly,
+        string? phoneNumber = null) =>
         new(
             elderly.Id,
             elderly.FamilyId,
@@ -45,7 +47,49 @@ internal static class DependentMappings
             !string.IsNullOrWhiteSpace(elderly.ProfileImageKey),
             elderly.DetailedAddress,
             elderly.HealthNotes,
-            elderly.CreatedOnUtc);
+            elderly.CreatedOnUtc,
+            phoneNumber);
+
+    public static async Task<string?> ResolvePhoneNumberAsync(
+        IFamilyIdentityGateway gateway,
+        UserId identityUserId,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlyList<FamilyMemberProfile> profiles =
+            await gateway.GetFamilyMemberProfilesAsync(
+                [identityUserId],
+                cancellationToken);
+
+        return profiles
+            .FirstOrDefault(profile => profile.UserId == identityUserId)
+            ?.PhoneNumber;
+    }
+
+    public static async Task<IReadOnlyDictionary<UserId, string?>>
+        ResolvePhoneNumbersAsync(
+            IFamilyIdentityGateway gateway,
+            IEnumerable<UserId> identityUserIds,
+            CancellationToken cancellationToken)
+    {
+        UserId[] ids =
+            identityUserIds
+                .Distinct()
+                .ToArray();
+
+        if (ids.Length == 0)
+        {
+            return new Dictionary<UserId, string?>();
+        }
+
+        IReadOnlyList<FamilyMemberProfile> profiles =
+            await gateway.GetFamilyMemberProfilesAsync(
+                ids,
+                cancellationToken);
+
+        return profiles.ToDictionary(
+            profile => profile.UserId,
+            profile => profile.PhoneNumber);
+    }
 }
 
 // ------------------------------- Add ----------------------------------
@@ -260,7 +304,7 @@ public sealed class AddDependentCommandHandler
             throw;
         }
 
-        return elderly.ToResponse();
+        return elderly.ToResponse(phone.Value);
     }
 }
 
@@ -276,10 +320,14 @@ public sealed class ListDependentsQueryHandler
         IReadOnlyList<DependentResponse>>
 {
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IFamilyIdentityGateway _identityGateway;
 
-    public ListDependentsQueryHandler(IFamiliesDbContext dbContext)
+    public ListDependentsQueryHandler(
+        IFamiliesDbContext dbContext,
+        IFamilyIdentityGateway identityGateway)
     {
         _dbContext = dbContext;
+        _identityGateway = identityGateway;
     }
 
     public async Task<Result<IReadOnlyList<DependentResponse>>> Handle(
@@ -306,9 +354,20 @@ public sealed class ListDependentsQueryHandler
                 .OrderBy(e => e.CreatedOnUtc)
                 .ToListAsync(cancellationToken);
 
+        IReadOnlyDictionary<UserId, string?> phoneNumbers =
+            await DependentMappings.ResolvePhoneNumbersAsync(
+                _identityGateway,
+                dependents.Select(e => e.IdentityUserId),
+                cancellationToken);
+
         IReadOnlyList<DependentResponse> items =
             dependents
-                .Select(e => e.ToResponse())
+                .Select(e => e.ToResponse(
+                    phoneNumbers.TryGetValue(
+                        e.IdentityUserId,
+                        out string? phone)
+                        ? phone
+                        : null))
                 .ToList();
 
         return Result<IReadOnlyList<DependentResponse>>.Success(items);
@@ -336,10 +395,14 @@ public sealed class GetDependentQueryHandler
     : IQueryHandler<GetDependentQuery, DependentResponse>
 {
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IFamilyIdentityGateway _identityGateway;
 
-    public GetDependentQueryHandler(IFamiliesDbContext dbContext)
+    public GetDependentQueryHandler(
+        IFamiliesDbContext dbContext,
+        IFamilyIdentityGateway identityGateway)
     {
         _dbContext = dbContext;
+        _identityGateway = identityGateway;
     }
 
     public async Task<Result<DependentResponse>> Handle(
@@ -370,7 +433,13 @@ public sealed class GetDependentQueryHandler
             return ElderlyErrors.NotFound;
         }
 
-        return elderly.ToResponse();
+        string? phoneNumber =
+            await DependentMappings.ResolvePhoneNumberAsync(
+                _identityGateway,
+                elderly.IdentityUserId,
+                cancellationToken);
+
+        return elderly.ToResponse(phoneNumber);
     }
 }
 
@@ -416,10 +485,14 @@ public sealed class UpdateDependentCommandHandler
     : ICommandHandler<UpdateDependentCommand, DependentResponse>
 {
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IFamilyIdentityGateway _identityGateway;
 
-    public UpdateDependentCommandHandler(IFamiliesDbContext dbContext)
+    public UpdateDependentCommandHandler(
+        IFamiliesDbContext dbContext,
+        IFamilyIdentityGateway identityGateway)
     {
         _dbContext = dbContext;
+        _identityGateway = identityGateway;
     }
 
     public async Task<Result<DependentResponse>> Handle(
@@ -491,7 +564,13 @@ public sealed class UpdateDependentCommandHandler
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return elderly.ToResponse();
+        string? phoneNumber =
+            await DependentMappings.ResolvePhoneNumberAsync(
+                _identityGateway,
+                elderly.IdentityUserId,
+                cancellationToken);
+
+        return elderly.ToResponse(phoneNumber);
     }
 }
 
