@@ -1,0 +1,20 @@
+meta {
+  name: 05-delete-caregiver-active-booking-conflict
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/account
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Identity.Account.ActiveBookingExists
+}

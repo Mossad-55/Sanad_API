@@ -198,6 +198,32 @@ public sealed class User : AggregateRoot<UserId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Removal counterpart of <see cref="AddAccount"/> (SET-8d). UserAccount is
+    /// a hard row mapped as an owned collection, so removing it from the
+    /// collection is the delete — EF orphan-deletes the row on save. Idempotent:
+    /// a user with no caregiver account types is left untouched.
+    /// </summary>
+    public void RemoveCaregiverAccounts()
+    {
+        List<UserAccount> caregiverAccounts = _accounts
+            .Where(a => a.AccountType is AccountType.MedicalCaregiver
+                                     or AccountType.CompanionCaregiver)
+            .ToList();
+
+        if (caregiverAccounts.Count == 0)
+        {
+            return;
+        }
+
+        foreach (UserAccount account in caregiverAccounts)
+        {
+            _accounts.Remove(account);
+        }
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     public void VerifyEmail(
         DateTime utcNow)
     {

@@ -1192,6 +1192,28 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             Id));
     }
 
+    /// <summary>
+    /// SET-8d — terminal self-deletion state. Idempotent, no status gate: a
+    /// retry after a partial failure must converge, and the caregiver row is
+    /// retained (anonymize & retain, never hard-deleted). Discovery and quote
+    /// queries filter on Status == Active, so a Deactivated caregiver drops
+    /// out of both automatically.
+    /// </summary>
+    public void Deactivate(
+        string reason,
+        DateTime utcNow)
+    {
+        if (Status == CaregiverStatus.Deactivated)
+        {
+            return;
+        }
+
+        Status = CaregiverStatus.Deactivated;
+        StatusReason = reason;
+        Availability = CaregiverAvailability.Unavailable;
+        UpdatedOnUtc = utcNow;
+    }
+
     private static bool IsMandatoryCertificate(CaregiverCertificateType type)
     {
         return type is

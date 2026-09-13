@@ -71,6 +71,9 @@ public static class ResultProblemDetailsMapper
 
             ["Identity.Account.UserNotFound"] = 404,
             ["Identity.Account.InvalidOperation"] = 409,
+            ["Identity.Account.CaregiverOnly"] = 403,
+            ["Identity.Account.CaregiverProfileNotFound"] = 404,
+            ["Identity.Account.ActiveBookingExists"] = 409,
 
             ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
             ["Cms.Splash.NotFound"] = 404,
@@ -91,6 +94,8 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Onboarding.InvalidCertificateOperation"] = 409,
             ["Caregivers.Onboarding.InvalidState"] = 409,
             ["Caregivers.Onboarding.CaregiverNotFound"] = 404,
+
+            ["Caregivers.Deactivation.CaregiverNotFound"] = 404,
 
             ["Families.Family.AlreadyExists"] = 409,
             ["Families.Family.NotFound"] = 404,

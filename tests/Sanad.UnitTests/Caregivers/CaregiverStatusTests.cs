@@ -33,7 +33,7 @@ public sealed class CaregiverStatusTests
             Enum.GetValues<CaregiverStatus>();
 
         Assert.Equal(
-            6,
+            7,
             statuses.Length);
 
         Assert.Contains(
@@ -58,6 +58,10 @@ public sealed class CaregiverStatusTests
 
         Assert.Contains(
             CaregiverStatus.Rejected,
+            statuses);
+
+        Assert.Contains(
+            CaregiverStatus.Deactivated,
             statuses);
     }
 

@@ -238,4 +238,49 @@ public sealed class AccountController :
         return ToActionResult(
             result);
     }
+
+    // NormalAccess (NOT CaregiverAccess): a family user must reach the handler
+    // to receive the coded 403 Identity.Account.CaregiverOnly instead of a bare
+    // policy Forbid with no error code.
+    [Authorize(
+        Policy =
+            AuthorizationPolicies.NormalAccess)]
+    [HttpDelete]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteMyAccount(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(
+            out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new DeleteMyCaregiverAccountCommand(
+                    userId),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(
+                result);
+        }
+
+        return NoContent();
+    }
 }

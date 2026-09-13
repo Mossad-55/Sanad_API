@@ -7,5 +7,6 @@ public enum CaregiverStatus
     NeedsCorrection = 3,
     Active = 4,
     Suspended = 5,
-    Rejected = 6
+    Rejected = 6,
+    Deactivated = 7
 }
