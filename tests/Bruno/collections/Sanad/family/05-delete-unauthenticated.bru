@@ -1,0 +1,27 @@
+meta {
+  name: 05-delete-unauthenticated
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/family
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "reason": "acceptance",
+    "optionalMessage": null,
+    "acknowledgement": false
+  }
+}
+
+assert {
+  res.status: eq 401
+}

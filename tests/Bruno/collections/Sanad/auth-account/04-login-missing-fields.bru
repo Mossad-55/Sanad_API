@@ -1,0 +1,25 @@
+meta {
+  name: 04-login-missing-fields
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "family.owner@test.sanad.local"
+  }
+}
+
+assert {
+  res.status: eq 400
+}

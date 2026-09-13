@@ -1,0 +1,19 @@
+meta {
+  name: 06-bookings-as-family-forbidden
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwtFamily}}
+}
+
+assert {
+  res.status: eq 403
+}

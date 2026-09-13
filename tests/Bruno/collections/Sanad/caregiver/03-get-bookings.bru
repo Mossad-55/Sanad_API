@@ -1,0 +1,19 @@
+meta {
+  name: 03-get-bookings
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}

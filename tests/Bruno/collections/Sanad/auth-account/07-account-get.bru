@@ -1,0 +1,19 @@
+meta {
+  name: 07-account-get
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/account
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}

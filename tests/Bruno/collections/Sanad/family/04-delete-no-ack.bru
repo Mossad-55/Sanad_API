@@ -1,0 +1,32 @@
+meta {
+  name: 04-delete-no-ack
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/family
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "acceptance",
+    "optionalMessage": null,
+    "acknowledgement": false
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Families.Family.AcknowledgementRequired
+}
