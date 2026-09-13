@@ -45,6 +45,18 @@ public sealed class GetMyNotificationPreferencesQueryHandlerTests
 
         Assert.True(
             result.Value.CommunityNotifications);
+
+        Assert.True(
+            result.Value.FamilyActivityAlerts);
+
+        Assert.True(
+            result.Value.NewOrders);
+
+        Assert.True(
+            result.Value.MessagesFromFamilies);
+
+        Assert.True(
+            result.Value.SystemNotifications);
     }
 
     [Fact]

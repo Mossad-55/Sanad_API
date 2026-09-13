@@ -127,7 +127,11 @@ public sealed class FamilyIdentityGateway : IFamilyIdentityGateway
                 profile.UserId,
                 profile.ArabicFullName,
                 profile.EnglishFullName,
-                profile.Email))
+                profile.Email,
+                profile.PhoneNumber,
+                profile.AvatarUrl,
+                profile.Status,
+                profile.LastLoginOnUtc))
             .ToList();
     }
 

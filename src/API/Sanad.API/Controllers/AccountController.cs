@@ -232,7 +232,11 @@ public sealed class AccountController :
                     request.CheckInAlerts,
                     request.MedicationReminders,
                     request.BookingUpdates,
-                    request.CommunityNotifications),
+                    request.CommunityNotifications,
+                    request.FamilyActivityAlerts,
+                    request.NewOrders,
+                    request.MessagesFromFamilies,
+                    request.SystemNotifications),
                 cancellationToken);
 
         return ToActionResult(

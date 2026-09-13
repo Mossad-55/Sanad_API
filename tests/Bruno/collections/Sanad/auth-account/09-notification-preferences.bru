@@ -1,0 +1,21 @@
+meta {
+  name: 09-notification-preferences
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/account/notification-preferences
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.familyActivityAlerts: eq true
+  res.body.systemNotifications: eq true
+}

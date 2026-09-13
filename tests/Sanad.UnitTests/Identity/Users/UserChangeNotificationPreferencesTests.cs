@@ -23,7 +23,11 @@ public sealed class UserChangeNotificationPreferencesTests
                 checkInAlerts: true,
                 medicationReminders: false,
                 bookingUpdates: true,
-                communityNotifications: false),
+                communityNotifications: false,
+                familyActivityAlerts: true,
+                newOrders: false,
+                messagesFromFamilies: true,
+                systemNotifications: false),
             changedOnUtc);
 
         Assert.True(
@@ -61,7 +65,11 @@ public sealed class UserChangeNotificationPreferencesTests
                 checkInAlerts: true,
                 medicationReminders: true,
                 bookingUpdates: true,
-                communityNotifications: true),
+                communityNotifications: true,
+                familyActivityAlerts: true,
+                newOrders: true,
+                messagesFromFamilies: true,
+                systemNotifications: true),
             CreateUtcDateTime()
                 .AddMinutes(1));
 
@@ -100,7 +108,11 @@ public sealed class UserChangeNotificationPreferencesTests
                     checkInAlerts: false,
                     medicationReminders: false,
                     bookingUpdates: false,
-                    communityNotifications: false),
+                    communityNotifications: false,
+                    familyActivityAlerts: false,
+                    newOrders: false,
+                    messagesFromFamilies: false,
+                    systemNotifications: false),
                 CreateUtcDateTime()
                     .AddMinutes(1)));
 

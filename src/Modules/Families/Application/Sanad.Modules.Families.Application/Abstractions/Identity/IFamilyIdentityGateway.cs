@@ -18,7 +18,11 @@ public sealed record FamilyMemberProfile(
     UserId UserId,
     string ArabicFullName,
     string EnglishFullName,
-    string? Email);
+    string? Email,
+    string? PhoneNumber = null,
+    string? AvatarUrl = null,
+    int Status = 0,
+    DateTime? LastLoginOnUtc = null);
 
 /// <summary>
 /// Outbound port implemented by Sanad.API over MediatR. Lets the Families

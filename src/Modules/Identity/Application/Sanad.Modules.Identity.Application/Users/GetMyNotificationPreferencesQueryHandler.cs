@@ -41,6 +41,10 @@ public sealed class GetMyNotificationPreferencesQueryHandler :
             user.NotificationPreferences.CheckInAlerts,
             user.NotificationPreferences.MedicationReminders,
             user.NotificationPreferences.BookingUpdates,
-            user.NotificationPreferences.CommunityNotifications);
+            user.NotificationPreferences.CommunityNotifications,
+            user.NotificationPreferences.FamilyActivityAlerts,
+            user.NotificationPreferences.NewOrders,
+            user.NotificationPreferences.MessagesFromFamilies,
+            user.NotificationPreferences.SystemNotifications);
     }
 }

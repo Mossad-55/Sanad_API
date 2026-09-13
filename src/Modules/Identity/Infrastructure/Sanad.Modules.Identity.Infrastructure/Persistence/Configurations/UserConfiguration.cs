@@ -130,6 +130,30 @@ public sealed class UserConfiguration :
                     .HasColumnName("community_notifications")
                     .HasDefaultValue(true)
                     .IsRequired();
+
+                preferences.Property(value =>
+                        value.FamilyActivityAlerts)
+                    .HasColumnName("family_activity_alerts")
+                    .HasDefaultValue(true)
+                    .IsRequired();
+
+                preferences.Property(value =>
+                        value.NewOrders)
+                    .HasColumnName("new_orders")
+                    .HasDefaultValue(true)
+                    .IsRequired();
+
+                preferences.Property(value =>
+                        value.MessagesFromFamilies)
+                    .HasColumnName("messages_from_families")
+                    .HasDefaultValue(true)
+                    .IsRequired();
+
+                preferences.Property(value =>
+                        value.SystemNotifications)
+                    .HasColumnName("system_notifications")
+                    .HasDefaultValue(true)
+                    .IsRequired();
             });
 
         builder.Property(user => user.StatusReason)

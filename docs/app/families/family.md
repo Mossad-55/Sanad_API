@@ -52,7 +52,10 @@ Member management is owner-only; all members can view the family and a member's 
       "joinedOnUtc": "2026-09-01T09:00:00Z",
       "arabicFullName": "أحمد محمد النصر",
       "englishFullName": "Ahmed Mohamed El-Nasr",
-      "email": "ahmed@example.com"
+      "email": "ahmed@example.com",
+      "avatarUrl": "https://cdn.sanad.example/avatars/ahmed.png",
+      "status": 2,
+      "lastActivityOnUtc": "2026-09-12T18:30:00Z"
     }
   ]
 }
@@ -60,7 +63,10 @@ Member management is owner-only; all members can view the family and a member's 
 
 - `role`: `1` Owner, `2` Editor, `3` Viewer.
 - `relationshipType`: see the table in `overview.md`. The bootstrapped owner member uses `99` (Other).
-- `arabicFullName` / `englishFullName` / `email` are enrichment sourced from the identity gateway (not stored by the Families module). When a profile lookup misses, names fall back to `""` and `email` to `null`; the member row is never dropped.
+- `arabicFullName` / `englishFullName` / `email` / `avatarUrl` / `status` / `lastActivityOnUtc` are enrichment sourced from the identity gateway (not stored by the Families module). When a profile lookup misses, names fall back to `""`, `email` / `avatarUrl` / `lastActivityOnUtc` to `null`, and `status` to `0`; the member row is never dropped.
+- `status`: identity account status — `1` PendingVerification, `2` Active, `3` Suspended, `4` Blocked (`0` when enrichment is missing).
+- `avatarUrl`: the member's profile photo URL, or `null` when unset.
+- `lastActivityOnUtc`: the member's last login time (`User.LastLoginOnUtc`), or `null` if they have never signed in.
 - Members grow when invitations are accepted — see `invitations.md`.
 
 ## Members
@@ -87,7 +93,10 @@ Authorization: Bearer {{familyToken}}
   "joinedOnUtc": "2026-09-01T09:00:00Z",
   "arabicFullName": "أحمد محمد النصر",
   "englishFullName": "Ahmed Mohamed El-Nasr",
-  "email": "ahmed@example.com"
+  "email": "ahmed@example.com",
+  "avatarUrl": "https://cdn.sanad.example/avatars/ahmed.png",
+  "status": 2,
+  "lastActivityOnUtc": "2026-09-12T18:30:00Z"
 }
 ```
 

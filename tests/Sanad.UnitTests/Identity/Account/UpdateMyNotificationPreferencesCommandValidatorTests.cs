@@ -18,6 +18,10 @@ public sealed class UpdateMyNotificationPreferencesCommandValidatorTests
                 true,
                 true,
                 true,
+                true,
+                true,
+                true,
+                true,
                 true);
 
         _validator
@@ -27,6 +31,10 @@ public sealed class UpdateMyNotificationPreferencesCommandValidatorTests
         UpdateMyNotificationPreferencesCommand allFalse =
             new(
                 UserId.New(),
+                false,
+                false,
+                false,
+                false,
                 false,
                 false,
                 false,
@@ -42,6 +50,10 @@ public sealed class UpdateMyNotificationPreferencesCommandValidatorTests
                 true,
                 false,
                 true,
+                false,
+                true,
+                false,
+                true,
                 false);
 
         _validator
@@ -51,6 +63,10 @@ public sealed class UpdateMyNotificationPreferencesCommandValidatorTests
         UpdateMyNotificationPreferencesCommand emptyUserId =
             new(
                 UserId.Empty,
+                true,
+                true,
+                true,
+                true,
                 true,
                 true,
                 true,

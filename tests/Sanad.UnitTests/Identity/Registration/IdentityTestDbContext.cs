@@ -128,6 +128,18 @@ internal sealed class IdentityTestDbContext :
 
                 preferences.Property(p =>
                     p.CommunityNotifications);
+
+                preferences.Property(p =>
+                    p.FamilyActivityAlerts);
+
+                preferences.Property(p =>
+                    p.NewOrders);
+
+                preferences.Property(p =>
+                    p.MessagesFromFamilies);
+
+                preferences.Property(p =>
+                    p.SystemNotifications);
             });
 
         user.Ignore(value =>
