@@ -15,6 +15,8 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
     public string? DetailedAddress { get; private set; }
 
+    public VisibilityPreferences Visibility { get; private set; } = VisibilityPreferences.Default;
+
     private readonly List<CaregiverServiceSelection> _serviceSelections = [];
     private readonly List<CaregiverLanguageSelection> _languageSelections = [];
     private readonly List<CaregiverAreaSelection> _areaSelections = [];
@@ -43,6 +45,8 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         {
             MedicalSchedule = MedicalWeeklySchedule.Create();
         }
+
+        Visibility = VisibilityPreferences.Default;
 
         CreatedOnUtc = DateTime.UtcNow;
         UpdatedOnUtc = DateTime.UtcNow;
@@ -799,6 +803,21 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
                 detailedAddress);
 
         DetailedAddress = normalizedAddress;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void UpdateVisibility(
+        bool showProfile,
+        bool showRating,
+        bool showPhone,
+        bool shareLocation)
+    {
+        Visibility = VisibilityPreferences.Create(
+            showProfile,
+            showRating,
+            showPhone,
+            shareLocation);
+
         UpdatedOnUtc = DateTime.UtcNow;
     }
 

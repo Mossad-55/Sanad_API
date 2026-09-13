@@ -28,4 +28,14 @@ public static class AccountErrors
         new(
             "Identity.Account.ActiveBookingExists",
             "The caregiver still has active bookings.");
+
+    public static readonly Error ElderlyManagedByFamily =
+        new(
+            "Identity.Account.ElderlyManagedByFamily",
+            "Elderly accounts are managed by the family.");
+
+    public static readonly Error OwnershipTransferRequired =
+        new(
+            "Identity.Account.OwnershipTransferRequired",
+            "Transfer family ownership before deleting your account.");
 }

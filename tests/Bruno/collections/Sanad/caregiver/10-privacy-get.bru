@@ -1,0 +1,20 @@
+meta {
+  name: 10-privacy-get
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/privacy
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.showProfile: eq true
+}

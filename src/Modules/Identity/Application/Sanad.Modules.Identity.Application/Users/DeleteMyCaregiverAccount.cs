@@ -6,6 +6,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Application.Abstractions.Caregivers;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
+using Sanad.Modules.Identity.Application.Abstractions.Families;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Users;
 
@@ -38,6 +39,11 @@ public sealed class DeleteMyCaregiverAccountCommandValidator
 ///    endpoint never touches the Family side, so no family can be orphaned.
 ///
 /// Nothing is hard-deleted; every row is retained.
+///
+/// SET-15 — family-only self-delete:
+///  · elderly dependent → 409 Identity.Account.ElderlyManagedByFamily
+///  · owner of an active family → 409 Identity.Account.OwnershipTransferRequired
+///  · otherwise: leave all families → anonymize & retain → revoke sessions → 204
 /// </summary>
 public sealed class DeleteMyCaregiverAccountCommandHandler
     : ICommandHandler<DeleteMyCaregiverAccountCommand>
@@ -50,15 +56,18 @@ public sealed class DeleteMyCaregiverAccountCommandHandler
 
     private readonly IIdentityDbContext _dbContext;
     private readonly ICaregiverAccountGateway _caregiverGateway;
+    private readonly IFamilyAccountGateway _familyGateway;
     private readonly IDateTimeProvider _dateTimeProvider;
 
     public DeleteMyCaregiverAccountCommandHandler(
         IIdentityDbContext dbContext,
         ICaregiverAccountGateway caregiverGateway,
+        IFamilyAccountGateway familyGateway,
         IDateTimeProvider dateTimeProvider)
     {
         _dbContext = dbContext;
         _caregiverGateway = caregiverGateway;
+        _familyGateway = familyGateway;
         _dateTimeProvider = dateTimeProvider;
     }
 
@@ -96,12 +105,79 @@ public sealed class DeleteMyCaregiverAccountCommandHandler
 
         if (info is null)
         {
-            // 2a. No caregiver profile: a family-only user is out of scope
-            // (coded 403); a caregiver account type without a profile is an
-            // inconsistency (coded 404).
+            // 2a. No caregiver profile: handle family-only self-delete,
+            // otherwise preserve existing caregiver-only semantics.
             if (!hasCaregiverType)
             {
-                return Result.Failure(AccountErrors.CaregiverOnly);
+                // Elderly dependent → 409 ElderlyManagedByFamily
+                bool isElderlyDependent = await _familyGateway.IsElderlyDependentAsync(
+                    callerUserId,
+                    cancellationToken);
+
+                if (isElderlyDependent)
+                {
+                    return Result.Failure(AccountErrors.ElderlyManagedByFamily);
+                }
+
+                // Owner of an active family → 409 OwnershipTransferRequired
+                IReadOnlyList<FamilyMembership> memberships =
+                    await _familyGateway.GetActiveFamilyRolesAsync(
+                        callerUserId,
+                        cancellationToken);
+
+                bool isOwnerOfAny = memberships.Any(
+                    m => m.Role == FamilyRole.Owner);
+
+                if (isOwnerOfAny)
+                {
+                    return Result.Failure(AccountErrors.OwnershipTransferRequired);
+                }
+
+                // Family-only path: must have Family account type, otherwise
+                // keep original CaregiverOnly semantics for non-family callers
+                // (e.g. admin, unsupported).
+                if (!hasFamilyType)
+                {
+                    return Result.Failure(AccountErrors.CaregiverOnly);
+                }
+
+                // Leave all families (gateway) — it also guards owner without changes.
+                Result leaveResult = await _familyGateway.LeaveFamiliesForSelfDeletionAsync(
+                    callerUserId,
+                    cancellationToken);
+
+                if (leaveResult.IsFailure)
+                {
+                    // Map Families owner guard to Identity OwnershipTransferRequired
+                    // if the underlying error is OwnerProtected.
+                    if (leaveResult.Error.Code == "Families.Family.OwnerProtected")
+                    {
+                        return Result.Failure(AccountErrors.OwnershipTransferRequired);
+                    }
+
+                    return Result.Failure(leaveResult.Error);
+                }
+
+                // Anonymize & retain + revoke all active sessions.
+                if (user.Status != UserStatus.Blocked)
+                {
+                    user.AnonymizeAndDeactivate(utcNow);
+
+                    DeviceSession[] sessions = await _dbContext.DeviceSessions
+                        .Where(s => s.UserId == callerUserId && s.RevokedOnUtc == null)
+                        .ToArrayAsync(cancellationToken);
+
+                    foreach (DeviceSession session in sessions)
+                    {
+                        session.Revoke(
+                            DeletionSessionRevocationReason,
+                            utcNow);
+                    }
+
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+
+                return Result.Success();
             }
 
             return Result.Failure(

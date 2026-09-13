@@ -45,6 +45,26 @@ public sealed class CaregiverConfiguration :
             .HasColumnName("detailed_address")
             .HasMaxLength(Caregiver.MaximumDetailedAddressLength);
 
+        builder.OwnsOne(c => c.Visibility, visibility =>
+        {
+            visibility.Property(v => v.ShowProfile)
+                .HasColumnName("show_profile")
+                .HasDefaultValue(true)
+                .IsRequired();
+            visibility.Property(v => v.ShowRating)
+                .HasColumnName("show_rating")
+                .HasDefaultValue(true)
+                .IsRequired();
+            visibility.Property(v => v.ShowPhone)
+                .HasColumnName("show_phone")
+                .HasDefaultValue(false)
+                .IsRequired();
+            visibility.Property(v => v.ShareLocation)
+                .HasColumnName("share_location")
+                .HasDefaultValue(false)
+                .IsRequired();
+        });
+
         builder.Property(c => c.AverageRating)
             .HasColumnName("average_rating")
             .HasPrecision(3, 2)

@@ -1,0 +1,20 @@
+meta {
+  name: 02-delete-as-owner-conflict
+  type: http
+  seq: 2
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/account
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Identity.Account.OwnershipTransferRequired
+}

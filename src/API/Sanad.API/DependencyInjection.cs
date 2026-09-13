@@ -26,6 +26,7 @@ using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Application.Abstractions.Caregivers;
 using Sanad.Modules.Identity.Application.Abstractions.Caregivers;
+using Sanad.Modules.Identity.Application.Abstractions.Families;
 using Sanad.API.CaregiversIntegration;
 using Sanad.API.Seeding;
 
@@ -260,6 +261,9 @@ public static class DependencyInjection
 
         services.AddScoped<
             ICaregiverAccountGateway, CaregiverAccountGateway>();
+
+        services.AddScoped<
+            IFamilyAccountGateway, FamilyAccountGateway>();
 
         services.AddScoped<
             ICaregiverBookingPricing, CaregiverBookingPricingGateway>();
