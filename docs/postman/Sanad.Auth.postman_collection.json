@@ -1805,9 +1805,65 @@
               ],
               "cookie": [],
               "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/account\",\n  \"code\": \"Identity.Account.ActiveBookingExists\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "409 — Ownership transfer required",
+              "originalRequest": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/v1/account"
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/account\",\n  \"code\": \"Identity.Account.OwnershipTransferRequired\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "409 — Elderly managed by family",
+              "originalRequest": {
+                "auth": {
+                  "type": "bearer",
+                  "bearer": [
+                    {
+                      "key": "token",
+                      "value": "{{jwt}}",
+                      "type": "string"
+                    }
+                  ]
+                },
+                "method": "DELETE",
+                "url": "{{baseUrl}}/api/v1/account"
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/account\",\n  \"code\": \"Identity.Account.ElderlyManagedByFamily\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
             }
           ],
-          "description": "SET-8d caregiver self-delete. Pure mode performs full anonymize and retain; hybrid mode deactivates the caregiver side only while the Family login and membership remain. The D11 guard blocks active bookings before mutation. Never run the 204 path against fixtures."
+          "description": "SET-8d caregiver self-delete + SET-15 family-only self-delete. Pure caregiver = full anonymize & retain + revoke sessions + deactivate profile. Hybrid = deactivate caregiver side only. Family-only = check elderly (409 ElderlyManagedByFamily) + owner (409 OwnershipTransferRequired) + otherwise leave families → anonymize → revoke sessions → 204. Never run 204 path against fixtures. 02-delete-as-owner-conflict in Bruno is guard-protected negative = allowed."
         },
         {
           "name": "GET UI Language",
@@ -1889,15 +1945,15 @@
           "name": "GET Notification Preferences",
           "request": {
             "auth": {
-            "type": "bearer",
-            "bearer": [
-              {
-                "key": "token",
-                "value": "{{accessToken}}",
-                "type": "string"
-              }
-            ]
-          },
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/account/notification-preferences",
             "description": "Requires Normal JWT. Returns the caller's notification preferences: checkInAlerts, medicationReminders, bookingUpdates, communityNotifications. All four default to ON. Storage only - nothing is sent yet."
@@ -1922,15 +1978,15 @@
           "name": "PUT Notification Preferences",
           "request": {
             "auth": {
-            "type": "bearer",
-            "bearer": [
-              {
-                "key": "token",
-                "value": "{{accessToken}}",
-                "type": "string"
-              }
-            ]
-          },
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PUT",
             "header": [
               {

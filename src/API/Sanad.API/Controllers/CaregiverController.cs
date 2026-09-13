@@ -7,6 +7,7 @@ using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Onboarding;
+using Sanad.Modules.Caregivers.Application.Privacy;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 
 namespace Sanad.API.Controllers;
@@ -489,6 +490,56 @@ public sealed class CaregiverController :
                 cancellationToken);
 
         return ToActionResult(result);
+    }
+
+    [HttpGet("privacy")]
+    [ProducesResponseType(
+        typeof(CaregiverPrivacyResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPrivacy(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new GetCaregiverPrivacyQuery(userId),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPut("privacy")]
+    [ProducesResponseType(
+        StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UpdatePrivacy(
+        [FromBody] UpdateCaregiverPrivacyRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new UpdateCaregiverPrivacyCommand(
+                    userId,
+                    request.ShowProfile,
+                    request.ShowRating,
+                    request.ShowPhone,
+                    request.ShareLocation),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        return NoContent();
     }
 
     private async Task<Result<StoredFile>>

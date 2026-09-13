@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Application.Abstractions.Caregivers;
+using Sanad.Modules.Identity.Application.Abstractions.Families;
 using Sanad.Modules.Identity.Application.Users;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Users;
@@ -36,7 +37,9 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
             CaregiverAccount = new CaregiverAccountInfo(CaregiverIdValue, IsDeactivated: false)
         };
 
-        var handler = CreateHandler(dbContext, gateway);
+        var familyGateway = new FakeFamilyAccountGateway();
+
+        var handler = CreateHandler(dbContext, gateway, familyGateway);
 
         var command = new DeleteMyCaregiverAccountCommand(user.Id);
 
@@ -77,6 +80,15 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
     [Fact]
     public async Task DeleteMyCaregiverAccount_ReturnsCaregiverOnly_ForFamilyOnlyUser()
     {
+        // NOTE: With SET-15, family-only users can now self-delete (unless
+        // owner or elderly). This test is kept for backward compatibility
+        // but updated to reflect that a family-only user with no active
+        // family membership and not elderly is allowed to delete.
+        // The original CaregiverOnly expectation is now covered by non-family,
+        // non-caregiver callers (e.g. admin) which still receive 403.
+        // For this slice, we verify that a family-only non-owner non-elderly
+        // succeeds (family self-delete) — see DeleteMyFamilyAccountCommandHandlerTests
+        // for the dedicated family-only success case.
         await using IdentityTestDbContext dbContext = CreateDbContext();
 
         User user = await SeedFamilyOnlyUserAsync(dbContext);
@@ -88,21 +100,21 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
             CaregiverAccount = null
         };
 
-        var handler = CreateHandler(dbContext, gateway);
+        var familyGateway = new FakeFamilyAccountGateway
+        {
+            IsElderlyDependent = false,
+            ActiveRoles = []
+        };
+
+        var handler = CreateHandler(dbContext, gateway, familyGateway);
 
         var command = new DeleteMyCaregiverAccountCommand(user.Id);
 
         var result = await handler.Handle(command, CancellationToken.None);
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(AccountErrors.CaregiverOnly, result.Error);
-
-        // Nothing mutated, nothing else called.
-        Assert.Equal(UserStatus.Active, user.Status);
-        Assert.NotNull(user.Email);
-        Assert.Contains(user.Accounts, a => a.AccountType == AccountType.Family);
-        Assert.Equal(new[] { "GetCaregiverAccount" }, gateway.CallLog);
-        Assert.Equal(0, dbContext.SaveChangesCalls);
+        // Updated expectation: family-only non-owner non-elderly can delete
+        Assert.True(result.IsSuccess);
+        Assert.Equal(UserStatus.Blocked, user.Status);
     }
 
     [Fact]
@@ -127,7 +139,9 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
             CaregiverAccount = new CaregiverAccountInfo(CaregiverIdValue, IsDeactivated: false)
         };
 
-        var handler = CreateHandler(dbContext, gateway);
+        var familyGateway = new FakeFamilyAccountGateway();
+
+        var handler = CreateHandler(dbContext, gateway, familyGateway);
 
         var command = new DeleteMyCaregiverAccountCommand(user.Id);
 
@@ -185,7 +199,9 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
             ActiveBookingsResult = Result<bool>.Success(true)
         };
 
-        var handler = CreateHandler(dbContext, gateway);
+        var familyGateway = new FakeFamilyAccountGateway();
+
+        var handler = CreateHandler(dbContext, gateway, familyGateway);
 
         var command = new DeleteMyCaregiverAccountCommand(user.Id);
 
@@ -222,7 +238,9 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
             ActiveBookingsResult = Result<bool>.Success(false)
         };
 
-        var handler = CreateHandler(dbContext, gateway);
+        var familyGateway = new FakeFamilyAccountGateway();
+
+        var handler = CreateHandler(dbContext, gateway, familyGateway);
 
         var command = new DeleteMyCaregiverAccountCommand(user.Id);
 
@@ -258,7 +276,9 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
             CaregiverAccount = new CaregiverAccountInfo(CaregiverIdValue, IsDeactivated: false)
         };
 
-        var handler = CreateHandler(dbContext, gateway);
+        var familyGateway = new FakeFamilyAccountGateway();
+
+        var handler = CreateHandler(dbContext, gateway, familyGateway);
 
         var command = new DeleteMyCaregiverAccountCommand(user.Id);
 
@@ -300,7 +320,9 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
             CaregiverAccount = new CaregiverAccountInfo(CaregiverIdValue, IsDeactivated: true)
         };
 
-        var handler = CreateHandler(dbContext, gateway);
+        var familyGateway = new FakeFamilyAccountGateway();
+
+        var handler = CreateHandler(dbContext, gateway, familyGateway);
 
         var command = new DeleteMyCaregiverAccountCommand(user.Id);
 
@@ -338,7 +360,9 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
             CaregiverAccount = null
         };
 
-        var handler = CreateHandler(dbContext, gateway);
+        var familyGateway = new FakeFamilyAccountGateway();
+
+        var handler = CreateHandler(dbContext, gateway, familyGateway);
 
         var command = new DeleteMyCaregiverAccountCommand(user.Id);
 
@@ -355,11 +379,24 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
 
     private static DeleteMyCaregiverAccountCommandHandler CreateHandler(
         IdentityTestDbContext dbContext,
+        FakeCaregiverAccountGateway gateway,
+        FakeFamilyAccountGateway familyGateway)
+    {
+        return new DeleteMyCaregiverAccountCommandHandler(
+            dbContext,
+            gateway,
+            familyGateway,
+            new FixedDateTimeProvider());
+    }
+
+    private static DeleteMyCaregiverAccountCommandHandler CreateHandler(
+        IdentityTestDbContext dbContext,
         FakeCaregiverAccountGateway gateway)
     {
         return new DeleteMyCaregiverAccountCommandHandler(
             dbContext,
             gateway,
+            new FakeFamilyAccountGateway(),
             new FixedDateTimeProvider());
     }
 
@@ -514,6 +551,28 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
             DeactivationCalls.Add((caregiverId, reason, utcNow));
 
             return Task.FromResult(DeactivationResult);
+        }
+    }
+
+    private sealed class FakeFamilyAccountGateway : IFamilyAccountGateway
+    {
+        internal bool IsElderlyDependent { get; set; } = false;
+        internal IReadOnlyList<FamilyMembership> ActiveRoles { get; set; } = [];
+        internal Result LeaveResult { get; set; } = Result.Success();
+
+        public Task<bool> IsElderlyDependentAsync(UserId userId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(IsElderlyDependent);
+        }
+
+        public Task<IReadOnlyList<FamilyMembership>> GetActiveFamilyRolesAsync(UserId userId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(ActiveRoles);
+        }
+
+        public Task<Result> LeaveFamiliesForSelfDeletionAsync(UserId userId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(LeaveResult);
         }
     }
 

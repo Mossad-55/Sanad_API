@@ -74,6 +74,8 @@ public static class ResultProblemDetailsMapper
             ["Identity.Account.CaregiverOnly"] = 403,
             ["Identity.Account.CaregiverProfileNotFound"] = 404,
             ["Identity.Account.ActiveBookingExists"] = 409,
+            ["Identity.Account.ElderlyManagedByFamily"] = 409,
+            ["Identity.Account.OwnershipTransferRequired"] = 409,
 
             ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
             ["Cms.Splash.NotFound"] = 404,

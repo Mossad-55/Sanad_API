@@ -246,6 +246,9 @@ public sealed class AccountController :
     // NormalAccess (NOT CaregiverAccess): a family user must reach the handler
     // to receive the coded 403 Identity.Account.CaregiverOnly instead of a bare
     // policy Forbid with no error code.
+    // Family self-delete (SET-15): 409 Identity.Account.ElderlyManagedByFamily
+    // and 409 Identity.Account.OwnershipTransferRequired are also returned via
+    // ToActionResult; they are documented here for OpenAPI.
     [Authorize(
         Policy =
             AuthorizationPolicies.NormalAccess)]
@@ -261,6 +264,12 @@ public sealed class AccountController :
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status409Conflict)]

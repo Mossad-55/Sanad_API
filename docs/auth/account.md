@@ -225,3 +225,52 @@ Rules:
 | 400 | `Api.Validation.Failed` |
 | 404 | `Identity.Account.UserNotFound` |
 | 409 | `Identity.Account.InvalidOperation` |
+
+## DELETE `/api/v1/account`
+
+Self-service deletion of the caller's account. The endpoint uses `NormalAccess` policy so that both caregiver and family users reach the handler and receive coded errors instead of bare policy forbids.
+
+```bash
+curl -sS -X DELETE https://localhost:7296/api/v1/account \
+  -H "Authorization: Bearer ACCESS_TOKEN"
+```
+
+`204 No Content` on success.
+
+### Caregiver self-delete (SET-8d)
+
+Two modes:
+
+| Caller | What happens |
+|---|---|
+| **PURE caregiver** (no Family account) | Full deletion: Identity account blocked + PII-scrubbed (anonymize & retain), all device sessions revoked, caregiver profile `Deactivated`. |
+| **HYBRID** (Family + caregiver) | Caregiver side only: profile `Deactivated`, caregiver account types removed, Family side and sessions stay alive. |
+
+D11 guard: `409 Identity.Account.ActiveBookingExists` while any booking is `PendingCaregiverApproval` / `Confirmed` / `InProgress`.
+
+### Family-only self-delete (SET-15)
+
+For users WITHOUT a caregiver account:
+
+- Elderly dependent → `409 Identity.Account.ElderlyManagedByFamily` ("Elderly accounts are managed by the family.")
+- Owner of an active family → `409 Identity.Account.OwnershipTransferRequired` ("Transfer family ownership before deleting your account.")
+- Otherwise: leave all families (via `IFamilyAccountGateway.LeaveFamiliesForSelfDeletionAsync` which fails without changes if the user is OWNER of any active family) → `User.AnonymizeAndDeactivate` → revoke all active sessions → `204`.
+
+Anonymize & retain everywhere — nothing is hard-deleted.
+
+### Errors
+
+| HTTP | `code` | Cause |
+|---|---|---|
+| 401 | — | Missing/invalid JWT |
+| 403 | `Identity.Account.CaregiverOnly` | Caller has no caregiver and no Family account (e.g. admin) |
+| 404 | `Identity.Account.UserNotFound` | No Identity user for token subject |
+| 404 | `Identity.Account.CaregiverProfileNotFound` | Caregiver account type present but no profile row |
+| 409 | `Identity.Account.ActiveBookingExists` | D11 guard |
+| 409 | `Identity.Account.ElderlyManagedByFamily` | Elderly accounts are managed by the family |
+| 409 | `Identity.Account.OwnershipTransferRequired` | Transfer family ownership before deleting your account |
+
+### Bruno
+
+- `collections/Sanad/account-delete-family/` — family self-delete negative tests: `01-login-owner.bru`, `02-delete-as-owner-conflict.bru` (DELETE → assert 409 + code `Identity.Account.OwnershipTransferRequired` — guard-protected, mutates nothing), `03-logout-owner.bru`.
+- Existing `set-8d-account-delete` folder covers caregiver paths.

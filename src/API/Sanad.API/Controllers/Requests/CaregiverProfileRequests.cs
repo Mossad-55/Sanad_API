@@ -68,3 +68,9 @@ public sealed record ReviewCertificateRequest(
 
 public sealed record ReviewCaregiverRequest(
     string Reason);
+
+public sealed record UpdateCaregiverPrivacyRequest(
+    bool ShowProfile,
+    bool ShowRating,
+    bool ShowPhone,
+    bool ShareLocation);

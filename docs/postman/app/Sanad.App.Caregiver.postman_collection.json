@@ -638,6 +638,42 @@
       "name": "08. Privacy & Security",
       "item": [
         {
+          "name": "Get privacy preferences",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{caregiverToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/privacy",
+            "description": "200 { showProfile, showRating, showPhone, shareLocation }. Family JWT → bare 403, unauth → 401. Defaults: showProfile true, showRating true, showPhone false, shareLocation false."
+          }
+        },
+        {
+          "name": "Update privacy preferences",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{caregiverToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"showProfile\": true,\n  \"showRating\": true,\n  \"showPhone\": false,\n  \"shareLocation\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/caregiver/privacy",
+            "description": "204 on success. Full replace, all 4 bools required. showProfile=false hides from discovery search (GET /api/v1/caregivers). Other toggles stored-only for now (rating = Phase I, phone not exposed anywhere yet, location = Phase G)."
+          }
+        },
+        {
           "name": "Get Privacy Policy / Terms page (anonymous)",
           "request": {
             "method": "GET",
