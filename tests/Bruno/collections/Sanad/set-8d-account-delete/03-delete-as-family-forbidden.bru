@@ -1,5 +1,5 @@
 meta {
-  name: 03-delete-as-family-forbidden
+  name: 03-delete-as-family-owner-conflict
   type: http
   seq: 3
 }
@@ -15,6 +15,6 @@ auth:bearer {
 }
 
 assert {
-  res.status: eq 403
-  res.body.code: eq Identity.Account.CaregiverOnly
+  res.status: eq 409
+  res.body.code: eq Identity.Account.OwnershipTransferRequired
 }
