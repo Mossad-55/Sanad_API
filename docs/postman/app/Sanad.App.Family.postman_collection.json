@@ -633,6 +633,264 @@
               }
             },
             "description": "Owner only. Irreversible: marks the family deleted, anonymizes dependents' names/photo/address and revokes pending invitations; bookings and payments are retained. Requires acknowledgement=true, and refuses while an active booking (409 ActiveBookingExists) or a pending payment (409 UnsettledPaymentExists) exists. The body above is deliberately acknowledgement=false so this request is SAFE to run in smoke (400) — flip it to true only when you really mean it."
+          },
+          {
+            "name": "Leave family (owner without transfer -> 409)",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt}}"
+                }
+              ],
+              "url": "{{baseUrl}}/api/v1/family/leave",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"transferToMemberId\": null\n}"
+              }
+            },
+            "response": [
+              {
+                "name": "409 — Owner protected",
+                "originalRequest": {
+                  "method": "POST",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "Authorization",
+                      "value": "Bearer {{jwt}}"
+                    }
+                  ],
+                  "url": "{{baseUrl}}/api/v1/family/leave",
+                  "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"transferToMemberId\": null\n}"
+                  }
+                },
+                "status": "Conflict",
+                "code": 409,
+                "_postman_previewlanguage": "json",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/problem+json"
+                  }
+                ],
+                "cookie": [],
+                "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/family/leave\",\n  \"code\": \"Families.Family.OwnerProtected\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+              }
+            ],
+            "description": "Negative acceptance path: an owner cannot leave without transferring ownership. The API returns 409 Families.Family.OwnerProtected and does not mutate the family."
+          },
+          {
+            "name": "Leave family / transfer ownership",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt}}"
+                }
+              ],
+              "url": "{{baseUrl}}/api/v1/family/leave",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"transferToMemberId\": \"<member-guid>\"\n}"
+              }
+            },
+            "response": [
+              {
+                "name": "204 — Ownership transferred and caller left",
+                "originalRequest": {
+                  "method": "POST",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "Authorization",
+                      "value": "Bearer {{jwt}}"
+                    }
+                  ],
+                  "url": "{{baseUrl}}/api/v1/family/leave",
+                  "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"transferToMemberId\": \"<member-guid>\"\n}"
+                  }
+                },
+                "status": "No Content",
+                "code": 204,
+                "header": [],
+                "cookie": [],
+                "body": null
+              },
+              {
+                "name": "403 — Access denied",
+                "originalRequest": {
+                  "method": "POST",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "Authorization",
+                      "value": "Bearer {{jwt}}"
+                    }
+                  ],
+                  "url": "{{baseUrl}}/api/v1/family/leave",
+                  "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"transferToMemberId\": \"<member-guid>\"\n}"
+                  }
+                },
+                "status": "Forbidden",
+                "code": 403,
+                "_postman_previewlanguage": "json",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/problem+json"
+                  }
+                ],
+                "cookie": [],
+                "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/family/leave\",\n  \"code\": \"Families.Family.AccessDenied\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+              },
+              {
+                "name": "404 — Member not found",
+                "originalRequest": {
+                  "method": "POST",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "Authorization",
+                      "value": "Bearer {{jwt}}"
+                    }
+                  ],
+                  "url": "{{baseUrl}}/api/v1/family/leave",
+                  "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"transferToMemberId\": \"<member-guid>\"\n}"
+                  }
+                },
+                "status": "Not Found",
+                "code": 404,
+                "_postman_previewlanguage": "json",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/problem+json"
+                  }
+                ],
+                "cookie": [],
+                "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/family/leave\",\n  \"code\": \"Families.Family.MemberNotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+              },
+              {
+                "name": "409 — Owner protected",
+                "originalRequest": {
+                  "method": "POST",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "Authorization",
+                      "value": "Bearer {{jwt}}"
+                    }
+                  ],
+                  "url": "{{baseUrl}}/api/v1/family/leave",
+                  "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"transferToMemberId\": \"<member-guid>\"\n}"
+                  }
+                },
+                "status": "Conflict",
+                "code": 409,
+                "_postman_previewlanguage": "json",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/problem+json"
+                  }
+                ],
+                "cookie": [],
+                "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/family/leave\",\n  \"code\": \"Families.Family.OwnerProtected\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+              }
+            ],
+            "description": "Owner transfer flow. Replace <member-guid> with an existing family member. Documented outcomes: 204 success; 403 Families.Family.AccessDenied; 404 Families.Family.MemberNotFound; 409 Families.Family.OwnerProtected. This request is intentionally documented only; do not run it against acceptance fixtures."
+          },
+          {
+            "name": "Delete family (negative)",
+            "request": {
+              "method": "DELETE",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                },
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{jwt}}"
+                }
+              ],
+              "url": "{{baseUrl}}/api/v1/family",
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"reason\": \"postman\",\n  \"optionalMessage\": null,\n  \"acknowledgement\": false\n}"
+              }
+            },
+            "response": [
+              {
+                "name": "400 — Acknowledgement required",
+                "originalRequest": {
+                  "method": "DELETE",
+                  "header": [
+                    {
+                      "key": "Content-Type",
+                      "value": "application/json"
+                    },
+                    {
+                      "key": "Authorization",
+                      "value": "Bearer {{jwt}}"
+                    }
+                  ],
+                  "url": "{{baseUrl}}/api/v1/family",
+                  "body": {
+                    "mode": "raw",
+                    "raw": "{\n  \"reason\": \"postman\",\n  \"optionalMessage\": null,\n  \"acknowledgement\": false\n}"
+                  }
+                },
+                "status": "Bad Request",
+                "code": 400,
+                "_postman_previewlanguage": "json",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/problem+json"
+                  }
+                ],
+                "cookie": [],
+                "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/family\",\n  \"code\": \"Families.Family.AcknowledgementRequired\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+              }
+            ],
+            "description": "Safe negative path: acknowledgement=false returns 400 Families.Family.AcknowledgementRequired. SET-8c behavior: acknowledgement=true anonymizes member and dependent accounts and retains the rows. NEVER run the acknowledgement=true / 204 path against fixtures."
           }
         ]
       },

@@ -1,0 +1,30 @@
+meta {
+  name: 06-leave-as-owner
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/leave
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "transferToMemberId": null
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Families.Family.OwnerProtected
+}

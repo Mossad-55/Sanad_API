@@ -1,0 +1,36 @@
+meta {
+  name: 06-logout-owner
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{set8dFamilySessionId}}
+}
+
+auth:bearer {
+  token: {{jwtFamily}}
+}
+
+script:pre-request {
+  const response = await bru.sendRequest({
+    method: "GET",
+    url: bru.getEnvVar("baseUrl") + "/api/v1/auth/sessions",
+    headers: {
+      Authorization: "Bearer " + bru.getVar("jwtFamily"),
+      Connection: "close"
+    }
+  });
+  const session = response.data.sessions[0];
+  bru.setVar("set8dFamilySessionId", session.deviceSessionId.value || session.deviceSessionId);
+}
+
+assert {
+  res.status: eq 204
+}

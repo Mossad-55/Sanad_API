@@ -1,0 +1,19 @@
+meta {
+  name: 02-get-profile
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}

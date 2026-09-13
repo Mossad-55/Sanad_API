@@ -1,0 +1,19 @@
+meta {
+  name: 08-get-family-as-viewer
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwtViewer}}
+}
+
+assert {
+  res.status: eq 200
+}

@@ -1,0 +1,26 @@
+meta {
+  name: 05-refresh-invalid-token
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/refresh
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "deviceSessionId": "00000000-0000-0000-0000-000000000000",
+    "refreshToken": "invalid-token"
+  }
+}
+
+assert {
+  res.status: eq 401
+}
