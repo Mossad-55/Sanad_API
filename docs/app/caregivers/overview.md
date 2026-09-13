@@ -30,6 +30,7 @@ Active ──suspend (admin)──▶ Suspended ──reactivate──▶ Active
 - The only gated action is **submit**: the aggregate enforces the readiness checklist (below).
 - After approval, editing the professional profile (Medical or Companion) or replacing a mandatory certificate file returns the caregiver to `PendingReview` + `Unavailable` until re-approved.
 - Admins perform review/approve/reject/suspend actions — see `docs/admin/caregivers-review.md`.
+- `Deactivated` (terminal) is not an admin transition: it is reached only by the caregiver deleting his own account — see [Delete my account](#delete-my-account). A `Deactivated` profile is retained forever but drops out of discovery and quotes (both filter `status = 4`).
 
 ## Readiness checklist (submit / resubmit)
 
@@ -44,6 +45,39 @@ Active ──suspend (admin)──▶ Suspended ──reactivate──▶ Active
 | Mandatory certificates | Practice License + Graduation Certificate present, unexpired, Pending or Verified | n/a (companions cannot add certificates) |
 
 Activation (admin approve / reactivate / BecomeAvailable) additionally requires mandatory certificates to be **Verified** and unexpired (Medical).
+
+## Delete my account
+
+```text
+DELETE /api/v1/account
+```
+
+Self-service deletion of the **caregiver** side of the caller's account. Success is **204 No Content** with an empty body. The route uses the `NormalAccess` policy (not `CaregiverAccess`) so that a family user reaches the handler and receives the coded `403` below instead of a bare policy reject.
+
+Anonymize & retain — **nothing is hard-deleted**; every row is kept for audit, settlement and booking history.
+
+Two modes (owner-locked, Q1 = Option B — the user decides which account to delete):
+
+| Caller | What happens |
+|---|---|
+| **PURE caregiver** (no Family account) | Full deletion: the Identity account is blocked and PII-scrubbed (names → `محذوف` / `Deleted`, email → `null`, phone → a unique non-assignable `+200…` placeholder, avatar dropped, identity document revoked), all device sessions are revoked, and the caregiver profile becomes `Deactivated`. Re-login with the old credentials then fails with `401 Identity.Login.InvalidCredentials` (the email is gone). |
+| **HYBRID** (Family + caregiver) | Caregiver side only: the profile becomes `Deactivated` and the caregiver account type is removed from the user. The login, the Family account and the family membership stay **unchanged**, and family sessions are **not** revoked. |
+
+Because the endpoint never touches the Family side, it can never orphan a family — no family-owner guard applies here (Q2 is moot by design). Family deletion is a separate flow: `DELETE /api/v1/family` (see `docs/app/families/family.md`).
+
+**D11 active-booking guard** — the deletion is refused with `409 Identity.Account.ActiveBookingExists` while any of the caregiver's bookings is `PendingCaregiverApproval` (2), `Confirmed` (3) or `InProgress` (4). `PendingPayment` (1) deliberately does **not** block: the slot is not committed until the family pays. The guard is fail-safe — if the booking lookup itself fails, the request fails and nothing is mutated.
+
+Retries are safe: the operation is idempotent, and a partially completed deletion (Identity side done, profile not yet deactivated — or profile deactivated, account type not yet removed) converges on the next call.
+
+### Errors
+
+| Status | `code` | Cause |
+|---|---|---|
+| 401 | — | Missing or invalid JWT (no usable `sub` claim) |
+| 403 | `Identity.Account.CaregiverOnly` | The caller has no caregiver account (e.g. Family only) |
+| 404 | `Identity.Account.UserNotFound` | No Identity user for the token subject |
+| 404 | `Identity.Account.CaregiverProfileNotFound` | Caregiver account type present but no caregiver profile row |
+| 409 | `Identity.Account.ActiveBookingExists` | D11 guard: a booking is `PendingCaregiverApproval` / `Confirmed` / `InProgress` |
 
 ## Document map
 
@@ -67,7 +101,7 @@ Public app surfaces (splash screens, active lookups) that the wizard reads from 
   | Field | Values |
   |---|---|
   | `type` (caregiver, from token) | `1` Medical, `2` Companion |
-  | `status` | `1` Onboarding, `2` PendingReview, `3` NeedsCorrection, `4` Active, `5` Suspended, `6` Rejected |
+  | `status` | `1` Onboarding, `2` PendingReview, `3` NeedsCorrection, `4` Active, `5` Suspended, `6` Rejected, `7` Deactivated |
   | `availability` | `1` Available, `2` Unavailable |
   | certificate `type` | `1` PracticeLicense, `2` GraduationCertificate, `3` AdditionalCertificate |
   | `bookingType` (companion windows) | `1` Hourly, `2` EightHourDay, `3` Overnight |
