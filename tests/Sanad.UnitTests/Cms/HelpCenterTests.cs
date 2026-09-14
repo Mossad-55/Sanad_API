@@ -232,7 +232,7 @@ public sealed class HelpCenterTests
                     "إجابة",
                     "Answer",
                     0,
-                    isActive: false),
+                    false),
                 CancellationToken.None);
 
         Assert.True(created.IsSuccess);
@@ -247,7 +247,7 @@ public sealed class HelpCenterTests
             await new ListHelpFaqsQueryHandler(dbContext).Handle(
                 new ListHelpFaqsQuery(
                     LegalAudience.Family,
-                    isActive: true),
+                    true),
                 CancellationToken.None);
         Assert.Empty(activeOnly.Value);
 
@@ -274,7 +274,7 @@ public sealed class HelpCenterTests
                         "إجابة",
                         "Answer",
                         0,
-                        isActive: true),
+                        true),
                     CancellationToken.None));
 
         Assert.Empty(dbContext.HelpFaqs);
@@ -290,7 +290,7 @@ public sealed class HelpCenterTests
                         "إجابة",
                         "Answer",
                         -1,
-                        isActive: true),
+                        true),
                     CancellationToken.None));
 
         Assert.Empty(dbContext.HelpFaqs);

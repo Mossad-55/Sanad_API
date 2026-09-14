@@ -27,9 +27,9 @@ public sealed class ListHelpFaqsQueryHandler :
             await _dbContext.HelpFaqs
                 .AsNoTracking()
                 .Where(faq =>
-                    (request.Audience is null ||
+                    (request.Audience == null ||
                         faq.Audience == request.Audience) &&
-                    (request.IsActive is null ||
+                    (request.IsActive == null ||
                         faq.IsActive == request.IsActive))
                 .ToListAsync(cancellationToken);
 

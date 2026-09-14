@@ -291,7 +291,7 @@ public sealed class CmsDbContextModelTests
             keyProperty.Name);
         Assert.Equal(
             ValueGenerated.Never,
-            keyProperty.GetValueGenerated());
+            keyProperty.ValueGenerated);
 
         Assert.Contains(
             entityType.GetCheckConstraints(),

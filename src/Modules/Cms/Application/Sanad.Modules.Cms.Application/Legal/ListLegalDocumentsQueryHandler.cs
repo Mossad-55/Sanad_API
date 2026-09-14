@@ -27,11 +27,11 @@ public sealed class ListLegalDocumentsQueryHandler :
             await _dbContext.LegalDocuments
                 .AsNoTracking()
                 .Where(document =>
-                    (request.DocumentType is null ||
+                    (request.DocumentType == null ||
                         document.DocumentType == request.DocumentType) &&
-                    (request.Audience is null ||
+                    (request.Audience == null ||
                         document.Audience == request.Audience) &&
-                    (request.Status is null ||
+                    (request.Status == null ||
                         document.Status == request.Status))
                 .ToListAsync(cancellationToken);
 
