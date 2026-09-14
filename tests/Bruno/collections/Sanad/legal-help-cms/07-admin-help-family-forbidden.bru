@@ -1,0 +1,19 @@
+meta {
+  name: 07-admin-help-family-forbidden
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/help-center/faqs
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 403
+}

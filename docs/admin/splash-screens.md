@@ -2,6 +2,10 @@
 
 CMS for the **shared** app splash (all four app roles see the same published list).
 
+Splash screens serve the onboarding carousel only. **Privacy Policy and
+Terms & Conditions are dedicated CMS content, not splash screens** — author
+them under `/api/v1/admin/legal-documents` (see `docs/admin/legal-content.md`).
+
 **Base:** `/api/v1/admin/splash-screens`  
 **Policy:** `CmsContent`  
 Requires a **normal** JWT (`access_type` = `Normal`) and `account_type` of `SuperAdmin` or `ContentAdmin`.  

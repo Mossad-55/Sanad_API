@@ -4,6 +4,7 @@ using Sanad.API.ProblemDetail;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.Modules.Cms.Domain.Legal;
 using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Domain.Users;
 
@@ -92,6 +93,40 @@ public abstract class ApiControllerBase :
         return caregiverType is
             CaregiverType.Medical or
             CaregiverType.Companion;
+    }
+
+    /// <summary>
+    /// Maps the authenticated JWT AccountType claim to the four CMS app
+    /// audiences (SET-12/SET-13). Admin account types are not app
+    /// audiences: SuperAdmin, ContentAdmin, and SupportAdmin never resolve
+    /// an audience, so an admin calling an app content route receives the
+    /// mapped business error Cms.Content.UnsupportedAudience (403) instead
+    /// of an invented document. There is deliberately no audience supplied
+    /// by the request.
+    /// </summary>
+    protected bool TryGetCmsAudienceFromClaims(
+        out LegalAudience audience)
+    {
+        audience = default;
+
+        string? accountType =
+            User.FindFirst(
+                AuthClaimNames.AccountType)?.Value;
+
+        audience = accountType switch
+        {
+            nameof(AccountType.Family) =>
+                LegalAudience.Family,
+            nameof(AccountType.MedicalCaregiver) =>
+                LegalAudience.MedicalCaregiver,
+            nameof(AccountType.CompanionCaregiver) =>
+                LegalAudience.CompanionCaregiver,
+            nameof(AccountType.Elderly) =>
+                LegalAudience.Elderly,
+            _ => default
+        };
+
+        return audience.IsDefined();
     }
 
     protected bool TryGetCurrentDeviceSessionId(

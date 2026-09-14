@@ -80,6 +80,17 @@ public static class ResultProblemDetailsMapper
             ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
             ["Cms.Splash.NotFound"] = 404,
 
+            ["Cms.Content.UnsupportedAudience"] = 403,
+
+            ["Cms.Legal.NotFound"] = 404,
+            ["Cms.Legal.NotPublished"] = 404,
+            ["Cms.Legal.DraftAlreadyExists"] = 409,
+            ["Cms.Legal.PublishedDocumentImmutable"] = 409,
+            ["Cms.Legal.InvalidOperation"] = 409,
+
+            ["Cms.Help.FaqNotFound"] = 404,
+            ["Cms.Help.SupportContactNotFound"] = 404,
+
             ["Caregivers.Lookups.NameAlreadyInUse"] = 409,
             ["Caregivers.Lookups.LanguageCodeInUse"] = 409,
             ["Caregivers.Lookups.NotFound"] = 404,

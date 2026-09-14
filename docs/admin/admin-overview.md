@@ -4,7 +4,7 @@ Admin routes live under `/api/v1/admin/...`.
 
 ## Access
 
-| Role | JWT `account_type` | Splash write (`CmsContent`) | Lookup write (`CaregiversAdmin`) | Caregiver review (`CaregiversAdmin`) |
+| Role | JWT `account_type` | CMS content write — splash, legal, help center (`CmsContent`) | Lookup write (`CaregiversAdmin`) | Caregiver review (`CaregiversAdmin`) |
 |---|---|---|---|---|
 | Super Admin | `SuperAdmin` | Yes | Yes | Yes |
 | Content Admin | `ContentAdmin` | Yes | Yes | Yes |
@@ -20,6 +20,8 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Area | Doc |
 |---|---|
 | Splash screens | `docs/admin/splash-screens.md` |
+| Legal content (Privacy Policy & Terms) | `docs/admin/legal-content.md` |
+| Help Center (FAQs & global support contact) | `docs/admin/help-center.md` |
 | Service lookups | `docs/admin/service-lookups.md` |
 | Language & governorate lookups | `docs/admin/lookups-languages-governorates.md` |
 | City & area lookups | `docs/admin/lookups-cities-areas.md` |

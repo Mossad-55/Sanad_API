@@ -1,0 +1,15 @@
+meta {
+  name: 03-legal-terms-unauthenticated
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/legal/terms
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

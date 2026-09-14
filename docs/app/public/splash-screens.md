@@ -50,6 +50,19 @@ This GET has no business 4xx for “no screens”. Validation failures use `Api.
 
 Admin create/publish lives under `/api/v1/admin/splash-screens` and is documented in `docs/admin/splash-screens.md`.
 
-## Privacy Policy and Terms & Conditions
+## Privacy Policy and Terms & Conditions are NOT splash screens
 
-The legal pages are published splash screens: an admin authors a page and publishes it (see `docs/admin/splash-screens.md`). The app renders them on the **Privacy & Security** settings screen — see `docs/app/settings/privacy-and-security.md`.
+Legal pages are dedicated CMS content (SET-12), not published splash
+screens. The app renders them on the **Privacy & Security** settings screen
+from the signed-in routes:
+
+```text
+GET /api/v1/legal/privacy-policy
+GET /api/v1/legal/terms
+```
+
+Both require a normal app JWT; the audience is derived from the token and
+cannot be overridden. See `docs/app/settings/legal.md` (app) and
+`docs/admin/legal-content.md` (admin). The carousel on this page
+(`GET /api/v1/splash-screens`) stays anonymous and is unrelated to legal
+content.
