@@ -172,16 +172,24 @@ public sealed class LegalDocumentTests
             new CreateLegalDocumentCommand(
                 LegalDocumentType.PrivacyPolicy,
                 LegalAudience.MedicalCaregiver,
-                [Section(LegalSectionType.Text, 1)]),
+                [
+                    Section(LegalSectionType.Text, 1),
+                    Section(LegalSectionType.UserRights, 2)
+                ]),
             CancellationToken.None);
         Assert.Equal(1, privacyCaregiver.Value.Version);
 
-        // A second draft for the same pair conflicts.
+        // A second draft for the same pair conflicts. The request is a
+        // shape-valid privacy document (one UserRights section), so the
+        // rejection comes from the DraftAlreadyExists guard itself.
         var duplicateDraft = await createHandler.Handle(
             new CreateLegalDocumentCommand(
                 LegalDocumentType.PrivacyPolicy,
                 LegalAudience.MedicalCaregiver,
-                [Section(LegalSectionType.Text, 1)]),
+                [
+                    Section(LegalSectionType.Text, 1),
+                    Section(LegalSectionType.UserRights, 2)
+                ]),
             CancellationToken.None);
         Assert.True(duplicateDraft.IsFailure);
         Assert.Equal(
@@ -354,13 +362,17 @@ public sealed class LegalDocumentTests
             new PublishLegalDocumentCommand(familyPublished),
             CancellationToken.None);
 
-        // A caregiver publication with a higher version number must never
-        // leak into the family read and vice versa.
+        // The caregiver publication is versioned entirely independently of
+        // the family one (same version number, different pair); a read must
+        // never leak across audiences and vice versa.
         LegalDocumentId caregiverPublished = (await createHandler.Handle(
             new CreateLegalDocumentCommand(
                 LegalDocumentType.PrivacyPolicy,
                 LegalAudience.MedicalCaregiver,
-                [Section(LegalSectionType.Text, 1)]),
+                [
+                    Section(LegalSectionType.Text, 1),
+                    Section(LegalSectionType.UserRights, 2)
+                ]),
             CancellationToken.None)).Value.Id;
         await publishHandler.Handle(
             new PublishLegalDocumentCommand(caregiverPublished),
