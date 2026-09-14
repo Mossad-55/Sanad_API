@@ -16,7 +16,7 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Configurations;
 public sealed class LegalSectionConfiguration
 {
     public static void Configure(
-        EntityTypeBuilder<LegalSection> builder,
+        OwnedNavigationBuilder<LegalDocument, LegalSection> builder,
         ValueComparer<IReadOnlyList<string>> stringListComparer)
     {
         builder.ToTable("legal_sections");
