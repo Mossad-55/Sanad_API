@@ -186,6 +186,23 @@ public sealed class CmsDbContextModelTests
     }
 
     [Fact]
+    public void Model_ShouldMapLegalSectionAsOwnedCollectionElement()
+    {
+        using CmsDbContext dbContext =
+            CreateDbContext();
+
+        var sectionType =
+            dbContext.Model.FindEntityType(
+                typeof(LegalSection));
+
+        Assert.NotNull(sectionType);
+        Assert.True(sectionType!.IsOwned());
+
+        // The shadow foreign key "DocumentId" must exist for ownership binding.
+        Assert.NotNull(sectionType.FindProperty("DocumentId"));
+    }
+
+    [Fact]
     public void Model_ShouldMapLegalEnumsAsIntegerColumns()
     {
         using CmsDbContext dbContext =
