@@ -82,29 +82,32 @@ public sealed class LegalSectionInputValidator
             .MaximumLength(LegalSection.MaximumDescriptionLength);
 
         RuleFor(section => section.ArabicBullets)
-            .Must(bullets =>
-                bullets is null ||
-                bullets.Count <= LegalSection.MaximumBulletCount)
+            .Must(BulletsAreValid)
             .WithMessage(
-                $"Arabic bullets cannot exceed " +
+                $"Arabic bullets must be non-blank, at most " +
+                $"{LegalSection.MaximumBulletLength} characters each, and " +
+                "at most " +
                 $"{LegalSection.MaximumBulletCount} items.");
 
         RuleFor(section => section.EnglishBullets)
-            .Must(bullets =>
-                bullets is null ||
-                bullets.Count <= LegalSection.MaximumBulletCount)
+            .Must(BulletsAreValid)
             .WithMessage(
-                $"English bullets cannot exceed " +
+                $"English bullets must be non-blank, at most " +
+                $"{LegalSection.MaximumBulletLength} characters each, and " +
+                "at most " +
                 $"{LegalSection.MaximumBulletCount} items.");
+    }
 
-        RuleForEach(section => section.ArabicBullets)
-            .NotEmpty()
-            .MaximumLength(LegalSection.MaximumBulletLength)
-            .OverridePropertyName("arabicBullets");
+    private static bool BulletsAreValid(IReadOnlyList<string>? bullets)
+    {
+        if (bullets is null || bullets.Count == 0)
+        {
+            return true;
+        }
 
-        RuleForEach(section => section.EnglishBullets)
-            .NotEmpty()
-            .MaximumLength(LegalSection.MaximumBulletLength)
-            .OverridePropertyName("englishBullets");
+        return bullets.Count <= LegalSection.MaximumBulletCount &&
+            bullets.All(bullet =>
+                !string.IsNullOrWhiteSpace(bullet) &&
+                bullet.Trim().Length <= LegalSection.MaximumBulletLength);
     }
 }
