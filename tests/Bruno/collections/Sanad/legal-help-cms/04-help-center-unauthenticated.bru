@@ -1,0 +1,15 @@
+meta {
+  name: 04-help-center-unauthenticated
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/help-center
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

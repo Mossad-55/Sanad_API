@@ -1955,6 +1955,284 @@
           }
         }
       ]
+    },
+    {
+      "name": "11. Legal Content CMS (SET-12)",
+      "description": "Dedicated Privacy Policy / Terms content. CmsContent policy (SuperAdmin or ContentAdmin with a Normal token). Draft -> Published -> Archived; publishing archives the previous version and retains all history; nothing is deleted. Write requests are manual authoring examples with PLACEHOLDER values only - do not run them as automated happy paths.",
+      "item": [
+        {
+          "name": "List legal documents (Admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/admin/legal-documents",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ]
+          },
+          "description": "200 with every matching version (Draft, Published, Archived), newest version first within each (documentType, audience) pair. Optional filters: ?documentType=1|2, ?audience=1..4, ?status=1|2|3.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  const first = body && body[0];",
+                  "  if (first && first.id && first.id.value) { pm.environment.set('legalDocumentId', first.id.value); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get legal document version (Admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/admin/legal-documents/{{legalDocumentId}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ]
+          },
+          "description": "200 with the full LegalDocumentResponse including ordered bilingual sections. Unknown id -> 404 Cms.Legal.NotFound. Uses legalDocumentId captured by the list request or set manually."
+        },
+        {
+          "name": "Create Privacy Policy draft (manual)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/admin/legal-documents",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": 1,\n  \"audience\": 1,\n  \"sections\": [\n    {\n      \"sectionType\": 1,\n      \"displayOrder\": 1,\n      \"arabicTitle\": \"PLACEHOLDER_ARABIC_TITLE\",\n      \"englishTitle\": \"PLACEHOLDER_ENGLISH_TITLE\",\n      \"arabicDescription\": \"PLACEHOLDER_ARABIC_DESCRIPTION\",\n      \"englishDescription\": \"PLACEHOLDER_ENGLISH_DESCRIPTION\",\n      \"arabicBullets\": null,\n      \"englishBullets\": null\n    },\n    {\n      \"sectionType\": 2,\n      \"displayOrder\": 2,\n      \"arabicTitle\": \"حقوق المستخدم\",\n      \"englishTitle\": \"User rights\",\n      \"arabicDescription\": \"PLACEHOLDER_ARABIC_DESCRIPTION\",\n      \"englishDescription\": \"PLACEHOLDER_ENGLISH_DESCRIPTION\",\n      \"arabicBullets\": [\n        \"PLACEHOLDER_ARABIC_BULLET\"\n      ],\n      \"englishBullets\": [\n        \"PLACEHOLDER_ENGLISH_BULLET\"\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "description": "201 Draft with server-assigned version = max(versions for this type+audience) + 1. Privacy policies MUST contain exactly one UserRights section with at least one Arabic and one English bullet; replace PLACEHOLDER_* values before sending. Second draft for the same pair -> 409 Cms.Legal.DraftAlreadyExists."
+        },
+        {
+          "name": "Create Terms draft (manual)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/admin/legal-documents",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": 2,\n  \"audience\": 1,\n  \"sections\": [\n    {\n      \"sectionType\": 1,\n      \"displayOrder\": 1,\n      \"arabicTitle\": \"PLACEHOLDER_ARABIC_TITLE\",\n      \"englishTitle\": \"PLACEHOLDER_ENGLISH_TITLE\",\n      \"arabicDescription\": \"PLACEHOLDER_ARABIC_DESCRIPTION\",\n      \"englishDescription\": \"PLACEHOLDER_ENGLISH_DESCRIPTION\",\n      \"arabicBullets\": null,\n      \"englishBullets\": null\n    }\n  ]\n}"
+            }
+          },
+          "description": "201 Draft. Terms MUST NOT contain a UserRights section (409 Cms.Legal.InvalidOperation / validation failure otherwise)."
+        },
+        {
+          "name": "Update draft sections (manual)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/admin/legal-documents/{{legalDocumentId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sections\": [\n    {\n      \"sectionType\": 1,\n      \"displayOrder\": 1,\n      \"arabicTitle\": \"PLACEHOLDER_ARABIC_TITLE\",\n      \"englishTitle\": \"PLACEHOLDER_ENGLISH_TITLE\",\n      \"arabicDescription\": \"PLACEHOLDER_ARABIC_DESCRIPTION\",\n      \"englishDescription\": \"PLACEHOLDER_ENGLISH_DESCRIPTION\",\n      \"arabicBullets\": null,\n      \"englishBullets\": null\n    },\n    {\n      \"sectionType\": 2,\n      \"displayOrder\": 2,\n      \"arabicTitle\": \"حقوق المستخدم\",\n      \"englishTitle\": \"User rights\",\n      \"arabicDescription\": \"PLACEHOLDER_ARABIC_DESCRIPTION\",\n      \"englishDescription\": \"PLACEHOLDER_ENGLISH_DESCRIPTION\",\n      \"arabicBullets\": [\n        \"PLACEHOLDER_ARABIC_BULLET\"\n      ],\n      \"englishBullets\": [\n        \"PLACEHOLDER_ENGLISH_BULLET\"\n      ]\n    }\n  ]\n}"
+            }
+          },
+          "description": "Full replacement of the section list; Draft only. Published/Archived versions are immutable -> 409 Cms.Legal.PublishedDocumentImmutable. 200 returns the full updated version."
+        },
+        {
+          "name": "Publish draft (manual)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/admin/legal-documents/{{legalDocumentId}}/publish",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ]
+          },
+          "description": "One transaction: the previous Published version of the same (type, audience) becomes Archived, this Draft becomes Published with publishedOnUtc set. Exactly one Published version per pair remains. Re-publishing a Published version is an idempotent 200 success; publishing an Archived one -> 409 Cms.Legal.InvalidOperation."
+        }
+      ]
+    },
+    {
+      "name": "12. Help Center CMS (SET-13)",
+      "description": "FAQ management per app audience plus the ONE global support contact pair. CmsContent policy (SuperAdmin or ContentAdmin with a Normal token). FAQs are not versioned; deactivation hides them from apps - there is no delete route. Contact-card data only: no SMS, no email sending, no notification behavior. Write requests are manual authoring examples with PLACEHOLDER values only.",
+      "item": [
+        {
+          "name": "List FAQs (Admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/admin/help-center/faqs",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ]
+          },
+          "description": "200 with active AND inactive records when no filter is given. Optional numeric filters: ?audience=1..4, ?isActive=true|false.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  const first = body && body[0];",
+                  "  if (first && first.id && first.id.value) { pm.environment.set('helpFaqId', first.id.value); }",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get FAQ (Admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/admin/help-center/faqs/{{helpFaqId}}",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ]
+          },
+          "description": "200 with the full bilingual record. Unknown id -> 404 Cms.Help.FaqNotFound."
+        },
+        {
+          "name": "Create FAQ (manual)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/admin/help-center/faqs",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ]
+          },
+          "description": "201 with the created HelpFaqResponse. All four question/answer fields are required in both languages; audience is 1..4 (app types only)."
+        },
+        {
+          "name": "Update FAQ (manual)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/admin/help-center/faqs/{{helpFaqId}}",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"audience\": 1,\n  \"arabicQuestion\": \"PLACEHOLDER_ARABIC_QUESTION\",\n  \"englishQuestion\": \"PLACEHOLDER_ENGLISH_QUESTION\",\n  \"arabicAnswer\": \"PLACEHOLDER_ARABIC_ANSWER\",\n  \"englishAnswer\": \"PLACEHOLDER_ENGLISH_ANSWER\",\n  \"displayOrder\": 1,\n  \"isActive\": true\n}"
+            }
+          },
+          "description": "Full replace of question/answer/audience/displayOrder/isActive. 200 with the updated record."
+        },
+        {
+          "name": "Activate FAQ (manual)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/admin/help-center/faqs/{{helpFaqId}}/activate",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ]
+          },
+          "description": "200, idempotent. Apps only ever see active FAQs for their own audience (derived from the JWT)."
+        },
+        {
+          "name": "Deactivate FAQ (manual)",
+          "request": {
+            "method": "POST",
+            "url": "{{baseUrl}}/api/v1/admin/help-center/faqs/{{helpFaqId}}/deactivate",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ]
+          },
+          "description": "200, idempotent. Hidden from app reads; the record is retained."
+        },
+        {
+          "name": "Get support contact (Admin)",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/admin/help-center/support-contact",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ]
+          },
+          "description": "200 with the single global pair, or 404 Cms.Help.SupportContactNotFound when nothing has been configured yet."
+        },
+        {
+          "name": "Upsert support contact (manual)",
+          "request": {
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/admin/help-center/support-contact",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"supportPhone\": \"+20XXXXXXXXXX\",\n  \"supportEmail\": \"support@sanad.example\"\n}"
+            }
+          },
+          "description": "Upserts THE one global row (phone must be E.164, e.g. +201000000001; email must be valid). 200 with the stored pair. Not per-role; sends nothing."
+        }
+      ]
     }
   ]
 }

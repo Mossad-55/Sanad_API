@@ -49,3 +49,33 @@ Validation limits:
 | 409 | `Identity.Account.InvalidOperation` |
 
 The admin reply feature is a separate feature not covered here.
+
+## Help Center support contact card (separate, read-only)
+
+SET-13 adds a **separate read-only route** for the hotline/contact card shown
+on the Help Center screen. It only returns the one global support phone +
+support email pair configured by a CMS admin; it never sends an SMS, never
+sends an email, and does not interact with the ticket route above.
+
+```text
+GET /api/v1/help-center          (Normal JWT; audience derived from the token)
+```
+
+`200` response (excerpt — FAQ list omitted):
+
+```json
+{
+  "faqs": [],
+  "supportContact": {
+    "supportPhone": "+201000000001",
+    "supportEmail": "support@sanad.example"
+  }
+}
+```
+
+When no contact has been configured yet, the same route returns `200` with
+`"supportContact": null` — the app hides the card. The pair is global: every
+app role sees the same phone and email. Admin management (and the explicit
+rule that `POST /api/v1/support/contact` is unchanged by it) lives in
+`docs/admin/help-center.md`; the app surface is documented in
+`docs/app/settings/help-support.md`.

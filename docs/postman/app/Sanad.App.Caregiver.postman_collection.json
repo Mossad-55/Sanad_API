@@ -674,12 +674,46 @@
           }
         },
         {
-          "name": "Get Privacy Policy / Terms page (anonymous)",
+          "name": "Get Privacy Policy (signed-in)",
           "request": {
             "method": "GET",
-            "url": "{{baseUrl}}/api/v1/splash-screens"
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/legal/privacy-policy"
           },
-          "description": "Published legal pages are admin-authored splash screens. Anonymous; 200 with [] when nothing is published."
+          "description": "SET-12 dedicated legal content — legal pages are NOT splash screens. The audience is derived from the JWT; there is no audience parameter. 200 with the current Published version (bilingual sections, version, publication metadata), 404 Cms.Legal.NotPublished when nothing is published for this audience, 401 unauthenticated."
+        },
+        {
+          "name": "Get Terms & Conditions (signed-in)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/legal/terms"
+          },
+          "description": "SET-12. Same audience and status rules as the privacy-policy route; never falls back to another audience or document type."
+        },
+        {
+          "name": "Get Help Center (FAQs + support contact)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/help-center"
+          },
+          "description": "SET-13 read surface. Returns only active FAQs for the caller audience (ordered by displayOrder) plus the one global support contact card. 200 with faqs [] and supportContact null before any CMS seeding. Read-only: sends no SMS/email; the support ticket POST /api/v1/support/contact is unchanged."
         },
         {
           "name": "List device sessions",
