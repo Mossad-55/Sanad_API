@@ -13,8 +13,8 @@ public sealed class AccountExclusivityModelTests
         // Model-only: no database connection. Runtime PostgreSQL race proof is an owner gate.
         using var db = new IdentityDbContext(new DbContextOptionsBuilder<IdentityDbContext>()
             .UseNpgsql("Host=localhost;Database=model_only;Username=model_only;Password=unused").Options);
-        var entity = Assert.Single(db.GetService<IDesignTimeModel>().Model.GetEntityTypes().Where(e => e.GetTableName() == "user_accounts"));
-        var index = Assert.Single(entity.GetIndexes().Where(i => i.GetDatabaseName() == "ux_user_accounts_one_caregiver"));
+        var entity = Assert.Single(db.GetService<IDesignTimeModel>().Model.GetEntityTypes(), e => e.GetTableName() == "user_accounts");
+        var index = Assert.Single(entity.GetIndexes(), i => i.GetDatabaseName() == "ux_user_accounts_one_caregiver");
         Assert.True(index.IsUnique);
         Assert.Equal("account_type IN (2, 3)", index.GetFilter());
         Assert.Equal("UserId", Assert.Single(index.Properties).Name);

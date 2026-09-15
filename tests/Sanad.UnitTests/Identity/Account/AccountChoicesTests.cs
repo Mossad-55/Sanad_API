@@ -16,6 +16,7 @@ using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Application.Abstractions.Caregivers;
 using Sanad.Modules.Identity.Application.Users;
 using Sanad.Modules.Identity.Domain.Users;
+using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.UnitTests.Identity.Registration;
 
 namespace Sanad.UnitTests.Identity.Account;
@@ -40,16 +41,24 @@ public sealed class AccountChoicesTests
     [InlineData(AccountType.CompanionCaregiver, AccountType.Family)]
     public async Task Add_PersistsAllowedHybridsAndRequiresRefresh(AccountType first, AccountType second)
     {
-        await using var db = CreateDb();
-        var user = await Seed(db, first);
+        // The lightweight IdentityTestDbContext deliberately ignores Accounts.
+        // Persistence must be verified using the production mapping instead.
+        await using var db = new IdentityDbContext(
+            new DbContextOptionsBuilder<IdentityDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var user = CreateUser(first);
+        db.Users.Add(user);
+        await db.SaveChangesAsync();
+
         var result = await new AddMyAccountCommandHandler(db, new Gateway()).Handle(new(user.Id, second), default);
         Assert.True(result.IsSuccess);
         Assert.True(result.Value.RefreshRequired);
         Assert.Equal(second, result.Value.AccountType);
-        Assert.Equal(1, db.SaveChangesCalls);
         db.ChangeTracker.Clear();
         var saved = await db.Users.SingleAsync();
         Assert.Equal(2, saved.Accounts.Count);
+        Assert.Contains(saved.Accounts, a => a.AccountType == first);
+        Assert.Contains(saved.Accounts, a => a.AccountType == second);
         Assert.Empty(await db.DeviceSessions.ToListAsync());
     }
 
@@ -185,12 +194,12 @@ public sealed class AccountChoicesTests
     [Fact]
     public void Validators_RejectEmptyIdentityAndUndefinedTypes()
     {
-        Assert.False(new GetMyAccountsQueryValidator().Validate(new(UserId.Empty)).IsValid);
-        Assert.False(new AddMyAccountCommandValidator().Validate(new(UserId.Empty, AccountType.Family)).IsValid);
-        Assert.False(new SwitchMyAccountCommandValidator().Validate(new(UserId.Empty, AccountType.Family)).IsValid);
+        Assert.False(new GetMyAccountsQueryValidator().Validate(new GetMyAccountsQuery(UserId.Empty)).IsValid);
+        Assert.False(new AddMyAccountCommandValidator().Validate(new AddMyAccountCommand(UserId.Empty, AccountType.Family)).IsValid);
+        Assert.False(new SwitchMyAccountCommandValidator().Validate(new SwitchMyAccountCommand(UserId.Empty, AccountType.Family)).IsValid);
         var id = new UserId(Guid.NewGuid());
-        Assert.False(new AddMyAccountCommandValidator().Validate(new(id, (AccountType)999)).IsValid);
-        Assert.False(new SwitchMyAccountCommandValidator().Validate(new(id, (AccountType)999)).IsValid);
+        Assert.False(new AddMyAccountCommandValidator().Validate(new AddMyAccountCommand(id, (AccountType)999)).IsValid);
+        Assert.False(new SwitchMyAccountCommandValidator().Validate(new SwitchMyAccountCommand(id, (AccountType)999)).IsValid);
     }
 
     [Fact]
