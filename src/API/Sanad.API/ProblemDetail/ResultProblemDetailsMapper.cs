@@ -69,6 +69,11 @@ public static class ResultProblemDetailsMapper
             ["Identity.Avatar.UnsupportedAccountType"] = 409,
             ["Identity.Avatar.InvalidOperation"] = 409,
 
+            ["Identity.Account.UnsupportedAccountType"] = 403,
+            ["Identity.Account.AccountAlreadyExists"] = 409,
+            ["Identity.Account.CaregiverTypesExclusive"] = 409,
+            ["Identity.Account.AccountNotOwned"] = 403,
+            ["Identity.Account.RetainedCaregiverProfile"] = 409,
             ["Identity.Account.UserNotFound"] = 404,
             ["Identity.Account.InvalidOperation"] = 409,
             ["Identity.Account.CaregiverOnly"] = 403,

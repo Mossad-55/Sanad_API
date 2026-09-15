@@ -214,6 +214,12 @@ public sealed class UserConfiguration :
                     .HasColumnName("created_on_utc")
                     .IsRequired();
 
+                // Protect the exclusivity law even when two account-add requests race.
+                account.HasIndex("UserId")
+                    .HasDatabaseName("ux_user_accounts_one_caregiver")
+                    .IsUnique()
+                    .HasFilter("account_type IN (2, 3)");
+
                 account.HasIndex(
                     "UserId",
                     nameof(UserAccount.AccountType))

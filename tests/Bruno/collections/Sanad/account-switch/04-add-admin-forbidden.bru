@@ -1,0 +1,23 @@
+meta {
+  name: 04-add-admin-forbidden
+  type: http
+  seq: 4
+}
+post {
+  url: {{baseUrl}}/api/v1/account/accounts
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "accountType": 5 }
+}
+auth:bearer {
+  token: {{jwt}}
+}
+assert {
+  res.status: eq 403
+  res.body.code: eq Identity.Account.UnsupportedAccountType
+}

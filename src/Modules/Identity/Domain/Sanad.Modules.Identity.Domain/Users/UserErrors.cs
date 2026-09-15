@@ -20,6 +20,9 @@ public static class UserErrors
     public const string UserAlreadyHasAccount =
         "User already has this account type.";
     
+    public const string CaregiverTypesExclusive =
+        "Medical and Companion caregiver accounts cannot be combined.";
+
     public const string EmailNotSet =
         "User does not have an email address.";
 }

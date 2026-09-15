@@ -1,0 +1,22 @@
+meta {
+  name: 02-list-accounts
+  type: http
+  seq: 2
+}
+get {
+  url: {{baseUrl}}/api/v1/account/accounts
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{jwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const accounts = res.body.accounts;
+  if (!Array.isArray(accounts) || !accounts.includes(1)) {
+    throw new Error("Expected the owner's Family account in choices");
+  }
+}

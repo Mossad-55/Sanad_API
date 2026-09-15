@@ -1,0 +1,23 @@
+meta {
+  name: 03-add-family-duplicate
+  type: http
+  seq: 3
+}
+post {
+  url: {{baseUrl}}/api/v1/account/accounts
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "accountType": 1 }
+}
+auth:bearer {
+  token: {{jwt}}
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq Identity.Account.AccountAlreadyExists
+}

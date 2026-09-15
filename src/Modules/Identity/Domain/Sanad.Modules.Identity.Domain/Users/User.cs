@@ -153,6 +153,12 @@ public sealed class User : AggregateRoot<UserId>
                 UserErrors.UserAlreadyHasAccount);
         }
 
+        if ((accountType is AccountType.MedicalCaregiver or AccountType.CompanionCaregiver) &&
+            _accounts.Any(a => a.AccountType is AccountType.MedicalCaregiver or AccountType.CompanionCaregiver))
+        {
+            throw new DomainException(UserErrors.CaregiverTypesExclusive);
+        }
+
         bool isAddingElderlyAccount =
             accountType == AccountType.Elderly;
 

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
@@ -34,6 +35,24 @@ public sealed class IdentityDbContext :
         SupportTickets =>
             Set<SupportTicket>();
 
+
+    public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            return await base.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "ux_user_accounts_one_caregiver" })
+        {
+            throw new AccountWriteConflictException(true, ex);
+        }
+        catch (DbUpdateException ex) when (ex.InnerException is PostgresException
+            { SqlState: PostgresErrorCodes.UniqueViolation, ConstraintName: "IX_user_accounts_user_id_account_type" })
+        {
+            throw new AccountWriteConflictException(false, ex);
+        }
+    }
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

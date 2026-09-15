@@ -4,6 +4,17 @@ namespace Sanad.Modules.Identity.Application.Users;
 
 public static class AccountErrors
 {
+    public static readonly Error UnsupportedAccountType =
+        new("Identity.Account.UnsupportedAccountType", "Only Family or one caregiver account type is supported.");
+    public static readonly Error AccountAlreadyExists =
+        new("Identity.Account.AccountAlreadyExists", "The account side already exists.");
+    public static readonly Error CaregiverTypesExclusive =
+        new("Identity.Account.CaregiverTypesExclusive", "Medical and Companion accounts cannot be combined.");
+    public static readonly Error AccountNotOwned =
+        new("Identity.Account.AccountNotOwned", "The selected account does not belong to this user.");
+    public static readonly Error RetainedCaregiverProfile =
+        new("Identity.Account.RetainedCaregiverProfile", "A retained caregiver profile requires support review before adding a caregiver account again.");
+
     public static readonly Error UserNotFound =
         new(
             "Identity.Account.UserNotFound",
