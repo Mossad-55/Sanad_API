@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Sanad.Modules.Cms.Domain.Help;
 using Sanad.Modules.Cms.Domain.Legal;
@@ -272,8 +273,9 @@ public sealed class CmsDbContextModelTests
         using CmsDbContext dbContext =
             CreateDbContext();
 
+        // Check constraints are design-time metadata, not runtime-model metadata.
         var entityType =
-            dbContext.Model.FindEntityType(
+            dbContext.GetService<IDesignTimeModel>().Model.FindEntityType(
                 typeof(SupportContact));
 
         Assert.NotNull(entityType);

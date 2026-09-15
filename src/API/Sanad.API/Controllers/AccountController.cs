@@ -20,6 +20,46 @@ public sealed class AccountController :
         _sender = sender;
     }
 
+    [Authorize(Policy = AuthorizationPolicies.NormalAccess)]
+    [HttpGet("accounts")]
+    [ProducesResponseType(typeof(AccountChoicesResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> GetAccounts(CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        return ToActionResult(await _sender.Send(new GetMyAccountsQuery(userId), cancellationToken));
+    }
+
+    [Authorize(Policy = AuthorizationPolicies.NormalAccess)]
+    [HttpPost("accounts")]
+    [ProducesResponseType(typeof(AddAccountResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> AddAccount([FromBody] AccountChoiceRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        return ToActionResult(await _sender.Send(new AddMyAccountCommand(userId, request.AccountType), cancellationToken));
+    }
+
+    [Authorize(Policy = AuthorizationPolicies.NormalAccess)]
+    [HttpPost("switch")]
+    [ProducesResponseType(typeof(SwitchAccountResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> SwitchAccount([FromBody] AccountChoiceRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        return ToActionResult(await _sender.Send(new SwitchMyAccountCommand(userId, request.AccountType), cancellationToken));
+    }
+
     [Authorize(
         Policy =
             AuthorizationPolicies.NormalAccess)]

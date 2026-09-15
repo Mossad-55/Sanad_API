@@ -1,0 +1,19 @@
+meta {
+  name: 06-add-anonymous
+  type: http
+  seq: 6
+}
+post {
+  url: {{baseUrl}}/api/v1/account/accounts
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "accountType": 2 }
+}
+assert {
+  res.status: eq 401
+}

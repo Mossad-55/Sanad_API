@@ -1,0 +1,23 @@
+meta {
+  name: 05-switch-elderly-forbidden
+  type: http
+  seq: 5
+}
+post {
+  url: {{baseUrl}}/api/v1/account/switch
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "accountType": 4 }
+}
+auth:bearer {
+  token: {{jwt}}
+}
+assert {
+  res.status: eq 403
+  res.body.code: eq Identity.Account.UnsupportedAccountType
+}
