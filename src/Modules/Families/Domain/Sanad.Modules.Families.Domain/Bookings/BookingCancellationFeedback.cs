@@ -70,6 +70,27 @@ public sealed class BookingCancellationFeedback : ValueObject
         return new BookingCancellationFeedback(null, RequireNote(note));
     }
 
+    /// <summary>
+    /// Single shared rule for cancelling an accepted booking: a known category plus a non-blank,
+    /// bounded note. A note-only reason is not accepted feedback, and this is enforced here so the
+    /// policy and the recording boundary cannot drift apart.
+    /// </summary>
+    internal static void RequireForAcceptedBooking(BookingCancellationFeedback? feedback)
+    {
+        if (feedback is null)
+            throw new DomainException(
+                "Cancelling an accepted booking requires a reason category and a note.");
+
+        if (!feedback.HasCategory || !Enum.IsDefined(feedback.Category!.Value))
+            throw new DomainException(
+                "Cancelling an accepted booking requires a known reason category; a note-only reason is not enough.");
+
+        if (string.IsNullOrWhiteSpace(feedback.Note)
+            || feedback.Note.Length > Booking.MaximumReasonLength)
+            throw new DomainException(
+                $"Cancelling an accepted booking requires a note of up to {Booking.MaximumReasonLength} characters.");
+    }
+
     private static string RequireNote(string? note)
     {
         if (string.IsNullOrWhiteSpace(note))

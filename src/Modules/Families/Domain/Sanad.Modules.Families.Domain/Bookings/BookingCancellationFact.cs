@@ -112,11 +112,17 @@ public sealed class BookingCancellationFact : Entity<BookingCancellationFactId>
         if (actorUserId == UserId.Empty)
             throw new DomainException("Cancelling user ID is required.");
 
-        // Invariant restated at the recording boundary: a policy decision for an accepted booking always
-        // carries a validated category and note. Unreachable through Decide, kept as a hard guarantee.
-        if (decision.IsReasonFeedbackRequired && decision.Feedback is null)
+        // Defensive, derived from the recorded booking state rather than from a trusted flag: a
+        // cancellation of an accepted booking can never be recorded without a known category and a
+        // bounded note, and a decision that disagrees with the state it was made for is refused.
+        bool acceptedBooking = decision.StatusAtCancellation == BookingStatus.Confirmed;
+
+        if (acceptedBooking != decision.IsReasonFeedbackRequired)
             throw new DomainException(
-                "Cancelling an accepted booking requires a reason category and a note.");
+                "Cancellation decision is inconsistent with the booking state it was made for.");
+
+        if (acceptedBooking)
+            BookingCancellationFeedback.RequireForAcceptedBooking(decision.Feedback);
 
         BookingCancellationFeedback? feedback = decision.Feedback;
 

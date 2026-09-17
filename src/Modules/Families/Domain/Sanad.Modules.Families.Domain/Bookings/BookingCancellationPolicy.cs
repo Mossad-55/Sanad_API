@@ -50,9 +50,10 @@ public static class BookingCancellationPolicy
 
         bool isReasonFeedbackRequired = input.Status == BookingStatus.Confirmed;
 
-        if (isReasonFeedbackRequired && input.Feedback is null)
-            throw new DomainException(
-                "Cancelling an accepted booking requires a reason category and a note.");
+        // An accepted booking needs a known category AND a bounded non-blank note; a note-only reason
+        // (Category == null) is legal before acceptance only, so it is rejected here.
+        if (isReasonFeedbackRequired)
+            BookingCancellationFeedback.RequireForAcceptedBooking(input.Feedback);
 
         // Policy entitlement only: state, actor, action and elapsed time. Capture evidence is already
         // validated for consistency and is deliberately not consulted here, so a policy denial such as
