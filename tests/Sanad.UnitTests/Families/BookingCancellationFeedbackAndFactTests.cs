@@ -330,8 +330,9 @@ public sealed class BookingCancellationFeedbackAndFactTests
 
         // No public constructor of any kind, and the internal factory is not publicly reachable.
         Assert.Empty(decisionType.GetConstructors(BindingFlags.Public | BindingFlags.Instance));
-        Assert.Empty(decisionType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic |
-            BindingFlags.Instance).Where(c => !c.IsPrivate));
+        Assert.DoesNotContain(
+            decisionType.GetConstructors(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance),
+            constructor => !constructor.IsPrivate);
         Assert.DoesNotContain(
             decisionType.GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly),
             method => method.Name == "Create");
