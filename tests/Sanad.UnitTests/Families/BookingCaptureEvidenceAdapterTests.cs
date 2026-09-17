@@ -51,7 +51,7 @@ public sealed class BookingCaptureEvidenceAdapterTests
 
         Assert.Equal(BookingCaptureEvidence.NotCaptured, BookingCancellationPolicyInput.ResolveCaptureEvidence(booking));
 
-        // A captured-but-unsettled booking is still "nothing captured": the policy may answer for it.
+        // A pending or failed attempt is not capture evidence, so the policy may answer for it.
         BookingCancellationDecision decision = BookingCancellationPolicy.Decide(
             BookingCancellationPolicyInput.FromBooking(
                 booking,
@@ -166,7 +166,11 @@ public sealed class BookingCaptureEvidenceAdapterTests
         DateTime updatedOnUtc = booking.UpdatedOnUtc;
         DateTime confirmedOnUtc = booking.ConfirmedOnUtc!.Value;
         DateTime cancelledOnUtc = confirmedOnUtc.AddMinutes(30);
-        BookingCancellationFeedback? feedback = BookingCancellationFeedback.CreateOptionalNote("  running late  ");
+        // A Confirmed booking requires a category plus a note, so the positive mapping case must
+        // supply real accepted-booking feedback; the note-only shape is exercised as a rejection below.
+        BookingCancellationFeedback feedback = BookingCancellationFeedback.Create(
+            BookingCancellationReasonCategory.TransportationIssues,
+            "  running late  ");
 
         BookingCancellationPolicyInput input = BookingCancellationPolicyInput.FromBooking(
             booking,
@@ -184,6 +188,8 @@ public sealed class BookingCaptureEvidenceAdapterTests
         Assert.Equal(cancelledOnUtc, input.CancelledOnUtc);
         Assert.Equal(BookingCaptureEvidence.Captured, input.CaptureEvidence);
         Assert.Same(feedback, input.Feedback);
+        Assert.Equal(BookingCancellationReasonCategory.TransportationIssues, input.Feedback!.Category);
+        Assert.Equal("running late", input.Feedback.Note);
 
         // Reading a booking for a decision never changes it.
         Assert.Equal(BookingStatus.Confirmed, booking.Status);
@@ -200,6 +206,8 @@ public sealed class BookingCaptureEvidenceAdapterTests
             BookingRefundDecisionReason.FamilyCancellationWithinGraceWindow,
             decision.RefundDecisionReason);
         Assert.Equal(booking.ConfirmedOnUtc, decision.ConfirmedOnUtcUsed);
+        // The reason the caller supplied is the reason the decision carries.
+        Assert.Same(feedback, decision.Feedback);
     }
 
     [Fact]
@@ -223,21 +231,33 @@ public sealed class BookingCaptureEvidenceAdapterTests
         Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
     }
 
-    [Fact]
-    public void FromBooking_WithoutFeedbackOnAnAcceptedBookingStillMapsAndLetsThePolicyRejectIt()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void FromBooking_MapsEitherAbsentOrNoteOnlyReasonAndThePolicyStillRefuses(bool useNoteOnlyReason)
     {
+        // Both shapes are legal before acceptance, so a caller that reuses its pre-acceptance helper
+        // on an accepted booking must still be refused. The adapter maps the value faithfully and does
+        // not invent a category; the refusal is the policy's.
         Booking booking = BookingCancellationBookingFactory.CreatePaidAndAcceptedBooking();
+        BookingCancellationFeedback? feedback = useNoteOnlyReason
+            ? BookingCancellationFeedback.CreateOptionalNote("running late")
+            : null;
+        Assert.Null(feedback?.Category);
 
         BookingCancellationPolicyInput input = BookingCancellationPolicyInput.FromBooking(
             booking,
             BookingCancellationActorSide.Family,
             BookingCancellationAction.Cancel,
-            booking.ConfirmedOnUtc!.Value.AddMinutes(10));
+            booking.ConfirmedOnUtc!.Value.AddMinutes(10),
+            feedback);
 
-        Assert.Null(input.Feedback);
+        Assert.Equal(feedback, input.Feedback);
         DomainException error = Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
 
-        Assert.Contains("requires a reason category", error.Message);
+        Assert.Contains(
+            useNoteOnlyReason ? "note-only reason is not enough" : "requires a reason category",
+            error.Message);
     }
 
     [Fact]

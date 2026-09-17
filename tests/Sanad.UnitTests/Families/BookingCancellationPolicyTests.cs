@@ -385,15 +385,17 @@ public sealed class BookingCancellationPolicyTests
     {
         // Capture evidence and timestamps are supplied consistently with the status, so the only
         // violated rule is the actor / action combination itself.
+        // Names must match the record's primary constructor (PascalCase), not the camelCase
+        // parameters of the ForXxx factories.
         BookingCancellationPolicyInput input = new(
-            status,
-            actorSide,
-            action,
-            status == BookingStatus.Confirmed ? AcceptanceOnUtc : null,
-            startedOnUtc: null,
-            CancelledAtAcceptance,
-            captureEvidence,
-            status == BookingStatus.Confirmed ? AcceptedReason() : null);
+            Status: status,
+            ActorSide: actorSide,
+            Action: action,
+            ConfirmedOnUtc: status == BookingStatus.Confirmed ? AcceptanceOnUtc : null,
+            StartedOnUtc: null,
+            CancelledOnUtc: CancelledAtAcceptance,
+            CaptureEvidence: captureEvidence,
+            Feedback: status == BookingStatus.Confirmed ? AcceptedReason() : null);
 
         Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
     }
@@ -482,7 +484,8 @@ public sealed class BookingCancellationPolicyTests
             BookingStatus.Confirmed, AcceptanceOnUtc, null, notUtc,
             BookingCaptureEvidence.Captured, AcceptedReason());
 
-        Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
+        DomainException error = Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
+        Assert.Contains("Cancellation time must be a UTC timestamp", error.Message);
     }
 
     [Theory]
@@ -496,35 +499,113 @@ public sealed class BookingCancellationPolicyTests
             BookingStatus.Confirmed, notUtc, null, AcceptanceOnUtc,
             BookingCaptureEvidence.Captured, AcceptedReason());
 
-        Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
+        DomainException error = Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
+        Assert.Contains("Acceptance time must be a UTC timestamp", error.Message);
+    }
+
+    [Theory]
+    [InlineData(DateTimeKind.Unspecified)]
+    [InlineData(DateTimeKind.Local)]
+    public void NonUtcVisitStartTime_IsRefused(DateTimeKind kind)
+    {
+        // A present non-UTC start time is a corrupt recorded value: it must be refused rather than
+        // quietly read as "no visit has started".
+        DateTime notUtc = DateTime.SpecifyKind(AcceptanceOnUtc.AddMinutes(30), kind);
+
+        BookingCancellationPolicyInput input = FamilyCancellation(
+            BookingStatus.Confirmed, AcceptanceOnUtc, notUtc, CancelAfter("01:30:00"),
+            BookingCaptureEvidence.Captured, AcceptedReason());
+
+        DomainException error = Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
+        Assert.Contains("Visit start time must be a UTC timestamp", error.Message);
+    }
+
+    /// <summary>
+    /// A *present* nullable holding the invalid default timestamp. This is deliberately not the same
+    /// thing as a null nullable: null means "not recorded" and is legal for a visit that has not
+    /// started, while a present default is a corrupt recorded value the policy must refuse.
+    /// </summary>
+    private static readonly DateTime? PresentDefaultTimestamp = new DateTime?(default);
+
+    [Fact]
+    public void PresentDefaultTimestampIsNotNull_AndIsTheInvalidValue()
+    {
+        // Pins the premise of the three tests below: the argument really is supplied.
+        Assert.NotNull(PresentDefaultTimestamp);
+        Assert.True(PresentDefaultTimestamp!.HasValue);
+        Assert.Equal(DateTime.MinValue, PresentDefaultTimestamp.Value);
     }
 
     [Fact]
-    public void DefaultTimestamps_AreRefusedAsMissing()
+    public void DefaultCancellationTime_IsRefusedAsMissing()
     {
-        Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(
-            FamilyCancellation(
-                BookingStatus.Confirmed, AcceptanceOnUtc, null, default,
-                BookingCaptureEvidence.Captured, AcceptedReason())));
+        // CancelledOnUtc is a non-nullable DateTime, so its default value is the only "missing" shape.
+        BookingCancellationPolicyInput input = FamilyCancellation(
+            BookingStatus.Confirmed, AcceptanceOnUtc, null, default,
+            BookingCaptureEvidence.Captured, AcceptedReason());
 
-        Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(
-            FamilyCancellation(
-                BookingStatus.Confirmed, default, null, CancelledAtAcceptance,
-                BookingCaptureEvidence.Captured, AcceptedReason())));
+        DomainException error = Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
+        Assert.Contains("Cancellation time is required", error.Message);
+    }
 
-        Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(
+    [Fact]
+    public void DefaultAcceptanceTime_IsRefusedAsMissingEvenThoughItIsPresent()
+    {
+        // Everything else is valid, so only the acceptance timestamp can be at fault here. A null
+        // acceptance time is a different case, covered by Confirmed_WithoutAcceptanceTime_IsRefused.
+        BookingCancellationPolicyInput input = FamilyCancellation(
+            BookingStatus.Confirmed, PresentDefaultTimestamp, null, CancelledAtAcceptance,
+            BookingCaptureEvidence.Captured, AcceptedReason());
+
+        Assert.NotNull(input.ConfirmedOnUtc);
+
+        DomainException error = Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
+        Assert.Contains("Acceptance time is required", error.Message);
+    }
+
+    [Fact]
+    public void DefaultVisitStartTime_IsRefusedAsMissingEvenThoughItIsPresent()
+    {
+        // A present default must be caught by the timestamp rule, not by the "visit already started"
+        // rule, which is why the message is pinned to the missing-value guard.
+        BookingCancellationPolicyInput input = FamilyCancellation(
+            BookingStatus.Confirmed, AcceptanceOnUtc, PresentDefaultTimestamp, CancelledAtAcceptance,
+            BookingCaptureEvidence.Captured, AcceptedReason());
+
+        Assert.NotNull(input.StartedOnUtc);
+
+        DomainException error = Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
+        Assert.Contains("Visit start time is required", error.Message);
+    }
+
+    [Fact]
+    public void Confirmed_NullVisitStartIsValidBecauseTheVisitHasNotStarted()
+    {
+        // The counterpart of the case above: a null start is the normal, valid shape before a visit.
+        BookingCancellationDecision decision = BookingCancellationPolicy.Decide(
             FamilyCancellation(
-                BookingStatus.Confirmed, AcceptanceOnUtc, default, CancelledAtAcceptance,
-                BookingCaptureEvidence.Captured, AcceptedReason())));
+                BookingStatus.Confirmed, AcceptanceOnUtc, startedOnUtc: null, CancelAfter("00:10:00"),
+                BookingCaptureEvidence.Captured, AcceptedReason()));
+
+        Assert.Equal(BookingRefundEntitlement.FullCapturedRefund, decision.RefundEntitlement);
+        Assert.Equal(AcceptanceOnUtc, decision.ConfirmedOnUtcUsed);
+        Assert.Equal(
+            BookingRefundDecisionReason.FamilyCancellationWithinGraceWindow,
+            decision.RefundDecisionReason);
     }
 
     [Fact]
     public void Confirmed_WithoutAcceptanceTime_IsRefused()
     {
-        Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(
-            FamilyCancellation(
-                BookingStatus.Confirmed, confirmedOnUtc: null, null, CancelledAtAcceptance,
-                BookingCaptureEvidence.Captured, AcceptedReason())));
+        // The absent-nullable counterpart of DefaultAcceptanceTime_IsRefusedAsMissingEvenThoughItIsPresent:
+        // here the fact is genuinely missing, and that is what the policy refuses.
+        BookingCancellationPolicyInput input = FamilyCancellation(
+            BookingStatus.Confirmed, confirmedOnUtc: null, null, CancelledAtAcceptance,
+            BookingCaptureEvidence.Captured, AcceptedReason());
+        Assert.Null(input.ConfirmedOnUtc);
+
+        DomainException error = Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
+        Assert.Contains("must carry a valid acceptance time", error.Message);
     }
 
     [Fact]
@@ -543,14 +624,18 @@ public sealed class BookingCancellationPolicyTests
     [Fact]
     public void Confirmed_WithRecordedVisitStart_IsRefused()
     {
-        Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(
-            FamilyCancellation(
-                BookingStatus.Confirmed,
-                AcceptanceOnUtc,
-                startedOnUtc: AcceptanceOnUtc.AddMinutes(5),
-                CancelAfter("00:10:00"),
-                BookingCaptureEvidence.Captured,
-                AcceptedReason())));
+        // A valid UTC start time, so this is the "visit already started" rule and not the timestamp
+        // guard above. Ordinary cancellation is blocked once the visit has started.
+        BookingCancellationPolicyInput input = FamilyCancellation(
+            BookingStatus.Confirmed,
+            AcceptanceOnUtc,
+            startedOnUtc: AcceptanceOnUtc.AddMinutes(5),
+            CancelAfter("00:10:00"),
+            BookingCaptureEvidence.Captured,
+            AcceptedReason());
+
+        DomainException error = Assert.Throws<DomainException>(() => BookingCancellationPolicy.Decide(input));
+        Assert.Contains("already recorded a visit start", error.Message);
     }
 
     [Fact]
