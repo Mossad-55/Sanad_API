@@ -1,30 +1,32 @@
 namespace Sanad.Modules.Families.Domain.Bookings;
 
 /// <summary>
-/// Why the policy reached its <see cref="BookingRefundEntitlement"/>. Recorded with the cancellation
-/// fact so a later read model can tell "no money was ever captured" apart from "the policy denied a
-/// refund", and never present <see cref="BookingRefundEntitlement.NoRefundDue"/> as a failed refund.
+/// Why the policy reached its <see cref="BookingRefundEntitlement"/>. Every member is a policy
+/// outcome; missing or contradictory capture evidence never produces one of these, it fails the
+/// request instead. Recorded with the cancellation fact so a later read model can tell "no money was
+/// ever captured" apart from "the policy denied a refund", and never present
+/// <see cref="BookingRefundEntitlement.NoRefundDue"/> as a failed refund.
 /// </summary>
 public enum BookingRefundDecisionReason
 {
-    /// <summary>Booking cancelled before payment was captured: there is nothing to refund.</summary>
+    /// <summary>Booking cancelled while unpaid: there is no captured money to refund.</summary>
     NothingCaptured = 1,
 
-    /// <summary>Policy would grant a refund, but no captured payment fact exists to refund.</summary>
-    NoCapturedPaymentRecorded = 2,
-
     /// <summary>Family cancelled while the booking was still awaiting caregiver approval.</summary>
-    FamilyCancellationBeforeAcceptance = 3,
+    FamilyCancellationBeforeAcceptance = 2,
 
     /// <summary>Assigned caregiver rejected a booking that was still awaiting approval.</summary>
-    CaregiverRejectionBeforeAcceptance = 4,
+    CaregiverRejectionBeforeAcceptance = 3,
 
     /// <summary>Assigned caregiver cancelled a booking they had accepted.</summary>
-    CaregiverCancellationAfterAcceptance = 5,
+    CaregiverCancellationAfterAcceptance = 4,
 
     /// <summary>Family cancelled inside the 60-minute window measured from the acceptance time.</summary>
-    FamilyCancellationWithinGraceWindow = 6,
+    FamilyCancellationWithinGraceWindow = 5,
 
-    /// <summary>Family cancelled at or after 60 minutes from the acceptance time.</summary>
-    FamilyCancellationOutsideGraceWindow = 7
+    /// <summary>
+    /// Family cancelled at or after 60 minutes from the acceptance time: a policy denial on a paid
+    /// booking, not a missing-capture outcome.
+    /// </summary>
+    FamilyCancellationOutsideGraceWindow = 6
 }

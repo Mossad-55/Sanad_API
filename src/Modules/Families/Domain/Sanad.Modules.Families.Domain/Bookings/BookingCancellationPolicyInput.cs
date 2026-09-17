@@ -3,7 +3,7 @@ namespace Sanad.Modules.Families.Domain.Bookings;
 /// <summary>
 /// Everything the cancellation policy is allowed to look at. Times are authoritative values supplied
 /// by the caller (server time provider and persisted booking timestamps); the policy never reads a
-/// clock itself. Payment facts are supplied as facts, so the policy never queries a provider.
+/// clock itself. Payment facts are supplied as evidence, so the policy never queries a provider.
 /// </summary>
 /// <param name="Status">Persisted <see cref="Booking.Status"/> at the moment of cancellation.</param>
 /// <param name="ActorSide">Who ends the booking.</param>
@@ -13,8 +13,10 @@ namespace Sanad.Modules.Families.Domain.Bookings;
 /// </param>
 /// <param name="StartedOnUtc">Persisted visit start time (<c>Booking.StartedOnUtc</c>); normally null here.</param>
 /// <param name="CancelledOnUtc">Authoritative UTC time of the cancellation act.</param>
-/// <param name="HasCapturedPayment">True when a payment for this booking is captured and not yet refunded.</param>
-/// <param name="Feedback">Reason category and note; mandatory once the booking was accepted.</param>
+/// <param name="CaptureEvidence">What is known about money taken for this booking.</param>
+/// <param name="Feedback">
+/// Validated reason; mandatory once the booking was accepted, optional before acceptance.
+/// </param>
 public sealed record BookingCancellationPolicyInput(
     BookingStatus Status,
     BookingCancellationActorSide ActorSide,
@@ -22,7 +24,7 @@ public sealed record BookingCancellationPolicyInput(
     DateTime? ConfirmedOnUtc,
     DateTime? StartedOnUtc,
     DateTime CancelledOnUtc,
-    bool HasCapturedPayment,
+    BookingCaptureEvidence CaptureEvidence,
     BookingCancellationFeedback? Feedback)
 {
     public static BookingCancellationPolicyInput ForFamilyCancellation(
@@ -30,7 +32,7 @@ public sealed record BookingCancellationPolicyInput(
         DateTime? confirmedOnUtc,
         DateTime? startedOnUtc,
         DateTime cancelledOnUtc,
-        bool hasCapturedPayment,
+        BookingCaptureEvidence captureEvidence,
         BookingCancellationFeedback? feedback = null) =>
         new(
             status,
@@ -39,13 +41,13 @@ public sealed record BookingCancellationPolicyInput(
             confirmedOnUtc,
             startedOnUtc,
             cancelledOnUtc,
-            hasCapturedPayment,
+            captureEvidence,
             feedback);
 
     public static BookingCancellationPolicyInput ForCaregiverRejection(
         BookingStatus status,
         DateTime cancelledOnUtc,
-        bool hasCapturedPayment,
+        BookingCaptureEvidence captureEvidence,
         BookingCancellationFeedback? feedback = null) =>
         new(
             status,
@@ -54,7 +56,7 @@ public sealed record BookingCancellationPolicyInput(
             null,
             null,
             cancelledOnUtc,
-            hasCapturedPayment,
+            captureEvidence,
             feedback);
 
     public static BookingCancellationPolicyInput ForCaregiverCancellation(
@@ -62,7 +64,7 @@ public sealed record BookingCancellationPolicyInput(
         DateTime? confirmedOnUtc,
         DateTime? startedOnUtc,
         DateTime cancelledOnUtc,
-        bool hasCapturedPayment,
+        BookingCaptureEvidence captureEvidence,
         BookingCancellationFeedback? feedback = null) =>
         new(
             status,
@@ -71,13 +73,17 @@ public sealed record BookingCancellationPolicyInput(
             confirmedOnUtc,
             startedOnUtc,
             cancelledOnUtc,
-            hasCapturedPayment,
+            captureEvidence,
             feedback);
 
     /// <summary>
-    /// Builds the input from a persisted booking and the caller's authoritative time. Capture is read
-    /// from the booking's payment transactions; whether a gateway transaction id exists for the actual
-    /// refund call stays an application concern and never changes this policy's answer.
+    /// Builds the input from a persisted booking and the caller's authoritative time.
+    /// <para>
+    /// Loading assumption: the booking's payment transactions are an owned collection on the aggregate,
+    /// so a normal <c>Bookings</c> query already loads them. This helper issues no query, triggers no
+    /// lazy loading and calls no provider; a caller projecting a partial booking must resolve capture
+    /// evidence itself instead of passing an empty collection.
+    /// </para>
     /// </summary>
     public static BookingCancellationPolicyInput FromBooking(
         Booking booking,
@@ -88,9 +94,6 @@ public sealed record BookingCancellationPolicyInput(
     {
         ArgumentNullException.ThrowIfNull(booking);
 
-        bool hasCapturedPayment = booking.PaymentTransactions
-            .Any(transaction => transaction.Status == PaymentTransactionStatus.Succeeded);
-
         return new BookingCancellationPolicyInput(
             booking.Status,
             actorSide,
@@ -98,7 +101,37 @@ public sealed record BookingCancellationPolicyInput(
             booking.ConfirmedOnUtc,
             booking.StartedOnUtc,
             cancelledOnUtc,
-            hasCapturedPayment,
+            ResolveCaptureEvidence(booking),
             feedback);
+    }
+
+    /// <summary>
+    /// Reads capture evidence off a persisted booking without calling a provider.
+    /// <para>
+    /// A succeeded payment transaction is capture evidence on its own: a captured payment that lacks a
+    /// provider transaction reference is still captured, and settling that gap is an application
+    /// concern, never a reason to report "no refund due". When no transaction is succeeded, the legacy
+    /// booking markers (<c>PaidOnUtc</c>, <c>PaymobTransactionId</c>) are consulted so that incomplete
+    /// capture history on a paid booking becomes <see cref="BookingCaptureEvidence.Ambiguous"/> — which
+    /// the policy refuses to decide — instead of being read as proof that nothing was ever paid.
+    /// </para>
+    /// </summary>
+    public static BookingCaptureEvidence ResolveCaptureEvidence(Booking booking)
+    {
+        ArgumentNullException.ThrowIfNull(booking);
+
+        bool hasSucceededTransaction = booking.PaymentTransactions
+            .Any(transaction => transaction.Status == PaymentTransactionStatus.Succeeded);
+
+        if (hasSucceededTransaction)
+            return BookingCaptureEvidence.Captured;
+
+        bool hasLegacyPaidEvidence =
+            booking.PaidOnUtc is not null
+            || !string.IsNullOrWhiteSpace(booking.PaymobTransactionId);
+
+        return hasLegacyPaidEvidence
+            ? BookingCaptureEvidence.Ambiguous
+            : BookingCaptureEvidence.NotCaptured;
     }
 }

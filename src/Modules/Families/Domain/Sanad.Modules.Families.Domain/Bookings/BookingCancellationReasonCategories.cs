@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 
 namespace Sanad.Modules.Families.Domain.Bookings;
@@ -6,10 +7,14 @@ namespace Sanad.Modules.Families.Domain.Bookings;
 /// Closed set of cancellation reason categories plus their Arabic labels.
 /// <see cref="BookingCancellationReasonCategory.AccountDeletion"/> is a reason label only: it never
 /// triggers, implies or bypasses any account-deletion flow.
+/// <para>
+/// The exposed collections are read-only views over private backing stores, so no caller can replace
+/// or mutate an entry or affect another caller's results.
+/// </para>
 /// </summary>
 public static class BookingCancellationReasonCategories
 {
-    public static readonly BookingCancellationReasonCategory[] All =
+    private static readonly BookingCancellationReasonCategory[] CategoryValues =
     [
         BookingCancellationReasonCategory.Emergency,
         BookingCancellationReasonCategory.MedicalIssues,
@@ -18,15 +23,19 @@ public static class BookingCancellationReasonCategories
         BookingCancellationReasonCategory.Other
     ];
 
-    private static readonly IReadOnlyDictionary<BookingCancellationReasonCategory, string> ArabicLabels =
-        new Dictionary<BookingCancellationReasonCategory, string>
+    private static readonly ReadOnlyDictionary<BookingCancellationReasonCategory, string> ArabicLabels =
+        new(new Dictionary<BookingCancellationReasonCategory, string>
         {
             [BookingCancellationReasonCategory.Emergency] = "حالة طارئة",
             [BookingCancellationReasonCategory.MedicalIssues] = "أسباب صحية",
             [BookingCancellationReasonCategory.TransportationIssues] = "مشكلات المواصلات",
             [BookingCancellationReasonCategory.AccountDeletion] = "حذف الحساب",
             [BookingCancellationReasonCategory.Other] = "أسباب أخرى"
-        };
+        });
+
+    /// <summary>All valid categories in presentation order. Read-only; entries cannot be replaced.</summary>
+    public static IReadOnlyList<BookingCancellationReasonCategory> All { get; } =
+        new ReadOnlyCollection<BookingCancellationReasonCategory>(CategoryValues);
 
     public static bool TryParse(int value, out BookingCancellationReasonCategory category)
     {

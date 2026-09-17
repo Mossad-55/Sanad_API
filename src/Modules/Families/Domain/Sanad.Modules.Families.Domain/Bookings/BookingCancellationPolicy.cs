@@ -16,6 +16,14 @@ namespace Sanad.Modules.Families.Domain.Bookings;
 /// </list>
 /// </para>
 /// <para>
+/// Entitlement comes only from booking state, actor, action and elapsed time. Capture evidence never
+/// grants or withholds a refund: it is cross-checked after the policy has spoken, and a booking whose
+/// state says it was paid but whose capture evidence is missing or contradictory fails the request as
+/// an integrity problem rather than turning into a silent "no refund due". Only a genuinely unpaid
+/// <see cref="BookingStatus.PendingPayment"/> booking yields
+/// <see cref="BookingRefundDecisionReason.NothingCaptured"/>.
+/// </para>
+/// <para>
 /// The policy never reads a clock, never calls a payment provider and never produces an amount. It
 /// fails explicitly on a missing acceptance time, on a non-UTC or inconsistent timestamp, or on a
 /// state/actor combination it does not recognise, instead of guessing a financial entitlement. A
@@ -40,15 +48,22 @@ public static class BookingCancellationPolicy
 
         Validate(input);
 
+        bool isReasonFeedbackRequired = input.Status == BookingStatus.Confirmed;
+
+        if (isReasonFeedbackRequired && input.Feedback is null)
+            throw new DomainException(
+                "Cancelling an accepted booking requires a reason category and a note.");
+
+        // Policy entitlement only: state, actor, action and elapsed time. Capture evidence is already
+        // validated for consistency and is deliberately not consulted here, so a policy denial such as
+        // the expired family grace window keeps its own accurate reason.
         BookingRefundEntitlement refundEntitlement;
         BookingRefundDecisionReason refundDecisionReason;
 
-        if (!input.HasCapturedPayment)
+        if (input.Status == BookingStatus.PendingPayment)
         {
             refundEntitlement = BookingRefundEntitlement.NoRefundDue;
-            refundDecisionReason = input.Status == BookingStatus.PendingPayment
-                ? BookingRefundDecisionReason.NothingCaptured
-                : BookingRefundDecisionReason.NoCapturedPaymentRecorded;
+            refundDecisionReason = BookingRefundDecisionReason.NothingCaptured;
         }
         else if (input.Status == BookingStatus.PendingCaregiverApproval)
         {
@@ -78,13 +93,7 @@ public static class BookingCancellationPolicy
             && input.ActorSide == BookingCancellationActorSide.Caregiver
             && input.Action == BookingCancellationAction.Cancel;
 
-        bool isReasonFeedbackRequired = input.Status == BookingStatus.Confirmed;
-
-        if (isReasonFeedbackRequired && input.Feedback is null)
-            throw new DomainException(
-                "Cancelling an accepted booking requires a reason category and a note.");
-
-        return new BookingCancellationDecision(
+        return BookingCancellationDecision.Create(
             input.Status,
             input.ActorSide,
             input.Action,
@@ -94,6 +103,7 @@ public static class BookingCancellationPolicy
             refundDecisionReason,
             isCaregiverIncident,
             isReasonFeedbackRequired,
+            input.Feedback,
             CurrentPolicyVersion);
     }
 
@@ -107,6 +117,9 @@ public static class BookingCancellationPolicy
 
         if (!Enum.IsDefined(input.Action))
             throw new DomainException("Cancellation action is invalid.");
+
+        if (!Enum.IsDefined(input.CaptureEvidence))
+            throw new DomainException("Capture evidence is invalid.");
 
         ValidateTimestamp(input.CancelledOnUtc, "Cancellation time");
 
@@ -178,9 +191,29 @@ public static class BookingCancellationPolicy
                     "A booking that was never accepted cannot carry a visit start time.");
         }
 
-        if (input.Status == BookingStatus.PendingPayment && input.HasCapturedPayment)
+        ValidateCaptureEvidence(input);
+    }
+
+    /// <summary>
+    /// Fails closed on capture evidence that contradicts the booking state. A genuinely unpaid booking
+    /// must show no payment evidence, and a paid or accepted booking must show captured evidence;
+    /// anything else is an integrity problem for a human or a later stage to resolve, and is never
+    /// answered as "no refund due".
+    /// </summary>
+    private static void ValidateCaptureEvidence(BookingCancellationPolicyInput input)
+    {
+        if (input.Status == BookingStatus.PendingPayment)
+        {
+            if (input.CaptureEvidence != BookingCaptureEvidence.NotCaptured)
+                throw new DomainException(
+                    "A booking that is still awaiting payment cannot carry captured or ambiguous payment evidence.");
+
+            return;
+        }
+
+        if (input.CaptureEvidence != BookingCaptureEvidence.Captured)
             throw new DomainException(
-                "A booking that is still awaiting payment cannot have a captured payment.");
+                "Captured payment evidence for this paid booking is missing or inconsistent; the cancellation cannot be decided until that is resolved.");
     }
 
     private static void ValidateTimestamp(DateTime value, string field)
