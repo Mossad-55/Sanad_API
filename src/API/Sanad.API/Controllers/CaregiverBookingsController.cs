@@ -12,6 +12,7 @@ namespace Sanad.API.Controllers;
 
 public sealed record DeclineBookingRequest(string Reason);
 public sealed record CompleteBookingRequest(string? Notes);
+public sealed record CaregiverCancelBookingRequest(string? Reason, int? ReasonCategory);
 
 [Authorize(Policy = AuthorizationPolicies.CaregiverAccess)]
 [Route("api/v1/caregiver/bookings")]
@@ -137,8 +138,41 @@ public sealed class CaregiverBookingsController : ApiControllerBase
 
         var command = new CaregiverDeclineBookingCommand(
             caregiver.Id,
+            userId,
             new BookingId(bookingId),
             request.Reason,
+            _dateTimeProvider.UtcNow);
+
+        var result = await _sender.Send(command, cancellationToken);
+        return ToActionResult(result);
+    }
+
+    [HttpPost("{bookingId:guid}/cancel")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    public async Task<IActionResult> CancelBooking(
+        Guid bookingId,
+        [FromBody] CaregiverCancelBookingRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var caregiver = await _caregiversDb.Caregivers
+            .SingleOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+
+        if (caregiver is null)
+        {
+            return Unauthorized();
+        }
+
+        var command = new CaregiverCancelBookingCommand(
+            caregiver.Id,
+            userId,
+            new BookingId(bookingId),
+            request.Reason,
+            request.ReasonCategory,
             _dateTimeProvider.UtcNow);
 
         var result = await _sender.Send(command, cancellationToken);

@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Application.Abstractions.Caregivers;
+using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Domain.Bookings;
@@ -91,6 +92,16 @@ public sealed class BookingPaymentWebhookTests
             }
 
             return Task.FromResult(Result<string?>.Success(refundId));
+        }
+    }
+
+    private sealed class StubCancellationFactRecorder : IBookingCancellationFactRecorder
+    {
+        public Task RecordAsync(
+            BookingCancellationFact fact,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
     }
 
@@ -291,11 +302,13 @@ public sealed class BookingPaymentWebhookTests
 
         var declineHandler = new CaregiverDeclineBookingCommandHandler(
             dbContext,
-            new FakePaymobClient(null, refundId: "dev-refund-66"));
+            new FakePaymobClient(null, refundId: "dev-refund-66"),
+            new StubCancellationFactRecorder());
 
         var declineResult = await declineHandler.Handle(
             new CaregiverDeclineBookingCommand(
                 booking.CaregiverId,
+                UserId.New(),
                 booking.Id,
                 "Schedule conflict",
                 DateTime.UtcNow),

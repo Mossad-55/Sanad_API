@@ -357,7 +357,7 @@ public sealed class CancelBookingCommandHandler : ICommandHandler<CancelBookingC
         {
             return Result.Failure(new Error("Bookings.Domain.InvalidOperation", exception.Message));
         }
-        catch (DbUpdateException exception) when (IsFactUniqueViolation(exception))
+        catch (DbUpdateException exception) when (CancellationPersistenceGuard.IsFactUniqueViolation(exception))
         {
             // Parallel-cancel race: a fact for this booking was committed first
             return Result.Failure(
@@ -365,28 +365,5 @@ public sealed class CancelBookingCommandHandler : ICommandHandler<CancelBookingC
                     "Bookings.Cancel.AlreadyProcessed",
                     "This booking cancellation was already processed."));
         }
-    }
-
-    /// <summary>
-    /// Recognizes the unique violation on <c>families.booking_cancellation_facts</c>
-    /// (<c>ux_booking_cancellation_facts_booking</c>). The Application assembly does not reference
-    /// Npgsql, so the check reads the inner exception message, where PostgreSQL reports the
-    /// constraint name for a unique violation.
-    /// </summary>
-    private static bool IsFactUniqueViolation(DbUpdateException exception)
-    {
-        const string constraintName = "ux_booking_cancellation_facts_booking";
-
-        for (Exception? inner = exception.InnerException;
-            inner is not null;
-            inner = inner.InnerException)
-        {
-            if (inner.Message.Contains(constraintName, StringComparison.Ordinal))
-            {
-                return true;
-            }
-        }
-
-        return false;
     }
 }
