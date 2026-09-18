@@ -186,20 +186,24 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
 public sealed record CancelBookingCommand(
     BookingId BookingId,
     UserId UserId,
-    string Reason,
+    string? Reason,
+    int? ReasonCategory,
     DateTime UtcNow) : ICommand;
 
 public sealed class CancelBookingCommandHandler : ICommandHandler<CancelBookingCommand>
 {
     private readonly IFamiliesDbContext _dbContext;
     private readonly IPaymobClient _paymobClient;
+    private readonly IBookingCancellationFactRecorder _cancellationFactRecorder;
 
     public CancelBookingCommandHandler(
         IFamiliesDbContext dbContext,
-        IPaymobClient paymobClient)
+        IPaymobClient paymobClient,
+        IBookingCancellationFactRecorder cancellationFactRecorder)
     {
         _dbContext = dbContext;
         _paymobClient = paymobClient;
+        _cancellationFactRecorder = cancellationFactRecorder;
     }
 
     public async Task<Result> Handle(
@@ -208,6 +212,7 @@ public sealed class CancelBookingCommandHandler : ICommandHandler<CancelBookingC
     {
         try
         {
+            // 1. Resolve family by membership (as before)
             var family = await _dbContext.Families
                 .AsNoTracking()
                 .Include(f => f.Members)
@@ -217,6 +222,14 @@ public sealed class CancelBookingCommandHandler : ICommandHandler<CancelBookingC
             {
                 return Result.Failure(
                     new Error("Bookings.FamilyNotFound", "Family account not found for current user."));
+            }
+
+            // 2. Role gate: only Owner/Editor may cancel (Viewers rejected, same pattern as checkout)
+            FamilyRole? role = family.GetRole(request.UserId);
+            if (role is not (FamilyRole.Owner or FamilyRole.Editor))
+            {
+                return Result.Failure(
+                    new Error("Bookings.UnauthorizedRole", "Viewers are not permitted to cancel bookings."));
             }
 
             Booking? booking = await _dbContext.Bookings
@@ -233,25 +246,109 @@ public sealed class CancelBookingCommandHandler : ICommandHandler<CancelBookingC
                     new Error("Bookings.BookingNotInFamily", "Booking was not found in this family."));
             }
 
-            booking.CancelByFamily(request.Reason, request.UtcNow);
+            // 3. Feedback shape validation — before any domain mutation
+            BookingCancellationFeedback? feedback;
 
-            PaymentTransaction? paidTransaction = booking.PaymentTransactions.FirstOrDefault(
-                t => t.Status == PaymentTransactionStatus.Succeeded
-                    && t.PaymobTransactionId is not null);
-
-            if (paidTransaction is not null)
+            if (booking.Status == BookingStatus.Confirmed)
             {
-                Result<string?> refund = await _paymobClient.RefundPaymentAsync(
-                    paidTransaction.PaymobTransactionId!,
-                    paidTransaction.Amount,
-                    cancellationToken);
-
-                if (refund.IsSuccess)
+                // Accepted: a known category AND a non-blank note are mandatory
+                if (request.ReasonCategory is null)
                 {
-                    booking.MarkRefunded(refund.Value, request.UtcNow);
+                    return Result.Failure(
+                        new Error(
+                            "Bookings.Cancel.ReasonCategoryRequired",
+                            "A reason category is required to cancel an accepted booking."));
                 }
+
+                if (BookingCancellationReasonCategories.TryParse(request.ReasonCategory.Value, out BookingCancellationReasonCategory category) is false)
+                {
+                    return Result.Failure(
+                        new Error(
+                            "Bookings.Cancel.ReasonCategoryInvalid",
+                            "The supplied reason category is not a defined cancellation reason."));
+                }
+
+                if (string.IsNullOrWhiteSpace(request.Reason))
+                {
+                    return Result.Failure(
+                        new Error(
+                            "Bookings.Cancel.ReasonRequired",
+                            "A reason note is required to cancel an accepted booking."));
+                }
+
+                feedback = BookingCancellationFeedback.Create(category, request.Reason);
+            }
+            else if (request.ReasonCategory is not null
+                && booking.Status is (BookingStatus.PendingPayment or BookingStatus.PendingCaregiverApproval))
+            {
+                // Pre-acceptance: no category may be invented
+                return Result.Failure(
+                    new Error(
+                        "Bookings.Cancel.ReasonCategoryNotAllowedPreAcceptance",
+                        "A reason category may not be supplied before the booking is accepted."));
+            }
+            else
+            {
+                // Pre-acceptance: optional plain note (blank normalizes to null).
+                // Any other status falls through to the policy below, which refuses it.
+                feedback = BookingCancellationFeedback.CreateOptionalNote(request.Reason);
             }
 
+            // 4. Policy decision first — every rejection happens on an untouched aggregate
+            var input = BookingCancellationPolicyInput.FromBooking(
+                booking,
+                BookingCancellationActorSide.Family,
+                BookingCancellationAction.Cancel,
+                request.UtcNow,
+                feedback);
+            var decision = BookingCancellationPolicy.Decide(input);
+
+            // 5. State transition — the aggregate's status guard stays authoritative
+            booking.CancelByFamily(feedback?.Note, request.UtcNow);
+
+            // 6. Refund by entitlement: only a full-captured entitlement touches the provider
+            switch (decision.RefundEntitlement)
+            {
+                case BookingRefundEntitlement.FullCapturedRefund:
+                {
+                    PaymentTransaction? paidTransaction = booking.PaymentTransactions.FirstOrDefault(
+                        t => t.Status == PaymentTransactionStatus.Succeeded
+                            && t.PaymobTransactionId is not null);
+
+                    if (paidTransaction is not null)
+                    {
+                        Result<string?> refund = await _paymobClient.RefundPaymentAsync(
+                            paidTransaction.PaymobTransactionId!,
+                            paidTransaction.Amount,
+                            cancellationToken);
+
+                        if (refund.IsSuccess)
+                        {
+                            booking.MarkRefunded(refund.Value, request.UtcNow);
+                        }
+                    }
+
+                    break;
+                }
+
+                case BookingRefundEntitlement.NoRefundDue:
+                    // Policy denial (or nothing captured): no provider call, no status touch.
+                    break;
+
+                default:
+                    throw new UnreachableException(
+                        $"Unexpected refund entitlement '{decision.RefundEntitlement}'.");
+            }
+
+            // 7. Record exactly one fact, after the refund attempt so the recorded
+            //    decision reflects the final state (immediate-refund success included)
+            var fact = BookingCancellationFact.Create(
+                booking.Id,
+                request.UserId,
+                decision);
+            await _cancellationFactRecorder.RecordAsync(fact, cancellationToken);
+
+            // 8. Single save — booking mutation + fact commit atomically
             await _dbContext.SaveChangesAsync(cancellationToken);
 
             return Result.Success();
@@ -260,5 +357,36 @@ public sealed class CancelBookingCommandHandler : ICommandHandler<CancelBookingC
         {
             return Result.Failure(new Error("Bookings.Domain.InvalidOperation", exception.Message));
         }
+        catch (DbUpdateException exception) when (IsFactUniqueViolation(exception))
+        {
+            // Parallel-cancel race: a fact for this booking was committed first
+            return Result.Failure(
+                new Error(
+                    "Bookings.Cancel.AlreadyProcessed",
+                    "This booking cancellation was already processed."));
+        }
+    }
+
+    /// <summary>
+    /// Recognizes the unique violation on <c>families.booking_cancellation_facts</c>
+    /// (<c>ux_booking_cancellation_facts_booking</c>). The Application assembly does not reference
+    /// Npgsql, so the check reads the inner exception message, where PostgreSQL reports the
+    /// constraint name for a unique violation.
+    /// </summary>
+    private static bool IsFactUniqueViolation(DbUpdateException exception)
+    {
+        const string constraintName = "ux_booking_cancellation_facts_booking";
+
+        for (Exception? inner = exception.InnerException;
+            inner is not null;
+            inner = inner.InnerException)
+        {
+            if (inner.Message.Contains(constraintName, StringComparison.Ordinal))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

@@ -26,7 +26,8 @@ public sealed record CreatePaymentIntentRequest(
     PaymobBillingData Billing);
 
 public sealed record CancelBookingRequest(
-    string Reason);
+    string? Reason,
+    int? ReasonCategory);
 
 [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
 [Route("api/v1/family/bookings")]
@@ -129,6 +130,7 @@ public sealed class FamilyBookingsController : ApiControllerBase
             new BookingId(bookingId),
             userId,
             request.Reason,
+            request.ReasonCategory,
             _dateTimeProvider.UtcNow);
 
         var result = await _sender.Send(command, cancellationToken);

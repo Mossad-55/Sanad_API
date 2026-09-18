@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Application.Abstractions.Caregivers;
+using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Domain.Bookings;
@@ -88,6 +89,16 @@ public sealed class BookingRemediationTests
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult(Result<string?>.Success($"dev-refund-{Guid.NewGuid():N}"));
+        }
+    }
+
+    private sealed class StubCancellationFactRecorder : IBookingCancellationFactRecorder
+    {
+        public Task RecordAsync(
+            BookingCancellationFact fact,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.CompletedTask;
         }
     }
 
@@ -215,13 +226,15 @@ public sealed class BookingRemediationTests
 
         var handler = new CancelBookingCommandHandler(
             dbContext,
-            new StubPaymobClient());
+            new StubPaymobClient(),
+            new StubCancellationFactRecorder());
 
         var result = await handler.Handle(
             new CancelBookingCommand(
                 new BookingId(checkoutResult.Value.BookingId),
                 attackerFamily.OwnerUserId, // member of a DIFFERENT family
                 "Emergency",
+                null,
                 DateTime.UtcNow),
             CancellationToken.None);
 

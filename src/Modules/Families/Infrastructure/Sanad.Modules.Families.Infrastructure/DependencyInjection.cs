@@ -41,6 +41,9 @@ public static class DependencyInjection
                 serviceProvider.GetRequiredService<
                     FamiliesDbContext>());
 
+        services.AddScoped<IBookingCancellationFactRecorder,
+            BookingCancellationFactRecorder>();
+
         services.AddHttpClient();
 
         services.Configure<PaymobOptions>(
