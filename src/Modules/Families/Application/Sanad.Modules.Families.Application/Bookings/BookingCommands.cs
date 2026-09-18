@@ -304,39 +304,39 @@ public sealed class CancelBookingCommandHandler : ICommandHandler<CancelBookingC
             var decision = BookingCancellationPolicy.Decide(input);
 
             // 5. State transition — the aggregate's status guard stays authoritative
-            booking.CancelByFamily(feedback?.Note, request.UtcNow);
+            booking.CancelByFamily(feedback?.Note ?? string.Empty, request.UtcNow);
 
             // 6. Refund by entitlement: only a full-captured entitlement touches the provider
             switch (decision.RefundEntitlement)
             {
                 case BookingRefundEntitlement.FullCapturedRefund:
-                {
-                    PaymentTransaction? paidTransaction = booking.PaymentTransactions.FirstOrDefault(
-                        t => t.Status == PaymentTransactionStatus.Succeeded
-                            && t.PaymobTransactionId is not null);
-
-                    if (paidTransaction is not null)
                     {
-                        Result<string?> refund = await _paymobClient.RefundPaymentAsync(
-                            paidTransaction.PaymobTransactionId!,
-                            paidTransaction.Amount,
-                            cancellationToken);
+                        PaymentTransaction? paidTransaction = booking.PaymentTransactions.FirstOrDefault(
+                            t => t.Status == PaymentTransactionStatus.Succeeded
+                                && t.PaymobTransactionId is not null);
 
-                        if (refund.IsSuccess)
+                        if (paidTransaction is not null)
                         {
-                            booking.MarkRefunded(refund.Value, request.UtcNow);
-                        }
-                    }
+                            Result<string?> refund = await _paymobClient.RefundPaymentAsync(
+                                paidTransaction.PaymobTransactionId!,
+                                paidTransaction.Amount,
+                                cancellationToken);
 
-                    break;
-                }
+                            if (refund.IsSuccess)
+                            {
+                                booking.MarkRefunded(refund.Value, request.UtcNow);
+                            }
+                        }
+
+                        break;
+                    }
 
                 case BookingRefundEntitlement.NoRefundDue:
                     // Policy denial (or nothing captured): no provider call, no status touch.
                     break;
 
                 default:
-                    throw new UnreachableException(
+                    throw new System.Diagnostics.UnreachableException(
                         $"Unexpected refund entitlement '{decision.RefundEntitlement}'.");
             }
 
