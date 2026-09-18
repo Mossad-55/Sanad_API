@@ -320,8 +320,10 @@ public sealed class BookingCancellationFactMappingTests
         Type providerClrType)
     {
         Assert.Equal(modelClrType, property.ClrType);
-        Assert.Equal(providerClrType, property.GetProviderClrType());
 
+        // Probe the configured converter itself: lambda-built strong-id conversions do not write
+        // the relational provider-CLR annotation (EF returns null there for them), unlike the
+        // generic HasConversion<int>() form asserted on the enum columns.
         Assert.NotNull(property.GetValueConverter());
         Assert.Equal(modelClrType, property.GetValueConverter()!.ModelClrType);
         Assert.Equal(providerClrType, property.GetValueConverter()!.ProviderClrType);
