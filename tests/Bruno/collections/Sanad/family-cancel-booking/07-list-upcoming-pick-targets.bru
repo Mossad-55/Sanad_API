@@ -1,0 +1,48 @@
+meta {
+  name: 07-list-upcoming-pick-targets
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/bookings?tab=Upcoming
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = Array.isArray(res.body)
+    ? res.body
+    : (res.body && (res.body.items || res.body.results)) || [];
+  const statusOf = (it) => it.status ?? it.Status;
+  const idOf = (it) => it.id ?? it.Id ?? it.bookingId ?? it.BookingId;
+  const isPending = (s) =>
+    s === 1 || s === 2 ||
+    s === "PendingPayment" || s === "PendingCaregiverApproval" ||
+    s === "pendingPayment" || s === "pendingCaregiverApproval";
+  const isUnpaidPending = (s) =>
+    s === 1 || s === "PendingPayment" || s === "pendingPayment";
+  const isConfirmed = (s) =>
+    s === 3 || s === "Confirmed" || s === "confirmed";
+  // Prefer an UNPAID PendingPayment target (a paid PendingCaregiverApproval
+  // cancel would invoke the sandbox refund call by design).
+  const pending = items.find(i => isUnpaidPending(statusOf(i))) ||
+                  items.find(i => isPending(statusOf(i)));
+  const confirmed = items.find(i => isConfirmed(statusOf(i)));
+  bru.setVar("pendingCancelBookingId", pending ? idOf(pending) : "");
+  bru.setVar("confirmedCancelBookingId", confirmed ? idOf(confirmed) : "");
+  console.log("upcoming:", items.length,
+    "| pending target:", bru.getVar("pendingCancelBookingId") || "NONE",
+    "| confirmed target:", bru.getVar("confirmedCancelBookingId") || "NONE");
+  if (!pending) {
+    console.log("NOTE: no pending booking - steps 08/09/10 will 404 on an empty id; seed one unpaid pending booking, then re-run.");
+  }
+}

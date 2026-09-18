@@ -1,0 +1,30 @@
+meta {
+  name: 11-cancel-confirmed-no-category-rejected
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/{{confirmedCancelBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "no category supplied"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Bookings.Cancel.ReasonCategoryRequired
+}

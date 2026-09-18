@@ -1,0 +1,30 @@
+meta {
+  name: 05-cancel-as-viewer-forbidden
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/0f000000-0000-4000-8000-000000000001/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwtViewer}}
+}
+
+body:json {
+  {
+    "reason": "viewer attempt"
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq Bookings.UnauthorizedRole
+}

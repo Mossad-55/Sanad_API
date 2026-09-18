@@ -1,0 +1,30 @@
+meta {
+  name: 10-re-cancel-conflict
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/{{pendingCancelBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "should conflict"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Bookings.Domain.InvalidOperation
+}

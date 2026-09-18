@@ -1,0 +1,31 @@
+meta {
+  name: 08-cancel-pending-with-category-rejected
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/{{pendingCancelBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "acceptance",
+    "reasonCategory": 5
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Bookings.Cancel.ReasonCategoryNotAllowedPreAcceptance
+}

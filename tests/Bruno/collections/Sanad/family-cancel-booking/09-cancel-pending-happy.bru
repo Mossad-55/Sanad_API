@@ -1,0 +1,29 @@
+meta {
+  name: 09-cancel-pending-happy
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/{{pendingCancelBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "Bruno gate"
+  }
+}
+
+assert {
+  res.status: eq 204
+}
