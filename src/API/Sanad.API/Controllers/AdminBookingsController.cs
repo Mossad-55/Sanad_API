@@ -5,6 +5,7 @@ using Sanad.API.Authorization;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Bookings;
+using Sanad.Modules.Families.Domain.Bookings;
 
 namespace Sanad.API.Controllers;
 
@@ -33,6 +34,21 @@ public sealed class AdminBookingsController : ApiControllerBase
     {
         var result = await _sender.Send(
             new ListAdminBookingsQuery(page, pageSize, finance),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpGet("cancellations")]
+    [ProducesResponseType(typeof(PagedAdminCancellations), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListCancellations(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] BookingCancellationActorSide? actor = null,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await _sender.Send(
+            new ListAdminCancellationsQuery(page, pageSize, actor),
             cancellationToken);
 
         return ToActionResult(result);

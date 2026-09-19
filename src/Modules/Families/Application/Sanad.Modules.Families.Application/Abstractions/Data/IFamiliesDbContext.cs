@@ -16,6 +16,7 @@ public interface IFamiliesDbContext
     DbSet<Elderly> Elderlies { get; }
     DbSet<FamilyInvitation> Invitations { get; }
     DbSet<Booking> Bookings { get; }
+    DbSet<BookingCancellationFact> BookingCancellationFacts { get; }
     DbSet<AssessmentQuestion> AssessmentQuestions { get; }
     DbSet<AssessmentTier> AssessmentTiers { get; }
     DbSet<CareAssessment> CareAssessments { get; }

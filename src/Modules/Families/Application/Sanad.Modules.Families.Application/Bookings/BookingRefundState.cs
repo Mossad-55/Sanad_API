@@ -11,7 +11,9 @@ public enum BookingRefundState
 {
     NotApplicable = 1,
     Failed = 2,
-    Succeeded = 3
+    Succeeded = 3,
+    /// <summary>Paid or unpaid, policy decided nothing is owed; never renders as Failed; never retryable.</summary>
+    NoRefundDue = 4
 }
 
 public enum AdminBookingFinanceFilter
@@ -69,4 +71,19 @@ public static class BookingRefundStates
 
     public static BookingRefundState Resolve(Booking booking) =>
         Resolve(booking.Status, booking.PaidOnUtc, booking.RefundedOnUtc);
+
+    public static BookingRefundState ResolveWithFact(Booking booking, BookingCancellationFact? fact)
+    {
+        if (booking.Status == BookingStatus.Refunded || booking.RefundedOnUtc is not null)
+        {
+            return BookingRefundState.Succeeded;
+        }
+
+        if (fact is not null && fact.RefundEntitlement == BookingRefundEntitlement.NoRefundDue)
+        {
+            return BookingRefundState.NoRefundDue;
+        }
+
+        return Resolve(booking);
+    }
 }
