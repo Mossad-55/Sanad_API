@@ -50,6 +50,18 @@ public sealed class AdminRefundBookingCommandHandler
                     new Error("Bookings.AlreadyRefunded", "This booking is already refunded."));
             }
 
+            BookingCancellationFact? fact = await _dbContext.BookingCancellationFacts
+                .AsNoTracking()
+                .SingleOrDefaultAsync(f => f.BookingId == request.BookingId, cancellationToken);
+
+            if (fact is not null && fact.RefundEntitlement == BookingRefundEntitlement.NoRefundDue)
+            {
+                return Result<BookingDetailResponse>.Failure(
+                    new Error(
+                        "Bookings.NoRefundDue",
+                        "No refund is due for this cancellation; the policy retained the amount."));
+            }
+
             if (BookingRefundStates.Resolve(booking) != BookingRefundState.Failed)
             {
                 return Result<BookingDetailResponse>.Failure(

@@ -89,23 +89,48 @@ public sealed class ListAdminBookingsQueryHandler
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
-        var items = bookings.Select(b => new AdminBookingListItemResponse(
-            b.Id.Value,
-            b.FamilyId.Value,
-            b.CaregiverId.Value,
-            b.ElderlyId.Value,
-            b.BookingDate,
-            b.StartTime,
-            b.EndTime,
-            b.ShiftType,
-            b.Status,
-            b.PriceSnapshot.TotalPayableAmount,
-            b.PriceSnapshot.Currency,
-            BookingRefundStates.Resolve(b),
-            b.PaidOnUtc,
-            b.CancelledOnUtc,
-            b.RefundedOnUtc,
-            b.CancellationReason)).ToList();
+        Dictionary<BookingId, BookingCancellationFact> factsByBookingId;
+
+        if (bookings.Count == 0)
+        {
+            factsByBookingId = new Dictionary<BookingId, BookingCancellationFact>();
+        }
+        else
+        {
+            List<BookingId> pageBookingIds = bookings.Select(b => b.Id).ToList();
+
+            List<BookingCancellationFact> facts = await _dbContext.BookingCancellationFacts
+                .AsNoTracking()
+                .Where(f => pageBookingIds.Contains(f.BookingId))
+                .ToListAsync(cancellationToken);
+
+            factsByBookingId = facts.ToDictionary(f => f.BookingId);
+        }
+
+        var items = bookings.Select(b =>
+        {
+            BookingRefundState refundState = factsByBookingId.TryGetValue(b.Id, out BookingCancellationFact? fact)
+                ? BookingRefundStates.ResolveWithFact(b, fact)
+                : BookingRefundStates.Resolve(b);
+
+            return new AdminBookingListItemResponse(
+                b.Id.Value,
+                b.FamilyId.Value,
+                b.CaregiverId.Value,
+                b.ElderlyId.Value,
+                b.BookingDate,
+                b.StartTime,
+                b.EndTime,
+                b.ShiftType,
+                b.Status,
+                b.PriceSnapshot.TotalPayableAmount,
+                b.PriceSnapshot.Currency,
+                refundState,
+                b.PaidOnUtc,
+                b.CancelledOnUtc,
+                b.RefundedOnUtc,
+                b.CancellationReason);
+        }).ToList();
 
         return Result<PagedAdminBookings>.Success(
             new PagedAdminBookings(items, page, pageSize, totalCount));
@@ -143,7 +168,20 @@ public sealed class GetAdminBookingDetailQueryHandler
             .AsNoTracking()
             .SingleOrDefaultAsync(e => e.Id == booking.ElderlyId, cancellationToken);
 
-        return Result<BookingDetailResponse>.Success(
-            BookingDetailMapper.ToResponse(booking, elderly));
+        var response = BookingDetailMapper.ToResponse(booking, elderly);
+
+        BookingCancellationFact? fact = await _dbContext.BookingCancellationFacts
+            .AsNoTracking()
+            .SingleOrDefaultAsync(f => f.BookingId == request.BookingId, cancellationToken);
+
+        if (fact is not null)
+        {
+            response = response with
+            {
+                RefundState = BookingRefundStates.ResolveWithFact(booking, fact)
+            };
+        }
+
+        return Result<BookingDetailResponse>.Success(response);
     }
 }
