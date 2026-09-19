@@ -42,33 +42,34 @@ public sealed class GetCaregiverCancellationSummaryQueryHandler
         GetCaregiverCancellationSummaryQuery request,
         CancellationToken cancellationToken)
     {
-        List<Booking> recent = await _dbContext.Bookings
-            .AsNoTracking()
-            .Where(b => b.CaregiverId == request.CaregiverId
-                && b.Status == BookingStatus.CancelledByCaregiver)
-            .OrderByDescending(b => b.CancelledOnUtc)
+        var baseQuery = from f in _dbContext.BookingCancellationFacts.AsNoTracking()
+                        join b in _dbContext.Bookings.AsNoTracking() on f.BookingId equals b.Id
+                        where b.CaregiverId == request.CaregiverId
+                            && f.ActorSide == BookingCancellationActorSide.Caregiver
+                            && f.Action == BookingCancellationAction.Cancel
+                        select new { Fact = f, Booking = b };
+
+        int count = await baseQuery.CountAsync(cancellationToken);
+
+        var recent = await baseQuery
+            .OrderByDescending(x => x.Fact.CancelledOnUtc)
             .Take(RecentLimit)
             .ToListAsync(cancellationToken);
 
-        int count = await _dbContext.Bookings
-            .AsNoTracking()
-            .CountAsync(
-                b => b.CaregiverId == request.CaregiverId
-                    && b.Status == BookingStatus.CancelledByCaregiver,
-                cancellationToken);
+        var items = recent
+            .Select(x => new CaregiverCancellationItem(
+                x.Booking.Id.Value,
+                x.Booking.BookingDate,
+                x.Booking.StartTime,
+                x.Booking.EndTime,
+                x.Booking.ShiftType,
+                x.Fact.CancelledOnUtc,
+                x.Fact.ReasonNote))
+            .ToList();
 
         return Result<CaregiverCancellationSummaryResponse>.Success(
             new CaregiverCancellationSummaryResponse(
                 count,
-                recent
-                    .Select(b => new CaregiverCancellationItem(
-                        b.Id.Value,
-                        b.BookingDate,
-                        b.StartTime,
-                        b.EndTime,
-                        b.ShiftType,
-                        b.CancelledOnUtc!.Value,
-                        b.CancellationReason))
-                    .ToList()));
+                items));
     }
 }
