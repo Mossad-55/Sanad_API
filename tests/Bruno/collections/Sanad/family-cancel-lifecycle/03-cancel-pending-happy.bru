@@ -1,0 +1,36 @@
+meta {
+  name: 03-cancel-pending-happy
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/{{pendingCancelBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "Bruno lifecycle gate"
+  }
+}
+
+script:post-response {
+  // The only state-changing request of this folder: it CANCELS the seeded
+  // unpaid pending booking (no provider refund, one fact row). After this
+  // run the pending seed target is gone for the family-cancel-booking T0
+  // step 08 - reseed the dev database before the next T0.
+}
+
+assert {
+  res.status: eq 204
+}

@@ -1,0 +1,30 @@
+meta {
+  name: 06-cancel-confirmed-no-category
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{cgConfirmedBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "accepted booking, no category supplied"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Bookings.Cancel.ReasonCategoryRequired
+}

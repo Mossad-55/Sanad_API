@@ -1,7 +1,7 @@
 meta {
-  name: 07-list-upcoming-pick-targets
+  name: 02-list-upcoming-pick-pending
   type: http
-  seq: 7
+  seq: 2
 }
 
 get {
@@ -30,22 +30,14 @@ script:post-response {
     s === "pendingPayment" || s === "pendingCaregiverApproval";
   const isUnpaidPending = (s) =>
     s === 1 || s === "PendingPayment" || s === "pendingPayment";
-  const isConfirmed = (s) =>
-    s === 3 || s === "Confirmed" || s === "confirmed";
   // Prefer an UNPAID PendingPayment target (a paid PendingCaregiverApproval
   // cancel would invoke the sandbox refund call by design).
   const pending = items.find(i => isUnpaidPending(statusOf(i))) ||
                   items.find(i => isPending(statusOf(i)));
-  const confirmed = items.find(i => isConfirmed(statusOf(i)));
   bru.setVar("pendingCancelBookingId", pending ? idOf(pending) : "");
-  bru.setVar("confirmedCancelBookingId", confirmed ? idOf(confirmed) : "");
   console.log("upcoming:", items.length,
-    "| pending target:", bru.getVar("pendingCancelBookingId") || "NONE",
-    "| confirmed target:", bru.getVar("confirmedCancelBookingId") || "NONE");
+    "| pending target:", bru.getVar("pendingCancelBookingId") || "NONE");
   if (!pending) {
-    console.log("NOTE: no pending booking - step 08 will 404 on an empty id; the family-cancel-lifecycle folder consumes the unpaid pending seed, so reseed the dev database, then re-run.");
-  }
-  if (!confirmed) {
-    console.log("NOTE: no confirmed booking - step 09 will 404 on an empty id; reseed the dev database, then re-run.");
+    console.log("NOTE: this is a one-consumable lifecycle proof - it needs the fresh seed's unpaid pending booking; reseed the dev database, then re-run this folder.");
   }
 }

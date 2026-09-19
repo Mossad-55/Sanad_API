@@ -1,0 +1,31 @@
+meta {
+  name: 07-cancel-confirmed-invalid-category
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{cgConfirmedBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "accepted booking",
+    "reasonCategory": 0
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Bookings.Cancel.ReasonCategoryInvalid
+}

@@ -1,0 +1,31 @@
+meta {
+  name: 08-cancel-confirmed-blank-note
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{cgConfirmedBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "   ",
+    "reasonCategory": 5
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Bookings.Cancel.ReasonRequired
+}

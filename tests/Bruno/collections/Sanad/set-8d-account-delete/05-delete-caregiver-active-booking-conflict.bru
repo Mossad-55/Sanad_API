@@ -14,6 +14,34 @@ auth:bearer {
   token: {{jwt}}
 }
 
+script:pre-request {
+  const baseUrl = bru.getEnvVar("baseUrl");
+  const headers = { Authorization: "Bearer " + bru.getVar("jwt"), Connection: "close" };
+  // Mirror of HasActiveCaregiverBookings: PendingCaregiverApproval / Confirmed
+  // (Upcoming tab) + InProgress (Current tab). PendingPayment is deliberately
+  // excluded by the guard, so it does not count.
+  const upcoming = await bru.sendRequest({
+    method: "GET",
+    url: baseUrl + "/api/v1/caregiver/bookings?tab=Upcoming",
+    headers: headers
+  });
+  const current = await bru.sendRequest({
+    method: "GET",
+    url: baseUrl + "/api/v1/caregiver/bookings?tab=Current",
+    headers: headers
+  });
+  const itemsOf = (r) => {
+    const body = r.data;
+    return Array.isArray(body) ? body : (body && (body.items || body.results)) || [];
+  };
+  const active = itemsOf(upcoming).length + itemsOf(current).length;
+  if (active === 0) {
+    console.log("NOTE: the seeded caregiver has no active booking - the 409 guard cannot be proven on a consumed seed; reseed the dev database, then re-run.");
+  } else {
+    console.log("active booking guard check: upcoming+current bookings =", active);
+  }
+}
+
 assert {
   res.status: eq 409
   res.body.code: eq Identity.Account.ActiveBookingExists

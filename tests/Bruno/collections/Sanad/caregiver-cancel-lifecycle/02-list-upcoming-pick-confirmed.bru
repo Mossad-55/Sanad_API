@@ -1,0 +1,35 @@
+meta {
+  name: 02-list-upcoming-pick-confirmed
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings?tab=Upcoming
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = Array.isArray(res.body)
+    ? res.body
+    : (res.body && (res.body.items || res.body.results)) || [];
+  const statusOf = (it) => it.status ?? it.Status;
+  const idOf = (it) => it.id ?? it.Id ?? it.bookingId ?? it.BookingId;
+  const isConfirmed = (s) => s === 3 || s === "Confirmed" || s === "confirmed";
+  const confirmed = items.find((i) => isConfirmed(statusOf(i)));
+  bru.setVar("cgConfirmedBookingId", confirmed ? idOf(confirmed) : "");
+  console.log("upcoming:", items.length,
+    "| confirmed target:", bru.getVar("cgConfirmedBookingId") || "NONE");
+  if (!confirmed) {
+    console.log("NOTE: this is a one-consumable lifecycle proof - it needs the fresh seed's Confirmed booking; reseed the dev database, then re-run this folder.");
+  }
+}

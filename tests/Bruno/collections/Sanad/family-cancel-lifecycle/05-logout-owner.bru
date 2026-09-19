@@ -1,7 +1,7 @@
 meta {
-  name: 06-logout-owner
+  name: 05-logout-owner
   type: http
-  seq: 6
+  seq: 5
 }
 
 post {
@@ -11,11 +11,11 @@ post {
 }
 
 headers {
-  X-Device-Session-Id: {{set8dFamilySessionId}}
+  X-Device-Session-Id: {{familyLifecycleDeviceSessionId}}
 }
 
 auth:bearer {
-  token: {{jwtFamily}}
+  token: {{jwt}}
 }
 
 assert {

@@ -1,0 +1,36 @@
+meta {
+  name: 10-cancel-ended-note-only
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{cgEndedBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "ended booking, note only"
+  }
+}
+
+script:pre-request {
+  // Non-Confirmed status with no category: validation passes, the policy
+  // refuses on the untouched aggregate, and the 409 proves the booking was
+  // not mutated (no cancel, no refund, no fact). Read-only request.
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Bookings.Domain.InvalidOperation
+}

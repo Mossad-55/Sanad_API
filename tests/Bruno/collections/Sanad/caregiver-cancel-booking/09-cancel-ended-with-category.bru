@@ -1,0 +1,31 @@
+meta {
+  name: 09-cancel-ended-with-category
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{cgEndedBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "ended booking, category must be refused",
+    "reasonCategory": 5
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Bookings.Cancel.ReasonCategoryNotAllowedPreAcceptance
+}

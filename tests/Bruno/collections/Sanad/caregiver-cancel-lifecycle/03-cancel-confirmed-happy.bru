@@ -1,0 +1,37 @@
+meta {
+  name: 03-cancel-confirmed-happy
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{cgConfirmedBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "Bruno lifecycle gate",
+    "reasonCategory": 5
+  }
+}
+
+script:post-response {
+  // The only state-changing request of this folder: it CANCELS the seeded
+  // Confirmed booking (full captured refund through the dev sandbox Paymob
+  // client, one incident flag, one fact). After this run the seed booking is
+  // gone for every other gate - reseed the dev database before the next T0.
+}
+
+assert {
+  res.status: eq 204
+}

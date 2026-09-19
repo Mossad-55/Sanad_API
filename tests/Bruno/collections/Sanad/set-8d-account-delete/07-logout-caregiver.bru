@@ -18,19 +18,6 @@ auth:bearer {
   token: {{jwt}}
 }
 
-script:pre-request {
-  const response = await bru.sendRequest({
-    method: "GET",
-    url: bru.getEnvVar("baseUrl") + "/api/v1/auth/sessions",
-    headers: {
-      Authorization: "Bearer " + bru.getVar("jwt"),
-      Connection: "close"
-    }
-  });
-  const session = response.data.sessions[0];
-  bru.setVar("set8dCaregiverSessionId", session.deviceSessionId.value || session.deviceSessionId);
-}
-
 assert {
   res.status: eq 204
 }

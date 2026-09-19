@@ -1,7 +1,7 @@
 meta {
-  name: 02-login-family-owner
+  name: 01-login-owner
   type: http
-  seq: 2
+  seq: 1
 }
 
 post {
@@ -18,7 +18,7 @@ body:json {
   {
     "email": "{{familyOwnerEmail}}",
     "password": "{{familyOwnerPassword}}",
-    "deviceName": "bruno-set8d",
+    "deviceName": "bruno-family-lifecycle",
     "devicePlatform": 3,
     "appVersion": "1.0.0"
   }
@@ -29,6 +29,6 @@ assert {
 }
 
 script:post-response {
-  bru.setVar("jwtFamily", res.body.accessToken);
-  bru.setVar("set8dFamilySessionId", res.body.deviceSessionId.value);
+  bru.setVar("jwt", res.body.accessToken);
+  bru.setVar("familyLifecycleDeviceSessionId", res.body.deviceSessionId.value);
 }

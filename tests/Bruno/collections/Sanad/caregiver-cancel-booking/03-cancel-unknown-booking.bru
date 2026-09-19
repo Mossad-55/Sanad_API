@@ -1,0 +1,31 @@
+meta {
+  name: 03-cancel-unknown-booking
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/0f000000-0000-4000-8000-000000000001/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "acceptance",
+    "reasonCategory": 5
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Bookings.NotFound
+}

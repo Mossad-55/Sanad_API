@@ -1,0 +1,36 @@
+meta {
+  name: 04-re-cancel-conflict
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{cgConfirmedBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "re-cancel must conflict"
+  }
+}
+
+script:pre-request {
+  // Deliberately WITHOUT a category: a category here would be refused by the
+  // pre-acceptance validation branch (400) instead of proving that the
+  // already-ended booking refuses the second cancellation (409).
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Bookings.Domain.InvalidOperation
+}

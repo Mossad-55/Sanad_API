@@ -1,7 +1,7 @@
 meta {
-  name: 12-logout-owner
+  name: 11-logout-caregiver
   type: http
-  seq: 12
+  seq: 11
 }
 
 post {
@@ -11,7 +11,7 @@ post {
 }
 
 headers {
-  X-Device-Session-Id: {{familyDeviceSessionId}}
+  X-Device-Session-Id: {{cgCancelDeviceSessionId}}
 }
 
 auth:bearer {

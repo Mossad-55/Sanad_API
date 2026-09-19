@@ -1,0 +1,38 @@
+meta {
+  name: 05-list-past-pick-ended
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings?tab=Past
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = Array.isArray(res.body)
+    ? res.body
+    : (res.body && (res.body.items || res.body.results)) || [];
+  const statusOf = (it) => it.status ?? it.Status;
+  const idOf = (it) => it.id ?? it.Id ?? it.bookingId ?? it.BookingId;
+  const isCompleted = (s) => s === 5 || s === "Completed" || s === "completed";
+  // Any ended status exercises the non-Confirmed branch; Completed is
+  // preferred for readability. This pick is read-only: steps 09/10 must not
+  // mutate it (400 and 409 are both refused without a state change).
+  const ended = items.find((i) => isCompleted(statusOf(i))) || items[0];
+  bru.setVar("cgEndedBookingId", ended ? idOf(ended) : "");
+  console.log("past:", items.length,
+    "| ended target:", bru.getVar("cgEndedBookingId") || "NONE");
+  if (!ended) {
+    console.log("NOTE: no past booking for the seeded caregiver - steps 09/10 will 404 on an empty id; reseed the dev database, then re-run.");
+  }
+}
