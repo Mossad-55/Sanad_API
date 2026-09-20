@@ -111,6 +111,15 @@ public sealed class SubscriptionValueObjectTests
     }
 
     [Fact]
+    public void Null_benefit_entries_fail_with_domain_exception()
+    {
+        var benefits = AllBenefits().Cast<SubscriptionBenefit?>().ToList();
+        benefits[0] = null;
+
+        Assert.Throws<DomainException>(() => CreateCustom(benefits: benefits.Select(benefit => benefit!)));
+    }
+
+    [Fact]
     public void Invalid_rollover_currency_and_cycle_fail()
     {
         Assert.Throws<DomainException>(() => CreateCustom(rollover: (SubscriptionRollover)99));

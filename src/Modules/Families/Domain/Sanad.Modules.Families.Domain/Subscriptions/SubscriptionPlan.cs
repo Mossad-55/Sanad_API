@@ -85,8 +85,13 @@ public sealed class SubscriptionPlan : ValueObject
         ArgumentNullException.ThrowIfNull(monthlyBookingLimit);
 
         var benefitList = benefits.ToList();
-        if (benefitList.Count != Enum.GetValues<SubscriptionBenefitKey>().Length
-            || benefitList.Select(benefit => benefit.Key).Distinct().Count() != benefitList.Count)
+        if (benefitList.Any(benefit => benefit is null))
+            throw new DomainException("Subscription benefit entries cannot be null.");
+
+        var expectedBenefitKeys = Enum.GetValues<SubscriptionBenefitKey>().ToHashSet();
+        var actualBenefitKeys = benefitList.Select(benefit => benefit.Key).ToHashSet();
+        if (benefitList.Count != actualBenefitKeys.Count
+            || !expectedBenefitKeys.SetEquals(actualBenefitKeys))
             throw new DomainException("A subscription plan must define every benefit exactly once.");
 
         if (!Enum.IsDefined(rollover))
