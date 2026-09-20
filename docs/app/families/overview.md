@@ -65,6 +65,7 @@ Removing a dependent **hard-deletes** the Families row and the photo file. The E
 | Invitations by email, deep link, accept/decline/revoke | `docs/app/families/invitations.md` |
 | Caregiver discovery: search, public profile, price quote | `docs/app/families/discovery.md` |
 | Bookings: checkout, tabs, detail, cancel | `docs/app/families/bookings.md` |
+| Subscription plan catalog and current snapshot (Owner read-only) | `docs/app/families/subscriptions.md` |
 | Postman | `docs/postman/app/Sanad.App.Family.postman_collection.json` |
 
 The Elderly SMS OTP login used by dependents is documented in `docs/auth/elderly-sms-login.md`.
