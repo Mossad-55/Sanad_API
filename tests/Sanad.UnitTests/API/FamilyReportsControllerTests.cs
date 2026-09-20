@@ -28,8 +28,8 @@ public sealed class FamilyReportsControllerTests
         Assert.NotNull(method);
 
         var response = Assert.Single(
-            method!.GetCustomAttributes<ProducesResponseTypeAttribute>()
-                .Where(attribute => attribute.StatusCode == StatusCodes.Status200OK));
+            method!.GetCustomAttributes<ProducesResponseTypeAttribute>(),
+            attribute => attribute.StatusCode == StatusCodes.Status200OK);
 
         Assert.Equal(typeof(Sanad.Modules.Families.Application.Reports.PagedFamilyReportsResponse), response.Type);
     }
