@@ -1,8 +1,8 @@
 # Family reports
 
 Visit reports are immutable, dated records attached to a completed booking. They are separate from
-the elderly medical profile and ordinary family notes. Version 1 stores no photos and no structured
-medical measurements.
+the elderly medical profile and ordinary family notes. Visit reports store no photos. Medical Reports
+are a separate Medical-caregiver-only report type; their planned V1 contract is documented below.
 
 ## Access
 
@@ -56,6 +56,43 @@ late report cannot extend the visit.
 Identity and timestamps are assigned by the server. The request cannot supply a caregiver identity,
 arrival/departure time, or submission time. A booking accepts only one report; the report is
 append-only and cannot be edited or deleted.
+
+## Medical Reports V1 — mobile photo-consent contract
+
+Medical Reports are submitted only by an assigned Medical caregiver for a completed booking. A
+Medical caregiver may submit both a Visit Report and a Medical Report for the same booking. A
+Companion caregiver cannot submit a Medical Report.
+
+The planned Medical Report request supports structured measurements (blood pressure, pulse, and
+temperature), measurement time, assessment, notes, and one optional original photo. Missing
+measurements remain missing; the API must not convert them to zero. The photo is optional, and the
+report remains valid when no photo is supplied.
+
+The mobile application must request consent immediately before capturing or uploading an optional
+medical photo. The consent step belongs in the caregiver app, not in a separate download flow:
+
+1. The caregiver opens the Medical Report and taps **Add medical photo**.
+2. Before opening the camera or selecting an existing image, the app asks the elderly person or
+   authorized representative for permission to capture and store the image for care documentation.
+3. The app displays a confirmation such as: **“I confirm that the elderly person or authorized
+   representative gave permission for this photo to be captured and stored for care documentation.”**
+4. If consent is confirmed, the app sends the photo with the Medical Report submission and sets
+   `photoConsentConfirmed` to `true`.
+5. If consent is refused or unavailable, the app submits the Medical Report without a photo. It
+   must not upload the image.
+
+Consent confirmation records the caregiver's attestation, timestamp, and user identity; it is not
+presented as a digital signature. If the elderly person cannot consent, the app must use an
+authorized representative only where Sanad's consent policy recognizes that representative. Until
+that policy is available, submit the report without a photo.
+
+The API stores one private original image only. It does not store or return a thumbnail, and it never
+exposes the storage key. The mobile app may create thumbnails locally from the protected image
+endpoint. The caregiver who submitted the report and authorized family members may view the image
+inline in the app through authenticated endpoints; the app should not require a manual file download.
+
+This section defines the mobile/API contract for the planned Medical Reports slice. It does not add
+the Medical Report endpoint to the current Visit Report API.
 
 ## Error catalog
 

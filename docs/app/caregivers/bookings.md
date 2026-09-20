@@ -59,6 +59,12 @@ The visit-report action returns `201` and accepts only `observedCondition`, `act
 `assessment`. It uses server attendance and submission timestamps and rejects a second report for the
 same booking with `409 Reports.Visit.AlreadySubmitted`.
 
+Medical Reports are a separate planned action for Medical caregivers. The mobile app must show the
+optional photo-consent step before capturing or selecting a medical photo. A confirmed consent
+attestation is submitted with the photo; if consent is unavailable, the caregiver submits the
+Medical Report without a photo. Visit Reports never accept photos. Medical photo storage is private,
+the API stores only the original image, and the app is responsible for its own thumbnail rendering.
+
 Accepting after the deadline returns `409 Bookings.Domain.InvalidOperation` — the booking will expire instead and the family is refunded when the gateway allows it.
 
 ## Error Catalog
