@@ -180,7 +180,7 @@ public sealed class CaregiverBookingsController : ApiControllerBase
     }
 
     [HttpPost("{bookingId:guid}/start")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> StartVisit(
         Guid bookingId,
         CancellationToken cancellationToken)
@@ -208,7 +208,7 @@ public sealed class CaregiverBookingsController : ApiControllerBase
     }
 
     [HttpPost("{bookingId:guid}/complete")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> CompleteVisit(
         Guid bookingId,
         [FromBody] CompleteBookingRequest request,

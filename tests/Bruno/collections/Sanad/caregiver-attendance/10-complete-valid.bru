@@ -1,0 +1,29 @@
+meta {
+  name: 10-complete-valid
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{attendanceBookingId}}/complete
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{attendanceJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "notes": "Visit completed."
+  }
+}
+
+assert {
+  res.status: eq 204
+}

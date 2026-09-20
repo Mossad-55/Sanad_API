@@ -1,0 +1,19 @@
+meta {
+  name: 08-start-valid
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{attendanceBookingId}}/start
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{attendanceJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

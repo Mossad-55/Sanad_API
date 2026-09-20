@@ -1,0 +1,20 @@
+meta {
+  name: 06-start-foreign-booking
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/0f000000-0000-4000-8000-000000000001/start
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{attendanceJwt}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Bookings.NotFound
+}

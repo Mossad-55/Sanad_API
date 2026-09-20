@@ -1,0 +1,30 @@
+meta {
+  name: 11-complete-duplicate
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{attendanceBookingId}}/complete
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{attendanceJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "notes": "duplicate check"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Bookings.Domain.InvalidOperation
+}

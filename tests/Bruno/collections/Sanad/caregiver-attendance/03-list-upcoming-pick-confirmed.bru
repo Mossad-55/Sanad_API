@@ -1,0 +1,26 @@
+meta {
+  name: 03-list-upcoming-pick-confirmed
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings?tab=Upcoming
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{attendanceJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = Array.isArray(res.body) ? res.body : (res.body?.items || res.body?.results || []);
+  const confirmed = items.find((item) => (item.status ?? item.Status) === 3 || (item.status ?? item.Status) === "Confirmed");
+  bru.setVar("attendanceBookingId", confirmed ? (confirmed.id ?? confirmed.Id ?? confirmed.bookingId ?? confirmed.BookingId) : "");
+  console.log("confirmed attendance target:", bru.getVar("attendanceBookingId") || "NONE");
+}

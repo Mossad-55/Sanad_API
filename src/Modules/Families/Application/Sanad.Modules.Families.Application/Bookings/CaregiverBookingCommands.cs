@@ -349,6 +349,7 @@ public sealed class CaregiverStartBookingCommandHandler : ICommandHandler<Caregi
         try
         {
             Booking? booking = await _dbContext.Bookings
+                .AsNoTracking()
                 .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
 
             if (booking is null)
@@ -356,20 +357,56 @@ public sealed class CaregiverStartBookingCommandHandler : ICommandHandler<Caregi
                 return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
             }
 
-            try
+            if (_dbContext is DbContext dbContext
+                && dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
             {
-                booking.StartVisit(request.UtcNow);
+                Booking? trackedBooking = await _dbContext.Bookings
+                    .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
+
+                if (trackedBooking is null)
+                    return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
+
+                trackedBooking.StartVisit(request.UtcNow);
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 return Result.Success();
             }
-            catch (Exception ex)
+
+            booking.StartVisit(request.UtcNow);
+
+            int updated = await _dbContext.Bookings
+                .Where(b => b.Id == request.BookingId
+                    && b.CaregiverId == request.CaregiverId
+                    && b.Status == BookingStatus.Confirmed
+                    && b.ConfirmedOnUtc == booking.ConfirmedOnUtc)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(b => b.Status, booking.Status)
+                        .SetProperty(b => b.StartedOnUtc, booking.StartedOnUtc)
+                        .SetProperty(b => b.UpdatedOnUtc, booking.UpdatedOnUtc),
+                    cancellationToken);
+
+            if (updated == 0)
             {
-                return Result.Failure(new Error("Bookings.TransitionFailed", ex.Message));
+                return Result.Failure(new Error(
+                    "Bookings.Domain.InvalidOperation",
+                    "The booking state changed before the visit could start."));
             }
+
+            return Result.Success();
         }
         catch (DomainException exception)
         {
             return Result.Failure(new Error("Bookings.Domain.InvalidOperation", exception.Message));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return Result.Failure(new Error(
+                "Bookings.TransitionFailed",
+                "The visit transition could not be persisted."));
         }
     }
 }
@@ -398,6 +435,7 @@ public sealed class CaregiverCompleteBookingCommandHandler : ICommandHandler<Car
         try
         {
             Booking? booking = await _dbContext.Bookings
+                .AsNoTracking()
                 .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
 
             if (booking is null)
@@ -405,20 +443,57 @@ public sealed class CaregiverCompleteBookingCommandHandler : ICommandHandler<Car
                 return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
             }
 
-            try
+            if (_dbContext is DbContext dbContext
+                && dbContext.Database.ProviderName == "Microsoft.EntityFrameworkCore.InMemory")
             {
-                booking.CompleteVisit(request.Notes, request.UtcNow);
+                Booking? trackedBooking = await _dbContext.Bookings
+                    .SingleOrDefaultAsync(b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId, cancellationToken);
+
+                if (trackedBooking is null)
+                    return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
+
+                trackedBooking.CompleteVisit(request.Notes, request.UtcNow);
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 return Result.Success();
             }
-            catch (Exception ex)
+
+            booking.CompleteVisit(request.Notes, request.UtcNow);
+
+            int updated = await _dbContext.Bookings
+                .Where(b => b.Id == request.BookingId
+                    && b.CaregiverId == request.CaregiverId
+                    && b.Status == BookingStatus.InProgress
+                    && b.StartedOnUtc == booking.StartedOnUtc)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(b => b.Status, booking.Status)
+                        .SetProperty(b => b.CaregiverNotes, booking.CaregiverNotes)
+                        .SetProperty(b => b.CompletedOnUtc, booking.CompletedOnUtc)
+                        .SetProperty(b => b.UpdatedOnUtc, booking.UpdatedOnUtc),
+                    cancellationToken);
+
+            if (updated == 0)
             {
-                return Result.Failure(new Error("Bookings.TransitionFailed", ex.Message));
+                return Result.Failure(new Error(
+                    "Bookings.Domain.InvalidOperation",
+                    "The booking state changed before the visit could complete."));
             }
+
+            return Result.Success();
         }
         catch (DomainException exception)
         {
             return Result.Failure(new Error("Bookings.Domain.InvalidOperation", exception.Message));
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return Result.Failure(new Error(
+                "Bookings.TransitionFailed",
+                "The visit transition could not be persisted."));
         }
     }
 }

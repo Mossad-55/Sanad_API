@@ -1,0 +1,15 @@
+meta {
+  name: 04-start-unauthenticated
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{attendanceBookingId}}/start
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

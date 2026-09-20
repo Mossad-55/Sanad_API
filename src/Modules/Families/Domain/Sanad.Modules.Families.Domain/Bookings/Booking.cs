@@ -293,6 +293,9 @@ public sealed class Booking : AggregateRoot<BookingId>
         if (Status != BookingStatus.Confirmed)
             throw new DomainException("Only Confirmed bookings can be started.");
 
+        if (ConfirmedOnUtc is null || utcNow < ConfirmedOnUtc.Value)
+            throw new DomainException("A visit cannot start before the booking is confirmed.");
+
         Status = BookingStatus.InProgress;
         StartedOnUtc = utcNow;
         UpdatedOnUtc = utcNow;
@@ -302,6 +305,9 @@ public sealed class Booking : AggregateRoot<BookingId>
     {
         if (Status != BookingStatus.InProgress)
             throw new DomainException("Only InProgress bookings can be completed.");
+
+        if (StartedOnUtc is null || utcNow < StartedOnUtc.Value)
+            throw new DomainException("A visit cannot be completed before it starts.");
 
         Status = BookingStatus.Completed;
         CaregiverNotes = NormalizeText(caregiverNotes, MaximumNotesLength, "Caregiver notes");

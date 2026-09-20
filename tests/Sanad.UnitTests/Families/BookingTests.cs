@@ -53,4 +53,54 @@ public sealed class BookingTests
         Assert.Equal(BookingStatus.Completed, booking.Status);
         Assert.Equal("Patient took meds and blood pressure was 120/80.", booking.CaregiverNotes);
     }
+
+    [Fact]
+    public void StartVisit_BeforeConfirmation_IsRejected()
+    {
+        Booking booking = CreateBooking(DateTime.UtcNow);
+
+        booking.MarkAsPaid("paymob", "txn", booking.CreatedOnUtc);
+        booking.AcceptByCaregiver(booking.CreatedOnUtc.AddMinutes(1));
+
+        Assert.Throws<Sanad.BuildingBlocks.Domain.Exceptions.DomainException>(
+            () => booking.StartVisit(booking.ConfirmedOnUtc!.Value.AddTicks(-1)));
+    }
+
+    [Fact]
+    public void CompleteVisit_BeforeStart_AndDuplicateCompletion_AreRejected()
+    {
+        DateTime now = DateTime.UtcNow;
+        Booking booking = CreateBooking(now);
+        booking.MarkAsPaid("paymob", "txn", now);
+        booking.AcceptByCaregiver(now);
+
+        Assert.Throws<Sanad.BuildingBlocks.Domain.Exceptions.DomainException>(
+            () => booking.CompleteVisit(null, now));
+
+        booking.StartVisit(now.AddMinutes(1));
+        booking.CompleteVisit(null, now.AddMinutes(1));
+
+        Assert.Throws<Sanad.BuildingBlocks.Domain.Exceptions.DomainException>(
+            () => booking.CompleteVisit(null, now.AddMinutes(2)));
+    }
+
+    private static Booking CreateBooking(DateTime now)
+    {
+        return Booking.Create(
+            FamilyId.New(),
+            UserId.New(),
+            ElderlyId.New(),
+            CaregiverId.New(),
+            BookingCaregiverType.Medical,
+            BookingShiftType.HomeVisit,
+            DateOnly.FromDateTime(now.AddDays(1)),
+            new TimeOnly(10, 0),
+            new TimeOnly(12, 0),
+            "123 Nile St, Cairo",
+            null,
+            BookingPriceSnapshot.Calculate(500m, 15m),
+            now.AddHours(24),
+            DateOnly.FromDateTime(now),
+            now);
+    }
 }

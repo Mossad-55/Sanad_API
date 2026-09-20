@@ -1,0 +1,20 @@
+meta {
+  name: 09-start-duplicate
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{attendanceBookingId}}/start
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{attendanceJwt}}
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Bookings.Domain.InvalidOperation
+}

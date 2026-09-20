@@ -1,0 +1,30 @@
+meta {
+  name: 07-complete-invalid-state
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{attendanceBookingId}}/complete
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{attendanceJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "notes": "invalid-state check"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Bookings.Domain.InvalidOperation
+}
