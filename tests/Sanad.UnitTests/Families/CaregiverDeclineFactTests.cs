@@ -894,6 +894,7 @@ public sealed class CaregiverDeclineFactTests
         public DbSet<ElderlyNote> ElderlyNotes => inner.ElderlyNotes;
 
         public DbSet<ElderlyActivityLog> ElderlyActivityLogs => inner.ElderlyActivityLogs;
+        public DbSet<BookingCancellationFact> BookingCancellationFacts => inner.BookingCancellationFacts;
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
             saveFailure is null

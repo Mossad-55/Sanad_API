@@ -12,8 +12,9 @@ namespace Sanad.UnitTests.Families;
 /// <summary>
 /// Model metadata of the reviewed <see cref="BookingCancellationFact"/> mapping: table and schema,
 /// every snake_case column with its exact nullability, strong-id converters, integer enums, the
-/// unique booking index, the restricted foreign key and the deliberate absence of any reverse
-/// navigation on <see cref="Booking"/> or any ripple into <see cref="IFamiliesDbContext"/>.
+/// unique booking index, the restricted foreign key, the deliberate absence of any reverse
+/// navigation on <see cref="Booking"/>, and — since B1-C — the interface's read-only exposure
+/// of the fact set (the write path remains the recorder alone).
 /// <para>
 /// Metadata only. The design-time model is inspected with the InMemory provider, like the existing
 /// model tests, so nothing here connects to PostgreSQL and no converter round-trip is claimed: the
@@ -240,7 +241,7 @@ public sealed class BookingCancellationFactMappingTests
     }
 
     // ---------------------------------------------------------------------------------------------
-    // The aggregate and the module interface stay untouched.
+    // The aggregate stays untouched; the interface serves the fact set read-only (B1-C).
     // ---------------------------------------------------------------------------------------------
 
     [Fact]
@@ -266,7 +267,7 @@ public sealed class BookingCancellationFactMappingTests
     }
 
     [Fact]
-    public void Model_ShouldNotExposeFactsOnTheFamiliesApplicationInterface()
+    public void Model_ShouldExposeFactsReadOnlyOnTheFamiliesApplicationInterface()
     {
         using FamiliesDbContext dbContext = CreateDbContext();
 
@@ -274,11 +275,16 @@ public sealed class BookingCancellationFactMappingTests
         Assert.NotNull(dbContext.BookingCancellationFacts);
         Assert.IsAssignableFrom<IFamiliesDbContext>(dbContext);
 
-        // The module interface deliberately stays untouched by this persistence concern.
-        Assert.DoesNotContain(
+        // B1-C ruling: the admin read models (cancellation summary, cancellations history,
+        // fact-aware refund state) read facts through the module interface, so the interface
+        // deliberately exposes the set for read access. The protection this guard originally
+        // carried — that the application layer never writes a fact — stands unchanged: the sole
+        // write seam remains IBookingCancellationFactRecorder, and the entity is append-only
+        // (pinned by BookingCancellationFactAppendOnlyGuardTests).
+        Assert.Contains(
             typeof(IFamiliesDbContext).GetMembers(),
             member => member.Name == nameof(FamiliesDbContext.BookingCancellationFacts));
-        Assert.DoesNotContain(
+        Assert.Contains(
             typeof(IFamiliesDbContext).GetProperties(),
             property => property.PropertyType == typeof(DbSet<BookingCancellationFact>));
 
