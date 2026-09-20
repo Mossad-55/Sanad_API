@@ -1,5 +1,17 @@
 # Sanad API Codex workflow
 
+## Session-start checkpoint (mandatory)
+
+At the start of every new mastermind session, do not issue a worker brief or rerun a gate immediately. First reconcile the live workspace with the `CURRENT HANDOFF` block at the top of `Sanad_Operations.md`:
+
+1. Read `AGENTS.md`, `Sanad_Master_Context.md`, `Sanad_Operations.md`, and the affected public docs.
+2. Verify branch, `HEAD`, `origin/main`, working-tree status, and running API processes.
+3. Treat only the latest `CURRENT HANDOFF` block and live verification as active; older ledger entries are history.
+4. Report a compact status: completed, pending, blocked, and exactly one next action.
+5. Do not rerun a completed Bruno gate, migration, or worker task unless the handoff explicitly marks it stale or the live audit disproves its result.
+
+When a session ends or a bounded slice closes, update the `CURRENT HANDOFF` block with the verified SHA, exact gate results, cleanup state, and one next action. This block is the handoff contract between sessions.
+
 ## Authority and roles
 
 - The owner is the final authority for product decisions, credentials, migrations, commits, pushes, merges, deployments, and production data.

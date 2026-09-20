@@ -19,6 +19,10 @@ Codex loads repository instructions from `AGENTS.md`. Project-scoped custom agen
 
 The private control files `Sanad_Master_Context.md` and `Sanad_Operations.md` remain untracked at the workspace root. They are coordination records, not product documentation and must never be staged.
 
+## New-session handoff
+
+The latest `CURRENT HANDOFF` block at the top of `Sanad_Operations.md` is the active checkpoint. A new mastermind must reconcile it with the live branch before doing work. The first response must state the verified `HEAD`, remote alignment, dirty/untracked state, completed gates, pending work, and one next action. Historical entries are evidence, not instructions. Completed Bruno gates, migrations, and worker tasks must not be repeated unless the live audit shows that their recorded result is invalid or the handoff explicitly requests a rerun.
+
 ## Standard slice lifecycle
 
 1. The owner authorizes the objective and any state-changing authority.
