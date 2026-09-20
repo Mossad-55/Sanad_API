@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Enums;
@@ -10,6 +11,7 @@ using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
+using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
@@ -25,7 +27,7 @@ public sealed record TestUserSeedOptions
     public string Password { get; init; } = "Test-1234!";
 }
 
-// Opt-in idempotent fixture for end-to-end testing (TEST environments ONLY).
+// Opt-in idempotent fixture for end-to-end testing (Development environments ONLY).
 // Mirrors SuperAdminSeeder. Never enable against a live Paymob key or real users.
 //
 // Seeds: family owner + viewer (password login), two elderly login users,
@@ -35,6 +37,13 @@ public sealed record TestUserSeedOptions
 // CancelledByFamily, CancelledByCaregiver (refunded) and DeclinedByCaregiver (refunded).
 public sealed class TestUserDataSeeder
 {
+    private static readonly SemaphoreSlim SubscriptionFixtureGate = new(1, 1);
+
+    private static readonly string[] AllowedEnvironmentNames =
+    [
+        Environments.Development
+    ];
+
     private readonly IdentityDbContext _identityDbContext;
     private readonly IFamiliesDbContext _familiesDbContext;
     private readonly CaregiversDbContext _caregiversDbContext;
@@ -42,6 +51,7 @@ public sealed class TestUserDataSeeder
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly TestUserSeedOptions _options;
     private readonly IConfiguration _configuration;
+    private readonly IHostEnvironment _hostEnvironment;
 
     public TestUserDataSeeder(
         IdentityDbContext identityDbContext,
@@ -50,7 +60,8 @@ public sealed class TestUserDataSeeder
         IPasswordHasher passwordHasher,
         IDateTimeProvider dateTimeProvider,
         IOptions<TestUserSeedOptions> options,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment hostEnvironment)
     {
         _identityDbContext = identityDbContext;
         _familiesDbContext = familiesDbContext;
@@ -59,10 +70,18 @@ public sealed class TestUserDataSeeder
         _dateTimeProvider = dateTimeProvider;
         _options = options.Value;
         _configuration = configuration;
+        _hostEnvironment = hostEnvironment;
     }
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
     {
+        if (!AllowedEnvironmentNames.Contains(
+                _hostEnvironment.EnvironmentName,
+                StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
         if (!_options.Enabled)
         {
             return;
@@ -354,6 +373,18 @@ public sealed class TestUserDataSeeder
             await _caregiversDbContext.SaveChangesAsync(cancellationToken);
         }
 
+        // ---------------- Subscriptions: published catalog + current snapshot ----------------
+
+        await SubscriptionFixtureGate.WaitAsync(cancellationToken);
+        try
+        {
+            await EnsureSubscriptionFixturesAsync(family, utcNow, cancellationToken);
+        }
+        finally
+        {
+            SubscriptionFixtureGate.Release();
+        }
+
         // ---------------- Bookings portfolio (no slot conflicts: distinct dates per caregiver) ----------------
 
         bool bookingsSeeded = await _familiesDbContext.Bookings
@@ -423,6 +454,165 @@ public sealed class TestUserDataSeeder
         _familiesDbContext.Bookings.AddRange(
             completed, confirmed, pending, cancelledByFamily, cancelledByCaregiver, declined);
         await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureSubscriptionFixturesAsync(
+        Family family,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        SubscriptionPlanVersion? free = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .SingleOrDefaultAsync(
+                plan => plan.Key == SubscriptionPlan.FreeKey && plan.Version == 1,
+                cancellationToken);
+
+        if (free is null)
+        {
+            free = SubscriptionPlanVersion.Create(
+                SubscriptionPlan.Free,
+                isPublished: true,
+                isAvailableForNewSales: true,
+                createdOnUtc: utcNow,
+                publishedOnUtc: utcNow);
+            _familiesDbContext.SubscriptionPlanVersions.Add(free);
+        }
+        else
+        {
+            ValidateSubscriptionPlanVersion(free, SubscriptionPlan.Free, true, true, "free");
+        }
+
+        SubscriptionPlanVersion? premium = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .SingleOrDefaultAsync(
+                plan => plan.Key == SubscriptionPlan.PremiumKey && plan.Version == 1,
+                cancellationToken);
+
+        if (premium is null)
+        {
+            premium = SubscriptionPlanVersion.Create(
+                SubscriptionPlan.Premium,
+                isPublished: true,
+                isAvailableForNewSales: false,
+                createdOnUtc: utcNow,
+                publishedOnUtc: utcNow);
+            _familiesDbContext.SubscriptionPlanVersions.Add(premium);
+        }
+        else
+        {
+            ValidateSubscriptionPlanVersion(premium, SubscriptionPlan.Premium, true, false, "premium");
+        }
+
+        SubscriptionPlanVersion? premiumPlus = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .SingleOrDefaultAsync(
+                plan => plan.Key == SubscriptionPlan.PremiumPlusKey && plan.Version == 1,
+                cancellationToken);
+
+        if (premiumPlus is null)
+        {
+            premiumPlus = SubscriptionPlanVersion.Create(
+                SubscriptionPlan.PremiumPlus,
+                isPublished: false,
+                isAvailableForNewSales: true,
+                createdOnUtc: utcNow);
+            _familiesDbContext.SubscriptionPlanVersions.Add(premiumPlus);
+        }
+        else
+        {
+            ValidateSubscriptionPlanVersion(premiumPlus, SubscriptionPlan.PremiumPlus, false, true, "premium-plus");
+        }
+
+        FamilySubscription? current = await _familiesDbContext.FamilySubscriptions
+            .Include(subscription => subscription.Benefits)
+            .SingleOrDefaultAsync(
+                subscription => subscription.FamilyId == family.Id && subscription.IsCurrent,
+                cancellationToken);
+
+        if (current is null)
+        {
+            _familiesDbContext.FamilySubscriptions.Add(
+                FamilySubscription.Create(family.Id, free, utcNow));
+        }
+        else
+        {
+            ValidateFamilySubscription(current, SubscriptionPlan.Free);
+        }
+
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void ValidateSubscriptionPlanVersion(
+        SubscriptionPlanVersion actual,
+        SubscriptionPlan expected,
+        bool isPublished,
+        bool isAvailableForNewSales,
+        string fixtureName)
+    {
+        if (actual.IsPublished != isPublished
+            || (isPublished
+                && (!actual.PublishedOnUtc.HasValue
+                    || actual.PublishedOnUtc.Value == default
+                    || actual.PublishedOnUtc.Value.Kind != DateTimeKind.Utc))
+            || (!isPublished && actual.PublishedOnUtc.HasValue)
+            || actual.IsAvailableForNewSales != isAvailableForNewSales
+            || actual.Key != expected.Key
+            || actual.Version != expected.Version
+            || actual.Price != expected.Price
+            || actual.Cycle != expected.Cycle
+            || actual.Currency != expected.Currency
+            || actual.MemberLimitKind != expected.MemberLimit.Kind
+            || actual.MemberLimitValue != expected.MemberLimit.Value
+            || actual.MonthlyBookingLimitKind != expected.MonthlyBookingLimit.Kind
+            || actual.MonthlyBookingLimitValue != expected.MonthlyBookingLimit.Value
+            || actual.Rollover != expected.Rollover
+            || !HasExactBenefits(actual.Benefits, expected.Benefits))
+        {
+            throw new InvalidOperationException(
+                $"The deterministic {fixtureName} subscription fixture already exists with incompatible stored terms or benefits.");
+        }
+    }
+
+    private static void ValidateFamilySubscription(FamilySubscription actual, SubscriptionPlan expected)
+    {
+        if (!actual.IsCurrent
+            || actual.PlanKey != expected.Key
+            || actual.PlanVersion != expected.Version
+            || actual.Price != expected.Price
+            || actual.Cycle != expected.Cycle
+            || actual.Currency != expected.Currency
+            || actual.MemberLimitKind != expected.MemberLimit.Kind
+            || actual.MemberLimitValue != expected.MemberLimit.Value
+            || actual.MonthlyBookingLimitKind != expected.MonthlyBookingLimit.Kind
+            || actual.MonthlyBookingLimitValue != expected.MonthlyBookingLimit.Value
+            || actual.Rollover != expected.Rollover
+            || !HasExactBenefits(actual.Benefits, expected.Benefits))
+        {
+            throw new InvalidOperationException(
+                "The seeded family already has an incompatible current subscription fixture stored terms or benefits.");
+        }
+    }
+
+    private static bool HasExactBenefits(
+        IEnumerable<SubscriptionBenefit> actual,
+        IEnumerable<SubscriptionBenefit> expected)
+    {
+        var actualList = actual.ToList();
+        var expectedList = expected.ToList();
+
+        if (actualList.Count != 8
+            || expectedList.Count != 8
+            || actualList.Select(benefit => benefit.Key).Distinct().Count() != 8)
+        {
+            return false;
+        }
+
+        var actualBenefits = actualList.ToDictionary(benefit => benefit.Key, benefit => benefit.IsIncluded);
+        var expectedBenefits = expectedList.ToDictionary(benefit => benefit.Key, benefit => benefit.IsIncluded);
+
+        return actualBenefits.Count == expectedBenefits.Count
+            && actualBenefits.All(pair => expectedBenefits.TryGetValue(pair.Key, out bool included)
+                && included == pair.Value);
     }
 
     private static Booking NewBooking(

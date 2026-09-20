@@ -1,0 +1,64 @@
+meta {
+  name: 02-list-plans
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plans
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{subscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{subscriptionOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const plans = Array.isArray(res.body) ? res.body : [];
+  const field = (object, name) => object && (object[name] ?? object[name[0].toUpperCase() + name.slice(1)]);
+  const enumValue = (value, names) => {
+    if (typeof value === "number" && Number.isInteger(value)) return value;
+    if (typeof value === "string") {
+      const numeric = Number(value);
+      if (Number.isInteger(numeric) && String(numeric) === value) return numeric;
+      const index = names.indexOf(value);
+      return index < 0 ? null : index + 1;
+    }
+    return null;
+  };
+  const assertLimit = (actual, expected) => enumValue(field(actual, "kind"), ["Finite", "Unlimited"]) === expected[0]
+    && (expected[0] === 2 ? field(actual, "value") == null : field(actual, "value") === expected[1]);
+  const assertBenefits = (plan, included) => {
+    const names = ["Chatting", "Library", "CommunityForum", "FamilyActivityTimeline", "BasicSearch", "AdvancedSearchFilters", "MedicalSummaryExportAndSecureSharing", "PremiumContent"];
+    const benefits = field(plan, "benefits") || [];
+    const actual = new Map(benefits.map((benefit) => [enumValue(field(benefit, "key"), names), field(benefit, "isIncluded")]));
+    if (benefits.length !== 8 || actual.size !== 8 || [1, 2, 3, 4, 5, 6, 7, 8].some((key) => !actual.has(key))) throw new Error("Catalog plan benefits are not exact.");
+    for (const key of [1, 2, 3, 4, 5, 6, 7, 8]) if (actual.get(key) !== included.includes(key)) throw new Error("Catalog plan benefit inclusion is incorrect.");
+  };
+  const assertPlan = (plan, expected) => {
+    if (field(plan, "key") !== expected.key || field(plan, "version") !== 1 || field(plan, "price") !== expected.price || field(plan, "currency") !== "EGP") throw new Error("Catalog plan identity or price is incorrect.");
+    const publishedOnUtc = field(plan, "publishedOnUtc");
+    const publishedDate = new Date(publishedOnUtc);
+    const defaultPublishedDate = new Date("0001-01-01T00:00:00.000Z");
+    const hasUtcDesignator = typeof publishedOnUtc === "string"
+      && publishedOnUtc.endsWith("Z");
+    if (publishedOnUtc == null
+      || Number.isNaN(publishedDate.getTime())
+      || publishedDate.getTime() === defaultPublishedDate.getTime()
+      || !hasUtcDesignator) throw new Error("Published catalog plan timestamp must be a valid non-default UTC date.");
+    if (enumValue(field(plan, "cycle"), ["Monthly", "Annual"]) !== expected.cycle || field(plan, "isAvailableForNewSales") !== expected.available || !assertLimit(field(plan, "memberLimit"), expected.member) || !assertLimit(field(plan, "monthlyBookingLimit"), expected.bookings) || enumValue(field(plan, "rollover"), ["None", "NotApplicable"]) !== expected.rollover) throw new Error("Catalog plan terms are incorrect.");
+    assertBenefits(plan, expected.included);
+  };
+  if (plans.length !== 2 || field(plans[0], "key") !== "free" || field(plans[1], "key") !== "premium") throw new Error("Catalog must contain exactly free then premium.");
+  assertPlan(plans[0], { key: "free", price: 0, cycle: 1, available: true, member: [1, 3], bookings: [1, 5], rollover: 1, included: [1, 2, 3, 5] });
+  assertPlan(plans[1], { key: "premium", price: 299, cycle: 1, available: false, member: [1, 10], bookings: [1, 20], rollover: 1, included: [1, 2, 3, 4, 5, 6, 7] });
+}

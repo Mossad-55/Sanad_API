@@ -1,0 +1,52 @@
+meta {
+  name: 03-get-current
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/current
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{subscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{subscriptionOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const current = res.body && (res.body.currentSubscription ?? res.body.CurrentSubscription);
+  if (!current) {
+    throw new Error("Seeded family has no current subscription snapshot.");
+  }
+
+  const field = (object, name) => object && (object[name] ?? object[name[0].toUpperCase() + name.slice(1)]);
+  const enumValue = (value, names) => {
+    if (typeof value === "number" && Number.isInteger(value)) return value;
+    if (typeof value === "string") {
+      const numeric = Number(value);
+      if (Number.isInteger(numeric) && String(numeric) === value) return numeric;
+      const index = names.indexOf(value);
+      return index < 0 ? null : index + 1;
+    }
+    return null;
+  };
+  if (field(current, "planKey") !== "free" || field(current, "planVersion") !== 1 || field(current, "price") !== 0 || field(current, "currency") !== "EGP") throw new Error("Current subscription identity or price is incorrect.");
+  const member = field(current, "memberLimit");
+  const bookings = field(current, "monthlyBookingLimit");
+  if (enumValue(field(member, "kind"), ["Finite", "Unlimited"]) !== 1 || field(member, "value") !== 3 || enumValue(field(bookings, "kind"), ["Finite", "Unlimited"]) !== 1 || field(bookings, "value") !== 5 || enumValue(field(current, "cycle"), ["Monthly", "Annual"]) !== 1 || enumValue(field(current, "rollover"), ["None", "NotApplicable"]) !== 1) throw new Error("Current subscription terms are incorrect.");
+  const names = ["Chatting", "Library", "CommunityForum", "FamilyActivityTimeline", "BasicSearch", "AdvancedSearchFilters", "MedicalSummaryExportAndSecureSharing", "PremiumContent"];
+  const benefits = field(current, "benefits") || [];
+  const actual = new Map(benefits.map((benefit) => [enumValue(field(benefit, "key"), names), field(benefit, "isIncluded")]));
+  if (benefits.length !== 8 || actual.size !== 8 || [1, 2, 3, 4, 5, 6, 7, 8].some((key) => !actual.has(key))) throw new Error("Current subscription benefits are not exact.");
+  for (const key of [1, 2, 3, 5]) if (actual.get(key) !== true) throw new Error("Current free benefit must be included.");
+  for (const key of [4, 6, 7, 8]) if (actual.get(key) !== false) throw new Error("Current free benefit must be excluded.");
+}

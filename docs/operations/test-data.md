@@ -16,8 +16,8 @@ App__TestUserSeed__Enabled=true
 ```
 
 - Default is **off** — nothing is seeded unless the flag is set.
-- **Never enable it in production.** As a seatbelt, the seeder *refuses to run* if `Paymob__SecretKey` starts with `sk_live`.
-- Locally (Development): the flag is already set in `appsettings.Development.json`. On the TEST box: set it in `/etc/sanad/sanad.env`, restart, and remove it when the environment stops being a test one.
+- **Development only:** this fixture must never be enabled on TEST, staging, a VPS, or production. The seeder has an explicit Development-only hard gate and returns without database access in every other environment. As a second seatbelt, it *refuses to run* if `Paymob__SecretKey` starts with `sk_live`.
+- Locally (Development), the flag is already set in `appsettings.Development.json`. Do not copy this setting to TEST, staging, a VPS, or production.
 - Password for all seeded password accounts (override with `App__TestUserSeed__Password`):
 
 | Account | Login | Credential |
@@ -53,6 +53,22 @@ App__TestUserSeed__Enabled=true
 
 All seeds are written through the domain aggregates — no raw row fabrication.
 
+### Subscription fixtures
+
+The Development fixture seeds three version-1 subscription plans and one current family
+snapshot. The public catalog returns only the two published plans, in key order:
+
+| Plan | Published | Available for new sales | Price | Cycle | Currency | Members | Monthly bookings | Rollover | Included benefit keys (`1`–`8`) |
+|---|---:|---:|---:|---|---|---:|---:|---|---|
+| `free` | yes | yes | `0` | Monthly | EGP | 3 | 5 | None | `1, 2, 3, 5` |
+| `premium` | yes | no (retired) | `299` | Monthly | EGP | 10 | 20 | None | `1, 2, 3, 4, 5, 6, 7` |
+| `premium-plus` | no (draft) | yes | `2499` | Annual | EGP | Unlimited | Unlimited | NotApplicable | `1, 2, 3, 4, 5, 6, 7, 8` |
+
+Every plan has version `1` and all eight benefit keys. Benefits not listed as included
+have `IsIncluded = false`. The current family snapshot is the `free` plan at version `1`
+with price `0`, Monthly billing, EGP, member limit `3`, monthly booking limit `5`,
+rollover `None`, and benefit keys `1, 2, 3, 5` included (keys `4, 6, 7, 8` excluded).
+
 ## Logging in per role
 
 | Role | Flow |
@@ -64,13 +80,13 @@ All seeds are written through the domain aggregates — no raw row fabrication.
 
 Sessions are capped (`DeviceSessionPolicy.MaximumActiveSessions`, currently 5): repeated logins from test scripts eventually return **409 `Identity.Login.SessionLimitReached`**. Remedy in a scratch environment: delete rows from `identity.device_sessions` (or revoke) and retry.
 
-## Payments in TEST
+## Payments in Development
 
 Without `Paymob__SecretKey` configured (plain local runs), the API resolves a **`DevelopmentPaymobClient`** which returns a fake intent/clientSecret so checkout→intent flows are testable offline. Webhook settlement, SDK payments and refunds need the **real TEST keys**:
 
 - Test cards / wallet numbers / keys come from the Paymob dashboard (Test mode): *Developers → Payment Integrations* and the **Test Credentials** page of the official docs.
 - Webhook settlement locally: replay the callback through the signed webhook simulator (HMAC-SHA512 over the 20-field Paymob concat) since Paymob cannot reach `localhost`.
-- Never use live keys in this environment; the seeder's live-key guard is a last line of defense, not a substitute for correct configuration.
+- This fixture is not a TEST/staging/VPS/production data mechanism. Never enable it there or use live keys; the seeder's Development-only and live-key guards are last lines of defense, not a substitute for correct configuration.
 
 ## Known findings (tracked, not yet decided)
 
