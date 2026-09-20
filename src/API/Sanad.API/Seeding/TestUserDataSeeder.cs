@@ -461,12 +461,12 @@ public sealed class TestUserDataSeeder
         booking.RecordPaymentIntent(
             booking.Id.Value.ToString(),
             PaymentMethod.Card,
-            utcNow);
+            utcNow.AddMinutes(-3));
         booking.MarkAsPaid(
             booking.Id.Value.ToString(),
             $"test-txn-{booking.Id.Value:N}",
-            utcNow.AddMinutes(1));
-        booking.AcceptByCaregiver(utcNow.AddMinutes(2));
+            utcNow.AddMinutes(-2));
+        booking.AcceptByCaregiver(utcNow.AddMinutes(-1));
     }
 
     private async Task<User> EnsureUserAsync(
