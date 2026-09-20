@@ -4,10 +4,6 @@ meta {
   seq: 9
 }
 
-// This is the only report-creating request. It consumes the fresh seed's
-// Completed booking and the booking's one-report uniqueness state. Run this
-// one-shot lifecycle folder only after a fresh seed; do not include it in T0.
-
 post {
   url: {{baseUrl}}/api/v1/caregiver/bookings/{{visitReportBookingId}}/visit-report
   body: json
