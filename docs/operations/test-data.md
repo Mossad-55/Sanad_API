@@ -1,5 +1,10 @@
 # Test data (E2E fixture)
 
+Medical Reports V1 uses the existing completed medical booking as a one-shot fixture. Submit at most
+one report per completed booking; duplicate and concurrent submissions are rejected by the unique
+booking constraint. The `medical-reports` Bruno collection is intended for a freshly seeded local
+database only.
+
 An **opt-in, idempotent seeder** creates a stable multi-role fixture so API tests (manual, Postman, or an agent driving HTTP) can log in and exercise real flows without manual setup. It mirrors the `SuperAdminSeeder` pattern and lives at `src/API/Sanad.API/Seeding/TestUserDataSeeder.cs`.
 
 ## Enabling it

@@ -4,6 +4,7 @@ using MediatR;
 using Sanad.API.Authorization;
 using Sanad.API.ProblemDetail;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Reports;
 
@@ -14,14 +15,16 @@ namespace Sanad.API.Controllers;
 public sealed class FamilyReportsController : ApiControllerBase
 {
     private readonly ISender _sender;
+    private readonly IFileStorage _fileStorage;
 
-    public FamilyReportsController(ISender sender)
+    public FamilyReportsController(ISender sender, IFileStorage fileStorage)
     {
         _sender = sender;
+        _fileStorage = fileStorage;
     }
 
     [HttpGet]
-    [ProducesResponseType(typeof(PagedVisitReportsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedFamilyReportsResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> GetReports(
@@ -38,7 +41,7 @@ public sealed class FamilyReportsController : ApiControllerBase
         }
 
         var result = await _sender.Send(
-            new GetFamilyVisitReportsQuery(
+            new GetFamilyReportsQuery(
                 userId,
                 type,
                 elderlyId.HasValue ? new ElderlyId(elderlyId.Value) : null,
@@ -52,7 +55,18 @@ public sealed class FamilyReportsController : ApiControllerBase
             return Ok(result.Value);
         }
 
-        return ToVisitReportActionResult(result.Error);
+        return ToFamilyReportActionResult(result.Error);
+    }
+
+    [HttpGet("{reportId:guid}/photo")]
+    public async Task<IActionResult> ReadMedicalReportPhoto(Guid reportId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var result = await _sender.Send(new GetMedicalReportPhotoQuery(userId, new MedicalReportId(reportId), false), cancellationToken);
+        if (result.IsFailure) return ToFamilyReportActionResult(result.Error);
+        var file = await _fileStorage.OpenReadAsync(result.Value.Key, cancellationToken);
+        if (file.IsFailure) return NotFound();
+        return File(file.Value.Content, file.Value.ContentType);
     }
 
     private IActionResult ToVisitReportActionResult(Error error)
@@ -67,5 +81,16 @@ public sealed class FamilyReportsController : ApiControllerBase
 
         problemDetails.Status = statusCode;
         return StatusCode(statusCode, problemDetails);
+    }
+
+    private IActionResult ToFamilyReportActionResult(Error error)
+    {
+        var details = ResultProblemDetailsMapper.Create(error, HttpContext);
+        details.Status = error.Code.EndsWith("AccessDenied", StringComparison.Ordinal)
+            ? 403
+            : error.Code.EndsWith("PhotoNotFound", StringComparison.Ordinal)
+                ? 404
+                : 400;
+        return StatusCode(details.Status.Value, details);
     }
 }

@@ -1,0 +1,23 @@
+meta {
+  name: 14-logout-medical-caregiver
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{medicalReportCaregiverDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{medicalReportCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

@@ -1,5 +1,14 @@
 # Caregiver bookings
 
+Medical Reports V1 are submitted by medical caregivers at
+`POST /api/v1/caregiver/bookings/{bookingId}/medical-report` using multipart form data with a JSON
+`report` part and optional `photo` part. Blood-pressure values are paired; measurement time is UTC
+and required for any supplied measurement, and future timestamps are rejected. No clinical ranges
+are imposed. Companion submission across caregiver ownership boundaries returns `404 Bookings.NotFound`. Photo consent is
+a caregiver UI checkbox/attestation; unavailable or false consent submits without a photo.
+The submitting caregiver reads an authorized photo inline at
+`GET /api/v1/caregiver/bookings/medical-reports/{reportId}/photo`.
+
 Caregiver `الطلبات`: list/detail (including cancellations) plus accept, decline, start, and complete.
 
 All routes live under `/api/v1/caregiver/bookings...`.
@@ -59,7 +68,7 @@ The visit-report action returns `201` and accepts only `observedCondition`, `act
 `assessment`. It uses server attendance and submission timestamps and rejects a second report for the
 same booking with `409 Reports.Visit.AlreadySubmitted`.
 
-Medical Reports are a separate planned action for Medical caregivers. The mobile app must show the
+Medical Reports are a separate action for Medical caregivers. The mobile app must show the
 optional photo-consent step before capturing or selecting a medical photo. A confirmed consent
 attestation is submitted with the photo; if consent is unavailable, the caregiver submits the
 Medical Report without a photo. Visit Reports never accept photos. Medical photo storage is private,

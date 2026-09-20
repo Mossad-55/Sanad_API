@@ -1,0 +1,28 @@
+meta {
+  name: 05-submit-photo-without-consent
+  type: http
+  seq: 5
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{completedMedicalBookingId}}/medical-report
+  body: multipart-form
+  auth: bearer
+}
+
+headers {
+  content-type: multipart/form-data
+}
+auth:bearer {
+  token: {{medicalReportCaregiverJwt}}
+}
+
+body:multipart-form {
+  report: '''
+    {"assessment":1,"photoConsentConfirmed":false}
+  '''
+  photo: @file(./collections/Sanad/medical-reports/medical-photo.jpg)
+}
+
+assert {
+  res.status: eq 400
+}

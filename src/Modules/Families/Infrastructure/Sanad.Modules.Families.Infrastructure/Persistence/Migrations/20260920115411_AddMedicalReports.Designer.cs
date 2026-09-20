@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sanad.Modules.Families.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FamiliesDbContext))]
-    partial class FamiliesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260920115411_AddMedicalReports")]
+    partial class AddMedicalReports
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1072,6 +1075,45 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Bookings.Booking", b =>
                 {
+                    b.OwnsOne("Sanad.BuildingBlocks.Domain.ValueObjects.BookingPriceSnapshot", "PriceSnapshot", b1 =>
+                        {
+                            b1.Property<Guid>("BookingId")
+                                .HasColumnType("uuid");
+
+                            b1.Property<decimal>("BaseCaregiverFee")
+                                .HasPrecision(12, 2)
+                                .HasColumnType("numeric(12,2)")
+                                .HasColumnName("price_base_fee");
+
+                            b1.Property<string>("Currency")
+                                .IsRequired()
+                                .HasMaxLength(10)
+                                .HasColumnType("character varying(10)")
+                                .HasColumnName("price_currency");
+
+                            b1.Property<decimal>("PlatformFeeAmount")
+                                .HasPrecision(12, 2)
+                                .HasColumnType("numeric(12,2)")
+                                .HasColumnName("price_platform_fee_amount");
+
+                            b1.Property<decimal>("PlatformFeePercentage")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("numeric(5,2)")
+                                .HasColumnName("price_platform_fee_percentage");
+
+                            b1.Property<decimal>("TotalPayableAmount")
+                                .HasPrecision(12, 2)
+                                .HasColumnType("numeric(12,2)")
+                                .HasColumnName("price_total_payable_amount");
+
+                            b1.HasKey("BookingId");
+
+                            b1.ToTable("bookings", "families");
+
+                            b1.WithOwner()
+                                .HasForeignKey("BookingId");
+                        });
+
                     b.OwnsMany("Sanad.Modules.Families.Domain.Bookings.PaymentTransaction", "PaymentTransactions", b1 =>
                         {
                             b1.Property<Guid>("BookingId")
@@ -1135,45 +1177,6 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                             b1.HasIndex("PaymobTransactionId");
 
                             b1.ToTable("payment_transactions", "families");
-
-                            b1.WithOwner()
-                                .HasForeignKey("BookingId");
-                        });
-
-                    b.OwnsOne("Sanad.BuildingBlocks.Domain.ValueObjects.BookingPriceSnapshot", "PriceSnapshot", b1 =>
-                        {
-                            b1.Property<Guid>("BookingId")
-                                .HasColumnType("uuid");
-
-                            b1.Property<decimal>("BaseCaregiverFee")
-                                .HasPrecision(12, 2)
-                                .HasColumnType("numeric(12,2)")
-                                .HasColumnName("price_base_fee");
-
-                            b1.Property<string>("Currency")
-                                .IsRequired()
-                                .HasMaxLength(10)
-                                .HasColumnType("character varying(10)")
-                                .HasColumnName("price_currency");
-
-                            b1.Property<decimal>("PlatformFeeAmount")
-                                .HasPrecision(12, 2)
-                                .HasColumnType("numeric(12,2)")
-                                .HasColumnName("price_platform_fee_amount");
-
-                            b1.Property<decimal>("PlatformFeePercentage")
-                                .HasPrecision(5, 2)
-                                .HasColumnType("numeric(5,2)")
-                                .HasColumnName("price_platform_fee_percentage");
-
-                            b1.Property<decimal>("TotalPayableAmount")
-                                .HasPrecision(12, 2)
-                                .HasColumnType("numeric(12,2)")
-                                .HasColumnName("price_total_payable_amount");
-
-                            b1.HasKey("BookingId");
-
-                            b1.ToTable("bookings", "families");
 
                             b1.WithOwner()
                                 .HasForeignKey("BookingId");

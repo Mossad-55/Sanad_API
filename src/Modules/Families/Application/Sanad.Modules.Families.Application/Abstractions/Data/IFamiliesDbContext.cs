@@ -26,6 +26,7 @@ public interface IFamiliesDbContext
     DbSet<ElderlyNote> ElderlyNotes { get; }
     DbSet<ElderlyActivityLog> ElderlyActivityLogs { get; }
     DbSet<VisitReport> VisitReports { get; }
+    DbSet<MedicalReport> MedicalReports => throw new NotSupportedException("This context does not expose medical reports.");
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

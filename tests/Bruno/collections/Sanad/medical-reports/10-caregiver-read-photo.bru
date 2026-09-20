@@ -1,0 +1,19 @@
+meta {
+  name: 10-caregiver-read-photo
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/medical-reports/{{medicalReportId}}/photo
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{medicalReportCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

@@ -2,7 +2,7 @@
 
 Visit reports are immutable, dated records attached to a completed booking. They are separate from
 the elderly medical profile and ordinary family notes. Visit reports store no photos. Medical Reports
-are a separate Medical-caregiver-only report type; their planned V1 contract is documented below.
+are a separate Medical-caregiver-only report type.
 
 ## Access
 
@@ -15,6 +15,8 @@ the caller; deleted families are excluded.
 | Method | Route | Description |
 |---|---|---|
 | `GET` | `/api/v1/family/reports?type=visit` | Paged visit reports across the caller's active families |
+| `GET` | `/api/v1/family/reports?type=medical` | Paged medical reports |
+| `GET` | `/api/v1/family/reports?type=all` | Common envelope containing both report types |
 
 Optional filters are `elderlyId`, `bookingId`, `page` (default `1`), and `pageSize` (default `50`,
 maximum `50`). The response contains `items`, `page`, `pageSize`, and `totalCount`.
@@ -63,36 +65,32 @@ Medical Reports are submitted only by an assigned Medical caregiver for a comple
 Medical caregiver may submit both a Visit Report and a Medical Report for the same booking. A
 Companion caregiver cannot submit a Medical Report.
 
-The planned Medical Report request supports structured measurements (blood pressure, pulse, and
+The Medical Report request supports structured measurements (blood pressure, pulse, and
 temperature), measurement time, assessment, notes, and one optional original photo. Missing
 measurements remain missing; the API must not convert them to zero. The photo is optional, and the
 report remains valid when no photo is supplied.
 
-The mobile application must request consent immediately before capturing or uploading an optional
-medical photo. The consent step belongs in the caregiver app, not in a separate download flow:
+The mobile application must show a caregiver-only attestation checkbox immediately before capturing
+or uploading an optional medical photo. The elderly person and family do not participate in V1:
 
 1. The caregiver opens the Medical Report and taps **Add medical photo**.
-2. Before opening the camera or selecting an existing image, the app asks the elderly person or
-   authorized representative for permission to capture and store the image for care documentation.
-3. The app displays a confirmation such as: **“I confirm that the elderly person or authorized
-   representative gave permission for this photo to be captured and stored for care documentation.”**
-4. If consent is confirmed, the app sends the photo with the Medical Report submission and sets
+2. Before opening the camera or selecting an existing image, the caregiver checks the attestation.
+3. If the checkbox is confirmed, the app sends the photo with the Medical Report submission and sets
    `photoConsentConfirmed` to `true`.
-5. If consent is refused or unavailable, the app submits the Medical Report without a photo. It
+4. If consent is refused or unavailable, the app submits the Medical Report without a photo. It
    must not upload the image.
 
 Consent confirmation records the caregiver's attestation, timestamp, and user identity; it is not
-presented as a digital signature. If the elderly person cannot consent, the app must use an
-authorized representative only where Sanad's consent policy recognizes that representative. Until
-that policy is available, submit the report without a photo.
+presented as a digital signature.
 
 The API stores one private original image only. It does not store or return a thumbnail, and it never
 exposes the storage key. The mobile app may create thumbnails locally from the protected image
 endpoint. The caregiver who submitted the report and authorized family members may view the image
 inline in the app through authenticated endpoints; the app should not require a manual file download.
 
-This section defines the mobile/API contract for the planned Medical Reports slice. It does not add
-the Medical Report endpoint to the current Visit Report API.
+The caregiver endpoint is `POST /api/v1/caregiver/bookings/{bookingId}/medical-report` with a
+`multipart/form-data` JSON `report` part and optional `photo` part. Photo reads stream inline from
+`GET /api/v1/family/reports/{reportId}/photo` after family authorization.
 
 ## Error catalog
 
@@ -104,3 +102,7 @@ the Medical Report endpoint to the current Visit Report API.
 | `Reports.Visit.AlreadySubmitted` | 409 | A report already exists for the booking |
 | `Bookings.NotFound` | 404 | The booking is unknown or is assigned to another caregiver |
 | `Bookings.Domain.InvalidOperation` | 409 | The assigned booking has not completed attendance |
+| `Reports.Medical.AlreadySubmitted` | 409 | A medical report already exists for the booking |
+| `Reports.Medical.CaregiverForbidden` | 403 | A caregiver is identified as companion for a booking visible to that caregiver |
+| `Reports.Medical.InvalidContent` | 400 | Structural measurement, timestamp, assessment, or consent/photo validation failed |
+| `Reports.Medical.PhotoNotFound` | 404 | The report has no photo or the private photo is unavailable |

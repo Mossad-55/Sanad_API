@@ -1,0 +1,23 @@
+meta {
+  name: 13-logout-family-owner
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{medicalReportFamilyDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{medicalReportFamilyJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

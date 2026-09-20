@@ -1,0 +1,29 @@
+meta {
+  name: 07-submit-companion-forbidden
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{completedMedicalBookingId}}/medical-report
+  body: multipart-form
+  auth: bearer
+}
+
+headers {
+  content-type: multipart/form-data
+}
+
+auth:bearer {
+  token: {{medicalReportCompanionJwt}}
+}
+
+body:multipart-form {
+  report: '''
+    {"assessment":1,"photoConsentConfirmed":false}
+  '''
+}
+
+assert {
+  res.status: eq 404
+}

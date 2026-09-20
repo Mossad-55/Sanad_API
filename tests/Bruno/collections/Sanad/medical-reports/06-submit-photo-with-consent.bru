@@ -1,0 +1,34 @@
+meta {
+  name: 06-submit-photo-with-consent
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{completedMedicalBookingId}}/medical-report
+  body: multipart-form
+  auth: bearer
+}
+
+headers {
+  content-type: multipart/form-data
+}
+
+auth:bearer {
+  token: {{medicalReportCaregiverJwt}}
+}
+
+body:multipart-form {
+  report: '''
+    {"assessment":1,"notes":"Medical follow-up recorded.","photoConsentConfirmed":true}
+  '''
+  photo: @file(./collections/Sanad/medical-reports/medical-photo.jpg)
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("medicalReportId", res.body.id ?? res.body.Id ?? "");
+}

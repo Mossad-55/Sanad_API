@@ -37,6 +37,7 @@ public sealed class FamiliesDbContext :
     public DbSet<ElderlyNote> ElderlyNotes => Set<ElderlyNote>();
     public DbSet<ElderlyActivityLog> ElderlyActivityLogs => Set<ElderlyActivityLog>();
     public DbSet<VisitReport> VisitReports => Set<VisitReport>();
+    public DbSet<MedicalReport> MedicalReports => Set<MedicalReport>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -55,6 +56,7 @@ public sealed class FamiliesDbContext :
     {
         ThrowIfCancellationFactMutated();
         ThrowIfVisitReportMutated();
+        ThrowIfMedicalReportMutated();
 
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -69,6 +71,7 @@ public sealed class FamiliesDbContext :
     {
         ThrowIfCancellationFactMutated();
         ThrowIfVisitReportMutated();
+        ThrowIfMedicalReportMutated();
 
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
@@ -113,6 +116,15 @@ public sealed class FamiliesDbContext :
                     "they must never be updated or deleted, but a tracked report with " +
                     $"Id '{entry.Entity.Id}' is in state '{entry.State}'.");
             }
+        }
+    }
+
+    private void ThrowIfMedicalReportMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<MedicalReport>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+                throw new InvalidOperationException($"{nameof(MedicalReport)} entries are immutable and cannot be updated or deleted.");
         }
     }
 }

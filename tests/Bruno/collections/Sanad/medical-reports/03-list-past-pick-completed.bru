@@ -1,0 +1,23 @@
+meta {
+  name: 03-list-past-pick-completed
+  type: http
+  seq: 3
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings?tab=Past
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{medicalReportCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = Array.isArray(res.body) ? res.body : (res.body.items || res.body.results || []);
+  const completed = items.find((item) => (item.status ?? item.Status) === 5 || (item.status ?? item.Status) === "Completed");
+  bru.setVar("completedMedicalBookingId", completed ? String(completed.id ?? completed.Id ?? completed.bookingId ?? completed.BookingId) : "");
+}

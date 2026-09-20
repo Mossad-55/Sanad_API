@@ -1,0 +1,19 @@
+meta {
+  name: 11-family-read-photo
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/reports/{{medicalReportId}}/photo
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{medicalReportFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

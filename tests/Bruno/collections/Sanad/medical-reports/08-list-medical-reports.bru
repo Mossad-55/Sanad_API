@@ -1,0 +1,20 @@
+meta {
+  name: 08-list-medical-reports
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/reports?type=medical
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{medicalReportFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items[0].reportType: eq medical
+}

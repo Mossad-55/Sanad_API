@@ -1,0 +1,19 @@
+meta {
+  name: 09-list-all-reports
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/reports?type=all
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{medicalReportFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

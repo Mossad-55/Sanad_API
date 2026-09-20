@@ -5,12 +5,15 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.API.Authorization;
 using Sanad.API.ProblemDetail;
 using Sanad.BuildingBlocks.Application.Abstractions;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Application.Reports;
 using Sanad.Modules.Families.Domain.Reports;
+using Sanad.API.Controllers.Requests;
+using System.Text.Json;
 
 namespace Sanad.API.Controllers;
 
@@ -30,15 +33,18 @@ public sealed class CaregiverBookingsController : ApiControllerBase
     private readonly ISender _sender;
     private readonly ICaregiversDbContext _caregiversDb;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IFileStorage _fileStorage;
 
     public CaregiverBookingsController(
         ISender sender,
         ICaregiversDbContext caregiversDb,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IFileStorage fileStorage)
     {
         _sender = sender;
         _caregiversDb = caregiversDb;
         _dateTimeProvider = dateTimeProvider;
+        _fileStorage = fileStorage;
     }
 
     [HttpGet]
@@ -303,5 +309,39 @@ public sealed class CaregiverBookingsController : ApiControllerBase
 
         problemDetails.Status = statusCode;
         return StatusCode(statusCode, problemDetails);
+    }
+
+    [HttpPost("{bookingId:guid}/medical-report")]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(MedicalReportResponse), StatusCodes.Status201Created)]
+    public async Task<IActionResult> SubmitMedicalReport(Guid bookingId, [FromForm] string report, IFormFile? photo, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var caregiver = await _caregiversDb.Caregivers.SingleOrDefaultAsync(x => x.UserId == userId, cancellationToken);
+        if (caregiver is null) return Unauthorized();
+        SubmitMedicalReportRequest request;
+        try { request = JsonSerializer.Deserialize<SubmitMedicalReportRequest>(report, new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? throw new JsonException(); }
+        catch (JsonException) { return BadRequestWithCode("Reports.Medical.InvalidContent"); }
+        var result = await _sender.Send(new SubmitMedicalReportCommand(caregiver.Id, userId, new BookingId(bookingId), request.Systolic, request.Diastolic, request.Pulse, request.Temperature, request.Notes, request.MeasurementTakenOnUtc, request.Assessment, request.PhotoConsentConfirmed, _dateTimeProvider.UtcNow, photo?.OpenReadStream(), photo?.ContentType, photo?.Length ?? 0), cancellationToken);
+        if (result.IsSuccess) return StatusCode(StatusCodes.Status201Created, result.Value);
+        return ToMedicalReportActionResult(result.Error);
+    }
+
+    [HttpGet("medical-reports/{reportId:guid}/photo")]
+    public async Task<IActionResult> ReadMedicalReportPhoto(Guid reportId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var result = await _sender.Send(new GetMedicalReportPhotoQuery(userId, new MedicalReportId(reportId), true), cancellationToken);
+        if (result.IsFailure) return ToMedicalReportActionResult(result.Error);
+        var file = await _fileStorage.OpenReadAsync(result.Value.Key, cancellationToken);
+        if (file.IsFailure) return NotFound();
+        return File(file.Value.Content, file.Value.ContentType);
+    }
+
+    private IActionResult ToMedicalReportActionResult(Error error)
+    {
+        var details = ResultProblemDetailsMapper.Create(error, HttpContext);
+        details.Status = error.Code switch { "Reports.Medical.AlreadySubmitted" => 409, "Reports.Medical.CaregiverForbidden" => 403, "Reports.Medical.PhotoNotFound" => 404, "Reports.Medical.AccessDenied" => 403, "Bookings.NotFound" => 404, "Bookings.Domain.InvalidOperation" => 409, _ => 400 };
+        return StatusCode(details.Status.Value, details);
     }
 }

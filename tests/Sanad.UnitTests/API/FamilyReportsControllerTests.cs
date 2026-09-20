@@ -31,6 +31,6 @@ public sealed class FamilyReportsControllerTests
             method!.GetCustomAttributes<ProducesResponseTypeAttribute>()
                 .Where(attribute => attribute.StatusCode == StatusCodes.Status200OK));
 
-        Assert.Equal(typeof(Sanad.Modules.Families.Application.Reports.PagedVisitReportsResponse), response.Type);
+        Assert.Equal(typeof(Sanad.Modules.Families.Application.Reports.PagedFamilyReportsResponse), response.Type);
     }
 }

@@ -1,0 +1,29 @@
+meta {
+  name: 12-submit-duplicate
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{completedMedicalBookingId}}/medical-report
+  body: multipart-form
+  auth: bearer
+}
+
+headers {
+  content-type: multipart/form-data
+}
+
+auth:bearer {
+  token: {{medicalReportCaregiverJwt}}
+}
+
+body:multipart-form {
+  report: '''
+    {"assessment":1,"photoConsentConfirmed":false}
+  '''
+}
+
+assert {
+  res.status: eq 409
+}
