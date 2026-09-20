@@ -93,7 +93,7 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
 
 ### 3. Booking detail
 
-`GET /api/v1/family/bookings/{bookingId}` → full price breakdown (`baseCaregiverFee`, `platformFeePercentage`, `platformFeeAmount`, `totalPayableAmount`, `currency`), the elderly summary (fields are `null` when the dependent record is absent — the API never fabricates values), lifecycle timestamps (`paidOnUtc`, `confirmedOnUtc`, `startedOnUtc`, `completedOnUtc`, `cancelledOnUtc`, `refundedOnUtc`), `refundState` (`1` NotApplicable, `2` Failed Paymob refund, `3` Succeeded), `cancellationReason`, and `caregiverNotes`.
+`GET /api/v1/family/bookings/{bookingId}` → full price breakdown (`baseCaregiverFee`, `platformFeePercentage`, `platformFeeAmount`, `totalPayableAmount`, `currency`), the elderly summary (fields are `null` when the dependent record is absent — the API never fabricates values), lifecycle timestamps (`paidOnUtc`, `confirmedOnUtc`, `startedOnUtc`, `completedOnUtc`, `cancelledOnUtc`, `refundedOnUtc`), `refundState` (`1` NotApplicable, `2` Failed Paymob refund, `3` Succeeded, `4` NoRefundDue), `cancellationReason`, and `caregiverNotes`.
 
 ### 4. Cancel
 
@@ -103,7 +103,7 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
 { "reason": "ظرف طارئ" }
 ```
 
-Allowed from `PendingPayment`, `PendingCaregiverApproval`, and `Confirmed` (`409 Bookings.Domain.InvalidOperation` otherwise). Reason ≤ 500 chars. Cancellation **fee tiers** are not enforced yet (planned slice); today no fee is deducted.
+Family Owner or Editor may cancel; Viewer receives `403 Bookings.UnauthorizedRole`. From `PendingPayment` or `PendingCaregiverApproval`, a plain optional note is allowed but `reasonCategory` is rejected. From `Confirmed`, a valid `reasonCategory` and non-blank `reason` are mandatory. The policy uses the server-recorded acceptance time: before 60 minutes, a paid booking is fully refundable; at 60 minutes or later, the entitlement is `NoRefundDue`. Unpaid bookings never refund uncaptured money. Unsupported states return `409 Bookings.Domain.InvalidOperation`.
 
 ### 5. Payment intent (Paymob mobile-SDK handoff)
 
@@ -159,10 +159,12 @@ Only a booking in `PendingPayment` can start a payment; the amount and currency 
 | Trigger | Outcome |
 |---|---|
 | Caregiver declines (`PendingCaregiverApproval`) | Booking `DeclinedByCaregiver` → automatic refund → `Refunded` |
-| Family cancels before caregiver acceptance | Booking `CancelledByFamily` → automatic refund → `Refunded` (fee tiers come in a later slice) |
+| Family cancels before caregiver acceptance | Booking `CancelledByFamily` → full captured refund when paid |
+| Family cancels an accepted booking before 60 minutes | Booking `CancelledByFamily` → full captured refund when paid |
+| Family cancels an accepted booking at or after 60 minutes | Booking `CancelledByFamily` → `NoRefundDue`; no refund provider call |
 | Payment webhook arrives after the acceptance deadline | Booking `Expired` → automatic refund → `Refunded` |
 
-If the refund call fails at the gateway, the booking still transitions (the cancellation/decline is always recorded) and the refund is retried by ops from the Paymob dashboard; `refundedOnUtc` stays `null` until it succeeds.
+If the refund call fails at the gateway, the booking still transitions and the cancellation fact is retained; `refundState` is `Failed` and the refund is retried by ops. A policy-denied cancellation is `NoRefundDue`, not `Failed`, and must not be retried.
 
 ## Error Catalog
 

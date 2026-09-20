@@ -166,6 +166,7 @@ public static class ResultProblemDetailsMapper
             ["Bookings.PriceUnavailable"] = 409,
             ["Bookings.AlreadyRefunded"] = 409,
             ["Bookings.RefundNotEligible"] = 409,
+            ["Bookings.NoRefundDue"] = 409,
             ["Bookings.Cancel.AlreadyProcessed"] = 409,
 
             ["Caregivers.Discovery.CaregiverNotFound"] = 404,

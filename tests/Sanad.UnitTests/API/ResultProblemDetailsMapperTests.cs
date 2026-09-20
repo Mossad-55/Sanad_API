@@ -55,6 +55,10 @@ public sealed class ResultProblemDetailsMapperTests
         "Caregivers.Lookups.ParentNotActive",
         StatusCodes.Status409Conflict,
         "The request conflicts with the current state.")]
+    [InlineData(
+        "Bookings.NoRefundDue",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
     public void Create_ShouldMapStableErrorCode(
         string errorCode,
         int expectedStatusCode,

@@ -71,7 +71,7 @@ Returns `CaregiverAdminDetailResponse` — the full caregiver profile plus a **b
 ```
 
 - `profile` — same shape as before this envelope was introduced (nothing removed).
-- `cancellations` — every booking this caregiver cancelled **after confirmation** (`CancelledByCaregiver`): `cancellationCount` is the lifetime total; `recent` holds the **5 most recent**, newest first, with the time window, shift type, cancellation timestamp and the stored reason (`null` when none was given). Families' cancellations are **not** counted.
+- `cancellations` — durable caregiver-side **Cancel** facts for bookings cancelled **after confirmation** (`CancelledByCaregiver`): `cancellationCount` is the lifetime total and `recent` holds the **5 most recent**, newest first, with the time window, shift type, cancellation timestamp and stored reason (`null` when none was given). Caregiver **Reject** facts and family cancellations are not counted. Refunded incidents remain counted because the summary is fact-based, not derived from the booking's current refund/status state.
 - `cancellations` is `null` when the cancellation lookup fails — that failure never fails the detail request.
 - A caregiver with no cancellations returns `cancellationCount: 0` and an empty `recent`.
 - `404 Caregivers.Onboarding.CaregiverNotFound` — no such caregiver.
