@@ -39,6 +39,7 @@ Detail matches family booking detail plus `refundedOnUtc` and `refundState`.
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/cancel` | `{ "reason": string?, "reasonCategory": int? }` | Cancel an accepted booking before the visit starts |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/start` | — | Mark the visit as started |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/complete` | `{ "notes": string? ≤ 2000 }` | Complete the visit with optional notes |
+| `POST` | `/api/v1/caregiver/bookings/{bookingId}/visit-report` | Visit report fields | Submit one immutable report after completion; see [family reports](../families/reports.md) |
 
 For a `Confirmed` booking, caregiver cancellation requires a valid reason category and a non-blank note. The policy is evaluated before mutation; a full captured refund is attempted when entitled, while `NoRefundDue` makes no provider call. The cancellation fact is recorded atomically. A cancellation outside the allowed state returns `409 Bookings.Domain.InvalidOperation`.
 
@@ -53,6 +54,10 @@ For a `Confirmed` booking, caregiver cancellation requires a valid reason catego
 | complete | `InProgress (4)` | `utcNow >= StartedOnUtc` | `Completed (5)` |
 
 Successful start, complete, and other command actions return `204 No Content`. Invalid state or timestamp ordering returns `409 Bookings.Domain.InvalidOperation`; an unknown or foreign booking returns `404 Bookings.NotFound`.
+
+The visit-report action returns `201` and accepts only `observedCondition`, `activities`, `notes`, and
+`assessment`. It uses server attendance and submission timestamps and rejects a second report for the
+same booking with `409 Reports.Visit.AlreadySubmitted`.
 
 Accepting after the deadline returns `409 Bookings.Domain.InvalidOperation` — the booking will expire instead and the family is refunded when the gateway allows it.
 

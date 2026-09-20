@@ -1,0 +1,33 @@
+meta {
+  name: 10-submit-duplicate
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{visitReportBookingId}}/visit-report
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{visitReportCaregiverJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "observedCondition": "Alert and comfortable.",
+    "activities": "Assisted with the planned exercises.",
+    "notes": "Family follow-up requested.",
+    "assessment": 2
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Reports.Visit.AlreadySubmitted
+}

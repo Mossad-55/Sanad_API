@@ -1,0 +1,29 @@
+meta {
+  name: 07-list-family-reports-initial
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/reports?type=visit
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{visitReportFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const body = res.body || {};
+  if (!Array.isArray(body.items)) {
+    throw new Error("Expected the paged family visit-report response to contain items.");
+  }
+  console.log("initial family visit reports:", body.items.length,
+    "| total:", body.totalCount ?? "UNKNOWN",
+    "(empty or already populated is valid before the lifecycle submission)");
+}

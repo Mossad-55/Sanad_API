@@ -1,0 +1,38 @@
+meta {
+  name: 01-login-caregiver
+  type: http
+  seq: 1
+}
+
+// This folder is intentionally separate from T0. The happy-path report
+// submission consumes the fresh seed's Completed booking and report uniqueness
+// state, so this is a one-shot lifecycle gate that requires a fresh seed.
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{caregiverEmail}}",
+    "password": "{{caregiverPassword}}",
+    "deviceName": "bruno-visit-report",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("visitReportCaregiverJwt", res.body.accessToken);
+  bru.setVar("visitReportCaregiverDeviceSessionId", res.body.deviceSessionId.value);
+}

@@ -1,0 +1,28 @@
+meta {
+  name: 05-submit-unauthenticated
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{visitReportBookingId}}/visit-report
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "observedCondition": "Alert and comfortable.",
+    "activities": "Assisted with the planned exercises.",
+    "notes": "Family follow-up requested.",
+    "assessment": 2
+  }
+}
+
+assert {
+  res.status: eq 401
+}

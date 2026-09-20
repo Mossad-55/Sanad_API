@@ -8,6 +8,7 @@ using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Invitations;
 using Sanad.Modules.Families.Domain.Medications;
 using Sanad.Modules.Families.Domain.Notes;
+using Sanad.Modules.Families.Domain.Reports;
 
 namespace Sanad.Modules.Families.Infrastructure.Persistence;
 
@@ -35,6 +36,7 @@ public sealed class FamiliesDbContext :
     public DbSet<MedicationDoseLog> MedicationDoseLogs => Set<MedicationDoseLog>();
     public DbSet<ElderlyNote> ElderlyNotes => Set<ElderlyNote>();
     public DbSet<ElderlyActivityLog> ElderlyActivityLogs => Set<ElderlyActivityLog>();
+    public DbSet<VisitReport> VisitReports => Set<VisitReport>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -52,6 +54,7 @@ public sealed class FamiliesDbContext :
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         ThrowIfCancellationFactMutated();
+        ThrowIfVisitReportMutated();
 
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -65,6 +68,7 @@ public sealed class FamiliesDbContext :
         CancellationToken cancellationToken = default)
     {
         ThrowIfCancellationFactMutated();
+        ThrowIfVisitReportMutated();
 
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
@@ -90,6 +94,24 @@ public sealed class FamiliesDbContext :
                     "they must never be updated or deleted, but a tracked fact with " +
                     $"Id '{entry.Entity.Id}' is in state '{entry.State}'. " +
                     "Discard the mutation instead of saving it.");
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enforces that <see cref="VisitReport"/> remains immutable after its single append. A report
+    /// can be created once for a booking, but an existing report cannot be edited or deleted.
+    /// </summary>
+    private void ThrowIfVisitReportMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<VisitReport>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(VisitReport)} entries are immutable: " +
+                    "they must never be updated or deleted, but a tracked report with " +
+                    $"Id '{entry.Entity.Id}' is in state '{entry.State}'.");
             }
         }
     }

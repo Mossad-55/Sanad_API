@@ -1,0 +1,15 @@
+meta {
+  name: 04-read-unauthenticated
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/reports?type=visit
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

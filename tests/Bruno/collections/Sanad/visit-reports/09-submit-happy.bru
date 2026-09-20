@@ -1,0 +1,42 @@
+meta {
+  name: 09-submit-happy
+  type: http
+  seq: 9
+}
+
+// This is the only report-creating request. It consumes the fresh seed's
+// Completed booking and the booking's one-report uniqueness state. Run this
+// one-shot lifecycle folder only after a fresh seed; do not include it in T0.
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{visitReportBookingId}}/visit-report
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{visitReportCaregiverJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "observedCondition": "Alert and comfortable.",
+    "activities": "Assisted with the planned exercises.",
+    "notes": "Family follow-up requested.",
+    "assessment": 2
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("visitReportId", res.body.id ?? res.body.Id ?? "");
+  console.log("visit report created:", bru.getVar("visitReportId") || "ID NOT RETURNED",
+    "| fresh-seed lifecycle state consumed; reseed before rerun");
+}

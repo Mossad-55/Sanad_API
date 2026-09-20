@@ -1,0 +1,32 @@
+meta {
+  name: 06-submit-as-family-forbidden
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{visitReportBookingId}}/visit-report
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{visitReportFamilyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "observedCondition": "Family token must not submit.",
+    "activities": "Authorization negative case.",
+    "notes": "No caregiver identity is accepted from the family caller.",
+    "assessment": 2
+  }
+}
+
+assert {
+  res.status: eq 403
+}

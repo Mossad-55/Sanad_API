@@ -1,0 +1,39 @@
+meta {
+  name: 02-list-past-pick-completed
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings?tab=Past
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{visitReportCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = Array.isArray(res.body)
+    ? res.body
+    : (res.body && (res.body.items || res.body.results)) || [];
+  const statusOf = (item) => item.status ?? item.Status;
+  const idOf = (item) => item.id ?? item.Id ?? item.bookingId ?? item.BookingId;
+  const isCompleted = (status) =>
+    status === 5 || status === "Completed" || status === "completed";
+  const completed = items.find((item) => isCompleted(statusOf(item)));
+  const targetId = completed ? idOf(completed) : "";
+
+  bru.setVar("visitReportBookingId", targetId ? String(targetId) : "");
+  console.log("past:", items.length,
+    "| completed visit-report target:", bru.getVar("visitReportBookingId") || "NONE");
+  if (!bru.getVar("visitReportBookingId")) {
+    console.log("NOTE: no seeded Completed booking was exposed; no ID was invented. " +
+      "The submission lifecycle needs a fresh seed and must be rerun.");
+  }
+}

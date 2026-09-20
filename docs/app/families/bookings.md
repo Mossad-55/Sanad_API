@@ -1,5 +1,8 @@
 # Family Bookings (request lifecycle)
 
+Completed visits can have one immutable caregiver visit report. See [Family reports](reports.md) for
+the caregiver submission route, family feed, fields, and report-specific error codes.
+
 Routes for creating a care booking (checkout), paying it through Paymob, browsing requests by tab, reading booking details, and cancelling. The family pays the caregiver's price plus a platform fee; the caregiver then accepts or declines.
 
 All routes live under `/api/v1/family/bookings...`.

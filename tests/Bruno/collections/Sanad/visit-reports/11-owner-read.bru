@@ -1,0 +1,31 @@
+meta {
+  name: 11-owner-read
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/reports?type=visit&bookingId={{visitReportBookingId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{visitReportFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const body = res.body || {};
+  const items = Array.isArray(body.items) ? body.items : [];
+  const target = String(bru.getVar("visitReportBookingId") || "").toLowerCase();
+  const hasTargetReport = items.some((item) =>
+    String(item.bookingId ?? item.BookingId ?? "").toLowerCase() === target);
+  if (!hasTargetReport) {
+    throw new Error("Owner could not read the submitted visit report for the target booking.");
+  }
+  console.log("owner read submitted visit reports:", items.length);
+}

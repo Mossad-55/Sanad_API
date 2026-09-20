@@ -22,6 +22,7 @@ using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Invitations;
 using Sanad.Modules.Families.Domain.Medications;
 using Sanad.Modules.Families.Domain.Notes;
+using Sanad.Modules.Families.Domain.Reports;
 using Sanad.Modules.Families.Infrastructure.Data;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Xunit;
@@ -1320,6 +1321,9 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
         public DbSet<ElderlyNote> ElderlyNotes => inner.ElderlyNotes;
 
         public DbSet<ElderlyActivityLog> ElderlyActivityLogs => inner.ElderlyActivityLogs;
+
+        public DbSet<VisitReport> VisitReports => inner.VisitReports;
+
         public DbSet<BookingCancellationFact> BookingCancellationFacts => inner.BookingCancellationFacts;
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

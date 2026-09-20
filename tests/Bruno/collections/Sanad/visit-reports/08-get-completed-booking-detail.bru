@@ -1,0 +1,33 @@
+meta {
+  name: 08-get-completed-booking-detail
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{visitReportBookingId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{visitReportCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const status = res.body?.status ?? res.body?.Status;
+  const started = res.body?.startedOnUtc ?? res.body?.StartedOnUtc;
+  const completed = res.body?.completedOnUtc ?? res.body?.CompletedOnUtc;
+  const isCompleted = status === 5 || status === "Completed" || status === "completed";
+  console.log("completed booking detail:",
+    "status=", status,
+    "| attendance timestamps=", Boolean(started && completed));
+  if (!isCompleted || !started || !completed) {
+    console.log("NOTE: the captured booking did not expose completed attendance data; " +
+      "reseed before attempting the one-shot submission lifecycle.");
+  }
+}
