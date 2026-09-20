@@ -9,6 +9,7 @@ using Sanad.Modules.Families.Domain.Invitations;
 using Sanad.Modules.Families.Domain.Medications;
 using Sanad.Modules.Families.Domain.Notes;
 using Sanad.Modules.Families.Domain.Reports;
+using Sanad.Modules.Families.Domain.Subscriptions;
 
 namespace Sanad.Modules.Families.Infrastructure.Persistence;
 
@@ -38,6 +39,8 @@ public sealed class FamiliesDbContext :
     public DbSet<ElderlyActivityLog> ElderlyActivityLogs => Set<ElderlyActivityLog>();
     public DbSet<VisitReport> VisitReports => Set<VisitReport>();
     public DbSet<MedicalReport> MedicalReports => Set<MedicalReport>();
+    public DbSet<SubscriptionPlanVersion> SubscriptionPlanVersions => Set<SubscriptionPlanVersion>();
+    public DbSet<FamilySubscription> FamilySubscriptions => Set<FamilySubscription>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -57,6 +60,8 @@ public sealed class FamiliesDbContext :
         ThrowIfCancellationFactMutated();
         ThrowIfVisitReportMutated();
         ThrowIfMedicalReportMutated();
+        ThrowIfSubscriptionPlanVersionMutated();
+        ThrowIfFamilySubscriptionMutated();
 
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -72,6 +77,8 @@ public sealed class FamiliesDbContext :
         ThrowIfCancellationFactMutated();
         ThrowIfVisitReportMutated();
         ThrowIfMedicalReportMutated();
+        ThrowIfSubscriptionPlanVersionMutated();
+        ThrowIfFamilySubscriptionMutated();
 
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
@@ -125,6 +132,55 @@ public sealed class FamiliesDbContext :
         {
             if (entry.State is EntityState.Modified or EntityState.Deleted)
                 throw new InvalidOperationException($"{nameof(MedicalReport)} entries are immutable and cannot be updated or deleted.");
+        }
+    }
+
+    private void ThrowIfSubscriptionPlanVersionMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<SubscriptionPlanVersion>())
+        {
+            if (entry.State == EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(SubscriptionPlanVersion)} entries are immutable and cannot be deleted.");
+            }
+
+            if (entry.State == EntityState.Modified && entry.Properties.Any(property =>
+                    property.IsModified && property.Metadata.Name != nameof(SubscriptionPlanVersion.IsAvailableForNewSales)))
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(SubscriptionPlanVersion)} catalog fields are immutable; only " +
+                    $"{nameof(SubscriptionPlanVersion.IsAvailableForNewSales)} may be changed.");
+            }
+        }
+    }
+
+    private void ThrowIfFamilySubscriptionMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<FamilySubscription>())
+        {
+            if (entry.State == EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(FamilySubscription)} entries are immutable and cannot be deleted.");
+            }
+
+            if (entry.State == EntityState.Modified && entry.Properties.Any(property =>
+                    property.IsModified && property.Metadata.Name != nameof(FamilySubscription.IsCurrent)))
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(FamilySubscription)} snapshot fields are immutable; only " +
+                    $"{nameof(FamilySubscription.IsCurrent)} may be changed.");
+            }
+        }
+
+        foreach (var entry in ChangeTracker.Entries<SubscriptionBenefit>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(SubscriptionBenefit)} entries in subscription snapshots are immutable.");
+            }
         }
     }
 }

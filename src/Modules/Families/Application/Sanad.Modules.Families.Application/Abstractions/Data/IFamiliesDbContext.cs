@@ -8,6 +8,7 @@ using Sanad.Modules.Families.Domain.Invitations;
 using Sanad.Modules.Families.Domain.Medications;
 using Sanad.Modules.Families.Domain.Notes;
 using Sanad.Modules.Families.Domain.Reports;
+using Sanad.Modules.Families.Domain.Subscriptions;
 
 namespace Sanad.Modules.Families.Application.Abstractions.Data;
 
@@ -27,6 +28,8 @@ public interface IFamiliesDbContext
     DbSet<ElderlyActivityLog> ElderlyActivityLogs { get; }
     DbSet<VisitReport> VisitReports { get; }
     DbSet<MedicalReport> MedicalReports => throw new NotSupportedException("This context does not expose medical reports.");
+    DbSet<SubscriptionPlanVersion> SubscriptionPlanVersions => throw new NotSupportedException("This context does not expose subscription plans.");
+    DbSet<FamilySubscription> FamilySubscriptions => throw new NotSupportedException("This context does not expose family subscriptions.");
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
