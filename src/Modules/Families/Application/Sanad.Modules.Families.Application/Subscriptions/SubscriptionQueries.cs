@@ -44,6 +44,15 @@ public sealed record SubscriptionSnapshotResponse(
     IReadOnlyList<SubscriptionBenefitResponse> Benefits);
 
 public sealed record CurrentSubscriptionResponse(SubscriptionSnapshotResponse? CurrentSubscription);
+public sealed record SubscriptionCouponResponse(
+    Guid Id,
+    string Code,
+    Guid PlanVersionId,
+    decimal DiscountPercentage,
+    DateTime ExpiresOnUtc,
+    DateTime CreatedOnUtc);
+public sealed record GetSubscriptionCouponsQuery : IQuery<IReadOnlyList<SubscriptionCouponResponse>>;
+public sealed record GetSubscriptionCouponQuery(Guid CouponId) : IQuery<SubscriptionCouponResponse>;
 
 public sealed record GetSubscriptionCatalogQuery(UserId UserId) : IQuery<IReadOnlyList<SubscriptionPlanResponse>>;
 
@@ -93,6 +102,35 @@ public sealed class GetSubscriptionCatalogQueryHandler : IQueryHandler<GetSubscr
             plan.CreatedOnUtc,
             plan.PublishedOnUtc,
             plan.Benefits.Select(benefit => new SubscriptionBenefitResponse(benefit.Key, benefit.IsIncluded)).ToList());
+}
+
+public sealed class GetSubscriptionCouponsQueryHandler : IQueryHandler<GetSubscriptionCouponsQuery, IReadOnlyList<SubscriptionCouponResponse>>
+{
+    private readonly IFamiliesDbContext _db;
+    public GetSubscriptionCouponsQueryHandler(IFamiliesDbContext db) => _db = db;
+
+    public async Task<Result<IReadOnlyList<SubscriptionCouponResponse>>> Handle(GetSubscriptionCouponsQuery request, CancellationToken cancellationToken)
+    {
+        var coupons = await _db.SubscriptionCoupons.AsNoTracking().OrderBy(x => x.Code).ToListAsync(cancellationToken);
+        return coupons.Select(Map).ToList();
+    }
+
+    internal static SubscriptionCouponResponse Map(SubscriptionCoupon coupon) => new(
+        coupon.Id, coupon.Code, coupon.PlanVersionId, coupon.DiscountPercentage,
+        coupon.ExpiresOnUtc, coupon.CreatedOnUtc);
+}
+
+public sealed class GetSubscriptionCouponQueryHandler : IQueryHandler<GetSubscriptionCouponQuery, SubscriptionCouponResponse>
+{
+    private static readonly Error NotFound = new("Subscriptions.Coupon.NotFound", "Subscription coupon was not found.");
+    private readonly IFamiliesDbContext _db;
+    public GetSubscriptionCouponQueryHandler(IFamiliesDbContext db) => _db = db;
+
+    public async Task<Result<SubscriptionCouponResponse>> Handle(GetSubscriptionCouponQuery request, CancellationToken cancellationToken)
+    {
+        var coupon = await _db.SubscriptionCoupons.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.CouponId, cancellationToken);
+        return coupon is null ? Result<SubscriptionCouponResponse>.Failure(NotFound) : GetSubscriptionCouponsQueryHandler.Map(coupon);
+    }
 }
 
 public sealed class GetCurrentSubscriptionQueryHandler : IQueryHandler<GetCurrentSubscriptionQuery, CurrentSubscriptionResponse>

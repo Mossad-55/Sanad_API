@@ -80,6 +80,18 @@ public sealed class AdminSubscriptionsControllerTests
         Assert.IsType<PublishSubscriptionPlanVersionCommand>(sender.LastRequest);
     }
 
+    [Fact]
+    public async Task Maps_duplicate_coupon_code_to_409()
+    {
+        var controller = CreateController(new CapturingSender(
+            Result<Guid>.Failure(new Error("Subscriptions.Coupon.DuplicateCode", "duplicate"))), UserId.New());
+
+        var result = await controller.CreateCoupon(
+            new CreateSubscriptionCouponRequest("WELCOME", Guid.NewGuid(), 10m, DateTime.UtcNow.AddDays(1)), default);
+
+        Assert.Equal(StatusCodes.Status409Conflict, Assert.IsType<ObjectResult>(result).StatusCode);
+    }
+
     private static AdminSubscriptionsController CreateController(ISender sender, UserId? actor = null)
     {
         var controller = new AdminSubscriptionsController(sender)

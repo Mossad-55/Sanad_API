@@ -42,6 +42,7 @@ public sealed class FamiliesDbContext :
     public DbSet<SubscriptionPlanVersion> SubscriptionPlanVersions => Set<SubscriptionPlanVersion>();
     public DbSet<FamilySubscription> FamilySubscriptions => Set<FamilySubscription>();
     public DbSet<SubscriptionPlanRetirementAudit> SubscriptionPlanRetirementAudits => Set<SubscriptionPlanRetirementAudit>();
+    public DbSet<SubscriptionCoupon> SubscriptionCoupons => Set<SubscriptionCoupon>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -64,6 +65,7 @@ public sealed class FamiliesDbContext :
         ThrowIfSubscriptionPlanVersionMutated();
         ThrowIfSubscriptionPlanRetirementAuditMutated();
         ThrowIfFamilySubscriptionMutated();
+        ThrowIfSubscriptionCouponMutated();
 
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -82,6 +84,7 @@ public sealed class FamiliesDbContext :
         ThrowIfSubscriptionPlanVersionMutated();
         ThrowIfSubscriptionPlanRetirementAuditMutated();
         ThrowIfFamilySubscriptionMutated();
+        ThrowIfSubscriptionCouponMutated();
 
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
@@ -205,6 +208,15 @@ public sealed class FamiliesDbContext :
             if (entry.State is EntityState.Modified or EntityState.Deleted)
                 throw new InvalidOperationException(
                     $"{nameof(SubscriptionPlanRetirementAudit)} entries are immutable and cannot be updated or deleted.");
+        }
+    }
+
+    private void ThrowIfSubscriptionCouponMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<SubscriptionCoupon>())
+        {
+            if (entry.State == EntityState.Modified)
+                throw new InvalidOperationException($"{nameof(SubscriptionCoupon)} entries are immutable and cannot be updated.");
         }
     }
 }

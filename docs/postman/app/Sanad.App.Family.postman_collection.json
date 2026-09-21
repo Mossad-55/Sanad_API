@@ -2320,6 +2320,16 @@
           "description": "204; revokes every non-revoked session of the account."
         }
       ]
+    },
+    {
+      "name": "13. Subscriptions (owner read/lifecycle)",
+      "description": "Owner-only subscription catalog, current snapshot, and renewal lifecycle. Checkout, redemption, Paymob subscription billing, and payment methods are not implemented in this collection.",
+      "item": [
+        {"name": "List published subscription plans", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{ familyToken }}"}], "url": "{{baseUrl}}/api/v1/family/subscriptions/plans"}, "description": "Owner only; 200 returns published versions including retired-for-new-sales plans and excludes drafts."},
+        {"name": "Get current subscription snapshot", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{ familyToken }}"}], "url": "{{baseUrl}}/api/v1/family/subscriptions/current"}, "description": "Owner only; 200 returns the stored current snapshot or a null currentSubscription value."},
+        {"name": "Cancel subscription renewal", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{ familyToken }}"}], "url": "{{baseUrl}}/api/v1/family/subscriptions/cancel-renewal"}, "description": "Owner only; success 204 disables renewal while access continues through CurrentPeriodEndsOnUtc. Repeat cancellation returns 409."},
+        {"name": "Re-enable subscription auto-renew", "request": {"method": "POST", "header": [{"key": "Authorization", "value": "Bearer {{ familyToken }}"}], "url": "{{baseUrl}}/api/v1/family/subscriptions/reenable-auto-renew"}, "description": "Owner only; success 204 before CurrentPeriodEndsOnUtc. At or after the boundary, the lifecycle operation returns 409."}
+      ]
     }
   ]
 }

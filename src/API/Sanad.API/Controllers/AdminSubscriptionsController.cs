@@ -75,6 +75,43 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
         return StatusCode(status, problem);
     }
 
+    [HttpPost("coupons")]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CreateCoupon(CreateSubscriptionCouponRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId)) return Unauthorized();
+        var result = await _sender.Send(new CreateSubscriptionCouponCommand(
+            request.Code, request.SubscriptionPlanVersionId, request.DiscountPercentage, request.ExpiresOnUtc, actorUserId), cancellationToken);
+        return result.IsSuccess ? StatusCode(StatusCodes.Status201Created, result.Value) : CouponFailure(result.Error);
+    }
+
+    [HttpGet("coupons")]
+    [ProducesResponseType(typeof(IReadOnlyList<SubscriptionCouponResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListCoupons(CancellationToken cancellationToken)
+        => Ok((await _sender.Send(new GetSubscriptionCouponsQuery(), cancellationToken)).Value);
+
+    [HttpGet("coupons/{couponId:guid}")]
+    [ProducesResponseType(typeof(SubscriptionCouponResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetCoupon(Guid couponId, CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetSubscriptionCouponQuery(couponId), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : CouponFailure(result.Error);
+    }
+
+    [HttpDelete("coupons/{couponId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DeleteCoupon(Guid couponId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId)) return Unauthorized();
+        var result = await _sender.Send(new DeleteSubscriptionCouponCommand(couponId, actorUserId), cancellationToken);
+        return result.IsSuccess ? NoContent() : CouponFailure(result.Error);
+    }
+
     private IActionResult PlanFailure(Error error)
     {
         int status = error.Code == "Subscriptions.Plan.NotFound"
@@ -98,6 +135,17 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
         problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
         return StatusCode(status, problem);
     }
+
+    private IActionResult CouponFailure(Error error)
+    {
+        int status = error.Code is "Subscriptions.Coupon.NotFound" or "Subscriptions.Coupon.PlanNotFound"
+            ? StatusCodes.Status404NotFound
+            : error.Code == "Subscriptions.Coupon.DuplicateCode" ? StatusCodes.Status409Conflict : StatusCodes.Status400BadRequest;
+        var problem = new ProblemDetails { Status = status, Title = status switch { 404 => "Not Found", 409 => "Conflict", _ => "Bad Request" }, Detail = error.Message, Instance = HttpContext.Request.Path };
+        problem.Extensions["code"] = error.Code;
+        problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
+        return StatusCode(status, problem);
+    }
 }
 
 public sealed record CreateSubscriptionPlanRequest(
@@ -113,3 +161,4 @@ public sealed record CreateSubscriptionPlanRequest(
 
 public sealed record SubscriptionBenefitRequest(SubscriptionBenefitKey Key, bool IsIncluded);
 public sealed record SubscriptionLimitRequest(SubscriptionLimitKind Kind, int? Value);
+public sealed record CreateSubscriptionCouponRequest(string Code, Guid SubscriptionPlanVersionId, decimal DiscountPercentage, DateTime ExpiresOnUtc);

@@ -31,6 +31,7 @@ public interface IFamiliesDbContext
     DbSet<SubscriptionPlanVersion> SubscriptionPlanVersions => throw new NotSupportedException("This context does not expose subscription plans.");
     DbSet<FamilySubscription> FamilySubscriptions => throw new NotSupportedException("This context does not expose family subscriptions.");
     DbSet<SubscriptionPlanRetirementAudit> SubscriptionPlanRetirementAudits => throw new NotSupportedException("This context does not expose subscription plan retirement audits.");
+    DbSet<SubscriptionCoupon> SubscriptionCoupons => throw new NotSupportedException("This context does not expose subscription coupons.");
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

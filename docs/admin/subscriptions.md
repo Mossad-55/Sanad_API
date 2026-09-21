@@ -26,4 +26,45 @@ The plan must be published and available for new sales. Retirement sets `isAvail
 
 Each successful retirement appends an immutable audit record containing the plan version ID, plan key/version snapshot, actor user ID, actor role (`SuperAdmin`), old/new availability, and the UTC retirement timestamp. The plan mutation and audit insert are committed by one save operation.
 
-This slice does not call Paymob and does not implement checkout, card or wallet processing, recurring billing, trials, coupons, VAT/tax, invoices, payment methods, proration, retries, grace periods, or allowance consumption. Existing family subscription snapshots remain immutable.
+## Coupon configuration
+
+Coupon configuration uses the same `SubscriptionPlanAdmin` policy as plan authoring: a normal JWT
+whose `account_type` is `SuperAdmin`. Content Admin, Support Admin, family, and caregiver tokens
+receive `403`; unauthenticated requests receive `401`. These are configuration endpoints only; the create and delete requests below are
+manual/destructive examples and should not be replayed against shared data without an owner-approved
+plan/coupon fixture.
+
+```text
+POST   /api/v1/admin/subscriptions/coupons
+GET    /api/v1/admin/subscriptions/coupons
+GET    /api/v1/admin/subscriptions/coupons/{couponId}
+DELETE /api/v1/admin/subscriptions/coupons/{couponId}
+```
+
+Create body:
+
+```json
+{
+  "code": "WELCOME10",
+  "subscriptionPlanVersionId": "0198e2c1-1111-7777-8888-000000000001",
+  "discountPercentage": 10.00,
+  "expiresOnUtc": "2026-12-31T23:59:59Z"
+}
+```
+
+The target ID must refer to a published plan version that is still available for new sales. The
+response is `201` with the created coupon UUID. Codes are trimmed, normalized to uppercase, and
+unique case-insensitively. Percentages must be from `1.00` through `100.00`; expiry must be a UTC
+timestamp after creation. `GET` list returns `200` with coupons ordered by code; `GET` detail returns
+`200` with `id`, `code`, `planVersionId`, `discountPercentage`, `expiresOnUtc`, and `createdOnUtc`.
+`DELETE` returns `204` and is a hard delete; an unknown coupon returns `404`.
+
+Create errors: `400 Subscriptions.Coupon.Invalid` for invalid terms, `404
+Subscriptions.Coupon.PlanNotFound` for a missing, unpublished, or retired target plan, and `409
+Subscriptions.Coupon.DuplicateCode` for a duplicate code. Detail/delete use `404
+Subscriptions.Coupon.NotFound` for an unknown coupon.
+
+Each coupon is one-time and globally non-stackable; redemption and consumption are a later slice.
+Coupons are configuration records, so deleting one does not rewrite existing transactions.
+
+This slice does not call Paymob and does not implement checkout, card or wallet processing, recurring billing, trials, redemption, VAT/tax, invoices, payment methods, proration, retries, grace periods, or allowance consumption. Existing family subscription snapshots remain immutable.

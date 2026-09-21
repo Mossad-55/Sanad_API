@@ -28,6 +28,75 @@ public sealed record CreateSubscriptionPlanVersionCommand(
 
 public sealed record PublishSubscriptionPlanVersionCommand(Guid PlanVersionId, UserId ActorUserId) : ICommand;
 
+public sealed record CreateSubscriptionCouponCommand(
+    string Code,
+    Guid PlanVersionId,
+    decimal DiscountPercentage,
+    DateTime ExpiresOnUtc,
+    UserId ActorUserId) : ICommand<Guid>;
+
+public sealed record DeleteSubscriptionCouponCommand(Guid CouponId, UserId ActorUserId) : ICommand;
+
+public sealed class CreateSubscriptionCouponCommandHandler
+    : ICommandHandler<CreateSubscriptionCouponCommand, Guid>
+{
+    private static readonly Error Invalid = new("Subscriptions.Coupon.Invalid", "Coupon configuration is invalid.");
+    private static readonly Error Duplicate = new("Subscriptions.Coupon.DuplicateCode", "A coupon with this code already exists.");
+    private static readonly Error PlanNotFound = new("Subscriptions.Coupon.PlanNotFound", "The target subscription plan was not found.");
+    private readonly IFamiliesDbContext _dbContext;
+
+    public CreateSubscriptionCouponCommandHandler(IFamiliesDbContext dbContext) => _dbContext = dbContext;
+
+    public async Task<Result<Guid>> Handle(CreateSubscriptionCouponCommand request, CancellationToken cancellationToken)
+    {
+        string code = request.Code?.Trim().ToUpperInvariant() ?? string.Empty;
+        if (await _dbContext.SubscriptionCoupons.AnyAsync(x => x.Code == code, cancellationToken))
+            return Result<Guid>.Failure(Duplicate);
+
+        var plan = await _dbContext.SubscriptionPlanVersions
+            .SingleOrDefaultAsync(x => x.Id == request.PlanVersionId, cancellationToken);
+        if (plan is null || !plan.IsPublished || !plan.IsAvailableForNewSales)
+            return Result<Guid>.Failure(PlanNotFound);
+
+        try
+        {
+            var coupon = SubscriptionCoupon.Create(
+                code, request.PlanVersionId, request.DiscountPercentage, request.ExpiresOnUtc);
+            _dbContext.SubscriptionCoupons.Add(coupon);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return Result<Guid>.Success(coupon.Id);
+        }
+        catch (DbUpdateException exception) when (exception.ToString().Contains(
+            "ux_subscription_coupons_code", StringComparison.Ordinal))
+        {
+            return Result<Guid>.Failure(Duplicate);
+        }
+        catch (DomainException exception)
+        {
+            return Result<Guid>.Failure(new Error("Subscriptions.Coupon.Invalid", exception.Message));
+        }
+    }
+}
+
+public sealed class DeleteSubscriptionCouponCommandHandler
+    : ICommandHandler<DeleteSubscriptionCouponCommand>
+{
+    private static readonly Error NotFound = new("Subscriptions.Coupon.NotFound", "The coupon was not found.");
+    private readonly IFamiliesDbContext _dbContext;
+
+    public DeleteSubscriptionCouponCommandHandler(IFamiliesDbContext dbContext) => _dbContext = dbContext;
+
+    public async Task<Result> Handle(DeleteSubscriptionCouponCommand request, CancellationToken cancellationToken)
+    {
+        var coupon = await _dbContext.SubscriptionCoupons
+            .SingleOrDefaultAsync(x => x.Id == request.CouponId, cancellationToken);
+        if (coupon is null) return Result.Failure(NotFound);
+
+        _dbContext.SubscriptionCoupons.Remove(coupon);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return Result.Success();
+    }
+}
 public sealed class CreateSubscriptionPlanVersionCommandHandler
     : ICommandHandler<CreateSubscriptionPlanVersionCommand, Guid>
 {

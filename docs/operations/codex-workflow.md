@@ -16,6 +16,7 @@ Codex loads repository instructions from `AGENTS.md`. Project-scoped custom agen
 - `sanad_reviewer`: read-only correctness, security, compatibility, and test review
 - `sanad_implementer`: one bounded production implementation
 - `sanad_test_author`: independent tests after the implementation SHA is pinned
+- `sanad_documenter`: pinned documentation, README, and Postman synchronization audit
 
 The private control files `Sanad_Master_Context.md` and `Sanad_Operations.md` remain untracked at the workspace root. They are coordination records, not product documentation and must never be staged.
 
@@ -33,6 +34,17 @@ The latest `CURRENT HANDOFF` block at the top of `Sanad_Operations.md` is the ac
 6. The mastermind reviews the complete bounded result and resolves any corrections before owner gates.
 7. The owner runs the authoritative build/test/migration gate, approves publication, and controls commit/push/merge/deploy.
 8. The mastermind runs or verifies the proportionate local API gate and updates public docs plus the private operations ledger.
+
+## Documentation and Postman synchronization (mandatory)
+
+Any change that adds or changes a business rule, endpoint, request/response contract, authorization rule, error code, persistence behavior, migration, or user-visible workflow must update the complete affected documentation set before the slice can close:
+
+- every affected page under `docs/`,
+- every relevant collection and request under `docs/postman/`, including examples, variables, descriptions, and response assertions,
+- `README.md` when the implemented HTTP surface, setup, roadmap status, or workflow changes, and
+- the private `CURRENT HANDOFF` with the exact synchronization status.
+
+For a broad audit, the mastermind must issue a `sanad_documenter` brief with the same pinned SHA, exact manifest, numbered task ladder, acceptance checks, exclusions, stop conditions, and final-report fields required of every worker. Missing or contradictory documentation or Postman updates pause commit, push, deployment, and handoff readiness.
 
 ## Sanad validation rules
 

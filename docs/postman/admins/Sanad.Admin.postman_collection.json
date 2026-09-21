@@ -4,6 +4,18 @@
     "description": "Admin CMS and all Caregiver lookups. Login as the seeded Super Admin first. Splash writes use CmsContent; lookup writes use CaregiversAdmin (both require a Normal token with account_type SuperAdmin or ContentAdmin).",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
+  "variable": [
+    {
+      "key": "subscriptionPlanVersionId",
+      "value": "",
+      "description": "Paste a published, available-for-new-sales plan version UUID before manually creating a coupon."
+    },
+    {
+      "key": "couponId",
+      "value": "",
+      "description": "Set by the manual create request when its optional test script runs, or paste an existing coupon UUID."
+    }
+  ],
   "item": [
     {
       "name": "01. Auth",
@@ -2231,6 +2243,124 @@
             }
           },
           "description": "Upserts THE one global row (phone must be E.164, e.g. +201000000001; email must be valid). 200 with the stored pair. Not per-role; sends nothing."
+        }
+      ]
+    }
+    ,
+    {
+      "name": "12. Subscription plan configuration (manual)",
+      "description": "Super Admin only. Plan authoring, publication, and retirement are configuration mutations; use owner-approved plan fixtures and do not replay against shared data without authorization.",
+      "item": [
+        {
+          "name": "Create subscription plan draft (manual)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "body": {"mode": "raw", "raw": "{\n  \"key\": \"premium\",\n  \"version\": 2,\n  \"price\": 299.00,\n  \"cycle\": 1,\n  \"currency\": \"EGP\",\n  \"benefits\": [],\n  \"memberLimit\": { \"kind\": 1, \"value\": 10 },\n  \"monthlyBookingLimit\": { \"kind\": 1, \"value\": 20 },\n  \"rollover\": 1\n}"},
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans"
+          },
+          "description": "Manual example only. Supply the complete benefit catalog; success is 201 with the draft plan-version UUID. Duplicate key/version is 409 Subscriptions.Plan.DuplicateVersion."
+        },
+        {
+          "name": "Publish subscription plan (manual)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans/{{subscriptionPlanVersionId}}/publish"
+          },
+          "description": "Manual mutation. Success is 204; missing plan is 404 Subscriptions.Plan.NotFound; already published or publication race is 409. Published terms are immutable."
+        },
+        {
+          "name": "Retire subscription plan (manual)",
+          "request": {
+            "method": "POST",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans/{{subscriptionPlanVersionId}}/retire"
+          },
+          "description": "Manual mutation. Success is 204 and appends an immutable audit record; missing is 404; unpublished or already retired is 409. Existing subscription snapshots are unchanged."
+        }
+      ]
+    },
+    {
+      "name": "13. Subscription Coupons (manual configuration)",
+      "description": "Super Admin only. Read requests are safe; create and delete mutate configuration and require an owner-approved fixture. This folder does not redeem coupons or call Paymob.",
+      "item": [
+        {
+          "name": "Create coupon (manual)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"WELCOME10\",\n  \"subscriptionPlanVersionId\": \"{{subscriptionPlanVersionId}}\",\n  \"discountPercentage\": 10.00,\n  \"expiresOnUtc\": \"2026-12-31T23:59:59Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/coupons"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  pm.collectionVariables.set('couponId', pm.response.json());",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "description": "Manual/destructive configuration call. Requires a normal Super Admin JWT and a published available plan UUID. Success: 201 with coupon UUID. Errors: 400 Subscriptions.Coupon.Invalid, 404 Subscriptions.Coupon.PlanNotFound, 409 Subscriptions.Coupon.DuplicateCode. The code is normalized to uppercase; do not replay unchanged against shared data."
+        },
+        {
+          "name": "List coupons",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/coupons"
+          },
+          "description": "Safe read. Returns 200 with coupons ordered by code. Requires a normal Super Admin JWT."
+        },
+        {
+          "name": "Coupon detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/coupons/{{couponId}}"
+          },
+          "description": "Safe read. Returns 200 with id, code, planVersionId, discountPercentage, expiresOnUtc, and createdOnUtc; unknown UUID returns 404 Subscriptions.Coupon.NotFound."
+        },
+        {
+          "name": "Delete coupon (manual)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/coupons/{{couponId}}"
+          },
+          "description": "Manual/destructive hard delete. Requires a normal Super Admin JWT. Success: 204; unknown UUID: 404 Subscriptions.Coupon.NotFound. Deletion does not implement redemption or rewrite transactions."
         }
       ]
     }

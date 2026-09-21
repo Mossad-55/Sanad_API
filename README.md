@@ -2,9 +2,11 @@
 
 Sanad Care (سند) is a bilingual Arabic/English healthcare and caregiving platform. This repository is the .NET 10 backend.
 
-The active development branch is `develop`.
+The active development branch is `main`.
 
 ## Current status
+
+Repository workflow requirement: every business-rule or API modification must update all affected `docs/` pages, the relevant Postman collections under `docs/postman/`, and this README when the HTTP surface, setup, roadmap status, or workflow changes. For a broad synchronization audit, the mastermind must generate a pinned `sanad_documenter` worker brief before the slice is committed, pushed, deployed, or handed off.
 
 Identity (non-social auth), shared splash CMS, Caregivers (lookups, onboarding, admin review, discovery), and Families (family/dependents/invitations, assessment, medical profile, medications, notes/activities, bookings + Paymob) are implemented as Domain + Application + Infrastructure with HTTP in `Sanad.API`. Module `Presentation` projects are empty shells by design.
 
@@ -37,10 +39,13 @@ Implemented HTTP surface:
   - certificate verify / reject / revoke and private certificate file download
 - **Families** (`FamilyAccess` policy): bootstrap/rename, dependents (incl. Elderly identity provision), invitations, medical profile, medications, notes, activity timeline, care-needs assessment
 - **Discovery** (`NormalAccess`): paged Active-caregiver search, public profile, server-side price quote
-- **Bookings**: family checkout / list / detail / cancel / Paymob payment intent; caregiver list/detail (Past includes family and caregiver cancellations) + accept / decline / start / complete
-- **Admin bookings** (`CaregiversAdmin`): closed bookings with `finance` filter (cancelled / failed refund / refunded) and detail
+- **Bookings**: family checkout / list / detail / cancel / Paymob payment intent; caregiver list/detail (Past includes family and caregiver cancellations) + accept / decline / cancel / start / complete
+- **Attendance and reports**: caregiver start / complete, immutable Visit Reports, Medical Reports with private optional photos, and family report feeds
+- **Admin bookings** (`CaregiversAdmin`): closed bookings with `finance` filter (cancelled / failed refund / refunded), cancellation history, detail, and failed-refund retry
+- **Subscriptions**: Owner-only family catalog/current-snapshot reads and cancel-renewal/re-enable; Super Admin plan authoring, publication/retirement, and coupon configuration (`docs/admin/subscriptions.md`)
 - **Paymob webhook** `POST /api/v1/payments/webhooks/paymob` (anonymous HMAC-SHA512; query, JSON `hmac`, or `X-Paymob-Hmac`; development client when Paymob is not configured)
 - **Admin care assessments**: questions, tiers, submissions (`docs/admin/care-assessments.md`)
+- **Out of scope for the current subscription configuration slice**: checkout/redemption, recurring Paymob billing, invoices, VAT/tax, payment methods, proration, retries, grace periods, and allowance consumption
 
 Email, SMS, and payments:
 
@@ -54,7 +59,8 @@ Email, SMS, and payments:
 Not in this repository yet:
 
 - Family/caregiver **ratings and reviews** HTTP (caregiver `average_rating` / `reviews_count` columns exist; no review API)
-- Booking cancellation **fee tiers** (cancel is allowed; no fee deducted yet)
+- Booking cancellation **fee tiers** (cancellation is allowed; no fee deducted yet)
+- Subscription checkout/redemption, recurring billing, invoices, tax/VAT, and allowance consumption
 - Social / Google / Apple authentication (cancelled and removed)
 
 ## Solution layout
@@ -274,9 +280,12 @@ Self-service routes under `/api/v1/caregiver/...` require policy `CaregiverAcces
 | GET | `/caregiver/bookings?tab=` | Own bookings (Past includes family and caregiver cancellations) |
 | GET | `/caregiver/bookings/{bookingId}` | Own booking detail |
 | POST | `/caregiver/bookings/{bookingId}/accept` | Accept paid booking awaiting approval |
-| POST | `/caregiver/bookings/{bookingId}/decline` | Decline (family refunded) |
+| POST | `/caregiver/bookings/{bookingId}/decline` | Decline (family refund attempted) |
+| POST | `/caregiver/bookings/{bookingId}/cancel` | Cancel an accepted visit before start; policy-controlled refund |
 | POST | `/caregiver/bookings/{bookingId}/start` | Mark visit started |
 | POST | `/caregiver/bookings/{bookingId}/complete` | Complete visit |
+| POST | `/caregiver/bookings/{bookingId}/visit-report` | Submit one immutable Visit Report |
+| POST | `/caregiver/bookings/{bookingId}/medical-report` | Medical caregiver report with optional private photo |
 
 Booking actions: `docs/app/caregivers/bookings.md`. Postman: `docs/postman/app/Sanad.App.Caregiver.postman_collection.json`.
 
@@ -314,6 +323,12 @@ Family routes under `/api/v1/family/...` require policy `FamilyAccess` (Normal J
 | GET | `/family/bookings/{id}` | Booking detail |
 | POST | `/family/bookings/{id}/payments/intent` | Paymob mobile-SDK handoff |
 | POST | `/family/bookings/{id}/cancel` | Cancel |
+| GET | `/family/reports?type=visit\|medical\|all` | Paged family report feed |
+| GET | `/family/reports/{reportId}/photo` | Authorized private medical photo |
+| GET | `/family/subscriptions/plans` | Published plan catalog (Owner only) |
+| GET | `/family/subscriptions/current` | Current stored subscription snapshot (Owner only) |
+| POST | `/family/subscriptions/cancel-renewal` | Disable auto-renew (Owner only) |
+| POST | `/family/subscriptions/reenable-auto-renew` | Re-enable auto-renew before period end (Owner only) |
 | POST | `/api/v1/payments/webhooks/paymob` | Paymob HMAC webhook (anonymous) |
 
 Adding a dependent creates an Elderly Identity account server-side (no email/password, Active, phone verified) so SMS OTP login works immediately. One elderly identity is linked to at most one family. Invitations go to already-registered Family users by email with a `sanad://family/invite?token=...` deep link (7-day expiry, hashed token).
@@ -322,7 +337,9 @@ Full reference: `docs/app/families/`. Postman: `docs/postman/app/Sanad.App.Famil
 
 ## Admin endpoints
 
-Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` SuperAdmin or ContentAdmin).
+Most admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` SuperAdmin or ContentAdmin).
+Subscription plan and coupon configuration uses the separate `SubscriptionPlanAdmin` policy and is
+Super Admin-only with a Normal JWT. See `docs/admin/subscriptions.md`.
 
 - Splash CMS: `docs/admin/splash-screens.md`
 - Caregiver lookups (create/rename/activate/deactivate + admin list-all for all eight lookups): `docs/admin/`
@@ -330,6 +347,7 @@ Admin management uses policy `CaregiversAdmin` (Normal JWT + `account_type` Supe
 - National ID review: `docs/admin/identity-documents.md` — paged list, detail, private front/back download, verify/reject/revoke.
 - Care-needs assessment CMS: `docs/admin/care-assessments.md` — questions, scoring tiers, submissions.
 - Bookings (cancellations & refunds): `docs/admin/bookings.md` — paged closed bookings (`finance` = all / cancelled / failed refund / refunded), detail, and `POST .../refund` to retry a failed Paymob refund.
+- Subscriptions: `docs/admin/subscriptions.md` — Super Admin plan authoring, one-time publication, retirement, and coupon create/list/detail/hard-delete configuration; checkout/redemption and recurring billing are not implemented.
 
 Postman: `docs/postman/admins/Sanad.Admin.postman_collection.json`.
 

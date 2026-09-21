@@ -16,7 +16,7 @@ When a session ends or a bounded slice closes, update the `CURRENT HANDOFF` bloc
 
 - The owner is the final authority for product decisions, credentials, migrations, commits, pushes, merges, deployments, and production data.
 - The mastermind coordinates the work: inspect the current state, create bounded briefs, pin revisions, review worker output, run proportionate local validation, and maintain the private operations ledger.
-- Workers have one explicit role and one bounded task. Use `sanad_scout` for read-only mapping, `sanad_reviewer` for read-only correctness/security/test review, `sanad_implementer` for a single feature writer, and `sanad_test_author` for tests after the implementation revision is pinned.
+- Workers have one explicit role and one bounded task. Use `sanad_scout` for read-only mapping, `sanad_reviewer` for read-only correctness/security/test review, `sanad_implementer` for a single feature writer, `sanad_test_author` for tests after the implementation revision is pinned, and `sanad_documenter` for a cross-cutting documentation/README/Postman synchronization audit.
 
 ## Worker contract
 
@@ -30,6 +30,7 @@ The final report must list changed files, validation commands and results, assum
 - Use `apply_patch` for source and documentation edits.
 - Treat `Sanad_Master_Context.md` and `Sanad_Operations.md` as private, untracked control files; never stage them.
 - Read the relevant product rules and affected public docs before changing behavior.
+- Documentation and collection synchronization is mandatory for every business-rule or API change: update every affected `docs/` page, the relevant Postman collection(s) under `docs/postman/`, and `README.md` when the implemented HTTP surface, setup, roadmap status, or workflow changes. A slice is not ready for commit, push, deployment, or handoff until these artifacts reflect the final behavior and examples.
 - Run focused tests first, then the smallest relevant build/API gate. Record exact results.
 - Database resets, migrations, remote writes, commits, pushes, and deployments require owner authorization and exact target verification.
 - T0 Bruno is the idempotent standard gate. Lifecycle Bruno tiers are one-shot and require a fresh local seed before rerun.
