@@ -187,6 +187,19 @@ public static class DependencyInjection
                 });
 
             options.AddPolicy(
+                AuthorizationPolicies.SubscriptionPlanAdmin,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AuthAccessType.Normal.ToString());
+                    policy.RequireClaim(
+                        AuthClaimNames.AccountType,
+                        AccountType.SuperAdmin.ToString());
+                });
+
+            options.AddPolicy(
                 AuthorizationPolicies.CaregiverAccess,
                 policy =>
                 {

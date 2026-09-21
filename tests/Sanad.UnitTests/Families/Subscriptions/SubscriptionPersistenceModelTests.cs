@@ -21,6 +21,7 @@ public sealed class SubscriptionPersistenceModelTests
         Assert.Contains(snapshot!.GetIndexes(), x => x.IsUnique && x.GetFilter() == "is_current = true");
         Assert.DoesNotContain(catalog.GetIndexes(), x => x.IsUnique && x.GetFilter() == "is_available_for_new_sales = true");
         Assert.Equal(DeleteBehavior.Restrict, snapshot.GetForeignKeys().Single().DeleteBehavior);
+        Assert.True(catalog.FindProperty(nameof(SubscriptionPlanVersion.IsAvailableForNewSales))!.IsConcurrencyToken);
     }
 
     [Fact]
@@ -67,6 +68,35 @@ public sealed class SubscriptionPersistenceModelTests
 
         tracked = context.FamilySubscriptions.Single();
         context.Entry(tracked).Property(x => x.Price).CurrentValue = 2m;
+        Assert.Throws<InvalidOperationException>(() => context.SaveChanges());
+    }
+
+    [Fact]
+    public void Retirement_audit_is_append_only_and_snapshot_preserves_catalog_terms()
+    {
+        using FamiliesDbContext context = CreateContext();
+        var plan = SubscriptionPlanVersion.Create(
+            SubscriptionPlan.Premium,
+            isPublished: true,
+            isAvailableForNewSales: true,
+            createdOnUtc: DateTime.UtcNow,
+            publishedOnUtc: DateTime.UtcNow);
+        context.SubscriptionPlanVersions.Add(plan);
+        context.SaveChanges();
+
+        var snapshot = FamilySubscription.Create(Sanad.BuildingBlocks.Domain.Primitives.Ids.FamilyId.New(), plan);
+        context.FamilySubscriptions.Add(snapshot);
+        var audit = SubscriptionPlanRetirementAudit.Create(
+            plan,
+            Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId.New(),
+            DateTime.UtcNow);
+        context.SubscriptionPlanRetirementAudits.Add(audit);
+        plan.RetireFromNewSales();
+        context.SaveChanges();
+
+        Assert.Equal(299m, snapshot.Price);
+        Assert.Equal("premium", snapshot.PlanKey);
+        context.Entry(audit).Property(x => x.ActorRole).CurrentValue = "ContentAdmin";
         Assert.Throws<InvalidOperationException>(() => context.SaveChanges());
     }
 

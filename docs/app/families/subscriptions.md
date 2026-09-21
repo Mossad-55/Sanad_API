@@ -15,3 +15,5 @@ Each item includes its key, version, price, currency, billing cycle, rollover po
 When no current row exists, the route returns HTTP `200` with `currentSubscription: null`. It does not synthesize a Free plan.
 
 Unauthenticated requests receive `401`; authenticated requests failing the owner read rule receive `403`.
+
+Published plans may remain visible after an administrator retires them from new sales. Retirement changes only `isAvailableForNewSales`; a family’s stored subscription snapshot keeps its original plan terms and benefits.

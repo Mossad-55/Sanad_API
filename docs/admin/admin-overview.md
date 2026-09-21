@@ -30,6 +30,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | National ID review | `docs/admin/identity-documents.md` |
 | Care-needs assessment quiz | `docs/admin/care-assessments.md` |
 | Bookings (cancellations & refunds) | `docs/admin/bookings.md` |
+| Subscription plan retirement | `docs/admin/subscriptions.md` |
 | Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
 
 ## Caregiver lookups
