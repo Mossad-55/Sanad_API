@@ -37,6 +37,9 @@ public sealed record SubscriptionSnapshotResponse(
     SubscriptionLimitResponse MemberLimit,
     SubscriptionLimitResponse MonthlyBookingLimit,
     SubscriptionRollover Rollover,
+    bool AutoRenewEnabled,
+    DateTime? CancellationRequestedOnUtc,
+    DateTime CurrentPeriodEndsOnUtc,
     DateTime CreatedOnUtc,
     IReadOnlyList<SubscriptionBenefitResponse> Benefits);
 
@@ -125,6 +128,9 @@ public sealed class GetCurrentSubscriptionQueryHandler : IQueryHandler<GetCurren
             new(subscription.MemberLimitKind, subscription.MemberLimitValue),
             new(subscription.MonthlyBookingLimitKind, subscription.MonthlyBookingLimitValue),
             subscription.Rollover,
+            subscription.AutoRenewEnabled,
+            subscription.CancellationRequestedOnUtc,
+            subscription.CurrentPeriodEndsOnUtc,
             subscription.CreatedOnUtc,
             subscription.Benefits.Select(benefit => new SubscriptionBenefitResponse(benefit.Key, benefit.IsIncluded)).ToList());
 }

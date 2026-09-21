@@ -14,6 +14,15 @@ Each item includes its key, version, price, currency, billing cycle, rollover po
 
 When no current row exists, the route returns HTTP `200` with `currentSubscription: null`. It does not synthesize a Free plan.
 
+The current snapshot also exposes `autoRenewEnabled`, `cancellationRequestedOnUtc`, and the stored
+`currentPeriodEndsOnUtc` boundary. The Owner
+can call `POST /api/v1/family/subscriptions/cancel-renewal` to disable renewal while preserving
+current access, `isCurrent`, and all stored snapshot terms. A repeat cancellation returns `409`.
+Before the current period ends, the Owner can call
+`POST /api/v1/family/subscriptions/reenable-auto-renew` to restore auto-renew.
+Lifecycle mutations use optimistic concurrency; a stale concurrent mutation returns the same
+`409` conflict as an already-requested cancellation.
+
 Unauthenticated requests receive `401`; authenticated requests failing the owner read rule receive `403`.
 
 Published plans may remain visible after an administrator retires them from new sales. Retirement changes only `isAvailableForNewSales`; a family’s stored subscription snapshot keeps its original plan terms and benefits.

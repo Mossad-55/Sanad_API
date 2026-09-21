@@ -1,4 +1,5 @@
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.Modules.Families.Domain.Subscriptions;
 
 namespace Sanad.UnitTests.Families.Subscriptions;
@@ -19,6 +20,10 @@ public sealed class FamilySubscriptionTests
         Assert.Equal(version.MonthlyBookingLimitKind, subscription.MonthlyBookingLimitKind);
         Assert.Equal(version.Benefits, subscription.Benefits);
         Assert.True(subscription.IsCurrent);
+        Assert.Equal(subscription.CreatedOnUtc.AddYears(1), subscription.CurrentPeriodEndsOnUtc);
+        Assert.True(subscription.AutoRenewEnabled);
+        Assert.Null(subscription.CancellationRequestedOnUtc);
+        Assert.NotEqual(Guid.Empty, subscription.LifecycleVersion);
     }
 
     [Fact]
@@ -33,5 +38,37 @@ public sealed class FamilySubscriptionTests
 
         Assert.False(subscription.IsCurrent);
         Assert.Equal(price, subscription.Price);
+    }
+
+    [Fact]
+    public void Reenable_rejects_at_or_after_the_explicit_period_end()
+    {
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime periodEnd = created.AddMonths(1);
+        FamilySubscription subscription = FamilySubscription.Create(
+            FamilyId.New(), SubscriptionPlanVersion.Create(SubscriptionPlan.Free), created, periodEnd);
+        subscription.CancelRenewal(created.AddDays(1));
+
+        Assert.Throws<DomainException>(() => subscription.ReenableAutoRenew(periodEnd));
+        Assert.Throws<DomainException>(() => subscription.ReenableAutoRenew(periodEnd.AddTicks(1)));
+    }
+
+    [Fact]
+    public void Lifecycle_version_changes_for_cancel_and_reenable()
+    {
+        var subscription = FamilySubscription.Create(
+            FamilyId.New(),
+            SubscriptionPlanVersion.Create(SubscriptionPlan.Free),
+            DateTime.UtcNow,
+            DateTime.UtcNow.AddDays(1));
+        var createdVersion = subscription.LifecycleVersion;
+
+        subscription.CancelRenewal(DateTime.UtcNow);
+        var cancelledVersion = subscription.LifecycleVersion;
+        subscription.ReenableAutoRenew(DateTime.UtcNow.AddMinutes(1));
+
+        Assert.NotEqual(Guid.Empty, createdVersion);
+        Assert.NotEqual(createdVersion, cancelledVersion);
+        Assert.NotEqual(cancelledVersion, subscription.LifecycleVersion);
     }
 }

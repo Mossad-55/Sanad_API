@@ -19,6 +19,8 @@ public sealed class FamilySubscriptionsControllerTests
         Assert.Equal("api/v1/family/subscriptions", route.Template);
         Assert.NotNull(typeof(FamilySubscriptionsController).GetMethod(nameof(FamilySubscriptionsController.GetPlans)));
         Assert.NotNull(typeof(FamilySubscriptionsController).GetMethod(nameof(FamilySubscriptionsController.GetCurrent)));
+        Assert.NotNull(typeof(FamilySubscriptionsController).GetMethod(nameof(FamilySubscriptionsController.CancelRenewal)));
+        Assert.NotNull(typeof(FamilySubscriptionsController).GetMethod(nameof(FamilySubscriptionsController.ReenableAutoRenew)));
     }
 
     [Fact]

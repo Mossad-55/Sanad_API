@@ -41,13 +41,16 @@ public sealed class SubscriptionQueryTests
         db.SubscriptionPlanVersions.AddRange(old, current);
         var oldSnapshot = FamilySubscription.Create(family.Id, old);
         oldSnapshot.MarkNotCurrent();
-        db.FamilySubscriptions.AddRange(oldSnapshot, FamilySubscription.Create(family.Id, current));
+        var currentSnapshot = FamilySubscription.Create(family.Id, current);
+        db.FamilySubscriptions.AddRange(oldSnapshot, currentSnapshot);
         await db.SaveChangesAsync();
 
         var result = await new GetCurrentSubscriptionQueryHandler(db).Handle(new(owner), default);
 
         Assert.True(result.IsSuccess);
         Assert.Equal("premium", result.Value.CurrentSubscription!.PlanKey);
+        Assert.Equal(currentSnapshot.CreatedOnUtc.AddMonths(1), result.Value.CurrentSubscription.CurrentPeriodEndsOnUtc);
+        Assert.True(result.Value.CurrentSubscription.AutoRenewEnabled);
 
         db.FamilySubscriptions.Single(x => x.IsCurrent).MarkNotCurrent();
         await db.SaveChangesAsync();

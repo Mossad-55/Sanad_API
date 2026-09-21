@@ -169,11 +169,17 @@ public sealed class FamiliesDbContext :
             }
 
             if (entry.State == EntityState.Modified && entry.Properties.Any(property =>
-                    property.IsModified && property.Metadata.Name != nameof(FamilySubscription.IsCurrent)))
+                    property.IsModified && property.Metadata.Name is not
+                        (nameof(FamilySubscription.IsCurrent)
+                        or nameof(FamilySubscription.AutoRenewEnabled)
+                        or nameof(FamilySubscription.CancellationRequestedOnUtc)
+                        or nameof(FamilySubscription.LifecycleVersion))))
             {
                 throw new InvalidOperationException(
-                    $"{nameof(FamilySubscription)} snapshot fields are immutable; only " +
-                    $"{nameof(FamilySubscription.IsCurrent)} may be changed.");
+                    $"{nameof(FamilySubscription)} snapshot fields are immutable; only lifecycle fields " +
+                    $"{nameof(FamilySubscription.IsCurrent)}, {nameof(FamilySubscription.AutoRenewEnabled)}, " +
+                    $"{nameof(FamilySubscription.CancellationRequestedOnUtc)}, and " +
+                    $"{nameof(FamilySubscription.LifecycleVersion)} may be changed.");
             }
         }
 
