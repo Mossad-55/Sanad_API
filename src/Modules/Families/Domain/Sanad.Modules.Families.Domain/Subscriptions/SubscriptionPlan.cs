@@ -65,7 +65,7 @@ public sealed class SubscriptionPlan : ValueObject
         SubscriptionLimit monthlyBookingLimit,
         SubscriptionRollover rollover)
     {
-        if (string.IsNullOrWhiteSpace(key))
+        if (string.IsNullOrWhiteSpace(key) || key.Trim().Length > 100)
             throw new DomainException("Subscription plan key is required.");
 
         if (version <= 0)

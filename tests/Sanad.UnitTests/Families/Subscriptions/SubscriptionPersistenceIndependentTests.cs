@@ -113,10 +113,6 @@ public sealed class SubscriptionPersistenceIndependentTests
         AssertCatalogMutationRejected((context, plan) =>
             context.Entry(plan).Property(x => x.Price).CurrentValue = 1m);
         AssertCatalogMutationRejected((context, plan) =>
-            context.Entry(plan).Property(x => x.IsPublished).CurrentValue = true);
-        AssertCatalogMutationRejected((context, plan) =>
-            context.Entry(plan).Property(x => x.PublishedOnUtc).CurrentValue = DateTime.UtcNow);
-        AssertCatalogMutationRejected((context, plan) =>
             context.Entry(plan).Property(x => x.CreatedOnUtc).CurrentValue = DateTime.UtcNow);
         AssertCatalogMutationRejected((context, plan) =>
             context.Remove(plan));
@@ -127,6 +123,26 @@ public sealed class SubscriptionPersistenceIndependentTests
             context.Entry(snapshot).Property(x => x.PlanVersion).CurrentValue = 2);
         AssertSnapshotMutationRejected((context, snapshot) =>
             context.Remove(snapshot));
+    }
+
+    [Fact]
+    public void Draft_publication_fields_are_the_only_additional_catalog_mutation()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+        var publishedOnUtc = DateTime.UtcNow;
+        using (FamiliesDbContext context = CreateContext(databaseName))
+        {
+            SubscriptionPlanVersion plan = SubscriptionPlanVersion.Create(SubscriptionPlan.Premium);
+            context.Add(plan);
+            context.SaveChanges();
+            plan.Publish(publishedOnUtc);
+            context.SaveChanges();
+        }
+
+        using FamiliesDbContext assertContext = CreateContext(databaseName);
+        SubscriptionPlanVersion persisted = assertContext.SubscriptionPlanVersions.Single();
+        Assert.True(persisted.IsPublished);
+        Assert.Equal(publishedOnUtc, persisted.PublishedOnUtc);
     }
 
     [Fact]

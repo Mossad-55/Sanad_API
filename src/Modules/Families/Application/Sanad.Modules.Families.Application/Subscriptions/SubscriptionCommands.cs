@@ -12,6 +12,117 @@ namespace Sanad.Modules.Families.Application.Subscriptions;
 public sealed record CancelSubscriptionRenewalCommand(UserId UserId) : ICommand;
 public sealed record ReenableSubscriptionAutoRenewCommand(UserId UserId) : ICommand;
 
+public sealed record SubscriptionBenefitInput(SubscriptionBenefitKey Key, bool IsIncluded);
+public sealed record SubscriptionLimitInput(SubscriptionLimitKind Kind, int? Value);
+public sealed record CreateSubscriptionPlanVersionCommand(
+    string Key,
+    int Version,
+    decimal Price,
+    SubscriptionCycle Cycle,
+    string Currency,
+    IReadOnlyCollection<SubscriptionBenefitInput> Benefits,
+    SubscriptionLimitInput MemberLimit,
+    SubscriptionLimitInput MonthlyBookingLimit,
+    SubscriptionRollover Rollover,
+    UserId ActorUserId) : ICommand<Guid>;
+
+public sealed record PublishSubscriptionPlanVersionCommand(Guid PlanVersionId, UserId ActorUserId) : ICommand;
+
+public sealed class CreateSubscriptionPlanVersionCommandHandler
+    : ICommandHandler<CreateSubscriptionPlanVersionCommand, Guid>
+{
+    private static readonly Error Duplicate = new("Subscriptions.Plan.DuplicateVersion", "A subscription plan with this key and version already exists.");
+    private readonly IFamiliesDbContext _dbContext;
+    private static readonly Error InvalidTerms = new("Subscriptions.Plan.InvalidTerms", "Subscription plan terms are invalid.");
+
+    public CreateSubscriptionPlanVersionCommandHandler(IFamiliesDbContext dbContext) => _dbContext = dbContext;
+
+    public async Task<Result<Guid>> Handle(CreateSubscriptionPlanVersionCommand request, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.Key)
+            || request.Benefits is null
+            || request.MemberLimit is null
+            || request.MonthlyBookingLimit is null)
+            return Result<Guid>.Failure(InvalidTerms);
+
+        if (await _dbContext.SubscriptionPlanVersions.AnyAsync(
+                item => item.Key == request.Key.Trim() && item.Version == request.Version,
+                cancellationToken))
+            return Result<Guid>.Failure(Duplicate);
+
+        try
+        {
+            var plan = SubscriptionPlan.Create(
+                request.Key,
+                request.Version,
+                request.Price,
+                request.Cycle,
+                request.Currency,
+                request.Benefits.Select(item => SubscriptionBenefit.Create(item.Key, item.IsIncluded)),
+                CreateLimit(request.MemberLimit),
+                CreateLimit(request.MonthlyBookingLimit),
+                request.Rollover);
+            var version = SubscriptionPlanVersion.Create(plan);
+            _dbContext.SubscriptionPlanVersions.Add(version);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return Result<Guid>.Success(version.Id);
+        }
+        catch (DbUpdateException exception) when (exception.ToString().Contains(
+            "ux_subscription_plan_versions_key_version", StringComparison.Ordinal))
+        {
+            return Result<Guid>.Failure(Duplicate);
+        }
+        catch (DomainException exception)
+        {
+            return Result<Guid>.Failure(new Error("Subscriptions.Plan.InvalidTerms", exception.Message));
+        }
+    }
+
+    private static SubscriptionLimit CreateLimit(SubscriptionLimitInput input)
+    {
+        return input.Kind switch
+        {
+            SubscriptionLimitKind.Finite when input.Value.HasValue => SubscriptionLimit.Finite(input.Value.Value),
+            SubscriptionLimitKind.Unlimited when input.Value is null => SubscriptionLimit.Unlimited,
+            _ => throw new DomainException("Subscription limit is invalid.")
+        };
+    }
+}
+
+public sealed class PublishSubscriptionPlanVersionCommandHandler
+    : ICommandHandler<PublishSubscriptionPlanVersionCommand>
+{
+    private static readonly Error NotFound = new("Subscriptions.Plan.NotFound", "Subscription plan was not found.");
+    private static readonly Error AlreadyPublished = new("Subscriptions.Plan.AlreadyPublished", "Subscription plan is already published.");
+    private readonly IFamiliesDbContext _dbContext;
+
+    public PublishSubscriptionPlanVersionCommandHandler(IFamiliesDbContext dbContext) => _dbContext = dbContext;
+
+    public async Task<Result> Handle(PublishSubscriptionPlanVersionCommand request, CancellationToken cancellationToken)
+    {
+        var plan = await _dbContext.SubscriptionPlanVersions
+            .SingleOrDefaultAsync(item => item.Id == request.PlanVersionId, cancellationToken);
+        if (plan is null) return Result.Failure(NotFound);
+        if (plan.IsPublished || plan.PublishedOnUtc is not null) return Result.Failure(AlreadyPublished);
+
+        try
+        {
+            plan.Publish(DateTime.UtcNow);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DomainException)
+        {
+            return Result.Failure(AlreadyPublished);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result.Failure(AlreadyPublished);
+        }
+
+        return Result.Success();
+    }
+}
+
 public sealed class CancelSubscriptionRenewalCommandHandler : ICommandHandler<CancelSubscriptionRenewalCommand>
 {
     private static readonly Error SubscriptionNotFound = new("Subscriptions.Subscription.NotFound", "The current subscription was not found.");

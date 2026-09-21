@@ -149,11 +149,16 @@ public sealed class FamiliesDbContext :
             }
 
             if (entry.State == EntityState.Modified && entry.Properties.Any(property =>
-                    property.IsModified && property.Metadata.Name != nameof(SubscriptionPlanVersion.IsAvailableForNewSales)))
+                    property.IsModified && property.Metadata.Name is not
+                        (nameof(SubscriptionPlanVersion.IsAvailableForNewSales)
+                        or nameof(SubscriptionPlanVersion.IsPublished)
+                        or nameof(SubscriptionPlanVersion.PublishedOnUtc))))
             {
                 throw new InvalidOperationException(
                     $"{nameof(SubscriptionPlanVersion)} catalog fields are immutable; only " +
-                    $"{nameof(SubscriptionPlanVersion.IsAvailableForNewSales)} may be changed.");
+                    $"{nameof(SubscriptionPlanVersion.IsAvailableForNewSales)}, " +
+                    $"{nameof(SubscriptionPlanVersion.IsPublished)}, and " +
+                    $"{nameof(SubscriptionPlanVersion.PublishedOnUtc)} may be changed.");
             }
         }
     }

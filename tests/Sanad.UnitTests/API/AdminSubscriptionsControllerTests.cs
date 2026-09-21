@@ -9,6 +9,7 @@ using Sanad.API.Controllers;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Subscriptions;
+using Sanad.Modules.Families.Domain.Subscriptions;
 
 namespace Sanad.UnitTests.API;
 
@@ -50,6 +51,33 @@ public sealed class AdminSubscriptionsControllerTests
             Result.Failure(new Error("Subscriptions.Plan.AlreadyRetired", "retired"))), UserId.New());
         var conflict = await controller.RetirePlan(Guid.NewGuid(), default);
         Assert.Equal(StatusCodes.Status409Conflict, Assert.IsType<ObjectResult>(conflict).StatusCode);
+    }
+
+    [Fact]
+    public async Task Creates_plan_from_terms_and_publishes_draft()
+    {
+        var sender = new CapturingSender(Result<Guid>.Success(Guid.NewGuid()));
+        var controller = CreateController(sender, UserId.New());
+        var request = new CreateSubscriptionPlanRequest(
+            "managed", 1, 299m, SubscriptionCycle.Monthly, "EGP",
+            Enum.GetValues<SubscriptionBenefitKey>()
+                .Select(key => new SubscriptionBenefitRequest(key, true))
+                .ToArray(),
+            new SubscriptionLimitRequest(SubscriptionLimitKind.Finite, 10),
+            new SubscriptionLimitRequest(SubscriptionLimitKind.Finite, 20),
+            SubscriptionRollover.None);
+
+        var created = await controller.CreatePlan(request, default);
+
+        Assert.Equal(StatusCodes.Status201Created, Assert.IsType<ObjectResult>(created).StatusCode);
+        Assert.IsType<CreateSubscriptionPlanVersionCommand>(sender.LastRequest);
+
+        sender = new CapturingSender(Result.Success());
+        controller = CreateController(sender, UserId.New());
+        var published = await controller.PublishPlan(Guid.NewGuid(), default);
+
+        Assert.IsType<NoContentResult>(published);
+        Assert.IsType<PublishSubscriptionPlanVersionCommand>(sender.LastRequest);
     }
 
     private static AdminSubscriptionsController CreateController(ISender sender, UserId? actor = null)

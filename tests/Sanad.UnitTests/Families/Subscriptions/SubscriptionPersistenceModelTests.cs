@@ -22,6 +22,7 @@ public sealed class SubscriptionPersistenceModelTests
         Assert.DoesNotContain(catalog.GetIndexes(), x => x.IsUnique && x.GetFilter() == "is_available_for_new_sales = true");
         Assert.Equal(DeleteBehavior.Restrict, snapshot.GetForeignKeys().Single().DeleteBehavior);
         Assert.True(catalog.FindProperty(nameof(SubscriptionPlanVersion.IsAvailableForNewSales))!.IsConcurrencyToken);
+        Assert.True(catalog.FindProperty(nameof(SubscriptionPlanVersion.IsPublished))!.IsConcurrencyToken);
     }
 
     [Fact]

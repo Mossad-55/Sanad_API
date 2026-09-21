@@ -21,7 +21,7 @@ public sealed class SubscriptionPlanVersionConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.MonthlyBookingLimitKind).HasColumnName("monthly_booking_limit_kind").HasConversion<int>().IsRequired();
         builder.Property(x => x.MonthlyBookingLimitValue).HasColumnName("monthly_booking_limit_value");
         builder.Property(x => x.Rollover).HasColumnName("rollover").HasConversion<int>().IsRequired();
-        builder.Property(x => x.IsPublished).HasColumnName("is_published").IsRequired();
+        builder.Property(x => x.IsPublished).HasColumnName("is_published").IsRequired().IsConcurrencyToken();
         builder.Property(x => x.IsAvailableForNewSales)
             .HasColumnName("is_available_for_new_sales")
             .IsRequired()

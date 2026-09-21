@@ -78,8 +78,21 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
             publishedOnUtc);
     }
 
+    public void Publish(DateTime publishedOnUtc)
+    {
+        if (IsPublished || PublishedOnUtc is not null)
+            throw new DomainException("Subscription plan is already published.");
+
+        if (publishedOnUtc.Kind != DateTimeKind.Utc)
+            throw new DomainException("Publication timestamp must be UTC.");
+
+        IsPublished = true;
+        PublishedOnUtc = publishedOnUtc;
+    }
+
     public void RetireFromNewSales()
     {
         IsAvailableForNewSales = false;
     }
+
 }
