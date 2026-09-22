@@ -1,0 +1,27 @@
+meta {
+  name: 05-coupon-create-family-forbidden
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/coupons
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {}
+}
+
+auth:bearer {
+  token: {{subscriptionNegativeJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

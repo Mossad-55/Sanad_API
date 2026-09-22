@@ -1,0 +1,23 @@
+meta {
+  name: 16-logout-owner
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{subscriptionNegativeDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{subscriptionNegativeJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

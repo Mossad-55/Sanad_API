@@ -1,0 +1,23 @@
+meta {
+  name: 12-coupon-create-unauthenticated
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/coupons
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {}
+}
+
+assert {
+  res.status: eq 401
+}

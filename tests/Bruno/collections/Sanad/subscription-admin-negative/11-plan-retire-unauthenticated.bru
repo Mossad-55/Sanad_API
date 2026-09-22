@@ -1,0 +1,15 @@
+meta {
+  name: 11-plan-retire-unauthenticated
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/plans/0f000000-0000-4000-8000-000000000001/retire
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

@@ -1,0 +1,15 @@
+meta {
+  name: 15-coupon-delete-unauthenticated
+  type: http
+  seq: 15
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/coupons/0f000000-0000-4000-8000-000000000001
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

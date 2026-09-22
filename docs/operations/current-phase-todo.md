@@ -21,13 +21,14 @@ This is the editable task list for the active phase. The mastermind updates it a
 - [x] Full unit suite after isolation correction: 1723/1723 passed.
 - [x] API full build after isolation correction: 0 warnings, 0 errors.
 - [x] Local Bruno subscription gate: 4/4 requests, 4/4 assertions, exit code 0; fresh local seed used and API stopped after the run.
+- [x] Local negative-first admin subscription Bruno gate: 16/16 requests, 16/16 assertions, exit code 0; all seven admin plan/coupon routes covered for 401/403 without mutations.
 - [x] Owner-led UI walkthrough completed for the nine subscription/billing reference screens; mismatches and backend mappings recorded in the private handoff.
 
 ## Blocked or pending before phase close
 
 - [ ] Apply and verify `20260921233541_AddSubscriptionCoupons` on the VPS after the UI walkthrough.
 - [ ] Run safe deployed admin coupon smoke checks after VPS migration application.
-- [ ] Add/run coupon-specific Bruno coverage if the next API contract requires it; the completed local gate currently covers the four read-only subscription requests.
+- [ ] Add/run authenticated Super Admin read/mutation smoke coverage only if the owner later authorizes a dedicated disposable admin fixture; destructive/happy-path mutations remain excluded from committed Bruno collections.
 
 ## Next phase, not started
 

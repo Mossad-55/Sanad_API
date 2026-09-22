@@ -1,0 +1,19 @@
+meta {
+  name: 03-plan-publish-family-forbidden
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/plans/0f000000-0000-4000-8000-000000000001/publish
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{subscriptionNegativeJwt}}
+}
+
+assert {
+  res.status: eq 403
+}
