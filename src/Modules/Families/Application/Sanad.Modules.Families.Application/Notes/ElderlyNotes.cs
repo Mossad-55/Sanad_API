@@ -201,7 +201,10 @@ public sealed class UpdateElderlyNoteCommandHandler : ICommandHandler<UpdateElde
         }
 
         ElderlyNote? note = await _dbContext.ElderlyNotes.SingleOrDefaultAsync(
-            n => n.Id == request.NoteId && n.ElderlyId == request.DependentId,
+            n => n.Id == request.NoteId
+                && n.ElderlyId == request.DependentId
+                && _dbContext.Elderlies.Any(e =>
+                    e.Id == n.ElderlyId && e.FamilyId == family.Id),
             cancellationToken);
 
         if (note is null)
@@ -247,7 +250,10 @@ public sealed class DeleteElderlyNoteCommandHandler : ICommandHandler<DeleteElde
         }
 
         ElderlyNote? note = await _dbContext.ElderlyNotes.SingleOrDefaultAsync(
-            n => n.Id == request.NoteId && n.ElderlyId == request.DependentId,
+            n => n.Id == request.NoteId
+                && n.ElderlyId == request.DependentId
+                && _dbContext.Elderlies.Any(e =>
+                    e.Id == n.ElderlyId && e.FamilyId == family.Id),
             cancellationToken);
 
         if (note is null)
@@ -289,7 +295,9 @@ public sealed class ListElderlyNotesQueryHandler : IQueryHandler<ListElderlyNote
 
         var query = _dbContext.ElderlyNotes
             .AsNoTracking()
-            .Where(n => n.ElderlyId == request.DependentId);
+            .Where(n => n.ElderlyId == request.DependentId)
+            .Where(n => _dbContext.Elderlies.Any(e =>
+                e.Id == n.ElderlyId && e.FamilyId == family.Id));
 
         if (request.Category.HasValue)
         {

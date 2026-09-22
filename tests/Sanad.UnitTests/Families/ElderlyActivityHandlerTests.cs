@@ -92,7 +92,6 @@ public sealed class ElderlyActivityHandlerTests
         using FamiliesDbContext db = CreateDbContext();
         UserId owner = UserId.New();
         UserId actorId = UserId.New();
-        ElderlyId elderlyId = ElderlyId.New();
         Family family = Family.Create(owner, "Al-Mansour Family");
         family.AddMember(FamilyMember.Create(
             actorId,
@@ -101,7 +100,7 @@ public sealed class ElderlyActivityHandlerTests
             FamilyRole.Editor));
 
         db.Families.Add(family);
-        db.Elderlies.Add(Elderly.Create(
+        Elderly elderly = Elderly.Create(
             owner,
             actorId,
             family.Id,
@@ -110,11 +109,12 @@ public sealed class ElderlyActivityHandlerTests
             FullName.Create("Ahmed"),
             Gender.Male,
             new DateOnly(1950, 1, 1),
-            new DateOnly(2026, 9, 2)));
+            new DateOnly(2026, 9, 2));
+        db.Elderlies.Add(elderly);
         await db.SaveChangesAsync();
 
         var log = ElderlyActivityLog.Create(
-            elderlyId,
+            elderly.Id,
             actorId,
             ElderlyActivityType.ViewMedicalProfile,
             "Viewed the medical profile.");
@@ -131,7 +131,7 @@ public sealed class ElderlyActivityHandlerTests
 
         Result<ElderlyActivityDashboardResponse> result =
             await handler.Handle(
-                new GetElderlyActivityTimelineQuery(owner, elderlyId),
+                new GetElderlyActivityTimelineQuery(owner, elderly.Id),
                 CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -146,7 +146,6 @@ public sealed class ElderlyActivityHandlerTests
         using FamiliesDbContext db = CreateDbContext();
         UserId owner = UserId.New();
         UserId actorId = UserId.New();
-        ElderlyId elderlyId = ElderlyId.New();
         Family family = Family.Create(owner, "Al-Mansour Family");
         family.AddMember(FamilyMember.Create(
             actorId,
@@ -155,7 +154,7 @@ public sealed class ElderlyActivityHandlerTests
             FamilyRole.Editor));
 
         db.Families.Add(family);
-        db.Elderlies.Add(Elderly.Create(
+        Elderly elderly = Elderly.Create(
             owner,
             actorId,
             family.Id,
@@ -164,11 +163,12 @@ public sealed class ElderlyActivityHandlerTests
             FullName.Create("Ahmed"),
             Gender.Male,
             new DateOnly(1950, 1, 1),
-            new DateOnly(2026, 9, 2)));
+            new DateOnly(2026, 9, 2));
+        db.Elderlies.Add(elderly);
         await db.SaveChangesAsync();
 
         var log = ElderlyActivityLog.Create(
-            elderlyId,
+            elderly.Id,
             actorId,
             ElderlyActivityType.AddNote,
             "Test note");
@@ -180,7 +180,7 @@ public sealed class ElderlyActivityHandlerTests
 
         Result<ElderlyActivityDashboardResponse> result =
             await handler.Handle(
-                new GetElderlyActivityTimelineQuery(owner, elderlyId),
+                new GetElderlyActivityTimelineQuery(owner, elderly.Id),
                 CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -194,11 +194,10 @@ public sealed class ElderlyActivityHandlerTests
     {
         using FamiliesDbContext db = CreateDbContext();
         UserId owner = UserId.New();
-        ElderlyId elderlyId = ElderlyId.New();
         Family family = Family.Create(owner, "Al-Mansour Family");
 
         db.Families.Add(family);
-        db.Elderlies.Add(Elderly.Create(
+        Elderly elderly = Elderly.Create(
             owner,
             UserId.New(),
             family.Id,
@@ -207,13 +206,14 @@ public sealed class ElderlyActivityHandlerTests
             FullName.Create("Ahmed"),
             Gender.Male,
             new DateOnly(1950, 1, 1),
-            new DateOnly(2026, 9, 2)));
+            new DateOnly(2026, 9, 2));
+        db.Elderlies.Add(elderly);
         await db.SaveChangesAsync();
 
         for (int i = 0; i < 10; i++)
         {
             db.ElderlyActivityLogs.Add(ElderlyActivityLog.Create(
-                elderlyId,
+                elderly.Id,
                 owner,
                 ElderlyActivityType.AddNote,
                 $"Note {i}"));
@@ -225,7 +225,7 @@ public sealed class ElderlyActivityHandlerTests
 
         Result<ElderlyActivityDashboardResponse> result =
             await handler.Handle(
-                new GetElderlyActivityTimelineQuery(owner, elderlyId, Limit: 5),
+                new GetElderlyActivityTimelineQuery(owner, elderly.Id, Limit: 5),
                 CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -269,6 +269,106 @@ public sealed class ElderlyActivityHandlerTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(FamilyErrors.AccessDenied, result.Error);
+    }
+
+    [Fact]
+    public async Task Handle_SameFamilyEditorCanAccessFeed()
+    {
+        using FamiliesDbContext db = CreateDbContext();
+        UserId owner = UserId.New();
+        UserId editor = UserId.New();
+        Family family = Family.Create(owner, "Al-Mansour Family");
+        family.AddMember(FamilyMember.Create(
+            editor,
+            owner,
+            FamilyRelationshipType.Other,
+            FamilyRole.Editor));
+
+        Elderly elderly = Elderly.Create(
+            owner,
+            UserId.New(),
+            family.Id,
+            FamilyRelationshipType.Other,
+            FullName.Create("Ø£Ø­Ù…Ø¯"),
+            FullName.Create("Ahmed"),
+            Gender.Male,
+            new DateOnly(1950, 1, 1),
+            new DateOnly(2026, 9, 2));
+
+        db.Families.Add(family);
+        db.Elderlies.Add(elderly);
+        db.ElderlyActivityLogs.Add(ElderlyActivityLog.Create(
+            elderly.Id,
+            owner,
+            ElderlyActivityType.ViewMedicalProfile,
+            "Private activity"));
+        await db.SaveChangesAsync();
+
+        var handler = new GetElderlyActivityTimelineQueryHandler(
+            db,
+            new FakeIdentityGateway());
+
+        Result<ElderlyActivityDashboardResponse> result = await handler.Handle(
+            new GetElderlyActivityTimelineQuery(editor, elderly.Id),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(result.Value.Activities);
+        Assert.Equal("Private activity", result.Value.Activities[0].Summary);
+    }
+
+    [Theory]
+    [InlineData(FamilyRole.Owner)]
+    [InlineData(FamilyRole.Editor)]
+    public async Task Handle_ForeignFamilyOwnerOrEditorCannotReadKnownDependentActivity(
+        FamilyRole callerRole)
+    {
+        using FamiliesDbContext db = CreateDbContext();
+        UserId caller = UserId.New();
+        UserId callerFamilyOwner = callerRole == FamilyRole.Owner ? caller : UserId.New();
+        UserId targetFamilyOwner = UserId.New();
+        Family callerFamily = Family.Create(callerFamilyOwner, "Caller Family");
+        if (callerRole == FamilyRole.Editor)
+        {
+            callerFamily.AddMember(FamilyMember.Create(
+                caller,
+                callerFamilyOwner,
+                FamilyRelationshipType.Other,
+                FamilyRole.Editor));
+        }
+
+        Family targetFamily = Family.Create(targetFamilyOwner, "Target Family");
+        Elderly elderly = Elderly.Create(
+            targetFamilyOwner,
+            UserId.New(),
+            targetFamily.Id,
+            FamilyRelationshipType.Other,
+            FullName.Create("Ø£Ø­Ù…Ø¯"),
+            FullName.Create("Ahmed"),
+            Gender.Male,
+            new DateOnly(1950, 1, 1),
+            new DateOnly(2026, 9, 2));
+
+        db.Families.AddRange(callerFamily, targetFamily);
+        db.Elderlies.Add(elderly);
+        db.ElderlyActivityLogs.Add(ElderlyActivityLog.Create(
+            elderly.Id,
+            targetFamilyOwner,
+            ElderlyActivityType.ViewMedicalProfile,
+            "Private activity"));
+        await db.SaveChangesAsync();
+
+        var handler = new GetElderlyActivityTimelineQueryHandler(
+            db,
+            new FakeIdentityGateway());
+
+        Result<ElderlyActivityDashboardResponse> result = await handler.Handle(
+            new GetElderlyActivityTimelineQuery(caller, elderly.Id),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0, result.Value.TotalEventsCount);
+        Assert.Empty(result.Value.Activities);
     }
 
     [Fact]

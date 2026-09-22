@@ -100,7 +100,9 @@ public sealed class GetElderlyActivityTimelineQueryHandler : IQueryHandler<GetEl
 
         var baseQuery = _dbContext.ElderlyActivityLogs
             .AsNoTracking()
-            .Where(l => l.ElderlyId == request.DependentId);
+            .Where(l => l.ElderlyId == request.DependentId)
+            .Where(l => _dbContext.Elderlies.Any(e =>
+                e.Id == l.ElderlyId && e.FamilyId == family.Id));
 
         int totalEvents = await baseQuery.CountAsync(cancellationToken);
         int thisWeekEvents = await baseQuery.CountAsync(l => l.CreatedOnUtc >= weekAgoUtc, cancellationToken);
