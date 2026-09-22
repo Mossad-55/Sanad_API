@@ -89,12 +89,12 @@ Implemented:
 - Caregiver booking list/detail (including family and caregiver cancellations)
 - Attendance start/complete plus immutable Visit Reports and Medical Reports with private optional photos
 - Admin closed-booking list, cancellation history, fact-aware refund state, and failed-refund retry
-- Owner-only subscription catalog/current snapshot reads and cancel-renewal lifecycle
+- Owner-only subscription catalog/current snapshot reads, server-side purchase quotes, and cancel-renewal lifecycle
 - Super Admin subscription plan authoring/publication/retirement, coupon configuration, and VAT/tax-rule configuration
 
 Not implemented yet:
 
 - Ratings / reviews HTTP
 - Booking cancellation fee tiers
-- Subscription checkout/redemption, recurring billing, invoices, tax/VAT calculation/charging, proration, retries, grace periods, and allowance consumption
+- Subscription payment checkout/activation, redemption settlement, recurring billing, invoices, proration, retries, grace periods, and allowance consumption (the read-only tax-inclusive quote is implemented; payment charging is not)
 - Social / Google / Apple authentication (cancelled and removed)

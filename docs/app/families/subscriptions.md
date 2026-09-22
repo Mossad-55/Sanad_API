@@ -1,4 +1,4 @@
-# Family subscriptions (read contract)
+# Family subscriptions and checkout quotes
 
 Family subscription reads require a normal Family JWT and the `FamilyAccess` policy. Only the family Owner may use these routes; Editors, Viewers, non-family accounts, users without a family, and deleted-family owners receive `403`.
 
@@ -7,6 +7,35 @@ Family subscription reads require a normal Family JWT and the `FamilyAccess` pol
 `GET /api/v1/family/subscriptions/plans` returns every published plan version. Draft versions are excluded. Published versions retired from new sales remain visible, with `isAvailableForNewSales: false`.
 
 Each item includes its key, version, tax-exclusive price, currency, billing cycle, rollover policy, member and monthly-booking limits, publication/creation timestamps, availability, and all benefit keys with their included state. The catalog read does not add VAT/tax to the returned price.
+
+## Purchase quote
+
+`POST /api/v1/family/subscriptions/quote` returns a server-calculated, read-only
+quote for a published plan version that is available for new sales. The request
+requires the family Owner and accepts only the plan-version ID and an optional
+coupon code; the client cannot provide or override price, tax, discount, or
+currency values.
+
+```json
+{
+  "planVersionId": "0198e2c1-1111-7777-8888-000000000001",
+  "couponCode": "WELCOME10"
+}
+```
+
+The response contains `basePrice`, `discountAmount`, `taxableAmount`,
+`taxRatePercentage`, `taxAmount`, `totalPayable`, `currency`, `cycle`, and the
+selected plan identity. Prices are tax-exclusive in the catalog; the quote
+applies the active tax rule only when its `effectiveOnUtc` is at or before the
+quote time, and rounds monetary values to two decimals using the server's
+banker's-rounding convention. Coupons must belong to the selected plan and be
+unexpired. The current response reports `recurringRenewalSupported: false`;
+this endpoint does not charge a payment method, activate a subscription, create
+an invoice, consume an allowance, or mutate data.
+
+Errors include `401` unauthenticated, `403` non-owner, `404`
+`Subscriptions.Quote.PlanNotFound`, `400` `Subscriptions.Quote.CouponInvalid`,
+and `409` `Subscriptions.Quote.TaxNotConfigured`.
 
 ## Current subscription snapshot
 

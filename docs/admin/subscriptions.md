@@ -102,8 +102,10 @@ The history route returns `200` with all rules ordered by descending `version`. 
 objects contain `id`, `ratePercentage`, `version`, `effectiveOnUtc`, `createdOnUtc`, and
 `isActive`.
 
-Tax-rule configuration does not calculate checkout totals, create invoices, charge
-customers, call Paymob, or change existing family subscription snapshots. Checkout,
-card/wallet processing, recurring billing, trials, redemption, invoices, payment methods,
-proration, retries, grace periods, allowance consumption, and customer charge calculation
-remain out of scope.
+Tax-rule configuration is consumed by the family-owner, read-only subscription
+quote route when a rule is active and effective. It still does not create
+invoices, charge customers, call Paymob, or change existing family subscription
+snapshots. Payment checkout/activation, card and wallet processing, recurring
+billing, trials, redemption, invoices, payment methods, proration, retries,
+grace periods, allowance consumption, and customer charge settlement remain
+separate slices.

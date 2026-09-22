@@ -8,6 +8,8 @@ using Sanad.Modules.Families.Application.Subscriptions;
 
 namespace Sanad.API.Controllers;
 
+public sealed record CreateSubscriptionQuoteRequest(Guid PlanVersionId, string? CouponCode);
+
 [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
 [Route("api/v1/family/subscriptions")]
 public sealed class FamilySubscriptionsController : ApiControllerBase
@@ -36,6 +38,42 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
             return Unauthorized();
 
         return ToActionResult(await _sender.Send(new GetCurrentSubscriptionQuery(userId), cancellationToken));
+    }
+
+    [HttpPost("quote")]
+    [ProducesResponseType(typeof(SubscriptionQuoteResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Quote(
+        [FromBody] CreateSubscriptionQuoteRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+            return Unauthorized();
+
+        var result = await _sender.Send(
+            new CreateSubscriptionQuoteCommand(
+                userId,
+                request.PlanVersionId,
+                request.CouponCode,
+                DateTime.UtcNow),
+            cancellationToken);
+
+        if (result.IsSuccess)
+            return Ok(result.Value);
+
+        int status = result.Error.Code switch
+        {
+            "Subscriptions.NotOwner" => StatusCodes.Status403Forbidden,
+            "Subscriptions.Quote.PlanNotFound" => StatusCodes.Status404NotFound,
+            "Subscriptions.Quote.CouponInvalid" => StatusCodes.Status400BadRequest,
+            "Subscriptions.Quote.TaxNotConfigured" => StatusCodes.Status409Conflict,
+            _ => 0
+        };
+
+        return status == 0 ? ToActionResult(result) : Problem(status, result.Error);
     }
 
     [HttpPost("cancel-renewal")]
@@ -72,6 +110,26 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
         if (status == 0) return ToActionResult(result);
         var problem = new ProblemDetails { Status = status, Title = status == 404 ? "Not Found" : "Conflict", Detail = result.Error.Message, Instance = HttpContext.Request.Path };
         problem.Extensions["code"] = result.Error.Code;
+        problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
+        return StatusCode(status, problem);
+    }
+
+    private IActionResult Problem(int status, Error error)
+    {
+        var problem = new ProblemDetails
+        {
+            Status = status,
+            Title = status switch
+            {
+                StatusCodes.Status400BadRequest => "Bad Request",
+                StatusCodes.Status403Forbidden => "Forbidden",
+                StatusCodes.Status404NotFound => "Not Found",
+                _ => "Conflict"
+            },
+            Detail = error.Message,
+            Instance = HttpContext.Request.Path
+        };
+        problem.Extensions["code"] = error.Code;
         problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
         return StatusCode(status, problem);
     }

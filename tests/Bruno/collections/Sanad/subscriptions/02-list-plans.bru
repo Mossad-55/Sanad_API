@@ -25,6 +25,11 @@ assert {
 script:post-response {
   const plans = Array.isArray(res.body) ? res.body : [];
   const field = (object, name) => object && (object[name] ?? object[name[0].toUpperCase() + name.slice(1)]);
+  const freePlan = plans.find((plan) => field(plan, "key") === "free");
+  const premiumPlan = plans.find((plan) => field(plan, "key") === "premium");
+  if (!freePlan || !premiumPlan) throw new Error("Expected seeded free and premium plans.");
+  bru.setVar("subscriptionFreePlanVersionId", field(freePlan, "id"));
+  bru.setVar("subscriptionPremiumPlanVersionId", field(premiumPlan, "id"));
   const enumValue = (value, names) => {
     if (typeof value === "number" && Number.isInteger(value)) return value;
     if (typeof value === "string") {

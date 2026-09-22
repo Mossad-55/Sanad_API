@@ -36,7 +36,7 @@ This is the visible checklist for the active bounded phase. The mastermind updat
 - [x] Mastermind recovery after documenter worker failure: synchronized architecture overview and admin Postman collection; admin subscription docs/README were verified already current. Postman JSON parses and contains 3 tax-rule requests; diff check is clean.
 - [x] Bruno parser/inventory check: `22` request files and `22` status assertions in `subscription-admin-negative`; sequence order is `1..22` followed by logout at `23`.
 - [x] Local negative-first Bruno gate passed against local HTTP API: 22 requests, 22 passed, 22/22 assertions, exit code `0`; dedicated local seed login succeeded, tax mutation requests were absent, and logout cleanup returned `204`. API process stopped after the gate.
-- [ ] Mastermind final validation and private handoff update — local validation is complete; VPS evidence remains owner action.
+- [x] Mastermind final validation and private handoff update: commit `30bcaa1` pushed to `origin/main`; VPS evidence remains owner action.
 
 ## Current blockers
 
@@ -47,4 +47,47 @@ This is the visible checklist for the active bounded phase. The mastermind updat
 
 ## Next action
 
-Owner supplies or executes the approved VPS deployment mechanism for `72.62.92.144:8091`; current read-only reachability check returned `Unable to connect to the remote server`, so migration/API/smoke evidence is still unavailable.
+Owner is deploying pushed revision `30bcaa1` at `72.62.92.144:8091`; migration/API/smoke evidence remains pending owner output. A repeatable/testable deployment mechanism is planned for the UI walkthrough phase.
+
+---
+
+# Active phase: subscription checkout quote
+
+## Phase contract
+
+- Add a server-owned, read-only quote for a new subscription purchase.
+- Resolve only published, available plan versions and the currently active tax rule/coupon rules already present in the database.
+- Return auditable base price, discount, tax, total, currency, cycle, and the renewal-anchor/recurring capability metadata needed by the next payment slice.
+- Do not charge Paymob, activate a subscription, create an invoice, consume allowances, or implement renewals/proration in this slice.
+- Do not reuse the booking-only Paymob merchant reference or webhook path.
+
+## Ordered worker and gate checklist
+
+- [x] Mastermind reconciles `CURRENT HANDOFF`, branch/HEAD/origin/status, and running API state; exactly one next action: pin and spawn the quote implementer.
+- [x] `sanad_scout`: map existing subscription, tax/coupon, Paymob, persistence, controller, docs, and test contracts; worker report was unavailable, so mastermind recovery evidence is recorded.
+- [x] Mastermind publishes this complete checklist and pins base SHA `30bcaa1fa1c65677310aa3c42eb7621a836438e2`.
+- [x] `sanad_implementer` Harvey: no report or patch after bounded waits; worker was shut down and the unfulfilled report is recorded. No implementation files changed and no dependent gate started.
+- [x] Replacement `sanad_implementer` Averroes: no report or patch after bounded waits; worker was shut down. No implementation files changed and no dependent gate started.
+- [x] Implementer delivery recovered by explicitly owner-authorized mastermind path; quote implementation changed only the authorized application/controller scope and API build passed `0` warnings / `0` errors.
+- [x] `sanad_test_author` Anscombe: no report or test files after bounded waits; worker was shut down. The owner-authorized mastermind recovery added the focused test artifact and recorded the worker non-delivery.
+- [x] Focused quote tests: `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-restore --filter FullyQualifiedName~SubscriptionQuoteTests --nologo` passed `4/4`, `0` failed, `0` skipped.
+- [x] Mastermind focused build, full build, and full test suite: API build `0/0`; `Sanad.slnx` build `0/0`; full tests `1749/1749` passed (`1` architecture + `1748` unit), `0` failed, `0` skipped.
+- [x] `sanad_reviewer` Avicenna: verdict `corrections required`; high finding was future-effective tax rules applied immediately; medium findings were stale docs/collection and incomplete quote coverage. No payment, webhook, booking-reference, authorization, or client-price trust defect.
+- [x] Mastermind correction: tax selection now requires `IsActive && EffectiveOnUtc <= UtcNow`; future-effective regression added and focused `5/5`, full build `0/0`, full suite `1750/1750` passed.
+- [x] `sanad_reviewer` correction disposition: high tax-effective-time finding resolved and independently verified; remaining findings are medium docs/collection synchronization and low/medium controller-boundary test coverage. No payment, webhook, booking-reference, authorization, or client-pricing defect.
+- [x] Mastermind recovery: added quote controller contract coverage; focused quote + controller tests pass `8/8` with no warning.
+- [x] `sanad_documenter` Archimedes: no report or patch after bounded wait; worker was shut down. Owner-authorized mastermind recovery synchronized the exact five-file public manifest.
+- [x] Documentation/collection validation: Postman JSON parses, quote request is present, and `git diff --check` is clean (line-ending warnings only).
+- [x] Bruno/local API gate: `collections/Sanad/subscriptions` passed `5/5` requests and `5/5` status assertions, exit `0`; login `200`, plans `200`, current `200`, unavailable-plan quote `404 Subscriptions.Quote.PlanNotFound`, logout `204`; no mutation/payment request; API stopped and port `5235` has no listener.
+- [x] Documenter scope closure: public docs, README, architecture, Postman, and Bruno subscription scope are synchronized through owner-authorized mastermind recovery.
+- [x] Final build/test after docs, controller tests, and Bruno changes: `Sanad.slnx` build `0` warnings/`0` errors; full suite `1751/1751`, `0` failed, `0` skipped.
+- [owner action] Owner authorizes any migration, commit, push, deployment, or remote database action after local gates; dependency: Bruno gate and final handoff.
+- [x] Mastermind final local validation complete; exact gate results and cleanup are recorded above. Current revision remains uncommitted.
+
+## Current blocker
+
+- No local implementation blocker remains. The existing Paymob interface is booking-specific, so payment initiation/settlement remains a later slice with a subscription-specific merchant reference and webhook contract. Commit/push and any remote deployment remain owner actions.
+
+## Next action
+
+Owner authorizes the logical commit/push of the validated quote slice; after that, the next billing slice can define the subscription-specific payment intent/settlement contract.

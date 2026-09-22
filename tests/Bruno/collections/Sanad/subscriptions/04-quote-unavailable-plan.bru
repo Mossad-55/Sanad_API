@@ -1,0 +1,36 @@
+meta {
+  name: 04-quote-unavailable-plan
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/quote
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{subscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{subscriptionOwnerJwt}}
+}
+
+body:json {
+  {
+    "planVersionId": "{{subscriptionPremiumPlanVersionId}}",
+    "couponCode": null
+  }
+}
+
+assert {
+  res.status: eq 404
+}
+
+script:post-response {
+  const code = res.body && (res.body.code ?? res.body.Code);
+  if (code !== "Subscriptions.Quote.PlanNotFound") throw new Error("Unavailable plan quote must return Subscriptions.Quote.PlanNotFound.");
+}
