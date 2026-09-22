@@ -108,6 +108,22 @@ enrollment boundary is implemented and configured.
 This slice does not implement upgrades/downgrades or proration, invoices/PDFs,
 allowance consumption, notifications, or deployment automation.
 
+## Next provider billing boundary
+
+The next bounded implementation slice is Paymob provider subscription-plan
+enrollment for eligible card payments and storage of the provider subscription
+reference. It will not be considered live until provider capability,
+authorization, persistence, webhook event mapping, tests, Postman request
+coverage, and Bruno evidence are all closed together. Wallet recurrence is not
+assumed; wallet renewal remains the manual path unless the configured provider
+capability is explicitly verified.
+
+The following slice will map provider renewal events and payment retries onto
+the existing seven-day grace contract: the original renewal anchor remains
+unchanged, duplicate events remain idempotent, and access expires only after
+the grace window. No future route is promised here until it is implemented and
+added to the contract matrix.
+
 ## Current subscription snapshot
 
 `GET /api/v1/family/subscriptions/current` returns `{ "currentSubscription": ... }`. The value is selected only from the caller's family `FamilySubscriptions` rows where `isCurrent` is true. It includes the stored plan terms and owned benefits; it does not join the mutable catalog.

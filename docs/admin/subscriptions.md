@@ -133,5 +133,8 @@ activates the plan only after a matching successful payment. It does not create
 an invoice or PDF. Recurring billing, trials, redemption, upgrades/downgrades,
 proration, retries, allowance consumption, notifications, and deployment
 automation remain separate slices. The current family renewal endpoint uses the
-manual payment-intent boundary; automatic provider subscription enrollment is
-still a separate slice.
+manual payment-intent boundary and preserves the original renewal anchor after
+a successful retry. The next bounded slice is automatic Paymob provider
+subscription enrollment for eligible card payments; provider renewal-event
+settlement and retry integration follows it. No provider-managed route is live
+until it is added to the contract matrix, Postman, Bruno, and the public docs.

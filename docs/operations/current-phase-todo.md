@@ -1,5 +1,32 @@
 # Current phase todo — subscription VAT/tax configuration
 
+## Roadmap status and next-mastermind handoff
+
+- [x] Catalog, plan publication/retirement, administrative reads, coupons, and VAT/tax configuration are implemented and documented.
+- [x] Owner quotes, subscription-specific Card/Wallet payment intents, `sub_` settlement, manual renewal, seven-day grace, original-anchor preservation, duplicate-pending protection, idempotent settlement, and manual payment retry are implemented.
+- [x] Final verified closeout tip: `de66dcd507bb5ede4cb16f4333fa812131d63d92`.
+- [x] Current route/collection census: `238` controller actions, `270` Postman API requests, `0` missing mappings, `0` orphan requests.
+- [ ] Next bounded slice: Paymob provider subscription enrollment and card recurrence.
+- [ ] Following slice: provider renewal-event settlement and retry integration, preserving the existing seven-day grace and original anchor.
+- [ ] Later billing slices: upgrades/proration, downgrades, invoices/PDFs, and allowance consumption.
+- [ ] Later platform slice: notifications/email after core billing.
+
+Planned provider routes, persistence fields, and event names are not implemented contracts until they appear in source, the requirements-to-contract matrix, public docs, Postman, Bruno, focused tests, and the two-way route checker.
+
+## Next bounded phase: Paymob enrollment and card recurrence
+
+- [ ] `sanad_scout` — pending — map provider enrollment capability, existing Paymob abstractions/configuration, persistence, webhook dispatch, docs, and collections; deliver a pinned requirements matrix and exact file manifest. Dependency: verified `de66dcd`.
+- [ ] Mastermind — pending — review the scout report, resolve provider assumptions, and publish the pinned implementation brief. Dependency: scout delivery.
+- [ ] `sanad_implementer` — pending — implement only provider plan mapping/enrollment and card recurrence state from the pinned manifest. Dependency: approved scout manifest.
+- [ ] `sanad_test_author` — pending — add focused provider-boundary, authorization, idempotency, and persistence tests after implementation is pinned. Dependency: implementer revision.
+- [ ] Mastermind gates — pending — focused tests, smallest relevant build, full build, and full test suite; corrections require a new pinned brief and repeated gates. Dependency: tests.
+- [ ] `sanad_reviewer` — pending — review provider security, HMAC/event identity, authorization, duplicate settlement, compatibility, migration safety, and explicit missing counts. Dependency: green gates.
+- [ ] `sanad_documenter` — pending — synchronize affected docs, README, endpoint matrix, and Postman; do not document planned routes as live. Dependency: reviewer disposition.
+- [ ] Bruno — pending — add and run safe negative-first/idempotent coverage with exact requests, assertions, exit code, seed, and cleanup. Dependency: docs and gates.
+- [ ] Owner migration — owner action — authorize the exact local/remote target only after migration review and return migration-history evidence. Dependency: reviewed migration.
+- [ ] Owner commit/push — owner action — authorize only after every checklist item is complete and route mapping is green. Dependency: Bruno and final validation.
+- [ ] Mastermind final handoff — pending — record final SHA, gate counts, mapping counts, cleanup, blockers, and exactly one next action. Dependency: all prior items.
+
 ## Active phase: subscription renewal and seven-day grace — mastermind recovery
 
 - [x] Scout: mapped the existing subscription/payment boundary and confirmed the provider subscription path; automatic provider enrollment is not implemented in this slice.
@@ -10,7 +37,7 @@
 - [x] Documenter/mastermind recovery: synchronized family/admin subscription docs, README status, architecture/coverage references, Family Postman, and renewal Bruno contract.
 - [x] Bruno/local API gate: `collections/Sanad/subscriptions` passed `7/7` requests and `8/8` assertions, exit `0`; renewal request safely returned `409 Subscriptions.Renewal.NotDue` against the seeded future subscription; no payment mutation ran; API stopped and no listener remains.
 - [x] Migration/commit/push preparation: two additive migrations are generated and inspected but not applied remotely; the authorized logical commit scope is ready and excludes private control files, unrelated `subscription-vat-tax/`, and VPS changes.
-- [x] Final handoff: validated slice committed as `2a2590f`, pushed to `origin/main`, and verified with matching local/remote SHA; private handoff records the next provider-enrollment/card-recurrence slice.
+- [x] Final handoff: feature commit `2a2590f` and operations closeout `de66dcd507bb5ede4cb16f4333fa812131d63d92` are pushed; the final closeout SHA is the handoff baseline and private handoff records the next provider-enrollment/card-recurrence slice.
 
 Scope exclusions: automatic Paymob subscription enrollment/card recurring, upgrades/downgrades, proration, invoices/PDFs, allowance consumption, notifications, UI, and VPS deployment.
 

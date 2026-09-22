@@ -14,8 +14,8 @@ The checker normalizes route parameters and compares controller actions with eve
 
 | Evidence | Count | Status |
 |---|---:|---|
-| Controller actions | 237 | complete |
-| Postman API requests | 269 | complete |
+| Controller actions | 238 | complete |
+| Postman API requests | 270 | complete |
 | Controller actions without Postman | 0 | complete |
 | Orphan Postman API requests | 0 | complete |
 | Postman JSON files parsed | 7 | complete |
