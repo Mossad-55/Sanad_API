@@ -183,8 +183,8 @@ Owner deploys pushed revision `1b6fca6`, verifies the Families migration and API
 - [x] Reviewer/mastermind recovery: read-only review found no authorization, route-collision, data-exposure, pagination/filtering, or migration issue in the correction; lifecycle coverage is recorded in the matrix.
 - [x] Documenter/mastermind recovery: synchronized admin subscription docs, architecture, README, admin Postman, public webhook Postman, workflow rules, coverage matrix, and Bruno read collection; all seven Postman JSON files parse.
 - [x] Bruno: local admin-read gate passed against `http://localhost:5236` using the existing approved local Super Admin fixture (`admin@gmail.com`); `6/6` requests passed, `20/20` assertions passed, exit code `0`: login `200`, plan list `200`, plan detail `200`, family-subscription list `200`, family-subscription detail `200`, logout `204`. The first rerun exposed and corrected the Bruno logout contract to send `X-Device-Session-Id`; no business mutation ran.
-- [owner action] Commit/push: all audit corrections and gates are complete; owner must authorize the logical commit and push. No VPS action is permitted before that revision is pushed.
-- [pending] Final handoff: publish the verified SHA after owner-authorized commit/push, then hand off the pushed revision for deployment planning.
+- [x] Commit/push: validated audit corrections were committed as `8dff56d` and pushed to `origin/main`; local `HEAD` and remote SHA match.
+- [owner action] Final handoff/deployment phase: owner begins the approved post-push deployment/UI-walkthrough phase from `8dff56d`; VPS migration and smoke actions remain owner-controlled.
 
 ## Prevention controls required before this phase can close
 
