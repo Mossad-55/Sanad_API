@@ -10,7 +10,7 @@
 - [x] Documenter/mastermind recovery: synchronized family/admin subscription docs, README status, architecture/coverage references, Family Postman, and renewal Bruno contract.
 - [x] Bruno/local API gate: `collections/Sanad/subscriptions` passed `7/7` requests and `8/8` assertions, exit `0`; renewal request safely returned `409 Subscriptions.Renewal.NotDue` against the seeded future subscription; no payment mutation ran; API stopped and no listener remains.
 - [x] Migration/commit/push preparation: two additive migrations are generated and inspected but not applied remotely; the authorized logical commit scope is ready and excludes private control files, unrelated `subscription-vat-tax/`, and VPS changes.
-- [pending] Final handoff: commit/push the validated slice, then record the final SHA and next provider-enrollment slice in the private handoff.
+- [x] Final handoff: validated slice committed as `2a2590f`, pushed to `origin/main`, and verified with matching local/remote SHA; private handoff records the next provider-enrollment/card-recurrence slice.
 
 Scope exclusions: automatic Paymob subscription enrollment/card recurring, upgrades/downgrades, proration, invoices/PDFs, allowance consumption, notifications, UI, and VPS deployment.
 
