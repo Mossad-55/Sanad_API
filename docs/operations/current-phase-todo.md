@@ -156,7 +156,7 @@ The implementer may add no migration, tests, docs, Postman, Bruno, private contr
 
 ## Next action
 
-Owner authorizes the validated logical commit/push; no remote database or deployment action occurs before that owner decision.
+Owner deploys pushed revision `1b6fca6`, verifies the Families migration and API health on the VPS, and returns exact smoke evidence; no further local implementation phase starts before that deployment handoff.
 
 ## Commit/push closeout checklist
 
@@ -167,8 +167,8 @@ Owner authorizes the validated logical commit/push; no remote database or deploy
 - [x] `sanad_reviewer` / mastermind recovery: independent read-only review passed; no payment-integrity, authorization, booking-reference, HMAC, idempotency, or migration-safety blocker found.
 - [x] `sanad_documenter` / mastermind recovery: family/admin/architecture docs, README, Postman, and safe Bruno contract synchronized; Postman parses and `git diff --check` is clean apart from line-ending warnings.
 - [x] Bruno/local API gate: HTTP local gate passed `6/6` requests and `6/6` assertions, exit `0`; seeded state preserved, no provider/payment/webhook mutation; API stopped and no listener remains.
-- [running] Mastermind commit preparation: inspect exact diff, stage only validated payment-boundary files and tracked closeout checklist; exclude `Sanad_Master_Context.md`, `Sanad_Operations.md`, and unrelated `subscription-vat-tax/`.
-- [owner action] Commit and push the validated logical scope; dependency: exact diff review and staged whitespace check.
-- [pending] Post-push verification: confirm branch, `HEAD`, `origin/main`, clean tracked worktree, and preserved unrelated/private files; dependency: successful push.
-- [pending] Deployment owner action: deploy the pushed revision, apply/verify migration on the VPS, and run safe smoke checks; dependency: post-push verification and owner deployment decision.
-- [pending] Final handoff: record pushed SHA, exact gates, cleanup, and one next action; dependency: post-push verification.
+- [x] Mastermind commit preparation: inspected exact diff, staged only validated payment-boundary files and tracked closeout checklist; excluded `Sanad_Master_Context.md`, `Sanad_Operations.md`, and unrelated `subscription-vat-tax/`.
+- [x] Owner-authorized logical commit and push: final revision `1b6fca60bc40b1423629e18bddf0ba418fb30065` pushed to `origin/main`.
+- [x] Post-push verification: branch `main`, `HEAD == origin/main == 1b6fca60bc40b1423629e18bddf0ba418fb30065`, tracked worktree clean, and private/unrelated files preserved untracked.
+- [owner action] Deployment owner action: deploy `1b6fca6`, apply/verify migration on the VPS, and run safe smoke checks; dependency: owner deployment decision.
+- [x] Final handoff: pushed SHA, exact gates, cleanup, and one next action are recorded in the private operations handoff.
