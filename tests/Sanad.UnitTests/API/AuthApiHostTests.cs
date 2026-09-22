@@ -362,7 +362,16 @@ public sealed class AuthApiHostTests :
                                 [
                                     "Identity:Jwt:SigningKey"
                                 ] =
-                                    TestSigningKey
+                                    TestSigningKey,
+
+                                // These tests exercise authentication middleware and
+                                // routes; they do not require the Development-only
+                                // test-user/subscription fixture. Keeping the fixture
+                                // disabled isolates them from mutable local seed data.
+                                [
+                                    "App:TestUserSeed:Enabled"
+                                ] =
+                                    "false"
                             });
                 });
 
