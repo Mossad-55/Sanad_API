@@ -2397,6 +2397,61 @@
           "description": "Manual/destructive hard delete. Requires a normal Super Admin JWT. Success: 204; unknown UUID: 404 Subscriptions.Coupon.NotFound. Deletion does not implement redemption or rewrite transactions."
         }
       ]
+    },
+    {
+      "name": "14. Subscription VAT / tax rules (manual configuration)",
+      "item": [
+        {
+          "name": "Create subscription tax rule (manual)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ratePercentage\": 14.00,\n  \"version\": 1,\n  \"effectiveOnUtc\": \"2026-10-01T00:00:00Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/tax-rules"
+          },
+          "description": "Manual configuration. Super Admin normal JWT only. Success: 201 with rule UUID. Rate is inclusive 0..100 and rounded to two decimals; version must be positive and unique; effectiveOnUtc must be UTC. Errors: 400 Subscriptions.Tax.Invalid, 409 Subscriptions.Tax.DuplicateVersion or Subscriptions.Tax.ActiveConflict. Creating a rule deactivates the prior active rule. Do not replay against shared data without owner-approved values."
+        },
+        {
+          "name": "Get current subscription tax rule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/tax-rules/current"
+          },
+          "description": "Safe read for Super Admin normal JWT. Returns 200 with the active rule or JSON null when none exists."
+        },
+        {
+          "name": "Get subscription tax rule history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/tax-rules/history"
+          },
+          "description": "Safe read for Super Admin normal JWT. Returns 200 with all rules ordered by descending version. Historical rules remain immutable except for deactivation."
+        }
+      ]
     }
   ]
 }

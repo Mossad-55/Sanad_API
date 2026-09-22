@@ -1,0 +1,19 @@
+meta {
+  name: 18-tax-history-family-forbidden
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/tax-rules/history
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{subscriptionNegativeJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

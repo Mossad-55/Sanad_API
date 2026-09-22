@@ -1,0 +1,15 @@
+meta {
+  name: 20-tax-current-unauthenticated
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/tax-rules/current
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

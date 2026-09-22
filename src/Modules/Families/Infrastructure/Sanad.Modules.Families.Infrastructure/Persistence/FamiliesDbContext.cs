@@ -43,6 +43,7 @@ public sealed class FamiliesDbContext :
     public DbSet<FamilySubscription> FamilySubscriptions => Set<FamilySubscription>();
     public DbSet<SubscriptionPlanRetirementAudit> SubscriptionPlanRetirementAudits => Set<SubscriptionPlanRetirementAudit>();
     public DbSet<SubscriptionCoupon> SubscriptionCoupons => Set<SubscriptionCoupon>();
+    public DbSet<SubscriptionTaxRule> SubscriptionTaxRules => Set<SubscriptionTaxRule>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -66,6 +67,7 @@ public sealed class FamiliesDbContext :
         ThrowIfSubscriptionPlanRetirementAuditMutated();
         ThrowIfFamilySubscriptionMutated();
         ThrowIfSubscriptionCouponMutated();
+        ThrowIfSubscriptionTaxRuleMutated();
 
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -85,6 +87,7 @@ public sealed class FamiliesDbContext :
         ThrowIfSubscriptionPlanRetirementAuditMutated();
         ThrowIfFamilySubscriptionMutated();
         ThrowIfSubscriptionCouponMutated();
+        ThrowIfSubscriptionTaxRuleMutated();
 
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
@@ -217,6 +220,26 @@ public sealed class FamiliesDbContext :
         {
             if (entry.State == EntityState.Modified)
                 throw new InvalidOperationException($"{nameof(SubscriptionCoupon)} entries are immutable and cannot be updated.");
+        }
+    }
+
+    private void ThrowIfSubscriptionTaxRuleMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<SubscriptionTaxRule>())
+        {
+            if (entry.State == EntityState.Deleted)
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(SubscriptionTaxRule)} entries are immutable and cannot be deleted.");
+            }
+
+            if (entry.State == EntityState.Modified && entry.Properties.Any(property =>
+                    property.IsModified && property.Metadata.Name is not nameof(SubscriptionTaxRule.IsActive)))
+            {
+                throw new InvalidOperationException(
+                    $"{nameof(SubscriptionTaxRule)} versioned fields are immutable; only " +
+                    $"{nameof(SubscriptionTaxRule.IsActive)} may be changed.");
+            }
         }
     }
 }

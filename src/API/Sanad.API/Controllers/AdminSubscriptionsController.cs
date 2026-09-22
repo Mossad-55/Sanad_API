@@ -112,6 +112,41 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
         return result.IsSuccess ? NoContent() : CouponFailure(result.Error);
     }
 
+    [HttpPost("tax-rules")]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> CreateTaxRule(
+        CreateSubscriptionTaxRuleRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId)) return Unauthorized();
+
+        var result = await _sender.Send(new CreateSubscriptionTaxRuleCommand(
+            request.RatePercentage,
+            request.Version,
+            request.EffectiveOnUtc,
+            actorUserId), cancellationToken);
+
+        return result.IsSuccess ? StatusCode(StatusCodes.Status201Created, result.Value) : TaxFailure(result.Error);
+    }
+
+    [HttpGet("tax-rules/current")]
+    [ProducesResponseType(typeof(SubscriptionTaxRuleResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetCurrentTaxRule(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetCurrentSubscriptionTaxRuleQuery(), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : TaxFailure(result.Error);
+    }
+
+    [HttpGet("tax-rules/history")]
+    [ProducesResponseType(typeof(IReadOnlyList<SubscriptionTaxRuleResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetTaxRuleHistory(CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetSubscriptionTaxRuleHistoryQuery(), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : TaxFailure(result.Error);
+    }
+
     private IActionResult PlanFailure(Error error)
     {
         int status = error.Code == "Subscriptions.Plan.NotFound"
@@ -146,6 +181,23 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
         problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
         return StatusCode(status, problem);
     }
+
+    private IActionResult TaxFailure(Error error)
+    {
+        int status = error.Code is "Subscriptions.Tax.DuplicateVersion" or "Subscriptions.Tax.ActiveConflict"
+            ? StatusCodes.Status409Conflict
+            : StatusCodes.Status400BadRequest;
+        var problem = new ProblemDetails
+        {
+            Status = status,
+            Title = status == StatusCodes.Status409Conflict ? "Conflict" : "Bad Request",
+            Detail = error.Message,
+            Instance = HttpContext.Request.Path
+        };
+        problem.Extensions["code"] = error.Code;
+        problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
+        return StatusCode(status, problem);
+    }
 }
 
 public sealed record CreateSubscriptionPlanRequest(
@@ -162,3 +214,4 @@ public sealed record CreateSubscriptionPlanRequest(
 public sealed record SubscriptionBenefitRequest(SubscriptionBenefitKey Key, bool IsIncluded);
 public sealed record SubscriptionLimitRequest(SubscriptionLimitKind Kind, int? Value);
 public sealed record CreateSubscriptionCouponRequest(string Code, Guid SubscriptionPlanVersionId, decimal DiscountPercentage, DateTime ExpiresOnUtc);
+public sealed record CreateSubscriptionTaxRuleRequest(decimal RatePercentage, int Version, DateTime EffectiveOnUtc);

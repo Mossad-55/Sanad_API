@@ -6,7 +6,7 @@ Family subscription reads require a normal Family JWT and the `FamilyAccess` pol
 
 `GET /api/v1/family/subscriptions/plans` returns every published plan version. Draft versions are excluded. Published versions retired from new sales remain visible, with `isAvailableForNewSales: false`.
 
-Each item includes its key, version, price, currency, billing cycle, rollover policy, member and monthly-booking limits, publication/creation timestamps, availability, and all benefit keys with their included state.
+Each item includes its key, version, tax-exclusive price, currency, billing cycle, rollover policy, member and monthly-booking limits, publication/creation timestamps, availability, and all benefit keys with their included state. The catalog read does not add VAT/tax to the returned price.
 
 ## Current subscription snapshot
 

@@ -1,0 +1,19 @@
+meta {
+  name: 17-tax-current-family-forbidden
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/tax-rules/current
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{subscriptionNegativeJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

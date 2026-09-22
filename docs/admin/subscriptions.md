@@ -67,4 +67,43 @@ Subscriptions.Coupon.NotFound` for an unknown coupon.
 Each coupon is one-time and globally non-stackable; redemption and consumption are a later slice.
 Coupons are configuration records, so deleting one does not rewrite existing transactions.
 
-This slice does not call Paymob and does not implement checkout, card or wallet processing, recurring billing, trials, redemption, VAT/tax, invoices, payment methods, proration, retries, grace periods, or allowance consumption. Existing family subscription snapshots remain immutable.
+## VAT / tax-rule configuration
+
+Subscription plan prices are stored and exposed as tax-exclusive EGP amounts. VAT/tax
+configuration is now available as a Super Admin-only configuration surface. These routes
+require a normal JWT with the `SubscriptionPlanAdmin` policy; Content Admin, Support Admin,
+family, and caregiver tokens receive `403`, while unauthenticated requests receive `401`.
+
+```text
+POST /api/v1/admin/subscriptions/tax-rules
+GET  /api/v1/admin/subscriptions/tax-rules/current
+GET  /api/v1/admin/subscriptions/tax-rules/history
+```
+
+Create body:
+
+```json
+{
+  "ratePercentage": 14.00,
+  "version": 1,
+  "effectiveOnUtc": "2026-10-01T00:00:00Z"
+}
+```
+
+The create response is `201` with the new rule UUID. `ratePercentage` is inclusive from
+`0` through `100` and is rounded to two decimals; `version` must be positive and
+`effectiveOnUtc` must be UTC. A version is unique (`409
+Subscriptions.Tax.DuplicateVersion`). Creating a new rule deactivates the prior active
+rule while retaining it in history. A concurrent active-rule change returns `409
+Subscriptions.Tax.ActiveConflict`; invalid values return `400 Subscriptions.Tax.Invalid`.
+
+The current route returns `200` with the active rule, or JSON `null` when no rule exists.
+The history route returns `200` with all rules ordered by descending `version`. Rule
+objects contain `id`, `ratePercentage`, `version`, `effectiveOnUtc`, `createdOnUtc`, and
+`isActive`.
+
+Tax-rule configuration does not calculate checkout totals, create invoices, charge
+customers, call Paymob, or change existing family subscription snapshots. Checkout,
+card/wallet processing, recurring billing, trials, redemption, invoices, payment methods,
+proration, retries, grace periods, allowance consumption, and customer charge calculation
+remain out of scope.

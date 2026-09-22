@@ -1,0 +1,15 @@
+meta {
+  name: 21-tax-history-unauthenticated
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/tax-rules/history
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

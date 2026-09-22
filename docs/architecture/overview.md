@@ -90,11 +90,11 @@ Implemented:
 - Attendance start/complete plus immutable Visit Reports and Medical Reports with private optional photos
 - Admin closed-booking list, cancellation history, fact-aware refund state, and failed-refund retry
 - Owner-only subscription catalog/current snapshot reads and cancel-renewal lifecycle
-- Super Admin subscription plan authoring/publication/retirement and coupon configuration
+- Super Admin subscription plan authoring/publication/retirement, coupon configuration, and VAT/tax-rule configuration
 
 Not implemented yet:
 
 - Ratings / reviews HTTP
 - Booking cancellation fee tiers
-- Subscription checkout/redemption, recurring billing, invoices, tax/VAT, proration, retries, grace periods, and allowance consumption
+- Subscription checkout/redemption, recurring billing, invoices, tax/VAT calculation/charging, proration, retries, grace periods, and allowance consumption
 - Social / Google / Apple authentication (cancelled and removed)

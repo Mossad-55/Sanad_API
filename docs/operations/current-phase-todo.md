@@ -1,36 +1,50 @@
-# Current phase todo — subscription coupon and documentation synchronization
+# Current phase todo — subscription VAT/tax configuration
 
-This is the editable task list for the active phase. The mastermind updates it after every worker report, validation gate, owner decision, and correction. Do not start the next subscription phase until the required open items are closed or explicitly owner-deferred.
+This is the visible checklist for the active bounded phase. The mastermind updates it after every worker spawn/report, correction, gate, and owner decision. Dependent work may not start while an earlier required item is incomplete.
 
-## Complete
+## Phase contract
 
-- [x] Implement Super Admin subscription plan authoring/publication/retirement.
-- [x] Implement Super Admin coupon create/list/detail/hard-delete configuration.
-- [x] Generate and inspect migration `20260921233541_AddSubscriptionCoupons`.
-- [x] Focused subscription/controller tests: 62/62.
-- [x] API build: 0 warnings, 0 errors.
-- [x] Run scout endpoint census: 28 controllers, 228 actions; identify 13 missing Postman mappings and one misplaced route.
-- [x] Correct docs/Postman mappings for the 13 endpoints and note-category route.
-- [x] Correct authorization documentation for family activities and anonymous note categories.
-- [x] Add and document the scout -> implementer -> mastermind gates -> correction -> reviewer -> documenter -> final mastermind workflow.
-- [x] Correct object-level family ownership for notes and activities.
-- [x] Add foreign-family and role-matrix regression coverage; focused role-matrix tests: 19/19.
-- [x] Independent reviewer approved the ownership correction with no source/security findings.
-- [x] Final documenter check synchronized notes/activity docs and Family Postman authorization wording.
-- [x] Isolate authentication host tests from the Development subscription fixture; focused auth host tests: 5/5.
-- [x] Full unit suite after isolation correction: 1723/1723 passed.
-- [x] API full build after isolation correction: 0 warnings, 0 errors.
-- [x] Local Bruno subscription gate: 4/4 requests, 4/4 assertions, exit code 0; fresh local seed used and API stopped after the run.
-- [x] Local negative-first admin subscription Bruno gate: 16/16 requests, 16/16 assertions, exit code 0; all seven admin plan/coupon routes covered for 401/403 without mutations.
-- [x] Owner-led UI walkthrough completed for the nine subscription/billing reference screens; mismatches and backend mappings recorded in the private handoff.
+- Super Admin-only global VAT/tax configuration.
+- Percentage rate inclusive `0..100`, rounded to two decimals.
+- Positive unique version and UTC effective timestamp.
+- Exactly one active rule; prior versions remain immutable except deactivation.
+- Subscription prices remain tax-exclusive.
+- Configuration/read APIs only; checkout, invoices, Paymob, and customer charge calculation are out of scope.
 
-## Blocked or pending before phase close
+## Ordered worker and gate checklist
 
-- [ ] Apply and verify `20260921233541_AddSubscriptionCoupons` on the VPS after the UI walkthrough.
-- [ ] Run safe deployed admin coupon smoke checks after VPS migration application.
-- [ ] Add/run authenticated Super Admin read/mutation smoke coverage only if the owner later authorizes a dedicated disposable admin fixture; destructive/happy-path mutations remain excluded from committed Bruno collections.
+- [x] Owner confirms the VAT/tax product contract.
+- [x] `sanad_scout`: map current code, interfaces, authorization, docs, Postman, and Bruno state at `c19fae0`.
+- [x] Mastermind publishes the implementation brief and exact five-file production manifest.
+- [x] `sanad_implementer`: deliver domain/application/persistence implementation; report was not returned before worker shutdown and is recorded as an unfulfilled worker-report check.
+- [x] Mastermind review finds the missing public controller scope.
+- [x] Implementer correction 01: add the three Super Admin admin routes and error mapping; complete report received.
+- [x] `sanad_test_author`: add focused tests and six negative-first tax Bruno requests; files delivered, but the worker report was not returned before shutdown and is recorded as an unfulfilled worker-report check.
+- [x] `sanad_reviewer`: independent review completed; verdict = corrections required.
+- [x] Test-author Bruno correction: move logout from sequence 16 to sequence 23; report received.
+- [x] Mastermind recovery: add PostgreSQL two-writer concurrency regression proving one success, one `Subscriptions.Tax.ActiveConflict`, and one active rule; focused gate passed `1/1` against dedicated `SanadIntegrationDb`, exit code `0`.
+- [x] Owner authorizes and mastermind generates `20260922130346_AddSubscriptionTaxRules`; API compile preflight passed with 0 warnings and 0 errors.
+- [x] Mastermind reviews the generated migration: additive table, unique version index, filtered unique active index, and reversible table-only `Down`.
+- [x] `sanad_reviewer`: independently audit the generated migration and model snapshot; corrections required because PostgreSQL lacks rate/version check constraints.
+- [x] Implementer correction 02: add named PostgreSQL checks for rate `0..100` and positive version in the tax-rule configuration only; worker report received with no blockers.
+- [x] Mastermind regenerates `20260922130855_AddSubscriptionTaxRules` after correction 02; API preflight remains 0 warnings/0 errors and the migration now includes both named checks.
+- [x] `sanad_reviewer`: fresh read-only audit returned `corrections required` for stale documentation in its worker snapshot; live audit confirms those documentation/Postman corrections are already present. No code, authorization, persistence, concurrency, or test findings were reported.
+- [x] Owner-authorized local application of `20260922130855_AddSubscriptionTaxRules` to verified `localhost:5432/SanadDb`; migration history confirms it is applied.
+- [x] Focused VAT/domain/application/API/model tests pass locally: `29/29`.
+- [x] API build passes with zero warnings and errors.
+- [x] Full unit suite passes after recovery test: `1744/1744` passed, `0` failed, `0` skipped, exit code `0` (`dotnet test ... --no-build --logger "console;verbosity=minimal"`).
+- [x] Mastermind recovery after documenter worker failure: synchronized architecture overview and admin Postman collection; admin subscription docs/README were verified already current. Postman JSON parses and contains 3 tax-rule requests; diff check is clean.
+- [x] Bruno parser/inventory check: `22` request files and `22` status assertions in `subscription-admin-negative`; sequence order is `1..22` followed by logout at `23`.
+- [x] Local negative-first Bruno gate passed against local HTTP API: 22 requests, 22 passed, 22/22 assertions, exit code `0`; dedicated local seed login succeeded, tax mutation requests were absent, and logout cleanup returned `204`. API process stopped after the gate.
+- [ ] Mastermind final validation and private handoff update — local validation is complete; VPS evidence remains owner action.
 
-## Next phase, not started
+## Current blockers
 
-- [ ] Dynamic admin-configured VAT/tax rules and persistence.
-- [ ] Re-run the full worker lifecycle and Bruno gate for that phase.
+- [x] Local migration application is complete and verified in `SanadDb`; no VPS/production action was taken and no local tax endpoint gate has run yet.
+- [x] Independent review report received; its documentation finding was reconciled against live workspace evidence. No unresolved reviewer defect remains, with the stale-snapshot limitation recorded.
+- [x] PostgreSQL concurrency regression is delivered and validated; the prior worker blocker is resolved through the explicitly authorized mastermind recovery action.
+- [x] Documentation/Postman synchronization is complete through the explicitly authorized mastermind recovery; independent review remains unavailable and is not marked complete.
+
+## Next action
+
+Owner supplies or executes the approved VPS deployment mechanism for `72.62.92.144:8091`; current read-only reachability check returned `Unable to connect to the remote server`, so migration/API/smoke evidence is still unavailable.

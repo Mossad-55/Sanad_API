@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Reflection;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers;
 using Sanad.BuildingBlocks.Application.Results;
@@ -21,6 +22,27 @@ public sealed class AdminSubscriptionsControllerTests
         var authorization = Assert.Single(typeof(AdminSubscriptionsController)
             .GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>());
         Assert.Equal(AuthorizationPolicies.SubscriptionPlanAdmin, authorization.Policy);
+    }
+
+    [Fact]
+    public void Exposes_the_three_tax_rule_routes_and_expected_response_metadata()
+    {
+        var route = Assert.Single(typeof(AdminSubscriptionsController)
+            .GetCustomAttributes<RouteAttribute>());
+        Assert.Equal("api/v1/admin/subscriptions", route.Template);
+
+        var create = typeof(AdminSubscriptionsController).GetMethod(nameof(AdminSubscriptionsController.CreateTaxRule))!;
+        var current = typeof(AdminSubscriptionsController).GetMethod(nameof(AdminSubscriptionsController.GetCurrentTaxRule))!;
+        var history = typeof(AdminSubscriptionsController).GetMethod(nameof(AdminSubscriptionsController.GetTaxRuleHistory))!;
+
+        Assert.Equal("tax-rules", create.GetCustomAttribute<HttpPostAttribute>()!.Template);
+        Assert.Equal("tax-rules/current", current.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Equal("tax-rules/history", history.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Contains(create.GetCustomAttributes<ProducesResponseTypeAttribute>(), x => x.StatusCode == 201);
+        Assert.Contains(create.GetCustomAttributes<ProducesResponseTypeAttribute>(), x => x.StatusCode == 400);
+        Assert.Contains(create.GetCustomAttributes<ProducesResponseTypeAttribute>(), x => x.StatusCode == 409);
+        Assert.Contains(current.GetCustomAttributes<ProducesResponseTypeAttribute>(), x => x.StatusCode == 200);
+        Assert.Contains(history.GetCustomAttributes<ProducesResponseTypeAttribute>(), x => x.StatusCode == 200);
     }
 
     [Fact]
@@ -90,6 +112,90 @@ public sealed class AdminSubscriptionsControllerTests
             new CreateSubscriptionCouponRequest("WELCOME", Guid.NewGuid(), 10m, DateTime.UtcNow.AddDays(1)), default);
 
         Assert.Equal(StatusCodes.Status409Conflict, Assert.IsType<ObjectResult>(result).StatusCode);
+    }
+
+    [Fact]
+    public async Task Creates_tax_rule_with_exact_request_fields_and_authenticated_actor()
+    {
+        var actor = UserId.New();
+        var sender = new CapturingSender(Result<Guid>.Success(Guid.NewGuid()));
+        var controller = CreateController(sender, actor);
+        var effective = new DateTime(2026, 6, 1, 0, 0, 0, DateTimeKind.Utc);
+
+        var result = await controller.CreateTaxRule(new(12.345m, 7, effective), default);
+
+        Assert.Equal(StatusCodes.Status201Created, Assert.IsType<ObjectResult>(result).StatusCode);
+        var command = Assert.IsType<CreateSubscriptionTaxRuleCommand>(sender.LastRequest);
+        Assert.Equal(12.345m, command.RatePercentage);
+        Assert.Equal(7, command.Version);
+        Assert.Equal(effective, command.EffectiveOnUtc);
+        Assert.Equal(actor, command.ActorUserId);
+    }
+
+    [Fact]
+    public async Task Current_tax_rule_dispatches_query_and_returns_json_null()
+    {
+        var sender = new CapturingSender(Result<SubscriptionTaxRuleResponse?>.Success(null));
+        var result = await CreateController(sender, UserId.New()).GetCurrentTaxRule(default);
+
+        var response = Assert.IsType<OkObjectResult>(result);
+        Assert.Equal(StatusCodes.Status200OK, response.StatusCode);
+        Assert.Null(response.Value);
+        Assert.IsType<GetCurrentSubscriptionTaxRuleQuery>(sender.LastRequest);
+    }
+
+    [Fact]
+    public async Task History_tax_rule_dispatches_query_and_returns_handler_value()
+    {
+        var response = new List<SubscriptionTaxRuleResponse>
+        {
+            new(Guid.NewGuid(), 20m, 2, DateTime.UtcNow, DateTime.UtcNow, true),
+            new(Guid.NewGuid(), 10m, 1, DateTime.UtcNow, DateTime.UtcNow, false)
+        };
+        var sender = new CapturingSender(Result<IReadOnlyList<SubscriptionTaxRuleResponse>>.Success(response));
+
+        var result = await CreateController(sender, UserId.New()).GetTaxRuleHistory(default);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.Same(response, ok.Value);
+        Assert.IsType<GetSubscriptionTaxRuleHistoryQuery>(sender.LastRequest);
+    }
+
+    [Fact]
+    public async Task Maps_tax_invalid_to_400_and_tax_conflicts_to_409()
+    {
+        var controller = CreateController(new CapturingSender(
+            Result<Guid>.Failure(new Error("Subscriptions.Tax.Invalid", "invalid"))), UserId.New());
+        var invalid = await controller.CreateTaxRule(new(101m, 1, DateTime.UtcNow), default);
+        var invalidProblem = Assert.IsType<ProblemDetails>(Assert.IsType<ObjectResult>(invalid).Value);
+        Assert.Equal(StatusCodes.Status400BadRequest, invalidProblem.Status);
+        Assert.Equal("Subscriptions.Tax.Invalid", invalidProblem.Extensions["code"]);
+
+        controller = CreateController(new CapturingSender(
+            Result<Guid>.Failure(new Error("Subscriptions.Tax.DuplicateVersion", "duplicate"))), UserId.New());
+        var duplicate = await controller.CreateTaxRule(new(10m, 1, DateTime.UtcNow), default);
+        var duplicateProblem = Assert.IsType<ProblemDetails>(Assert.IsType<ObjectResult>(duplicate).Value);
+        Assert.Equal(StatusCodes.Status409Conflict, duplicateProblem.Status);
+        Assert.Equal("Subscriptions.Tax.DuplicateVersion", duplicateProblem.Extensions["code"]);
+
+        controller = CreateController(new CapturingSender(
+            Result<Guid>.Failure(new Error("Subscriptions.Tax.ActiveConflict", "race"))), UserId.New());
+        var race = await controller.CreateTaxRule(new(10m, 2, DateTime.UtcNow), default);
+        var raceProblem = Assert.IsType<ProblemDetails>(Assert.IsType<ObjectResult>(race).Value);
+        Assert.Equal(StatusCodes.Status409Conflict, raceProblem.Status);
+        Assert.Equal("Subscriptions.Tax.ActiveConflict", raceProblem.Extensions["code"]);
+    }
+
+    [Fact]
+    public async Task Create_tax_rule_requires_an_authenticated_actor()
+    {
+        var sender = new CapturingSender(Result<Guid>.Success(Guid.NewGuid()));
+        var controller = CreateController(sender);
+
+        var result = await controller.CreateTaxRule(new(10m, 1, DateTime.UtcNow), default);
+
+        Assert.IsType<UnauthorizedResult>(result);
+        Assert.Null(sender.LastRequest);
     }
 
     private static AdminSubscriptionsController CreateController(ISender sender, UserId? actor = null)

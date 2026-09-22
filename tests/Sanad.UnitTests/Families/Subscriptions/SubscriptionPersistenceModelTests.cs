@@ -14,15 +14,25 @@ public sealed class SubscriptionPersistenceModelTests
 
         var catalog = context.Model.FindEntityType(typeof(SubscriptionPlanVersion));
         var snapshot = context.Model.FindEntityType(typeof(FamilySubscription));
+        var taxRule = context.Model.FindEntityType(typeof(SubscriptionTaxRule));
 
         Assert.NotNull(catalog);
         Assert.NotNull(snapshot);
+        Assert.NotNull(taxRule);
         Assert.Contains(catalog!.GetIndexes(), x => x.IsUnique && x.Properties.Select(p => p.Name).SequenceEqual([nameof(SubscriptionPlanVersion.Key), nameof(SubscriptionPlanVersion.Version)]));
         Assert.Contains(snapshot!.GetIndexes(), x => x.IsUnique && x.GetFilter() == "is_current = true");
         Assert.DoesNotContain(catalog.GetIndexes(), x => x.IsUnique && x.GetFilter() == "is_available_for_new_sales = true");
         Assert.Equal(DeleteBehavior.Restrict, snapshot.GetForeignKeys().Single().DeleteBehavior);
         Assert.True(catalog.FindProperty(nameof(SubscriptionPlanVersion.IsAvailableForNewSales))!.IsConcurrencyToken);
         Assert.True(catalog.FindProperty(nameof(SubscriptionPlanVersion.IsPublished))!.IsConcurrencyToken);
+        Assert.Equal(5, taxRule!.FindProperty(nameof(SubscriptionTaxRule.RatePercentage))!.GetPrecision());
+        Assert.Equal(2, taxRule.FindProperty(nameof(SubscriptionTaxRule.RatePercentage))!.GetScale());
+        Assert.Contains(taxRule.GetIndexes(), x => x.IsUnique &&
+            x.Properties.Select(p => p.Name).SequenceEqual([nameof(SubscriptionTaxRule.Version)]) &&
+            x.GetDatabaseName() == "ux_subscription_tax_rules_version");
+        Assert.Contains(taxRule.GetIndexes(), x => x.IsUnique &&
+            x.GetFilter() == "\"is_active\" = TRUE" &&
+            x.GetDatabaseName() == "ux_subscription_tax_rules_active");
     }
 
     [Fact]
@@ -33,6 +43,7 @@ public sealed class SubscriptionPersistenceModelTests
 
         Assert.Same(context.SubscriptionPlanVersions, applicationContext.SubscriptionPlanVersions);
         Assert.Same(context.FamilySubscriptions, applicationContext.FamilySubscriptions);
+        Assert.Same(context.SubscriptionTaxRules, applicationContext.SubscriptionTaxRules);
     }
 
     [Fact]
@@ -98,6 +109,43 @@ public sealed class SubscriptionPersistenceModelTests
         Assert.Equal(299m, snapshot.Price);
         Assert.Equal("premium", snapshot.PlanKey);
         context.Entry(audit).Property(x => x.ActorRole).CurrentValue = "ContentAdmin";
+        Assert.Throws<InvalidOperationException>(() => context.SaveChanges());
+    }
+
+    [Fact]
+    public void Tax_rule_save_guard_allows_deactivation_but_rejects_versioned_field_changes_and_deletion()
+    {
+        using FamiliesDbContext context = CreateContext();
+        var rule = SubscriptionTaxRule.Create(15m, 1, DateTime.UtcNow, DateTime.UtcNow);
+        context.SubscriptionTaxRules.Add(rule);
+        context.SaveChanges();
+
+        context.Entry(rule).Property(x => x.RatePercentage).CurrentValue = 16m;
+        Assert.Throws<InvalidOperationException>(() => context.SaveChanges());
+
+        context.ChangeTracker.Clear();
+        rule = context.SubscriptionTaxRules.Single();
+        context.Entry(rule).Property(x => x.Version).CurrentValue = 2;
+        Assert.Throws<InvalidOperationException>(() => context.SaveChanges());
+
+        context.ChangeTracker.Clear();
+        rule = context.SubscriptionTaxRules.Single();
+        context.Entry(rule).Property(x => x.EffectiveOnUtc).CurrentValue = DateTime.UtcNow.AddDays(1);
+        Assert.Throws<InvalidOperationException>(() => context.SaveChanges());
+
+        context.ChangeTracker.Clear();
+        rule = context.SubscriptionTaxRules.Single();
+        context.Entry(rule).Property(x => x.CreatedOnUtc).CurrentValue = DateTime.UtcNow.AddDays(1);
+        Assert.Throws<InvalidOperationException>(() => context.SaveChanges());
+
+        context.ChangeTracker.Clear();
+        rule = context.SubscriptionTaxRules.Single();
+        rule.Deactivate();
+        context.SaveChanges();
+        Assert.False(context.SubscriptionTaxRules.Single().IsActive);
+
+        context.ChangeTracker.Clear();
+        context.Remove(context.SubscriptionTaxRules.Single());
         Assert.Throws<InvalidOperationException>(() => context.SaveChanges());
     }
 

@@ -1,0 +1,27 @@
+meta {
+  name: 19-tax-create-family-forbidden
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/tax-rules
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {}
+}
+
+auth:bearer {
+  token: {{subscriptionNegativeJwt}}
+}
+
+assert {
+  res.status: eq 403
+}
