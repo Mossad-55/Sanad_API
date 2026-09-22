@@ -1,0 +1,24 @@
+meta {
+  name: 06-logout-admin
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{subscriptionAdminJwt}}
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{subscriptionAdminDeviceSessionId}}
+}
+
+assert {
+  res.status: eq 204
+}

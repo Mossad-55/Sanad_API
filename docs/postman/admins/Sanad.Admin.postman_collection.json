@@ -2286,6 +2286,42 @@
       "description": "Super Admin only. Plan authoring, publication, and retirement are configuration mutations; use owner-approved plan fixtures and do not replay against shared data without authorization.",
       "item": [
         {
+          "name": "List family subscriptions (safe read)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions?page=1&pageSize=10"
+          },
+          "description": "Safe read. Returns paged family subscription snapshots, family context, owner ID, stored plan terms, current-state, auto-renew, cancellation, and period-end fields. Includes historical non-current snapshots."
+        },
+        {
+          "name": "Get family subscription (safe read)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/{{subscriptionId}}"
+          },
+          "description": "Safe read. Returns one stored family subscription snapshot; unknown IDs return 404 Subscriptions.Subscription.NotFound."
+        },
+        {
+          "name": "List subscription plans (safe read)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans?page=1&pageSize=10"
+          },
+          "description": "Safe read. Returns all draft, published, and retired-for-new-sales plan versions so administrators can see the complete catalog state."
+        },
+        {
+          "name": "Get subscription plan (safe read)",
+          "request": {
+            "method": "GET",
+            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans/{{subscriptionPlanVersionId}}"
+          },
+          "description": "Safe read. Returns one plan version with immutable terms, benefits, publication state, availability, and timestamps; unknown IDs return 404 Subscriptions.Plan.NotFound."
+        },
+        {
           "name": "Create subscription plan draft (manual)",
           "request": {
             "method": "POST",

@@ -96,6 +96,84 @@ public sealed class SubscriptionQueryTests
         Assert.Equal(299m, result.Value.CurrentSubscription!.Price);
     }
 
+    [Fact]
+    public async Task Admin_plan_list_includes_drafts_published_and_retired_versions()
+    {
+        await using var db = CreateContext();
+        var draft = SubscriptionPlanVersion.Create(SubscriptionPlan.Free);
+        var published = Published(SubscriptionPlan.Premium);
+        var retired = Published(SubscriptionPlan.PremiumPlus, available: false);
+        db.SubscriptionPlanVersions.AddRange(draft, published, retired);
+        await db.SaveChangesAsync();
+
+        var result = await new GetAdminSubscriptionPlansQueryHandler(db)
+            .Handle(new GetAdminSubscriptionPlansQuery(1, 100), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(3, result.Value.TotalCount);
+        Assert.Equal(3, result.Value.Items.Count);
+        Assert.Contains(result.Value.Items, item => !item.IsPublished);
+        Assert.Contains(result.Value.Items, item => item.IsPublished && !item.IsAvailableForNewSales);
+    }
+
+    [Fact]
+    public async Task Admin_subscription_list_includes_family_context_and_current_state()
+    {
+        await using var db = CreateContext();
+        var owner = UserId.New();
+        var family = Family.Create(owner, "Admin-visible family");
+        var plan = Published(SubscriptionPlan.Premium);
+        var subscription = FamilySubscription.Create(family.Id, plan);
+        db.Families.Add(family);
+        db.SubscriptionPlanVersions.Add(plan);
+        db.FamilySubscriptions.Add(subscription);
+        await db.SaveChangesAsync();
+
+        var result = await new GetAdminFamilySubscriptionsQueryHandler(db)
+            .Handle(new GetAdminFamilySubscriptionsQuery(1, 10), default);
+
+        Assert.True(result.IsSuccess);
+        var item = Assert.Single(result.Value.Items);
+        Assert.Equal(family.Id.Value, item.FamilyId);
+        Assert.Equal("Admin-visible family", item.FamilyName);
+        Assert.Equal(owner.Value, item.OwnerUserId);
+        Assert.True(item.IsCurrent);
+        Assert.Equal("premium", item.PlanKey);
+    }
+
+    [Fact]
+    public async Task Admin_plan_detail_returns_not_found_for_unknown_version()
+    {
+        await using var db = CreateContext();
+
+        var result = await new GetAdminSubscriptionPlanQueryHandler(db)
+            .Handle(new GetAdminSubscriptionPlanQuery(Guid.NewGuid()), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Subscriptions.Plan.NotFound", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Admin_subscription_detail_returns_snapshot_with_family_context()
+    {
+        await using var db = CreateContext();
+        var family = Family.Create(UserId.New(), "Detail family");
+        var plan = Published(SubscriptionPlan.Premium);
+        var subscription = FamilySubscription.Create(family.Id, plan);
+        db.Families.Add(family);
+        db.SubscriptionPlanVersions.Add(plan);
+        db.FamilySubscriptions.Add(subscription);
+        await db.SaveChangesAsync();
+
+        var result = await new GetAdminFamilySubscriptionQueryHandler(db)
+            .Handle(new GetAdminFamilySubscriptionQuery(subscription.Id), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(family.Id.Value, result.Value.FamilyId);
+        Assert.Equal("Detail family", result.Value.FamilyName);
+        Assert.Equal("premium", result.Value.PlanKey);
+    }
+
     private static SubscriptionPlanVersion Published(SubscriptionPlan plan, bool available = true) =>
         SubscriptionPlanVersion.Create(plan, true, available, DateTime.UtcNow, DateTime.UtcNow);
 

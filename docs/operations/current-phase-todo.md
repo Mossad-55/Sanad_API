@@ -172,3 +172,24 @@ Owner deploys pushed revision `1b6fca6`, verifies the Families migration and API
 - [x] Post-push verification: branch `main`, `HEAD == origin/main == 1b6fca60bc40b1423629e18bddf0ba418fb30065`, tracked worktree clean, and private/unrelated files preserved untracked.
 - [owner action] Deployment owner action: deploy `1b6fca6`, apply/verify migration on the VPS, and run safe smoke checks; dependency: owner deployment decision.
 - [x] Final handoff: pushed SHA, exact gates, cleanup, and one next action are recorded in the private operations handoff.
+
+## Repository contract-completeness audit — active correction phase
+
+- [x] Mastermind/scout recovery: controller census is complete at `237` actions; Postman census is complete at `269` requests with `0` missing and `0` orphan mappings; requirement-to-route-to-artifact matrix review is complete.
+- [x] Requirement completeness review: corrected the missing admin subscription plan/family-subscription reads; caregiver review/cancellation visibility is present; admin-managed resource lifecycle rows are documented in the coverage matrix.
+- [x] Implementer/mastermind recovery: added read-only admin plan list/detail and family-subscription list/detail contracts without a migration.
+- [x] Test author/mastermind recovery: focused subscription controller/query tests pass `21/21`.
+- [x] Mastermind gates: full solution build passes `0` warnings / `0` errors; architecture tests pass `1/1`; full unit suite passes `1760/1760`, `0` failed / `0` skipped; route-to-collection checker passes `237/237` with `0` missing and `0` orphan mappings.
+- [x] Reviewer/mastermind recovery: read-only review found no authorization, route-collision, data-exposure, pagination/filtering, or migration issue in the correction; lifecycle coverage is recorded in the matrix.
+- [x] Documenter/mastermind recovery: synchronized admin subscription docs, architecture, README, admin Postman, public webhook Postman, workflow rules, coverage matrix, and Bruno read collection; all seven Postman JSON files parse.
+- [x] Bruno: local admin-read gate passed against `http://localhost:5236` using the existing approved local Super Admin fixture (`admin@gmail.com`); `6/6` requests passed, `20/20` assertions passed, exit code `0`: login `200`, plan list `200`, plan detail `200`, family-subscription list `200`, family-subscription detail `200`, logout `204`. The first rerun exposed and corrected the Bruno logout contract to send `X-Device-Session-Id`; no business mutation ran.
+- [owner action] Commit/push: all audit corrections and gates are complete; owner must authorize the logical commit and push. No VPS action is permitted before that revision is pushed.
+- [pending] Final handoff: publish the verified SHA after owner-authorized commit/push, then hand off the pushed revision for deployment planning.
+
+## Prevention controls required before this phase can close
+
+- [x] Add maintained requirement-to-route matrix: `docs/operations/endpoint-coverage-matrix.md` records role/resource requirements and current evidence.
+- [x] Add repeatable route/verb-to-Postman consistency check: `tools/Verify-ApiContractMapping.ps1` passes with `237` actions, `269` requests, `0` missing, `0` orphan.
+- [x] Add lifecycle completeness rule: every admin-managed resource must expose and document safe list/detail reads alongside mutations and active-state transitions.
+- [pending] Make reviewer acceptance require explicit “missing requirements / missing endpoints / missing docs / missing Postman / missing Bruno” verdicts, not only changed-file review.
+- [x] Make the closeout gate refuse completion when any checklist row is owner-deferred, undocumented, untested, or unmapped.

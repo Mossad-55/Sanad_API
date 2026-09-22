@@ -48,6 +48,14 @@ The final report must list changed files, validation commands and results, assum
 - Validation and deployment order: complete the applicable local Bruno gate and record its exact evidence before closing the current phase. VPS deployment is intentionally deferred until the owner completes the UI walkthrough; then remind the owner to deploy the verified revision, apply/verify the migration, and run safe smoke checks.
 - Stage validated changes by respected logical commit scope. Never stage the private control files, never start a new phase while required current-phase todo work is open or explicitly owner-deferred, and never commit/push/deploy without owner authorization.
 
+## Contract-completeness gate (mandatory)
+
+- Every API slice must maintain a requirements-to-contract matrix before implementation begins. Each requirement row must identify the owner role, route(s), authorization policy, source handler, persistence/data source, focused tests, Bruno coverage, public documentation page, Postman collection/request, and status.
+- A route census is necessary but not sufficient: the matrix must also prove that each admin-managed resource has safe list/detail visibility in addition to create/update/delete and active-state transitions. “Create/activate/deactivate” without a way to read the resulting state is an incomplete contract.
+- Before a phase can be marked complete, run a mechanical controller-route-to-Postman check in both directions, then reconcile intentional exceptions explicitly. An endpoint may not be silently excluded because it is a webhook, manual request, or mutation.
+- The reviewer must provide explicit counts for missing requirements, missing source routes, missing tests, missing docs, missing Postman requests, and missing Bruno coverage. “Changed endpoints are documented” is not an acceptable completeness verdict.
+- Any missing row blocks commit, push, deployment, and handoff until corrected or explicitly owner-deferred in the current checklist.
+
 ## Closeout
 
 Each completed slice updates affected `docs/` pages, the private operations ledger, and the current next action. Do not claim a release or deployment from a worker result alone.

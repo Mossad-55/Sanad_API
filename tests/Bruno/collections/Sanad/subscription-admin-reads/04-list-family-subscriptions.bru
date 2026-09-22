@@ -1,0 +1,27 @@
+meta {
+  name: 04-list-family-subscriptions
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions?page=1&pageSize=10
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{subscriptionAdminJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isArray
+  res.body.page: eq 1
+  res.body.pageSize: eq 10
+}
+
+script:post-response {
+  if (res.body.items && res.body.items.length > 0) {
+    bru.setVar("subscriptionAdminSubscriptionId", res.body.items[0].id);
+  }
+}

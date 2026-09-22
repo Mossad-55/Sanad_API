@@ -60,6 +60,14 @@ Any change that adds or changes a business rule, endpoint, request/response cont
 
 For a broad audit, the mastermind must issue a `sanad_documenter` brief with the same pinned SHA, exact manifest, numbered task ladder, acceptance checks, exclusions, stop conditions, and final-report fields required of every worker. Missing or contradictory documentation or Postman updates pause commit, push, deployment, and handoff readiness.
 
+## Contract-completeness gate
+
+Every broad audit and every API slice must maintain a requirements-to-contract matrix, not just a changed-file list. Each row maps the product requirement to its role and authorization policy, implementation route and handler, persistence/data source, tests, Bruno scenario, public documentation, and Postman request. The matrix must explicitly verify admin resource visibility: list/detail reads must exist and be documented alongside create/update/delete and active-state transitions. A route census that only proves existing routes are present in Postman does not prove that required routes exist.
+
+The closeout report must state exact counts for missing requirements, source routes, tests, documentation sections/files, Postman requests, and Bruno scenarios. A controller-to-Postman check runs in both directions; intentional exceptions such as external webhooks require a manual collection artifact or an explicit recorded owner decision. Any nonzero missing count blocks closeout until corrected or owner-deferred in the active checklist.
+
+The repository check is `pwsh -File tools/Verify-ApiContractMapping.ps1`. It extracts controller routes and Postman requests, normalizes route parameters, checks both directions, prints exact counts, and exits nonzero on any mismatch. This check is required before reviewer approval and again before commit/push.
+
 ## Sanad validation rules
 
 - Run focused unit tests before broader gates.

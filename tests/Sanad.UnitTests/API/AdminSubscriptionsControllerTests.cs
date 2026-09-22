@@ -46,6 +46,46 @@ public sealed class AdminSubscriptionsControllerTests
     }
 
     [Fact]
+    public void Exposes_admin_subscription_list_and_detail_routes()
+    {
+        var list = typeof(AdminSubscriptionsController).GetMethod(nameof(AdminSubscriptionsController.ListFamilySubscriptions))!;
+        var detail = typeof(AdminSubscriptionsController).GetMethod(nameof(AdminSubscriptionsController.GetFamilySubscription))!;
+        var plans = typeof(AdminSubscriptionsController).GetMethod(nameof(AdminSubscriptionsController.ListPlans))!;
+        var plan = typeof(AdminSubscriptionsController).GetMethod(nameof(AdminSubscriptionsController.GetPlan))!;
+
+        Assert.Null(list.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Equal("{subscriptionId:guid}", detail.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Equal("plans", plans.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Equal("plans/{planVersionId:guid}", plan.GetCustomAttribute<HttpGetAttribute>()!.Template);
+    }
+
+    [Fact]
+    public async Task Dispatches_admin_subscription_read_queries()
+    {
+        var sender = new CapturingSender(Result<PagedAdminFamilySubscriptions>.Success(
+            new([], 1, 10, 0)));
+        var controller = CreateController(sender, UserId.New());
+
+        var list = await controller.ListFamilySubscriptions(2, 25, default);
+
+        Assert.IsType<OkObjectResult>(list);
+        var listQuery = Assert.IsType<GetAdminFamilySubscriptionsQuery>(sender.LastRequest);
+        Assert.Equal(2, listQuery.Page);
+        Assert.Equal(25, listQuery.PageSize);
+
+        sender = new CapturingSender(Result<AdminSubscriptionPlanResponse>.Success(
+            new(Guid.NewGuid(), "premium", 1, 299m, SubscriptionCycle.Monthly, "EGP",
+                new(SubscriptionLimitKind.Finite, 10), new(SubscriptionLimitKind.Finite, 20),
+                SubscriptionRollover.None, true, true, DateTime.UtcNow, DateTime.UtcNow, [])));
+        controller = CreateController(sender, UserId.New());
+
+        var plan = await controller.GetPlan(Guid.NewGuid(), default);
+
+        Assert.IsType<OkObjectResult>(plan);
+        Assert.IsType<GetAdminSubscriptionPlanQuery>(sender.LastRequest);
+    }
+
+    [Fact]
     public async Task Dispatches_route_and_authenticated_actor_without_client_actor_fields()
     {
         var actor = UserId.New();

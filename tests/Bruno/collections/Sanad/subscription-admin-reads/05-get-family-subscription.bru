@@ -1,0 +1,22 @@
+meta {
+  name: 05-get-family-subscription
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/{{subscriptionAdminSubscriptionId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{subscriptionAdminJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isString
+  res.body.familyId: isString
+  res.body.familyName: isString
+  res.body.planKey: isString
+}

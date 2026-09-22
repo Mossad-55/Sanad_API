@@ -90,7 +90,7 @@ Implemented:
 - Attendance start/complete plus immutable Visit Reports and Medical Reports with private optional photos
 - Admin closed-booking list, cancellation history, fact-aware refund state, and failed-refund retry
 - Owner-only subscription catalog/current snapshot reads, server-side purchase quotes, initial card/wallet payment intent and HMAC settlement, and cancel-renewal lifecycle
-- Super Admin subscription plan authoring/publication/retirement, coupon configuration, and VAT/tax-rule configuration
+- Super Admin subscription plan and family-subscription list/detail reads, plan authoring/publication/retirement, coupon configuration, and VAT/tax-rule configuration
 
 Not implemented yet:
 

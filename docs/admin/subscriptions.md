@@ -1,6 +1,29 @@
 # Admin subscriptions
 
-Subscription plan authoring, publication, and retirement are non-billing catalog operations available only to a Super Admin with a normal JWT.
+Subscription plan authoring, publication, retirement, and administrative reads are available only to a Super Admin with a normal JWT. Administrative reads expose both the configured plan catalog and the family subscription records created from immutable plan snapshots.
+
+## Administrative reads
+
+List every family subscription, including inactive historical snapshots:
+
+```text
+GET /api/v1/admin/subscriptions?page=1&pageSize=10
+```
+
+The paged response includes the subscription ID, family ID/name, owner user ID, stored plan terms and benefits, current-state flag, auto-renew state, cancellation request timestamp, period end, and creation timestamp. Retrieve one record with:
+
+```text
+GET /api/v1/admin/subscriptions/{subscriptionId}
+```
+
+List every plan version, including drafts, published versions, and retired-for-new-sales versions:
+
+```text
+GET /api/v1/admin/subscriptions/plans?page=1&pageSize=10
+GET /api/v1/admin/subscriptions/plans/{planVersionId}
+```
+
+Plan reads include publication and availability state, immutable terms, benefits, and timestamps. These reads are safe and do not change configuration or family subscriptions.
 
 Create a draft plan version:
 

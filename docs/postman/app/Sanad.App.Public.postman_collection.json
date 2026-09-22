@@ -1,10 +1,28 @@
 {
   "info": {
     "name": "Sanad App — Public",
-    "description": "App-facing routes. Splash and active lookups are public. Auth login is included so Family/Caregiver flows can reuse this collection later. POST /api/v1/payments/webhooks/paymob is an external Paymob HMAC callback and is intentionally not a runnable consumer request; use an approved manual provider fixture only.",
+    "description": "App-facing routes. Splash and active lookups are public. Auth login is included so Family/Caregiver flows can reuse this collection later. The Paymob webhook request below is a manual fixture template only and must not be replayed without an approved provider payload and valid HMAC.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
+    {
+      "name": "03. Paymob webhook (manual fixture only)",
+      "item": [
+        {
+          "name": "Receive Paymob webhook (manual only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "X-Paymob-Hmac", "value": "{{paymobHmac}}"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"obj\": {\n    \"order\": {\"merchant_order_id\": \"sub_REPLACE_WITH_APPROVED_REFERENCE\"},\n    \"amount_cents\": 29900,\n    \"success\": false\n  }\n}"},
+            "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
+          },
+          "description": "Manual provider fixture only. Requires a valid Paymob HMAC and an owner-approved subscription reference. Do not replay against local, VPS, or production data as a generic Postman request."
+        }
+      ]
+    },
     {
       "name": "01. Splash Screens",
       "item": [

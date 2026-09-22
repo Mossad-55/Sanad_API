@@ -17,6 +17,44 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
 
     public AdminSubscriptionsController(ISender sender) => _sender = sender;
 
+    [HttpGet]
+    [ProducesResponseType(typeof(PagedAdminFamilySubscriptions), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListFamilySubscriptions(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+        => Ok((await _sender.Send(new GetAdminFamilySubscriptionsQuery(page, pageSize), cancellationToken)).Value);
+
+    [HttpGet("{subscriptionId:guid}")]
+    [ProducesResponseType(typeof(AdminFamilySubscriptionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetFamilySubscription(
+        Guid subscriptionId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetAdminFamilySubscriptionQuery(subscriptionId), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : SubscriptionNotFound(result.Error);
+    }
+
+    [HttpGet("plans")]
+    [ProducesResponseType(typeof(PagedAdminSubscriptionPlans), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListPlans(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+        => Ok((await _sender.Send(new GetAdminSubscriptionPlansQuery(page, pageSize), cancellationToken)).Value);
+
+    [HttpGet("plans/{planVersionId:guid}")]
+    [ProducesResponseType(typeof(AdminSubscriptionPlanResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPlan(
+        Guid planVersionId,
+        CancellationToken cancellationToken)
+    {
+        var result = await _sender.Send(new GetAdminSubscriptionPlanQuery(planVersionId), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : SubscriptionNotFound(result.Error);
+    }
+
     [HttpPost("plans")]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
@@ -169,6 +207,20 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
         problem.Extensions["code"] = error.Code;
         problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
         return StatusCode(status, problem);
+    }
+
+    private IActionResult SubscriptionNotFound(Error error)
+    {
+        var problem = new ProblemDetails
+        {
+            Status = StatusCodes.Status404NotFound,
+            Title = "Not Found",
+            Detail = error.Message,
+            Instance = HttpContext.Request.Path
+        };
+        problem.Extensions["code"] = error.Code;
+        problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
+        return NotFound(problem);
     }
 
     private IActionResult CouponFailure(Error error)

@@ -1,0 +1,22 @@
+meta {
+  name: 03-get-plan
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/plans/{{subscriptionAdminPlanId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{subscriptionAdminJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isString
+  res.body.key: isString
+  res.body.isPublished: isBoolean
+  res.body.isAvailableForNewSales: isBoolean
+}
