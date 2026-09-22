@@ -1,6 +1,6 @@
 # Codex local workspace workflow
 
-This repository uses a three-role workflow for local API development:
+This repository uses an owner/mastermind workflow with specialized, bounded worker roles for local API development:
 
 | Role | Responsibility | Cannot do without owner approval |
 |---|---|---|
@@ -35,6 +35,18 @@ The latest `CURRENT HANDOFF` block at the top of `Sanad_Operations.md` is the ac
 7. The owner runs the authoritative build/test/migration gate, approves publication, and controls commit/push/merge/deploy.
 8. The mastermind runs or verifies the proportionate local API gate and updates public docs plus the private operations ledger.
 
+The required execution order is: `sanad_scout` mapping and manifest -> `sanad_implementer` bounded change -> mastermind focused tests, full build, and full test suite -> implementer correction round if any defect is found -> `sanad_reviewer` independent review -> `sanad_documenter` complete docs/README/Postman synchronization -> mastermind final validation and handoff update. The implementer correction round is mandatory whenever the mastermind finds a source, test, build, or contract defect; it receives a new pinned brief and cannot be silently patched around by the mastermind.
+
+After every worker completes, the mastermind must report in plain language what the worker did, what changed or was found, exact validation results, blockers, affected todo items, and the next action. This report is required before another worker or phase starts.
+
+## Bruno gate (mandatory)
+
+Every applicable API slice must include a Bruno gate after implementation validation. The mastermind must record the collection/tier, exact request count, exact assertion count, exit code, seed/reset state, API cleanup state, and whether the gate was idempotent or one-shot. T0 is the idempotent standard gate; lifecycle tiers require a fresh authorized seed before rerun. If Bruno cannot run because a migration, credential, environment, or deployment prerequisite is missing, the slice remains open and the blocker plus an explicit next-phase todo item must be recorded.
+
+## Phase todo list (mandatory)
+
+Each active phase owns an editable todo list at `docs/operations/current-phase-todo.md`. The mastermind updates it after every worker report, gate, correction, and owner decision. A new phase cannot start while required current-phase tasks, documentation/Postman synchronization, or Bruno status remain unresolved.
+
 ## Documentation and Postman synchronization (mandatory)
 
 Any change that adds or changes a business rule, endpoint, request/response contract, authorization rule, error code, persistence behavior, migration, or user-visible workflow must update the complete affected documentation set before the slice can close:
@@ -53,6 +65,8 @@ For a broad audit, the mastermind must issue a `sanad_documenter` brief with the
 - Lifecycle Bruno tiers consume seeded bookings/accounts. Run them separately and reseed before rerunning.
 - A green worker report is not a release verdict. The owner gate is authoritative for the final pinned revision.
 - Database resets and migrations require exact local/target verification. Never apply a migration to an unknown database.
+- Local Bruno has priority for the active phase. VPS deployment is deferred until after the owner-led UI walkthrough; then the mastermind must remind the owner to deploy the verified revision, apply/verify migrations, and run safe smoke checks.
+- Stage validated changes by logical commit scope, keep private control files unstaged, and do not start a new phase while required current-phase todo items remain open or explicitly owner-deferred.
 
 ## B1-B3 closeout
 

@@ -49,6 +49,8 @@ Detail matches family booking detail plus `refundedOnUtc` and `refundState`.
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/start` | — | Mark the visit as started |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/complete` | `{ "notes": string? ≤ 2000 }` | Complete the visit with optional notes |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/visit-report` | Visit report fields | Submit one immutable report after completion; see [family reports](../families/reports.md) |
+| `POST` | `/api/v1/caregiver/bookings/{bookingId}/medical-report` | multipart `report` JSON + optional `photo` | Medical caregiver only; submit one immutable report after completion |
+| `GET` | `/api/v1/caregiver/bookings/medical-reports/{reportId}/photo` | — | Inline private photo read by the submitting caregiver |
 
 For a `Confirmed` booking, caregiver cancellation requires a valid reason category and a non-blank note. The policy is evaluated before mutation; a full captured refund is attempted when entitled, while `NoRefundDue` makes no provider call. The cancellation fact is recorded atomically. A cancellation outside the allowed state returns `409 Bookings.Domain.InvalidOperation`.
 
@@ -67,6 +69,14 @@ Successful start, complete, and other command actions return `204 No Content`. I
 The visit-report action returns `201` and accepts only `observedCondition`, `activities`, `notes`, and
 `assessment`. It uses server attendance and submission timestamps and rejects a second report for the
 same booking with `409 Reports.Visit.AlreadySubmitted`.
+
+Visit-report submission is JSON and returns `201`; it is a one-shot lifecycle
+mutation and should be run only with an approved completed-booking fixture.
+The medical-report action is also a one-shot lifecycle mutation and returns
+`201`. Its `report` multipart field contains the JSON report, while `photo` is
+an optional original image sent only when `photoConsentConfirmed` is true.
+Photo reads return the original image inline (`200`), with `404` for a missing
+photo/report and `403` for an unauthorized reader.
 
 Medical Reports are a separate action for Medical caregivers. The mobile app must show the
 optional photo-consent step before capturing or selecting a medical photo. A confirmed consent

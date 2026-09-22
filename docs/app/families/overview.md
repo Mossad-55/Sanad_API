@@ -36,6 +36,8 @@ The owner can never be removed or created by invitation; invited members are onl
 - `403 Families.Family.AccessDenied` / `Families.Elderly.AccessDenied` / `Families.Invitation.AccessDenied` — the acting user's role does not permit the action (e.g. a Viewer trying to add a dependent, a Viewer inviting).
 - `403 Bookings.UnauthorizedRole` — a Viewer attempting booking checkout (see `docs/app/families/bookings.md`).
 
+For elderly notes and activity access, Owners and Editors manage notes and read the activity timeline; Viewers can read notes only and are denied activity access. These routes also enforce family ownership of the selected dependent, so foreign-family IDs do not expose data.
+
 ### Elderly dependents vs. family members
 
 - **Dependent** = an elderly person the family cares for. Stored in the Families module (`families.elderlies`) and linked to an **Elderly Identity account** created on the family's behalf.

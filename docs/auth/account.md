@@ -40,6 +40,60 @@ curl -sS https://localhost:7296/api/v1/account \
 |---|---|
 | 404 | `Identity.Account.UserNotFound` |
 
+## Account choices and switcher
+
+These routes require a normal JWT. They expose regular account types owned by
+the authenticated user and validate a dashboard selection; they do not issue a
+new JWT or create a new session. Account types are `1` Family, `2` Medical
+Caregiver, and `3` Companion Caregiver. Elderly (`4`) is not selectable here.
+
+### GET `/api/v1/account/accounts`
+
+Returns the caller's owned regular account types.
+
+```http
+GET /api/v1/account/accounts
+Authorization: Bearer ACCESS_TOKEN
+```
+
+`200` response: `{ "accounts": [1, 2] }`.
+
+### POST `/api/v1/account/accounts`
+
+Adds one regular account type. After a successful `200`, refresh the current
+session because the response sets `refreshRequired` to `true`.
+
+```http
+POST /api/v1/account/accounts
+Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/json
+
+{ "accountType": 2 }
+```
+
+Possible outcomes include `400` validation/unsupported type, `403` restricted
+access, `404 Identity.Account.UserNotFound`, and `409` for an existing account,
+caregiver-type exclusivity, retained caregiver profile, or invalid account state.
+
+### POST `/api/v1/account/switch`
+
+Validates an already-owned regular account and returns the requested dashboard
+selection. It performs no token issuance, session swap, or authorization-role
+narrowing; the current JWT remains authoritative.
+
+```http
+POST /api/v1/account/switch
+Authorization: Bearer ACCESS_TOKEN
+Content-Type: application/json
+
+{ "accountType": 2 }
+```
+
+`200` returns `{ "accountType": 2 }`. Invalid types return `400`; an unknown
+user returns `404 Identity.Account.UserNotFound`; an unowned type returns `409
+Identity.Account.AccountNotOwned`; and an invalid account state returns `409
+Identity.Account.InvalidOperation`.
+
 ## PUT `/api/v1/account`
 
 Partial update of the caller's names, email, and phone. Any field omitted (or `null`) is left unchanged. Role/account type is never accepted — a `role` field in the body is ignored.

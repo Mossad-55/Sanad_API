@@ -128,4 +128,10 @@ Revocation is idempotent. Maximum five active sessions. The user must remove an 
 
 ## Multiple accounts on one device (F7 switcher)
 
-Client-side only. The app stores `{refreshToken, deviceSessionId}` per account. Switching accounts swaps the active token/session pair. Adding a new account follows the normal login flow. The 5-active-sessions cap applies **per account**. No server changes are required.
+The account-choice API is the source of truth: `GET /api/v1/account/accounts`
+lists owned regular account types, `POST /api/v1/account/accounts` adds one,
+and `POST /api/v1/account/switch` validates an owned type and returns the
+selected `accountType`. Switching does not issue a JWT or session; the current
+normal JWT remains authoritative. Account additions return `refreshRequired:
+true`, so refresh the current session after a successful add. Restricted
+verification tokens cannot use these routes.

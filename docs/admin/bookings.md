@@ -59,6 +59,10 @@ Authorization: Bearer {{accessToken}}
 
 Returns durable cancellation facts, newest first, with optional `actor` filtering (`1` Family, `2` Caregiver). The response preserves actor, action, status-at-cancellation, reason, refund entitlement, and current booking state.
 
+This is a safe read for Super Admin or Content Admin normal JWTs. It returns
+`200` with an empty page when there are no facts; `401` is unauthenticated and
+`403` is any non-admin or restricted token.
+
 ## Retry refund
 
 ```http

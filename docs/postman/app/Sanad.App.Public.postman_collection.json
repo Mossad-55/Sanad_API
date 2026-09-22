@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sanad App — Public",
-    "description": "App-facing (anonymous) routes. Splash and active lookups are public. Auth login is included so Family/Caregiver flows can reuse this collection later.",
+    "description": "App-facing routes. Splash and active lookups are public. Auth login is included so Family/Caregiver flows can reuse this collection later. POST /api/v1/payments/webhooks/paymob is an external Paymob HMAC callback and is intentionally not a runnable consumer request; use an approved manual provider fixture only.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -133,17 +133,17 @@
           "request": {
             "method": "GET",
             "url": {
-              "raw": "{{baseUrl}}/api/v1/lookups/note-categories",
+              "raw": "{{baseUrl}}/api/v1/note-categories",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
                 "api",
                 "v1",
-                "lookups",
                 "note-categories"
               ]
-            }
+            },
+            "description": "App lookup. GET /api/v1/note-categories returns note categories and priorities; no Authorization header is required by the route."
           }
         }
       ]

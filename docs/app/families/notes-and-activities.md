@@ -10,8 +10,9 @@ All routes live under `/api/v1/family/dependents/{dependentId}/notes` and `/api/
 
 - **Normal JWT** for a **Family** account (`access_type = Normal`, `account_type = Family`).
 - **Care Notes Write Actions** (Add, Update, Delete) require an **Owner** or **Editor** role (`403 Families.Notes.AccessDenied` for Viewers).
-- **Care Notes Read Actions** (List, Get) are accessible to all family members (**Owner**, **Editor**, **Viewer**).
-- **Activity Timeline** (`/activities`) is restricted to **Family Owners & Admins** ("وصول المسؤول فقط") (`403 Families.Family.AccessDenied` for Viewers/Editors).
+- **Care Notes Read Actions** (List) are accessible to all family members (**Owner**, **Editor**, **Viewer**).
+- **Activity Timeline** (`/activities`) uses `FamilyAccess.CanManage`: **Family Owners and Editors** may read it; **Viewers are denied** (`403 Families.Family.AccessDenied`). It is not an admin-only surface.
+- **Family ownership boundary:** note and activity queries are scoped to the selected dependent's owning family. A foreign-family dependent ID or note ID does not expose data from that family.
 
 ---
 
@@ -55,8 +56,8 @@ All routes live under `/api/v1/family/dependents/{dependentId}/notes` and `/api/
 | `GET` | `/api/v1/family/dependents/{id}/notes` | List care notes (with optional category & priority filters) | Any member |
 | `PUT` | `/api/v1/family/dependents/{id}/notes/{noteId}` | Update an existing care note | Owner / Editor |
 | `DELETE` | `/api/v1/family/dependents/{id}/notes/{noteId}` | Delete a care note | Owner / Editor |
-| `GET` | `/api/v1/family/dependents/{id}/activities` | Get activity access timeline with summary metrics | Owner Only |
-| `GET` | `/api/v1/lookups/note-categories` | Public/App lookup for categories and priorities | Anonymous / Any |
+| `GET` | `/api/v1/family/dependents/{id}/activities` | Get activity access timeline with summary metrics | Owner / Editor |
+| `GET` | `/api/v1/note-categories` | App lookup for categories and priorities | Anonymous; no Authorization required |
 
 ---
 
@@ -231,7 +232,9 @@ All routes live under `/api/v1/family/dependents/{dependentId}/notes` and `/api/
 ---
 
 ### F. Note Categories Lookup
-`GET /api/v1/lookups/note-categories`
+`GET /api/v1/note-categories`
+
+This lookup is anonymous; no `Authorization` header is required.
 
 #### Response `200 OK`
 ```json
@@ -263,4 +266,4 @@ All routes live under `/api/v1/family/dependents/{dependentId}/notes` and `/api/
 | `Families.Notes.NotFound` | `404` | Care note not found. |
 | `Families.Notes.AccessDenied` | `403` | You do not have permission to manage notes for this dependent. |
 | `Families.Notes.InvalidNote` | `400` | Note validation failed (e.g. empty title, length overflow). |
-| `Families.Family.AccessDenied` | `403` | User is not an Owner/Admin for the Activity Access Log. |
+| `Families.Family.AccessDenied` | `403` | User is a Viewer for the Activity Access Log; Family Owners and Editors may read it. |

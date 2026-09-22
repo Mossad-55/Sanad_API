@@ -8,6 +8,12 @@ The active development branch is `main`.
 
 Repository workflow requirement: every business-rule or API modification must update all affected `docs/` pages, the relevant Postman collections under `docs/postman/`, and this README when the HTTP surface, setup, roadmap status, or workflow changes. For a broad synchronization audit, the mastermind must generate a pinned `sanad_documenter` worker brief before the slice is committed, pushed, deployed, or handed off.
 
+Required delivery order: scout -> implementer -> mastermind focused tests/full build/full tests -> implementer correction round when defects are found -> reviewer -> documenter -> mastermind final validation and handoff.
+
+Every applicable API slice also requires a Bruno gate with exact request/assertion counts, exit code, seed state, and cleanup recorded. Every worker completion requires a plain-language mastermind report and an update to the editable current-phase todo list at `docs/operations/current-phase-todo.md`.
+
+Local Bruno validation is completed before phase closure. VPS deployment is deferred until after the owner-led UI walkthrough; the mastermind must then remind the owner to deploy the verified revision, apply and verify migrations, and run safe smoke checks. Changes are staged by logical commit scope, private control files are never staged, and a new phase cannot start while required current-phase tasks remain open.
+
 Identity (non-social auth), shared splash CMS, Caregivers (lookups, onboarding, admin review, discovery), and Families (family/dependents/invitations, assessment, medical profile, medications, notes/activities, bookings + Paymob) are implemented as Domain + Application + Infrastructure with HTTP in `Sanad.API`. Module `Presentation` projects are empty shells by design.
 
 Implemented HTTP surface:
@@ -18,6 +24,7 @@ Implemented HTTP surface:
 - Elderly phone + SMS OTP login
 - Refresh-token rotation and reuse detection
 - Session list, current logout, logout-all, and owned-session revoke
+- Account choices: list/add owned regular account types and validate dashboard switching (`/api/v1/account/accounts`, `/api/v1/account/switch`)
 - Password reset and authenticated password change
 - Avatar self-service (`GET`/`PUT /api/v1/auth/avatar`, Normal JWT, private storage)
 - National ID self-service (`GET`/`PUT /api/v1/auth/identity-document`, Normal JWT, private storage; no file URLs)
@@ -43,7 +50,7 @@ Implemented HTTP surface:
 - **Attendance and reports**: caregiver start / complete, immutable Visit Reports, Medical Reports with private optional photos, and family report feeds
 - **Admin bookings** (`CaregiversAdmin`): closed bookings with `finance` filter (cancelled / failed refund / refunded), cancellation history, detail, and failed-refund retry
 - **Subscriptions**: Owner-only family catalog/current-snapshot reads and cancel-renewal/re-enable; Super Admin plan authoring, publication/retirement, and coupon configuration (`docs/admin/subscriptions.md`)
-- **Paymob webhook** `POST /api/v1/payments/webhooks/paymob` (anonymous HMAC-SHA512; query, JSON `hmac`, or `X-Paymob-Hmac`; development client when Paymob is not configured)
+- **Paymob webhook** `POST /api/v1/payments/webhooks/paymob` is an external anonymous HMAC-SHA512 callback (query, JSON `hmac`, or `X-Paymob-Hmac`); use a manual provider fixture, not a runnable consumer request
 - **Admin care assessments**: questions, tiers, submissions (`docs/admin/care-assessments.md`)
 - **Out of scope for the current subscription configuration slice**: checkout/redemption, recurring Paymob billing, invoices, VAT/tax, payment methods, proration, retries, grace periods, and allowance consumption
 

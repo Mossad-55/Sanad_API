@@ -172,6 +172,26 @@
           }
         },
         {
+          "name": "Update splash screen (manual multipart)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "arabicTitle", "type": "text", "value": "Ù…Ø±Ø­Ø¨Ø§ Ø¨ÙƒÙ…" },
+              { "key": "englishTitle", "type": "text", "value": "Welcome back" },
+              { "key": "arabicDescription", "type": "text", "value": "ÙˆØµÙ" },
+              { "key": "englishDescription", "type": "text", "value": "Description" },
+              { "key": "arabicButtonText", "type": "text", "value": "Ø§Ù„ØªØ§Ù„ÙŠ" },
+              { "key": "englishButtonText", "type": "text", "value": "Next" },
+              { "key": "backgroundColor", "type": "text", "value": "#1A73E8" },
+              { "key": "displayOrder", "type": "text", "value": "0" },
+              { "key": "file", "type": "file", "src": [], "value": "" }
+            ] },
+            "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}"
+          },
+          "description": "Manual multipart mutation for Super/Content Admin only. internalName is immutable; file is optional. 200 success, 400 validation/file errors, 404 Cms.Splash.NotFound. Do not replay against shared data."
+        },
+        {
           "name": "Publish splash screen",
           "request": {
             "method": "POST",
@@ -209,6 +229,20 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}"
           }
+        }
+      ]
+    },
+    {
+      "name": "04. Booking cancellations (safe read)",
+      "item": [
+        {
+          "name": "List cancellation history",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/bookings/cancellations?page=1&pageSize=10&actor=1"
+          },
+          "description": "Safe read for Super Admin or Content Admin normal JWT. 200 paged durable facts, actor 1 Family or 2 Caregiver; 401 unauthenticated, 403 non-admin/restricted."
         }
       ]
     },

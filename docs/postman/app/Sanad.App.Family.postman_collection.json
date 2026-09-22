@@ -1737,9 +1737,11 @@
     },
     {
       "name": "10. Elderly Care Notes",
+      "description": "Care-note authorization: Owners and Editors may add, update, and delete notes; Owners, Editors, and Viewers may read notes. The selected dependent and note must belong to the caller's family; foreign-family IDs do not expose data.",
       "item": [
         {
           "name": "Add care note",
+          "description": "Owner/Editor only. A dependent ID from another family does not expose or modify that family's data.",
           "event": [
             {
               "listen": "test",
@@ -1797,6 +1799,7 @@
         },
         {
           "name": "List care notes for dependent",
+          "description": "Owner, Editor, or Viewer may read notes. A foreign-family dependent ID does not return that family's notes.",
           "request": {
             "auth": {
               "type": "bearer",
@@ -1839,6 +1842,7 @@
         },
         {
           "name": "Update care note",
+          "description": "Owner/Editor only. The dependent and note must belong to the caller's family; a foreign-family ID does not expose or modify the note.",
           "request": {
             "auth": {
               "type": "bearer",
@@ -1880,6 +1884,7 @@
         },
         {
           "name": "Delete care note",
+          "description": "Owner/Editor only. The dependent and note must belong to the caller's family; a foreign-family ID does not expose or modify the note.",
           "request": {
             "auth": {
               "type": "bearer",
@@ -1913,9 +1918,10 @@
     },
     {
       "name": "11. Elderly Activity Access Log",
+      "description": "Activity access authorization: Family Owners and Editors may read the selected dependent's timeline. Viewers are denied with 403 Families.Family.AccessDenied. Foreign-family dependent IDs do not return that family's activity data.",
       "item": [
         {
-          "name": "Get activity access timeline & summary metrics (Owner only)",
+          "name": "Get activity access timeline & summary metrics (Owner/Editor)",
           "request": {
             "auth": {
               "type": "bearer",
@@ -1947,7 +1953,8 @@
                   "value": "50"
                 }
               ]
-            }
+            },
+            "description": "Requires a normal Family JWT. Family Owners and Editors may read the restricted access timeline and summary metrics for the selected dependent; Viewers receive 403 Families.Family.AccessDenied. This is not an admin-only endpoint."
           },
           "response": [
             {
@@ -2174,6 +2181,24 @@
               "raw": "{\n  \"reason\": \"ظرف طارئ\"\n}"
             }
           }
+        },
+        {
+          "name": "Get family reports",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ familyToken }}" }],
+            "url": "{{baseUrl}}/api/v1/family/reports?type=all&page=1&pageSize=50"
+          },
+          "description": "Safe read for Family Owner, Editor, or Viewer. 200 paged report feed; optional type visit, medical, or all and elderlyId/bookingId filters. 401 unauthenticated, 403 not Family access."
+        },
+        {
+          "name": "Get family medical report photo",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ familyToken }}" }],
+            "url": "{{baseUrl}}/api/v1/family/reports/{{medicalReportId}}/photo"
+          },
+          "description": "Safe inline private-image read for an authorized family member. 200 image, 401 unauthenticated, 403 no family access, 404 report/photo missing."
         }
       ]
     },

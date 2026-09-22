@@ -612,6 +612,16 @@
           }
         },
         {
+          "name": "Cancel accepted booking (manual/lifecycle)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{ caregiverToken }}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reasonCategory\": 1,\n  \"reason\": \"Caregiver cannot attend\"\n}" },
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/cancel"
+          },
+          "description": "Manual one-shot lifecycle mutation. Confirmed requires valid reasonCategory and non-blank reason; 204 success, 400 invalid reason, 404 foreign/unknown booking, 409 policy/state conflict. Use only an approved pre-start confirmed fixture; refund behavior is policy-controlled."
+        },
+        {
           "name": "Complete visit",
           "request": {
             "method": "POST",
@@ -631,6 +641,38 @@
               "raw": "{\n  \"caregiverNotes\": \"الحالة العامة جيدة، تم إعطاء الدواء في موعده.\"\n}"
             }
           }
+        },
+        {
+          "name": "Submit visit report (manual/lifecycle)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{ caregiverToken }}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"observedCondition\": \"Alert and comfortable.\",\n  \"activities\": \"Assisted with exercises.\",\n  \"notes\": \"Follow up.\",\n  \"assessment\": 2\n}" },
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/visit-report"
+          },
+          "description": "Manual one-shot mutation after the assigned visit is completed. 201 created; 400 invalid/blank content, 404 ownership, 409 already submitted or invalid state."
+        },
+        {
+          "name": "Submit medical report (manual multipart/lifecycle)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ caregiverToken }}" }],
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "report", "type": "text", "value": "{\"notes\":\"Stable\",\"assessment\":2,\"photoConsentConfirmed\":false,\"measurementTakenOnUtc\":\"2026-09-20T10:00:00Z\"}" },
+              { "key": "photo", "type": "file", "src": [], "value": "" }
+            ] },
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/medical-report"
+          },
+          "description": "Medical caregiver only. The report field is JSON; photo is optional and must be included only with photoConsentConfirmed=true. Manual one-shot completed-booking mutation; 201, 400 invalid content, 403 caregiver type/consent, 404 ownership, 409 duplicate/state."
+        },
+        {
+          "name": "Get medical report photo",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ caregiverToken }}" }],
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/medical-reports/{{medicalReportId}}/photo"
+          },
+          "description": "Safe inline private-image read by the submitting caregiver. 200 image, 401 unauthenticated, 403 unauthorized, 404 missing report/photo."
         }
       ]
     },

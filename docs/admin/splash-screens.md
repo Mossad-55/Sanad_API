@@ -120,6 +120,13 @@ Public image URL:
 `Content-Type: multipart/form-data`
 `file` is optional. If provided, replaces the existing image on disk.
 
+The text fields are the same as create (`arabicTitle`, `englishTitle`,
+`arabicDescription`, `englishDescription`, `arabicButtonText`,
+`englishButtonText`, `backgroundColor`, and `displayOrder`); `internalName` is
+not editable. This is a manual Content Admin/Super Admin mutation; unknown IDs
+return `404 Cms.Splash.NotFound` and malformed fields or invalid replacement
+images return `400`.
+
 ---
 
 ## 5. Publish / Unpublish

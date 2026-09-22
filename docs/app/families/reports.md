@@ -21,6 +21,11 @@ the caller; deleted families are excluded.
 Optional filters are `elderlyId`, `bookingId`, `page` (default `1`), and `pageSize` (default `50`,
 maximum `50`). The response contains `items`, `page`, `pageSize`, and `totalCount`.
 
+This is a safe authenticated read for Family Owner, Editor, or Viewer members;
+it returns `200` for an empty page. The private photo route is also a safe read
+and streams the original image inline with `200`; it returns `403` without
+family access and `404` when the report has no photo.
+
 Each item includes the booking, family, elderly, and caregiver identity snapshot, caregiver type,
 server-recorded arrival and departure, server report submission time, observed condition, activities,
 notes, and the caregiver-recorded assessment:

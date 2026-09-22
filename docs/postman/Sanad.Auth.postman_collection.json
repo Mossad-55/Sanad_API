@@ -2016,6 +2016,37 @@
               "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false\n}"
             }
           ]
+        },
+        {
+          "name": "GET Account choices",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/account/accounts",
+            "description": "Safe read. Normal JWT required. 200 returns owned regular account types (1 Family, 2 Medical Caregiver, 3 Companion Caregiver); 404 user missing; 409 invalid account state."
+          }
+        },
+        {
+          "name": "POST Add account choice (manual)",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"accountType\": 2\n}" },
+            "url": "{{baseUrl}}/api/v1/account/accounts",
+            "description": "Manual account mutation. 200 returns accountType and refreshRequired=true; refresh the session afterward. Do not replay on shared data. 400 validation, 403 restricted token, 409 duplicate/exclusive/retained caregiver or invalid state."
+          }
+        },
+        {
+          "name": "POST Switch account selection",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"accountType\": 2\n}" },
+            "url": "{{baseUrl}}/api/v1/account/switch",
+            "description": "Safe selection validation. 200 returns accountType; no JWT/session is issued and the current JWT remains authoritative. 400 invalid type, 404 user missing, 409 unowned type or invalid state."
+          }
         }
       ]
     },
