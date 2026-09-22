@@ -17,6 +17,18 @@ public sealed class DevelopmentPaymobClient : IPaymobClient
                 "pk_dev")));
     }
 
+    public Task<Result<PaymobPaymentIntent>> CreateSubscriptionPaymentIntentAsync(
+        PaymobSubscriptionPaymentIntentInput input,
+        CancellationToken cancellationToken = default)
+    {
+        return Task.FromResult(Result<PaymobPaymentIntent>.Success(
+            new PaymobPaymentIntent(
+                input.MerchantReference,
+                $"dev-subscription-intention-{Guid.NewGuid():N}",
+                $"dev-subscription-secret-{Guid.NewGuid():N}",
+                "pk_dev")));
+    }
+
     public Task<Result<string?>> RefundPaymentAsync(
         string paymobTransactionId,
         decimal amount,

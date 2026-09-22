@@ -91,3 +91,84 @@ Owner is deploying pushed revision `30bcaa1` at `72.62.92.144:8091`; migration/A
 ## Next action
 
 Owner reviews the pushed revision `7eb0631`; after owner deployment confirmation, the next bounded billing slice can define the subscription-specific payment intent/settlement contract.
+
+---
+
+# Active phase: subscription payment intent/settlement boundary
+
+## Phase contract
+
+- Map and implement one bounded subscription-specific payment boundary after the deployed quote slice.
+- Preserve server-owned quote totals; never trust client price, tax, discount, currency, plan, or renewal values.
+- Keep card and wallet methods explicit. Treat wallet as one-time/manual renewal unless recurring wallet capability is verified from the configured provider.
+- Use a subscription-specific merchant reference and webhook/settlement lookup; do not reuse booking `BookingId` references or booking confirmation handlers.
+- Do not bundle renewals, seven-day grace, upgrades/downgrades/proration, invoices/PDFs, allowance consumption, notifications, or deployment mechanism work into this phase unless the scout proves the bounded contract already exists and the checklist is revised before implementation.
+
+## Ordered worker and gate checklist
+
+- [x] Owner reports deployed revision `74a9118` is green; this is owner-confirmed, not independently shell-audited by the mastermind.
+- [x] Mastermind reconciles branch/HEAD/origin/status and confirms `HEAD == origin/main == 74a9118`; private handoff remains untracked by rule.
+- [x] Mastermind publishes this complete ordered checklist before worker work; current next action is the read-only scout.
+- [x] `sanad_scout` Ohm: no report after bounded waits; worker was shut down and the unfulfilled report is recorded. Mastermind recovery mapped the live payment boundary: all current payment entities/reference/webhook commands are booking-owned.
+- [x] Mastermind pins one bounded implementation manifest at SHA `74a9118`: initial subscription purchase payment intent plus settlement/activation, with a new subscription-specific payment-attempt/reference path; owner migration generation remains separate.
+- [x] `sanad_implementer` Curie: no report or patch after bounded waits; worker was shut down. No implementation files changed and no dependent gate started.
+- [x] Mastermind recovery implementation: added subscription payment attempt/status snapshot, provider boundary, owner payment-intent endpoint, subscription-specific webhook dispatch, amount/currency checks, idempotent settlement, and initial activation; no migration generated.
+- [x] Production build preflight: `dotnet build src/API/Sanad.API/Sanad.API.csproj --no-restore --nologo` passed `0` warnings / `0` errors.
+- [x] `sanad_test_author` Nash: no report or tests after bounded waits; worker was shut down. No worker output was trusted.
+- [x] Mastermind recovery tests: added `SubscriptionPaymentTests`; focused payment boundary tests pass `4/4`.
+- [x] Mastermind focused validation: `SubscriptionPaymentTests` passed `4/4`; production API build passed `0` warnings / `0` errors.
+- [x] Post-migration focused rerun: `SubscriptionPaymentTests` passed `4/4`, `0` failed, `0` skipped after generating the inspected migration.
+- [blocked] Full suite: `1749/1754` passed with `5` API host failures caused by EF `PendingModelChangesWarning` for the new subscription payment-attempt model; no source test failure was observed.
+- [x] Post-migration full build: `dotnet build Sanad.slnx --no-restore --nologo` passed with `0` warnings / `0` errors.
+- [x] Post-migration full suite: architecture `1/1` and unit tests `1754/1754` passed, `0` failed, `0` skipped; the prior five EF pending-model host failures are resolved by the generated migration.
+- [x] Owner authorizes generation and inspection of the Families migration for `subscription_payment_attempts`; database application remains a separate owner-controlled action.
+- [x] Mastermind migration generation and inspection: generated `20260922211104_AddSubscriptionPaymentAttempts`; verified the migration adds only `families.subscription_payment_attempts`, its family/plan-version restrictive foreign keys, family/status and unique nullable Paymob-order indexes, and a `Down` that drops only that table. No database was updated.
+- [x] Correction loop: Bruno exposed that the wire contract uses numeric enum values; updated docs/Postman/Bruno to `1=Card`, `2=Wallet`, then reran the full Bruno gate successfully.
+- [blocked] `sanad_reviewer` Newton: no report after two bounded waits; worker was shut down. No worker verdict is trusted.
+- [x] Mastermind reviewer recovery: read-only review passed the bounded payment boundary. No server-price trust, authorization, booking-reference collision, HMAC bypass, amount/currency acceptance, duplicate activation, or migration-safety defect found. Non-blocking follow-ups: add direct controller/webhook contract coverage and synchronize public docs/Postman/Bruno before closure.
+- [blocked] `sanad_documenter` Ampere: no report after two bounded waits; worker was shut down. No worker output is trusted.
+- [x] Mastermind documenter recovery: synchronized family subscription docs, admin tax/payment boundary notes, architecture status, README endpoint/status references, Family Postman payment-intent example, and a safe Bruno current-subscription conflict contract. No private control file or live payment mutation was added.
+- [x] Documentation/collection validation: Postman JSON parses; public payment-intent/webhook docs, README, architecture, Postman, and safe Bruno contract were inspected; `git diff --check` is clean apart from line-ending warnings.
+- [x] Bruno/local API gate: after correcting the numeric enum contract (`1=Card`, `2=Wallet`) in docs/Postman/Bruno, local HTTP execution passed `6/6` requests and `6/6` assertions, exit `0`: login `200`, plans `200`, current `200`, payment-intent current-subscription conflict `409 Subscriptions.Payment.CurrentExists`, unavailable-plan quote `404 Subscriptions.Quote.PlanNotFound`, logout `204`; no provider/payment/webhook mutation ran. API stopped; no listener remains (TIME_WAIT connections only).
+- [x] Owner-authorized local migration verification: exact target `localhost:5432/SanadDb` / `families` schema reports `20260922211104_AddSubscriptionPaymentAttempts` up to date after rebuilt EF artifacts; no additional migration operation was required.
+- [x] Owner-authorized logical commit completed as `624a48c` (`feat(subscriptions): add payment intent settlement boundary`); private control files and unrelated `subscription-vat-tax/` remain uncommitted.
+- [running] Push closeout: push `624a48c`, then verify `HEAD == origin/main`, clean tracked worktree, and preserved private/unrelated files; dependency: validated commit above.
+- [x] Mastermind final validation and handoff update: Postman parses, `git diff --check` is clean apart from line-ending warnings, exact gates and cleanup are recorded, and one next action is set below.
+
+## Current blocker
+
+- Full validation is green: focused payment tests `4/4`, full solution build `0` warnings / `0` errors, architecture `1/1`, and unit tests `1754/1754`; the exact local Families target reports the generated migration up to date. Recurring provider capability remains explicitly out of scope and must not be inferred.
+
+## Pinned implementation manifest
+
+- `src/Modules/Families/Domain/Sanad.Modules.Families.Domain/Subscriptions/SubscriptionPaymentAttempt.cs` (new)
+- `src/Modules/Families/Domain/Sanad.Modules.Families.Domain/Subscriptions/SubscriptionPaymentMethod.cs` (new, if needed to avoid booking-domain coupling)
+- `src/Modules/Families/Application/Sanad.Modules.Families.Application/Abstractions/Payments/IPaymobClient.cs`
+- `src/Modules/Families/Application/Sanad.Modules.Families.Application/Subscriptions/SubscriptionPaymentCommands.cs` (new)
+- `src/Modules/Families/Infrastructure/Sanad.Modules.Families.Infrastructure/Payments/PaymobClient.cs`
+- `src/Modules/Families/Infrastructure/Sanad.Modules.Families.Infrastructure/Payments/DevelopmentPaymobClient.cs`
+- `src/Modules/Families/Infrastructure/Sanad.Modules.Families.Infrastructure/Persistence/FamiliesDbContext.cs`
+- `src/Modules/Families/Infrastructure/Sanad.Modules.Families.Infrastructure/Persistence/Configurations/SubscriptionPaymentAttemptConfiguration.cs` (new)
+- `src/API/Sanad.API/Controllers/FamilySubscriptionsController.cs`
+- `src/API/Sanad.API/Controllers/PaymobWebhookController.cs`
+
+The implementer may add no migration, tests, docs, Postman, Bruno, private control-file, booking-domain, or unrelated files. The exact provider decision to preserve is initial card/wallet intent; recurring wallet support is not assumed, and the returned subscription reference must be distinct from booking references.
+
+## Next action
+
+Owner authorizes the validated logical commit/push; no remote database or deployment action occurs before that owner decision.
+
+## Commit/push closeout checklist
+
+- [x] `sanad_scout` / mastermind recovery: bounded payment manifest mapped and pinned at `74a9118`; no further scout work is required for this slice.
+- [x] `sanad_implementer` / mastermind recovery: payment intent, settlement, persistence, provider boundary, and subscription-specific webhook path implemented within the pinned manifest.
+- [x] `sanad_test_author` / mastermind recovery: focused payment tests added; `4/4` passed.
+- [x] Mastermind validation: production/API build and full solution build passed with `0` warnings / `0` errors; architecture `1/1`; unit tests `1754/1754`.
+- [x] `sanad_reviewer` / mastermind recovery: independent read-only review passed; no payment-integrity, authorization, booking-reference, HMAC, idempotency, or migration-safety blocker found.
+- [x] `sanad_documenter` / mastermind recovery: family/admin/architecture docs, README, Postman, and safe Bruno contract synchronized; Postman parses and `git diff --check` is clean apart from line-ending warnings.
+- [x] Bruno/local API gate: HTTP local gate passed `6/6` requests and `6/6` assertions, exit `0`; seeded state preserved, no provider/payment/webhook mutation; API stopped and no listener remains.
+- [running] Mastermind commit preparation: inspect exact diff, stage only validated payment-boundary files and tracked closeout checklist; exclude `Sanad_Master_Context.md`, `Sanad_Operations.md`, and unrelated `subscription-vat-tax/`.
+- [owner action] Commit and push the validated logical scope; dependency: exact diff review and staged whitespace check.
+- [pending] Post-push verification: confirm branch, `HEAD`, `origin/main`, clean tracked worktree, and preserved unrelated/private files; dependency: successful push.
+- [pending] Deployment owner action: deploy the pushed revision, apply/verify migration on the VPS, and run safe smoke checks; dependency: post-push verification and owner deployment decision.
+- [pending] Final handoff: record pushed SHA, exact gates, cleanup, and one next action; dependency: post-push verification.

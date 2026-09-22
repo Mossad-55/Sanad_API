@@ -44,6 +44,7 @@ public sealed class FamiliesDbContext :
     public DbSet<SubscriptionPlanRetirementAudit> SubscriptionPlanRetirementAudits => Set<SubscriptionPlanRetirementAudit>();
     public DbSet<SubscriptionCoupon> SubscriptionCoupons => Set<SubscriptionCoupon>();
     public DbSet<SubscriptionTaxRule> SubscriptionTaxRules => Set<SubscriptionTaxRule>();
+    public DbSet<SubscriptionPaymentAttempt> SubscriptionPaymentAttempts => Set<SubscriptionPaymentAttempt>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

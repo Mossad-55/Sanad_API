@@ -37,6 +37,47 @@ Errors include `401` unauthenticated, `403` non-owner, `404`
 `Subscriptions.Quote.PlanNotFound`, `400` `Subscriptions.Quote.CouponInvalid`,
 and `409` `Subscriptions.Quote.TaxNotConfigured`.
 
+## Initial payment intent and settlement
+
+`POST /api/v1/family/subscriptions/payment-intent` is Owner-only and starts the
+initial checkout boundary for a published, available plan. The server reruns the
+quote from the plan version, coupon, and effective tax rule; clients cannot
+provide or override the amount, tax, discount, currency, or renewal dates.
+
+```json
+{
+  "planVersionId": "0198e2c1-1111-7777-8888-000000000001",
+  "couponCode": null,
+  "method": 1,
+  "billing": {
+    "firstName": "Ahmed",
+    "lastName": "Ali",
+    "email": "ahmed@example.com",
+    "phoneNumber": "+201012345678"
+  }
+}
+```
+
+`method` is the numeric JSON enum: `1` is Card and `2` is Wallet. The response contains the server amount/currency, a `sub_` merchant
+reference, the provider client secret/public key, and
+`recurringRenewalSupported: false`. Wallet is therefore a one-time/manual
+renewal boundary in this slice; recurring wallet capability is not assumed.
+
+The Paymob callback is `POST /api/v1/payments/webhooks/paymob`. It is anonymous
+but requires a valid Paymob HMAC. Subscription references are settled through
+the subscription attempt table, with amount and currency checked against the
+recorded server quote. Pending callbacks do not activate a subscription; failed
+callbacks close the attempt; a successful callback activates the plan once.
+Repeated callbacks are idempotent. A valid callback for an unknown or already
+processed reference is acknowledged without activating another subscription.
+
+Payment-intent errors include `400` invalid billing/coupon or zero payable
+amount, `403` non-owner, `404` unavailable plan, `409` current subscription or
+unavailable payment method, `502` provider failure, and `503` missing provider
+configuration. This bounded slice does not implement recurring renewals,
+seven-day grace, upgrades/downgrades or proration, invoices/PDFs, allowance
+consumption, notifications, or deployment automation.
+
 ## Current subscription snapshot
 
 `GET /api/v1/family/subscriptions/current` returns `{ "currentSubscription": ... }`. The value is selected only from the caller's family `FamilySubscriptions` rows where `isCurrent` is true. It includes the stored plan terms and owned benefits; it does not join the mutable catalog.

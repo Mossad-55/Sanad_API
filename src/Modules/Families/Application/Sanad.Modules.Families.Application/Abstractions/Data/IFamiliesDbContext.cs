@@ -33,6 +33,7 @@ public interface IFamiliesDbContext
     DbSet<SubscriptionPlanRetirementAudit> SubscriptionPlanRetirementAudits => throw new NotSupportedException("This context does not expose subscription plan retirement audits.");
     DbSet<SubscriptionCoupon> SubscriptionCoupons => throw new NotSupportedException("This context does not expose subscription coupons.");
     DbSet<SubscriptionTaxRule> SubscriptionTaxRules => throw new NotSupportedException("This context does not expose subscription tax rules.");
+    DbSet<SubscriptionPaymentAttempt> SubscriptionPaymentAttempts => throw new NotSupportedException("This context does not expose subscription payment attempts.");
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

@@ -4,11 +4,18 @@ using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Subscriptions;
+using Sanad.Modules.Families.Domain.Subscriptions;
 
 namespace Sanad.API.Controllers;
 
 public sealed record CreateSubscriptionQuoteRequest(Guid PlanVersionId, string? CouponCode);
+public sealed record CreateSubscriptionPaymentIntentRequest(
+    Guid PlanVersionId,
+    string? CouponCode,
+    SubscriptionPaymentMethod Method,
+    PaymobBillingData Billing);
 
 [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
 [Route("api/v1/family/subscriptions")]
@@ -76,6 +83,49 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
         return status == 0 ? ToActionResult(result) : Problem(status, result.Error);
     }
 
+    [HttpPost("payment-intent")]
+    [ProducesResponseType(typeof(SubscriptionPaymentIntentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> CreatePaymentIntent(
+        [FromBody] CreateSubscriptionPaymentIntentRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+            return Unauthorized();
+
+        var result = await _sender.Send(
+            new CreateSubscriptionPaymentIntentCommand(
+                userId,
+                request.PlanVersionId,
+                request.CouponCode,
+                request.Method,
+                request.Billing,
+                DateTime.UtcNow),
+            cancellationToken);
+
+        if (result.IsSuccess)
+            return Ok(result.Value);
+
+        int status = result.Error.Code switch
+        {
+            "Subscriptions.Payment.NotOwner" => StatusCodes.Status403Forbidden,
+            "Subscriptions.Quote.PlanNotFound" or "Subscriptions.Payment.PlanNotFound" => StatusCodes.Status404NotFound,
+            "Subscriptions.Quote.CouponInvalid" or "Subscriptions.Payment.NotRequired" => StatusCodes.Status400BadRequest,
+            "Subscriptions.Payment.CurrentExists" => StatusCodes.Status409Conflict,
+            "Paymob.MethodNotAvailable" => StatusCodes.Status409Conflict,
+            "Paymob.GatewayError" => StatusCodes.Status502BadGateway,
+            "Paymob.NotConfigured" => StatusCodes.Status503ServiceUnavailable,
+            _ => 0
+        };
+
+        return status == 0 ? ToActionResult(result) : Problem(status, result.Error);
+    }
+
     [HttpPost("cancel-renewal")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -124,6 +174,8 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
                 StatusCodes.Status400BadRequest => "Bad Request",
                 StatusCodes.Status403Forbidden => "Forbidden",
                 StatusCodes.Status404NotFound => "Not Found",
+                StatusCodes.Status502BadGateway => "Bad Gateway",
+                StatusCodes.Status503ServiceUnavailable => "Service Unavailable",
                 _ => "Conflict"
             },
             Detail = error.Message,

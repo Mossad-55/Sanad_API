@@ -1,0 +1,43 @@
+meta {
+  name: 05-payment-intent-current-subscription
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/payment-intent
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{subscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{subscriptionOwnerJwt}}
+}
+
+body:json {
+  {
+    "planVersionId": "{{subscriptionFreePlanVersionId}}",
+    "couponCode": null,
+    "method": 1,
+    "billing": {
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "email": "ahmed@example.com",
+      "phoneNumber": "+201012345678"
+    }
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+script:post-response {
+  const code = res.body && (res.body.code ?? res.body.Code);
+  if (code !== "Subscriptions.Payment.CurrentExists") throw new Error("Existing current subscription must block a new payment intent.");
+}

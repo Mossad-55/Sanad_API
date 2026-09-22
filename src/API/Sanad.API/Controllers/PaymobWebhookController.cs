@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Options;
 using Sanad.Modules.Families.Application.Bookings;
+using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Payments;
 
 namespace Sanad.API.Controllers;
@@ -68,12 +69,49 @@ public sealed class PaymobWebhookController : ControllerBase
             return Ok();
         }
 
+        string merchantReference = merchantOrder.GetString() ?? string.Empty;
+        long transactionId = obj.GetProperty("id").GetInt64();
+        long amountCents = obj.GetProperty("amount_cents").GetInt64();
+        bool success = obj.TryGetProperty("success", out JsonElement successElement)
+            && successElement.ValueKind is JsonValueKind.True;
+        bool pending = obj.TryGetProperty("pending", out JsonElement pendingElement)
+            && pendingElement.ValueKind is JsonValueKind.True;
+        string currency = obj.TryGetProperty("currency", out JsonElement currencyElement)
+            ? currencyElement.GetString() ?? string.Empty
+            : string.Empty;
+
+        if (merchantReference.StartsWith("sub_", StringComparison.Ordinal))
+        {
+            var subscriptionResult = await _sender.Send(
+                new ConfirmSubscriptionPaymentCommand(
+                    merchantReference,
+                    transactionId,
+                    amountCents,
+                    currency,
+                    success,
+                    pending,
+                    DateTime.UtcNow),
+                cancellationToken);
+
+            if (!subscriptionResult.IsSuccess)
+            {
+                if (subscriptionResult.Error.Code is "Paymob.AmountMismatch")
+                    return BadRequest();
+                if (subscriptionResult.Error.Code is "Subscriptions.Payment.NotFound"
+                    or "Subscriptions.Payment.CurrentExists")
+                    return Ok();
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            return Ok();
+        }
+
         var command = new ConfirmBookingPaymentCommand(
-            merchantOrder.GetString() ?? string.Empty,
-            obj.GetProperty("id").GetInt64(),
-            obj.GetProperty("amount_cents").GetInt64(),
-            obj.TryGetProperty("success", out JsonElement success) && success.ValueKind is JsonValueKind.True,
-            obj.TryGetProperty("pending", out JsonElement pending) && pending.ValueKind is JsonValueKind.True,
+            merchantReference,
+            transactionId,
+            amountCents,
+            success,
+            pending,
             DateTime.UtcNow);
 
         var result = await _sender.Send(command, cancellationToken);

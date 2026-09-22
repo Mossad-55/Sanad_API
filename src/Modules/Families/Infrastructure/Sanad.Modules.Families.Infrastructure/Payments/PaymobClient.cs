@@ -5,6 +5,7 @@ using Microsoft.Extensions.Options;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Domain.Bookings;
+using Sanad.Modules.Families.Domain.Subscriptions;
 
 namespace Sanad.Modules.Families.Infrastructure.Payments;
 
@@ -120,6 +121,102 @@ public sealed class PaymobClient : IPaymobClient
                     _options.PublicKey));
         }
         catch (Exception exception) when (exception is JsonException or HttpRequestException)
+        {
+            return Result<PaymobPaymentIntent>.Failure(
+                new Error("Paymob.GatewayError", "Unexpected payment gateway response."));
+        }
+    }
+
+    public async Task<Result<PaymobPaymentIntent>> CreateSubscriptionPaymentIntentAsync(
+        PaymobSubscriptionPaymentIntentInput input,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_options.SecretKey))
+        {
+            return Result<PaymobPaymentIntent>.Failure(
+                new Error("Paymob.NotConfigured", "The payment gateway is not configured."));
+        }
+
+        string? integrationId = input.Method switch
+        {
+            SubscriptionPaymentMethod.Card => _options.CardIntegrationId,
+            SubscriptionPaymentMethod.Wallet => _options.WalletIntegrationId,
+            _ => null
+        };
+
+        if (string.IsNullOrWhiteSpace(integrationId))
+        {
+            return Result<PaymobPaymentIntent>.Failure(
+                new Error("Paymob.MethodNotAvailable", "The selected payment method is not available."));
+        }
+
+        if (string.IsNullOrWhiteSpace(input.MerchantReference))
+        {
+            return Result<PaymobPaymentIntent>.Failure(
+                new Error("Paymob.InvalidReference", "A payment merchant reference is required."));
+        }
+
+        try
+        {
+            HttpClient httpClient = _httpClientFactory.CreateClient("Paymob");
+            long amountCents = ToCents(input.Amount);
+            var payload = new
+            {
+                amount = amountCents,
+                currency = input.Currency,
+                payment_methods = new[] { long.Parse(integrationId) },
+                items = new[]
+                {
+                    new
+                    {
+                        name = "Sanad subscription",
+                        amount = amountCents,
+                        description = "Sanad subscription purchase",
+                        quantity = 1
+                    }
+                },
+                billing_data = new
+                {
+                    first_name = input.Billing.FirstName,
+                    last_name = input.Billing.LastName,
+                    email = input.Billing.Email,
+                    phone_number = input.Billing.PhoneNumber,
+                    street = "NA",
+                    building = "NA",
+                    floor = "NA",
+                    apartment = "NA",
+                    city = "NA",
+                    state = "NA",
+                    country = "EG",
+                    postal_code = "NA"
+                },
+                special_reference = input.MerchantReference,
+                expiration = 3600,
+                notification_url = string.IsNullOrWhiteSpace(_options.WebhookUrl)
+                    ? null
+                    : _options.WebhookUrl
+            };
+
+            using HttpRequestMessage request = new(HttpMethod.Post, $"{_options.BaseUrl}/v1/intention/");
+            request.Headers.TryAddWithoutValidation("Authorization", $"Token {_options.SecretKey}");
+            request.Content = JsonContent.Create(payload);
+            using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+            string body = await response.Content.ReadAsStringAsync(cancellationToken);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                return Result<PaymobPaymentIntent>.Failure(
+                    new Error("Paymob.GatewayError",
+                        $"Paymob intention request failed with status {(int)response.StatusCode}."));
+            }
+
+            using JsonDocument document = JsonDocument.Parse(body);
+            string clientSecret = document.RootElement.GetProperty("client_secret").GetString() ?? string.Empty;
+            string intentionOrderId = document.RootElement.GetProperty("intention_order_id").GetRawText();
+            return Result<PaymobPaymentIntent>.Success(
+                new PaymobPaymentIntent(input.MerchantReference, intentionOrderId, clientSecret, _options.PublicKey));
+        }
+        catch (Exception exception) when (exception is JsonException or HttpRequestException or FormatException)
         {
             return Result<PaymobPaymentIntent>.Failure(
                 new Error("Paymob.GatewayError", "Unexpected payment gateway response."));
