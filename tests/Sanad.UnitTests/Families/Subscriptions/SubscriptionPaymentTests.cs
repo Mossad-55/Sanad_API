@@ -125,6 +125,65 @@ public sealed class SubscriptionPaymentTests
         Assert.Empty(db.FamilySubscriptions);
     }
 
+    [Fact]
+    public async Task Renewal_payment_starts_only_at_the_period_boundary_and_marks_attempt_as_renewal()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        FamilySubscription subscription = FamilySubscription.Create(family.Id, plan, created, created.AddMonths(1));
+        db.FamilySubscriptions.Add(subscription);
+        await db.SaveChangesAsync();
+        var paymob = new FakePaymobClient();
+
+        var early = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob).Handle(
+            new CreateSubscriptionRenewalPaymentIntentCommand(
+                family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), created.AddDays(15)), default);
+        Assert.False(early.IsSuccess);
+        Assert.Equal("Subscriptions.Renewal.NotDue", early.Error.Code);
+
+        var result = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob).Handle(
+            new CreateSubscriptionRenewalPaymentIntentCommand(
+                family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), created.AddMonths(1)), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value.RecurringRenewalSupported);
+        var attempt = await db.SubscriptionPaymentAttempts.SingleAsync();
+        Assert.True(attempt.IsRenewal);
+        Assert.Equal(subscription.Id, attempt.SubscriptionId);
+    }
+
+    [Fact]
+    public async Task Failed_renewal_enters_grace_and_successful_retry_preserves_anchor()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime periodEnd = created.AddMonths(1);
+        FamilySubscription subscription = FamilySubscription.Create(family.Id, plan, created, periodEnd);
+        db.FamilySubscriptions.Add(subscription);
+        await db.SaveChangesAsync();
+        var paymob = new FakePaymobClient();
+        DateTime failureTime = periodEnd.AddMinutes(1);
+
+        var first = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob).Handle(
+            new CreateSubscriptionRenewalPaymentIntentCommand(
+                family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), failureTime), default);
+        var failed = await new ConfirmSubscriptionPaymentCommandHandler(db).Handle(
+            new ConfirmSubscriptionPaymentCommand(first.Value.MerchantReference, 31, 29900, "EGP", false, false, failureTime), default);
+
+        Assert.Equal("Failed", failed.Value.Outcome);
+        Assert.True(subscription.IsWithinRenewalGrace(periodEnd.AddDays(3)));
+
+        var retry = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob).Handle(
+            new CreateSubscriptionRenewalPaymentIntentCommand(
+                family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), periodEnd.AddDays(3)), default);
+        var paid = await new ConfirmSubscriptionPaymentCommandHandler(db).Handle(
+            new ConfirmSubscriptionPaymentCommand(retry.Value.MerchantReference, 32, 29900, "EGP", true, false, periodEnd.AddDays(3)), default);
+
+        Assert.Equal("Paid", paid.Value.Outcome);
+        Assert.Equal(periodEnd.AddMonths(1), subscription.CurrentPeriodEndsOnUtc);
+        Assert.Null(subscription.RenewalGraceEndsOnUtc);
+    }
+
     private static FamiliesDbContext SeedDb(out Family family, out SubscriptionPlanVersion plan)
     {
         var db = new FamiliesDbContext(new DbContextOptionsBuilder<FamiliesDbContext>()

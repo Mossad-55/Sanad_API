@@ -46,6 +46,8 @@ public sealed record AdminFamilySubscriptionResponse(
     bool AutoRenewEnabled,
     DateTime? CancellationRequestedOnUtc,
     DateTime CurrentPeriodEndsOnUtc,
+    DateTime? RenewalGraceEndsOnUtc,
+    DateTime? LastRenewalFailedOnUtc,
     DateTime CreatedOnUtc,
     IReadOnlyList<SubscriptionBenefitResponse> Benefits);
 
@@ -188,6 +190,8 @@ public sealed class GetAdminFamilySubscriptionsQueryHandler
         subscription.AutoRenewEnabled,
         subscription.CancellationRequestedOnUtc,
         subscription.CurrentPeriodEndsOnUtc,
+        subscription.RenewalGraceEndsOnUtc,
+        subscription.LastRenewalFailedOnUtc,
         subscription.CreatedOnUtc,
         subscription.Benefits.Select(benefit => new SubscriptionBenefitResponse(benefit.Key, benefit.IsIncluded)).ToList());
 }

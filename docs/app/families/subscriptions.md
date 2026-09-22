@@ -74,9 +74,39 @@ processed reference is acknowledged without activating another subscription.
 Payment-intent errors include `400` invalid billing/coupon or zero payable
 amount, `403` non-owner, `404` unavailable plan, `409` current subscription or
 unavailable payment method, `502` provider failure, and `503` missing provider
-configuration. This bounded slice does not implement recurring renewals,
-seven-day grace, upgrades/downgrades or proration, invoices/PDFs, allowance
-consumption, notifications, or deployment automation.
+configuration.
+
+## Renewal payment and seven-day grace
+
+`POST /api/v1/family/subscriptions/renewal/payment-intent` is Owner-only and
+starts a renewal payment at the current period boundary or while the
+subscription is inside its seven-day renewal grace window.
+
+```json
+{
+  "method": 1,
+  "billing": {
+    "firstName": "Ahmed",
+    "lastName": "Ali",
+    "email": "ahmed@example.com",
+    "phoneNumber": "+201012345678"
+  }
+}
+```
+
+The server uses the stored subscription snapshot terms and never accepts a
+client-supplied price, plan, tax, discount, or renewal date. A failed renewal
+settlement keeps access in grace until `currentPeriodEndsOnUtc + 7 days`; a
+successful retry advances the period from the original period-end anchor and
+clears grace. Settlement is idempotent. A renewal before the boundary, after
+grace expiry, or while another renewal attempt is pending returns `409`.
+This endpoint reports `recurringRenewalSupported: false` because it uses the
+manual payment-intent boundary. Wallet renewal remains one-time/manual, and
+automatic card recurrence will only be enabled after the provider subscription
+enrollment boundary is implemented and configured.
+
+This slice does not implement upgrades/downgrades or proration, invoices/PDFs,
+allowance consumption, notifications, or deployment automation.
 
 ## Current subscription snapshot
 
@@ -85,7 +115,8 @@ consumption, notifications, or deployment automation.
 When no current row exists, the route returns HTTP `200` with `currentSubscription: null`. It does not synthesize a Free plan.
 
 The current snapshot also exposes `autoRenewEnabled`, `cancellationRequestedOnUtc`, and the stored
-`currentPeriodEndsOnUtc` boundary. The Owner
+`currentPeriodEndsOnUtc` boundary, plus `renewalGraceEndsOnUtc` and
+`lastRenewalFailedOnUtc` when a renewal has entered recovery. The Owner
 can call `POST /api/v1/family/subscriptions/cancel-renewal` to disable renewal while preserving
 current access, `isCurrent`, and all stored snapshot terms. A repeat cancellation returns `409`.
 Before the current period ends, the Owner can call

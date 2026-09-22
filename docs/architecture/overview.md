@@ -89,12 +89,12 @@ Implemented:
 - Caregiver booking list/detail (including family and caregiver cancellations)
 - Attendance start/complete plus immutable Visit Reports and Medical Reports with private optional photos
 - Admin closed-booking list, cancellation history, fact-aware refund state, and failed-refund retry
-- Owner-only subscription catalog/current snapshot reads, server-side purchase quotes, initial card/wallet payment intent and HMAC settlement, and cancel-renewal lifecycle
+- Owner-only subscription catalog/current snapshot reads, server-side purchase quotes, initial and manual renewal card/wallet payment intents, HMAC settlement, cancel-renewal lifecycle, and seven-day renewal grace recovery
 - Super Admin subscription plan and family-subscription list/detail reads, plan authoring/publication/retirement, coupon configuration, and VAT/tax-rule configuration
 
 Not implemented yet:
 
 - Ratings / reviews HTTP
 - Booking cancellation fee tiers
-- Subscription recurring billing, seven-day grace, upgrades/downgrades/proration, invoices/PDFs, retries, allowance consumption, notifications, and deployment automation
+- Automatic provider subscription enrollment/card recurrence, upgrades/downgrades/proration, invoices/PDFs, allowance consumption, notifications, and deployment automation
 - Social / Google / Apple authentication (cancelled and removed)

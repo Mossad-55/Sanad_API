@@ -10,7 +10,7 @@ List every family subscription, including inactive historical snapshots:
 GET /api/v1/admin/subscriptions?page=1&pageSize=10
 ```
 
-The paged response includes the subscription ID, family ID/name, owner user ID, stored plan terms and benefits, current-state flag, auto-renew state, cancellation request timestamp, period end, and creation timestamp. Retrieve one record with:
+The paged response includes the subscription ID, family ID/name, owner user ID, stored plan terms and benefits, current-state flag, auto-renew state, cancellation request timestamp, period end, renewal grace/failure timestamps, and creation timestamp. Retrieve one record with:
 
 ```text
 GET /api/v1/admin/subscriptions/{subscriptionId}
@@ -131,5 +131,7 @@ intent reruns the quote server-side and returns a provider client secret; the
 Paymob HMAC webhook settles the subscription-specific `sub_` reference and
 activates the plan only after a matching successful payment. It does not create
 an invoice or PDF. Recurring billing, trials, redemption, upgrades/downgrades,
-proration, retries, seven-day grace periods, allowance consumption,
-notifications, and deployment automation remain separate slices.
+proration, retries, allowance consumption, notifications, and deployment
+automation remain separate slices. The current family renewal endpoint uses the
+manual payment-intent boundary; automatic provider subscription enrollment is
+still a separate slice.

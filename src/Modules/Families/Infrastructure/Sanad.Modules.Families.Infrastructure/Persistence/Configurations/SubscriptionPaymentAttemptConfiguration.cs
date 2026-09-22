@@ -27,6 +27,8 @@ public sealed class SubscriptionPaymentAttemptConfiguration : IEntityTypeConfigu
         builder.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
         builder.Property(x => x.Method).HasColumnName("method").HasConversion<int>().IsRequired();
         builder.Property(x => x.CouponCode).HasColumnName("coupon_code").HasMaxLength(50);
+        builder.Property(x => x.SubscriptionId).HasColumnName("subscription_id");
+        builder.Property(x => x.IsRenewal).HasColumnName("is_renewal").IsRequired();
         builder.Ignore(x => x.MerchantReference);
         builder.Property(x => x.PaymobOrderId).HasColumnName("paymob_order_id").HasMaxLength(100);
         builder.Property(x => x.PaymobTransactionId).HasColumnName("paymob_transaction_id").HasMaxLength(100);
@@ -36,7 +38,9 @@ public sealed class SubscriptionPaymentAttemptConfiguration : IEntityTypeConfigu
         builder.Property(x => x.FailedOnUtc).HasColumnName("failed_on_utc");
         builder.HasIndex(x => x.PaymobOrderId).IsUnique();
         builder.HasIndex(x => new { x.FamilyId, x.Status });
+        builder.HasIndex(x => new { x.SubscriptionId, x.IsRenewal, x.Status });
         builder.HasOne<Family>().WithMany().HasForeignKey(x => x.FamilyId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne<SubscriptionPlanVersion>().WithMany().HasForeignKey(x => x.PlanVersionId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne<FamilySubscription>().WithMany().HasForeignKey(x => x.SubscriptionId).OnDelete(DeleteBehavior.Restrict);
     }
 }

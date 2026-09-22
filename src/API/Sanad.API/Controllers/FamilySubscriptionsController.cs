@@ -16,6 +16,9 @@ public sealed record CreateSubscriptionPaymentIntentRequest(
     string? CouponCode,
     SubscriptionPaymentMethod Method,
     PaymobBillingData Billing);
+public sealed record CreateSubscriptionRenewalPaymentIntentRequest(
+    SubscriptionPaymentMethod Method,
+    PaymobBillingData Billing);
 
 [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
 [Route("api/v1/family/subscriptions")]
@@ -117,6 +120,46 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
             "Subscriptions.Quote.PlanNotFound" or "Subscriptions.Payment.PlanNotFound" => StatusCodes.Status404NotFound,
             "Subscriptions.Quote.CouponInvalid" or "Subscriptions.Payment.NotRequired" => StatusCodes.Status400BadRequest,
             "Subscriptions.Payment.CurrentExists" => StatusCodes.Status409Conflict,
+            "Paymob.MethodNotAvailable" => StatusCodes.Status409Conflict,
+            "Paymob.GatewayError" => StatusCodes.Status502BadGateway,
+            "Paymob.NotConfigured" => StatusCodes.Status503ServiceUnavailable,
+            _ => 0
+        };
+
+        return status == 0 ? ToActionResult(result) : Problem(status, result.Error);
+    }
+
+    [HttpPost("renewal/payment-intent")]
+    [ProducesResponseType(typeof(SubscriptionPaymentIntentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> CreateRenewalPaymentIntent(
+        [FromBody] CreateSubscriptionRenewalPaymentIntentRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+            return Unauthorized();
+
+        var result = await _sender.Send(
+            new CreateSubscriptionRenewalPaymentIntentCommand(
+                userId,
+                request.Method,
+                request.Billing,
+                DateTime.UtcNow),
+            cancellationToken);
+
+        if (result.IsSuccess)
+            return Ok(result.Value);
+
+        int status = result.Error.Code switch
+        {
+            "Subscriptions.Renewal.NotOwner" => StatusCodes.Status403Forbidden,
+            "Subscriptions.Renewal.NotFound" or "Subscriptions.Renewal.PlanNotFound" => StatusCodes.Status404NotFound,
+            "Subscriptions.Renewal.NotDue" or "Subscriptions.Renewal.GraceExpired" or "Subscriptions.Renewal.PendingExists" => StatusCodes.Status409Conflict,
             "Paymob.MethodNotAvailable" => StatusCodes.Status409Conflict,
             "Paymob.GatewayError" => StatusCodes.Status502BadGateway,
             "Paymob.NotConfigured" => StatusCodes.Status503ServiceUnavailable,

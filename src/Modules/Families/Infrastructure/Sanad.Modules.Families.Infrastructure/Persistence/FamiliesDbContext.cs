@@ -185,12 +185,17 @@ public sealed class FamiliesDbContext :
                         (nameof(FamilySubscription.IsCurrent)
                         or nameof(FamilySubscription.AutoRenewEnabled)
                         or nameof(FamilySubscription.CancellationRequestedOnUtc)
+                        or nameof(FamilySubscription.CurrentPeriodEndsOnUtc)
+                        or nameof(FamilySubscription.RenewalGraceEndsOnUtc)
+                        or nameof(FamilySubscription.LastRenewalFailedOnUtc)
                         or nameof(FamilySubscription.LifecycleVersion))))
             {
                 throw new InvalidOperationException(
                     $"{nameof(FamilySubscription)} snapshot fields are immutable; only lifecycle fields " +
                     $"{nameof(FamilySubscription.IsCurrent)}, {nameof(FamilySubscription.AutoRenewEnabled)}, " +
-                    $"{nameof(FamilySubscription.CancellationRequestedOnUtc)}, and " +
+                    $"{nameof(FamilySubscription.CancellationRequestedOnUtc)}, {nameof(FamilySubscription.CurrentPeriodEndsOnUtc)}, " +
+                    $"{nameof(FamilySubscription.RenewalGraceEndsOnUtc)}, " +
+                    $"{nameof(FamilySubscription.LastRenewalFailedOnUtc)}, and " +
                     $"{nameof(FamilySubscription.LifecycleVersion)} may be changed.");
             }
         }

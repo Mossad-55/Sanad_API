@@ -40,6 +40,8 @@ public sealed record SubscriptionSnapshotResponse(
     bool AutoRenewEnabled,
     DateTime? CancellationRequestedOnUtc,
     DateTime CurrentPeriodEndsOnUtc,
+    DateTime? RenewalGraceEndsOnUtc,
+    DateTime? LastRenewalFailedOnUtc,
     DateTime CreatedOnUtc,
     IReadOnlyList<SubscriptionBenefitResponse> Benefits);
 
@@ -169,6 +171,8 @@ public sealed class GetCurrentSubscriptionQueryHandler : IQueryHandler<GetCurren
             subscription.AutoRenewEnabled,
             subscription.CancellationRequestedOnUtc,
             subscription.CurrentPeriodEndsOnUtc,
+            subscription.RenewalGraceEndsOnUtc,
+            subscription.LastRenewalFailedOnUtc,
             subscription.CreatedOnUtc,
             subscription.Benefits.Select(benefit => new SubscriptionBenefitResponse(benefit.Key, benefit.IsIncluded)).ToList());
 }

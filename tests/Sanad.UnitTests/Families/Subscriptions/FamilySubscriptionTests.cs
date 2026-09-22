@@ -71,4 +71,49 @@ public sealed class FamilySubscriptionTests
         Assert.NotEqual(createdVersion, cancelledVersion);
         Assert.NotEqual(cancelledVersion, subscription.LifecycleVersion);
     }
+
+    [Fact]
+    public void Failed_renewal_opens_a_seven_day_grace_window_from_the_anchor()
+    {
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime periodEnd = created.AddMonths(1);
+        FamilySubscription subscription = FamilySubscription.Create(
+            FamilyId.New(), SubscriptionPlanVersion.Create(SubscriptionPlan.Free), created, periodEnd);
+
+        subscription.BeginRenewalGrace(periodEnd.AddMinutes(1));
+
+        Assert.Equal(periodEnd.AddDays(7), subscription.RenewalGraceEndsOnUtc);
+        Assert.Equal(periodEnd.AddMinutes(1), subscription.LastRenewalFailedOnUtc);
+        Assert.True(subscription.IsWithinRenewalGrace(periodEnd.AddDays(6)));
+        Assert.False(subscription.IsWithinRenewalGrace(periodEnd.AddDays(7)));
+    }
+
+    [Fact]
+    public void Successful_renewal_advances_from_the_original_anchor_and_clears_grace()
+    {
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime periodEnd = created.AddMonths(1);
+        FamilySubscription subscription = FamilySubscription.Create(
+            FamilyId.New(), SubscriptionPlanVersion.Create(SubscriptionPlan.Free), created, periodEnd);
+        subscription.BeginRenewalGrace(periodEnd.AddMinutes(1));
+
+        subscription.ApplySuccessfulRenewal(periodEnd.AddDays(3));
+
+        Assert.Equal(periodEnd.AddMonths(1), subscription.CurrentPeriodEndsOnUtc);
+        Assert.Null(subscription.RenewalGraceEndsOnUtc);
+        Assert.Null(subscription.LastRenewalFailedOnUtc);
+    }
+
+    [Fact]
+    public void Renewal_after_grace_expiry_is_rejected()
+    {
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime periodEnd = created.AddMonths(1);
+        FamilySubscription subscription = FamilySubscription.Create(
+            FamilyId.New(), SubscriptionPlanVersion.Create(SubscriptionPlan.Free), created, periodEnd);
+        subscription.BeginRenewalGrace(periodEnd);
+
+        Assert.Throws<DomainException>(() =>
+            subscription.ApplySuccessfulRenewal(periodEnd.AddDays(7)));
+    }
 }

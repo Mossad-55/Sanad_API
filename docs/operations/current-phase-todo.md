@@ -1,5 +1,19 @@
 # Current phase todo — subscription VAT/tax configuration
 
+## Active phase: subscription renewal and seven-day grace — mastermind recovery
+
+- [x] Scout: mapped the existing subscription/payment boundary and confirmed the provider subscription path; automatic provider enrollment is not implemented in this slice.
+- [x] Implementer/mastermind recovery: added renewal payment attempts, renewal/grace state, seven-day grace recovery, original-anchor preservation, duplicate-pending protection, idempotent settlement, and the owner renewal payment-intent endpoint.
+- [x] Test author/mastermind recovery: added domain and application tests for renewal timing, failed renewal grace, successful retry, anchor preservation, expiry, and renewal attempt identity; focused subscription gate passed `13/13`.
+- [x] Mastermind gates: final solution build passed `0` warnings / `0` errors; architecture tests passed `1/1`; full unit suite passed `1765/1765`, `0` failed / `0` skipped.
+- [x] Reviewer/mastermind recovery: corrected a capability-claim defect so manual renewal never advertises recurring support before provider subscription enrollment exists; persistence guard was updated to allow only approved renewal lifecycle fields.
+- [x] Documenter/mastermind recovery: synchronized family/admin subscription docs, README status, architecture/coverage references, Family Postman, and renewal Bruno contract.
+- [x] Bruno/local API gate: `collections/Sanad/subscriptions` passed `7/7` requests and `8/8` assertions, exit `0`; renewal request safely returned `409 Subscriptions.Renewal.NotDue` against the seeded future subscription; no payment mutation ran; API stopped and no listener remains.
+- [x] Migration/commit/push preparation: two additive migrations are generated and inspected but not applied remotely; the authorized logical commit scope is ready and excludes private control files, unrelated `subscription-vat-tax/`, and VPS changes.
+- [pending] Final handoff: commit/push the validated slice, then record the final SHA and next provider-enrollment slice in the private handoff.
+
+Scope exclusions: automatic Paymob subscription enrollment/card recurring, upgrades/downgrades, proration, invoices/PDFs, allowance consumption, notifications, UI, and VPS deployment.
+
 This is the visible checklist for the active bounded phase. The mastermind updates it after every worker spawn/report, correction, gate, and owner decision. Dependent work may not start while an earlier required item is incomplete.
 
 ## Phase contract

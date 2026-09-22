@@ -6,6 +6,8 @@ namespace Sanad.Modules.Families.Domain.Subscriptions;
 
 public sealed class FamilySubscription : Entity<Guid>
 {
+    public const int RenewalGracePeriodDays = 7;
+
     private readonly List<SubscriptionBenefit> _benefits = [];
 
     private FamilySubscription()
@@ -53,6 +55,8 @@ public sealed class FamilySubscription : Entity<Guid>
     public bool AutoRenewEnabled { get; private set; }
     public DateTime? CancellationRequestedOnUtc { get; private set; }
     public DateTime CurrentPeriodEndsOnUtc { get; private set; }
+    public DateTime? RenewalGraceEndsOnUtc { get; private set; }
+    public DateTime? LastRenewalFailedOnUtc { get; private set; }
     public Guid LifecycleVersion { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public IReadOnlyCollection<SubscriptionBenefit> Benefits => _benefits.AsReadOnly();
@@ -105,6 +109,45 @@ public sealed class FamilySubscription : Entity<Guid>
 
         AutoRenewEnabled = true;
         CancellationRequestedOnUtc = null;
+        LifecycleVersion = Guid.NewGuid();
+    }
+
+    public bool IsWithinRenewalGrace(DateTime nowUtc)
+    {
+        if (nowUtc.Kind != DateTimeKind.Utc)
+            throw new DomainException("Renewal evaluation time must be UTC.");
+
+        return IsCurrent &&
+               RenewalGraceEndsOnUtc is not null &&
+               nowUtc < RenewalGraceEndsOnUtc.Value;
+    }
+
+    public void BeginRenewalGrace(DateTime failedOnUtc)
+    {
+        if (!IsCurrent)
+            throw new DomainException("Only the current subscription can enter renewal grace.");
+        if (failedOnUtc.Kind != DateTimeKind.Utc)
+            throw new DomainException("Renewal failure time must be UTC.");
+
+        RenewalGraceEndsOnUtc = CurrentPeriodEndsOnUtc.AddDays(RenewalGracePeriodDays);
+        LastRenewalFailedOnUtc = failedOnUtc;
+        LifecycleVersion = Guid.NewGuid();
+    }
+
+    public void ApplySuccessfulRenewal(DateTime settledOnUtc)
+    {
+        if (!IsCurrent)
+            throw new DomainException("Only the current subscription can be renewed.");
+        if (settledOnUtc.Kind != DateTimeKind.Utc)
+            throw new DomainException("Renewal settlement time must be UTC.");
+        if (settledOnUtc < CurrentPeriodEndsOnUtc)
+            throw new DomainException("A subscription cannot renew before its current period ends.");
+        if (RenewalGraceEndsOnUtc is not null && settledOnUtc >= RenewalGraceEndsOnUtc.Value)
+            throw new DomainException("The subscription renewal grace period has ended.");
+
+        CurrentPeriodEndsOnUtc = CalculatePeriodEnd(CurrentPeriodEndsOnUtc, Cycle);
+        RenewalGraceEndsOnUtc = null;
+        LastRenewalFailedOnUtc = null;
         LifecycleVersion = Guid.NewGuid();
     }
 

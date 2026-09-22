@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sanad.Modules.Families.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FamiliesDbContext))]
-    partial class FamiliesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260922230303_AddSubscriptionRenewalGrace")]
+    partial class AddSubscriptionRenewalGrace
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1172,10 +1175,6 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("family_id");
 
-                    b.Property<bool>("IsRenewal")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_renewal");
-
                     b.Property<int>("Method")
                         .HasColumnType("integer")
                         .HasColumnName("method");
@@ -1212,10 +1211,6 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
-                    b.Property<Guid?>("SubscriptionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("subscription_id");
-
                     b.Property<decimal>("TaxAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
@@ -1244,8 +1239,6 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.HasIndex("PlanVersionId");
 
                     b.HasIndex("FamilyId", "Status");
-
-                    b.HasIndex("SubscriptionId", "IsRenewal", "Status");
 
                     b.ToTable("subscription_payment_attempts", "families");
                 });
@@ -1817,11 +1810,6 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasForeignKey("PlanVersionId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
-
-                    b.HasOne("Sanad.Modules.Families.Domain.Subscriptions.FamilySubscription", null)
-                        .WithMany()
-                        .HasForeignKey("SubscriptionId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Subscriptions.SubscriptionPlanRetirementAudit", b =>

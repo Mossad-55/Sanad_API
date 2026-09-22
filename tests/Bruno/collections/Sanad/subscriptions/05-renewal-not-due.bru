@@ -1,0 +1,36 @@
+meta {
+  name: 05-renewal-not-due
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/renewal/payment-intent
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{subscriptionOwnerJwt}}
+}
+
+body:json {
+  {
+    "method": 1,
+    "billing": {
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "email": "ahmed@example.com",
+      "phoneNumber": "+201012345678"
+    }
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Subscriptions.Renewal.NotDue
+}

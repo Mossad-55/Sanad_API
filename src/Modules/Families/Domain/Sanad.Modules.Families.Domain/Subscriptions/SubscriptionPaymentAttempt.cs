@@ -39,6 +39,8 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
         string currency,
         SubscriptionPaymentMethod method,
         string? couponCode,
+        Guid? subscriptionId,
+        bool isRenewal,
         DateTime createdOnUtc)
         : base(id)
     {
@@ -56,6 +58,8 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
         Currency = currency;
         Method = method;
         CouponCode = couponCode;
+        SubscriptionId = subscriptionId;
+        IsRenewal = isRenewal;
         Status = SubscriptionPaymentAttemptStatus.Pending;
         CreatedOnUtc = createdOnUtc;
     }
@@ -74,6 +78,8 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
     public string Currency { get; private set; } = string.Empty;
     public SubscriptionPaymentMethod Method { get; private set; }
     public string? CouponCode { get; private set; }
+    public Guid? SubscriptionId { get; private set; }
+    public bool IsRenewal { get; private set; }
     public string MerchantReference => $"sub_{Id:N}";
     public string? PaymobOrderId { get; private set; }
     public string? PaymobTransactionId { get; private set; }
@@ -114,7 +120,43 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
             Money(taxableAmount), Money(taxRatePercentage), Money(taxAmount),
             Money(totalPayable), plan.Currency, method,
             string.IsNullOrWhiteSpace(couponCode) ? null : couponCode.Trim().ToUpperInvariant(),
+            null,
+            false,
             createdOnUtc);
+    }
+
+    public static SubscriptionPaymentAttempt CreateRenewal(
+        FamilySubscription subscription,
+        SubscriptionPlanVersion plan,
+        SubscriptionPaymentMethod method,
+        DateTime createdOnUtc)
+    {
+        ArgumentNullException.ThrowIfNull(subscription);
+
+        if (subscription.Id == Guid.Empty)
+            throw new DomainException("A renewal payment requires a subscription.");
+
+        SubscriptionPaymentAttempt attempt = new(
+            Guid.CreateVersion7(),
+            subscription.FamilyId,
+            plan.Id,
+            plan.Key,
+            plan.Version,
+            plan.Price,
+            0m,
+            0m,
+            plan.Price,
+            0m,
+            0m,
+            plan.Price,
+            plan.Currency,
+            method,
+            null,
+            subscription.Id,
+            true,
+            createdOnUtc);
+
+        return attempt;
     }
 
     public void RecordPaymobOrder(string paymobOrderId)
