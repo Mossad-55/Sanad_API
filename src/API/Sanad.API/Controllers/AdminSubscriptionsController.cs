@@ -68,7 +68,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
             request.Benefits.Select(item => new SubscriptionBenefitInput(item.Key, item.IsIncluded)).ToArray(),
             new SubscriptionLimitInput(request.MemberLimit.Kind, request.MemberLimit.Value),
             new SubscriptionLimitInput(request.MonthlyBookingLimit.Kind, request.MonthlyBookingLimit.Value),
-            request.Rollover, actorUserId), cancellationToken);
+            request.Rollover, actorUserId, request.PaymobSubscriptionPlanId), cancellationToken);
 
         if (result.IsFailure) return PlanFailure(result.Error);
         return StatusCode(StatusCodes.Status201Created, result.Value);
@@ -261,7 +261,8 @@ public sealed record CreateSubscriptionPlanRequest(
     IReadOnlyCollection<SubscriptionBenefitRequest> Benefits,
     SubscriptionLimitRequest MemberLimit,
     SubscriptionLimitRequest MonthlyBookingLimit,
-    SubscriptionRollover Rollover);
+    SubscriptionRollover Rollover,
+    int? PaymobSubscriptionPlanId = null);
 
 public sealed record SubscriptionBenefitRequest(SubscriptionBenefitKey Key, bool IsIncluded);
 public sealed record SubscriptionLimitRequest(SubscriptionLimitKind Kind, int? Value);

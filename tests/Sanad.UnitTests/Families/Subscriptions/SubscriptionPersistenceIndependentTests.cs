@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Metadata;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Domain.Families;
@@ -9,6 +11,18 @@ namespace Sanad.UnitTests.Families.Subscriptions;
 
 public sealed class SubscriptionPersistenceIndependentTests
 {
+    [Fact]
+    public void Paymob_plan_mapping_migration_is_registered()
+    {
+        using var context = new FamiliesDbContext(new DbContextOptionsBuilder<FamiliesDbContext>()
+            .UseNpgsql("Host=unused;Database=unused;Username=unused;Password=unused")
+            .Options);
+
+        var migrations = context.GetService<IMigrationsAssembly>().Migrations;
+
+        Assert.Contains("20260923113242_AddPaymobSubscriptionPlanMapping", migrations.Keys);
+    }
+
     [Fact]
     public void Published_and_unpublished_versions_preserve_their_publication_metadata()
     {
@@ -204,6 +218,8 @@ public sealed class SubscriptionPersistenceIndependentTests
         Assert.Equal("is_published", catalog.FindProperty(nameof(SubscriptionPlanVersion.IsPublished))!.GetColumnName());
         Assert.Equal("is_available_for_new_sales", catalog.FindProperty(nameof(SubscriptionPlanVersion.IsAvailableForNewSales))!.GetColumnName());
         Assert.Equal("published_on_utc", catalog.FindProperty(nameof(SubscriptionPlanVersion.PublishedOnUtc))!.GetColumnName());
+        Assert.Equal("paymob_subscription_plan_id", catalog.FindProperty(nameof(SubscriptionPlanVersion.PaymobSubscriptionPlanId))!.GetColumnName());
+        Assert.True(catalog.FindProperty(nameof(SubscriptionPlanVersion.PaymobSubscriptionPlanId))!.IsNullable);
         Assert.Equal("family_id", snapshot.FindProperty(nameof(FamilySubscription.FamilyId))!.GetColumnName());
         Assert.Equal("is_current", snapshot.FindProperty(nameof(FamilySubscription.IsCurrent))!.GetColumnName());
 

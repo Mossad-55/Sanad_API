@@ -1,10 +1,15 @@
+using System.Net;
+using System.Net.Http.Json;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
+using Sanad.Modules.Families.Infrastructure.Payments;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 
 namespace Sanad.UnitTests.Families.Subscriptions;
@@ -67,6 +72,158 @@ public sealed class SubscriptionPaymentTests
 
         Assert.False(result.IsSuccess);
         Assert.Equal("Subscriptions.Payment.CurrentExists", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Non_owner_cannot_start_payment_and_provider_is_not_called()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        var paymob = new FakePaymobClient();
+
+        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                UserId.New(), plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Subscriptions.Payment.NotOwner", result.Error.Code);
+        Assert.Null(paymob.LastInput);
+    }
+
+    [Fact]
+    public async Task Wallet_intention_omits_provider_plan_mapping_and_reports_no_recurrence()
+    {
+        var handler = new RecordingHttpMessageHandler();
+        var client = new PaymobClient(
+            new SingleHttpClientFactory(new HttpClient(handler)),
+            Options.Create(new PaymobOptions
+            {
+                SecretKey = "sk_test_secret",
+                PublicKey = "pk_test",
+                WalletIntegrationId = "123456"
+            }));
+
+        var result = await client.CreateSubscriptionPaymentIntentAsync(
+            new PaymobSubscriptionPaymentIntentInput(
+                "sub_wallet_attempt",
+                SubscriptionPaymentMethod.Wallet,
+                299m,
+                "EGP",
+                Billing(),
+                6755));
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value.RecurringRenewalSupported);
+        using JsonDocument body = JsonDocument.Parse(handler.Body!);
+        Assert.Equal(123456, body.RootElement.GetProperty("payment_methods")[0].GetInt64());
+        Assert.False(body.RootElement.TryGetProperty("subscription_plan_id", out _));
+        Assert.Equal(1, handler.CallCount);
+    }
+
+    [Fact]
+    public async Task Subscription_intention_without_secret_makes_no_provider_call()
+    {
+        var handler = new RecordingHttpMessageHandler();
+        var client = new PaymobClient(
+            new SingleHttpClientFactory(new HttpClient(handler)),
+            Options.Create(new PaymobOptions { Card3dsIntegrationId = "987654" }));
+
+        var result = await client.CreateSubscriptionPaymentIntentAsync(
+            new PaymobSubscriptionPaymentIntentInput(
+                "sub_attempt",
+                SubscriptionPaymentMethod.Card,
+                299m,
+                "EGP",
+                Billing(),
+                6755));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Paymob.NotConfigured", result.Error.Code);
+        Assert.Equal(0, handler.CallCount);
+    }
+
+    [Fact]
+    public async Task Card_enrollment_carries_the_mapped_provider_plan_and_reports_capability()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
+        var paymob = new FakePaymobClient();
+
+        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId,
+                plan.Id,
+                null,
+                SubscriptionPaymentMethod.Card,
+                Billing(),
+                DateTime.UtcNow),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(6755, paymob.LastInput!.SubscriptionPlanId);
+        Assert.True(result.Value.RecurringRenewalSupported);
+    }
+
+    [Fact]
+    public async Task Paymob_card_enrollment_sends_documented_intention_fields_without_secret_in_body()
+    {
+        var handler = new RecordingHttpMessageHandler();
+        var client = new PaymobClient(
+            new SingleHttpClientFactory(new HttpClient(handler)),
+            Options.Create(new PaymobOptions
+            {
+                SecretKey = "sk_test_secret",
+                PublicKey = "pk_test",
+                Card3dsIntegrationId = "987654",
+                WebhookUrl = "https://api.example.test/paymob/webhook",
+                RedirectionUrl = "https://app.example.test/subscription/complete"
+            }));
+
+        var result = await client.CreateSubscriptionPaymentIntentAsync(
+            new PaymobSubscriptionPaymentIntentInput(
+                "sub_attempt",
+                SubscriptionPaymentMethod.Card,
+                299m,
+                "EGP",
+                Billing(),
+                6755));
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, handler.CallCount);
+        Assert.Equal("Token sk_test_secret", handler.Request!.Headers.Authorization!.ToString());
+        using JsonDocument body = JsonDocument.Parse(handler.Body!);
+        JsonElement root = body.RootElement;
+        Assert.Equal(29900, root.GetProperty("amount").GetInt64());
+        Assert.Equal("EGP", root.GetProperty("currency").GetString());
+        Assert.Equal(987654, root.GetProperty("payment_methods")[0].GetInt64());
+        Assert.Equal(6755, root.GetProperty("subscription_plan_id").GetInt32());
+        Assert.Equal("sub_attempt", root.GetProperty("special_reference").GetString());
+        Assert.Equal("https://api.example.test/paymob/webhook", root.GetProperty("notification_url").GetString());
+        Assert.Equal("https://app.example.test/subscription/complete", root.GetProperty("redirection_url").GetString());
+        Assert.Equal(29900, root.GetProperty("items")[0].GetProperty("amount").GetInt64());
+        Assert.DoesNotContain("sk_test_secret", handler.Body!, StringComparison.Ordinal);
+        Assert.True(result.Value.RecurringRenewalSupported);
+    }
+
+    [Fact]
+    public async Task Paymob_card_enrollment_without_3ds_configuration_makes_no_provider_call()
+    {
+        var handler = new RecordingHttpMessageHandler();
+        var client = new PaymobClient(
+            new SingleHttpClientFactory(new HttpClient(handler)),
+            Options.Create(new PaymobOptions { SecretKey = "sk_test_secret" }));
+
+        var result = await client.CreateSubscriptionPaymentIntentAsync(
+            new PaymobSubscriptionPaymentIntentInput(
+                "sub_attempt",
+                SubscriptionPaymentMethod.Card,
+                299m,
+                "EGP",
+                Billing(),
+                6755));
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Paymob.MethodNotAvailable", result.Error.Code);
+        Assert.Equal(0, handler.CallCount);
     }
 
     [Fact]
@@ -184,13 +341,22 @@ public sealed class SubscriptionPaymentTests
         Assert.Null(subscription.RenewalGraceEndsOnUtc);
     }
 
-    private static FamiliesDbContext SeedDb(out Family family, out SubscriptionPlanVersion plan)
+    private static FamiliesDbContext SeedDb(
+        out Family family,
+        out SubscriptionPlanVersion plan,
+        int? paymobSubscriptionPlanId = null)
     {
         var db = new FamiliesDbContext(new DbContextOptionsBuilder<FamiliesDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         DateTime now = DateTime.UtcNow;
         family = Family.Create(UserId.New());
-        plan = SubscriptionPlanVersion.Create(SubscriptionPlan.Premium, true, true, now.AddDays(-1), now.AddDays(-1));
+        plan = SubscriptionPlanVersion.Create(
+            SubscriptionPlan.Premium,
+            true,
+            true,
+            now.AddDays(-1),
+            now.AddDays(-1),
+            paymobSubscriptionPlanId);
         db.Families.Add(family);
         db.SubscriptionPlanVersions.Add(plan);
         db.SubscriptionTaxRules.Add(SubscriptionTaxRule.Create(0m, 1, now.AddDays(-1), now.AddDays(-1)));
@@ -217,7 +383,12 @@ public sealed class SubscriptionPaymentTests
         {
             LastInput = input;
             return Task.FromResult(Result<PaymobPaymentIntent>.Success(
-                new PaymobPaymentIntent(input.MerchantReference, "sub-intention", "sub-secret", "pk_test")));
+                new PaymobPaymentIntent(
+                    input.MerchantReference,
+                    "sub-intention",
+                    "sub-secret",
+                    "pk_test",
+                    input.Method == SubscriptionPaymentMethod.Card && input.SubscriptionPlanId is not null)));
         }
 
         public Task<Result<string?>> RefundPaymentAsync(
@@ -225,5 +396,34 @@ public sealed class SubscriptionPaymentTests
             decimal amount,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(Result<string?>.Success(null));
+    }
+
+    private sealed class SingleHttpClientFactory(HttpClient client) : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => client;
+    }
+
+    private sealed class RecordingHttpMessageHandler : HttpMessageHandler
+    {
+        public HttpRequestMessage? Request { get; private set; }
+        public string? Body { get; private set; }
+        public int CallCount { get; private set; }
+
+        protected override async Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken)
+        {
+            CallCount++;
+            Request = request;
+            Body = await request.Content!.ReadAsStringAsync(cancellationToken);
+            return new HttpResponseMessage(HttpStatusCode.Created)
+            {
+                Content = JsonContent.Create(new
+                {
+                    client_secret = "client_secret_value",
+                    intention_order_id = 123456
+                })
+            };
+        }
     }
 }

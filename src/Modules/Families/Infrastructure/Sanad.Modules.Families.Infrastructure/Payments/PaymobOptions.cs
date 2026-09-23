@@ -14,7 +14,11 @@ public sealed class PaymobOptions
 
     public string CardIntegrationId { get; set; } = string.Empty;
 
+    public string Card3dsIntegrationId { get; set; } = string.Empty;
+
     public string WalletIntegrationId { get; set; } = string.Empty;
 
     public string WebhookUrl { get; set; } = string.Empty;
+
+    public string RedirectionUrl { get; set; } = string.Empty;
 }

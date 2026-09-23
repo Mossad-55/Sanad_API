@@ -112,7 +112,8 @@ public sealed class CreateSubscriptionPaymentIntentCommandHandler
                 request.Method,
                 attempt.TotalPayable,
                 attempt.Currency,
-                request.Billing),
+                request.Billing,
+                request.Method == SubscriptionPaymentMethod.Card ? plan.PaymobSubscriptionPlanId : null),
             cancellationToken);
 
         if (!intent.IsSuccess)
@@ -130,7 +131,7 @@ public sealed class CreateSubscriptionPaymentIntentCommandHandler
             attempt.Currency,
             intent.Value.ClientSecret,
             intent.Value.PublicKey,
-            RecurringRenewalSupported: false);
+            RecurringRenewalSupported: intent.Value.RecurringRenewalSupported);
     }
 }
 

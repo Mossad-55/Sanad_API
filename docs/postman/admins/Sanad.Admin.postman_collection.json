@@ -2326,10 +2326,10 @@
           "request": {
             "method": "POST",
             "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}],
-            "body": {"mode": "raw", "raw": "{\n  \"key\": \"premium\",\n  \"version\": 2,\n  \"price\": 299.00,\n  \"cycle\": 1,\n  \"currency\": \"EGP\",\n  \"benefits\": [],\n  \"memberLimit\": { \"kind\": 1, \"value\": 10 },\n  \"monthlyBookingLimit\": { \"kind\": 1, \"value\": 20 },\n  \"rollover\": 1\n}"},
+            "body": {"mode": "raw", "raw": "{\n  \"key\": \"premium\",\n  \"version\": 2,\n  \"price\": 299.00,\n  \"cycle\": 1,\n  \"currency\": \"EGP\",\n  \"benefits\": [],\n  \"memberLimit\": { \"kind\": 1, \"value\": 10 },\n  \"monthlyBookingLimit\": { \"kind\": 1, \"value\": 20 },\n  \"rollover\": 1,\n  \"paymobSubscriptionPlanId\": 6755\n}"},
             "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans"
           },
-          "description": "Manual example only. Supply the complete benefit catalog; success is 201 with the draft plan-version UUID. Duplicate key/version is 409 Subscriptions.Plan.DuplicateVersion."
+          "description": "Manual example only. Supply the complete benefit catalog. Optional paymobSubscriptionPlanId enables initial Card enrollment when Paymob Card 3DS is configured; it is not a provider subscription ID. Success is 201 with the draft plan-version UUID. Duplicate key/version is 409 Subscriptions.Plan.DuplicateVersion."
         },
         {
           "name": "Publish subscription plan (manual)",

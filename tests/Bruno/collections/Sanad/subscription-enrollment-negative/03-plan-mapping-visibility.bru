@@ -1,0 +1,41 @@
+meta {
+  name: 03-plan-mapping-visibility
+  type: http
+  seq: 3
+  tags: [
+    enrollment-negative
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plans
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{enrollmentOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{enrollmentOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const plans = Array.isArray(res.body) ? res.body : [];
+  const field = (object, name) => object && (object[name] ?? object[name[0].toUpperCase() + name.slice(1)]);
+  if (plans.length < 1) throw new Error("Expected at least one subscription plan.");
+  for (const plan of plans) {
+    if (!Object.prototype.hasOwnProperty.call(plan, "paymobSubscriptionPlanId")
+      && !Object.prototype.hasOwnProperty.call(plan, "PaymobSubscriptionPlanId")) {
+      throw new Error("Subscription catalog must expose paymobSubscriptionPlanId.");
+    }
+  }
+  const freePlan = plans.find((plan) => field(plan, "key") === "free");
+  if (!freePlan) throw new Error("Expected seeded free plan.");
+  bru.setVar("enrollmentPlanVersionId", field(freePlan, "id"));
+}

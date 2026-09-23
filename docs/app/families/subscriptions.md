@@ -29,8 +29,8 @@ selected plan identity. Prices are tax-exclusive in the catalog; the quote
 applies the active tax rule only when its `effectiveOnUtc` is at or before the
 quote time, and rounds monetary values to two decimals using the server's
 banker's-rounding convention. Coupons must belong to the selected plan and be
-unexpired. The current response reports `recurringRenewalSupported: false`;
-this endpoint does not charge a payment method, activate a subscription, create
+unexpired. The quote response's `recurringRenewalSupported` value is not a
+payment-method capability guarantee. This endpoint does not charge a payment method, activate a subscription, create
 an invoice, consume an allowance, or mutate data.
 
 Errors include `401` unauthenticated, `403` non-owner, `404`
@@ -60,8 +60,11 @@ provide or override the amount, tax, discount, currency, or renewal dates.
 
 `method` is the numeric JSON enum: `1` is Card and `2` is Wallet. The response contains the server amount/currency, a `sub_` merchant
 reference, the provider client secret/public key, and
-`recurringRenewalSupported: false`. Wallet is therefore a one-time/manual
-renewal boundary in this slice; recurring wallet capability is not assumed.
+`recurringRenewalSupported: true` only when `method` is Card, the selected
+local plan has a positive `paymobSubscriptionPlanId`, and the Paymob Card 3DS
+integration is configured. Otherwise it is `false`. Wallet remains
+one-time/manual; no recurring wallet capability is implied. The response
+contains no persisted provider subscription ID.
 
 The Paymob callback is `POST /api/v1/payments/webhooks/paymob`. It is anonymous
 but requires a valid Paymob HMAC. Subscription references are settled through
@@ -100,29 +103,22 @@ settlement keeps access in grace until `currentPeriodEndsOnUtc + 7 days`; a
 successful retry advances the period from the original period-end anchor and
 clears grace. Settlement is idempotent. A renewal before the boundary, after
 grace expiry, or while another renewal attempt is pending returns `409`.
-This endpoint reports `recurringRenewalSupported: false` because it uses the
-manual payment-intent boundary. Wallet renewal remains one-time/manual, and
-automatic card recurrence will only be enabled after the provider subscription
-enrollment boundary is implemented and configured.
+This endpoint always uses the manual payment-intent boundary and reports
+`recurringRenewalSupported: false`; renewal enrollment is not started here.
+Wallet renewal remains one-time/manual.
 
 This slice does not implement upgrades/downgrades or proration, invoices/PDFs,
 allowance consumption, notifications, or deployment automation.
 
-## Next provider billing boundary
+## Card enrollment boundary
 
-The next bounded implementation slice is Paymob provider subscription-plan
-enrollment for eligible card payments and storage of the provider subscription
-reference. It will not be considered live until provider capability,
-authorization, persistence, webhook event mapping, tests, Postman request
-coverage, and Bruno evidence are all closed together. Wallet recurrence is not
-assumed; wallet renewal remains the manual path unless the configured provider
-capability is explicitly verified.
-
-The following slice will map provider renewal events and payment retries onto
-the existing seven-day grace contract: the original renewal anchor remains
-unchanged, duplicate events remain idempotent, and access expires only after
-the grace window. No future route is promised here until it is implemented and
-added to the contract matrix.
+Initial Card enrollment is available only when the selected local plan has a
+positive `paymobSubscriptionPlanId` and `Paymob__Card3dsIntegrationId` is
+configured. The server sends that local mapping as Paymob's
+`subscription_plan_id` and selects the Card 3DS integration. Wallet remains
+one-time/manual. Provider renewal-event settlement/retry and persistence of a
+provider subscription ID are out of scope for this slice; renewal therefore
+continues through the explicit manual payment-intent route above.
 
 ## Current subscription snapshot
 

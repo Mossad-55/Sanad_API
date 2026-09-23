@@ -25,6 +25,10 @@ public sealed class SubscriptionPersistenceModelTests
         Assert.Equal(DeleteBehavior.Restrict, snapshot.GetForeignKeys().Single().DeleteBehavior);
         Assert.True(catalog.FindProperty(nameof(SubscriptionPlanVersion.IsAvailableForNewSales))!.IsConcurrencyToken);
         Assert.True(catalog.FindProperty(nameof(SubscriptionPlanVersion.IsPublished))!.IsConcurrencyToken);
+        var providerPlan = catalog.FindProperty(nameof(SubscriptionPlanVersion.PaymobSubscriptionPlanId));
+        Assert.NotNull(providerPlan);
+        Assert.True(providerPlan!.IsNullable);
+        Assert.Equal("paymob_subscription_plan_id", providerPlan.GetColumnName());
         Assert.Equal(5, taxRule!.FindProperty(nameof(SubscriptionTaxRule.RatePercentage))!.GetPrecision());
         Assert.Equal(2, taxRule.FindProperty(nameof(SubscriptionTaxRule.RatePercentage))!.GetScale());
         Assert.Contains(taxRule.GetIndexes(), x => x.IsUnique &&

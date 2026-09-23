@@ -18,7 +18,8 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
         bool isPublished,
         bool isAvailableForNewSales,
         DateTime createdOnUtc,
-        DateTime? publishedOnUtc)
+        DateTime? publishedOnUtc,
+        int? paymobSubscriptionPlanId)
         : base(id)
     {
         Key = plan.Key;
@@ -36,6 +37,7 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
         IsAvailableForNewSales = isAvailableForNewSales;
         CreatedOnUtc = createdOnUtc;
         PublishedOnUtc = publishedOnUtc;
+        PaymobSubscriptionPlanId = paymobSubscriptionPlanId;
     }
 
     public string Key { get; private set; } = string.Empty;
@@ -52,6 +54,7 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
     public bool IsAvailableForNewSales { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime? PublishedOnUtc { get; private set; }
+    public int? PaymobSubscriptionPlanId { get; private set; }
     public IReadOnlyCollection<SubscriptionBenefit> Benefits => _benefits.AsReadOnly();
 
     public static SubscriptionPlanVersion Create(
@@ -59,7 +62,8 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
         bool isPublished = false,
         bool isAvailableForNewSales = true,
         DateTime? createdOnUtc = null,
-        DateTime? publishedOnUtc = null)
+        DateTime? publishedOnUtc = null,
+        int? paymobSubscriptionPlanId = null)
     {
         ArgumentNullException.ThrowIfNull(plan);
 
@@ -69,13 +73,17 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
         if (!isPublished && publishedOnUtc is not null)
             throw new DomainException("An unpublished subscription plan cannot have a published timestamp.");
 
+        if (paymobSubscriptionPlanId is <= 0)
+            throw new DomainException("Paymob subscription plan id must be positive.");
+
         return new SubscriptionPlanVersion(
             Guid.CreateVersion7(),
             plan,
             isPublished,
             isAvailableForNewSales,
             createdOnUtc ?? DateTime.UtcNow,
-            publishedOnUtc);
+            publishedOnUtc,
+            paymobSubscriptionPlanId);
     }
 
     public void Publish(DateTime publishedOnUtc)

@@ -127,12 +127,14 @@ public sealed class AdminSubscriptionsControllerTests
                 .ToArray(),
             new SubscriptionLimitRequest(SubscriptionLimitKind.Finite, 10),
             new SubscriptionLimitRequest(SubscriptionLimitKind.Finite, 20),
-            SubscriptionRollover.None);
+            SubscriptionRollover.None,
+            6755);
 
         var created = await controller.CreatePlan(request, default);
 
         Assert.Equal(StatusCodes.Status201Created, Assert.IsType<ObjectResult>(created).StatusCode);
-        Assert.IsType<CreateSubscriptionPlanVersionCommand>(sender.LastRequest);
+        var createCommand = Assert.IsType<CreateSubscriptionPlanVersionCommand>(sender.LastRequest);
+        Assert.Equal(6755, createCommand.PaymobSubscriptionPlanId);
 
         sender = new CapturingSender(Result.Success());
         controller = CreateController(sender, UserId.New());

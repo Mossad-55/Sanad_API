@@ -26,7 +26,8 @@ public sealed class DevelopmentPaymobClient : IPaymobClient
                 input.MerchantReference,
                 $"dev-subscription-intention-{Guid.NewGuid():N}",
                 $"dev-subscription-secret-{Guid.NewGuid():N}",
-                "pk_dev")));
+                "pk_dev",
+                RecurringRenewalSupported: false)));
     }
 
     public Task<Result<string?>> RefundPaymentAsync(

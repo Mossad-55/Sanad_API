@@ -58,6 +58,21 @@ Use environment variables. User-secrets are not used in this repository. Identit
 - If `Paymob__HmacSecret` is unset the endpoint returns `503`.
 - A valid HMAC for an unknown booking returns `200` so Paymob stops retrying.
 
+## Subscription payment boundary
+
+- Family subscription payment-intent routes require the normal family policy and
+  family Owner role; admin plan authoring/list/detail routes require the normal
+  Super Admin `SubscriptionPlanAdmin` policy.
+- The server calculates amount, currency, tax, discount, plan, and renewal
+  terms. Clients cannot choose a provider subscription plan ID or override the
+  Paymob mapping.
+- Initial Card enrollment sends a provider `subscription_plan_id` only when the
+  local plan has a positive `paymobSubscriptionPlanId` and the Card 3DS
+  integration is configured. Wallet and renewal intents remain manual.
+- Provider renewal-event settlement/retry and provider subscription-ID
+  persistence are outside this slice. Do not infer automatic renewal from a
+  successful payment intent alone.
+
 ## Swagger
 
 `/swagger` is Development only. Production must not serve it.

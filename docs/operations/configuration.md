@@ -77,10 +77,14 @@ Enabled when `SecretKey` is set. Otherwise `DevelopmentPaymobClient` serves paym
 | `Paymob__PublicKey` | | Dashboard public key (`pk_…`); handed to the mobile SDK together with the intent `clientSecret`. |
 | `Paymob__HmacSecret` | | HMAC-SHA512 secret verifying webhook callbacks; if unset the webhook endpoint answers `503`. |
 | `Paymob__CardIntegrationId` | | Card integration id (Dashboard → Developers → Payment Integrations). |
+| `Paymob__Card3dsIntegrationId` | | Card 3DS integration id used for initial enrollment when the selected local plan has `paymobSubscriptionPlanId`. |
 | `Paymob__WalletIntegrationId` | | Mobile-wallet integration id (Vodafone/Etisalat/Orange). |
 | `Paymob__WebhookUrl` | | Public webhook URL; sent as the intention `notification_url` and must also be registered on each integration's *transaction processed callback* in the dashboard. |
+| `Paymob__RedirectionUrl` | | Optional browser/SDK redirection URL sent as the intention `redirection_url`. |
 
 - Test-mode secret keys only pair with test-mode integration ids — mixing modes fails with `404 Integration ID/Name does not exist`.
+- Card enrollment requires both a positive local plan `paymobSubscriptionPlanId` and `Paymob__Card3dsIntegrationId`; the provider `subscription_plan_id` is sent only for that Card path. Wallet remains one-time/manual.
+- Provider renewal-event settlement/retry and persistence of a provider subscription ID are not configured or implemented by this slice.
 - See `docs/app/families/bookings.md` for the payment flow and `POST /api/v1/payments/webhooks/paymob` for the callback contract.
 
 ## Runtime selection

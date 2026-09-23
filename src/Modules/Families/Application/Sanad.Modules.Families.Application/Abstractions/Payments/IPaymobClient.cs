@@ -23,13 +23,15 @@ public sealed record PaymobSubscriptionPaymentIntentInput(
     SubscriptionPaymentMethod Method,
     decimal Amount,
     string Currency,
-    PaymobBillingData Billing);
+    PaymobBillingData Billing,
+    int? SubscriptionPlanId = null);
 
 public sealed record PaymobPaymentIntent(
     string PaymobOrderId,
     string IntentionOrderId,
     string ClientSecret,
-    string PublicKey);
+    string PublicKey,
+    bool RecurringRenewalSupported = false);
 
 public interface IPaymobClient
 {

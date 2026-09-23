@@ -4,14 +4,33 @@
 
 - [x] Catalog, plan publication/retirement, administrative reads, coupons, and VAT/tax configuration are implemented and documented.
 - [x] Owner quotes, subscription-specific Card/Wallet payment intents, `sub_` settlement, manual renewal, seven-day grace, original-anchor preservation, duplicate-pending protection, idempotent settlement, and manual payment retry are implemented.
-- [x] Final verified closeout tip: `de66dcd507bb5ede4cb16f4333fa812131d63d92`.
+- [x] Final verified source baseline: `d6df47718b5e5704d93cf2461a26d7379bb5a2e9`; owner-authorized commit/push is the active closeout action.
 - [x] Current route/collection census: `238` controller actions, `270` Postman API requests, `0` missing mappings, `0` orphan requests.
-- [ ] Next bounded slice: Paymob provider subscription enrollment and card recurrence.
+- [x] Paymob Card enrollment initiation is implemented conditionally through the existing owner payment-intent route; Wallet remains manual.
+- [x] Focused tests: mastermind filter `38/38`; test-author broader filter `45/45`; `0` failed, `0` skipped.
+- [x] Full build: `0` warnings, `0` errors.
+- [x] Full suite: architecture `1/1` plus unit `1772/1772`, `0` failed, `0` skipped.
+- [x] Bruno negative-first gate: `5/5` requests and `5/5` assertions, exit `0`; statuses `401/200/200/409/204`; no provider mutation; API stopped and no listener remains.
+- [ ] Next bounded slice: provider renewal-event settlement and retry integration.
 - [ ] Following slice: provider renewal-event settlement and retry integration, preserving the existing seven-day grace and original anchor.
 - [ ] Later billing slices: upgrades/proration, downgrades, invoices/PDFs, and allowance consumption.
 - [ ] Later platform slice: notifications/email after core billing.
 
 Planned provider routes, persistence fields, and event names are not implemented contracts until they appear in source, the requirements-to-contract matrix, public docs, Postman, Bruno, focused tests, and the two-way route checker.
+
+## Completed phase override: Paymob Card enrollment initiation — 2026-09-23
+
+The older pending provider-enrollment checklist below is historical. The live completion record is this section.
+
+- [x] Scout and requirements-to-contract matrix: Paymob enrollment capability verified; `238` controller actions, `270` Postman requests, `0` missing, `0` orphan.
+- [x] Implementer and correction: Card-only provider plan mapping and enrollment initiation; no provider subscription-ID persistence or renewal-event settlement.
+- [x] Test author: Card/Wallet, authorization, missing configuration, payload/secret, admin mapping, and migration tests delivered.
+- [x] Focused tests: mastermind filter `38/38`; test-author broader filter `45/45`.
+- [x] Full build: `0` warnings / `0` errors; architecture `1/1`; full unit suite `1772/1772`, `0` failed, `0` skipped.
+- [x] Reviewer and documenter: fresh review found no source defect; docs, README, matrix, and Postman synchronized; completeness counts all zero.
+- [x] Bruno: `5/5` requests, `5/5` assertions, exit `0`; `401/200/200/409/204`; no provider mutation; API stopped and no listener remains.
+- [x] Migration: `20260923113242_AddPaymobSubscriptionPlanMapping` generated and inspected; additive/nullable/reversible; unapplied by this run.
+- [x] Owner commit/push and final handoff: owner authorization received; validated scope is being committed/pushed; private ledgers and unrelated `subscription-vat-tax/` artifacts excluded.
 
 ## Next bounded phase: Paymob enrollment and card recurrence
 

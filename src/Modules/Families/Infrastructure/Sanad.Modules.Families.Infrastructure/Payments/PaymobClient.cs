@@ -137,8 +137,11 @@ public sealed class PaymobClient : IPaymobClient
                 new Error("Paymob.NotConfigured", "The payment gateway is not configured."));
         }
 
+        bool cardEnrollment = input.Method == SubscriptionPaymentMethod.Card
+            && input.SubscriptionPlanId is not null;
         string? integrationId = input.Method switch
         {
+            SubscriptionPaymentMethod.Card when cardEnrollment => _options.Card3dsIntegrationId,
             SubscriptionPaymentMethod.Card => _options.CardIntegrationId,
             SubscriptionPaymentMethod.Wallet => _options.WalletIntegrationId,
             _ => null
@@ -156,16 +159,22 @@ public sealed class PaymobClient : IPaymobClient
                 new Error("Paymob.InvalidReference", "A payment merchant reference is required."));
         }
 
+        if (input.SubscriptionPlanId is <= 0)
+        {
+            return Result<PaymobPaymentIntent>.Failure(
+                new Error("Paymob.InvalidSubscriptionPlan", "The Paymob subscription plan id is invalid."));
+        }
+
         try
         {
             HttpClient httpClient = _httpClientFactory.CreateClient("Paymob");
             long amountCents = ToCents(input.Amount);
-            var payload = new
+            var payload = new Dictionary<string, object?>
             {
-                amount = amountCents,
-                currency = input.Currency,
-                payment_methods = new[] { long.Parse(integrationId) },
-                items = new[]
+                ["amount"] = amountCents,
+                ["currency"] = input.Currency,
+                ["payment_methods"] = new[] { long.Parse(integrationId) },
+                ["items"] = new[]
                 {
                     new
                     {
@@ -175,7 +184,7 @@ public sealed class PaymobClient : IPaymobClient
                         quantity = 1
                     }
                 },
-                billing_data = new
+                ["billing_data"] = new
                 {
                     first_name = input.Billing.FirstName,
                     last_name = input.Billing.LastName,
@@ -190,12 +199,18 @@ public sealed class PaymobClient : IPaymobClient
                     country = "EG",
                     postal_code = "NA"
                 },
-                special_reference = input.MerchantReference,
-                expiration = 3600,
-                notification_url = string.IsNullOrWhiteSpace(_options.WebhookUrl)
+                ["special_reference"] = input.MerchantReference,
+                ["expiration"] = 3600,
+                ["notification_url"] = string.IsNullOrWhiteSpace(_options.WebhookUrl)
                     ? null
-                    : _options.WebhookUrl
+                    : _options.WebhookUrl,
+                ["redirection_url"] = string.IsNullOrWhiteSpace(_options.RedirectionUrl)
+                    ? null
+                    : _options.RedirectionUrl
             };
+
+            if (cardEnrollment)
+                payload["subscription_plan_id"] = input.SubscriptionPlanId!.Value;
 
             using HttpRequestMessage request = new(HttpMethod.Post, $"{_options.BaseUrl}/v1/intention/");
             request.Headers.TryAddWithoutValidation("Authorization", $"Token {_options.SecretKey}");
@@ -214,7 +229,12 @@ public sealed class PaymobClient : IPaymobClient
             string clientSecret = document.RootElement.GetProperty("client_secret").GetString() ?? string.Empty;
             string intentionOrderId = document.RootElement.GetProperty("intention_order_id").GetRawText();
             return Result<PaymobPaymentIntent>.Success(
-                new PaymobPaymentIntent(input.MerchantReference, intentionOrderId, clientSecret, _options.PublicKey));
+                new PaymobPaymentIntent(
+                    input.MerchantReference,
+                    intentionOrderId,
+                    clientSecret,
+                    _options.PublicKey,
+                    RecurringRenewalSupported: cardEnrollment));
         }
         catch (Exception exception) when (exception is JsonException or HttpRequestException or FormatException)
         {

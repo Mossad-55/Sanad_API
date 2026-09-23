@@ -25,7 +25,8 @@ public sealed record SubscriptionPlanResponse(
     bool IsAvailableForNewSales,
     DateTime CreatedOnUtc,
     DateTime? PublishedOnUtc,
-    IReadOnlyList<SubscriptionBenefitResponse> Benefits);
+    IReadOnlyList<SubscriptionBenefitResponse> Benefits,
+    int? PaymobSubscriptionPlanId = null);
 
 public sealed record SubscriptionSnapshotResponse(
     Guid Id,
@@ -103,7 +104,8 @@ public sealed class GetSubscriptionCatalogQueryHandler : IQueryHandler<GetSubscr
             plan.IsAvailableForNewSales,
             plan.CreatedOnUtc,
             plan.PublishedOnUtc,
-            plan.Benefits.Select(benefit => new SubscriptionBenefitResponse(benefit.Key, benefit.IsIncluded)).ToList());
+            plan.Benefits.Select(benefit => new SubscriptionBenefitResponse(benefit.Key, benefit.IsIncluded)).ToList(),
+            plan.PaymobSubscriptionPlanId);
 }
 
 public sealed class GetSubscriptionCouponsQueryHandler : IQueryHandler<GetSubscriptionCouponsQuery, IReadOnlyList<SubscriptionCouponResponse>>

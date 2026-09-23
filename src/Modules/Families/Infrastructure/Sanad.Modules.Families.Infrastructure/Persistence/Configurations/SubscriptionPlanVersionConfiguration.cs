@@ -28,6 +28,7 @@ public sealed class SubscriptionPlanVersionConfiguration : IEntityTypeConfigurat
             .IsConcurrencyToken();
         builder.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
         builder.Property(x => x.PublishedOnUtc).HasColumnName("published_on_utc");
+        builder.Property(x => x.PaymobSubscriptionPlanId).HasColumnName("paymob_subscription_plan_id");
         builder.HasIndex(x => new { x.Key, x.Version }).IsUnique().HasDatabaseName("ux_subscription_plan_versions_key_version");
 
         builder.OwnsMany(x => x.Benefits, benefit =>

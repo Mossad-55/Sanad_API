@@ -24,7 +24,8 @@ public sealed record CreateSubscriptionPlanVersionCommand(
     SubscriptionLimitInput MemberLimit,
     SubscriptionLimitInput MonthlyBookingLimit,
     SubscriptionRollover Rollover,
-    UserId ActorUserId) : ICommand<Guid>;
+    UserId ActorUserId,
+    int? PaymobSubscriptionPlanId = null) : ICommand<Guid>;
 
 public sealed record PublishSubscriptionPlanVersionCommand(Guid PlanVersionId, UserId ActorUserId) : ICommand;
 
@@ -131,7 +132,9 @@ public sealed class CreateSubscriptionPlanVersionCommandHandler
                 CreateLimit(request.MemberLimit),
                 CreateLimit(request.MonthlyBookingLimit),
                 request.Rollover);
-            var version = SubscriptionPlanVersion.Create(plan);
+            var version = SubscriptionPlanVersion.Create(
+                plan,
+                paymobSubscriptionPlanId: request.PaymobSubscriptionPlanId);
             _dbContext.SubscriptionPlanVersions.Add(version);
             await _dbContext.SaveChangesAsync(cancellationToken);
             return Result<Guid>.Success(version.Id);

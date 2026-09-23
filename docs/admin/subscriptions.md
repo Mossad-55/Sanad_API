@@ -31,7 +31,9 @@ Create a draft plan version:
 POST /api/v1/admin/subscriptions/plans
 ```
 
-The request supplies `key`, positive `version`, `price`, `cycle`, `currency` (`EGP`), every existing benefit key with its `isIncluded` value, `memberLimit`, `monthlyBookingLimit`, and `rollover`. The `(key, version)` pair is unique. The response is `201` with the new plan-version ID; invalid terms return `400` and a duplicate pair returns `409`.
+The request supplies `key`, positive `version`, `price`, `cycle`, `currency` (`EGP`), every existing benefit key with its `isIncluded` value, `memberLimit`, `monthlyBookingLimit`, `rollover`, and optional `paymobSubscriptionPlanId`. The `(key, version)` pair is unique. The response is `201` with the new plan-version ID; invalid terms return `400` and a duplicate pair returns `409`.
+
+`paymobSubscriptionPlanId` is the local plan's Paymob subscription-plan mapping. A positive value enables the initial Card enrollment path when the Paymob Card 3DS integration is configured; omit it for plans that must use one-time/manual billing. Plan list/detail reads return the nullable field so administrators can verify the effective mapping. This field is not a persisted provider subscription ID.
 
 Publish a draft exactly once:
 
@@ -132,9 +134,11 @@ Paymob HMAC webhook settles the subscription-specific `sub_` reference and
 activates the plan only after a matching successful payment. It does not create
 an invoice or PDF. Recurring billing, trials, redemption, upgrades/downgrades,
 proration, retries, allowance consumption, notifications, and deployment
-automation remain separate slices. The current family renewal endpoint uses the
-manual payment-intent boundary and preserves the original renewal anchor after
-a successful retry. The next bounded slice is automatic Paymob provider
-subscription enrollment for eligible card payments; provider renewal-event
-settlement and retry integration follows it. No provider-managed route is live
-until it is added to the contract matrix, Postman, Bruno, and the public docs.
+automation remain separate slices. Initial Card enrollment is available only
+when the local plan has `paymobSubscriptionPlanId` and Paymob Card 3DS is
+configured; Wallet remains one-time/manual. The current family renewal endpoint
+uses the manual payment-intent boundary and preserves the original renewal
+anchor after a successful retry. Provider renewal-event settlement/retry and
+provider subscription-ID persistence are out of scope for this slice. No
+provider-managed renewal route is live until it is added to the contract
+matrix, Postman, Bruno, and the public docs.

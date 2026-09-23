@@ -1,0 +1,46 @@
+meta {
+  name: 04-current-subscription-conflict
+  type: http
+  seq: 4
+  tags: [
+    enrollment-negative
+  ]
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/payment-intent
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{enrollmentOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{enrollmentOwnerJwt}}
+}
+
+body:json {
+  {
+    "planVersionId": "{{enrollmentPlanVersionId}}",
+    "couponCode": null,
+    "method": 1,
+    "billing": {
+      "firstName": "Ahmed",
+      "lastName": "Ali",
+      "email": "ahmed@example.com",
+      "phoneNumber": "+201012345678"
+    }
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+script:post-response {
+  const code = res.body && (res.body.code ?? res.body.Code);
+  if (code !== "Subscriptions.Payment.CurrentExists") throw new Error("Seeded current subscription must block provider enrollment before any provider call.");
+}
