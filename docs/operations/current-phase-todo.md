@@ -4,7 +4,7 @@
 
 - [x] Catalog, plan publication/retirement, administrative reads, coupons, and VAT/tax configuration are implemented and documented.
 - [x] Owner quotes, subscription-specific Card/Wallet payment intents, `sub_` settlement, manual renewal, seven-day grace, original-anchor preservation, duplicate-pending protection, idempotent settlement, and manual payment retry are implemented.
-- [x] Final verified source baseline: `d6df47718b5e5704d93cf2461a26d7379bb5a2e9`; owner-authorized commit/push is the active closeout action.
+- [x] Final verified source/deployment revision: `c654051ac005a6f5f2a0f1ad3bdce45fa79a088b`; owner reports the revision is deployed and working on the VPS.
 - [x] Current route/collection census: `238` controller actions, `270` Postman API requests, `0` missing mappings, `0` orphan requests.
 - [x] Paymob Card enrollment initiation is implemented conditionally through the existing owner payment-intent route; Wallet remains manual.
 - [x] Focused tests: mastermind filter `38/38`; test-author broader filter `45/45`; `0` failed, `0` skipped.
@@ -30,11 +30,11 @@ The older pending provider-enrollment checklist below is historical. The live co
 - [x] Reviewer and documenter: fresh review found no source defect; docs, README, matrix, and Postman synchronized; completeness counts all zero.
 - [x] Bruno: `5/5` requests, `5/5` assertions, exit `0`; `401/200/200/409/204`; no provider mutation; API stopped and no listener remains.
 - [x] Migration: `20260923113242_AddPaymobSubscriptionPlanMapping` generated and inspected; additive/nullable/reversible; unapplied by this run.
-- [x] Owner commit/push and final handoff: owner authorization received; validated scope is being committed/pushed; private ledgers and unrelated `subscription-vat-tax/` artifacts excluded.
+- [x] Owner commit/push, deployment, and final handoff: `c654051` is pushed and owner-confirmed working on the VPS; private ledgers and unrelated `subscription-vat-tax/` artifacts excluded.
 
 ## Next bounded phase: Paymob enrollment and card recurrence
 
-- [ ] `sanad_scout` — pending — map provider enrollment capability, existing Paymob abstractions/configuration, persistence, webhook dispatch, docs, and collections; deliver a pinned requirements matrix and exact file manifest. Dependency: verified `de66dcd`.
+- [ ] `sanad_scout` — pending — map provider renewal-event settlement and retry capability, existing Paymob abstractions/configuration, persistence, webhook dispatch, docs, and collections; deliver a pinned requirements matrix and exact file manifest. Dependency: deployed revision `c654051`.
 - [ ] Mastermind — pending — review the scout report, resolve provider assumptions, and publish the pinned implementation brief. Dependency: scout delivery.
 - [ ] `sanad_implementer` — pending — implement only provider plan mapping/enrollment and card recurrence state from the pinned manifest. Dependency: approved scout manifest.
 - [ ] `sanad_test_author` — pending — add focused provider-boundary, authorization, idempotency, and persistence tests after implementation is pinned. Dependency: implementer revision.
