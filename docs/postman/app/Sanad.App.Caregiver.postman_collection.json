@@ -640,7 +640,8 @@
               "mode": "raw",
               "raw": "{\n  \"caregiverNotes\": \"الحالة العامة جيدة، تم إعطاء الدواء في موعده.\"\n}"
             }
-          }
+          },
+          "description": "Completes an InProgress visit. A finite family subscription allowance is consumed only after successful completion; cancelled, declined, expired, unpaid, duplicate, and failed completion attempts do not consume it. Success is 204; invalid state is 409 Bookings.Domain.InvalidOperation; exhausted allowance is 409 Bookings.AllowanceExceeded."
         },
         {
           "name": "Submit visit report (manual/lifecycle)",
