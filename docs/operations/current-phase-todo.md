@@ -1,27 +1,38 @@
 # Current phase todo — subscription billing invoices
 
-The active bounded slice adds completion-only subscription booking allowance
-consumption with persisted period usage and renewal reset. The invoice/PDF slice
-is already complete.
+Subscription billing items 15–18 are complete and owner-confirmed deployed green
+at revision `02d7101`. This record now hands off to the full-application UI
+walkthrough and gap analysis.
 
-The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the owner reports it is deployed and the repository work tested. The invoice/PDF slice is pushed as `9366d99`; allowance enforcement is implemented locally and is in focused review. The approved sequence is to validate/commit/push/deploy this complete billing revision, build/test the deployment mechanism, conduct the full-application UI walkthrough and gap analysis, implement approved gaps, then add notifications/email.
+The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the invoice/PDF slice is pushed as `9366d99`; allowance enforcement and the repeatable deployment verifier are pushed through `02d7101`. The owner confirms the exact revision is deployed green with migration, health, and smoke verification. The approved sequence is now full-application UI walkthrough/gap analysis, approved UI gaps, notifications/email, then later product phases.
 
 ## Current status
 
 - Implementation and focused contract tests are complete. The accounting review finding was corrected so paid and zero-charge upgrades retain the target remaining-period gross for future credit calculations. The full suite also exposed a duplicate-webhook regression for initial subscription purchases and renewals; successful settlement now marks those payment attempts succeeded after validation.
-- Validation is green: Families Application build passed with 0 warnings/errors; full solution build passed with 0 warnings/errors; full test run passed architecture 1/1 and unit 1817/1817; route-to-Postman check passed with 242 controller actions, 278 requests, 0 missing, 0 orphan; `git diff --check` passed with only line-ending warnings.
+- Validation is green: full API Release package and smoke verifier passed; full unit suite `1823/1823`; focused attendance `5/5`; architecture `1/1`; route-to-Postman check `245` controller actions / `281` requests / `0` missing / `0` orphan; Postman JSON parses; migration is applied locally and EF reports no pending model changes.
 - Migration `20260924120349_AddSubscriptionPlanChanges` was generated, inspected, applied to the authorized local target `localhost:5432/SanadDb`, and confirmed applied. `dotnet ef migrations has-pending-model-changes` reports no model changes since the migration.
 - Public family/admin guides, README, architecture, endpoint matrix, and Family Postman are synchronized. No dedicated plan-change Bruno run has been performed; the local development seed has only a Free current subscription, so it does not provide a paid Card subscription for safe end-to-end upgrade/downgrade coverage. Unit tests cover provider ordering and failure behavior.
-- Owner reports the pushed revision `fdd7a00ac3e185f347f744635b357bcabaaf724a` has been deployed and the repository work tested. This is owner-confirmed; production migration-history/API-health/smoke output was not independently inspected here.
+- Owner confirms pushed revision `02d7101` is deployed green, including migration, health, and safe smoke verification.
 - The plan-change slice is committed and pushed: `e8cdfa1` adds prorated upgrades and pending downgrades; `fdd7a00` standardizes project/worker routing on GPT-5.6 Luna with medium reasoning. `main` and `origin/main` match. Private handoffs and `subscription-vat-tax/` remain untracked and unstaged.
 
 ## Remaining phase work
 
 - Completed bounded billing slice: branded invoices/PDFs for initial purchases and successful renewals.
 - Allowance slice implemented: finite allowance is consumed only when a caregiver completion succeeds; cancelled, declined, expired, unpaid, duplicate, and failed completion attempts consume none; renewal resets usage and unlimited plans do not increment it.
-- Validated and pushed as `29c07e0`: migration `20260924141816_AddSubscriptionBookingAllowance`, complete billing revision, and repeatable package script. The deployment owner must apply/verify the migration and record startup/smoke evidence; the already-deployed plan-change revision did not include invoices or allowance enforcement.
-- Repeatable deployment mechanism added at `tools/Publish-SanadApi.ps1` with the handoff contract in `docs/operations/deployment.md`; run and verify it after the billing commit. Then conduct the full-application UI walkthrough and gap analysis, and implement only owner-approved gaps.
+- Validated and pushed through `02d7101`: migration `20260924141816_AddSubscriptionBookingAllowance`, complete billing revision, repeatable package script, and manifest/smoke verifier. The owner confirms deployment green; subscription billing is closed.
+- Next phase: conduct the full-application UI walkthrough and gap analysis; implement only owner-approved gaps.
 - Notifications/email follow core billing and approved UI gaps.
+
+## Roadmap after subscription billing
+
+1. Full-application UI walkthrough: inspect every family, caregiver, elderly, admin, support, booking, and subscription screen against the deployed API; record missing, stale, or contradictory behavior.
+2. Approved UI gap slices: implement only confirmed gaps, with focused tests, docs, Postman/Bruno coverage, validation, and deployment per slice.
+3. Notifications and email: implement the locked email + in-app channels and unified notification-preferences superset; SMS remains limited to security OTPs.
+4. Phase G: chat/calls and notification delivery integrations.
+5. Phase H: Care Homes only; Marketplace remains a future reconsideration and is not scheduled.
+6. Phase I: earnings ledger/payouts, ratings, emergency-call/contact-card evolution, and remaining financial/operational hardening.
+
+Deferred or unresolved product items to resolve during the UI/product review: payment-method replacement, trials, coupon redemption/marketing delivery, provider/store-policy compatibility, and other explicitly approved billing enhancements. These are not silently included in the completed subscription phase.
 
 ## Pinned plan-change contract
 
