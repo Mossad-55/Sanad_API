@@ -47,7 +47,7 @@ When a session ends or a bounded slice closes, update the `CURRENT HANDOFF` bloc
 
 ### Permanent mastermind model routing and context quarantine
 
-These are permanent repository workflow rules, not session-only preferences. Route workers as follows: `sanad_scout` -> `gpt-6-luna`; `sanad_implementer` -> `gpt-6-sol`; `sanad_reviewer` -> `gpt-6-sol`; `sanad_test_author` -> `gpt-6-luna`; and `sanad_documenter` -> `gpt-6-luna`. If the implementer has two consecutive compile/test failures, assign the correction to `gpt-5.6-sol`, then return subsequent implementer work to `gpt-6-sol`.
+These are permanent repository workflow rules, not session-only preferences. Route workers as follows: `sanad_scout` -> `gpt-5.6-luna`; `sanad_implementer` -> `gpt-5.6-terra`; `sanad_reviewer` -> `gpt-5.6-terra`; `sanad_test_author` -> `gpt-5.6-luna`; and `sanad_documenter` -> `gpt-5.6-luna`.
 
 Do not pass workers raw repository files or full conversation histories. Give them only the immediate paths and discrete snippets needed for their bounded task. After each completed asset, flush conversational context before starting the next worker. Require concise, structural worker reports.
 

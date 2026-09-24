@@ -1,4 +1,48 @@
-# Current phase todo — subscription VAT/tax configuration
+# Current phase todo — subscription docs and worker model routing closeout
+
+The owner authorized one commit and push for the completed subscription documentation correction plus a model-only workflow change. Worker routing requested: Implementer and Reviewer always `gpt-5.6-terra`; Scout, Test Author, and Documenter always `gpt-5.6-luna`. The old two-failure model fallback must be removed. Only `AGENTS.md` and `docs/operations/codex-workflow.md` need routing text changes; the five agent TOMLs have no model field.
+
+## Model-routing change checklist
+
+1. **Owner/mastermind — authorization and live audit:** complete; owner authorized one combined commit/push, and `main`, `HEAD`, `origin/main`, and status were verified. Dependency: current handoff.
+2. **`sanad_scout` — model-rule manifest:** complete; two routing paragraphs and no TOML model fields. Dependency: item 1.
+3. **`sanad_implementer` — two-paragraph model change:** complete; requested assignments are identical in both files, Sol fallback removed, `git diff --check` passed. Dependency: item 2.
+4. **`sanad_test_author` — tests:** complete applicability review; no source/API behavior changed, so no new test is needed. Dependency: item 3.
+5. **Owner — local migration:** complete applicability review; no schema change. Dependency: item 3.
+6. **Mastermind — focused tests, full build, full suite:** complete applicability review; two routing paragraphs changed only, so prior API gates remain valid and are not rerun. Dependency: items 3–5.
+7. **Implementer — correction round:** pending only if review finds a defect. Dependency: item 6.
+8. **`sanad_reviewer` — preliminary review:** complete after private handoff correction; fixed routing and no fallback approved, stale-reference search clear, `git diff --check` passed. Dependency: item 3.
+9. **`sanad_documenter` — public workflow sync:** complete; README has no model-routing rule, agent TOMLs have no model fields, and no public workflow edit beyond the two routing paragraphs is required. Dependency: item 8.
+10. **Mastermind — route/Postman and completeness:** complete for unchanged API surface at 238/274/0/0; recheck if Postman routes change. Dependency: documentation sync.
+11. **`sanad_reviewer` — final sign-off:** complete; seven-file diff approved with zero scoped missing counts, correct routing, valid Premium examples, and private/unrelated artifacts excluded. Dependency: item 9.
+12. **Mastermind — final validation/Bruno:** complete applicability review; `git diff --check`, Postman parsing, and 238/274/0/0 route mapping are green. No API behavior changed, so build/test/Bruno are not rerun. Dependency: item 11.
+13. **Owner-authorized commit and push:** running; one logical commit excludes private/unrelated files. Dependency: item 12.
+14. **Owner — UI walkthrough/deployment:** complete applicability review; no deployment for documentation-only change. Dependency: item 13 for publication.
+15. **Owner — production migration/smoke:** complete applicability review; none required. Dependency: item 14.
+16. **Mastermind — final handoff:** pending pushed SHA and clean tracked status. Dependency: item 13.
+
+## Subscription documentation correction checklist
+
+This bounded correction is pinned to `c620995a3d1400360302397ba7ab5f73dbc1975d`. It clarifies the existing admin plan-version contract and fixes the invalid Postman benefits example. It does not change an HTTP route or business rule. The historical phase records below are retained as history.
+
+1. **Mastermind/owner — audit and scope:** complete; owner raised the documentation gap and the live source was inspected. Dependency: current handoff.
+2. **`sanad_scout` — exact source/manifest map:** complete; enum values, routes, and three affected public artifacts identified. Dependency: item 1.
+3. **`sanad_implementer` — production change:** complete; scout/reviewer confirmed source route and validation are correct; no source edit is needed. Dependency: item 2.
+4. **`sanad_test_author` — contract tests:** complete; existing valid-create and benefit-invariant tests cover the unchanged behavior. Dependency: item 3.
+5. **Owner — local migration:** complete; this documentation correction changes no schema or model. Dependency: item 3.
+6. **Mastermind — focused tests, full build, full suite:** complete applicability review; no source or test change, so prior pinned gates remain valid and are not rerun. Dependency: items 3–5.
+7. **`sanad_implementer` — correction:** complete applicability review; no source defect was found. Dependency: item 6.
+8. **`sanad_reviewer` — preliminary contract review:** complete; one invalid Postman body and one missing admin enum guide found, plus one uncovered positive Bruno create-plan scenario. Dependency: item 2.
+9. **`sanad_documenter` — admin/family docs and Postman:** complete after correction; the three-file synchronization and the Premium key-8 correction parse as JSON, preserve all eight unique keys, and pass `git diff --check`. The first worker interruption is recorded above. Dependency: item 8.
+10. **Mastermind — two-way route/Postman and completeness reconciliation:** complete after correction; checker exit 0: 238 controller actions, 274 Postman API requests, 0 missing, 0 orphan. Both example benefit arrays are identical, have eight unique keys, and set PremiumContent false. Scoped missing counts are 0. Dependency: item 9.
+11. **`sanad_reviewer` — final sign-off:** complete after correction; Premium example values match source and explicit test, scoped missing counts are all 0, and one successful-create runtime scenario is recorded as a manual mutation exception. Dependency: item 10.
+12. **Mastermind — final validation and applicable Bruno:** complete for this docs-only correction; both JSON examples parse and match, `git diff --check` passes, and controller/Postman checker exits 0 at 238/274/0/0. No source/API behavior changed, so completed build/test/Bruno gates are not rerun. Dependency: item 11.
+13. **Owner — commit/push/publication:** owner action; five reviewed public documentation files remain uncommitted and unstaged. Dependency: item 12.
+14. **Owner — UI walkthrough/deployment:** complete applicability review; no deployment is required to validate this local documentation correction. Dependency: item 13 for any publication decision.
+15. **Owner — production migration/smoke:** complete applicability review; no migration or production smoke is required by this documentation-only correction. Dependency: item 14.
+16. **Mastermind — final handoff:** pending owner publication decision; record exact SHA, validation, cleanup, and one next action. Dependency: items 1–15 as applicable.
+
+# Historical phase todo — subscription VAT/tax configuration
 
 ## Roadmap status and next-mastermind handoff
 

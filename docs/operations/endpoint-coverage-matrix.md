@@ -15,7 +15,7 @@ The checker normalizes route parameters and compares controller actions with eve
 | Evidence | Count | Status |
 |---|---:|---|
 | Controller actions | 238 | complete |
-| Postman API requests | 270 | complete |
+| Postman API requests | 274 | complete |
 | Controller actions without Postman | 0 | complete |
 | Orphan Postman API requests | 0 | complete |
 | Postman JSON files parsed | 7 | complete |
@@ -24,7 +24,7 @@ The checker normalizes route parameters and compares controller actions with eve
 
 | Surface | Required visibility and lifecycle | Implementation | Docs | Postman | Bruno/tests |
 |---|---|---|---|---|---|
-| Admin subscriptions | Plan list/detail, family-subscription list/detail, create, publish, retire, coupon reads/mutations, tax reads/mutation | `AdminSubscriptionsController`, subscription queries/commands | `docs/admin/subscriptions.md` | Admin collection | Unit tests; admin-read Bruno requires approved local Super Admin fixture |
+| Admin subscriptions | Plan list/detail, family-subscription list/detail, create, publish, retire, coupon reads/mutations, tax reads/mutation | `AdminSubscriptionsController`, subscription queries/commands | `docs/admin/subscriptions.md` (numeric enum and complete draft-create request) | Admin collection (complete eight-benefit draft-create example) | Unit tests cover valid creation and benefit invariants; Bruno covers create authorization failures and admin reads. Successful admin creation is a manual mutation requiring an approved fixture. |
 | Admin caregivers | Paged list/detail, certificate file/read/review, approve/reject/correction, suspend/reactivate | `AdminCaregiversController` | `docs/admin/caregivers-review.md` | Admin collection | Caregiver review tests and existing Bruno coverage |
 | Admin bookings | Closed booking list/detail, cancellation history, refund retry | `AdminBookingsController` | `docs/admin/bookings.md` | Admin collection | Cancellation/refund tests and existing Bruno coverage |
 | Admin assessments | Question/tier list/detail, authoring, activation state, submissions | `AdminAssessmentsController` | `docs/admin/care-assessments.md` | Admin collection | Assessment tests and existing Bruno coverage |

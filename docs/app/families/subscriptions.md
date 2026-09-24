@@ -6,7 +6,7 @@ Family subscription reads require a normal Family JWT and the `FamilyAccess` pol
 
 `GET /api/v1/family/subscriptions/plans` returns every published plan version. Draft versions are excluded. Published versions retired from new sales remain visible, with `isAvailableForNewSales: false`.
 
-Each item includes its key, version, tax-exclusive price, currency, billing cycle, rollover policy, member and monthly-booking limits, publication/creation timestamps, availability, and all benefit keys with their included state. The catalog read does not add VAT/tax to the returned price.
+Each item includes its key, version, tax-exclusive price, currency, billing cycle, rollover policy, member and monthly-booking limits, publication/creation timestamps, availability, and all benefit keys with their included state. Interpret these numeric JSON enum values as follows: `cycle` is `1` Monthly or `2` Annual; a benefit's `key` is `1` Chatting, `2` Library, `3` CommunityForum, `4` FamilyActivityTimeline, `5` BasicSearch, `6` AdvancedSearchFilters, `7` MedicalSummaryExportAndSecureSharing, or `8` PremiumContent, and `isIncluded` is the boolean state for that benefit. Each limit has `kind` `1` Finite with a positive integer `value`, or `2` Unlimited with `value: null`. `rollover` is `1` None or `2` NotApplicable. The catalog read does not add VAT/tax to the returned price.
 
 ## Purchase quote
 
@@ -142,7 +142,7 @@ recurrence is not claimed.
 
 `GET /api/v1/family/subscriptions/current` returns `{ "currentSubscription": ... }`. The value is selected only from the caller's family `FamilySubscriptions` rows where `isCurrent` is true. It includes the stored plan terms and owned benefits; it does not join the mutable catalog.
 
-When no current row exists, the route returns HTTP `200` with `currentSubscription: null`. It does not synthesize a Free plan.
+When no current row exists, the route returns HTTP `200` with `currentSubscription: null`. It does not synthesize a Free plan. The stored benefit objects use the same numeric `key` mapping and boolean `isIncluded` state described for the published catalog; `cycle` and `rollover` use the same numeric mappings, and each member/monthly-booking limit is returned as `{ "kind": 1, "value": <positive integer> }` for Finite or `{ "kind": 2, "value": null }` for Unlimited.
 
 The current snapshot also exposes `autoRenewEnabled`, `cancellationRequestedOnUtc`, and the stored
 `currentPeriodEndsOnUtc` boundary, plus `renewalGraceEndsOnUtc` and

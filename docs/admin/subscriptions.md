@@ -33,6 +33,36 @@ POST /api/v1/admin/subscriptions/plans
 
 The request supplies `key`, positive `version`, `price`, `cycle`, `currency` (`EGP`), every existing benefit key with its `isIncluded` value, `memberLimit`, `monthlyBookingLimit`, `rollover`, and optional `paymobSubscriptionPlanId`. The `(key, version)` pair is unique. The response is `201` with the new plan-version ID; invalid terms return `400` and a duplicate pair returns `409`.
 
+The JSON enum values are numeric: `cycle` is `1` Monthly or `2` Annual; each benefit `key` is `1` Chatting, `2` Library, `3` CommunityForum, `4` FamilyActivityTimeline, `5` BasicSearch, `6` AdvancedSearchFilters, `7` MedicalSummaryExportAndSecureSharing, or `8` PremiumContent. Include all eight benefit objects exactly once, each with `key` and boolean `isIncluded`. A limit is `{ "kind": 1, "value": <positive integer> }` for Finite or `{ "kind": 2, "value": null }` for Unlimited. `rollover` is `1` None or `2` NotApplicable.
+
+Example valid premium draft request:
+
+```json
+{
+  "key": "premium",
+  "version": 2,
+  "price": 299.00,
+  "cycle": 1,
+  "currency": "EGP",
+  "benefits": [
+    { "key": 1, "isIncluded": true },
+    { "key": 2, "isIncluded": true },
+    { "key": 3, "isIncluded": true },
+    { "key": 4, "isIncluded": true },
+    { "key": 5, "isIncluded": true },
+    { "key": 6, "isIncluded": true },
+    { "key": 7, "isIncluded": true },
+    { "key": 8, "isIncluded": false }
+  ],
+  "memberLimit": { "kind": 1, "value": 10 },
+  "monthlyBookingLimit": { "kind": 1, "value": 20 },
+  "rollover": 1,
+  "paymobSubscriptionPlanId": 6755
+}
+```
+
+Creating this resource creates a draft only; it does not publish the plan or activate a family subscription. There is no plan edit endpoint. Publish a draft separately with the publish route below. A family subscription becomes active only after a successful payment callback is settled.
+
 `paymobSubscriptionPlanId` is the local plan's Paymob subscription-plan mapping. A positive value enables the initial Card enrollment path when the Paymob Card 3DS integration is configured; omit it for plans that must use one-time/manual billing. Plan list/detail reads return the nullable field so administrators can verify the effective mapping. This field is not a persisted provider subscription ID.
 
 Publish a draft exactly once:
