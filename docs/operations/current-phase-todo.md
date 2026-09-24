@@ -25,12 +25,18 @@ The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the
 
 ## Roadmap after subscription billing
 
-1. Full-application UI walkthrough: inspect every family, caregiver, elderly, admin, support, booking, and subscription screen against the deployed API; record missing, stale, or contradictory behavior.
-2. Approved UI gap slices: implement only confirmed gaps, with focused tests, docs, Postman/Bruno coverage, validation, and deployment per slice.
-3. Notifications and email: implement the locked email + in-app channels and unified notification-preferences superset; SMS remains limited to security OTPs.
-4. Phase G: chat/calls and notification delivery integrations.
-5. Phase H: Care Homes only; Marketplace remains a future reconsideration and is not scheduled.
-6. Phase I: earnings ledger/payouts, ratings, emergency-call/contact-card evolution, and remaining financial/operational hardening.
+1. Full-application UI walkthrough and contract reconciliation.
+2. V1 text chat and messaging, including attachments, read receipts, realtime updates, and push integration. Video and voice calls are V2 and excluded.
+3. Shared notification center and delivery foundation.
+4. Elderly assistance requests, medication execution/history, SOS, and elderly dashboard.
+5. Family, caregiver/nurse dashboards plus booking execution and medical-detail integration.
+6. Care homes.
+7. Community and health library.
+8. Medical access grants and clinical sharing.
+9. Ratings, earnings/payouts, invoice history, unified search, and final cross-role hardening.
+
+The detailed scope, dependencies, and `Needs owner verification` gates are in
+[`application-roadmap.md`](application-roadmap.md).
 
 Deferred or unresolved product items to resolve during the UI/product review: payment-method replacement, trials, coupon redemption/marketing delivery, provider/store-policy compatibility, and other explicitly approved billing enhancements. These are not silently included in the completed subscription phase.
 
