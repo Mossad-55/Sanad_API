@@ -15,6 +15,21 @@ The default package directory is `deploy/publish-out/` and is intentionally
 ignored by Git. Do not copy `appsettings.Development.json` or development seed
 settings to a VPS or production environment.
 
+After the published API starts, verify the exact package and run the anonymous
+smoke contract with:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\Verify-SanadDeployment.ps1 `
+  -ManifestPath .\deploy\publish-out\sanad-deployment-manifest.json `
+  -BaseUrl https://your-authorized-host `
+  -ExpectedRevision <pushed-sha>
+```
+
+The verifier checks the manifest revision and calls the existing anonymous
+`GET /api/v1/lookups/services` endpoint for HTTP 200. The API currently has no
+separate health route; startup migration output plus this smoke result are the
+release health evidence.
+
 Before a remote launch:
 
 1. Verify the exact pushed revision in `sanad-deployment-manifest.json`.
