@@ -44,7 +44,9 @@ public sealed record SubscriptionSnapshotResponse(
     DateTime? RenewalGraceEndsOnUtc,
     DateTime? LastRenewalFailedOnUtc,
     DateTime CreatedOnUtc,
-    IReadOnlyList<SubscriptionBenefitResponse> Benefits);
+    IReadOnlyList<SubscriptionBenefitResponse> Benefits,
+    PendingDowngradeResponse? PendingDowngrade = null);
+public sealed record PendingDowngradeResponse(string PlanKey, int PlanVersion, decimal Price, SubscriptionCycle Cycle, string Currency);
 
 public sealed record CurrentSubscriptionResponse(SubscriptionSnapshotResponse? CurrentSubscription);
 public sealed record SubscriptionCouponResponse(
@@ -176,5 +178,6 @@ public sealed class GetCurrentSubscriptionQueryHandler : IQueryHandler<GetCurren
             subscription.RenewalGraceEndsOnUtc,
             subscription.LastRenewalFailedOnUtc,
             subscription.CreatedOnUtc,
-            subscription.Benefits.Select(benefit => new SubscriptionBenefitResponse(benefit.Key, benefit.IsIncluded)).ToList());
+            subscription.Benefits.Select(benefit => new SubscriptionBenefitResponse(benefit.Key, benefit.IsIncluded)).ToList(),
+            subscription.PendingDowngrade is null ? null : new PendingDowngradeResponse(subscription.PendingDowngrade.PlanKey, subscription.PendingDowngrade.PlanVersion, subscription.PendingDowngrade.Price, subscription.PendingDowngrade.Cycle, subscription.PendingDowngrade.Currency));
 }

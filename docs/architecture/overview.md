@@ -89,12 +89,12 @@ Implemented:
 - Caregiver booking list/detail (including family and caregiver cancellations)
 - Attendance start/complete plus immutable Visit Reports and Medical Reports with private optional photos
 - Admin closed-booking list, cancellation history, fact-aware refund state, and failed-refund retry
-- Owner-only subscription catalog/current snapshot reads, server-side purchase quotes, initial Card enrollment when a local Paymob subscription-plan mapping and Card 3DS integration are configured, manual Card/Wallet renewal payment intents, HMAC settlement, cancel-renewal lifecycle, seven-day renewal grace recovery, and original-anchor payment retry
+- Owner-only subscription catalog/current snapshot reads (including pending-downgrade visibility), server-side purchase and plan-change quotes, immediate prorated upgrades, next-renewal downgrades, initial Card enrollment when a local Paymob subscription-plan mapping and Card 3DS integration are configured, manual Card/Wallet renewal payment intents, HMAC settlement, cancel-renewal lifecycle, seven-day renewal grace recovery, and original-anchor payment retry
 - Super Admin subscription plan and family-subscription list/detail reads, plan authoring/publication/retirement, coupon configuration, and VAT/tax-rule configuration
 
 Not implemented yet:
 
 - Ratings / reviews HTTP
 - Booking cancellation fee tiers
-- Paymob subscription callback settlement, shared provider-identity persistence, durable callback idempotency, and seven-day renewal grace are implemented; Wallet stays one-time/manual. Upgrades/downgrades/proration, invoices/PDFs, allowance consumption, and notifications remain later slices
+- Paymob subscription callback settlement, shared provider-identity persistence, durable callback idempotency, and seven-day renewal grace are implemented; Wallet stays one-time/manual. Plan-change code and documentation are present for the bounded upgrade/downgrade contract, but its persistence migration and release/deployment validation remain pending; no deployment is claimed here. Invoices/PDFs, allowance consumption, and notifications remain later slices
 - Social / Google / Apple authentication (cancelled and removed)

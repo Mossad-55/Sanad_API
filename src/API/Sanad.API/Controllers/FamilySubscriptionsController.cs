@@ -19,6 +19,9 @@ public sealed record CreateSubscriptionPaymentIntentRequest(
 public sealed record CreateSubscriptionRenewalPaymentIntentRequest(
     SubscriptionPaymentMethod Method,
     PaymobBillingData Billing);
+public sealed record CreatePlanChangeQuoteRequest(Guid PlanVersionId);
+public sealed record CreatePlanChangePaymentIntentRequest(Guid PlanVersionId, SubscriptionPaymentMethod Method, PaymobBillingData Billing);
+public sealed record ReplacePendingDowngradeRequest(Guid PlanVersionId);
 
 [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
 [Route("api/v1/family/subscriptions")]
@@ -169,6 +172,36 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
         return status == 0 ? ToActionResult(result) : Problem(status, result.Error);
     }
 
+    [HttpPost("plan-change/quote")]
+    public async Task<IActionResult> PlanChangeQuote([FromBody] CreatePlanChangeQuoteRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var result = await _sender.Send(new CreatePlanChangeQuoteCommand(userId, request.PlanVersionId, DateTime.UtcNow), cancellationToken);
+        return ToPlanChangeResult(result);
+    }
+
+    [HttpPost("plan-change/payment-intent")]
+    public async Task<IActionResult> CreatePlanChangePaymentIntent([FromBody] CreatePlanChangePaymentIntentRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var result = await _sender.Send(new CreatePlanChangePaymentIntentCommand(userId, request.PlanVersionId, request.Method, request.Billing, DateTime.UtcNow), cancellationToken);
+        return ToPlanChangeResult(result);
+    }
+
+    [HttpPut("pending-downgrade")]
+    public async Task<IActionResult> ReplacePendingDowngrade([FromBody] ReplacePendingDowngradeRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        return ToPlanChangeCommandResult(await _sender.Send(new ReplacePendingDowngradeCommand(userId, request.PlanVersionId, DateTime.UtcNow), cancellationToken));
+    }
+
+    [HttpDelete("pending-downgrade")]
+    public async Task<IActionResult> DeletePendingDowngrade(CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        return ToPlanChangeCommandResult(await _sender.Send(new CancelPendingDowngradeCommand(userId, DateTime.UtcNow), cancellationToken));
+    }
+
     [HttpPost("cancel-renewal")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
@@ -197,7 +230,7 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
         int status = result.Error.Code switch
         {
             "Subscriptions.Subscription.NotFound" => StatusCodes.Status404NotFound,
-            "Subscriptions.CancelRenewal.AlreadyRequested" or "Subscriptions.ReenableAutoRenew.NotCancelled" or "Subscriptions.ReenableAutoRenew.PeriodEnded" => StatusCodes.Status409Conflict,
+            "Subscriptions.CancelRenewal.AlreadyRequested" or "Subscriptions.ReenableAutoRenew.NotCancelled" or "Subscriptions.ReenableAutoRenew.PeriodEnded" or "Subscriptions.PlanChange.NotOwner" => StatusCodes.Status409Conflict,
             _ => 0
         };
         if (status == 0) return ToActionResult(result);
@@ -205,6 +238,33 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
         problem.Extensions["code"] = result.Error.Code;
         problem.Extensions["traceId"] = HttpContext.TraceIdentifier;
         return StatusCode(status, problem);
+    }
+
+    private IActionResult ToPlanChangeResult<T>(Result<T> result)
+    {
+        if (result.IsSuccess) return Ok(result.Value);
+        int status = result.Error.Code switch
+        {
+            "Subscriptions.PlanChange.NotOwner" => StatusCodes.Status403Forbidden,
+            "Subscriptions.PlanChange.NotFound" or "Subscriptions.PlanChange.PlanNotFound" => StatusCodes.Status404NotFound,
+            "Paymob.GatewayError" => StatusCodes.Status502BadGateway,
+            "Paymob.NotConfigured" => StatusCodes.Status503ServiceUnavailable,
+            "Subscriptions.PlanChange.PaymentNotRequired" => StatusCodes.Status400BadRequest,
+            _ => StatusCodes.Status409Conflict
+        };
+        return Problem(status, result.Error);
+    }
+
+    private IActionResult ToPlanChangeCommandResult(Result result)
+    {
+        if (result.IsSuccess) return NoContent();
+        int status = result.Error.Code switch
+        {
+            "Subscriptions.PlanChange.NotOwner" => StatusCodes.Status403Forbidden,
+            "Subscriptions.PlanChange.NotFound" or "Subscriptions.PlanChange.PlanNotFound" => StatusCodes.Status404NotFound,
+            _ => StatusCodes.Status409Conflict
+        };
+        return Problem(status, result.Error);
     }
 
     private IActionResult Problem(int status, Error error)

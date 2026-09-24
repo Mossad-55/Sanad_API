@@ -80,6 +80,11 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
     public string? CouponCode { get; private set; }
     public Guid? SubscriptionId { get; private set; }
     public bool IsRenewal { get; private set; }
+    public bool IsPlanChange { get; private set; }
+    public decimal? SourcePeriodGross { get; private set; }
+    public decimal? SourcePeriodTaxRatePercentage { get; private set; }
+    public decimal? ProratedCredit { get; private set; }
+    public DateTime? SourcePeriodEndsOnUtc { get; private set; }
     public string MerchantReference => $"sub_{Id:N}";
     public string? PaymobOrderId { get; private set; }
     public string? PaymobTransactionId { get; private set; }
@@ -158,6 +163,34 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
             true,
             createdOnUtc);
 
+        return attempt;
+    }
+
+    public static SubscriptionPaymentAttempt CreatePlanChange(
+        FamilySubscription subscription,
+        SubscriptionPlanVersion targetPlan,
+        decimal targetRemainingGross,
+        decimal sourcePeriodGross,
+        decimal proratedCredit,
+        decimal targetTaxRatePercentage,
+        decimal targetTaxAmount,
+        SubscriptionPaymentMethod method,
+        DateTime createdOnUtc)
+    {
+        ArgumentNullException.ThrowIfNull(subscription);
+        ArgumentNullException.ThrowIfNull(targetPlan);
+        decimal total = Money(Math.Max(0m, targetRemainingGross - proratedCredit));
+        var attempt = new SubscriptionPaymentAttempt(Guid.CreateVersion7(), subscription.FamilyId,
+            targetPlan.Id, targetPlan.Key, targetPlan.Version, targetRemainingGross, 0m, 0m,
+            targetRemainingGross, targetTaxRatePercentage, targetTaxAmount, total, targetPlan.Currency, method,
+            null, subscription.Id, false, createdOnUtc)
+        {
+            IsPlanChange = true,
+            SourcePeriodGross = Money(sourcePeriodGross),
+            SourcePeriodTaxRatePercentage = subscription.CurrentPeriodTaxRatePercentage,
+            ProratedCredit = Money(proratedCredit),
+            SourcePeriodEndsOnUtc = subscription.CurrentPeriodEndsOnUtc
+        };
         return attempt;
     }
 

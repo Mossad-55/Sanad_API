@@ -45,6 +45,12 @@ public interface IPaymobClient
         => Task.FromResult(Result<PaymobPaymentIntent>.Failure(
             new Error("Paymob.MethodNotAvailable", "Subscription payments are not available for this client.")));
 
+    Task<Result> UpdateSubscriptionAmountAsync(
+        string providerSubscriptionId,
+        decimal targetRecurringGross,
+        CancellationToken cancellationToken = default) => Task.FromResult(Result.Failure(
+            new Error("Paymob.MethodNotAvailable", "Subscription updates are not available for this client.")));
+
     Task<Result<string?>> RefundPaymentAsync(
         string paymobTransactionId,
         decimal amount,

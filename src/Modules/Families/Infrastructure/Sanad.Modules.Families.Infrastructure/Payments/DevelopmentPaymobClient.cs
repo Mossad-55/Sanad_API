@@ -37,4 +37,7 @@ public sealed class DevelopmentPaymobClient : IPaymobClient
     {
         return Task.FromResult(Result<string?>.Success($"dev-refund-{Guid.NewGuid():N}"));
     }
+
+    public Task<Result> UpdateSubscriptionAmountAsync(string providerSubscriptionId, decimal targetRecurringGross, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Result.Success());
 }

@@ -29,7 +29,7 @@ The checker normalizes route parameters and compares controller actions with eve
 | Admin bookings | Closed booking list/detail, cancellation history, refund retry | `AdminBookingsController` | `docs/admin/bookings.md` | Admin collection | Cancellation/refund tests and existing Bruno coverage |
 | Admin assessments | Question/tier list/detail, authoring, activation state, submissions | `AdminAssessmentsController` | `docs/admin/care-assessments.md` | Admin collection | Assessment tests and existing Bruno coverage |
 | Admin lookups/CMS | List/detail reads paired with create/update/activate/deactivate/publish flows | Admin CMS controllers | `docs/admin/*.md` | Admin collection | Existing unit/Bruno coverage |
-| Family subscriptions | Plan catalog/current snapshot, quote, initial payment intent, renewal payment intent, renewal controls, seven-day grace settlement | `FamilySubscriptionsController`, subscription commands | `docs/app/families/subscriptions.md` | Family collection | Subscription tests and renewal Bruno contract |
+| Family subscriptions | Plan catalog/current snapshot (including pending downgrade), purchase and plan-change quotes, initial/upgrade payment intents, pending-downgrade lifecycle, renewal payment intent, renewal controls, seven-day grace settlement | `FamilySubscriptionsController`, subscription commands | `docs/app/families/subscriptions.md` | Family collection | Subscription tests and renewal/plan-change contract coverage |
 
 ### Bounded Paymob Card enrollment requirement
 

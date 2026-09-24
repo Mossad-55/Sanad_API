@@ -237,12 +237,12 @@ public sealed class SubscriptionPaymentTests
             default);
         string reference = intent.Value.MerchantReference;
 
-        var pending = await new ConfirmSubscriptionPaymentCommandHandler(db).Handle(
+        var pending = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
             new ConfirmSubscriptionPaymentCommand(reference, 10, 29900, "EGP", false, true, DateTime.UtcNow), default);
         Assert.Equal("Pending", pending.Value.Outcome);
         Assert.Empty(db.FamilySubscriptions);
 
-        var failed = await new ConfirmSubscriptionPaymentCommandHandler(db).Handle(
+        var failed = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
             new ConfirmSubscriptionPaymentCommand(reference, 11, 29900, "EGP", false, false, DateTime.UtcNow), default);
         Assert.Equal("Failed", failed.Value.Outcome);
         Assert.Empty(db.FamilySubscriptions);
@@ -250,9 +250,9 @@ public sealed class SubscriptionPaymentTests
         var secondIntent = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow), default);
-        var paid = await new ConfirmSubscriptionPaymentCommandHandler(db).Handle(
+        var paid = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
             new ConfirmSubscriptionPaymentCommand(secondIntent.Value.MerchantReference, 12, 29900, "EGP", true, false, DateTime.UtcNow), default);
-        var duplicate = await new ConfirmSubscriptionPaymentCommandHandler(db).Handle(
+        var duplicate = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
             new ConfirmSubscriptionPaymentCommand(secondIntent.Value.MerchantReference, 13, 29900, "EGP", true, false, DateTime.UtcNow), default);
 
         Assert.Equal("Paid", paid.Value.Outcome);
@@ -270,9 +270,9 @@ public sealed class SubscriptionPaymentTests
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow), default);
 
-        var amountMismatch = await new ConfirmSubscriptionPaymentCommandHandler(db).Handle(
+        var amountMismatch = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
             new ConfirmSubscriptionPaymentCommand(intent.Value.MerchantReference, 20, 1, "EGP", true, false, DateTime.UtcNow), default);
-        var currencyMismatch = await new ConfirmSubscriptionPaymentCommandHandler(db).Handle(
+        var currencyMismatch = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
             new ConfirmSubscriptionPaymentCommand(intent.Value.MerchantReference, 21, 29900, "USD", true, false, DateTime.UtcNow), default);
 
         Assert.False(amountMismatch.IsSuccess);
@@ -324,7 +324,7 @@ public sealed class SubscriptionPaymentTests
         var first = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob).Handle(
             new CreateSubscriptionRenewalPaymentIntentCommand(
                 family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), failureTime), default);
-        var failed = await new ConfirmSubscriptionPaymentCommandHandler(db).Handle(
+        var failed = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
             new ConfirmSubscriptionPaymentCommand(first.Value.MerchantReference, 31, 29900, "EGP", false, false, failureTime), default);
 
         Assert.Equal("Failed", failed.Value.Outcome);
@@ -333,7 +333,7 @@ public sealed class SubscriptionPaymentTests
         var retry = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob).Handle(
             new CreateSubscriptionRenewalPaymentIntentCommand(
                 family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), periodEnd.AddDays(3)), default);
-        var paid = await new ConfirmSubscriptionPaymentCommandHandler(db).Handle(
+        var paid = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
             new ConfirmSubscriptionPaymentCommand(retry.Value.MerchantReference, 32, 29900, "EGP", true, false, periodEnd.AddDays(3)), default);
 
         Assert.Equal("Paid", paid.Value.Outcome);

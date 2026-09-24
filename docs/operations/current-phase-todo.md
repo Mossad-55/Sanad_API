@@ -1,4 +1,31 @@
-# Current phase todo — subscription docs and worker model routing closeout
+# Current phase todo — subscription plan changes
+
+Owner-confirmed roadmap: complete remaining subscription billing, validate and publish the verified revision, conduct the owner/mastermind UI walkthrough and gap analysis, implement approved gaps, then deliver notifications before later roadmap work. The current slice adds immediate prorated upgrades and next-renewal downgrades; invoices/PDFs and booking-completion allowance consumption remain later slices.
+
+## Current status
+
+- Implementation and focused contract tests are complete. The accounting review finding was corrected so paid and zero-charge upgrades retain the target remaining-period gross for future credit calculations. The full suite also exposed a duplicate-webhook regression for initial subscription purchases and renewals; successful settlement now marks those payment attempts succeeded after validation.
+- Validation is green: Families Application build passed with 0 warnings/errors; full solution build passed with 0 warnings/errors; full test run passed architecture 1/1 and unit 1817/1817; route-to-Postman check passed with 242 controller actions, 278 requests, 0 missing, 0 orphan; `git diff --check` passed with only line-ending warnings.
+- Migration `20260924120349_AddSubscriptionPlanChanges` was generated, inspected, applied to the authorized local target `localhost:5432/SanadDb`, and confirmed applied. `dotnet ef migrations has-pending-model-changes` reports no model changes since the migration.
+- Public family/admin guides, README, architecture, endpoint matrix, and Family Postman are synchronized. No dedicated plan-change Bruno run has been performed; the local development seed has only a Free current subscription, so it does not provide a paid Card subscription for safe end-to-end upgrade/downgrade coverage. Unit tests cover provider ordering and failure behavior.
+- No production migration, deployment, commit, or push has occurred. The worktree contains unrelated/private changes that remain outside this slice.
+
+## Remaining phase work
+
+- Owner authorized commit and push after inspecting the worktree; mastermind will publish the validated subscription feature and Luna/medium routing update in separate logical commits, excluding private handoffs and unrelated `subscription-vat-tax/` artifacts.
+- After publication, owner deploys the verified subscription revision, verifies the migration on the production target, and runs safe API/subscription smoke checks.
+- Then conduct the owner/mastermind UI walkthrough and gap analysis. Implement only owner-approved gaps before starting notifications.
+
+## Pinned plan-change contract
+
+- Dedicated Owner-only routes: `POST /api/v1/family/subscriptions/plan-change/quote`, `POST /api/v1/family/subscriptions/plan-change/payment-intent` for immediate upgrades, `PUT /api/v1/family/subscriptions/pending-downgrade`, and `DELETE /api/v1/family/subscriptions/pending-downgrade`.
+- Coupons do not apply to plan changes. The upgrade quote calculates the target plan's remaining-period gross amount using the effective tax rule, subtracts a time-prorated credit from the actually settled current-period gross amount, and floors the final charge at zero. Unpaid time earns no credit. Persist exact quoted gross, credit, tax, source/target terms, and provider-verification values.
+- Card upgrades collect the immediate delta through a one-time provider payment, then update the existing provider subscription for future recurring billing; do not create a parallel provider subscription or re-enroll the card. Wallet upgrades remain one-time/manual and future Wallet renewals remain manual.
+- A pending downgrade is effective only after a successful renewal at the original period boundary. `PUT` replaces an existing pending downgrade; `DELETE` cancels it; a successful upgrade clears it. Reject both plan-change operations during failed-renewal grace and when cancel-renewal is requested. The family current-subscription response exposes the pending downgrade.
+- Paymob provider update is `PUT /api/acceptance/subscriptions/{subscriptionId}` with bearer authorization and JSON `{ "amount_cents": <target recurring gross cents> }`. It is invoked only after the immediate upgrade payment has been successfully settled and before local upgrade finalization. The request sets an exact value, so retrying the same target amount is safe. Do not send `next_billing`, `ends_at`, or a new provider enrollment; preserve the original provider subscription and renewal anchor. A failed update must not finalize the local plan snapshot; it must remain safely retryable through the existing idempotent callback/settlement path.
+- A zero-charge upgrade is confirmed by the existing `POST /plan-change/payment-intent` route: it performs no provider charge, performs the Card future-billing amount update when applicable, and then finalizes the local target snapshot. For Card, scheduling/replacing/cancelling a pending downgrade synchronizes the existing provider subscription's exact future recurring amount immediately (target amount on schedule/replace; current amount on cancel). On any provider-update failure, the local pending state remains unchanged. Wallet has no provider-subscription update and remains manual.
+
+# Historical phase todo — subscription docs and worker model routing closeout
 
 The owner authorized one commit and push for the completed subscription documentation correction plus a model-only workflow change. Worker routing requested: Implementer and Reviewer always `gpt-5.6-terra`; Scout, Test Author, and Documenter always `gpt-5.6-luna`. The old two-failure model fallback must be removed. Only `AGENTS.md` and `docs/operations/codex-workflow.md` need routing text changes; the five agent TOMLs have no model field.
 

@@ -235,8 +235,9 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
     : ICommandHandler<ConfirmSubscriptionPaymentCommand, ConfirmSubscriptionPaymentResponse>
 {
     private readonly IFamiliesDbContext _db;
+    private readonly IPaymobClient _paymobClient;
 
-    public ConfirmSubscriptionPaymentCommandHandler(IFamiliesDbContext db) => _db = db;
+    public ConfirmSubscriptionPaymentCommandHandler(IFamiliesDbContext db, IPaymobClient paymobClient) { _db = db; _paymobClient = paymobClient; }
 
     public async Task<Result<ConfirmSubscriptionPaymentResponse>> Handle(
         ConfirmSubscriptionPaymentCommand request,
@@ -285,8 +286,24 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
             return Result<ConfirmSubscriptionPaymentResponse>.Failure(
                 new Error("Subscriptions.Payment.PlanNotFound", "The subscription plan for this payment no longer exists."));
 
-        attempt.TryMarkSucceeded(transactionId, request.UtcNow);
-        if (attempt.IsRenewal)
+        if (attempt.IsPlanChange)
+        {
+            var currentSubscription = await _db.FamilySubscriptions.SingleOrDefaultAsync(item => item.Id == attempt.SubscriptionId && item.IsCurrent, cancellationToken);
+            if (currentSubscription is null) return Result<ConfirmSubscriptionPaymentResponse>.Failure(new Error("Subscriptions.PlanChange.NotFound", "The current subscription was not found."));
+            if (currentSubscription.CancellationRequestedOnUtc is not null || currentSubscription.IsWithinRenewalGrace(request.UtcNow))
+                return Result<ConfirmSubscriptionPaymentResponse>.Failure(new Error("Subscriptions.PlanChange.Unavailable", "Plan changes are unavailable for the current subscription state."));
+            if (attempt.Method == SubscriptionPaymentMethod.Card)
+            {
+                if (string.IsNullOrWhiteSpace(currentSubscription.PaymobSubscriptionId))
+                    return Result<ConfirmSubscriptionPaymentResponse>.Failure(new Error("Paymob.SubscriptionNotFound", "No provider subscription is available to update."));
+                decimal futureGross = decimal.Round(plan.Price * (1m + attempt.TaxRatePercentage / 100m), 2, MidpointRounding.ToEven);
+                var update = await _paymobClient.UpdateSubscriptionAmountAsync(currentSubscription.PaymobSubscriptionId, futureGross, cancellationToken);
+                if (!update.IsSuccess) return Result<ConfirmSubscriptionPaymentResponse>.Failure(update.Error);
+            }
+            currentSubscription.ApplyImmediatePlanChange(plan, attempt.BasePrice, attempt.TaxRatePercentage);
+            attempt.TryMarkSucceeded(transactionId, request.UtcNow);
+        }
+        else if (attempt.IsRenewal)
         {
             var currentSubscription = await _db.FamilySubscriptions
                 .SingleOrDefaultAsync(item => item.Id == attempt.SubscriptionId && item.IsCurrent, cancellationToken);
@@ -297,6 +314,8 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
             try
             {
                 currentSubscription.ApplySuccessfulRenewal(request.UtcNow);
+                currentSubscription.SetCurrentPeriodSettlement(attempt.TotalPayable, attempt.TaxRatePercentage);
+                attempt.TryMarkSucceeded(transactionId, request.UtcNow);
             }
             catch (DomainException exception)
             {
@@ -313,6 +332,8 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
                     new Error("Subscriptions.Payment.CurrentExists", "A current subscription already exists for this family."));
 
             var createdSubscription = FamilySubscription.Create(attempt.FamilyId, plan, request.UtcNow);
+            createdSubscription.SetCurrentPeriodSettlement(attempt.TotalPayable, attempt.TaxRatePercentage);
+            attempt.LinkSubscription(createdSubscription.Id);
             if (!string.IsNullOrWhiteSpace(attempt.PaymobSubscriptionId))
             {
                 createdSubscription.AssociatePaymobSubscription(
@@ -322,7 +343,7 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
             }
 
             _db.FamilySubscriptions.Add(createdSubscription);
-            attempt.LinkSubscription(createdSubscription.Id);
+            attempt.TryMarkSucceeded(transactionId, request.UtcNow);
         }
 
         try

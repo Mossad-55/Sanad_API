@@ -181,6 +181,12 @@ public sealed class FamiliesDbContext :
 
     private void ThrowIfFamilySubscriptionMutated()
     {
+        var lifecycleUpdatedSubscriptionIds = ChangeTracker.Entries<FamilySubscription>()
+            .Where(entry => entry.State == EntityState.Modified &&
+                            entry.Property(x => x.LifecycleVersion).IsModified)
+            .Select(entry => entry.Entity.Id)
+            .ToHashSet();
+
         foreach (var entry in ChangeTracker.Entries<FamilySubscription>())
         {
             if (entry.State == EntityState.Deleted)
@@ -189,19 +195,26 @@ public sealed class FamiliesDbContext :
                     $"{nameof(FamilySubscription)} entries are immutable and cannot be deleted.");
             }
 
+            bool appliesPlanTerms = entry.State == EntityState.Modified &&
+                                     entry.Property(x => x.LifecycleVersion).IsModified &&
+                                     entry.Properties.Any(property => property.IsModified && property.Metadata.Name is
+                                         (nameof(FamilySubscription.PlanKey)
+                                         or nameof(FamilySubscription.PlanVersion)
+                                         or nameof(FamilySubscription.Price)
+                                         or nameof(FamilySubscription.Cycle)
+                                         or nameof(FamilySubscription.Currency)
+                                         or nameof(FamilySubscription.MemberLimitKind)
+                                         or nameof(FamilySubscription.MemberLimitValue)
+                                         or nameof(FamilySubscription.MonthlyBookingLimitKind)
+                                         or nameof(FamilySubscription.MonthlyBookingLimitValue)
+                                         or nameof(FamilySubscription.Rollover)
+                                         or nameof(FamilySubscription.CurrentPeriodGross)
+                                         or nameof(FamilySubscription.CurrentPeriodTaxRatePercentage)));
+
             if (entry.State == EntityState.Modified && entry.Properties.Any(property =>
-                    property.IsModified && property.Metadata.Name is not
-                        (nameof(FamilySubscription.IsCurrent)
-                        or nameof(FamilySubscription.AutoRenewEnabled)
-                        or nameof(FamilySubscription.CancellationRequestedOnUtc)
-                        or nameof(FamilySubscription.CurrentPeriodEndsOnUtc)
-                        or nameof(FamilySubscription.RenewalGraceEndsOnUtc)
-                        or nameof(FamilySubscription.LastRenewalFailedOnUtc)
-                        or nameof(FamilySubscription.PaymobSubscriptionId)
-                        or nameof(FamilySubscription.PaymobSubscriptionState)
-                        or nameof(FamilySubscription.PaymobNextBillingOnUtc)
-                        or nameof(FamilySubscription.PaymobLastCallbackKey)
-                        or nameof(FamilySubscription.LifecycleVersion))))
+                    property.IsModified &&
+                    !IsFamilySubscriptionLifecycleField(property.Metadata.Name) &&
+                    !(appliesPlanTerms && IsFamilySubscriptionPlanTerm(property.Metadata.Name))))
             {
                 throw new InvalidOperationException(
                     $"{nameof(FamilySubscription)} snapshot fields are immutable; only lifecycle fields " +
@@ -217,9 +230,40 @@ public sealed class FamiliesDbContext :
             }
         }
 
+        static bool IsFamilySubscriptionLifecycleField(string name) => name is
+            nameof(FamilySubscription.IsCurrent)
+            or nameof(FamilySubscription.AutoRenewEnabled)
+            or nameof(FamilySubscription.CancellationRequestedOnUtc)
+            or nameof(FamilySubscription.CurrentPeriodEndsOnUtc)
+            or nameof(FamilySubscription.RenewalGraceEndsOnUtc)
+            or nameof(FamilySubscription.LastRenewalFailedOnUtc)
+            or nameof(FamilySubscription.PaymobSubscriptionId)
+            or nameof(FamilySubscription.PaymobSubscriptionState)
+            or nameof(FamilySubscription.PaymobNextBillingOnUtc)
+            or nameof(FamilySubscription.PaymobLastCallbackKey)
+            or nameof(FamilySubscription.LifecycleVersion);
+
+        static bool IsFamilySubscriptionPlanTerm(string name) => name is
+            nameof(FamilySubscription.PlanKey)
+            or nameof(FamilySubscription.PlanVersion)
+            or nameof(FamilySubscription.Price)
+            or nameof(FamilySubscription.Cycle)
+            or nameof(FamilySubscription.Currency)
+            or nameof(FamilySubscription.MemberLimitKind)
+            or nameof(FamilySubscription.MemberLimitValue)
+            or nameof(FamilySubscription.MonthlyBookingLimitKind)
+            or nameof(FamilySubscription.MonthlyBookingLimitValue)
+            or nameof(FamilySubscription.Rollover)
+            or nameof(FamilySubscription.CurrentPeriodGross)
+            or nameof(FamilySubscription.CurrentPeriodTaxRatePercentage);
+
         foreach (var entry in ChangeTracker.Entries<SubscriptionBenefit>())
         {
-            if (entry.State is EntityState.Modified or EntityState.Deleted)
+            var ownerId = entry.Properties.FirstOrDefault(property => property.Metadata.Name == "FamilySubscriptionId");
+            bool belongsToLifecycleTransition = ownerId?.CurrentValue is Guid currentId && lifecycleUpdatedSubscriptionIds.Contains(currentId) ||
+                                                ownerId?.OriginalValue is Guid originalId && lifecycleUpdatedSubscriptionIds.Contains(originalId);
+
+            if (entry.State is EntityState.Modified or EntityState.Deleted && !belongsToLifecycleTransition)
             {
                 throw new InvalidOperationException(
                     $"{nameof(SubscriptionBenefit)} entries in subscription snapshots are immutable.");

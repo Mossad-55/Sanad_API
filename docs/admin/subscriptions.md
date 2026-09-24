@@ -176,8 +176,10 @@ callback after grace expiry is durably acknowledged with HTTP `200` and does
 not mutate successful-renewal state. Unknown identities and duplicate events
 are acknowledged without a second mutation. This callback contract does not
 create an invoice or PDF. Recurring wallet billing, trials, redemption,
-upgrades/downgrades, proration, allowance consumption, notifications, and
-deployment automation remain separate slices. Initial Card enrollment is
+proration, allowance consumption, notifications, and deployment automation
+remain separate slices. Family-owner plan changes (immediate prorated upgrades
+and next-renewal downgrades) are documented in the family subscription guide;
+they do not add an admin mutation surface. Initial Card enrollment is
 available only when the local plan has `paymobSubscriptionPlanId` and Paymob
 Card 3DS is configured; Wallet remains one-time/manual. The current family
 renewal endpoint uses the manual payment-intent boundary and preserves the

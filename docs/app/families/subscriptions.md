@@ -124,8 +124,89 @@ This endpoint always uses the manual payment-intent boundary and reports
 `recurringRenewalSupported: false`; renewal enrollment is not started here.
 Wallet renewal remains one-time/manual.
 
-This slice does not implement upgrades/downgrades or proration, invoices/PDFs,
-allowance consumption, notifications, or deployment automation.
+## Plan changes
+
+Plan changes are Owner-only. Editors, Viewers, non-family accounts, and
+unauthenticated callers cannot use these routes. Plan-change requests do not
+accept coupons.
+
+`POST /api/v1/family/subscriptions/plan-change/quote` calculates an immediate
+upgrade quote without charging or changing the subscription:
+
+```json
+{ "planVersionId": "0198e2c1-1111-7777-8888-000000000001" }
+```
+
+The target must be published and available for new sales. The response contains
+`planVersionId`, `planKey`, `planVersion`, `targetRemainingGross`,
+`settledCredit`, `taxRatePercentage`, `targetTaxAmount`, `totalPayable`, and
+`currency`. The target gross and tax are the target plan's remaining-period
+amounts. `settledCredit` is time-prorated from the actually settled
+current-period gross amount; unpaid time earns no credit. `totalPayable` is
+rounded to two decimals and floored at zero. The server calculates all values;
+clients cannot override price, tax, credit, or currency.
+
+`POST /api/v1/family/subscriptions/plan-change/payment-intent` starts an
+immediate upgrade:
+
+```json
+{
+  "planVersionId": "0198e2c1-1111-7777-8888-000000000001",
+  "method": 1,
+  "billing": {
+    "firstName": "Ahmed",
+    "lastName": "Ali",
+    "email": "ahmed@example.com",
+    "phoneNumber": "+201012345678"
+  }
+}
+```
+
+`method` is numeric: `1` Card or `2` Wallet. The response uses the normal
+payment-intent fields (`paymentAttemptId`, `merchantReference`, `method`,
+`amount`, `currency`, `clientSecret`, `publicKey`, and
+`recurringRenewalSupported`). Wallet remains one-time/manual. For Card, a
+successful immediate upgrade updates the existing Paymob subscription's future
+recurring gross amount; it does not create a parallel subscription or re-enroll
+the card. A zero-charge upgrade performs no provider charge, still updates the
+Card future amount before applying the local target snapshot, and returns
+`amount: 0` with empty provider secret/key fields. Local finalization occurs
+only after required payment/provider work succeeds.
+
+`PUT /api/v1/family/subscriptions/pending-downgrade` schedules or replaces a
+lower-priced plan for the next successful renewal:
+
+```json
+{ "planVersionId": "0198e2c1-1111-7777-8888-000000000002" }
+```
+
+Success is `204`. `DELETE /api/v1/family/subscriptions/pending-downgrade`
+cancels it and also returns `204`. For Card, schedule/replace synchronizes the
+existing provider subscription to the target recurring gross amount; cancel
+restores the current recurring gross amount. Wallet has no provider update. A
+pending downgrade is applied only after a successful renewal at the original
+period boundary and is not prorated. A successful upgrade clears it.
+
+The `currentSubscription` object includes `pendingDowngrade` when present,
+with `planKey`, `planVersion`, `price`, `cycle`, and `currency`; it is `null`
+otherwise. Plan changes are unavailable during renewal grace or after
+cancel-renewal has been requested. Replacing an existing pending downgrade is
+supported.
+
+Typical outcomes are `401` unauthenticated, `403`
+`Subscriptions.PlanChange.NotOwner`, `404`
+`Subscriptions.PlanChange.NotFound` or `Subscriptions.PlanChange.PlanNotFound`,
+and `409` for a non-upgrade/non-downgrade target, renewal grace, cancelled
+renewal, unavailable tax/provider state, or another invalid lifecycle
+transition. Provider failures return `502` (`Paymob.GatewayError`) and missing
+provider configuration returns `503` (`Paymob.NotConfigured`). A failed Card
+provider amount update leaves local pending state unchanged and is safe to
+retry; do not replay payment or downgrade mutations against shared data
+without an approved fixture.
+
+Invoices/PDFs, allowance consumption, notifications, and deployment automation
+remain separate slices. The persistence schema change still requires the
+owner's migration workflow before deployment.
 
 ## Card enrollment boundary
 

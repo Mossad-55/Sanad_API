@@ -6,15 +6,17 @@ The active development branch is `main`.
 
 ## Current status
 
-Repository workflow requirement: every business-rule or API modification must update all affected `docs/` pages, the relevant Postman collections under `docs/postman/`, and this README when the HTTP surface, setup, roadmap status, or workflow changes. For a broad synchronization audit, the mastermind must generate a pinned `sanad_documenter` worker brief before the slice is committed, pushed, deployed, or handed off.
+Repository workflow: synchronize affected `docs/` pages and Postman requests when a business rule or API contract changes, and update this README when the HTTP surface, setup, roadmap status, or workflow changes. The mastermind coordinates five bounded roles in one sequential pass for implementation goals.
 
-Required delivery order: scout -> implementer -> mastermind focused tests/full build/full tests -> implementer correction round when defects are found -> reviewer -> documenter -> mastermind final validation and handoff.
+Default delivery: scout maps the task, implementer changes code, test author adds focused coverage, reviewer inspects the result, documenter synchronizes affected public artifacts, and mastermind integrates and reports. Skip a role's work when it does not apply to the task; do not start the historical 16-step release checklist.
 
-Before each phase, the mastermind must publish a complete ordered todo checklist covering every worker, gate, owner action, and final handoff. Before each worker spawn, the owner must be told what the worker is doing now, its exact bounded output, owned scope, acceptance check, and affected checklist item. After every worker result, interruption, blocker, correction, and gate, the mastermind must update the checklist and report the outcome, evidence, blockers, and todo impact before starting the next step.
+The persisted project model default is `gpt-5.6-luna` at `medium` reasoning effort for the mastermind and all five Sanad workers (scout, implementer, test author, reviewer, and documenter). A running session may retain its runtime-selected model; check it with `/status`. The persisted default applies after reload or in a new session.
 
-Every applicable API slice also requires a Bruno gate with exact request/assertion counts, exit code, seed state, and cleanup recorded. Every worker completion requires a plain-language mastermind report and an update to the editable current-phase todo list at `docs/operations/current-phase-todo.md`.
+For a substantial release using the full lifecycle, record the selected workers, gates, owner actions, and handoff. For routine work, give a concise progress update and run only relevant checks.
 
-Local Bruno validation is completed before phase closure. VPS deployment is deferred until after the owner-led UI walkthrough; the mastermind must then remind the owner to deploy the verified revision, apply and verify migrations, and run safe smoke checks. Changes are staged by logical commit scope, private control files are never staged, and a new phase cannot start while required current-phase tasks remain open.
+Run Bruno for changes whose affected behavior needs an end-to-end API check, and record its results. When a worker is used, summarize its outcome concisely. Update the current-phase todo only for an active release phase.
+
+For an authorized deployment, validate the relevant API behavior and verify the exact migration target. Stage changes by logical scope and keep private control files unstaged.
 
 Identity (non-social auth), shared splash CMS, Caregivers (lookups, onboarding, admin review, discovery), and Families (family/dependents/invitations, assessment, medical profile, medications, notes/activities, bookings + Paymob) are implemented as Domain + Application + Infrastructure with HTTP in `Sanad.API`. Module `Presentation` projects are empty shells by design.
 
@@ -54,7 +56,7 @@ Implemented HTTP surface:
 - **Subscriptions**: Owner-only family catalog/current snapshot, server-side quotes, initial Card enrollment when a local plan has `paymobSubscriptionPlanId` and Card 3DS is configured, manual renewal Card/Wallet payment intents, `sub_` webhook settlement, seven-day renewal grace, original-anchor payment retry, and cancel-renewal/re-enable; Super Admin plan and family-subscription list/detail reads, plan authoring with Paymob mapping, publication/retirement, coupon configuration, and VAT/tax-rule configuration (`docs/admin/subscriptions.md`)
 - **Paymob webhook** `POST /api/v1/payments/webhooks/paymob` accepts anonymous booking callbacks and subscription callbacks. Subscription callbacks require `subscription_data.id`, `trigger_type`, body `hmac` (HMAC-SHA512 over `{trigger_type}for{subscription_data.id}`), and optional `initial_transaction`/`amount_cents`/`state`/`next_billing`; renewal triggers also require `paymob_request_id`. Accepted trigger spellings are `CREATED`, `Subscription Created`, `Successful Transaction`, `Failed Transaction`, and `Failed Overdue Transaction`. Use the safe/manual provider fixture in the Public Postman collection, not an automated provider mutation request.
 - **Admin care assessments**: questions, tiers, submissions (`docs/admin/care-assessments.md`)
-- **Next subscription slices**: upgrades/downgrades/proration, invoices/PDFs, allowance consumption, and notifications/email. Provider subscription callback settlement, shared identity persistence, and seven-day grace handling are implemented; Wallet remains one-time/manual.
+- **Next subscription slices**: invoices/PDFs, allowance consumption, and notifications/email. Family-owner immediate prorated upgrades and next-renewal downgrades are implemented; provider subscription callback settlement, shared identity persistence, and seven-day grace handling are implemented; Wallet remains one-time/manual.
 
 Email, SMS, and payments:
 
@@ -69,7 +71,7 @@ Not in this repository yet:
 
 - Family/caregiver **ratings and reviews** HTTP (caregiver `average_rating` / `reviews_count` columns exist; no review API)
 - Booking cancellation **fee tiers** (cancellation is allowed; no fee deducted yet)
-- Initial Card enrollment is available only with a local `paymobSubscriptionPlanId` and configured Card 3DS integration. Subscription callback identity/event ledger persistence and renewal settlement preserve the seven-day grace and original period-end anchor; Wallet remains one-time/manual. Upgrades/downgrades, proration, invoices/PDFs, allowance consumption, and notifications are pending later slices.
+- Initial Card enrollment is available only with a local `paymobSubscriptionPlanId` and configured Card 3DS integration. Subscription callback identity/event ledger persistence and renewal settlement preserve the seven-day grace and original period-end anchor; Wallet remains one-time/manual. Family-owner plan changes use immediate prorated upgrades and next-renewal downgrades; invoices/PDFs, allowance consumption, and notifications remain later slices.
 - Social / Google / Apple authentication (cancelled and removed)
 
 ## Solution layout
@@ -358,7 +360,7 @@ Super Admin-only with a Normal JWT. See `docs/admin/subscriptions.md`.
 - National ID review: `docs/admin/identity-documents.md` — paged list, detail, private front/back download, verify/reject/revoke.
 - Care-needs assessment CMS: `docs/admin/care-assessments.md` — questions, scoring tiers, submissions.
 - Bookings (cancellations & refunds): `docs/admin/bookings.md` — paged closed bookings (`finance` = all / cancelled / failed refund / refunded), detail, and `POST .../refund` to retry a failed Paymob refund.
-- Subscriptions: `docs/admin/subscriptions.md` — Super Admin plan list/detail, family subscription list/detail, plan authoring including optional Paymob mapping, one-time publication, retirement, coupon create/list/detail/hard-delete configuration, and tax-rule create/current/history; family owners can request server-calculated quotes, initial Card enrollment when configured, manual renewal payment intents, Paymob callback settlement with durable identity/idempotency, renewal-grace recovery, and anchor-preserving payment retry. Upgrades/proration, invoices, and allowances follow it.
+- Subscriptions: `docs/admin/subscriptions.md` — Super Admin plan list/detail, family subscription list/detail, plan authoring including optional Paymob mapping, one-time publication, retirement, coupon create/list/detail/hard-delete configuration, and tax-rule create/current/history; family owners can request server-calculated purchase and plan-change quotes, initial Card enrollment when configured, immediate upgrades, pending next-renewal downgrades, manual renewal payment intents, Paymob callback settlement with durable identity/idempotency, renewal-grace recovery, and anchor-preserving payment retry. Invoices and allowances follow it.
 
 Postman: `docs/postman/admins/Sanad.Admin.postman_collection.json`.
 

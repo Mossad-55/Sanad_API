@@ -57,6 +57,9 @@ public sealed class FamilySubscription : Entity<Guid>
     public DateTime CurrentPeriodEndsOnUtc { get; private set; }
     public DateTime? RenewalGraceEndsOnUtc { get; private set; }
     public DateTime? LastRenewalFailedOnUtc { get; private set; }
+    public decimal? CurrentPeriodGross { get; private set; }
+    public decimal? CurrentPeriodTaxRatePercentage { get; private set; }
+    public PendingSubscriptionDowngrade? PendingDowngrade { get; private set; }
     public string? PaymobSubscriptionId { get; private set; }
     public string? PaymobSubscriptionState { get; private set; }
     public DateTime? PaymobNextBillingOnUtc { get; private set; }
@@ -177,11 +180,66 @@ public sealed class FamilySubscription : Entity<Guid>
         if (RenewalGraceEndsOnUtc is not null && settledOnUtc >= RenewalGraceEndsOnUtc.Value)
             throw new DomainException("The subscription renewal grace period has ended.");
 
+        if (PendingDowngrade is not null)
+        {
+            ApplyPlan(PendingDowngrade);
+            PendingDowngrade = null;
+        }
+        // The existing period end is the unchanged renewal anchor; the selected terms determine
+        // the length of the new period that starts at that anchor.
         CurrentPeriodEndsOnUtc = CalculatePeriodEnd(CurrentPeriodEndsOnUtc, Cycle);
         RenewalGraceEndsOnUtc = null;
         LastRenewalFailedOnUtc = null;
         LifecycleVersion = Guid.NewGuid();
     }
+
+    public void SetCurrentPeriodSettlement(decimal gross, decimal taxRatePercentage)
+    {
+        if (gross < 0m || taxRatePercentage < 0m)
+            throw new DomainException("Subscription settlement values are invalid.");
+        CurrentPeriodGross = Money(gross);
+        CurrentPeriodTaxRatePercentage = Money(taxRatePercentage);
+    }
+
+    public void ApplyImmediatePlanChange(SubscriptionPlanVersion plan, decimal targetGross, decimal taxRatePercentage)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        ApplyPlan(PendingSubscriptionDowngrade.From(plan));
+        PendingDowngrade = null;
+        SetCurrentPeriodSettlement(targetGross, taxRatePercentage);
+        LifecycleVersion = Guid.NewGuid();
+    }
+
+    public void ReplacePendingDowngrade(SubscriptionPlanVersion plan)
+    {
+        if (!IsCurrent) throw new DomainException("Only the current subscription can schedule a downgrade.");
+        PendingDowngrade = PendingSubscriptionDowngrade.From(plan);
+        LifecycleVersion = Guid.NewGuid();
+    }
+
+    public void CancelPendingDowngrade()
+    {
+        PendingDowngrade = null;
+        LifecycleVersion = Guid.NewGuid();
+    }
+
+    private void ApplyPlan(PendingSubscriptionDowngrade plan)
+    {
+        PlanKey = plan.PlanKey;
+        PlanVersion = plan.PlanVersion;
+        Price = plan.Price;
+        Cycle = plan.Cycle;
+        Currency = plan.Currency;
+        MemberLimitKind = plan.MemberLimitKind;
+        MemberLimitValue = plan.MemberLimitValue;
+        MonthlyBookingLimitKind = plan.MonthlyBookingLimitKind;
+        MonthlyBookingLimitValue = plan.MonthlyBookingLimitValue;
+        Rollover = plan.Rollover;
+        _benefits.Clear();
+        _benefits.AddRange(plan.Benefits.Select(item => SubscriptionBenefit.Create(item.Key, item.IsIncluded)));
+    }
+
+    private static decimal Money(decimal value) => decimal.Round(value, 2, MidpointRounding.ToEven);
 
     private static DateTime CalculatePeriodEnd(DateTime createdOnUtc, SubscriptionCycle cycle) =>
         cycle switch

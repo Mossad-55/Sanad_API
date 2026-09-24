@@ -29,6 +29,11 @@ public sealed class SubscriptionPaymentAttemptConfiguration : IEntityTypeConfigu
         builder.Property(x => x.CouponCode).HasColumnName("coupon_code").HasMaxLength(50);
         builder.Property(x => x.SubscriptionId).HasColumnName("subscription_id");
         builder.Property(x => x.IsRenewal).HasColumnName("is_renewal").IsRequired();
+        builder.Property(x => x.IsPlanChange).HasColumnName("is_plan_change").IsRequired();
+        builder.Property(x => x.SourcePeriodGross).HasColumnName("source_period_gross").HasPrecision(18, 2);
+        builder.Property(x => x.SourcePeriodTaxRatePercentage).HasColumnName("source_period_tax_rate_percentage").HasPrecision(5, 2);
+        builder.Property(x => x.ProratedCredit).HasColumnName("prorated_credit").HasPrecision(18, 2);
+        builder.Property(x => x.SourcePeriodEndsOnUtc).HasColumnName("source_period_ends_on_utc");
         builder.Ignore(x => x.MerchantReference);
         builder.Property(x => x.PaymobOrderId).HasColumnName("paymob_order_id").HasMaxLength(100);
         builder.Property(x => x.PaymobTransactionId).HasColumnName("paymob_transaction_id").HasMaxLength(100);
