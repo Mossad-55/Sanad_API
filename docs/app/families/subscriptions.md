@@ -231,7 +231,7 @@ completes an `InProgress` booking; cancelled, declined, expired, unpaid,
 duplicate, and failed completion attempts do not consume it. Consumption resets
 after successful renewal, unlimited plans do not increment usage, and an
 exhausted allowance rejects completion with `409 Bookings.AllowanceExceeded`.
-Notifications and deployment automation remain separate slices.
+Notifications remain a later application slice. Release packaging and deployment smoke verification are complete and documented in `docs/operations/deployment.md`.
 
 ## Card enrollment boundary
 

@@ -91,10 +91,10 @@ Implemented:
 - Admin closed-booking list, cancellation history, fact-aware refund state, and failed-refund retry
 - Owner-only subscription catalog/current snapshot reads (including pending-downgrade visibility), server-side purchase and plan-change quotes, immediate prorated upgrades, next-renewal downgrades, initial Card enrollment when a local Paymob subscription-plan mapping and Card 3DS integration are configured, manual Card/Wallet renewal payment intents, HMAC settlement, cancel-renewal lifecycle, seven-day renewal grace recovery, and original-anchor payment retry
 - Super Admin subscription plan and family-subscription list/detail reads, plan authoring/publication/retirement, coupon configuration, and VAT/tax-rule configuration
+- Paymob subscription callback settlement, shared provider-identity persistence, durable callback idempotency, seven-day renewal grace, owner plan changes, immutable branded invoice/PDF generation, and booking-completion allowance consumption; Wallet stays one-time/manual. Notifications/email remain a later application slice.
 
 Not implemented yet:
 
 - Ratings / reviews HTTP
 - Booking cancellation fee tiers
-- Paymob subscription callback settlement, shared provider-identity persistence, durable callback idempotency, seven-day renewal grace, owner plan changes, immutable branded invoice/PDF generation, and booking-completion allowance consumption are implemented; Wallet stays one-time/manual. The plan-change, invoice, and allowance persistence migrations are included. Notifications/email remain a later application slice.
 - Social / Google / Apple authentication (cancelled and removed)

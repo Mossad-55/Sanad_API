@@ -1,4 +1,4 @@
-# Current phase todo — subscription billing invoices
+# Subscription billing phase closeout
 
 Subscription billing items 15–18 are complete and owner-confirmed deployed green
 at revision `02d7101`. This record now hands off to the full-application UI
@@ -12,6 +12,7 @@ The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the
 - Validation is green: full API Release package and smoke verifier passed; full unit suite `1823/1823`; focused attendance `5/5`; architecture `1/1`; route-to-Postman check `245` controller actions / `281` requests / `0` missing / `0` orphan; Postman JSON parses; migration is applied locally and EF reports no pending model changes.
 - Migration `20260924120349_AddSubscriptionPlanChanges` was generated, inspected, applied to the authorized local target `localhost:5432/SanadDb`, and confirmed applied. `dotnet ef migrations has-pending-model-changes` reports no model changes since the migration.
 - Public family/admin guides, README, architecture, endpoint matrix, and Family Postman are synchronized. No dedicated plan-change Bruno run has been performed; the local development seed has only a Free current subscription, so it does not provide a paid Card subscription for safe end-to-end upgrade/downgrade coverage. Unit tests cover provider ordering and failure behavior.
+- End-to-end limitation recorded: no dedicated paid-Card plan-change Bruno run was performed because the local fixture has no paid Card subscription. Provider callback Bruno coverage remains safe negative/manual-only to avoid provider mutation; callback behavior is covered by focused source tests and manual Postman fixtures.
 - Owner confirms pushed revision `02d7101` is deployed green, including migration, health, and safe smoke verification.
 - The plan-change slice is committed and pushed: `e8cdfa1` adds prorated upgrades and pending downgrades; `fdd7a00` standardizes project/worker routing on GPT-5.6 Luna with medium reasoning. `main` and `origin/main` match. Private handoffs and `subscription-vat-tax/` remain untracked and unstaged.
 
