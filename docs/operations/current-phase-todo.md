@@ -1,6 +1,6 @@
 # Current phase todo — subscription plan changes
 
-Owner-confirmed roadmap: complete remaining subscription billing, validate and publish the verified revision, conduct the owner/mastermind UI walkthrough and gap analysis, implement approved gaps, then deliver notifications before later roadmap work. The current slice adds immediate prorated upgrades and next-renewal downgrades; invoices/PDFs and booking-completion allowance consumption remain later slices.
+The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the owner reports it is deployed and the repository work tested. The broader subscription roadmap remains open for branded invoices/PDFs and booking-completion allowance consumption. After this deployment, the owner-approved sequence is to build/test the deployment mechanism, conduct the UI walkthrough and gap analysis, implement approved gaps, complete remaining billing slices, then add notifications/email.
 
 ## Current status
 
@@ -8,13 +8,14 @@ Owner-confirmed roadmap: complete remaining subscription billing, validate and p
 - Validation is green: Families Application build passed with 0 warnings/errors; full solution build passed with 0 warnings/errors; full test run passed architecture 1/1 and unit 1817/1817; route-to-Postman check passed with 242 controller actions, 278 requests, 0 missing, 0 orphan; `git diff --check` passed with only line-ending warnings.
 - Migration `20260924120349_AddSubscriptionPlanChanges` was generated, inspected, applied to the authorized local target `localhost:5432/SanadDb`, and confirmed applied. `dotnet ef migrations has-pending-model-changes` reports no model changes since the migration.
 - Public family/admin guides, README, architecture, endpoint matrix, and Family Postman are synchronized. No dedicated plan-change Bruno run has been performed; the local development seed has only a Free current subscription, so it does not provide a paid Card subscription for safe end-to-end upgrade/downgrade coverage. Unit tests cover provider ordering and failure behavior.
-- No production migration, deployment, commit, or push has occurred. The worktree contains unrelated/private changes that remain outside this slice.
+- Owner reports the pushed revision `fdd7a00ac3e185f347f744635b357bcabaaf724a` has been deployed and the repository work tested. This is owner-confirmed; production migration-history/API-health/smoke output was not independently inspected here.
+- The plan-change slice is committed and pushed: `e8cdfa1` adds prorated upgrades and pending downgrades; `fdd7a00` standardizes project/worker routing on GPT-5.6 Luna with medium reasoning. `main` and `origin/main` match. Private handoffs and `subscription-vat-tax/` remain untracked and unstaged.
 
 ## Remaining phase work
 
-- Owner authorized commit and push after inspecting the worktree; mastermind will publish the validated subscription feature and Luna/medium routing update in separate logical commits, excluding private handoffs and unrelated `subscription-vat-tax/` artifacts.
-- After publication, owner deploys the verified subscription revision, verifies the migration on the production target, and runs safe API/subscription smoke checks.
-- Then conduct the owner/mastermind UI walkthrough and gap analysis. Implement only owner-approved gaps before starting notifications.
+- The owner/mastermind next builds and tests the repeatable deployment mechanism.
+- Then conduct the owner/mastermind UI walkthrough and gap analysis; implement only owner-approved gaps.
+- Remaining subscription roadmap: branded invoices/PDFs for initial purchase and successful renewal, then booking-completion allowance consumption (cancelled bookings consume none). Notifications/email follow core billing and approved gaps. Choose invoice versus allowance ordering when scoping that work.
 
 ## Pinned plan-change contract
 
