@@ -1,0 +1,9 @@
+{
+  "version": "1",
+  "name": "paymob-subscription-callback-manual",
+  "type": "collection",
+  "ignore": [
+    "node_modules",
+    ".git"
+  ]
+}

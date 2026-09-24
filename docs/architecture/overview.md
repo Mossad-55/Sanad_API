@@ -96,5 +96,5 @@ Not implemented yet:
 
 - Ratings / reviews HTTP
 - Booking cancellation fee tiers
-- Provider renewal-event settlement/retry and provider subscription-ID persistence remain out of scope; Wallet stays one-time/manual. Upgrades/downgrades/proration, invoices/PDFs, allowance consumption, and notifications remain later slices
+- Paymob subscription callback settlement, shared provider-identity persistence, durable callback idempotency, and seven-day renewal grace are implemented; Wallet stays one-time/manual. Upgrades/downgrades/proration, invoices/PDFs, allowance consumption, and notifications remain later slices
 - Social / Google / Apple authentication (cancelled and removed)

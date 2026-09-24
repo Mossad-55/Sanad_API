@@ -52,9 +52,9 @@ Implemented HTTP surface:
 - **Attendance and reports**: caregiver start / complete, immutable Visit Reports, Medical Reports with private optional photos, and family report feeds
 - **Admin bookings** (`CaregiversAdmin`): closed bookings with `finance` filter (cancelled / failed refund / refunded), cancellation history, detail, and failed-refund retry
 - **Subscriptions**: Owner-only family catalog/current snapshot, server-side quotes, initial Card enrollment when a local plan has `paymobSubscriptionPlanId` and Card 3DS is configured, manual renewal Card/Wallet payment intents, `sub_` webhook settlement, seven-day renewal grace, original-anchor payment retry, and cancel-renewal/re-enable; Super Admin plan and family-subscription list/detail reads, plan authoring with Paymob mapping, publication/retirement, coupon configuration, and VAT/tax-rule configuration (`docs/admin/subscriptions.md`)
-- **Paymob webhook** `POST /api/v1/payments/webhooks/paymob` is an external anonymous HMAC-SHA512 callback (query, JSON `hmac`, or `X-Paymob-Hmac`); subscription references are amount/currency checked and idempotently activated only on success. Use a manual provider fixture, not a runnable consumer request
+- **Paymob webhook** `POST /api/v1/payments/webhooks/paymob` accepts anonymous booking callbacks and subscription callbacks. Subscription callbacks require `subscription_data.id`, `trigger_type`, body `hmac` (HMAC-SHA512 over `{trigger_type}for{subscription_data.id}`), and optional `initial_transaction`/`amount_cents`/`state`/`next_billing`; renewal triggers also require `paymob_request_id`. Accepted trigger spellings are `CREATED`, `Subscription Created`, `Successful Transaction`, `Failed Transaction`, and `Failed Overdue Transaction`. Use the safe/manual provider fixture in the Public Postman collection, not an automated provider mutation request.
 - **Admin care assessments**: questions, tiers, submissions (`docs/admin/care-assessments.md`)
-- **Next subscription slices**: provider renewal-event settlement and retry integration (provider subscription-ID persistence remains out of scope for this slice), then upgrades/downgrades/proration, invoices/PDFs, and allowance consumption. Wallet remains one-time/manual; notifications/email follows core billing.
+- **Next subscription slices**: upgrades/downgrades/proration, invoices/PDFs, allowance consumption, and notifications/email. Provider subscription callback settlement, shared identity persistence, and seven-day grace handling are implemented; Wallet remains one-time/manual.
 
 Email, SMS, and payments:
 
@@ -69,7 +69,7 @@ Not in this repository yet:
 
 - Family/caregiver **ratings and reviews** HTTP (caregiver `average_rating` / `reviews_count` columns exist; no review API)
 - Booking cancellation **fee tiers** (cancellation is allowed; no fee deducted yet)
-- Provider renewal-event settlement/retry and provider subscription-ID persistence are not implemented in this slice; initial Card enrollment is available only with a local `paymobSubscriptionPlanId` and configured Card 3DS integration. Wallet remains one-time/manual; upgrades/downgrades, proration, invoices/PDFs, allowance consumption, and notifications are pending later slices.
+- Initial Card enrollment is available only with a local `paymobSubscriptionPlanId` and configured Card 3DS integration. Subscription callback identity/event ledger persistence and renewal settlement preserve the seven-day grace and original period-end anchor; Wallet remains one-time/manual. Upgrades/downgrades, proration, invoices/PDFs, allowance consumption, and notifications are pending later slices.
 - Social / Google / Apple authentication (cancelled and removed)
 
 ## Solution layout
@@ -358,7 +358,7 @@ Super Admin-only with a Normal JWT. See `docs/admin/subscriptions.md`.
 - National ID review: `docs/admin/identity-documents.md` — paged list, detail, private front/back download, verify/reject/revoke.
 - Care-needs assessment CMS: `docs/admin/care-assessments.md` — questions, scoring tiers, submissions.
 - Bookings (cancellations & refunds): `docs/admin/bookings.md` — paged closed bookings (`finance` = all / cancelled / failed refund / refunded), detail, and `POST .../refund` to retry a failed Paymob refund.
-- Subscriptions: `docs/admin/subscriptions.md` — Super Admin plan list/detail, family subscription list/detail, plan authoring including optional Paymob mapping, one-time publication, retirement, coupon create/list/detail/hard-delete configuration, and tax-rule create/current/history; family owners can request server-calculated quotes, initial Card enrollment when configured, manual renewal payment intents, renewal-grace recovery, and anchor-preserving payment retry. Provider renewal-event retry, upgrades/proration, invoices, and allowances follow it.
+- Subscriptions: `docs/admin/subscriptions.md` — Super Admin plan list/detail, family subscription list/detail, plan authoring including optional Paymob mapping, one-time publication, retirement, coupon create/list/detail/hard-delete configuration, and tax-rule create/current/history; family owners can request server-calculated quotes, initial Card enrollment when configured, manual renewal payment intents, Paymob callback settlement with durable identity/idempotency, renewal-grace recovery, and anchor-preserving payment retry. Upgrades/proration, invoices, and allowances follow it.
 
 Postman: `docs/postman/admins/Sanad.Admin.postman_collection.json`.
 

@@ -1,0 +1,33 @@
+meta {
+  name: 03-success-invalid-hmac
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/payments/webhooks/paymob
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "subscription_data": {
+      "id": "bruno-manual-subscription",
+      "amount_cents": 10000,
+      "state": "active",
+      "next_billing": "2030-01-01T00:00:00Z"
+    },
+    "trigger_type": "Successful Transaction",
+    "hmac": "invalid-bruno-hmac",
+    "paymob_request_id": "bruno-success-request"
+  }
+}
+
+assert {
+  res.status: eq 401
+}

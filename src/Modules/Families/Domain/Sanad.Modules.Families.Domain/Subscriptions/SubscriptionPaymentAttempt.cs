@@ -83,6 +83,8 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
     public string MerchantReference => $"sub_{Id:N}";
     public string? PaymobOrderId { get; private set; }
     public string? PaymobTransactionId { get; private set; }
+    public string? PaymobInitialTransactionId { get; private set; }
+    public string? PaymobSubscriptionId { get; private set; }
     public SubscriptionPaymentAttemptStatus Status { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime? SettledOnUtc { get; private set; }
@@ -169,6 +171,16 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
         PaymobOrderId = paymobOrderId.Trim();
     }
 
+    public void RecordPaymobSubscription(string providerSubscriptionId, string initialTransactionId)
+    {
+        if (string.IsNullOrWhiteSpace(providerSubscriptionId)
+            || string.IsNullOrWhiteSpace(initialTransactionId))
+            throw new DomainException("Paymob subscription identity is incomplete.");
+
+        PaymobSubscriptionId = providerSubscriptionId.Trim();
+        PaymobInitialTransactionId = initialTransactionId.Trim();
+    }
+
     public bool TryMarkSucceeded(string paymobTransactionId, DateTime utcNow)
     {
         if (Status != SubscriptionPaymentAttemptStatus.Pending)
@@ -193,6 +205,14 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
         PaymobTransactionId = paymobTransactionId;
         FailedOnUtc = utcNow;
         return true;
+    }
+
+    public void LinkSubscription(Guid subscriptionId)
+    {
+        if (subscriptionId == Guid.Empty)
+            throw new DomainException("A subscription payment requires a subscription.");
+
+        SubscriptionId = subscriptionId;
     }
 
     private static decimal Money(decimal value) => decimal.Round(value, 2, MidpointRounding.ToEven);

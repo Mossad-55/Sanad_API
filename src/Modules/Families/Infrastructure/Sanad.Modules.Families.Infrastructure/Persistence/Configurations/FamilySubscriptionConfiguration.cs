@@ -30,9 +30,17 @@ public sealed class FamilySubscriptionConfiguration : IEntityTypeConfiguration<F
         builder.Property(x => x.CurrentPeriodEndsOnUtc).HasColumnName("current_period_ends_on_utc").IsRequired().IsConcurrencyToken();
         builder.Property(x => x.RenewalGraceEndsOnUtc).HasColumnName("renewal_grace_ends_on_utc");
         builder.Property(x => x.LastRenewalFailedOnUtc).HasColumnName("last_renewal_failed_on_utc");
+        builder.Property(x => x.PaymobSubscriptionId).HasColumnName("paymob_subscription_id").HasMaxLength(100);
+        builder.Property(x => x.PaymobSubscriptionState).HasColumnName("paymob_subscription_state").HasMaxLength(100);
+        builder.Property(x => x.PaymobNextBillingOnUtc).HasColumnName("paymob_next_billing_on_utc");
+        builder.Property(x => x.PaymobLastCallbackKey).HasColumnName("paymob_last_callback_key").HasMaxLength(500);
         builder.Property(x => x.LifecycleVersion).HasColumnName("lifecycle_version").IsRequired().IsConcurrencyToken();
         builder.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
         builder.HasIndex(x => x.FamilyId).HasFilter("is_current = true").IsUnique().HasDatabaseName("ux_family_subscriptions_current");
+        builder.HasIndex(x => x.PaymobSubscriptionId)
+            .HasFilter("paymob_subscription_id IS NOT NULL")
+            .IsUnique()
+            .HasDatabaseName("ux_family_subscriptions_paymob_subscription_id");
         builder.HasOne<Family>().WithMany().HasForeignKey(x => x.FamilyId).OnDelete(DeleteBehavior.Restrict);
 
         builder.OwnsMany(x => x.Benefits, benefit =>

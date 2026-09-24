@@ -57,6 +57,10 @@ public sealed class FamilySubscription : Entity<Guid>
     public DateTime CurrentPeriodEndsOnUtc { get; private set; }
     public DateTime? RenewalGraceEndsOnUtc { get; private set; }
     public DateTime? LastRenewalFailedOnUtc { get; private set; }
+    public string? PaymobSubscriptionId { get; private set; }
+    public string? PaymobSubscriptionState { get; private set; }
+    public DateTime? PaymobNextBillingOnUtc { get; private set; }
+    public string? PaymobLastCallbackKey { get; private set; }
     public Guid LifecycleVersion { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public IReadOnlyCollection<SubscriptionBenefit> Benefits => _benefits.AsReadOnly();
@@ -129,10 +133,38 @@ public sealed class FamilySubscription : Entity<Guid>
         if (failedOnUtc.Kind != DateTimeKind.Utc)
             throw new DomainException("Renewal failure time must be UTC.");
 
-        RenewalGraceEndsOnUtc = CurrentPeriodEndsOnUtc.AddDays(RenewalGracePeriodDays);
-        LastRenewalFailedOnUtc = failedOnUtc;
+        if (RenewalGraceEndsOnUtc is null)
+        {
+            RenewalGraceEndsOnUtc = CurrentPeriodEndsOnUtc.AddDays(RenewalGracePeriodDays);
+            LastRenewalFailedOnUtc = failedOnUtc;
+        }
         LifecycleVersion = Guid.NewGuid();
     }
+
+    public void AssociatePaymobSubscription(
+        string providerSubscriptionId,
+        string? state,
+        DateTime? nextBillingOnUtc,
+        string? callbackKey = null)
+    {
+        if (string.IsNullOrWhiteSpace(providerSubscriptionId))
+            throw new DomainException("A Paymob subscription requires a provider subscription id.");
+        if (nextBillingOnUtc is not null && nextBillingOnUtc.Value.Kind != DateTimeKind.Utc)
+            throw new DomainException("Paymob subscription billing time must be UTC.");
+
+        PaymobSubscriptionId = providerSubscriptionId.Trim();
+        if (!string.IsNullOrWhiteSpace(state))
+            PaymobSubscriptionState = state.Trim();
+        if (nextBillingOnUtc is not null)
+            PaymobNextBillingOnUtc = nextBillingOnUtc;
+        if (!string.IsNullOrWhiteSpace(callbackKey))
+            PaymobLastCallbackKey = callbackKey;
+        LifecycleVersion = Guid.NewGuid();
+    }
+
+    public bool HasProcessedPaymobCallback(string callbackKey) =>
+        !string.IsNullOrWhiteSpace(callbackKey) &&
+        string.Equals(PaymobLastCallbackKey, callbackKey, StringComparison.Ordinal);
 
     public void ApplySuccessfulRenewal(DateTime settledOnUtc)
     {

@@ -312,7 +312,17 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
                 return Result<ConfirmSubscriptionPaymentResponse>.Failure(
                     new Error("Subscriptions.Payment.CurrentExists", "A current subscription already exists for this family."));
 
-            _db.FamilySubscriptions.Add(FamilySubscription.Create(attempt.FamilyId, plan, request.UtcNow));
+            var createdSubscription = FamilySubscription.Create(attempt.FamilyId, plan, request.UtcNow);
+            if (!string.IsNullOrWhiteSpace(attempt.PaymobSubscriptionId))
+            {
+                createdSubscription.AssociatePaymobSubscription(
+                    attempt.PaymobSubscriptionId,
+                    state: null,
+                    nextBillingOnUtc: null);
+            }
+
+            _db.FamilySubscriptions.Add(createdSubscription);
+            attempt.LinkSubscription(createdSubscription.Id);
         }
 
         try
@@ -327,4 +337,263 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
 
         return new ConfirmSubscriptionPaymentResponse(attempt.Id, "Paid");
     }
+}
+
+public sealed record HandlePaymobSubscriptionCallbackCommand(
+    string TriggerType,
+    string ProviderSubscriptionId,
+    string? InitialTransactionId,
+    long? AmountCents,
+    string? State,
+    DateTime? NextBillingOnUtc,
+    DateTime UtcNow,
+    string? PaymobRequestId = null) : ICommand<ConfirmSubscriptionPaymentResponse>;
+
+public sealed class HandlePaymobSubscriptionCallbackCommandHandler
+    : ICommandHandler<HandlePaymobSubscriptionCallbackCommand, ConfirmSubscriptionPaymentResponse>
+{
+    private readonly IFamiliesDbContext _db;
+
+    public HandlePaymobSubscriptionCallbackCommandHandler(IFamiliesDbContext db) => _db = db;
+
+    public async Task<Result<ConfirmSubscriptionPaymentResponse>> Handle(
+        HandlePaymobSubscriptionCallbackCommand request,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.ProviderSubscriptionId))
+            return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                new Error("Subscriptions.Payment.NotFound", "No subscription matches this provider subscription."));
+
+        string callbackKey = BuildCallbackKey(request);
+        bool isCreated = IsTrigger(request.TriggerType, "CREATED", "Subscription Created");
+        bool isSuccess = IsTrigger(request.TriggerType, "Successful Transaction");
+        bool isFailed = IsTrigger(request.TriggerType, "Failed Transaction");
+        bool isOverdue = IsTrigger(request.TriggerType, "Failed Overdue Transaction");
+
+        if (isCreated)
+        {
+            if (string.IsNullOrWhiteSpace(request.InitialTransactionId))
+                return new ConfirmSubscriptionPaymentResponse(Guid.Empty, "Ignored");
+
+            string providerSubscriptionId = request.ProviderSubscriptionId.Trim();
+
+            var initialAttempt = await _db.SubscriptionPaymentAttempts
+                .SingleOrDefaultAsync(
+                    item => item.PaymobTransactionId == request.InitialTransactionId
+                        || item.PaymobInitialTransactionId == request.InitialTransactionId,
+                    cancellationToken);
+            if (initialAttempt is null)
+                return new ConfirmSubscriptionPaymentResponse(Guid.Empty, "Ignored");
+
+            if (!string.IsNullOrWhiteSpace(initialAttempt.PaymobSubscriptionId)
+                && !string.Equals(initialAttempt.PaymobSubscriptionId, providerSubscriptionId, StringComparison.Ordinal))
+                return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                    new Error("Subscriptions.Payment.ProviderIdentityConflict", "The provider subscription identity conflicts with the initial payment."));
+
+            if (await _db.SubscriptionPaymentAttempts.AnyAsync(
+                    item => item.PaymobSubscriptionId == providerSubscriptionId
+                        && item.Id != initialAttempt.Id,
+                    cancellationToken))
+                return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                    new Error("Subscriptions.Payment.ProviderIdentityConflict", "The provider subscription identity is already associated with another payment attempt."));
+
+            FamilySubscription? createdSubscription = null;
+            if (initialAttempt.SubscriptionId is Guid subscriptionId)
+            {
+                createdSubscription = await _db.FamilySubscriptions
+                    .SingleOrDefaultAsync(item => item.Id == subscriptionId, cancellationToken);
+                if (createdSubscription is not null
+                    && !string.IsNullOrWhiteSpace(createdSubscription.PaymobSubscriptionId)
+                    && !string.Equals(createdSubscription.PaymobSubscriptionId, providerSubscriptionId, StringComparison.Ordinal))
+                    return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                        new Error("Subscriptions.Payment.ProviderIdentityConflict", "The provider subscription identity conflicts with the subscription."));
+            }
+
+            var registeredIdentity = await _db.PaymobSubscriptionIdentities
+                .SingleOrDefaultAsync(item => item.ProviderSubscriptionId == providerSubscriptionId, cancellationToken);
+            if (registeredIdentity is not null)
+            {
+                if (registeredIdentity.PaymentAttemptId != initialAttempt.Id
+                    || registeredIdentity.FamilySubscriptionId != initialAttempt.SubscriptionId)
+                    return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                        new Error("Subscriptions.Payment.ProviderIdentityConflict", "The provider subscription identity is already owned by another payment target."));
+
+                return new ConfirmSubscriptionPaymentResponse(initialAttempt.Id, "AlreadyProcessed");
+            }
+
+            if (await _db.PaymobSubscriptionCallbacks.AnyAsync(item => item.CallbackKey == callbackKey, cancellationToken))
+                return new ConfirmSubscriptionPaymentResponse(initialAttempt.Id, "AlreadyProcessed");
+
+            if (await _db.FamilySubscriptions.AnyAsync(
+                    item => item.PaymobSubscriptionId == providerSubscriptionId
+                        && (initialAttempt.SubscriptionId == null || item.Id != initialAttempt.SubscriptionId),
+                    cancellationToken))
+                return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                    new Error("Subscriptions.Payment.ProviderIdentityConflict", "The provider subscription identity is already associated with another subscription."));
+
+            var callback = PaymobSubscriptionCallback.Create(
+                callbackKey, request.PaymobRequestId, request.ProviderSubscriptionId, request.TriggerType, request.UtcNow);
+            // This is the authoritative provider-identity reservation boundary. The registry's
+            // unique constraint arbitrates competing targets at SaveChangesAsync; all callback
+            // state changes below are committed in that same database transaction.
+            _db.ReservePaymobSubscriptionIdentity(
+                PaymobSubscriptionIdentity.Create(
+                    providerSubscriptionId,
+                    initialAttempt.Id,
+                    initialAttempt.SubscriptionId));
+
+            if (string.IsNullOrWhiteSpace(initialAttempt.PaymobSubscriptionId))
+                initialAttempt.RecordPaymobSubscription(
+                    providerSubscriptionId,
+                    request.InitialTransactionId);
+
+            if (createdSubscription is not null
+                && string.IsNullOrWhiteSpace(createdSubscription.PaymobSubscriptionId))
+            {
+                createdSubscription.AssociatePaymobSubscription(
+                    providerSubscriptionId,
+                    request.State,
+                    request.NextBillingOnUtc,
+                    callbackKey);
+            }
+
+            _db.PaymobSubscriptionCallbacks.Add(callback);
+            try
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                    new Error("Subscriptions.Callback.ConcurrencyConflict", "The subscription callback conflicted with another update."));
+            }
+            catch (DbUpdateException exception) when (IsCallbackUniqueViolation(exception))
+            {
+                return new ConfirmSubscriptionPaymentResponse(initialAttempt.Id, "AlreadyProcessed");
+            }
+            catch (DbUpdateException exception) when (IsProviderIdentityUniqueViolation(exception))
+            {
+                var racedIdentity = await _db.PaymobSubscriptionIdentities
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(item => item.ProviderSubscriptionId == providerSubscriptionId, cancellationToken);
+                if (racedIdentity is not null
+                    && racedIdentity.PaymentAttemptId == initialAttempt.Id
+                    && racedIdentity.FamilySubscriptionId == initialAttempt.SubscriptionId)
+                    return new ConfirmSubscriptionPaymentResponse(initialAttempt.Id, "AlreadyProcessed");
+
+                return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                    new Error("Subscriptions.Payment.ProviderIdentityConflict", "The provider subscription identity is already owned by another payment target."));
+            }
+            return new ConfirmSubscriptionPaymentResponse(initialAttempt.Id, "Created");
+        }
+
+        if (!isSuccess && !isFailed && !isOverdue)
+            return new ConfirmSubscriptionPaymentResponse(Guid.Empty, "Ignored");
+
+        if (string.IsNullOrWhiteSpace(request.PaymobRequestId))
+            return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                new Error(
+                    "Subscriptions.Callback.ProviderEventIdRequired",
+                    "A Paymob provider event identity is required for renewal callbacks."));
+
+        if (request.AmountCents is null)
+            return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                new Error("Paymob.AmountMismatch", "Webhook amount is required for a subscription transaction."));
+
+        var currentSubscription = await _db.FamilySubscriptions
+            .SingleOrDefaultAsync(
+                item => item.IsCurrent && item.PaymobSubscriptionId == request.ProviderSubscriptionId,
+                cancellationToken);
+        if (currentSubscription is null)
+            return new ConfirmSubscriptionPaymentResponse(Guid.Empty, "Ignored");
+
+        if (await _db.PaymobSubscriptionCallbacks.AnyAsync(
+                item => item.ProviderSubscriptionId == request.ProviderSubscriptionId
+                    && item.ReceivedOnUtc > request.UtcNow,
+                cancellationToken))
+            return new ConfirmSubscriptionPaymentResponse(currentSubscription.Id, "AlreadyProcessed");
+
+        if (await _db.PaymobSubscriptionCallbacks.AnyAsync(item => item.CallbackKey == callbackKey, cancellationToken)
+            || currentSubscription.HasProcessedPaymobCallback(callbackKey))
+            return new ConfirmSubscriptionPaymentResponse(currentSubscription.Id, "AlreadyProcessed");
+
+        long expectedCents = (long)decimal.Round(currentSubscription.Price * 100m, 0, MidpointRounding.ToEven);
+        if (expectedCents != request.AmountCents.Value)
+            return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                new Error("Paymob.AmountMismatch", "Webhook amount does not match the recorded subscription."));
+
+        if (isSuccess)
+        {
+            try
+            {
+                currentSubscription.ApplySuccessfulRenewal(request.UtcNow);
+            }
+            catch (DomainException exception)
+            {
+                var graceExpiredCallback = PaymobSubscriptionCallback.Create(
+                    callbackKey, request.PaymobRequestId, request.ProviderSubscriptionId, request.TriggerType, request.UtcNow);
+                _db.PaymobSubscriptionCallbacks.Add(graceExpiredCallback);
+                try
+                {
+                    await _db.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                        new Error("Subscriptions.Callback.ConcurrencyConflict", "The subscription callback conflicted with another update."));
+                }
+                catch (DbUpdateException callbackException) when (IsCallbackUniqueViolation(callbackException))
+                {
+                    return new ConfirmSubscriptionPaymentResponse(currentSubscription.Id, "AlreadyProcessed");
+                }
+
+                return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                    new Error("Subscriptions.Renewal.GraceExpired", exception.Message));
+            }
+        }
+        else if (isFailed)
+        {
+            currentSubscription.BeginRenewalGrace(request.UtcNow);
+        }
+
+        var renewalCallback = PaymobSubscriptionCallback.Create(
+            callbackKey, request.PaymobRequestId, request.ProviderSubscriptionId, request.TriggerType, request.UtcNow);
+        currentSubscription.AssociatePaymobSubscription(
+            request.ProviderSubscriptionId,
+            request.State,
+            request.NextBillingOnUtc,
+            callbackKey);
+        _db.PaymobSubscriptionCallbacks.Add(renewalCallback);
+        try
+        {
+            await _db.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result<ConfirmSubscriptionPaymentResponse>.Failure(
+                new Error("Subscriptions.Callback.ConcurrencyConflict", "The subscription callback conflicted with another update."));
+        }
+        catch (DbUpdateException exception) when (IsCallbackUniqueViolation(exception))
+        {
+            return new ConfirmSubscriptionPaymentResponse(currentSubscription.Id, "AlreadyProcessed");
+        }
+        return new ConfirmSubscriptionPaymentResponse(currentSubscription.Id, isOverdue ? "Overdue" : isFailed ? "Failed" : "Paid");
+    }
+
+    private static bool IsTrigger(string actual, params string[] expected) =>
+        expected.Any(item => string.Equals(actual.Trim(), item, StringComparison.OrdinalIgnoreCase));
+
+    private static string BuildCallbackKey(HandlePaymobSubscriptionCallbackCommand request) =>
+        !string.IsNullOrWhiteSpace(request.PaymobRequestId)
+            ? $"request:{request.PaymobRequestId.Trim()}"
+            : $"fallback:{string.Join("|", request.TriggerType.Trim(), request.ProviderSubscriptionId.Trim(),
+            request.InitialTransactionId?.Trim() ?? string.Empty,
+            request.AmountCents?.ToString() ?? string.Empty,
+            request.NextBillingOnUtc?.ToString("O") ?? string.Empty)}";
+
+    private static bool IsCallbackUniqueViolation(DbUpdateException exception) =>
+        exception.ToString().Contains("ux_paymob_subscription_callbacks_", StringComparison.Ordinal);
+
+    private static bool IsProviderIdentityUniqueViolation(DbUpdateException exception) =>
+        exception.ToString().Contains("ux_paymob_subscription_identities_provider_subscription_id", StringComparison.Ordinal);
 }

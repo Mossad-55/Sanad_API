@@ -64,15 +64,32 @@ reference, the provider client secret/public key, and
 local plan has a positive `paymobSubscriptionPlanId`, and the Paymob Card 3DS
 integration is configured. Otherwise it is `false`. Wallet remains
 one-time/manual; no recurring wallet capability is implied. The response
-contains no persisted provider subscription ID.
+contains no provider subscription identity yet. The subsequent Paymob
+subscription callback establishes that identity in the shared provider
+identity registry and links it to the payment attempt and family snapshot.
 
-The Paymob callback is `POST /api/v1/payments/webhooks/paymob`. It is anonymous
-but requires a valid Paymob HMAC. Subscription references are settled through
-the subscription attempt table, with amount and currency checked against the
-recorded server quote. Pending callbacks do not activate a subscription; failed
-callbacks close the attempt; a successful callback activates the plan once.
-Repeated callbacks are idempotent. A valid callback for an unknown or already
-processed reference is acknowledged without activating another subscription.
+The Paymob subscription callback is `POST /api/v1/payments/webhooks/paymob`. It
+is anonymous but requires a valid body `hmac`: HMAC-SHA512 over
+`{trigger_type}for{subscription_data.id}` using `Paymob__HmacSecret`. The
+callback body must contain `subscription_data.id`, `trigger_type`, and `hmac`;
+`subscription_data.initial_transaction`, `amount_cents`, `state`, and
+`next_billing` are optional fields. Accepted trigger spellings are `CREATED`,
+`Subscription Created`, `Successful Transaction`, `Failed Transaction`, and
+`Failed Overdue Transaction`, case-insensitively. Renewal callbacks
+(`Successful Transaction`, `Failed Transaction`, and `Failed Overdue
+Transaction`) must also contain top-level `paymob_request_id`.
+
+Initial creation records the provider subscription identity in the shared
+registry and links it to the initial payment attempt and family snapshot.
+Renewal callbacks use that registry, verify amount against the stored snapshot,
+and append a durable callback ledger row keyed by the provider event/request
+identity. Repeated or out-of-order callbacks are idempotently acknowledged;
+they do not apply a second renewal or extend access. `Failed Transaction` starts
+the existing seven-day grace without extending the period; `Failed Overdue
+Transaction` does not start or extend grace. A successful renewal advances the
+original period-end anchor. If grace has expired, the callback is still
+ledgered, returns controller HTTP `200`, and leaves the successful-renewal state
+unchanged. Unknown provider identities are acknowledged without mutation.
 
 Payment-intent errors include `400` invalid billing/coupon or zero payable
 amount, `403` non-owner, `404` unavailable plan, `409` current subscription or
@@ -116,9 +133,10 @@ Initial Card enrollment is available only when the selected local plan has a
 positive `paymobSubscriptionPlanId` and `Paymob__Card3dsIntegrationId` is
 configured. The server sends that local mapping as Paymob's
 `subscription_plan_id` and selects the Card 3DS integration. Wallet remains
-one-time/manual. Provider renewal-event settlement/retry and persistence of a
-provider subscription ID are out of scope for this slice; renewal therefore
-continues through the explicit manual payment-intent route above.
+one-time/manual. Provider subscription identity persistence and renewal-event
+settlement are implemented through the callback contract above; wallet renewal
+continues through the explicit manual payment-intent route because wallet
+recurrence is not claimed.
 
 ## Current subscription snapshot
 

@@ -84,7 +84,7 @@ Enabled when `SecretKey` is set. Otherwise `DevelopmentPaymobClient` serves paym
 
 - Test-mode secret keys only pair with test-mode integration ids — mixing modes fails with `404 Integration ID/Name does not exist`.
 - Card enrollment requires both a positive local plan `paymobSubscriptionPlanId` and `Paymob__Card3dsIntegrationId`; the provider `subscription_plan_id` is sent only for that Card path. Wallet remains one-time/manual.
-- Provider renewal-event settlement/retry and persistence of a provider subscription ID are not configured or implemented by this slice.
+- Subscription callbacks require `Paymob__HmacSecret` and a publicly reachable webhook URL. Provider subscription identity persistence uses the shared registry and callback event idempotency uses the durable callback ledger; the additive callback-state, ledger, and identity-registry migrations must be applied before enabling this callback path. Renewal callbacks preserve the existing seven-day grace and original period-end anchor. Wallet renewal remains manual because wallet recurrence is not claimed.
 - See `docs/app/families/bookings.md` for the payment flow and `POST /api/v1/payments/webhooks/paymob` for the callback contract.
 
 ## Runtime selection

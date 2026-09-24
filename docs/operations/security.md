@@ -69,9 +69,16 @@ Use environment variables. User-secrets are not used in this repository. Identit
 - Initial Card enrollment sends a provider `subscription_plan_id` only when the
   local plan has a positive `paymobSubscriptionPlanId` and the Card 3DS
   integration is configured. Wallet and renewal intents remain manual.
-- Provider renewal-event settlement/retry and provider subscription-ID
-  persistence are outside this slice. Do not infer automatic renewal from a
-  successful payment intent alone.
+- Subscription callbacks use body `hmac` over `{trigger_type}for{subscription_data.id}`;
+  accepted trigger spellings are `CREATED`, `Subscription Created`, `Successful
+  Transaction`, `Failed Transaction`, and `Failed Overdue Transaction`.
+- Subscription renewal callbacks require top-level `paymob_request_id`; it is
+  recorded as the durable provider event/idempotency identity.
+  `subscription_data.id` is authoritative through the shared provider identity
+  registry. Callback ledger rows are append-only and protect against duplicate,
+  out-of-order, and cross-target provider identity reuse. A successful callback
+  after the seven-day grace terminal boundary is ledgered and acknowledged with
+  `200` without changing renewal state.
 
 ## Swagger
 

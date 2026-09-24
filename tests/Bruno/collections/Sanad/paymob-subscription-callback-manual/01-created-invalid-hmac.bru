@@ -1,0 +1,31 @@
+meta {
+  name: 01-created-invalid-hmac
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/payments/webhooks/paymob
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "subscription_data": {
+      "id": "bruno-manual-subscription",
+      "initial_transaction": "bruno-manual-transaction"
+    },
+    "trigger_type": "CREATED",
+    "hmac": "invalid-bruno-hmac",
+    "paymob_request_id": "bruno-created-request"
+  }
+}
+
+assert {
+  res.status: eq 401
+}

@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sanad.Modules.Families.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FamiliesDbContext))]
-    partial class FamiliesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260923225003_AddPaymobSubscriptionCallbackLedger")]
+    partial class AddPaymobSubscriptionCallbackLedger
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -1103,11 +1106,6 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasDatabaseName("ux_family_subscriptions_current")
                         .HasFilter("is_current = true");
 
-                    b.HasIndex("PaymobSubscriptionId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_family_subscriptions_paymob_subscription_id")
-                        .HasFilter("paymob_subscription_id IS NOT NULL");
-
                     b.ToTable("family_subscriptions", "families");
                 });
 
@@ -1156,39 +1154,6 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasFilter("paymob_request_id IS NOT NULL");
 
                     b.ToTable("paymob_subscription_callbacks", "families");
-                });
-
-            modelBuilder.Entity("Sanad.Modules.Families.Domain.Subscriptions.PaymobSubscriptionIdentity", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<Guid?>("FamilySubscriptionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("family_subscription_id");
-
-                    b.Property<Guid>("PaymentAttemptId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("payment_attempt_id");
-
-                    b.Property<string>("ProviderSubscriptionId")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("character varying(100)")
-                        .HasColumnName("provider_subscription_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("FamilySubscriptionId");
-
-                    b.HasIndex("PaymentAttemptId");
-
-                    b.HasIndex("ProviderSubscriptionId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_paymob_subscription_identities_provider_subscription_id");
-
-                    b.ToTable("paymob_subscription_identities", "families");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Subscriptions.SubscriptionCoupon", b =>
@@ -1354,11 +1319,6 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("PaymobOrderId")
                         .IsUnique();
-
-                    b.HasIndex("PaymobSubscriptionId")
-                        .IsUnique()
-                        .HasDatabaseName("ux_subscription_payment_attempts_paymob_subscription_id")
-                        .HasFilter("paymob_subscription_id IS NOT NULL");
 
                     b.HasIndex("PlanVersionId");
 
@@ -1916,20 +1876,6 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Benefits");
-                });
-
-            modelBuilder.Entity("Sanad.Modules.Families.Domain.Subscriptions.PaymobSubscriptionIdentity", b =>
-                {
-                    b.HasOne("Sanad.Modules.Families.Domain.Subscriptions.FamilySubscription", null)
-                        .WithMany()
-                        .HasForeignKey("FamilySubscriptionId")
-                        .OnDelete(DeleteBehavior.Restrict);
-
-                    b.HasOne("Sanad.Modules.Families.Domain.Subscriptions.SubscriptionPaymentAttempt", null)
-                        .WithMany()
-                        .HasForeignKey("PaymentAttemptId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
                 });
 
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Subscriptions.SubscriptionCoupon", b =>

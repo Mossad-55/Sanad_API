@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sanad App — Public",
-    "description": "App-facing routes. Splash and active lookups are public. Auth login is included so Family/Caregiver flows can reuse this collection later. The Paymob webhook request below is a manual fixture template only and must not be replayed without an approved provider payload and valid HMAC.",
+    "description": "App-facing routes. Splash and active lookups are public. Auth login is included so Family/Caregiver flows can reuse this collection later. The Paymob subscription callback below is a safe/manual fixture template only: it is not an automated provider mutation and must not be replayed without an approved provider payload and valid body hmac.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "item": [
@@ -9,17 +9,64 @@
       "name": "03. Paymob webhook (manual fixture only)",
       "item": [
         {
-          "name": "Receive Paymob webhook (manual only)",
+          "name": "CREATED — manual only",
           "request": {
             "method": "POST",
             "header": [
-              {"key": "Content-Type", "value": "application/json"},
-              {"key": "X-Paymob-Hmac", "value": "{{paymobHmac}}"}
+              {"key": "Content-Type", "value": "application/json"}
             ],
-            "body": {"mode": "raw", "raw": "{\n  \"obj\": {\n    \"order\": {\"merchant_order_id\": \"sub_REPLACE_WITH_APPROVED_REFERENCE\"},\n    \"amount_cents\": 29900,\n    \"success\": false\n  }\n}"},
+            "body": {"mode": "raw", "raw": "{\n  \"subscription_data\": {\n    \"id\": \"{{paymobSubscriptionId}}\",\n    \"initial_transaction\": \"{{paymobInitialTransactionId}}\",\n    \"amount_cents\": 29900,\n    \"state\": \"active\",\n    \"next_billing\": \"2026-10-24T10:00:00Z\"\n  },\n  \"trigger_type\": \"CREATED\",\n  \"hmac\": \"{{paymobSubscriptionHmac}}\"\n}"},
             "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
           },
-          "description": "Manual provider fixture only. Requires a valid Paymob HMAC and an owner-approved subscription reference. Do not replay against local, VPS, or production data as a generic Postman request."
+          "description": "Safe/manual provider fixture only; this request does not automate provider mutation and has no automated assertions. Replace variables with an approved provider payload and valid HMAC-SHA512 over trigger_type + \"for\" + subscription_data.id; do not replay against shared local, VPS, or production data."
+        },
+        {
+          "name": "Subscription Created — manual only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"subscription_data\": {\n    \"id\": \"{{paymobSubscriptionId}}\",\n    \"initial_transaction\": \"{{paymobInitialTransactionId}}\",\n    \"amount_cents\": 29900,\n    \"state\": \"active\",\n    \"next_billing\": \"2026-10-24T10:00:00Z\"\n  },\n  \"trigger_type\": \"Subscription Created\",\n  \"hmac\": \"{{paymobSubscriptionHmac}}\"\n}"},
+            "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
+          },
+          "description": "Safe/manual provider fixture only; this request does not automate provider mutation and has no automated assertions. Replace variables with an approved provider payload and valid HMAC-SHA512 over trigger_type + \"for\" + subscription_data.id; do not replay against shared local, VPS, or production data."
+        },
+        {
+          "name": "Successful Transaction — manual only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"paymob_request_id\": \"{{paymobRequestId}}\",\n  \"subscription_data\": {\n    \"id\": \"{{paymobSubscriptionId}}\",\n    \"amount_cents\": 29900,\n    \"state\": \"active\",\n    \"next_billing\": \"2026-10-24T10:00:00Z\"\n  },\n  \"trigger_type\": \"Successful Transaction\",\n  \"hmac\": \"{{paymobSubscriptionHmac}}\"\n}"},
+            "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
+          },
+          "description": "Safe/manual renewal fixture only; this request does not automate provider mutation and has no automated assertions. Renewal callbacks require paymob_request_id. Replace variables with an approved provider payload and valid HMAC-SHA512 over trigger_type + \"for\" + subscription_data.id; do not replay against shared local, VPS, or production data."
+        },
+        {
+          "name": "Failed Transaction — manual only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"paymob_request_id\": \"{{paymobRequestId}}\",\n  \"subscription_data\": {\n    \"id\": \"{{paymobSubscriptionId}}\",\n    \"amount_cents\": 29900,\n    \"state\": \"failed\",\n    \"next_billing\": \"2026-10-24T10:00:00Z\"\n  },\n  \"trigger_type\": \"Failed Transaction\",\n  \"hmac\": \"{{paymobSubscriptionHmac}}\"\n}"},
+            "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
+          },
+          "description": "Safe/manual renewal fixture only; this request does not automate provider mutation and has no automated assertions. Renewal callbacks require paymob_request_id. Replace variables with an approved provider payload and valid HMAC-SHA512 over trigger_type + \"for\" + subscription_data.id; do not replay against shared local, VPS, or production data."
+        },
+        {
+          "name": "Failed Overdue Transaction — manual only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"paymob_request_id\": \"{{paymobRequestId}}\",\n  \"subscription_data\": {\n    \"id\": \"{{paymobSubscriptionId}}\",\n    \"amount_cents\": 29900,\n    \"state\": \"failed\",\n    \"next_billing\": \"2026-10-24T10:00:00Z\"\n  },\n  \"trigger_type\": \"Failed Overdue Transaction\",\n  \"hmac\": \"{{paymobSubscriptionHmac}}\"\n}"},
+            "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
+          },
+          "description": "Safe/manual renewal fixture only; this request does not automate provider mutation and has no automated assertions. Renewal callbacks require paymob_request_id. Replace variables with an approved provider payload and valid HMAC-SHA512 over trigger_type + \"for\" + subscription_data.id; do not replay against shared local, VPS, or production data."
         }
       ]
     },
@@ -166,5 +213,11 @@
         }
       ]
     }
+  ],
+  "variable": [
+    {"key": "paymobSubscriptionId", "value": "REPLACE_WITH_PROVIDER_SUBSCRIPTION_ID", "type": "string", "description": "Provider subscription_data.id from an approved callback fixture."},
+    {"key": "paymobInitialTransactionId", "value": "REPLACE_WITH_INITIAL_TRANSACTION_ID", "type": "string", "description": "Optional subscription_data.initial_transaction; required for an initial CREATED settlement."},
+    {"key": "paymobRequestId", "value": "REPLACE_WITH_PROVIDER_REQUEST_ID", "type": "string", "description": "Required for renewal callbacks and used as the durable idempotency/event identity."},
+    {"key": "paymobSubscriptionHmac", "value": "REPLACE_WITH_BODY_HMAC", "type": "string", "description": "Lowercase or uppercase HMAC-SHA512 for trigger_type + for + subscription_data.id using Paymob__HmacSecret."}
   ]
 }

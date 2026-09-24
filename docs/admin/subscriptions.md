@@ -130,15 +130,25 @@ objects contain `id`, `ratePercentage`, `version`, `effectiveOnUtc`, `createdOnU
 Tax-rule configuration is consumed by the family-owner subscription quote and
 initial payment-intent routes when a rule is active and effective. The payment
 intent reruns the quote server-side and returns a provider client secret; the
-Paymob HMAC webhook settles the subscription-specific `sub_` reference and
-activates the plan only after a matching successful payment. It does not create
-an invoice or PDF. Recurring billing, trials, redemption, upgrades/downgrades,
-proration, retries, allowance consumption, notifications, and deployment
-automation remain separate slices. Initial Card enrollment is available only
-when the local plan has `paymobSubscriptionPlanId` and Paymob Card 3DS is
-configured; Wallet remains one-time/manual. The current family renewal endpoint
-uses the manual payment-intent boundary and preserves the original renewal
-anchor after a successful retry. Provider renewal-event settlement/retry and
-provider subscription-ID persistence are out of scope for this slice. No
-provider-managed renewal route is live until it is added to the contract
-matrix, Postman, Bruno, and the public docs.
+Paymob callback settles the subscription-specific `sub_` reference and
+activates the plan only after a matching successful payment. Subscription
+callbacks use `subscription_data.id`, `trigger_type`, body `hmac`, and optional
+`initial_transaction`, `amount_cents`, `state`, and `next_billing`; renewal
+callbacks require top-level `paymob_request_id`. HMAC-SHA512 covers
+`{trigger_type}for{subscription_data.id}`. The accepted trigger spellings are
+`CREATED`, `Subscription Created`, `Successful Transaction`, `Failed
+Transaction`, and `Failed Overdue Transaction`.
+
+Provider subscription identities are durably stored in the shared registry and
+callback event identities are append-only ledger records. Renewal settlement
+preserves the seven-day grace and original period-end anchor. A successful
+callback after grace expiry is durably acknowledged with HTTP `200` and does
+not mutate successful-renewal state. Unknown identities and duplicate events
+are acknowledged without a second mutation. This callback contract does not
+create an invoice or PDF. Recurring wallet billing, trials, redemption,
+upgrades/downgrades, proration, allowance consumption, notifications, and
+deployment automation remain separate slices. Initial Card enrollment is
+available only when the local plan has `paymobSubscriptionPlanId` and Paymob
+Card 3DS is configured; Wallet remains one-time/manual. The current family
+renewal endpoint uses the manual payment-intent boundary and preserves the
+original renewal anchor after a successful retry.

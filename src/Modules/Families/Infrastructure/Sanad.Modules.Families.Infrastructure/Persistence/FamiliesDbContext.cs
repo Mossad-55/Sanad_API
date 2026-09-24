@@ -45,6 +45,11 @@ public sealed class FamiliesDbContext :
     public DbSet<SubscriptionCoupon> SubscriptionCoupons => Set<SubscriptionCoupon>();
     public DbSet<SubscriptionTaxRule> SubscriptionTaxRules => Set<SubscriptionTaxRule>();
     public DbSet<SubscriptionPaymentAttempt> SubscriptionPaymentAttempts => Set<SubscriptionPaymentAttempt>();
+    public DbSet<PaymobSubscriptionCallback> PaymobSubscriptionCallbacks => Set<PaymobSubscriptionCallback>();
+    public DbSet<PaymobSubscriptionIdentity> PaymobSubscriptionIdentities => Set<PaymobSubscriptionIdentity>();
+
+    public void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
+        PaymobSubscriptionIdentities.Add(identity);
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -69,6 +74,8 @@ public sealed class FamiliesDbContext :
         ThrowIfFamilySubscriptionMutated();
         ThrowIfSubscriptionCouponMutated();
         ThrowIfSubscriptionTaxRuleMutated();
+        ThrowIfPaymobSubscriptionCallbackMutated();
+        ThrowIfPaymobSubscriptionIdentityMutated();
 
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -89,6 +96,8 @@ public sealed class FamiliesDbContext :
         ThrowIfFamilySubscriptionMutated();
         ThrowIfSubscriptionCouponMutated();
         ThrowIfSubscriptionTaxRuleMutated();
+        ThrowIfPaymobSubscriptionCallbackMutated();
+        ThrowIfPaymobSubscriptionIdentityMutated();
 
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
@@ -188,6 +197,10 @@ public sealed class FamiliesDbContext :
                         or nameof(FamilySubscription.CurrentPeriodEndsOnUtc)
                         or nameof(FamilySubscription.RenewalGraceEndsOnUtc)
                         or nameof(FamilySubscription.LastRenewalFailedOnUtc)
+                        or nameof(FamilySubscription.PaymobSubscriptionId)
+                        or nameof(FamilySubscription.PaymobSubscriptionState)
+                        or nameof(FamilySubscription.PaymobNextBillingOnUtc)
+                        or nameof(FamilySubscription.PaymobLastCallbackKey)
                         or nameof(FamilySubscription.LifecycleVersion))))
             {
                 throw new InvalidOperationException(
@@ -195,7 +208,11 @@ public sealed class FamiliesDbContext :
                     $"{nameof(FamilySubscription.IsCurrent)}, {nameof(FamilySubscription.AutoRenewEnabled)}, " +
                     $"{nameof(FamilySubscription.CancellationRequestedOnUtc)}, {nameof(FamilySubscription.CurrentPeriodEndsOnUtc)}, " +
                     $"{nameof(FamilySubscription.RenewalGraceEndsOnUtc)}, " +
-                    $"{nameof(FamilySubscription.LastRenewalFailedOnUtc)}, and " +
+                    $"{nameof(FamilySubscription.LastRenewalFailedOnUtc)}, " +
+                    $"provider identity/state ({nameof(FamilySubscription.PaymobSubscriptionId)}, " +
+                    $"{nameof(FamilySubscription.PaymobSubscriptionState)}, " +
+                    $"{nameof(FamilySubscription.PaymobNextBillingOnUtc)}, " +
+                    $"{nameof(FamilySubscription.PaymobLastCallbackKey)}), and " +
                     $"{nameof(FamilySubscription.LifecycleVersion)} may be changed.");
             }
         }
@@ -246,6 +263,26 @@ public sealed class FamiliesDbContext :
                     $"{nameof(SubscriptionTaxRule)} versioned fields are immutable; only " +
                     $"{nameof(SubscriptionTaxRule.IsActive)} may be changed.");
             }
+        }
+    }
+
+    private void ThrowIfPaymobSubscriptionCallbackMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<PaymobSubscriptionCallback>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+                throw new InvalidOperationException(
+                    $"{nameof(PaymobSubscriptionCallback)} entries are immutable and cannot be updated or deleted.");
+        }
+    }
+
+    private void ThrowIfPaymobSubscriptionIdentityMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<PaymobSubscriptionIdentity>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+                throw new InvalidOperationException(
+                    $"{nameof(PaymobSubscriptionIdentity)} entries are immutable and cannot be updated or deleted.");
         }
     }
 }

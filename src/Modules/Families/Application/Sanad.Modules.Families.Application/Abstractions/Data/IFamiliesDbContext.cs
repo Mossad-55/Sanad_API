@@ -34,6 +34,16 @@ public interface IFamiliesDbContext
     DbSet<SubscriptionCoupon> SubscriptionCoupons => throw new NotSupportedException("This context does not expose subscription coupons.");
     DbSet<SubscriptionTaxRule> SubscriptionTaxRules => throw new NotSupportedException("This context does not expose subscription tax rules.");
     DbSet<SubscriptionPaymentAttempt> SubscriptionPaymentAttempts => throw new NotSupportedException("This context does not expose subscription payment attempts.");
+    DbSet<PaymobSubscriptionCallback> PaymobSubscriptionCallbacks => throw new NotSupportedException("This context does not expose Paymob subscription callbacks.");
+    DbSet<PaymobSubscriptionIdentity> PaymobSubscriptionIdentities => throw new NotSupportedException("This context does not expose Paymob subscription identities.");
+
+    /// <summary>
+    /// Queues the provider identity claim in the same unit of work as the callback mutation.
+    /// The shared unique registry is the authoritative race boundary; the claim is not accepted
+    /// until the subsequent SaveChangesAsync transaction succeeds.
+    /// </summary>
+    void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
+        PaymobSubscriptionIdentities.Add(identity);
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

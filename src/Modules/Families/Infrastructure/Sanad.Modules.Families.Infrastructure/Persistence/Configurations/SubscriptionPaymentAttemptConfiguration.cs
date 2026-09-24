@@ -32,11 +32,17 @@ public sealed class SubscriptionPaymentAttemptConfiguration : IEntityTypeConfigu
         builder.Ignore(x => x.MerchantReference);
         builder.Property(x => x.PaymobOrderId).HasColumnName("paymob_order_id").HasMaxLength(100);
         builder.Property(x => x.PaymobTransactionId).HasColumnName("paymob_transaction_id").HasMaxLength(100);
+        builder.Property(x => x.PaymobInitialTransactionId).HasColumnName("paymob_initial_transaction_id").HasMaxLength(100);
+        builder.Property(x => x.PaymobSubscriptionId).HasColumnName("paymob_subscription_id").HasMaxLength(100);
         builder.Property(x => x.Status).HasColumnName("status").HasConversion<int>().IsRequired();
         builder.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
         builder.Property(x => x.SettledOnUtc).HasColumnName("settled_on_utc");
         builder.Property(x => x.FailedOnUtc).HasColumnName("failed_on_utc");
         builder.HasIndex(x => x.PaymobOrderId).IsUnique();
+        builder.HasIndex(x => x.PaymobSubscriptionId)
+            .HasFilter("paymob_subscription_id IS NOT NULL")
+            .IsUnique()
+            .HasDatabaseName("ux_subscription_payment_attempts_paymob_subscription_id");
         builder.HasIndex(x => new { x.FamilyId, x.Status });
         builder.HasIndex(x => new { x.SubscriptionId, x.IsRenewal, x.Status });
         builder.HasOne<Family>().WithMany().HasForeignKey(x => x.FamilyId).OnDelete(DeleteBehavior.Restrict);
