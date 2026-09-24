@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Domain.Bookings;
+using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 
 namespace Sanad.UnitTests.Families;
@@ -95,6 +96,28 @@ public sealed class CaregiverAttendanceCommandHandlerTests
         AssertFailedWith(duplicate, "Bookings.Domain.InvalidOperation");
     }
 
+    [Fact]
+    public async Task Complete_Consumes_current_subscription_allowance_once()
+    {
+        DateTime confirmedAt = UtcNow;
+        Booking booking = CreateConfirmedBooking(confirmedAt);
+        using FamiliesDbContext dbContext = CreateDbContext(
+            booking,
+            FamilySubscription.Create(booking.FamilyId, SubscriptionPlanVersion.Create(SubscriptionPlan.Free)));
+        var startHandler = new CaregiverStartBookingCommandHandler(dbContext);
+        var completeHandler = new CaregiverCompleteBookingCommandHandler(dbContext);
+
+        await startHandler.Handle(
+            new CaregiverStartBookingCommand(booking.CaregiverId, booking.Id, confirmedAt),
+            CancellationToken.None);
+        Result completed = await completeHandler.Handle(
+            new CaregiverCompleteBookingCommand(booking.CaregiverId, booking.Id, "Visit completed", confirmedAt),
+            CancellationToken.None);
+
+        Assert.True(completed.IsSuccess);
+        Assert.Equal(1, dbContext.FamilySubscriptions.Single().CurrentPeriodBookingCount);
+    }
+
     private static readonly DateTime UtcNow = new(2026, 9, 20, 8, 0, 0, DateTimeKind.Utc);
 
     private static Booking CreateConfirmedBooking(DateTime confirmedAt)
@@ -121,13 +144,15 @@ public sealed class CaregiverAttendanceCommandHandlerTests
         return booking;
     }
 
-    private static FamiliesDbContext CreateDbContext(Booking booking)
+    private static FamiliesDbContext CreateDbContext(Booking booking, FamilySubscription? subscription = null)
     {
         var options = new DbContextOptionsBuilder<FamiliesDbContext>()
             .UseInMemoryDatabase($"sanad-attendance-{Guid.NewGuid():N}")
             .Options;
         var dbContext = new FamiliesDbContext(options);
         dbContext.Bookings.Add(booking);
+        if (subscription is not null)
+            dbContext.FamilySubscriptions.Add(subscription);
         dbContext.SaveChanges();
         return dbContext;
     }

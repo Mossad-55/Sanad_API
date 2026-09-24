@@ -180,6 +180,8 @@ If the refund call fails at the gateway, the booking still transitions and the c
 | `Bookings.NotFound` | 404 | Booking id unknown (or not in the caller's family, on intent). |
 | `Bookings.BookingNotInFamily` | 404 | Booking belongs to another family (on cancel). |
 | `Bookings.Domain.InvalidOperation` | 409 | Lifecycle rule violated (wrong-status transition, cancel after completion, past-deadline accept, intent on a paid booking). |
+| `Bookings.AllowanceExceeded` | 409 | The current family subscription has no remaining finite booking allowance for the period; the booking remains `InProgress`. |
+| `Bookings.AllowanceConcurrency` | 409 | Another completion changed the allowance concurrently; retry the completion request. |
 | `Bookings.PriceUnavailable` | 409 | Reserved for pricing unavailability. |
 | `Caregivers.Discovery.CaregiverNotFound` | 404 | Checkout/quote against an unknown caregiver. |
 | `Caregivers.Discovery.QuoteNotAvailable` | 409 | Caregiver pricing missing for the requested product, or product/caregiver-type mismatch. |

@@ -236,6 +236,7 @@ public sealed class FamiliesDbContext :
             or nameof(FamilySubscription.AutoRenewEnabled)
             or nameof(FamilySubscription.CancellationRequestedOnUtc)
             or nameof(FamilySubscription.CurrentPeriodEndsOnUtc)
+            or nameof(FamilySubscription.CurrentPeriodBookingCount)
             or nameof(FamilySubscription.RenewalGraceEndsOnUtc)
             or nameof(FamilySubscription.LastRenewalFailedOnUtc)
             or nameof(FamilySubscription.PaymobSubscriptionId)

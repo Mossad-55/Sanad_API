@@ -64,7 +64,7 @@ For a `Confirmed` booking, caregiver cancellation requires a valid reason catego
 | start | `Confirmed (3)` | `utcNow >= ConfirmedOnUtc` | `InProgress (4)` |
 | complete | `InProgress (4)` | `utcNow >= StartedOnUtc` | `Completed (5)` |
 
-Successful start, complete, and other command actions return `204 No Content`. Invalid state or timestamp ordering returns `409 Bookings.Domain.InvalidOperation`; an unknown or foreign booking returns `404 Bookings.NotFound`.
+Successful start, complete, and other command actions return `204 No Content`. Invalid state or timestamp ordering returns `409 Bookings.Domain.InvalidOperation`; an exhausted family subscription booking allowance returns `409 Bookings.AllowanceExceeded` and leaves the booking `InProgress`; an unknown or foreign booking returns `404 Bookings.NotFound`.
 
 The visit-report action returns `201` and accepts only `observedCondition`, `activities`, `notes`, and
 `assessment`. It uses server attendance and submission timestamps and rejects a second report for the

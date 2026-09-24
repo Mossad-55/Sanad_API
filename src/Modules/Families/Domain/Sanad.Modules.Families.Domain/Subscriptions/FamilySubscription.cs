@@ -36,6 +36,7 @@ public sealed class FamilySubscription : Entity<Guid>
         IsCurrent = true;
         AutoRenewEnabled = true;
         CurrentPeriodEndsOnUtc = CalculatePeriodEnd(createdOnUtc, plan.Cycle);
+        CurrentPeriodBookingCount = 0;
         LifecycleVersion = Guid.NewGuid();
         CreatedOnUtc = createdOnUtc;
     }
@@ -55,6 +56,7 @@ public sealed class FamilySubscription : Entity<Guid>
     public bool AutoRenewEnabled { get; private set; }
     public DateTime? CancellationRequestedOnUtc { get; private set; }
     public DateTime CurrentPeriodEndsOnUtc { get; private set; }
+    public int CurrentPeriodBookingCount { get; private set; }
     public DateTime? RenewalGraceEndsOnUtc { get; private set; }
     public DateTime? LastRenewalFailedOnUtc { get; private set; }
     public decimal? CurrentPeriodGross { get; private set; }
@@ -188,9 +190,28 @@ public sealed class FamilySubscription : Entity<Guid>
         // The existing period end is the unchanged renewal anchor; the selected terms determine
         // the length of the new period that starts at that anchor.
         CurrentPeriodEndsOnUtc = CalculatePeriodEnd(CurrentPeriodEndsOnUtc, Cycle);
+        CurrentPeriodBookingCount = 0;
         RenewalGraceEndsOnUtc = null;
         LastRenewalFailedOnUtc = null;
         LifecycleVersion = Guid.NewGuid();
+    }
+
+    public bool TryConsumeBookingAllowance()
+    {
+        if (!IsCurrent)
+            return false;
+
+        if (MonthlyBookingLimitKind == SubscriptionLimitKind.Finite &&
+            (MonthlyBookingLimitValue is null || CurrentPeriodBookingCount >= MonthlyBookingLimitValue.Value))
+        {
+            return false;
+        }
+
+        if (MonthlyBookingLimitKind == SubscriptionLimitKind.Finite)
+            CurrentPeriodBookingCount++;
+
+        LifecycleVersion = Guid.NewGuid();
+        return true;
     }
 
     public void SetCurrentPeriodSettlement(decimal gross, decimal taxRatePercentage)

@@ -28,6 +28,7 @@ public sealed class FamilySubscriptionConfiguration : IEntityTypeConfiguration<F
         builder.Property(x => x.AutoRenewEnabled).HasColumnName("auto_renew_enabled").IsRequired();
         builder.Property(x => x.CancellationRequestedOnUtc).HasColumnName("cancellation_requested_on_utc");
         builder.Property(x => x.CurrentPeriodEndsOnUtc).HasColumnName("current_period_ends_on_utc").IsRequired().IsConcurrencyToken();
+        builder.Property(x => x.CurrentPeriodBookingCount).HasColumnName("current_period_booking_count").IsRequired();
         builder.Property(x => x.RenewalGraceEndsOnUtc).HasColumnName("renewal_grace_ends_on_utc");
         builder.Property(x => x.LastRenewalFailedOnUtc).HasColumnName("last_renewal_failed_on_utc");
         builder.Property(x => x.CurrentPeriodGross).HasColumnName("current_period_gross").HasPrecision(18, 2);

@@ -163,6 +163,8 @@ public static class ResultProblemDetailsMapper
             ["Bookings.NotFound"] = 404,
             ["Bookings.BookingNotInFamily"] = 404,
             ["Bookings.Domain.InvalidOperation"] = 409,
+            ["Bookings.AllowanceExceeded"] = 409,
+            ["Bookings.AllowanceConcurrency"] = 409,
             ["Bookings.PriceUnavailable"] = 409,
             ["Bookings.AlreadyRefunded"] = 409,
             ["Bookings.RefundNotEligible"] = 409,

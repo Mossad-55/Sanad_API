@@ -7,6 +7,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Domain.Bookings;
+using Sanad.Modules.Families.Domain.Subscriptions;
 
 namespace Sanad.Modules.Families.Application.Bookings;
 
@@ -452,12 +453,36 @@ public sealed class CaregiverCompleteBookingCommandHandler : ICommandHandler<Car
                 if (trackedBooking is null)
                     return Result.Failure(new Error("Bookings.NotFound", "Booking not found for this caregiver."));
 
+                booking.CompleteVisit(request.Notes, request.UtcNow);
+
+                FamilySubscription? subscription = await _dbContext.FamilySubscriptions
+                    .SingleOrDefaultAsync(s => s.FamilyId == booking.FamilyId && s.IsCurrent, cancellationToken);
+                if (subscription is not null && !subscription.TryConsumeBookingAllowance())
+                {
+                    return Result.Failure(new Error(
+                        "Bookings.AllowanceExceeded",
+                        "The family subscription has no remaining booking allowance for this period."));
+                }
+
                 trackedBooking.CompleteVisit(request.Notes, request.UtcNow);
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 return Result.Success();
             }
 
             booking.CompleteVisit(request.Notes, request.UtcNow);
+
+            if (_dbContext is not DbContext relationalDbContext)
+                return Result.Failure(new Error("Bookings.TransitionFailed", "The visit transition could not be persisted."));
+
+            await using var transaction = await relationalDbContext.Database.BeginTransactionAsync(cancellationToken);
+            FamilySubscription? currentSubscription = await _dbContext.FamilySubscriptions
+                .SingleOrDefaultAsync(s => s.FamilyId == booking.FamilyId && s.IsCurrent, cancellationToken);
+            if (currentSubscription is not null && !currentSubscription.TryConsumeBookingAllowance())
+            {
+                return Result.Failure(new Error(
+                    "Bookings.AllowanceExceeded",
+                    "The family subscription has no remaining booking allowance for this period."));
+            }
 
             int updated = await _dbContext.Bookings
                 .Where(b => b.Id == request.BookingId
@@ -474,11 +499,14 @@ public sealed class CaregiverCompleteBookingCommandHandler : ICommandHandler<Car
 
             if (updated == 0)
             {
+                await transaction.RollbackAsync(cancellationToken);
                 return Result.Failure(new Error(
                     "Bookings.Domain.InvalidOperation",
                     "The booking state changed before the visit could complete."));
             }
 
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
             return Result.Success();
         }
         catch (DomainException exception)
@@ -488,6 +516,12 @@ public sealed class CaregiverCompleteBookingCommandHandler : ICommandHandler<Car
         catch (OperationCanceledException)
         {
             throw;
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result.Failure(new Error(
+                "Bookings.AllowanceConcurrency",
+                "The booking allowance changed while the visit was completing. Please retry."));
         }
         catch (Exception)
         {

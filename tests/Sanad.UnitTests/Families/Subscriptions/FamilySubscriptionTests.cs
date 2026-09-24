@@ -116,4 +116,53 @@ public sealed class FamilySubscriptionTests
         Assert.Throws<DomainException>(() =>
             subscription.ApplySuccessfulRenewal(periodEnd.AddDays(7)));
     }
+
+    [Fact]
+    public void Finite_booking_allowance_is_consumed_once_and_exhaustion_is_rejected()
+    {
+        FamilySubscription subscription = FamilySubscription.Create(
+            FamilyId.New(),
+            SubscriptionPlanVersion.Create(SubscriptionPlan.Free));
+
+        Assert.Equal(0, subscription.CurrentPeriodBookingCount);
+        Assert.True(subscription.TryConsumeBookingAllowance());
+        Assert.Equal(1, subscription.CurrentPeriodBookingCount);
+
+        for (int index = 1; index < 5; index++)
+            Assert.True(subscription.TryConsumeBookingAllowance());
+
+        Assert.False(subscription.TryConsumeBookingAllowance());
+        Assert.Equal(5, subscription.CurrentPeriodBookingCount);
+    }
+
+    [Fact]
+    public void Successful_renewal_resets_finite_booking_allowance()
+    {
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime periodEnd = created.AddMonths(1);
+        FamilySubscription subscription = FamilySubscription.Create(
+            FamilyId.New(),
+            SubscriptionPlanVersion.Create(SubscriptionPlan.Free),
+            created,
+            periodEnd);
+
+        Assert.True(subscription.TryConsumeBookingAllowance());
+        subscription.BeginRenewalGrace(periodEnd.AddMinutes(1));
+        subscription.ApplySuccessfulRenewal(periodEnd.AddMinutes(2));
+
+        Assert.Equal(0, subscription.CurrentPeriodBookingCount);
+        Assert.True(subscription.TryConsumeBookingAllowance());
+    }
+
+    [Fact]
+    public void Unlimited_booking_allowance_does_not_increment_usage()
+    {
+        FamilySubscription subscription = FamilySubscription.Create(
+            FamilyId.New(),
+            SubscriptionPlanVersion.Create(SubscriptionPlan.PremiumPlus));
+
+        Assert.True(subscription.TryConsumeBookingAllowance());
+        Assert.True(subscription.TryConsumeBookingAllowance());
+        Assert.Equal(0, subscription.CurrentPeriodBookingCount);
+    }
 }

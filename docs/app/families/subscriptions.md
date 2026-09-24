@@ -225,9 +225,13 @@ The invoice routes are Owner-only:
 
 These routes return `401` without authentication, `403` for a non-owner, and
 `404` for an invoice outside the owner's family or a missing PDF. Invoice
-generation is part of successful settlement and does not send email or consume
-booking allowance. Allowance consumption, notifications, and deployment
-automation remain separate slices.
+generation is part of successful settlement and does not send email. A finite
+monthly booking allowance is consumed only after the caregiver successfully
+completes an `InProgress` booking; cancelled, declined, expired, unpaid,
+duplicate, and failed completion attempts do not consume it. Consumption resets
+after successful renewal, unlimited plans do not increment usage, and an
+exhausted allowance rejects completion with `409 Bookings.AllowanceExceeded`.
+Notifications and deployment automation remain separate slices.
 
 ## Card enrollment boundary
 

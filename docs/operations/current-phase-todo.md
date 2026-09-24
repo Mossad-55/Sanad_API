@@ -1,10 +1,10 @@
 # Current phase todo — subscription billing invoices
 
-The active bounded slice adds immutable branded subscription invoices for
-successful initial purchases and successful renewals. Allowance consumption is
-the next separate slice and is not included here.
+The active bounded slice adds completion-only subscription booking allowance
+consumption with persisted period usage and renewal reset. The invoice/PDF slice
+is already complete.
 
-The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the owner reports it is deployed and the repository work tested. The invoice/PDF slice is now implemented locally and validated. The remaining billing slice is booking-completion allowance consumption. The approved sequence is to complete that slice, validate/deploy the complete billing revision, build/test the deployment mechanism, conduct the UI walkthrough and gap analysis, implement approved gaps, then add notifications/email.
+The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the owner reports it is deployed and the repository work tested. The invoice/PDF slice is pushed as `9366d99`; allowance enforcement is implemented locally and is in focused review. The approved sequence is to validate/commit/push/deploy this complete billing revision, build/test the deployment mechanism, conduct the full-application UI walkthrough and gap analysis, implement approved gaps, then add notifications/email.
 
 ## Current status
 
@@ -18,10 +18,9 @@ The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the
 ## Remaining phase work
 
 - Completed bounded billing slice: branded invoices/PDFs for initial purchases and successful renewals.
-- Next bounded billing slice: allowance consumption only when a booking completes; cancelled bookings consume none.
-- Then implement allowance consumption only on booking completion; cancelled bookings consume none.
-- Validate and deploy the complete subscription-billing revision. The already-deployed plan-change revision does not include the remaining billing slices above.
-- Then build/test the repeatable deployment mechanism, conduct the owner/mastermind UI walkthrough and gap analysis, and implement only owner-approved gaps.
+- Allowance slice implemented: finite allowance is consumed only when a caregiver completion succeeds; cancelled, declined, expired, unpaid, duplicate, and failed completion attempts consume none; renewal resets usage and unlimited plans do not increment it.
+- Validate the migration and complete billing revision, then commit/push and deploy it. The already-deployed plan-change revision does not include invoices or allowance enforcement.
+- Repeatable deployment mechanism added at `tools/Publish-SanadApi.ps1` with the handoff contract in `docs/operations/deployment.md`; run and verify it after the billing commit. Then conduct the full-application UI walkthrough and gap analysis, and implement only owner-approved gaps.
 - Notifications/email follow core billing and approved UI gaps.
 
 ## Pinned plan-change contract
