@@ -19,7 +19,7 @@ The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the
 
 - Completed bounded billing slice: branded invoices/PDFs for initial purchases and successful renewals.
 - Allowance slice implemented: finite allowance is consumed only when a caregiver completion succeeds; cancelled, declined, expired, unpaid, duplicate, and failed completion attempts consume none; renewal resets usage and unlimited plans do not increment it.
-- Validate the migration and complete billing revision, then commit/push and deploy it. The already-deployed plan-change revision does not include invoices or allowance enforcement.
+- Validated and pushed as `29c07e0`: migration `20260924141816_AddSubscriptionBookingAllowance`, complete billing revision, and repeatable package script. The deployment owner must apply/verify the migration and record startup/smoke evidence; the already-deployed plan-change revision did not include invoices or allowance enforcement.
 - Repeatable deployment mechanism added at `tools/Publish-SanadApi.ps1` with the handoff contract in `docs/operations/deployment.md`; run and verify it after the billing commit. Then conduct the full-application UI walkthrough and gap analysis, and implement only owner-approved gaps.
 - Notifications/email follow core billing and approved UI gaps.
 
