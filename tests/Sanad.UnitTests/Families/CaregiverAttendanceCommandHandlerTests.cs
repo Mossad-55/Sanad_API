@@ -56,7 +56,9 @@ public sealed class CaregiverAttendanceCommandHandlerTests
     {
         DateTime confirmedAt = UtcNow;
         Booking booking = CreateConfirmedBooking(confirmedAt);
-        using FamiliesDbContext dbContext = CreateDbContext(booking);
+        using FamiliesDbContext dbContext = CreateDbContext(
+            booking,
+            FamilySubscription.Create(booking.FamilyId, SubscriptionPlanVersion.Create(SubscriptionPlan.Free)));
         var startHandler = new CaregiverStartBookingCommandHandler(dbContext);
         var completeHandler = new CaregiverCompleteBookingCommandHandler(dbContext);
 
@@ -71,6 +73,7 @@ public sealed class CaregiverAttendanceCommandHandlerTests
         Booking stored = await dbContext.Bookings.SingleAsync(b => b.Id == booking.Id);
         Assert.Equal(BookingStatus.InProgress, stored.Status);
         Assert.Null(stored.CompletedOnUtc);
+        Assert.Equal(0, dbContext.FamilySubscriptions.Single().CurrentPeriodBookingCount);
     }
 
     [Fact]
@@ -78,7 +81,9 @@ public sealed class CaregiverAttendanceCommandHandlerTests
     {
         DateTime confirmedAt = UtcNow;
         Booking booking = CreateConfirmedBooking(confirmedAt);
-        using FamiliesDbContext dbContext = CreateDbContext(booking);
+        using FamiliesDbContext dbContext = CreateDbContext(
+            booking,
+            FamilySubscription.Create(booking.FamilyId, SubscriptionPlanVersion.Create(SubscriptionPlan.Free)));
         var startHandler = new CaregiverStartBookingCommandHandler(dbContext);
         var completeHandler = new CaregiverCompleteBookingCommandHandler(dbContext);
 
@@ -94,6 +99,7 @@ public sealed class CaregiverAttendanceCommandHandlerTests
 
         Assert.True(completed.IsSuccess);
         AssertFailedWith(duplicate, "Bookings.Domain.InvalidOperation");
+        Assert.Equal(1, dbContext.FamilySubscriptions.Single().CurrentPeriodBookingCount);
     }
 
     [Fact]
