@@ -2,11 +2,11 @@
 
 This repository uses an owner/mastermind workflow with specialized, bounded worker roles for local API development:
 
-| Role | Responsibility | Cannot do without owner approval |
+| Role | Responsibility | Authority and restrictions |
 |---|---|---|
-| Owner | Product decisions, credentials, migrations, commits, publication, merge, deployment | — |
+| Owner | Final authority for product decisions, credentials, migrations, commits, pushes, publication/merge, deployments, and production data | — |
 | Mastermind | Current-state audit, task decomposition, worker briefs, review, local validation, ledger and documentation coordination | — |
-| Worker | One bounded scout, review, implementation, or test task from a pinned revision | Merge, push, deploy, migration, control-file edits |
+| Worker | One bounded scout, review, implementation, test, or documentation task from a pinned revision | Never merge, push, deploy, create migrations, or edit `Sanad_Master_Context.md`, `Sanad_Operations.md`, or other control files |
 
 ## Local setup
 
@@ -26,18 +26,32 @@ The latest `CURRENT HANDOFF` block at the top of `Sanad_Operations.md` is the ac
 
 ## Standard slice lifecycle
 
-1. The owner authorizes the objective and any state-changing authority.
-2. The mastermind audits the current branch, SHA, status, product rules, affected code, tests, and docs.
-3. The mastermind issues a worker brief with a pinned base SHA, exact file manifest, acceptance ladder, exclusions, stop conditions, and final-report format.
-4. A scout or reviewer maps/reviews first when the change is unfamiliar or high-risk.
-5. One implementer changes only its manifest. A separate test author works only after the implementation revision is stable and pinned.
-6. The mastermind reviews the complete bounded result and resolves any corrections before owner gates.
-7. The owner runs the authoritative build/test/migration gate, approves publication, and controls commit/push/merge/deploy.
-8. The mastermind runs or verifies the proportionate local API gate and updates public docs plus the private operations ledger.
+1. The owner authorizes the objective and any state-changing authority, and the mastermind audits the current branch, SHA, status, product rules, affected code, tests, and docs.
+2. `sanad_scout` maps current state and the exact file manifest.
+3. `sanad_implementer` makes one bounded change from the pinned revision.
+4. `sanad_test_author` adds tests after the implementation revision is stable and pinned.
+5. When required, the owner creates/verifies the local migration against the exact verified local database target. This must happen before any migration-dependent focused test, build, or Bruno gate.
+6. The mastermind runs focused tests, the full build, and the full test suite.
+7. If the mastermind finds a defect, re-engage the implementer with a new pinned correction brief and repeat the affected validation gates.
+8. A preliminary `sanad_reviewer` performs an independent correctness, security, compatibility, and test review.
+9. `sanad_documenter` completes all affected documentation, README, and Postman synchronization, including examples, variables, descriptions, and response assertions.
+10. After Postman synchronization, the mastermind runs the mechanical controller-route/Postman check in both directions and reconciles the requirements-to-contract matrix and all completeness findings.
+11. A final `sanad_reviewer` provides sign-off after the mechanical check and contract-completeness reconciliation.
+12. The mastermind performs final validation and the applicable Bruno gate, recording exact requests, assertions, and exit code.
+13. The owner performs authorized commit, push, and publication/merge actions.
+14. After the owner-led UI walkthrough, the owner deploys the verified revision.
+15. After deployment, the owner applies/verifies migrations against the exact verified production database target, then runs safe smoke checks.
+16. The mastermind completes the final handoff with verified SHA, gate results, cleanup state, and one next action.
 
-Before each phase, the mastermind must publish one complete ordered todo checklist for every worker and gate, including owner actions and final handoff. Each row names the owner, deliverable, dependency, and status. Before spawning a worker, the mastermind reports to the owner what the worker is doing now, its exact bounded output, owned files or read-only scope, acceptance check, and checklist item. After every spawn, worker report, interruption, blocker, correction, and gate result, the mastermind updates the checklist and immediately reports the plain-language outcome, evidence, blockers, and todo impact before starting the next worker or gate. A worker may not be silently skipped or replaced; missing reports and unfulfilled checks pause dependent work and are recorded.
+### Permanent mastermind model routing and context quarantine
 
-The required execution order is: `sanad_scout` mapping and manifest -> `sanad_implementer` bounded change -> mastermind focused tests, full build, and full test suite -> implementer correction round if any defect is found -> `sanad_reviewer` independent review -> `sanad_documenter` complete docs/README/Postman synchronization -> mastermind final validation and handoff update. The implementer correction round is mandatory whenever the mastermind finds a source, test, build, or contract defect; it receives a new pinned brief and cannot be silently patched around by the mastermind.
+These are permanent repository workflow rules, not session-only preferences. Route workers as follows: `sanad_scout` -> `gpt-6-luna`; `sanad_implementer` -> `gpt-6-sol`; `sanad_reviewer` -> `gpt-6-sol`; `sanad_test_author` -> `gpt-6-luna`; and `sanad_documenter` -> `gpt-6-luna`. If the implementer has two consecutive compile/test failures, assign the correction to `gpt-5.6-sol`, then return subsequent implementer work to `gpt-6-sol`.
+
+Do not pass workers raw repository files or full conversation histories. Give them only the immediate paths and discrete snippets needed for their bounded task. After each completed asset, flush conversational context before starting the next worker. Require concise, structural worker reports.
+
+Before each phase, the mastermind must publish the numbered lifecycle checklist above as a complete ordered todo checklist. Every item names its owner, exact deliverable, dependency, and status. Before spawning a worker, the mastermind reports to the owner what the worker is doing now, its exact bounded output, owned files or read-only scope, acceptance check, and checklist item. After every spawn, worker report, interruption, blocker, correction, and gate result, the mastermind updates the checklist and immediately reports the plain-language outcome, evidence, blockers, and todo impact before starting the next worker or gate. A worker may not be silently skipped or replaced; missing reports and unfulfilled checks pause dependent work and are recorded.
+
+The required execution order is: owner authorization and mastermind audit -> `sanad_scout` maps current state and exact manifest -> `sanad_implementer` makes one bounded change -> `sanad_test_author` adds tests against the pinned implementation -> owner creates/verifies any required local migration against the exact verified local database target -> mastermind runs focused tests, full build, and full suite -> implementer correction and affected validation gates if a defect is found -> preliminary reviewer review -> documenter completes all docs/README/Postman synchronization -> mastermind runs the mechanical controller-route/Postman check in both directions and reconciles contract completeness after synchronization -> final reviewer sign-off -> mastermind runs final validation and Bruno -> owner performs authorized commit, push, and publication/merge -> after the owner-led UI walkthrough, owner deploys the verified revision -> after deployment, owner applies/verifies the migration against the exact verified production database target and runs safe smoke checks -> mastermind completes final handoff. The implementer correction round is mandatory whenever a defect is found and cannot be silently patched around by the mastermind. Local migration verification precedes migration-dependent tests/build and Bruno; production migration application/verification remains after deployment.
 
 After every worker completes, the mastermind must report in plain language what the worker did, what changed or was found, exact validation results, blockers, affected todo items, and the next action. This report is required before another worker or phase starts.
 
@@ -66,7 +80,7 @@ Every broad audit and every API slice must maintain a requirements-to-contract m
 
 The closeout report must state exact counts for missing requirements, source routes, tests, documentation sections/files, Postman requests, and Bruno scenarios. A controller-to-Postman check runs in both directions; intentional exceptions such as external webhooks require a manual collection artifact or an explicit recorded owner decision. Any nonzero missing count blocks closeout until corrected or owner-deferred in the active checklist.
 
-The repository check is `pwsh -File tools/Verify-ApiContractMapping.ps1`. It extracts controller routes and Postman requests, normalizes route parameters, checks both directions, prints exact counts, and exits nonzero on any mismatch. This check is required before reviewer approval and again before commit/push.
+The repository check is `pwsh -File tools/Verify-ApiContractMapping.ps1`. It extracts controller routes and Postman requests, normalizes route parameters, checks both directions, prints exact counts, and exits nonzero on any mismatch. Run it after Postman synchronization and before final reviewer sign-off; rerun before commit/push if subsequent changes can affect the mapping. Contract-completeness counts and exceptions must be reconciled at this point, before final reviewer approval.
 
 ## Sanad validation rules
 
@@ -74,8 +88,8 @@ The repository check is `pwsh -File tools/Verify-ApiContractMapping.ps1`. It ext
 - T0 Bruno is the idempotent standard tier: run it against a fresh local seed and expect the current 81-request scope.
 - Lifecycle Bruno tiers consume seeded bookings/accounts. Run them separately and reseed before rerunning.
 - A green worker report is not a release verdict. The owner gate is authoritative for the final pinned revision.
-- Database resets and migrations require exact local/target verification. Never apply a migration to an unknown database.
-- Local Bruno has priority for the active phase. VPS deployment is deferred until after the owner-led UI walkthrough; then the mastermind must remind the owner to deploy the verified revision, apply/verify migrations, and run safe smoke checks.
+- Database resets and migrations require exact target verification. Local migration creation/verification is an owner action before commit and targets only the verified local database. Never apply a migration to an unknown database.
+- Local migration creation/verification, when required, is an owner action against the exact verified local database target and precedes migration-dependent focused tests/build and Bruno. Local Bruno has priority for the active phase. VPS deployment and production migration application/verification are deferred until after the owner-led UI walkthrough. Then the owner deploys the verified revision, applies/verifies the migration against the exact verified production database target, and runs safe smoke checks.
 - Stage validated changes by logical commit scope, keep private control files unstaged, and do not start a new phase while required current-phase todo items remain open or explicitly owner-deferred.
 
 ## B1-B3 closeout
