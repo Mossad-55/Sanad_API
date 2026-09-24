@@ -236,8 +236,9 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
 {
     private readonly IFamiliesDbContext _db;
     private readonly IPaymobClient _paymobClient;
+    private readonly ISubscriptionInvoiceService? _invoices;
 
-    public ConfirmSubscriptionPaymentCommandHandler(IFamiliesDbContext db, IPaymobClient paymobClient) { _db = db; _paymobClient = paymobClient; }
+    public ConfirmSubscriptionPaymentCommandHandler(IFamiliesDbContext db, IPaymobClient paymobClient, ISubscriptionInvoiceService? invoices = null) { _db = db; _paymobClient = paymobClient; _invoices = invoices; }
 
     public async Task<Result<ConfirmSubscriptionPaymentResponse>> Handle(
         ConfirmSubscriptionPaymentCommand request,
@@ -344,6 +345,11 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
 
             _db.FamilySubscriptions.Add(createdSubscription);
             attempt.TryMarkSucceeded(transactionId, request.UtcNow);
+            if (_invoices is not null)
+            {
+                var invoice = await _invoices.CreateInitialAsync(attempt, createdSubscription, request.UtcNow, createdSubscription.CurrentPeriodEndsOnUtc, cancellationToken);
+                if (invoice.IsFailure) return Result<ConfirmSubscriptionPaymentResponse>.Failure(invoice.Error);
+            }
         }
 
         try
@@ -374,8 +380,9 @@ public sealed class HandlePaymobSubscriptionCallbackCommandHandler
     : ICommandHandler<HandlePaymobSubscriptionCallbackCommand, ConfirmSubscriptionPaymentResponse>
 {
     private readonly IFamiliesDbContext _db;
+    private readonly ISubscriptionInvoiceService? _invoices;
 
-    public HandlePaymobSubscriptionCallbackCommandHandler(IFamiliesDbContext db) => _db = db;
+    public HandlePaymobSubscriptionCallbackCommandHandler(IFamiliesDbContext db, ISubscriptionInvoiceService? invoices = null) { _db = db; _invoices = invoices; }
 
     public async Task<Result<ConfirmSubscriptionPaymentResponse>> Handle(
         HandlePaymobSubscriptionCallbackCommand request,
@@ -545,6 +552,9 @@ public sealed class HandlePaymobSubscriptionCallbackCommandHandler
 
         if (isSuccess)
         {
+            DateTime previousPeriodEnd = currentSubscription.CurrentPeriodEndsOnUtc;
+            decimal renewalTotal = currentSubscription.Price;
+            decimal renewalTaxRate = currentSubscription.CurrentPeriodTaxRatePercentage ?? 0m;
             try
             {
                 currentSubscription.ApplySuccessfulRenewal(request.UtcNow);
@@ -570,6 +580,11 @@ public sealed class HandlePaymobSubscriptionCallbackCommandHandler
 
                 return Result<ConfirmSubscriptionPaymentResponse>.Failure(
                     new Error("Subscriptions.Renewal.GraceExpired", exception.Message));
+            }
+            if (_invoices is not null)
+            {
+                var invoice = await _invoices.CreateRenewalAsync(currentSubscription, renewalTotal, renewalTaxRate, previousPeriodEnd, currentSubscription.CurrentPeriodEndsOnUtc, request.PaymobRequestId!, cancellationToken);
+                if (invoice.IsFailure) return Result<ConfirmSubscriptionPaymentResponse>.Failure(invoice.Error);
             }
         }
         else if (isFailed)

@@ -96,5 +96,5 @@ Not implemented yet:
 
 - Ratings / reviews HTTP
 - Booking cancellation fee tiers
-- Paymob subscription callback settlement, shared provider-identity persistence, durable callback idempotency, seven-day renewal grace, and owner plan changes are implemented; Wallet stays one-time/manual. The plan-change persistence migration is included. Branded invoices/PDFs, booking-completion allowance consumption, and notifications/email remain later subscription slices.
+- Paymob subscription callback settlement, shared provider-identity persistence, durable callback idempotency, seven-day renewal grace, owner plan changes, and immutable branded invoice/PDF generation for successful initial and renewal settlement are implemented; Wallet stays one-time/manual. The plan-change and invoice persistence migrations are included. Booking-completion allowance consumption and notifications/email remain later subscription slices.
 - Social / Google / Apple authentication (cancelled and removed)

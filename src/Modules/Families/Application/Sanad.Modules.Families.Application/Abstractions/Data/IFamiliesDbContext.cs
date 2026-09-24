@@ -36,6 +36,7 @@ public interface IFamiliesDbContext
     DbSet<SubscriptionPaymentAttempt> SubscriptionPaymentAttempts => throw new NotSupportedException("This context does not expose subscription payment attempts.");
     DbSet<PaymobSubscriptionCallback> PaymobSubscriptionCallbacks => throw new NotSupportedException("This context does not expose Paymob subscription callbacks.");
     DbSet<PaymobSubscriptionIdentity> PaymobSubscriptionIdentities => throw new NotSupportedException("This context does not expose Paymob subscription identities.");
+    DbSet<SubscriptionInvoice> SubscriptionInvoices => throw new NotSupportedException("This context does not expose subscription invoices.");
 
     /// <summary>
     /// Queues the provider identity claim in the same unit of work as the callback mutation.

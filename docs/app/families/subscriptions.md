@@ -204,9 +204,30 @@ provider amount update leaves local pending state unchanged and is safe to
 retry; do not replay payment or downgrade mutations against shared data
 without an approved fixture.
 
-Invoices/PDFs, allowance consumption, notifications, and deployment automation
-remain separate slices. The persistence schema change still requires the
-owner's migration workflow before deployment.
+## Subscription invoices
+
+Successful initial purchases and successful renewals create one immutable
+server-side invoice using the fixed Sanad Care branded PDF template. Failed,
+pending, duplicate, and grace-expired callback events do not create invoices.
+Invoice numbers use `INV-YYYY-MM-######`; the stored record includes the plan,
+period, subtotal, discount, tax, total, currency, issue time, and private PDF
+storage key. Duplicate settlement is idempotent and cannot create a second
+invoice for the same payment attempt or provider event.
+
+The invoice routes are Owner-only:
+
+- `GET /api/v1/family/subscriptions/invoices` lists invoice number, kind,
+  amount, currency, issue time, and covered period.
+- `GET /api/v1/family/subscriptions/invoices/{invoiceId}` returns the immutable
+  invoice metadata.
+- `GET /api/v1/family/subscriptions/invoices/{invoiceId}/pdf` downloads the
+  private `application/pdf` document as `{invoiceNumber}.pdf`.
+
+These routes return `401` without authentication, `403` for a non-owner, and
+`404` for an invoice outside the owner's family or a missing PDF. Invoice
+generation is part of successful settlement and does not send email or consume
+booking allowance. Allowance consumption, notifications, and deployment
+automation remain separate slices.
 
 ## Card enrollment boundary
 

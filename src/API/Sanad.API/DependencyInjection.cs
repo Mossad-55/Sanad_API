@@ -248,6 +248,8 @@ public static class DependencyInjection
             configuration.RegisterServicesFromAssembly(
                 typeof(BootstrapFamilyCommand).Assembly);
         });
+        services.AddScoped<Sanad.Modules.Families.Application.Subscriptions.ISubscriptionInvoiceService,
+            Sanad.Modules.Families.Application.Subscriptions.SubscriptionInvoiceService>();
 
 
         services.AddValidatorsFromAssembly(

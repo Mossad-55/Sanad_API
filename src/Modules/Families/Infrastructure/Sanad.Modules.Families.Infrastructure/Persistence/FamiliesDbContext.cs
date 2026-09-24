@@ -47,6 +47,7 @@ public sealed class FamiliesDbContext :
     public DbSet<SubscriptionPaymentAttempt> SubscriptionPaymentAttempts => Set<SubscriptionPaymentAttempt>();
     public DbSet<PaymobSubscriptionCallback> PaymobSubscriptionCallbacks => Set<PaymobSubscriptionCallback>();
     public DbSet<PaymobSubscriptionIdentity> PaymobSubscriptionIdentities => Set<PaymobSubscriptionIdentity>();
+    public DbSet<SubscriptionInvoice> SubscriptionInvoices => Set<SubscriptionInvoice>();
 
     public void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
         PaymobSubscriptionIdentities.Add(identity);

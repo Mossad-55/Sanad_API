@@ -174,8 +174,9 @@ callback event identities are append-only ledger records. Renewal settlement
 preserves the seven-day grace and original period-end anchor. A successful
 callback after grace expiry is durably acknowledged with HTTP `200` and does
 not mutate successful-renewal state. Unknown identities and duplicate events
-are acknowledged without a second mutation. This callback contract does not
-create an invoice or PDF. Recurring wallet billing, trials, redemption,
+are acknowledged without a second mutation. Successful initial and renewal
+settlement creates one immutable branded invoice PDF; failed, pending,
+duplicate, and grace-expired events do not. Recurring wallet billing, trials, redemption,
 proration, allowance consumption, notifications, and deployment automation
 remain separate slices. Family-owner plan changes (immediate prorated upgrades
 and next-renewal downgrades) are documented in the family subscription guide;
@@ -183,4 +184,7 @@ they do not add an admin mutation surface. Initial Card enrollment is
 available only when the local plan has `paymobSubscriptionPlanId` and Paymob
 Card 3DS is configured; Wallet remains one-time/manual. The current family
 renewal endpoint uses the manual payment-intent boundary and preserves the
-original renewal anchor after a successful retry.
+original renewal anchor after a successful retry. Successful initial purchases
+and successful renewals create one immutable branded PDF invoice; duplicate
+settlement events are idempotent. Invoice retrieval is Owner-only through the
+family subscription routes and is not an admin mutation surface.

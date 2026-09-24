@@ -1,6 +1,10 @@
-# Current phase todo — subscription plan changes
+# Current phase todo — subscription billing invoices
 
-The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the owner reports it is deployed and the repository work tested. The broader subscription-billing phase remains open for branded invoices/PDFs and booking-completion allowance consumption. The approved sequence is to complete those billing slices, validate/deploy the complete billing revision, build/test the deployment mechanism, conduct the UI walkthrough and gap analysis, implement approved gaps, then add notifications/email.
+The active bounded slice adds immutable branded subscription invoices for
+successful initial purchases and successful renewals. Allowance consumption is
+the next separate slice and is not included here.
+
+The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the owner reports it is deployed and the repository work tested. The invoice/PDF slice is now implemented locally and validated. The remaining billing slice is booking-completion allowance consumption. The approved sequence is to complete that slice, validate/deploy the complete billing revision, build/test the deployment mechanism, conduct the UI walkthrough and gap analysis, implement approved gaps, then add notifications/email.
 
 ## Current status
 
@@ -13,7 +17,8 @@ The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the
 
 ## Remaining phase work
 
-- Next bounded billing slice: branded invoices/PDFs for initial purchases and successful renewals.
+- Completed bounded billing slice: branded invoices/PDFs for initial purchases and successful renewals.
+- Next bounded billing slice: allowance consumption only when a booking completes; cancelled bookings consume none.
 - Then implement allowance consumption only on booking completion; cancelled bookings consume none.
 - Validate and deploy the complete subscription-billing revision. The already-deployed plan-change revision does not include the remaining billing slices above.
 - Then build/test the repeatable deployment mechanism, conduct the owner/mastermind UI walkthrough and gap analysis, and implement only owner-approved gaps.

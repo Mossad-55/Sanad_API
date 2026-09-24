@@ -1,0 +1,17 @@
+meta {
+  name: 01-list-unauthenticated
+  type: http
+  seq: 1
+  tags: [
+    subscription-invoices
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/invoices
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

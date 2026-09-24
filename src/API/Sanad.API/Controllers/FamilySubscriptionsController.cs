@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Subscriptions;
@@ -28,8 +29,49 @@ public sealed record ReplacePendingDowngradeRequest(Guid PlanVersionId);
 public sealed class FamilySubscriptionsController : ApiControllerBase
 {
     private readonly ISender _sender;
+    private readonly IFileStorage _fileStorage;
 
-    public FamilySubscriptionsController(ISender sender) => _sender = sender;
+    public FamilySubscriptionsController(ISender sender, IFileStorage fileStorage) { _sender = sender; _fileStorage = fileStorage; }
+
+    [HttpGet("invoices")]
+    [ProducesResponseType(typeof(IReadOnlyList<SubscriptionInvoiceListItemResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetInvoices(CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var result = await _sender.Send(new GetFamilySubscriptionInvoicesQuery(userId), cancellationToken);
+        if (result.IsSuccess) return Ok(result.Value);
+        return Problem(result.Error.Code == "Subscriptions.Invoice.NotOwner" ? StatusCodes.Status403Forbidden : StatusCodes.Status400BadRequest, result.Error);
+    }
+
+    [HttpGet("invoices/{invoiceId:guid}")]
+    [ProducesResponseType(typeof(SubscriptionInvoiceResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetInvoice(Guid invoiceId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var result = await _sender.Send(new GetFamilySubscriptionInvoiceQuery(userId, invoiceId), cancellationToken);
+        if (result.IsSuccess) return Ok(result.Value);
+        return Problem(result.Error.Code == "Subscriptions.Invoice.NotOwner" ? StatusCodes.Status403Forbidden : StatusCodes.Status404NotFound, result.Error);
+    }
+
+    [HttpGet("invoices/{invoiceId:guid}/pdf")]
+    [Produces("application/pdf")]
+    [ProducesResponseType(StatusCodes.Status200OK, Type = typeof(FileContentResult))]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> DownloadInvoice(Guid invoiceId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var result = await _sender.Send(new GetFamilySubscriptionInvoiceQuery(userId, invoiceId), cancellationToken);
+        if (result.IsFailure) return Problem(result.Error.Code == "Subscriptions.Invoice.NotOwner" ? StatusCodes.Status403Forbidden : StatusCodes.Status404NotFound, result.Error);
+        var storageKey = await _sender.Send(new GetInvoiceStorageKeyQuery(userId, invoiceId), cancellationToken);
+        if (storageKey.IsFailure) return Problem(storageKey.Error.Code == "Subscriptions.Invoice.NotOwner" ? StatusCodes.Status403Forbidden : StatusCodes.Status404NotFound, storageKey.Error);
+        var file = await _fileStorage.OpenReadAsync(storageKey.Value, cancellationToken);
+        if (file.IsFailure) return NotFound();
+        return File(file.Value.Content, "application/pdf", result.Value.InvoiceNumber + ".pdf");
+    }
 
     [HttpGet("plans")]
     [ProducesResponseType(typeof(IReadOnlyList<SubscriptionPlanResponse>), StatusCodes.Status200OK)]

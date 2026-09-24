@@ -1,0 +1,17 @@
+meta {
+  name: 03-pdf-unauthenticated
+  type: http
+  seq: 3
+  tags: [
+    subscription-invoices
+  ]
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/invoices/00000000-0000-0000-0000-000000000000/pdf
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}
