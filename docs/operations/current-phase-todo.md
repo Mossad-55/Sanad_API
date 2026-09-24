@@ -1,6 +1,6 @@
 # Current phase todo — subscription plan changes
 
-The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the owner reports it is deployed and the repository work tested. The broader subscription roadmap remains open for branded invoices/PDFs and booking-completion allowance consumption. After this deployment, the owner-approved sequence is to build/test the deployment mechanism, conduct the UI walkthrough and gap analysis, implement approved gaps, complete remaining billing slices, then add notifications/email.
+The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the owner reports it is deployed and the repository work tested. The broader subscription-billing phase remains open for branded invoices/PDFs and booking-completion allowance consumption. The approved sequence is to complete those billing slices, validate/deploy the complete billing revision, build/test the deployment mechanism, conduct the UI walkthrough and gap analysis, implement approved gaps, then add notifications/email.
 
 ## Current status
 
@@ -13,9 +13,11 @@ The plan-change slice is implemented and published as `e8cdfa1` + `fdd7a00`; the
 
 ## Remaining phase work
 
-- The owner/mastermind next builds and tests the repeatable deployment mechanism.
-- Then conduct the owner/mastermind UI walkthrough and gap analysis; implement only owner-approved gaps.
-- Remaining subscription roadmap: branded invoices/PDFs for initial purchase and successful renewal, then booking-completion allowance consumption (cancelled bookings consume none). Notifications/email follow core billing and approved gaps. Choose invoice versus allowance ordering when scoping that work.
+- Next bounded billing slice: branded invoices/PDFs for initial purchases and successful renewals.
+- Then implement allowance consumption only on booking completion; cancelled bookings consume none.
+- Validate and deploy the complete subscription-billing revision. The already-deployed plan-change revision does not include the remaining billing slices above.
+- Then build/test the repeatable deployment mechanism, conduct the owner/mastermind UI walkthrough and gap analysis, and implement only owner-approved gaps.
+- Notifications/email follow core billing and approved UI gaps.
 
 ## Pinned plan-change contract
 
