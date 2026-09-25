@@ -1,0 +1,81 @@
+{
+  "info": {
+    "name": "Sanad App — Elderly",
+    "description": "Elderly self-service app routes. Requests require an Elderly Normal JWT. The take-dose request writes shared medication history and is a manual fixture example; use only an approved disposable fixture and do not replay it after a successful take.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{elderlyJwt}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "01. Medications (read-only)",
+      "item": [
+        {
+          "name": "List linked dependent medications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/elderly/medications",
+            "description": "Normal Elderly JWT. The dependent is resolved from the authenticated Elderly identity; no dependent ID is accepted. Read-only."
+          }
+        },
+        {
+          "name": "Get medication dashboard for profile-local date",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/elderly/medications/dashboard?date={{elderlyLocalDate}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "elderly", "medications", "dashboard"],
+              "query": [{ "key": "date", "value": "{{elderlyLocalDate}}", "description": "Required YYYY-MM-DD profile-local calendar date." }]
+            },
+            "description": "Read-only. date is required as YYYY-MM-DD and uses the linked Elderly profile's local calendar semantics; it has no server-date default."
+          }
+        },
+        {
+          "name": "Reject dashboard without required date",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/elderly/medications/dashboard",
+            "description": "Contract check; with a valid Elderly JWT this should return 400 because date is required."
+          },
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": ["pm.test('date is required', function () { pm.response.to.have.status(400); });"]
+            }
+          }]
+        }
+      ]
+    },
+    {
+      "name": "02. Dose action (manual mutation only)",
+      "item": [
+        {
+          "name": "Record scheduled dose as taken — manual fixture only",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"scheduledDate\": \"{{elderlyLocalDate}}\",\n  \"scheduledTime\": \"{{scheduledTime}}\",\n  \"notes\": \"Taken from approved disposable fixture\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/elderly/medications/{{medicationId}}/doses/take",
+            "description": "STATE-CHANGING: records a shared dose log, attributes the action to the Elderly user, and decrements tracked stock. Only use an approved disposable fixture where this medication is Active, the date is in range, and scheduledTime is configured. A second or racing take must be rejected. Do not replay against shared or production data."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "elderlyJwt", "value": "REPLACE_WITH_ELDERLY_NORMAL_JWT", "type": "string" },
+    { "key": "elderlyLocalDate", "value": "2026-09-25", "type": "string", "description": "Profile-local YYYY-MM-DD date." },
+    { "key": "medicationId", "value": "REPLACE_WITH_LINKED_MEDICATION_ID", "type": "string" },
+    { "key": "scheduledTime", "value": "20:00:00", "type": "string" }
+  ]
+}

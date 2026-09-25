@@ -1,0 +1,19 @@
+meta {
+  name: 02-dashboard-requires-date
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/medications/dashboard
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 400
+}

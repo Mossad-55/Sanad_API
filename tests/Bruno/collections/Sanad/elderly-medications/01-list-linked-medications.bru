@@ -1,0 +1,19 @@
+meta {
+  name: 01-list-linked-medications
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/medications
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

@@ -19,4 +19,7 @@ public static class AuthorizationPolicies
 
     public const string FamilyAccess =
         "FamilyAccess";
+
+    public const string ElderlyAccess =
+        "ElderlyAccess";
 }

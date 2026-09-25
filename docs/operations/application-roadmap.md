@@ -58,6 +58,16 @@ owner-verification/deferral dispositions. This closes only the Family
 inventory; Phase 0 remains open for the other application roles and screens,
 plus any Family owner decisions listed in that report.
 
+Elderly-scope audit artifact: [`elderly-ui-audit.md`](elderly-ui-audit.md).
+It inventories the 17 supplied Elderly screens and maps current API,
+authorization, test, docs, Postman, Bruno, and Admin-visibility evidence. It
+records the owner's dynamic-data/CMS requirement separately for editorial
+content and user-specific operational data, and keeps unresolved permissions
+and business rules marked `Needs Owner Verification`. Elderly features remain
+split across roadmap phases and proceed as bounded, verified slices under the
+active Elderly UI goal; owner decisions and remaining verification stay
+tracked in the report.
+
 Walk every family, caregiver/nurse, elderly, admin, booking, subscription, and
 settings screen against the deployed API. Produce a screen matrix with route,
 current data source, required API, stale fallback, and owner decision.

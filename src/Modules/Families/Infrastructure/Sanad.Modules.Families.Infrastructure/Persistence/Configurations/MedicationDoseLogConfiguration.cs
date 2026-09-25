@@ -66,6 +66,8 @@ public sealed class MedicationDoseLogConfiguration : IEntityTypeConfiguration<Me
             .IsRequired();
 
         builder.HasIndex(l => new { l.ElderlyId, l.ScheduledDate });
+        builder.HasIndex(l => new { l.MedicationId, l.ScheduledDate, l.ScheduledTime })
+            .IsUnique();
         builder.HasIndex(l => l.MedicationId);
         builder.HasIndex(l => l.Status);
     }

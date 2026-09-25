@@ -7,6 +7,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Families;
+using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Medications;
 
 namespace Sanad.Modules.Families.Application.Medications;
@@ -776,4 +777,181 @@ internal static class MedicationFamilyAccess
         dbContext.Elderlies.AnyAsync(
             elderly => elderly.Id == dependentId && elderly.FamilyId == family.Id,
             cancellationToken);
+}
+
+// ========================= Elderly self-service =========================
+
+public sealed record ListOwnMedicationsQuery(UserId UserId)
+    : IQuery<IReadOnlyList<MedicationResponse>>;
+
+public sealed class ListOwnMedicationsQueryHandler
+    : IQueryHandler<ListOwnMedicationsQuery, IReadOnlyList<MedicationResponse>>
+{
+    private readonly IFamiliesDbContext _dbContext;
+
+    public ListOwnMedicationsQueryHandler(IFamiliesDbContext dbContext) =>
+        _dbContext = dbContext;
+
+    public async Task<Result<IReadOnlyList<MedicationResponse>>> Handle(
+        ListOwnMedicationsQuery request,
+        CancellationToken cancellationToken)
+    {
+        Elderly? elderly = await ResolveElderlyAsync(
+            _dbContext, request.UserId, cancellationToken);
+        if (elderly is null) return MedicationErrors.AccessDenied;
+
+        List<Medication> medications = await _dbContext.Medications
+            .AsNoTracking()
+            .Where(m => m.ElderlyId == elderly.Id)
+            .OrderByDescending(m => m.CreatedOnUtc)
+            .ToListAsync(cancellationToken);
+
+        return Result<IReadOnlyList<MedicationResponse>>.Success(
+            medications.Select(m => m.ToResponse()).ToList());
+    }
+
+    internal static Task<Elderly?> ResolveElderlyAsync(
+        IFamiliesDbContext dbContext,
+        UserId userId,
+        CancellationToken cancellationToken) =>
+        dbContext.Elderlies.SingleOrDefaultAsync(
+            e => e.IdentityUserId == userId,
+            cancellationToken);
+}
+
+public sealed record GetOwnMedicationDashboardQuery(UserId UserId, DateOnly Date)
+    : IQuery<MedicationDashboardResponse>;
+
+public sealed class GetOwnMedicationDashboardQueryHandler
+    : IQueryHandler<GetOwnMedicationDashboardQuery, MedicationDashboardResponse>
+{
+    private readonly IFamiliesDbContext _dbContext;
+
+    public GetOwnMedicationDashboardQueryHandler(IFamiliesDbContext dbContext) =>
+        _dbContext = dbContext;
+
+    public async Task<Result<MedicationDashboardResponse>> Handle(
+        GetOwnMedicationDashboardQuery request,
+        CancellationToken cancellationToken)
+    {
+        Elderly? elderly = await ListOwnMedicationsQueryHandler.ResolveElderlyAsync(
+            _dbContext, request.UserId, cancellationToken);
+        if (elderly is null) return MedicationErrors.AccessDenied;
+
+        List<Medication> medications = await _dbContext.Medications
+            .AsNoTracking()
+            .Where(m => m.ElderlyId == elderly.Id)
+            .ToListAsync(cancellationToken);
+        List<MedicationDoseLog> logs = await _dbContext.MedicationDoseLogs
+            .AsNoTracking()
+            .Where(l => l.ElderlyId == elderly.Id && l.ScheduledDate == request.Date)
+            .ToListAsync(cancellationToken);
+
+        List<Medication> active = medications.Where(m =>
+            m.Status == MedicationStatus.Active && m.StartDate <= request.Date &&
+            (!m.EndDate.HasValue || m.EndDate.Value >= request.Date)).ToList();
+        var doses = new List<MedicationDoseResponse>();
+        foreach (Medication medication in active)
+        foreach (TimeOnly time in medication.DoseTimes)
+        {
+            MedicationDoseLog? log = logs.FirstOrDefault(l =>
+                l.MedicationId == medication.Id && l.ScheduledTime == time);
+            doses.Add(log is null
+                ? new MedicationDoseResponse(null, medication.Id.Value, medication.Name,
+                    medication.Dosage, medication.DoseUnit, medication.DoseQuantity,
+                    medication.Instructions, request.Date, time, DoseStatus.Scheduled,
+                    null, null, null, null)
+                : new MedicationDoseResponse(log.Id.Value, medication.Id.Value,
+                    medication.Name, medication.Dosage, medication.DoseUnit,
+                    medication.DoseQuantity, medication.Instructions, log.ScheduledDate,
+                    log.ScheduledTime, log.Status, log.TakenAtUtc, log.SkippedAtUtc,
+                    log.Notes, log.LoggedByUserId?.Value));
+        }
+
+        doses = doses.OrderBy(d => d.ScheduledTime).ToList();
+        List<MedicationResponse> lowStock = medications
+            .Where(m => m.GetStockStatus() is StockStatus.LowStock or StockStatus.OutOfStock)
+            .Select(m => m.ToResponse()).ToList();
+        int taken = doses.Count(d => d.Status == DoseStatus.Taken);
+        return new MedicationDashboardResponse(active.Count, lowStock.Count,
+            doses.Count, taken, doses.Count(d => d.Status == DoseStatus.Scheduled),
+            doses, lowStock);
+    }
+}
+
+public sealed record TakeOwnMedicationDoseCommand(
+    UserId UserId,
+    MedicationId MedicationId,
+    DateOnly ScheduledDate,
+    TimeOnly ScheduledTime,
+    string? Notes,
+    DateTime UtcNow) : ICommand<MedicationDoseResponse>;
+
+public sealed class TakeOwnMedicationDoseCommandHandler
+    : ICommandHandler<TakeOwnMedicationDoseCommand, MedicationDoseResponse>
+{
+    private readonly IFamiliesDbContext _dbContext;
+
+    public TakeOwnMedicationDoseCommandHandler(IFamiliesDbContext dbContext) =>
+        _dbContext = dbContext;
+
+    public async Task<Result<MedicationDoseResponse>> Handle(
+        TakeOwnMedicationDoseCommand request,
+        CancellationToken cancellationToken)
+    {
+        Elderly? elderly = await ListOwnMedicationsQueryHandler.ResolveElderlyAsync(
+            _dbContext, request.UserId, cancellationToken);
+        if (elderly is null) return MedicationErrors.AccessDenied;
+
+        Medication? medication = await _dbContext.Medications.SingleOrDefaultAsync(
+            m => m.Id == request.MedicationId && m.ElderlyId == elderly.Id,
+            cancellationToken);
+        if (medication is null) return MedicationErrors.NotFound;
+
+        if (medication.Status != MedicationStatus.Active ||
+            request.ScheduledDate < medication.StartDate ||
+            medication.EndDate.HasValue && request.ScheduledDate > medication.EndDate.Value ||
+            !medication.DoseTimes.Contains(request.ScheduledTime))
+            return MedicationErrors.DoseNotScheduled;
+
+        MedicationDoseLog? log = await _dbContext.MedicationDoseLogs.SingleOrDefaultAsync(
+            l => l.MedicationId == medication.Id && l.ElderlyId == elderly.Id &&
+                 l.ScheduledDate == request.ScheduledDate &&
+                 l.ScheduledTime == request.ScheduledTime,
+            cancellationToken);
+        if (log is null)
+        {
+            log = MedicationDoseLog.CreateScheduled(medication.Id, elderly.Id,
+                request.ScheduledDate, request.ScheduledTime);
+            _dbContext.MedicationDoseLogs.Add(log);
+        }
+        if (log.Status == DoseStatus.Taken) return MedicationErrors.DoseAlreadyTaken;
+
+        log.MarkAsTaken(request.UserId, request.UtcNow, request.Notes);
+        medication.DecrementStock(medication.DoseQuantity);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException)
+        {
+            // A unique dose-schedule index is the race boundary. Another request may
+            // have recorded this dose after our read; translate that race to the same
+            // stable conflict returned for an already-taken dose.
+            bool doseWasRecorded = await _dbContext.MedicationDoseLogs
+                .AsNoTracking()
+                .AnyAsync(l => l.MedicationId == medication.Id &&
+                               l.ScheduledDate == request.ScheduledDate &&
+                               l.ScheduledTime == request.ScheduledTime,
+                    cancellationToken);
+            if (doseWasRecorded) return MedicationErrors.DoseAlreadyTaken;
+            throw;
+        }
+
+        return new MedicationDoseResponse(log.Id.Value, medication.Id.Value,
+            medication.Name, medication.Dosage, medication.DoseUnit,
+            medication.DoseQuantity, medication.Instructions, log.ScheduledDate,
+            log.ScheduledTime, log.Status, log.TakenAtUtc, log.SkippedAtUtc,
+            log.Notes, log.LoggedByUserId?.Value);
+    }
 }

@@ -14,15 +14,15 @@ The checker normalizes route parameters and compares controller actions with eve
 
 | Evidence | Count | Status |
 |---|---:|---|
-| Controller actions | 246 | complete |
-| Postman API requests | 285 | complete |
+| Controller actions | 249 | complete |
+| Postman API requests | 289 | complete |
 | Controller actions without Postman | 0 | complete |
 | Orphan Postman API requests | 0 | complete |
 | Postman JSON files parsed | 7 | complete |
 
-Latest two-way checker result after adding dose history: 246 controller actions and 285 Postman API requests, with 0 missing controller mappings and 0 orphan Postman requests.
+Latest two-way checker result after adding Elderly medication self-service: 249 controller actions and 289 Postman API requests, with 0 missing controller mappings and 0 orphan Postman requests.
 
-For product-screen reconciliation, see the [Family UI audit](family-ui-audit.md), which distinguishes complete mappings for existing routes from missing UI-driven API capabilities and records owner verification/deferral decisions.
+For product-screen reconciliation, see the [Family UI audit](family-ui-audit.md) and the [Elderly UI audit](elderly-ui-audit.md). These distinguish complete mappings for existing routes from missing UI-driven API capabilities and record role/permission evidence, owner verification/deferral decisions, and the need for Admin read/inspection coverage.
 
 ## Role and resource requirements
 
@@ -34,6 +34,7 @@ For product-screen reconciliation, see the [Family UI audit](family-ui-audit.md)
 | Admin assessments | Question/tier list/detail, authoring, activation state, submissions | `AdminAssessmentsController` | `docs/admin/care-assessments.md` | Admin collection | Assessment tests and existing Bruno coverage |
 | Admin lookups/CMS | List/detail reads paired with create/update/activate/deactivate/publish flows | Admin CMS controllers | `docs/admin/*.md` | Admin collection | Existing unit/Bruno coverage |
 | Family subscriptions | Plan catalog/current snapshot (including pending downgrade), purchase and plan-change quotes, initial/upgrade payment intents, pending-downgrade lifecycle, renewal payment intent, renewal controls, invoice list/detail/PDF, seven-day grace settlement | `FamilySubscriptionsController`, subscription commands and invoice queries | `docs/app/families/subscriptions.md` | Family collection | Subscription tests, invoice renderer tests, and renewal/plan-change contract coverage |
+| Elderly medication self-service | Read own linked prescriptions, read a date-specific profile-local dashboard, and record scheduled doses as taken; no Elderly edit or skip | `ElderlyMedicationsController`; authenticated user resolves the linked dependent; shared dose logs record Elderly actor; unique medication/date/time constraint rejects duplicate and racing takes | `docs/app/elderly/medications.md`; Family behavior remains in `docs/app/families/medications.md` | `docs/postman/app/Sanad.App.Elderly.postman_collection.json` (take request labeled state-changing/manual) | `ElderlyMedicationsControllerTests` and focused medication tests; Elderly Bruno checks cover reads only |
 
 ### Bounded Paymob Card enrollment requirement
 

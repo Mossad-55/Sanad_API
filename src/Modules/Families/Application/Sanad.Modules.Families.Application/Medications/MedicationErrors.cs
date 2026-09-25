@@ -24,6 +24,10 @@ public static class MedicationErrors
         new("Families.Medication.DoseAlreadyTaken",
             "This dose has already been marked as taken.");
 
+    public static readonly Error DoseNotScheduled =
+        new("Families.Medication.DoseNotScheduled",
+            "The medication is not active or scheduled for the specified date and time.");
+
     public static readonly Error InvalidMedication =
         new("Families.Medication.InvalidMedication",
             "The medication details are invalid.");

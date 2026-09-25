@@ -122,6 +122,124 @@ public sealed class MedicationHandlerTests
     }
 
     [Fact]
+    public async Task OwnMedicationQueries_ResolveLinkedElderlyAndReturnOnlyTheirData()
+    {
+        using var db = CreateOwnedMedicationFixture(out var userId, out var elderly, out var medication);
+        var otherOwner = UserId.New();
+        var otherFamily = Family.Create(otherOwner, "Other family");
+        var otherElderlyUser = UserId.New();
+        var otherElderly = Elderly.Create(otherOwner, otherElderlyUser, otherFamily.Id,
+            FamilyRelationshipType.Mother, FullName.Create("Other"), FullName.Create("Other"),
+            Gender.Female, new DateOnly(1956, 1, 1), DateOnly.FromDateTime(DateTime.UtcNow));
+        var otherMedication = Medication.Create(otherElderly.Id, otherOwner, "Other medication",
+            "1 mg", "tablet", 1, new[] { new TimeOnly(10, 0) }, new DateOnly(2026, 9, 1), null);
+        var date = new DateOnly(2026, 9, 25);
+        db.Families.Add(otherFamily);
+        db.Elderlies.Add(otherElderly);
+        db.Medications.Add(otherMedication);
+        db.MedicationDoseLogs.AddRange(
+            MedicationDoseLog.CreateScheduled(medication.Id, elderly.Id, date, new TimeOnly(9, 0)),
+            MedicationDoseLog.CreateScheduled(otherMedication.Id, otherElderly.Id, date, new TimeOnly(10, 0)));
+        await db.SaveChangesAsync();
+
+        var list = await new ListOwnMedicationsQueryHandler(db).Handle(new(elderly.IdentityUserId), CancellationToken.None);
+        var dashboard = await new GetOwnMedicationDashboardQueryHandler(db).Handle(new(elderly.IdentityUserId, date), CancellationToken.None);
+
+        Assert.True(list.IsSuccess);
+        Assert.Equal(medication.Id.Value, Assert.Single(list.Value).Id);
+        Assert.True(dashboard.IsSuccess);
+        Assert.Single(dashboard.Value.TodayDoses);
+        Assert.Equal(medication.Id.Value, Assert.Single(dashboard.Value.TodayDoses).MedicationId);
+    }
+
+    [Fact]
+    public async Task TakeOwnDose_LogsElderlyIdentityAndDecrementsSharedMedicationStock()
+    {
+        using var db = CreateOwnedMedicationFixture(out var userId, out var elderly, out var medication);
+        var date = new DateOnly(2026, 9, 25);
+
+        var result = await new TakeOwnMedicationDoseCommandHandler(db).Handle(
+            new(elderly.IdentityUserId, medication.Id, date, new TimeOnly(9, 0), "taken", DateTime.UtcNow),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(elderly.IdentityUserId.Value, result.Value.LoggedByUserId);
+        var log = await db.MedicationDoseLogs.SingleAsync();
+        Assert.Equal(elderly.Id, log.ElderlyId);
+        Assert.Equal(elderly.IdentityUserId, log.LoggedByUserId);
+        Assert.Equal(DoseStatus.Taken, log.Status);
+        Assert.Equal(9, (await db.Medications.SingleAsync()).StockQuantity);
+    }
+
+    [Theory]
+    [InlineData(2026, 9, 25, 11, 0)]
+    [InlineData(2026, 8, 31, 9, 0)]
+    public async Task TakeOwnDose_RejectsUnscheduledTimeOrInactiveDateWithoutMutation(
+        int year, int month, int day, int hour, int minute)
+    {
+        using var db = CreateOwnedMedicationFixture(out _, out var elderly, out var medication);
+
+        var result = await new TakeOwnMedicationDoseCommandHandler(db).Handle(
+            new(elderly.IdentityUserId, medication.Id, new DateOnly(year, month, day),
+                new TimeOnly(hour, minute), null, DateTime.UtcNow),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(MedicationErrors.DoseNotScheduled, result.Error);
+        Assert.Empty(await db.MedicationDoseLogs.ToListAsync());
+        Assert.Equal(10, (await db.Medications.SingleAsync()).StockQuantity);
+    }
+
+    [Fact]
+    public async Task TakeOwnDose_RejectsAnotherElderlysMedicationWithoutMutation()
+    {
+        using var db = CreateOwnedMedicationFixture(out _, out var callerElderly, out _);
+        var foreignOwner = UserId.New();
+        var foreignFamily = Family.Create(foreignOwner, "Foreign family");
+        var foreignElderly = Elderly.Create(foreignOwner, UserId.New(), foreignFamily.Id,
+            FamilyRelationshipType.Father, FullName.Create("Foreign"), FullName.Create("Foreign"),
+            Gender.Male, new DateOnly(1955, 1, 1), DateOnly.FromDateTime(DateTime.UtcNow));
+        var medication = Medication.Create(foreignElderly.Id, foreignOwner, "Foreign medication",
+            "1 mg", "tablet", 1, new[] { new TimeOnly(9, 0) }, new DateOnly(2026, 9, 1), null,
+            stockQuantity: 10, lowStockThreshold: 2);
+        var date = new DateOnly(2026, 9, 25);
+        db.Families.Add(foreignFamily);
+        db.Elderlies.Add(foreignElderly);
+        db.Medications.Add(medication);
+        await db.SaveChangesAsync();
+        var stock = medication.StockQuantity;
+
+        var result = await new TakeOwnMedicationDoseCommandHandler(db).Handle(
+            new(callerElderly.IdentityUserId, medication.Id, date, new TimeOnly(9, 0), null, DateTime.UtcNow),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(MedicationErrors.NotFound, result.Error);
+        Assert.Equal(stock, (await db.Medications.SingleAsync(m => m.Id == medication.Id)).StockQuantity);
+        Assert.Empty(await db.MedicationDoseLogs.ToListAsync());
+    }
+
+    [Fact]
+    public async Task TakeOwnDose_WhenAlreadyTaken_ReturnsExistingDuplicateErrorWithoutSecondDecrement()
+    {
+        using var db = CreateOwnedMedicationFixture(out var userId, out var elderly, out var medication);
+        var date = new DateOnly(2026, 9, 25);
+        var existing = MedicationDoseLog.CreateScheduled(medication.Id, elderly.Id, date, new TimeOnly(9, 0));
+        existing.MarkAsTaken(userId, DateTime.UtcNow.AddMinutes(-1));
+        db.MedicationDoseLogs.Add(existing);
+        await db.SaveChangesAsync();
+
+        var result = await new TakeOwnMedicationDoseCommandHandler(db).Handle(
+            new(elderly.IdentityUserId, medication.Id, date, new TimeOnly(9, 0), null, DateTime.UtcNow),
+            CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(MedicationErrors.DoseAlreadyTaken, result.Error);
+        Assert.Equal(10, (await db.Medications.SingleAsync()).StockQuantity);
+        Assert.Single(await db.MedicationDoseLogs.ToListAsync());
+    }
+
+    [Fact]
     public async Task MedicationQueries_ForForeignFamilyDependent_ReturnAccessDenied_WithoutReturningData()
     {
         using var db = CreateForeignFamilyFixture(out var caller, out _, out var foreignElderly, out var foreignMedication, out var scheduledDate);

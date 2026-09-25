@@ -13,6 +13,19 @@ All routes live under `/api/v1/family/dependents/{dependentId}/medications/...`.
 - **Read actions** (List, Get by ID, Dashboard) are available to all members of the owning family (**Owner**, **Editor**, **Viewer**).
 - The Add command is the boundary exception: after caller/family write authorization, a missing or foreign dependent returns `404 Families.Medication.DependentNotFound`; it never creates medication data.
 
+## Elderly self-service
+
+The Elderly app has a separate, profile-scoped surface for reading medication
+data and taking a scheduled dose. See the dedicated
+[Elderly medication reference](../elderly/medications.md) for authorization,
+date semantics, and request details. In brief, Normal Elderly callers use
+`GET /api/v1/elderly/medications`,
+`GET /api/v1/elderly/medications/dashboard?date=YYYY-MM-DD`, and
+`POST /api/v1/elderly/medications/{medicationId}/doses/take`. These routes
+resolve the dependent from the authenticated Elderly identity, share dose
+history with this Family surface, and do not grant Elderly prescription edit
+or skip operations.
+
 ---
 
 ## Data Model & Concepts

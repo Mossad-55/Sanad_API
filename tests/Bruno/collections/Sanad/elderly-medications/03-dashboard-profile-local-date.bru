@@ -1,0 +1,19 @@
+meta {
+  name: 03-dashboard-profile-local-date
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/medications/dashboard?date={{elderlyLocalDate}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
