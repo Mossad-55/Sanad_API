@@ -17,9 +17,9 @@ OpenAPI: `https://localhost:7296/openapi/v1.json`
 
 | Actor | Credential | Registration |
 |---|---|---|
-| Family | Email + password | Self-register, then verify email and phone |
-| Medical Caregiver | Email + password | Self-register, then verify email and phone |
-| Companion Caregiver | Email + password | Self-register, then verify email and phone |
+| Family | Email or phone + password | Self-register, then verify email and phone |
+| Medical Caregiver | Email or phone + password | Self-register, then verify email and phone |
+| Companion Caregiver | Email or phone + password | Self-register, then verify email and phone |
 | Elderly | Phone + SMS OTP only | Cannot self-register. Family creates/links the user first |
 
 ## Token model
@@ -85,7 +85,7 @@ Detailed documents:
 
 - [Registration and verification](registration-and-verification.md)
 - [National ID (identity document)](identity-document.md)
-- [Email/password login](email-password-login.md)
+- [Email or phone/password login](email-password-login.md)
 - [Elderly SMS login](elderly-sms-login.md)
 - [Refresh and sessions](refresh-and-sessions.md)
 - [Password reset and change](password-reset-and-change.md)

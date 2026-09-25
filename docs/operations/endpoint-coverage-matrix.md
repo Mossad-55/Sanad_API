@@ -14,11 +14,15 @@ The checker normalizes route parameters and compares controller actions with eve
 
 | Evidence | Count | Status |
 |---|---:|---|
-| Controller actions | 245 | complete |
-| Postman API requests | 281 | complete |
+| Controller actions | 246 | complete |
+| Postman API requests | 285 | complete |
 | Controller actions without Postman | 0 | complete |
 | Orphan Postman API requests | 0 | complete |
 | Postman JSON files parsed | 7 | complete |
+
+Latest two-way checker result after adding dose history: 246 controller actions and 285 Postman API requests, with 0 missing controller mappings and 0 orphan Postman requests.
+
+For product-screen reconciliation, see the [Family UI audit](family-ui-audit.md), which distinguishes complete mappings for existing routes from missing UI-driven API capabilities and records owner verification/deferral decisions.
 
 ## Role and resource requirements
 

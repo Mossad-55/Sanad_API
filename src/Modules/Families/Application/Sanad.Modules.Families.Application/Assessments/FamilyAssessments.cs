@@ -208,6 +208,19 @@ public sealed class SubmitAssessmentCommandHandler
             return ElderlyErrors.FamilyNotFound;
         }
 
+        if (request.ElderlyId is not null)
+        {
+            bool elderlyBelongsToFamily = await _dbContext.Elderlies
+                .AnyAsync(
+                    e => e.Id == request.ElderlyId && e.FamilyId == family.Id,
+                    cancellationToken);
+
+            if (!elderlyBelongsToFamily)
+            {
+                return AssessmentErrors.InvalidSubmission;
+            }
+        }
+
         List<AssessmentQuestion> activeQuestions =
             await _dbContext.AssessmentQuestions
                 .Include(q => q.Options)

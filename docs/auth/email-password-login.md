@@ -1,8 +1,12 @@
-# Email/password login
+# Email or phone/password login
 
-Family and Caregiver login.
+Password-bearing account login: Family, Medical Caregiver, Companion Caregiver,
+and configured administrative accounts. Elderly accounts continue to use the
+separate SMS OTP flow.
 
-The identifier is **email only**. Do not send a phone number as the login name.
+These account types can sign in with either their email address or phone number
+and password. Administrative accounts can use this route when configured with
+a password credential.
 
 Development base URL:
 
@@ -28,7 +32,7 @@ sequenceDiagram
     participant DB as Identity DB
 
     Client->>API: POST /login
-    API->>DB: Lookup email
+    API->>DB: Lookup email or phone
     API->>API: Verify password
     alt Suspended or Blocked
         API-->>Client: 403
@@ -46,6 +50,14 @@ sequenceDiagram
 
 Anonymous. Success `200`.
 
+Send exactly one of `identifier` or the legacy `email` property. `identifier`
+is preferred for new clients and accepts an email address or an ASCII E.164
+phone number (`+[1-9][0-9]{1,14}`). Supplying both properties, or neither, is
+invalid. The legacy `email` property accepts either kind of identifier during
+the compatibility period.
+
+Email request (the legacy property remains supported):
+
 ```bash
 curl -sS https://localhost:7296/api/v1/auth/login \
   -H "Content-Type: application/json" \
@@ -56,6 +68,18 @@ curl -sS https://localhost:7296/api/v1/auth/login \
     "devicePlatform": 1,
     "appVersion": "1.0.0"
   }'
+```
+
+Phone request (preferred property):
+
+```json
+{
+  "identifier": "+201001234567",
+  "password": "Password1234",
+  "deviceName": "Pixel 8",
+  "devicePlatform": 1,
+  "appVersion": "1.0.0"
+}
 ```
 
 `devicePlatform`:
@@ -105,7 +129,7 @@ Store `deviceSessionId`. Current-session logout needs it in `X-Device-Session-Id
 
 ## Rules
 
-- Unknown email and wrong password return the same error
+- Unknown email/phone and wrong password return the same error
 - Restricted token lasts 15 minutes
 - Restricted token cannot call password change or session endpoints
 - Normal access lasts 15 minutes

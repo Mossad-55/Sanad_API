@@ -120,6 +120,36 @@ public sealed class MedicationsController : ApiControllerBase
         return ToActionResult(result);
     }
 
+    [HttpGet("{medicationId:guid}/doses/history")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<MedicationDoseResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDoseHistory(
+        Guid dependentId,
+        Guid medicationId,
+        [FromQuery] MedicationDoseHistoryRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        if (!request.StartDate.HasValue || !request.EndDate.HasValue)
+        {
+            return BadRequest("Both startDate and endDate are required in YYYY-MM-DD format.");
+        }
+
+        var result = await _sender.Send(new GetMedicationDoseHistoryQuery(
+            userId,
+            new ElderlyId(dependentId),
+            new MedicationId(medicationId),
+            request.StartDate.Value,
+            request.EndDate.Value), cancellationToken);
+
+        return ToActionResult(result);
+    }
+
     [HttpPut("{medicationId:guid}")]
     [ProducesResponseType(
         typeof(MedicationResponse),
@@ -135,6 +165,11 @@ public sealed class MedicationsController : ApiControllerBase
             return Unauthorized();
         }
 
+        if (request.Stock is not null && !request.Stock.IsComplete)
+        {
+            return BadRequest("The stock object must include both stockQuantity and lowStockThreshold.");
+        }
+
         var result = await _sender.Send(new UpdateMedicationCommand(
             userId,
             new ElderlyId(dependentId),
@@ -146,7 +181,11 @@ public sealed class MedicationsController : ApiControllerBase
             request.DoseTimes,
             request.StartDate,
             request.EndDate,
-            request.Instructions), cancellationToken);
+            request.Instructions,
+            request.Stock?.StockQuantity,
+            request.Stock?.LowStockThreshold,
+            request.Stock is not null,
+            request.Stock?.IsComplete ?? false), cancellationToken);
 
         return ToActionResult(result);
     }

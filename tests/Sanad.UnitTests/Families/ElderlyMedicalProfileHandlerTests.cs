@@ -97,4 +97,134 @@ public sealed class ElderlyMedicalProfileHandlerTests
         Assert.Single(result.Value.Allergies);
         Assert.Single(result.Value.MedicalHistory);
     }
+
+    [Fact]
+    public async Task UpdateMedicalProfile_ShouldReturnFullProcedureDateAndDerivedYear()
+    {
+        using var dbContext = CreateDbContext();
+        var userId = UserId.New();
+        var family = Family.Create(userId, "Family");
+        dbContext.Families.Add(family);
+
+        var elderly = CreateElderly(userId, family.Id);
+        dbContext.Elderlies.Add(elderly);
+        await dbContext.SaveChangesAsync();
+
+        var procedureDate = new DateOnly(2022, 9, 3);
+        var handler = new UpdateElderlyMedicalProfileCommandHandler(dbContext);
+        var result = await handler.Handle(
+            new UpdateElderlyMedicalProfileCommand(
+                userId,
+                elderly.Id,
+                BloodType.APositive,
+                160,
+                65.0m,
+                [],
+                [],
+                [new MedicalHistoryDto(null, "Hip Replacement", null, procedureDate)]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var entry = Assert.Single(result.Value.MedicalHistory);
+        Assert.Equal(2022, entry.Year);
+        Assert.Equal(procedureDate, entry.ProcedureDate);
+    }
+
+    [Fact]
+    public async Task UpdateMedicalProfile_ShouldAcceptLegacyYearOnlyRequest()
+    {
+        using var dbContext = CreateDbContext();
+        var userId = UserId.New();
+        var family = Family.Create(userId, "Family");
+        dbContext.Families.Add(family);
+
+        var elderly = CreateElderly(userId, family.Id);
+        dbContext.Elderlies.Add(elderly);
+        await dbContext.SaveChangesAsync();
+
+        var handler = new UpdateElderlyMedicalProfileCommandHandler(dbContext);
+        var result = await handler.Handle(
+            new UpdateElderlyMedicalProfileCommand(
+                userId,
+                elderly.Id,
+                BloodType.APositive,
+                160,
+                65.0m,
+                [],
+                [],
+                [new MedicalHistoryDto(2018, "Gallbladder Removal", null)]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        var entry = Assert.Single(result.Value.MedicalHistory);
+        Assert.Equal(2018, entry.Year);
+        Assert.Null(entry.ProcedureDate);
+    }
+
+    [Fact]
+    public async Task UpdateMedicalProfile_ShouldRejectMismatchingYearAndProcedureDate()
+    {
+        using var dbContext = CreateDbContext();
+        var userId = UserId.New();
+        var family = Family.Create(userId, "Family");
+        dbContext.Families.Add(family);
+
+        var elderly = CreateElderly(userId, family.Id);
+        dbContext.Elderlies.Add(elderly);
+        await dbContext.SaveChangesAsync();
+
+        var handler = new UpdateElderlyMedicalProfileCommandHandler(dbContext);
+        var result = await handler.Handle(
+            new UpdateElderlyMedicalProfileCommand(
+                userId,
+                elderly.Id,
+                BloodType.APositive,
+                160,
+                65.0m,
+                [],
+                [],
+                [new MedicalHistoryDto(2020, "Knee Replacement", null, new DateOnly(2021, 1, 20))]),
+            CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Families.Elderly.InvalidProfile", result.Error.Code);
+        Assert.Null(elderly.MedicalProfile);
+    }
+
+    [Fact]
+    public void ConfiguredMedicalHistoryConversion_ShouldReadLegacyJsonAndRoundTrip()
+    {
+        using var dbContext = CreateDbContext();
+        var ownedProfile = dbContext.Model
+            .FindEntityType(typeof(Elderly))!
+            .FindNavigation(nameof(Elderly.MedicalProfile))!
+            .TargetEntityType;
+        var converter = ownedProfile.FindProperty(nameof(ElderlyMedicalProfile.MedicalHistory))!
+            .GetValueConverter();
+
+        Assert.NotNull(converter);
+
+        const string legacyJson = "[{\"Year\":2018,\"Title\":\"Gallbladder Removal\",\"Description\":null}]";
+        var restored = Assert.IsAssignableFrom<IReadOnlyList<MedicalHistoryEntry>>(
+            converter!.ConvertFromProvider(legacyJson));
+
+        var entry = Assert.Single(restored);
+        Assert.Equal(2018, entry.Year);
+        Assert.Null(entry.ProcedureDate);
+
+        var roundTripped = Assert.IsType<string>(converter.ConvertToProvider(restored));
+        Assert.Contains("Gallbladder Removal", roundTripped);
+        Assert.Contains("ProcedureDate", roundTripped);
+    }
+
+    private static Elderly CreateElderly(UserId userId, FamilyId familyId) => Elderly.Create(
+        userId,
+        UserId.New(),
+        familyId,
+        FamilyRelationshipType.Mother,
+        FullName.Create("Ø§Ù„Ø£Ù…"),
+        FullName.Create("Mother"),
+        Gender.Female,
+        new DateOnly(1955, 1, 1),
+        new DateOnly(2026, 9, 2));
 }

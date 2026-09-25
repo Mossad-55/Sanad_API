@@ -21,7 +21,8 @@ public sealed record AddDependentRequest(
     FamilyRelationshipType RelationshipType,
     DateOnly DateOfBirth,
     string? DetailedAddress,
-    string? HealthNotes);
+    string? HealthNotes,
+    Guid? AssessmentId = null);
 
 public sealed record UpdateDependentRequest(
     FamilyRelationshipType RelationshipType,

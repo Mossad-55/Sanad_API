@@ -27,7 +27,8 @@ All routes require policy `FamilyAccess`. Permission matrix:
   "detailedAddress": "12 Nile Street, Damanhur",
   "healthNotes": "Diabetes type 2; takes metformin.",
   "createdOnUtc": "2026-09-01T09:05:00Z",
-  "phoneNumber": "+201007654321"
+  "phoneNumber": "+201007654321",
+  "latestAssessment": null
 }
 ```
 
@@ -39,6 +40,7 @@ All routes require policy `FamilyAccess`. Permission matrix:
 - `healthNotes`: optional, ≤ 2000 characters.
 - `hasPhoto`: boolean only. **The photo path/URL is never exposed**; photos are private and reachable solely through the authorized download route.
 - `identityUserId` is the Elderly Identity account; it links to SMS OTP login.
+- `latestAssessment` is nullable. When present it contains the newest linked completed assessment with its current care-tier metadata; ties use the assessment ID descending. Older assessment submissions remain stored, but this field exposes only the latest one.
 
 ## Add a dependent
 
@@ -57,8 +59,11 @@ Content-Type: multipart/form-data
   dateOfBirth: 1948-07-20
   detailedAddress: 12 Nile Street, Damanhur     (optional)
   healthNotes: Diabetes type 2                   (optional)
+  assessmentId: <assessmentId returned by quiz>  (optional)
   photo: <binary image, optional>
 ```
+
+The onboarding order is assessment quiz first, then dependent creation. Submit the quiz without `elderlyId`; it persists a family-scoped assessment and returns `assessmentId`. Pass that ID as the optional multipart `assessmentId` field when creating the dependent. The assessment is linked only if it belongs to the same family and is not already linked. The Families profile row and assessment link are saved atomically, so a rejected or failed link does not leave a partial Families profile/link. Elderly Identity account creation is a separate side effect and uses best-effort compensation if the Families write fails. An omitted ID leaves the dependent without an assessment; it can still be read and will return `latestAssessment: null` until a linked completed assessment exists.
 
 - `201` — `DependentResponse`.
 - `404 Families.Elderly.FamilyNotFound` — family not bootstrapped.
@@ -68,6 +73,7 @@ Content-Type: multipart/form-data
 - `409 Families.Elderly.PhoneLinkedToAnotherFamily` — an elderly identity for this phone is already linked to a family.
 - `409 Identity.Elderly.PhoneAlreadyInUse` — identity-level phone conflict.
 - `400 Storage.File.*` — photo missing/empty, over 5 MB, or not `image/jpeg|png|webp`.
+- `409 Families.Assessment.InvalidSubmission` — assessment missing, belongs to another family, is already linked, or otherwise cannot be linked to this profile. The profile and assessment link are not partially saved.
 
 **Phone resolution rules (one elderly → one family):**
 

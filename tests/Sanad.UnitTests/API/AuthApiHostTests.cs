@@ -45,12 +45,14 @@ public sealed class AuthApiHostTests :
                 _factory);
 
         var request =
-            new LoginRequest(
-                "not-an-email",
-                string.Empty,
-                string.Empty,
-                DevicePlatform.Unknown,
-                string.Empty);
+            new LoginRequest
+            {
+                Identifier = "not-an-email",
+                Password = string.Empty,
+                DeviceName = string.Empty,
+                DevicePlatform = DevicePlatform.Unknown,
+                AppVersion = string.Empty
+            };
 
         HttpResponseMessage response =
             await client.PostAsJsonAsync(

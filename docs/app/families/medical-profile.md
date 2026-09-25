@@ -56,6 +56,7 @@ Every successful GET (any family member including Viewer) logs one `ViewMedicalP
   "medicalHistory": [
     {
       "year": 2020,
+      "procedureDate": "2020-06-14",
       "title": "Knee Replacement",
       "description": "Left knee arthroplasty"
     }
@@ -98,6 +99,7 @@ Replaces the entire medical profile for this dependent.
   "medicalHistory": [
     {
       "year": 2015,
+      "procedureDate": "2015-09-03",
       "title": "Cataract Surgery",
       "description": "Right eye lens replacement"
     }
@@ -106,7 +108,7 @@ Replaces the entire medical profile for this dependent.
 ```
 
 ### Response Body (`application/json`)
-Returns the updated `ElderlyMedicalProfileResponse` (`200 OK`).
+Returns the updated `ElderlyMedicalProfileResponse` (`200 OK`). Each history item contains `procedureDate` when a full date is stored; its `year` is the date's calendar year. Legacy year-only data remains readable and is returned with `procedureDate: null`.
 
 ---
 
@@ -145,6 +147,9 @@ Returns the updated `ElderlyMedicalProfileResponse` (`200 OK`).
   - `reaction`: Optional, ≤ `200` characters.
 - `medicalHistory`:
   - `year`: Optional integer between `1900` and `2100`.
+  - `procedureDate`: Optional ISO-8601 calendar date (`YYYY-MM-DD`) whose year is between `1900` and `2100`.
+  - When `procedureDate` is present, `year` is derived from it in the response. A supplied `year` must match the date year; a mismatch is rejected with `Families.Elderly.InvalidProfile`.
+  - Legacy year-only entries remain valid and return `procedureDate: null`.
   - `title`: Required, ≤ `200` characters.
   - `description`: Optional, ≤ `1000` characters.
 

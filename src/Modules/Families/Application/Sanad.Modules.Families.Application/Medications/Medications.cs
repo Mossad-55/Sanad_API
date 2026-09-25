@@ -173,7 +173,11 @@ public sealed record UpdateMedicationCommand(
     IReadOnlyList<TimeOnly> DoseTimes,
     DateOnly StartDate,
     DateOnly? EndDate,
-    string? Instructions) : ICommand<MedicationResponse>;
+    string? Instructions,
+    int? StockQuantity = null,
+    int? LowStockThreshold = null,
+    bool UpdateStock = false,
+    bool StockObjectIsComplete = false) : ICommand<MedicationResponse>;
 
 public sealed class UpdateMedicationCommandValidator : AbstractValidator<UpdateMedicationCommand>
 {
@@ -187,6 +191,14 @@ public sealed class UpdateMedicationCommandValidator : AbstractValidator<UpdateM
         RuleFor(c => c.DoseUnit).NotEmpty().MaximumLength(Medication.MaximumDoseUnitLength);
         RuleFor(c => c.DoseQuantity).GreaterThan(0);
         RuleFor(c => c.DoseTimes).NotEmpty();
+        RuleFor(c => c.StockQuantity).GreaterThanOrEqualTo(0)
+            .When(c => c.UpdateStock && c.StockQuantity.HasValue);
+        RuleFor(c => c.LowStockThreshold).GreaterThanOrEqualTo(0)
+            .When(c => c.UpdateStock && c.LowStockThreshold.HasValue);
+        RuleFor(c => c.StockObjectIsComplete)
+            .Equal(true)
+            .When(c => c.UpdateStock)
+            .WithMessage("Both stock properties must be provided when updating stock.");
     }
 }
 
@@ -201,8 +213,16 @@ public sealed class UpdateMedicationCommandHandler : ICommandHandler<UpdateMedic
 
     public async Task<Result<MedicationResponse>> Handle(UpdateMedicationCommand request, CancellationToken cancellationToken)
     {
+        if (request.UpdateStock && !request.StockObjectIsComplete)
+        {
+            return MedicationErrors.InvalidMedication;
+        }
+
         Family? family = await FamilyAccess.ResolveFamilyAsync(_dbContext, request.UserId, cancellationToken);
         if (family is null || !FamilyAccess.CanManage(family, request.UserId)) return MedicationErrors.AccessDenied;
+
+        if (!await MedicationFamilyAccess.OwnsDependentAsync(_dbContext, family, request.DependentId, cancellationToken))
+            return MedicationErrors.AccessDenied;
 
         Medication? medication = await _dbContext.Medications.SingleOrDefaultAsync(
             m => m.Id == request.MedicationId && m.ElderlyId == request.DependentId,
@@ -212,15 +232,32 @@ public sealed class UpdateMedicationCommandHandler : ICommandHandler<UpdateMedic
 
         try
         {
-            medication.UpdateDetails(
-                request.Name,
-                request.Dosage,
-                request.DoseUnit,
-                request.DoseQuantity,
-                request.DoseTimes,
-                request.StartDate,
-                request.EndDate,
-                request.Instructions);
+            if (request.UpdateStock)
+            {
+                medication.UpdateDetailsAndStock(
+                    request.Name,
+                    request.Dosage,
+                    request.DoseUnit,
+                    request.DoseQuantity,
+                    request.DoseTimes,
+                    request.StartDate,
+                    request.EndDate,
+                    request.Instructions,
+                    request.StockQuantity,
+                    request.LowStockThreshold);
+            }
+            else
+            {
+                medication.UpdateDetails(
+                    request.Name,
+                    request.Dosage,
+                    request.DoseUnit,
+                    request.DoseQuantity,
+                    request.DoseTimes,
+                    request.StartDate,
+                    request.EndDate,
+                    request.Instructions);
+            }
 
             await _dbContext.SaveChangesAsync(cancellationToken);
             return medication.ToResponse();
@@ -254,6 +291,9 @@ public sealed class UpdateMedicationStockCommandHandler : ICommandHandler<Update
     {
         Family? family = await FamilyAccess.ResolveFamilyAsync(_dbContext, request.UserId, cancellationToken);
         if (family is null || !FamilyAccess.CanManage(family, request.UserId)) return MedicationErrors.AccessDenied;
+
+        if (!await MedicationFamilyAccess.OwnsDependentAsync(_dbContext, family, request.DependentId, cancellationToken))
+            return MedicationErrors.AccessDenied;
 
         Medication? medication = await _dbContext.Medications.SingleOrDefaultAsync(
             m => m.Id == request.MedicationId && m.ElderlyId == request.DependentId,
@@ -313,6 +353,9 @@ public sealed class StatusToggleCommandHandlers :
         Family? family = await FamilyAccess.ResolveFamilyAsync(_dbContext, userId, ct);
         if (family is null || !FamilyAccess.CanManage(family, userId)) return MedicationErrors.AccessDenied;
 
+        if (!await MedicationFamilyAccess.OwnsDependentAsync(_dbContext, family, depId, ct))
+            return MedicationErrors.AccessDenied;
+
         Medication? med = await _dbContext.Medications.SingleOrDefaultAsync(
             m => m.Id == medId && m.ElderlyId == depId, ct);
 
@@ -349,6 +392,9 @@ public sealed class GetMedicationByIdQueryHandler : IQueryHandler<GetMedicationB
         Family? family = await FamilyAccess.ResolveFamilyAsync(_dbContext, request.UserId, cancellationToken);
         if (family is null) return MedicationErrors.AccessDenied;
 
+        if (!await MedicationFamilyAccess.OwnsDependentAsync(_dbContext, family, request.DependentId, cancellationToken))
+            return MedicationErrors.AccessDenied;
+
         Medication? med = await _dbContext.Medications
             .AsNoTracking()
             .SingleOrDefaultAsync(m => m.Id == request.MedicationId && m.ElderlyId == request.DependentId, cancellationToken);
@@ -360,6 +406,73 @@ public sealed class GetMedicationByIdQueryHandler : IQueryHandler<GetMedicationB
 }
 
 public sealed record ListMedicationsQuery(UserId UserId, ElderlyId DependentId) : IQuery<IReadOnlyList<MedicationResponse>>;
+
+public sealed record GetMedicationDoseHistoryQuery(
+    UserId UserId,
+    ElderlyId DependentId,
+    MedicationId MedicationId,
+    DateOnly StartDate,
+    DateOnly EndDate) : IQuery<IReadOnlyList<MedicationDoseResponse>>;
+
+public sealed class GetMedicationDoseHistoryQueryHandler
+    : IQueryHandler<GetMedicationDoseHistoryQuery, IReadOnlyList<MedicationDoseResponse>>
+{
+    private readonly IFamiliesDbContext _dbContext;
+
+    public GetMedicationDoseHistoryQueryHandler(IFamiliesDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<Result<IReadOnlyList<MedicationDoseResponse>>> Handle(
+        GetMedicationDoseHistoryQuery request,
+        CancellationToken cancellationToken)
+    {
+        Family? family = await FamilyAccess.ResolveFamilyAsync(_dbContext, request.UserId, cancellationToken);
+        if (family is null || !FamilyAccess.IsMember(family, request.UserId))
+            return MedicationErrors.AccessDenied;
+
+        if (!await MedicationFamilyAccess.OwnsDependentAsync(_dbContext, family, request.DependentId, cancellationToken))
+            return MedicationErrors.AccessDenied;
+
+        Medication? medication = await _dbContext.Medications
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                m => m.Id == request.MedicationId && m.ElderlyId == request.DependentId,
+                cancellationToken);
+
+        if (medication is null) return MedicationErrors.NotFound;
+
+        if (request.EndDate < request.StartDate || request.EndDate.DayNumber - request.StartDate.DayNumber + 1 > 31)
+            return MedicationErrors.InvalidDateRange;
+
+        List<MedicationDoseLog> logs = await _dbContext.MedicationDoseLogs
+            .AsNoTracking()
+            .Where(log => log.MedicationId == request.MedicationId &&
+                          log.ElderlyId == request.DependentId &&
+                          log.ScheduledDate >= request.StartDate &&
+                          log.ScheduledDate <= request.EndDate)
+            .OrderBy(log => log.ScheduledDate)
+            .ThenBy(log => log.ScheduledTime)
+            .ToListAsync(cancellationToken);
+
+        return Result<IReadOnlyList<MedicationDoseResponse>>.Success(logs.Select(log => new MedicationDoseResponse(
+            log.Id.Value,
+            medication.Id.Value,
+            medication.Name,
+            medication.Dosage,
+            medication.DoseUnit,
+            medication.DoseQuantity,
+            medication.Instructions,
+            log.ScheduledDate,
+            log.ScheduledTime,
+            log.Status,
+            log.TakenAtUtc,
+            log.SkippedAtUtc,
+            log.Notes,
+            log.LoggedByUserId?.Value)).ToList());
+    }
+}
 
 public sealed class ListMedicationsQueryHandler : IQueryHandler<ListMedicationsQuery, IReadOnlyList<MedicationResponse>>
 {
@@ -374,6 +487,9 @@ public sealed class ListMedicationsQueryHandler : IQueryHandler<ListMedicationsQ
     {
         Family? family = await FamilyAccess.ResolveFamilyAsync(_dbContext, request.UserId, cancellationToken);
         if (family is null) return MedicationErrors.AccessDenied;
+
+        if (!await MedicationFamilyAccess.OwnsDependentAsync(_dbContext, family, request.DependentId, cancellationToken))
+            return MedicationErrors.AccessDenied;
 
         List<Medication> list = await _dbContext.Medications
             .AsNoTracking()
@@ -405,6 +521,9 @@ public sealed class GetMedicationDashboardQueryHandler : IQueryHandler<GetMedica
     {
         Family? family = await FamilyAccess.ResolveFamilyAsync(_dbContext, request.UserId, cancellationToken);
         if (family is null) return MedicationErrors.AccessDenied;
+
+        if (!await MedicationFamilyAccess.OwnsDependentAsync(_dbContext, family, request.DependentId, cancellationToken))
+            return MedicationErrors.AccessDenied;
 
         List<Medication> allMedications = await _dbContext.Medications
             .AsNoTracking()
@@ -518,6 +637,9 @@ public sealed class RecordDoseTakenCommandHandler : ICommandHandler<RecordDoseTa
         Family? family = await FamilyAccess.ResolveFamilyAsync(_dbContext, request.UserId, cancellationToken);
         if (family is null || !FamilyAccess.CanManage(family, request.UserId)) return MedicationErrors.AccessDenied;
 
+        if (!await MedicationFamilyAccess.OwnsDependentAsync(_dbContext, family, request.DependentId, cancellationToken))
+            return MedicationErrors.AccessDenied;
+
         Medication? medication = await _dbContext.Medications.SingleOrDefaultAsync(
             m => m.Id == request.MedicationId && m.ElderlyId == request.DependentId,
             cancellationToken);
@@ -595,6 +717,9 @@ public sealed class RecordDoseSkippedCommandHandler : ICommandHandler<RecordDose
         Family? family = await FamilyAccess.ResolveFamilyAsync(_dbContext, request.UserId, cancellationToken);
         if (family is null || !FamilyAccess.CanManage(family, request.UserId)) return MedicationErrors.AccessDenied;
 
+        if (!await MedicationFamilyAccess.OwnsDependentAsync(_dbContext, family, request.DependentId, cancellationToken))
+            return MedicationErrors.AccessDenied;
+
         Medication? medication = await _dbContext.Medications.SingleOrDefaultAsync(
             m => m.Id == request.MedicationId && m.ElderlyId == request.DependentId,
             cancellationToken);
@@ -639,4 +764,16 @@ public sealed class RecordDoseSkippedCommandHandler : ICommandHandler<RecordDose
             doseLog.Notes,
             doseLog.LoggedByUserId?.Value);
     }
+}
+
+internal static class MedicationFamilyAccess
+{
+    public static Task<bool> OwnsDependentAsync(
+        IFamiliesDbContext dbContext,
+        Family family,
+        ElderlyId dependentId,
+        CancellationToken cancellationToken) =>
+        dbContext.Elderlies.AnyAsync(
+            elderly => elderly.Id == dependentId && elderly.FamilyId == family.Id,
+            cancellationToken);
 }

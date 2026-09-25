@@ -88,9 +88,10 @@ public sealed class CareAssessment : AggregateRoot<CareAssessmentId>
 
     public void LinkToElderly(ElderlyId elderlyId)
     {
-        if (elderlyId.Value == Guid.Empty)
+        if (elderlyId.Value == Guid.Empty ||
+            (ElderlyId is not null && ElderlyId != elderlyId))
         {
-            throw new DomainException("Elderly ID cannot be empty.");
+            throw new DomainException("Assessment cannot be linked to this elderly profile.");
         }
 
         ElderlyId = elderlyId;

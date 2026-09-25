@@ -102,4 +102,45 @@ public sealed class FamilyAssessmentTests
         Assert.True(result.IsFailure);
         Assert.Equal("Families.Assessment.InvalidSubmission", result.Error.Code);
     }
+
+    [Fact]
+    public async Task SubmitAssessment_ShouldFail_WhenElderlyBelongsToAnotherFamily()
+    {
+        using var dbContext = CreateDbContext();
+        var userId = UserId.New();
+        var family = Family.Create(userId, "Family");
+        var otherFamily = Family.Create(UserId.New(), "Other family");
+        var elderly = Sanad.Modules.Families.Domain.Elderlies.Elderly.Create(
+            otherFamily.OwnerUserId,
+            UserId.New(),
+            otherFamily.Id,
+            Sanad.Modules.Families.Domain.Families.FamilyRelationshipType.Grandfather,
+            Sanad.BuildingBlocks.Domain.ValueObjects.FullName.Create("الاسم"),
+            Sanad.BuildingBlocks.Domain.ValueObjects.FullName.Create("Name"),
+            Sanad.BuildingBlocks.Domain.Enums.Gender.Male,
+            DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-70)),
+            DateOnly.FromDateTime(DateTime.UtcNow));
+        dbContext.Families.AddRange(family, otherFamily);
+        dbContext.Elderlies.Add(elderly);
+
+        var question = AssessmentQuestion.Create(1, "Question", "Question", isRequired: true);
+        question.SetOptions([(1, "Option", "Option", 5), (2, "Other", "Other", 0)]);
+        dbContext.AssessmentQuestions.Add(question);
+        dbContext.AssessmentTiers.Add(AssessmentTier.Create(
+            1, "T", "T", "D", "D", "#fff", "B", "B", "i.png", 0, 10, ["r"], ["r"]));
+        await dbContext.SaveChangesAsync();
+
+        var handler = new SubmitAssessmentCommandHandler(dbContext);
+        var result = await handler.Handle(
+            new SubmitAssessmentCommand(
+                userId,
+                elderly.Id,
+                [new AssessmentAnswerInput(question.Id, question.Options.First().Id)],
+                DateTime.UtcNow),
+            CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Families.Assessment.InvalidSubmission", result.Error.Code);
+        Assert.Empty(await dbContext.CareAssessments.ToListAsync());
+    }
 }

@@ -17,6 +17,13 @@ the remaining application work after subscription billing.
 - `Needs owner verification` means the backend contract cannot be safely
   designed from the current requirements alone. The mastermind will raise the
   exact decision when that phase is reached.
+- Deferred Family items are tracked in [`family-ui-audit.md`](family-ui-audit.md),
+  which records the gap, reason, and return trigger/roadmap phase. At each phase
+  kickoff, review that register and pull the items assigned to that phase into
+  its active scope before implementation. At phase closeout, either mark each
+  item implemented with tests/docs/Postman/Bruno evidence or record an explicit
+  new deferral and reason; do not silently drop or implement later-phase work
+  early.
 
 ## Current baseline
 
@@ -41,6 +48,15 @@ screen is using local or static data.
 ## Ordered implementation phases
 
 ### Phase 0 — Full application UI audit and contract reconciliation
+
+Family-scope audit artifact: [`family-ui-audit.md`](family-ui-audit.md). It
+maps the owner-described Family journey from onboarding through account
+settings (settings are recorded as already completed by the owner), includes
+the supplied user/admin Library and Community UI inventory, and records
+current route, permission, and coverage evidence plus API gaps and explicit
+owner-verification/deferral dispositions. This closes only the Family
+inventory; Phase 0 remains open for the other application roles and screens,
+plus any Family owner decisions listed in that report.
 
 Walk every family, caregiver/nurse, elderly, admin, booking, subscription, and
 settings screen against the deployed API. Produce a screen matrix with route,

@@ -32,7 +32,11 @@ public sealed class CareAssessmentConfiguration :
             .HasConversion(
                 id => id.HasValue ? id.Value.Value : (Guid?)null,
                 value => value.HasValue ? new ElderlyId(value.Value) : null)
-            .HasColumnName("elderly_id");
+            .HasColumnName("elderly_id")
+            // Only one profile-creation request may link a previously
+            // unassociated assessment. Historical rows may share a profile;
+            // each individual row's link transition is concurrency guarded.
+            .IsConcurrencyToken();
 
         builder.Property(a => a.AssessmentTierId)
             .HasConversion(

@@ -5,7 +5,8 @@ namespace Sanad.Modules.Families.Domain.Elderlies.Medical;
 public sealed record MedicalHistoryEntry(
     int? Year,
     string Title,
-    string? Description)
+    string? Description,
+    DateOnly? ProcedureDate = null)
 {
     public const int MaximumTitleLength = 200;
     public const int MaximumDescriptionLength = 1000;
@@ -13,7 +14,8 @@ public sealed record MedicalHistoryEntry(
     public static MedicalHistoryEntry Create(
         int? year,
         string title,
-        string? description = null)
+        string? description = null,
+        DateOnly? procedureDate = null)
     {
         if (string.IsNullOrWhiteSpace(title))
         {
@@ -24,6 +26,19 @@ public sealed record MedicalHistoryEntry(
         {
             throw new DomainException("Medical history year must be between 1900 and 2100.");
         }
+
+        if (procedureDate.HasValue &&
+            (procedureDate.Value.Year < 1900 || procedureDate.Value.Year > 2100))
+        {
+            throw new DomainException("Medical history procedure date must be between 1900 and 2100.");
+        }
+
+        if (year.HasValue && procedureDate.HasValue && year.Value != procedureDate.Value.Year)
+        {
+            throw new DomainException("Medical history year must match the procedure date year.");
+        }
+
+        int? effectiveYear = procedureDate?.Year ?? year;
 
         string trimmedTitle = title.Trim();
         if (trimmedTitle.Length > MaximumTitleLength)
@@ -43,6 +58,6 @@ public sealed record MedicalHistoryEntry(
             }
         }
 
-        return new MedicalHistoryEntry(year, trimmedTitle, trimmedDesc);
+        return new MedicalHistoryEntry(effectiveYear, trimmedTitle, trimmedDesc, procedureDate);
     }
 }

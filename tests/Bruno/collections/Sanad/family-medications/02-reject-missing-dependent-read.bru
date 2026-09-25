@@ -1,0 +1,20 @@
+meta {
+  name: 02-reject-missing-dependent-read
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/00000000-0000-4000-8000-000000000001/medications
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq Families.Medication.AccessDenied
+}

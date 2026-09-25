@@ -2,6 +2,8 @@
 
 The Care-Needs Assessment Quiz is Step 1 of the elderly onboarding flow. It evaluates the elderly dependent's care severity to recommend the appropriate care tier before completing the profile form.
 
+For onboarding, submit the quiz before creating the dependent. Send `elderlyId: null` (or omit it) to create a family-scoped pre-profile submission. The response `assessmentId` can then be supplied as the optional multipart `assessmentId` field on `POST /api/v1/family/dependents`. The link is accepted only for an assessment in the same family that is not already linked; the Families profile row and assessment link are saved atomically. Existing assessment rows are retained, including earlier retakes. Elderly Identity account creation is a separate side effect with best-effort compensation if the Families save fails.
+
 ## Access
 
 - Authenticated user
@@ -105,3 +107,11 @@ POST   /api/v1/family/assessment              Submit answers → Server-side sco
 | `Families.Assessment.QuestionNotFound` | 404 | No active questions configured |
 | `Families.Assessment.TierNotFound` | 404 | No active care tiers configured |
 | `Families.Assessment.InvalidSubmission` | 409 | Missing required question or foreign option selected |
+
+`Families.Assessment.InvalidSubmission` is also returned when a supplied `elderlyId` is missing or belongs to another family, and when dependent creation attempts to link a missing, foreign-family, or already-linked assessment. The Families profile/link write remains atomic on rejection or save failure; Identity account creation uses best-effort compensation if that write fails.
+
+## Reading the linked result
+
+`GET /api/v1/family/dependents/{dependentId}` includes `latestAssessment`, which is `null` when no completed assessment is linked. Otherwise it contains the newest linked completed result and its current tier display metadata. Ordering is `completedOnUtc` descending, then assessment ID descending. All family roles can read dependent details; only Owner and Editor can create or manage dependents. Assessment submission may include an optional `elderlyId`, but a missing or foreign elderly ID is rejected with `Families.Assessment.InvalidSubmission`.
+
+The Family Postman collection provides the quiz questions/options and submission before dependent creation. Run its quiz requests first, submit answers built from the active question response, then run Add dependent with the captured `assessmentId`.

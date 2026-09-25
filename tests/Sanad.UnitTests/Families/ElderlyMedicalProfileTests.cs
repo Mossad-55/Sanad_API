@@ -30,6 +30,79 @@ public sealed class ElderlyMedicalProfileTests
     }
 
     [Fact]
+    public void MedicalHistory_ShouldDeriveYearFromFullProcedureDate()
+    {
+        var procedureDate = new DateOnly(2021, 6, 14);
+
+        var entry = MedicalHistoryEntry.Create(
+            null,
+            "Hip Replacement",
+            "Right hip arthroplasty",
+            procedureDate);
+
+        Assert.Equal(2021, entry.Year);
+        Assert.Equal(procedureDate, entry.ProcedureDate);
+    }
+
+    [Fact]
+    public void MedicalHistory_ShouldAcceptLegacyYearOnlyEntry()
+    {
+        var entry = MedicalHistoryEntry.Create(2018, "Gallbladder Removal");
+
+        Assert.Equal(2018, entry.Year);
+        Assert.Null(entry.ProcedureDate);
+    }
+
+    [Fact]
+    public void MedicalHistory_ShouldAcceptMatchingYearAndProcedureDate()
+    {
+        var entry = MedicalHistoryEntry.Create(
+            2020,
+            "Knee Replacement",
+            procedureDate: new DateOnly(2020, 1, 20));
+
+        Assert.Equal(2020, entry.Year);
+        Assert.Equal(new DateOnly(2020, 1, 20), entry.ProcedureDate);
+    }
+
+    [Fact]
+    public void MedicalHistory_ShouldRejectMismatchingYearAndProcedureDate()
+    {
+        var exception = Assert.Throws<DomainException>(() => MedicalHistoryEntry.Create(
+            2020,
+            "Knee Replacement",
+            procedureDate: new DateOnly(2021, 1, 20)));
+
+        Assert.Contains("year must match", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public void Update_ShouldReplaceHistoryEntriesIncludingProcedureDate()
+    {
+        var profile = ElderlyMedicalProfile.Create(
+            BloodType.OPositive,
+            172,
+            75.5m,
+            medicalHistory: [MedicalHistoryEntry.Create(2018, "Old Procedure")]);
+
+        profile.Update(
+            BloodType.OPositive,
+            172,
+            75.5m,
+            [],
+            [],
+            [MedicalHistoryEntry.Create(
+                null,
+                "New Procedure",
+                procedureDate: new DateOnly(2022, 9, 3))]);
+
+        var entry = Assert.Single(profile.MedicalHistory);
+        Assert.Equal("New Procedure", entry.Title);
+        Assert.Equal(2022, entry.Year);
+        Assert.Equal(new DateOnly(2022, 9, 3), entry.ProcedureDate);
+    }
+
+    [Fact]
     public void Create_ShouldThrow_WhenHeightIsOutOfRange()
     {
         Assert.Throws<DomainException>(() => ElderlyMedicalProfile.Create(

@@ -127,6 +127,36 @@ public sealed class Medication : AggregateRoot<MedicationId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void UpdateDetailsAndStock(
+        string name,
+        string dosage,
+        string doseUnit,
+        int doseQuantity,
+        IEnumerable<TimeOnly> doseTimes,
+        DateOnly startDate,
+        DateOnly? endDate,
+        string? instructions,
+        int? stockQuantity,
+        int? lowStockThreshold)
+    {
+        // Validate every incoming value before changing any entity state.
+        ValidateCommon(name, dosage, doseUnit, doseQuantity, doseTimes, startDate, endDate, stockQuantity, lowStockThreshold);
+        string? normalizedInstructions = NormalizeOptional(instructions, MaximumInstructionsLength, "Instructions");
+
+        Name = name.Trim();
+        Dosage = dosage.Trim();
+        DoseUnit = doseUnit.Trim();
+        DoseQuantity = doseQuantity;
+        _doseTimes.Clear();
+        _doseTimes.AddRange(doseTimes.OrderBy(t => t));
+        StartDate = startDate;
+        EndDate = endDate;
+        Instructions = normalizedInstructions;
+        StockQuantity = stockQuantity;
+        LowStockThreshold = lowStockThreshold;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     public void UpdateStock(int? newStockQuantity, int? newLowStockThreshold)
     {
         if (newStockQuantity is < 0)

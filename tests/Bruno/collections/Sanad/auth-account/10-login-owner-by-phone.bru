@@ -1,0 +1,31 @@
+meta {
+  name: 10-login-owner-by-phone
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "identifier": "{{familyOwnerPhone}}",
+    "password": "{{familyOwnerPassword}}",
+    "deviceName": "bruno-phone-login",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.accessToken: isDefined
+  res.body.refreshToken: isDefined
+}

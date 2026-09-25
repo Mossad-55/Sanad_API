@@ -277,7 +277,10 @@ public sealed class FamilyController :
                     request.DetailedAddress,
                     request.HealthNotes,
                     DateOnly.FromDateTime(DateTime.UtcNow),
-                    DateTime.UtcNow),
+                    DateTime.UtcNow,
+                    request.AssessmentId is Guid assessmentId
+                        ? new CareAssessmentId(assessmentId)
+                        : null),
                 cancellationToken);
 
         if (result.IsFailure && photoKey is not null)

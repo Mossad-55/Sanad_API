@@ -16,6 +16,50 @@ namespace Sanad.UnitTests.API;
 public sealed class AuthControllerLoginTests
 {
     [Fact]
+    public void LoginRequest_ShouldUseIdentifierWhenProvided()
+    {
+        var request = new LoginRequest
+        {
+            Identifier = "+201001234567"
+        };
+
+        Assert.Equal(
+            "+201001234567",
+            request.LoginIdentifier);
+    }
+
+    [Fact]
+    public void LoginRequest_ShouldKeepLegacyEmailCompatibility()
+    {
+        var request = new LoginRequest
+        {
+            Email = "user@example.com"
+        };
+
+        Assert.Equal(
+            "user@example.com",
+            request.LoginIdentifier);
+    }
+
+    [Theory]
+    [InlineData(null, null)]
+    [InlineData("user@example.com", "+201001234567")]
+    public void LoginRequest_ShouldRejectMissingOrAmbiguousIdentifier(
+        string? email,
+        string? identifier)
+    {
+        var request = new LoginRequest
+        {
+            Email = email,
+            Identifier = identifier
+        };
+
+        Assert.Equal(
+            string.Empty,
+            request.LoginIdentifier);
+    }
+
+    [Fact]
     public async Task Login_ShouldReturnOk_WithLoginResponse()
     {
         LoginResponse response = CreateLoginResponse();
@@ -23,12 +67,14 @@ public sealed class AuthControllerLoginTests
             Result<LoginResponse>.Success(response));
 
         IActionResult result = await controller.Login(
-            new LoginRequest(
-                "user@example.com",
-                "SecurePassword123",
-                "Ahmed's iPhone",
-                DevicePlatform.iOS,
-                "1.0.0"),
+            new LoginRequest
+            {
+                Email = "user@example.com",
+                Password = "SecurePassword123",
+                DeviceName = "Ahmed's iPhone",
+                DevicePlatform = DevicePlatform.iOS,
+                AppVersion = "1.0.0"
+            },
             CancellationToken.None);
 
         var ok = Assert.IsType<OkObjectResult>(result);
@@ -46,12 +92,14 @@ public sealed class AuthControllerLoginTests
                     "Internal message")));
 
         IActionResult result = await controller.Login(
-            new LoginRequest(
-                "user@example.com",
-                "wrong-password",
-                "Ahmed's iPhone",
-                DevicePlatform.iOS,
-                "1.0.0"),
+            new LoginRequest
+            {
+                Email = "user@example.com",
+                Password = "wrong-password",
+                DeviceName = "Ahmed's iPhone",
+                DevicePlatform = DevicePlatform.iOS,
+                AppVersion = "1.0.0"
+            },
             CancellationToken.None);
 
         var unauthorized = Assert.IsType<ObjectResult>(result);

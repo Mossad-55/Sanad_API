@@ -154,7 +154,7 @@ public sealed class AuthController :
     {
         var command =
             new LoginCommand(
-                request.Email,
+                request.LoginIdentifier,
                 request.Password,
                 request.DeviceName,
                 request.DevicePlatform,

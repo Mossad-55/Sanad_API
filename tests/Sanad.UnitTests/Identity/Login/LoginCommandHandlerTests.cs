@@ -212,6 +212,108 @@ public sealed class LoginCommandHandlerTests
     }
 
     [Fact]
+    public async Task Handle_ShouldFindUserByPhoneNumber()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.Active,
+                AccountType.Family);
+
+        LoginCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                PasswordVerificationResult.Success,
+                new FakeAuthTokenService());
+
+        Result<LoginResponse> result =
+            await handler.Handle(
+                CreateCommand() with
+                {
+                    Identifier = "+201001234567"
+                },
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(AuthAccessType.Normal, result.Value.AccessType);
+        Assert.Contains(
+            dbContext.DeviceSessions,
+            session => session.UserId == user.Id);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldFindUserByEmailStartingWithPlus()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.Active,
+                email: "+user@example.com");
+
+        LoginCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                PasswordVerificationResult.Success,
+                new FakeAuthTokenService());
+
+        Result<LoginResponse> result =
+            await handler.Handle(
+                CreateCommand() with
+                {
+                    Identifier = "+user@example.com"
+                },
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Contains(
+            dbContext.DeviceSessions,
+            session => session.UserId == user.Id);
+    }
+
+    [Theory]
+    [InlineData(AccountType.Family)]
+    [InlineData(AccountType.MedicalCaregiver)]
+    [InlineData(AccountType.CompanionCaregiver)]
+    [InlineData(AccountType.Elderly)]
+    [InlineData(AccountType.SuperAdmin)]
+    [InlineData(AccountType.ContentAdmin)]
+    [InlineData(AccountType.SupportAdmin)]
+    public async Task Handle_ShouldAllowPhoneLoginForPasswordBearingAccountTypes(
+        AccountType accountType)
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        await SeedUserAsync(
+            dbContext,
+            UserStatus.Active,
+            accountType);
+
+        LoginCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                PasswordVerificationResult.Success,
+                new FakeAuthTokenService());
+
+        Result<LoginResponse> result =
+            await handler.Handle(
+                CreateCommand() with
+                {
+                    Identifier = "+201001234567"
+                },
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(AuthAccessType.Normal, result.Value.AccessType);
+    }
+
+    [Fact]
     public async Task Handle_ShouldReturnInvalidCredentials_ForWrongPassword()
     {
         await using IdentityTestDbContext dbContext =
@@ -509,7 +611,9 @@ public sealed class LoginCommandHandlerTests
 
     private static async Task<User> SeedUserAsync(
         IdentityTestDbContext dbContext,
-        UserStatus status)
+        UserStatus status,
+        AccountType accountType = AccountType.Family,
+        string email = "mohamed@example.com")
     {
         User user =
             User.Create(
@@ -518,12 +622,11 @@ public sealed class LoginCommandHandlerTests
                 FullName.Create(
                     "Mohamed Ahmed"),
                 Email.Create(
-                    "mohamed@example.com"),
+                    email),
                 PhoneNumber.Create(
                     "+201001234567"));
 
-        user.AddAccount(
-            AccountType.Family);
+        user.AddAccount(accountType);
 
         user.SetInitialPasswordHash(
             "stored-password-hash",
@@ -609,7 +712,7 @@ public sealed class LoginCommandHandlerTests
     private static LoginCommand CreateCommand()
     {
         return new LoginCommand(
-            Email: "mohamed@example.com",
+            Identifier: "mohamed@example.com",
             Password: "StrongPass123",
             DeviceName: "iPhone 16",
             DevicePlatform: DevicePlatform.iOS,

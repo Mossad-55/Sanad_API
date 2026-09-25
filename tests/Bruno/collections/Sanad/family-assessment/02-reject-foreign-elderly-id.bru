@@ -1,0 +1,36 @@
+meta {
+  name: 02-reject-foreign-elderly-id
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/assessment
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyAssessmentJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "elderlyId": "00000000-0000-4000-8000-000000000001",
+    "answers": [
+      {
+        "questionId": "00000000-0000-4000-8000-000000000002",
+        "selectedOptionId": "00000000-0000-4000-8000-000000000003"
+      }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Families.Assessment.InvalidSubmission
+}

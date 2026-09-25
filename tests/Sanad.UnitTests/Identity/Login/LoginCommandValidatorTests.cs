@@ -26,20 +26,42 @@ public sealed class LoginCommandValidatorTests
     [Theory]
     [InlineData("")]
     [InlineData("invalid-email")]
-    public void Validate_ShouldRejectInvalidEmail(
-        string email)
+    [InlineData("201001234567")]
+    [InlineData("+0123456789")]
+    [InlineData("+201 001234567")]
+    public void Validate_ShouldRejectInvalidIdentifier(
+        string identifier)
     {
         LoginCommand command =
             CreateValidCommand() with
             {
-                Email = email
+                Identifier = identifier
             };
 
         _validator
             .TestValidate(command)
             .ShouldHaveValidationErrorFor(
                 value =>
-                    value.Email);
+                    value.Identifier);
+    }
+
+    [Theory]
+    [InlineData("mohamed@example.com")]
+    [InlineData("+201001234567")]
+    public void Validate_ShouldAcceptEmailOrE164PhoneIdentifier(
+        string identifier)
+    {
+        LoginCommand command =
+            CreateValidCommand() with
+            {
+                Identifier = identifier
+            };
+
+        _validator
+            .TestValidate(command)
+            .ShouldNotHaveValidationErrorFor(
+                value =>
+                    value.Identifier);
     }
 
     [Fact]
@@ -112,7 +134,7 @@ public sealed class LoginCommandValidatorTests
     private static LoginCommand CreateValidCommand()
     {
         return new LoginCommand(
-            Email: "mohamed@example.com",
+            Identifier: "mohamed@example.com",
             Password: "StrongPass123",
             DeviceName: "iPhone 16",
             DevicePlatform: DevicePlatform.iOS,

@@ -109,6 +109,24 @@
           ]
         },
         {
+          "name": "Phone login (Family owner)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "description": "Phone sign-in example for the seeded Family owner. `identifier` is preferred; the existing email login requests remain supported.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{familyPhone}}\",\n  \"password\": \"{{familyPassword}}\",\n  \"deviceName\": \"{{deviceName}}\",\n  \"devicePlatform\": {{devicePlatform}},\n  \"appVersion\": \"{{appVersion}}\"\n}"
+            }
+          }
+        },
+        {
           "name": "Verify OTP (only if login returns accessType 2)",
           "request": {
             "method": "POST",
@@ -895,7 +913,73 @@
         ]
       },
     {
-      "name": "03. Elderly Dependents",
+      "name": "03. Care-Needs Assessment Quiz",
+      "description": "Run before creating an elderly dependent. The questions request captures a valid option for each required active CMS question; submit then saves assessmentId for the following dependent-creation request.",
+      "item": [
+        {
+          "name": "Get active assessment questions",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Active questions have selectable options', function () {",
+                  "  const questions = pm.response.json();",
+                  "  pm.expect(questions).to.be.an('array').that.is.not.empty;",
+                  "  const answers = questions.filter(q => q.isRequired || (q.options && q.options.length)).map(q => {",
+                  "    pm.expect(q.options, 'options for question ' + q.id).to.be.an('array').that.is.not.empty;",
+                  "    return { questionId: q.id, selectedOptionId: q.options[0].id };",
+                  "  });",
+                  "  pm.environment.set('assessmentAnswers', JSON.stringify(answers));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }],
+            "url": "{{baseUrl}}/api/v1/family/assessment/questions"
+          }
+        },
+        {
+          "name": "Get care tiers",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }],
+            "url": "{{baseUrl}}/api/v1/family/assessment/tiers"
+          }
+        },
+        {
+          "name": "Submit care assessment",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "type": "text/javascript",
+              "exec": [
+                "if (pm.response.code === 201) {",
+                "  const body = pm.response.json();",
+                "  const aId = body.assessmentId && body.assessmentId.value ? body.assessmentId.value : body.assessmentId;",
+                "  if (aId) { pm.environment.set(\"assessmentId\", aId); }",
+                "}"
+              ]
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{familyToken}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"elderlyId\": null,\n  \"answers\": {{assessmentAnswers}}\n}" },
+            "url": "{{baseUrl}}/api/v1/family/assessment"
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Elderly Dependents",
       "item": [
         {
           "name": "Add dependent (multipart, optional photo)",
@@ -952,6 +1036,11 @@
                   "type": "text"
                 },
                 {
+                  "key": "assessmentId",
+                  "value": "{{assessmentId}}",
+                  "type": "text"
+                },
+                {
                   "key": "photo",
                   "type": "file",
                   "src": []
@@ -974,7 +1063,7 @@
               }
             }
           ],
-          "description": "Creates the dependent AND provisions an Elderly Identity login (Active, phone verified) for phoneNumber. A second call with the same phone returns 409 PhoneLinkedToAnotherFamily."
+          "description": "Run the Care-Needs Assessment Quiz folder first. Its Submit request captures assessmentId; enable this optional form field to link that same-family unlinked submission while creating the dependent. The link and profile save together. Creates an Elderly Identity login (Active, phone verified) for phoneNumber. A second call with the same phone returns 409 PhoneLinkedToAnotherFamily."
         },
         {
           "name": "List dependents",
@@ -1078,7 +1167,7 @@
       ]
     },
     {
-      "name": "04. Invitations",
+      "name": "05. Invitations",
       "item": [
         {
           "name": "Create invitation (Owner/Editor)",
@@ -1194,7 +1283,7 @@
       "description": "Invitations are by email to existing Family users. Token arrives via deep link sanad://family/invite?token=... (development: the development mail sink prints it to the API log)."
     },
     {
-      "name": "05. Medical Profile & Health",
+      "name": "06. Medical Profile & Health",
       "item": [
         {
           "name": "Get dependent medical profile",
@@ -1225,7 +1314,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"bloodType\": 1,\n  \"heightCm\": 170,\n  \"weightKg\": 75.5,\n  \"chronicConditions\": [\n    \"Diabetes Type 2\",\n    \"Hypertension\"\n  ],\n  \"allergies\": [\n    {\n      \"category\": 1,\n      \"allergen\": \"Penicillin\",\n      \"reaction\": \"Severe skin rash\"\n    }\n  ],\n  \"medicalHistory\": [\n    {\n      \"year\": 2018,\n      \"title\": \"Knee Arthroscopy\",\n      \"description\": \"Left knee procedure\"\n    }\n  ]\n}"
+              "raw": "{\n  \"bloodType\": 1,\n  \"heightCm\": 170,\n  \"weightKg\": 75.5,\n  \"chronicConditions\": [\n    \"Diabetes Type 2\",\n    \"Hypertension\"\n  ],\n  \"allergies\": [\n    {\n      \"category\": 1,\n      \"allergen\": \"Penicillin\",\n      \"reaction\": \"Severe skin rash\"\n    }\n  ],\n  \"medicalHistory\": [\n    {\n      \"year\": 2018,\n      \"procedureDate\": \"2018-06-14\",\n      \"title\": \"Knee Arthroscopy\",\n      \"description\": \"Left knee procedure\"\n    }\n  ]\n}"
             },
             "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-profile"
           }
@@ -1233,74 +1322,8 @@
       ]
     },
     {
-      "name": "06. Care-Needs Assessment Quiz",
-      "item": [
-        {
-          "name": "Get active assessment questions",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{familyToken}}"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/family/assessment/questions"
-          }
-        },
-        {
-          "name": "Get care tiers",
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{familyToken}}"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/family/assessment/tiers"
-          }
-        },
-        {
-          "name": "Submit care assessment",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "if (pm.response.code === 201) {",
-                  "  const body = pm.response.json();",
-                  "  const aId = body.assessmentId && body.assessmentId.value ? body.assessmentId.value : body.assessmentId;",
-                  "  if (aId) { pm.environment.set(\"assessmentId\", aId); }",
-                  "}"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json"
-              },
-              {
-                "key": "Authorization",
-                "value": "Bearer {{familyToken}}"
-              }
-            ],
-            "body": {
-              "mode": "raw",
-              "raw": "{\n  \"elderlyId\": null,\n  \"answers\": [\n    {\n      \"questionId\": \"{{assessmentQuestionId}}\",\n      \"selectedOptionId\": \"00000000-0000-0000-0000-000000000000\"\n    }\n  ]\n}"
-            },
-            "url": "{{baseUrl}}/api/v1/family/assessment"
-          }
-        }
-      ]
-    },
-    {
       "name": "07. Medications & Stock Inventory",
+      "description": "All medication routes require an active Family membership for the selected dependent's owning family. Owner/Editor roles can write or record doses; Owner/Editor/Viewer roles can read. Foreign or missing dependent IDs return 403 Families.Medication.AccessDenied for dependent-scoped reads, updates, stock/status actions, and dose actions. Add medication is the boundary exception and returns 404 Families.Medication.DependentNotFound. The main medication update accepts an optional nested stock object so details and inventory are validated and persisted atomically. Omit stock to preserve existing inventory; when present, both stockQuantity and lowStockThreshold keys are required, although either value may be null. The separate /stock PUT remains supported for stock-only updates.",
       "item": [
         {
           "name": "Add medication (with stock & schedule)",
@@ -1442,7 +1465,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"name\": \"أوميجا 3 بلس\",\n  \"dosage\": \"1000 ملغ\",\n  \"doseUnit\": \"كبسولة\",\n  \"doseQuantity\": 1,\n  \"doseTimes\": [\n    \"09:00\",\n    \"21:00\"\n  ],\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-12-31\",\n  \"instructions\": \"بعد الإفطار والعشاء\"\n}"
+              "raw": "{\n  \"name\": \"أوميجا 3 بلس\",\n  \"dosage\": \"1000 ملغ\",\n  \"doseUnit\": \"كبسولة\",\n  \"doseQuantity\": 1,\n  \"doseTimes\": [\n    \"09:00\",\n    \"21:00\"\n  ],\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-12-31\",\n  \"instructions\": \"بعد الإفطار والعشاء\",\n  \"stock\": {\n    \"stockQuantity\": 90,\n    \"lowStockThreshold\": 15\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}",
@@ -1459,7 +1482,8 @@
                 "{{medicationId}}"
               ]
             }
-          }
+          },
+          "description": "Atomic edit example: details and the nested stock object are validated and persisted together. Omit stock to preserve existing inventory. If stock is present, include both stockQuantity and lowStockThreshold keys; either value may be null. The separate /stock request below remains supported for stock-only updates."
         },
         {
           "name": "Update stock inventory & low-stock threshold",
@@ -1501,7 +1525,8 @@
                 "stock"
               ]
             }
-          }
+          },
+          "description": "Legacy-compatible stock-only update. The route remains supported; use the nested stock object on the main medication update when the edit screen saves details and inventory together."
         },
         {
           "name": "Pause medication schedule",
@@ -1595,6 +1620,62 @@
                 "medications",
                 "{{medicationId}}",
                 "discontinue"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Reject foreign or missing dependent (safe negative)",
+          "description": "Read-only authorization contract. The fixed GUID is intentionally improbable and must not be replaced with a real dependent for this negative case. A missing or foreign dependent returns 403 Families.Medication.AccessDenied and no medication data is returned. This request does not mutate data.",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "pm.variables.set(\"missingDependentId\", \"00000000-0000-4000-8000-000000000001\");"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Status is 403\", function () {",
+                  "    pm.response.to.have.status(403);",
+                  "});",
+                  "pm.test(\"Error code is Families.Medication.AccessDenied\", function () {",
+                  "    pm.expect(pm.response.json().code).to.eql(\"Families.Medication.AccessDenied\");",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{missingDependentId}}/medications",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{missingDependentId}}",
+                "medications"
               ]
             }
           }
@@ -1729,6 +1810,52 @@
                 "{{medicationId}}",
                 "doses",
                 "skip"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get persisted dose history (maximum 31 days)",
+          "description": "Read-only. Both dates are required; startDate must be on/before endDate and the inclusive range is at most 31 days. Owner, Editor, and Viewer may read only for their own family's dependent. Returns persisted dose logs only, sorted by scheduled date/time ascending; unlogged schedule rows are not synthesized. Event/status/time are persisted, while medication descriptive fields are read from the current editable Medication row, not a prescription snapshot.",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{familyToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}/doses/history?startDate=2026-09-01&endDate=2026-09-30",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "family",
+                "dependents",
+                "{{dependentId}}",
+                "medications",
+                "{{medicationId}}",
+                "doses",
+                "history"
+              ],
+              "query": [
+                {
+                  "key": "startDate",
+                  "value": "2026-09-01",
+                  "description": "Required inclusive start date (YYYY-MM-DD)."
+                },
+                {
+                  "key": "endDate",
+                  "value": "2026-09-30",
+                  "description": "Required inclusive end date (YYYY-MM-DD); max 31 inclusive days from startDate."
+                }
               ]
             }
           }

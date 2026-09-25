@@ -127,7 +127,7 @@ Content-Type: application/json
 
 ## Revoke an invitation
 
-Family Owner only, by invitation id (the owner sees the id in their own invitation management views).
+Family Owner only, by invitation id. The current API has no inviter-facing list/outbox endpoint to retrieve this id; the ID must come from the create-invitation response or another trusted client-held value.
 
 ```http
 DELETE /api/v1/family/invitations/{invitationId}

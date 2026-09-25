@@ -340,7 +340,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/auth/login",
-            "description": "Anonymous. Email only. accessType JSON is 1=Normal, 2=RestrictedVerification.",
+            "description": "Anonymous. Existing email request using legacy `email` property. Send exactly one of `identifier` or `email`; `identifier` is preferred and accepts email or ASCII E.164 phone. accessType JSON is 1=Normal, 2=RestrictedVerification.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\",\n  \"deviceName\": \"{{deviceName}}\",\n  \"devicePlatform\": {{devicePlatform}},\n  \"appVersion\": \"{{appVersion}}\"\n}"
@@ -426,6 +426,24 @@
               "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/auth/login\",\n  \"code\": \"Identity.Login.SessionLimitReached\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
             }
           ]
+        },
+        {
+          "name": "Login with phone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/auth/login",
+            "description": "Anonymous. Any account with a password credential, including Family, Caregiver, and configured administrative accounts. Supply ASCII E.164 phone (+ followed by 2-15 digits, first digit nonzero) through preferred `identifier`. Elderly accounts use SMS OTP login.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"identifier\": \"{{phoneNumber}}\",\n  \"password\": \"{{password}}\",\n  \"deviceName\": \"{{deviceName}}\",\n  \"devicePlatform\": {{devicePlatform}},\n  \"appVersion\": \"{{appVersion}}\"\n}"
+            }
+          }
         }
       ]
     },

@@ -106,7 +106,7 @@ Elderly cannot self-register and cannot share an identity with another account t
 
 | | Restricted | Normal |
 |---|---|---|
-| When | PendingVerification email/password login | Active user |
+| When | PendingVerification email or phone/password login | Active user |
 | Access token | 15 minutes | 15 minutes |
 | Refresh token | No | Yes, 30 days |
 | DeviceSession | No | Yes |

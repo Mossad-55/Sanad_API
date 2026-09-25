@@ -22,7 +22,8 @@ public sealed record AllergyDto(
 public sealed record MedicalHistoryDto(
     int? Year,
     string Title,
-    string? Description);
+    string? Description,
+    DateOnly? ProcedureDate = null);
 
 public sealed record ElderlyMedicalProfileResponse(
     ElderlyId DependentId,
@@ -63,7 +64,7 @@ internal static class ElderlyMedicalProfileMappings
                 .Select(a => new AllergyDto(a.Category, a.Allergen, a.Reaction))
                 .ToList(),
             profile.MedicalHistory
-                .Select(h => new MedicalHistoryDto(h.Year, h.Title, h.Description))
+                .Select(h => new MedicalHistoryDto(h.Year, h.Title, h.Description, h.ProcedureDate))
                 .ToList(),
             profile.UpdatedOnUtc);
     }
@@ -191,6 +192,13 @@ public sealed class UpdateElderlyMedicalProfileCommandValidator
             history.RuleFor(h => h.Year)
                 .InclusiveBetween(1900, 2100)
                 .When(h => h.Year.HasValue);
+            history.RuleFor(h => h.ProcedureDate)
+                .Must(date => date!.Value.Year is >= 1900 and <= 2100)
+                .WithMessage("Medical history procedure date must be between 1900 and 2100.")
+                .When(h => h.ProcedureDate.HasValue);
+            history.RuleFor(h => h)
+                .Must(h => !h.Year.HasValue || !h.ProcedureDate.HasValue || h.Year == h.ProcedureDate.Value.Year)
+                .WithMessage("Medical history year must match the procedure date year.");
             history.RuleFor(h => h.Description)
                 .MaximumLength(MedicalHistoryEntry.MaximumDescriptionLength)
                 .When(h => h.Description is not null);
@@ -246,7 +254,7 @@ public sealed class UpdateElderlyMedicalProfileCommandHandler
                 .Select(a => AllergyEntry.Create(a.Category, a.Allergen, a.Reaction));
 
             var history = (request.MedicalHistory ?? [])
-                .Select(h => MedicalHistoryEntry.Create(h.Year, h.Title, h.Description));
+                .Select(h => MedicalHistoryEntry.Create(h.Year, h.Title, h.Description, h.ProcedureDate));
 
             if (elderly.MedicalProfile is null)
             {

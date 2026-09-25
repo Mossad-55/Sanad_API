@@ -9,7 +9,9 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Identity;
+using Sanad.Modules.Families.Application.Assessments;
 using Sanad.Modules.Families.Application.Families;
+using Sanad.Modules.Families.Domain.Assessments;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 
@@ -28,7 +30,8 @@ public sealed record DependentResponse(
     string? DetailedAddress,
     string? HealthNotes,
     DateTime CreatedOnUtc,
-    string? PhoneNumber);
+    string? PhoneNumber,
+    FamilyAssessmentResultResponse? LatestAssessment = null);
 
 internal static class DependentMappings
 {
@@ -106,7 +109,8 @@ public sealed record AddDependentCommand(
     string? DetailedAddress,
     string? HealthNotes,
     DateOnly CurrentDate,
-    DateTime UtcNow)
+    DateTime UtcNow,
+    CareAssessmentId? AssessmentId = null)
     : ICommand<DependentResponse>;
 
 public sealed class AddDependentCommandValidator
@@ -284,11 +288,61 @@ public sealed class AddDependentCommandHandler
             return ElderlyErrors.InvalidProfile;
         }
 
+        CareAssessment? assessment = null;
+        if (request.AssessmentId is not null)
+        {
+            assessment = await _dbContext.CareAssessments
+                .SingleOrDefaultAsync(
+                    a => a.Id == request.AssessmentId &&
+                         a.FamilyId == family.Id &&
+                         a.ElderlyId == null,
+                    cancellationToken);
+
+            if (assessment is null)
+            {
+                if (identityCreated)
+                {
+                    await _identityGateway.DeleteElderlyAsync(
+                        identityUserId,
+                        cancellationToken);
+                }
+
+                return AssessmentErrors.InvalidSubmission;
+            }
+
+            try
+            {
+                assessment.LinkToElderly(elderly.Id);
+            }
+            catch (DomainException)
+            {
+                if (identityCreated)
+                {
+                    await _identityGateway.DeleteElderlyAsync(
+                        identityUserId,
+                        cancellationToken);
+                }
+
+                return AssessmentErrors.InvalidSubmission;
+            }
+        }
+
         _dbContext.Elderlies.Add(elderly);
 
         try
         {
             await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException) when (assessment is not null)
+        {
+            if (identityCreated)
+            {
+                await _identityGateway.DeleteElderlyAsync(
+                    identityUserId,
+                    cancellationToken);
+            }
+
+            return AssessmentErrors.InvalidSubmission;
         }
         catch
         {
@@ -439,7 +493,35 @@ public sealed class GetDependentQueryHandler
                 elderly.IdentityUserId,
                 cancellationToken);
 
-        return elderly.ToResponse(phoneNumber);
+        CareAssessment? latestAssessment = await _dbContext.CareAssessments
+            .AsNoTracking()
+            .Where(a => a.ElderlyId == elderly.Id && a.FamilyId == family.Id)
+            .OrderByDescending(a => a.CompletedOnUtc)
+            .ThenByDescending(a => a.Id.Value)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        FamilyAssessmentResultResponse? assessmentResponse = null;
+        if (latestAssessment is not null)
+        {
+            AssessmentTier? tier = await _dbContext.AssessmentTiers
+                .SingleOrDefaultAsync(
+                    t => t.Id == latestAssessment.AssessmentTierId,
+                    cancellationToken);
+
+            if (tier is not null)
+            {
+                assessmentResponse = new FamilyAssessmentResultResponse(
+                    latestAssessment.Id,
+                    latestAssessment.TotalScore,
+                    tier.ToFamilyResponse(),
+                    latestAssessment.CompletedOnUtc);
+            }
+        }
+
+        return elderly.ToResponse(phoneNumber) with
+        {
+            LatestAssessment = assessmentResponse
+        };
     }
 }
 

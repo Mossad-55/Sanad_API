@@ -4,7 +4,7 @@ using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 namespace Sanad.Modules.Identity.Application.Authentication.Login;
 
 public sealed record LoginCommand(
-    string Email,
+    string Identifier,
     string Password,
     string DeviceName,
     DevicePlatform DevicePlatform,

@@ -76,7 +76,7 @@ Rules:
 
 ## POST `/api/v1/auth/elderly/verify-otp`
 
-Anonymous. Success `200`. Same response shape as email/password login.
+Anonymous. Success `200`. Same response shape as email or phone/password login.
 
 ```bash
 curl -sS https://localhost:7296/api/v1/auth/elderly/verify-otp \

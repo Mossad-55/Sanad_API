@@ -1,0 +1,19 @@
+meta {
+  name: 03-reject-dose-history-missing-date
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/00000000-0000-4000-8000-000000000001/medications/00000000-0000-4000-8000-000000000002/doses/history?endDate=2026-09-30
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 400
+}

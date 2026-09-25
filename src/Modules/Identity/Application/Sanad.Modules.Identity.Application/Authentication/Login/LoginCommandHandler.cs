@@ -37,17 +37,36 @@ public sealed class LoginCommandHandler :
         LoginCommand request,
         CancellationToken cancellationToken)
     {
-        Email email =
-            Email.Create(
-                request.Email);
+        User? user;
 
-        User? user =
-            await _dbContext.Users
-                .SingleOrDefaultAsync(
-                    item =>
-                        item.Email ==
-                        email,
-                    cancellationToken);
+        if (!request.Identifier.Contains('@'))
+        {
+            PhoneNumber phoneNumber =
+                PhoneNumber.Create(
+                    request.Identifier);
+
+            user =
+                await _dbContext.Users
+                    .SingleOrDefaultAsync(
+                        item =>
+                            item.PhoneNumber ==
+                            phoneNumber,
+                        cancellationToken);
+        }
+        else
+        {
+            Email email =
+                Email.Create(
+                    request.Identifier);
+
+            user =
+                await _dbContext.Users
+                    .SingleOrDefaultAsync(
+                        item =>
+                            item.Email ==
+                            email,
+                        cancellationToken);
+        }
 
         if (user is null ||
             user.Password is null)
