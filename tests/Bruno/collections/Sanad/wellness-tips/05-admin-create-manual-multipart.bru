@@ -1,0 +1,29 @@
+meta {
+  name: 05-admin-create-manual-multipart
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminJwt}}
+}
+
+body:multipart-form {
+  arabicTitle: عنوان تجريبي
+  englishTitle: Example wellness tip
+  category: general
+  sectionsJson: [{"displayOrder":1,"arabicText":"نصيحة","englishText":"Advice"}]
+  file: @{{wellnessImageFile}}
+}
+
+assert {
+  res.status: eq 201
+}
+
+# Manual/state-changing example. Use an approved disposable JPEG/PNG/WebP fixture only.

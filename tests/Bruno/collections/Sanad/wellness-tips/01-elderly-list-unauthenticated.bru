@@ -1,0 +1,14 @@
+meta {
+  name: 01-elderly-list-unauthenticated
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/wellness-tips?page=1&pageSize=20
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

@@ -1,0 +1,19 @@
+meta {
+  name: 04-admin-list-authenticated
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.pageSize: eq 20
+}

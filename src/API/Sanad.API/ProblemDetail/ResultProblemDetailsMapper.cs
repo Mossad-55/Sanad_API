@@ -92,6 +92,9 @@ public static class ResultProblemDetailsMapper
             ["Cms.Legal.DraftAlreadyExists"] = 409,
             ["Cms.Legal.PublishedDocumentImmutable"] = 409,
             ["Cms.Legal.InvalidOperation"] = 409,
+            ["Cms.WellnessTip.NotFound"] = 404,
+            ["Cms.WellnessTip.NotPublished"] = 404,
+            ["Cms.WellnessTip.InvalidOperation"] = 409,
 
             ["Cms.Help.FaqNotFound"] = 404,
             ["Cms.Help.SupportContactNotFound"] = 404,

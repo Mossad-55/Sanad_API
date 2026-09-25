@@ -3,6 +3,7 @@ using Sanad.Modules.Cms.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Domain.Help;
 using Sanad.Modules.Cms.Domain.Legal;
 using Sanad.Modules.Cms.Domain.Splash;
+using Sanad.Modules.Cms.Domain.Wellness;
 
 namespace Sanad.Modules.Cms.Infrastructure.Persistence;
 
@@ -29,6 +30,8 @@ public sealed class CmsDbContext :
 
     public DbSet<SupportContact> SupportContacts =>
         Set<SupportContact>();
+
+    public DbSet<WellnessTip> WellnessTips => Set<WellnessTip>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

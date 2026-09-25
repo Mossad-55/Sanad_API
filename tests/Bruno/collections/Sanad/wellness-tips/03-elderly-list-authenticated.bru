@@ -1,0 +1,20 @@
+meta {
+  name: 03-elderly-list-authenticated
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/wellness-tips?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.page: eq 1
+  res.body.pageSize: eq 20
+}

@@ -1,0 +1,18 @@
+meta {
+  name: 07-admin-detail-authenticated
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

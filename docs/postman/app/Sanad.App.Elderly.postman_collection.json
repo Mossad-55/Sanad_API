@@ -70,12 +70,38 @@
           }
         }
       ]
+    },
+    {
+      "name": "03. Wellness tips (read-only)",
+      "item": [
+        {
+          "name": "List published wellness tips",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/elderly/wellness-tips?page={{wellnessPage}}&pageSize={{wellnessPageSize}}",
+            "description": "Normal Elderly JWT. Published-only, shared CMS content. pageSize defaults to 20 and is capped at 100. Tenant scope is not defined."
+          }
+        },
+        {
+          "name": "Get published wellness tip detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/elderly/wellness-tips/{{wellnessTipId}}",
+            "description": "Normal Elderly JWT. Returns only published content; missing/unpublished IDs return 404 Cms.WellnessTip.NotPublished."
+          }
+        }
+      ]
     }
   ],
   "variable": [
     { "key": "elderlyJwt", "value": "REPLACE_WITH_ELDERLY_NORMAL_JWT", "type": "string" },
     { "key": "elderlyLocalDate", "value": "2026-09-25", "type": "string", "description": "Profile-local YYYY-MM-DD date." },
     { "key": "medicationId", "value": "REPLACE_WITH_LINKED_MEDICATION_ID", "type": "string" },
-    { "key": "scheduledTime", "value": "20:00:00", "type": "string" }
+    { "key": "scheduledTime", "value": "20:00:00", "type": "string" },
+    { "key": "wellnessTipId", "value": "REPLACE_WITH_PUBLISHED_WELLNESS_TIP_ID", "type": "string" },
+    { "key": "wellnessPage", "value": "1", "type": "string" },
+    { "key": "wellnessPageSize", "value": "20", "type": "string" }
   ]
 }

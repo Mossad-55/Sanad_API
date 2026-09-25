@@ -19,6 +19,31 @@
       "key": "medicationId",
       "value": "",
       "description": "Paste an approved elderly medication UUID before running the manual detail or dose-timeline reads."
+    },
+    {
+      "key": "wellnessTipId",
+      "value": "",
+      "description": "Paste a wellness tip UUID before running detail, preview, lifecycle, or update requests."
+    },
+    {
+      "key": "wellnessStatus",
+      "value": "",
+      "description": "Optional wellness status filter: Draft, Published, or Archived."
+    },
+    {
+      "key": "wellnessCategory",
+      "value": "",
+      "description": "Optional wellness category filter."
+    },
+    {
+      "key": "wellnessSearch",
+      "value": "",
+      "description": "Optional Arabic or English title search."
+    },
+    {
+      "key": "wellnessImageFile",
+      "value": "",
+      "description": "Local disposable JPEG/PNG/WebP file path for manual multipart create/update."
     }
   ],
   "item": [
@@ -2518,7 +2543,81 @@
       "description": "All four GETs are manual/stateful because successful sensitive reads append audit rows. Do not execute this folder against shared/live environments. Access: SuperAdmin or SupportAdmin plus access_type Normal; ContentAdmin, Family, Elderly, and restricted tokens are denied."
     },
     {
-      "name": "15. Subscription VAT / tax rules (manual configuration)",
+      "name": "15. Wellness tips CMS (manual)",
+      "item": [
+        {
+          "name": "List wellness tips",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/wellness-tips?page=1&pageSize=20&status={{wellnessStatus}}&category={{wellnessCategory}}&search={{wellnessSearch}}"
+          },
+          "description": "SuperAdmin or ContentAdmin Normal JWT. Filters are optional; pageSize defaults to 20 and is capped at 100. CMS is global/shared."
+        },
+        {
+          "name": "Get wellness tip detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}"
+          },
+          "description": "Returns draft, published, or archived detail."
+        },
+        {
+          "name": "Preview wellness tip",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/preview"
+          },
+          "description": "Returns the same CMS detail response without changing publication state."
+        },
+        {
+          "name": "Create wellness tip draft (manual multipart)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "arabicTitle", "value": "عنوان تجريبي", "type": "text" },
+              { "key": "englishTitle", "value": "Example wellness tip", "type": "text" },
+              { "key": "category", "value": "general", "type": "text" },
+              { "key": "sectionsJson", "value": "[{\"displayOrder\":1,\"arabicText\":\"نصيحة\",\"englishText\":\"Advice\"}]", "type": "text" },
+              { "key": "file", "type": "file", "src": "{{wellnessImageFile}}" }
+            ] },
+            "url": "{{baseUrl}}/api/v1/admin/wellness-tips"
+          },
+          "description": "STATE-CHANGING manual request. File must be non-empty JPEG/PNG/WebP; max request size 5 MiB. Storage key is generated. Do not replay without approved disposable data."
+        },
+        {
+          "name": "Update wellness tip draft (manual multipart)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "arabicTitle", "value": "عنوان محدث", "type": "text" },
+              { "key": "englishTitle", "value": "Updated wellness tip", "type": "text" },
+              { "key": "category", "value": "general", "type": "text" },
+              { "key": "sectionsJson", "value": "[{\"displayOrder\":1,\"arabicText\":\"نصيحة محدثة\",\"englishText\":\"Updated advice\"}]", "type": "text" },
+              { "key": "file", "type": "file", "src": "{{wellnessImageFile}}", "disabled": true }
+            ] },
+            "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}"
+          },
+          "description": "STATE-CHANGING manual request. Only drafts can be edited. Omit file to keep the existing image; supplying one replaces the image key."
+        },
+        {
+          "name": "Publish wellness tip",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/publish" },
+          "description": "STATE-CHANGING manual request. Archived tips cannot be republished."
+        },
+        {
+          "name": "Archive wellness tip",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/archive" },
+          "description": "STATE-CHANGING manual request."
+        }
+      ]
+    },
+    {
+      "name": "16. Subscription VAT / tax rules (manual configuration)",
       "item": [
         {
           "name": "Create subscription tax rule (manual)",

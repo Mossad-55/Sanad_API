@@ -170,7 +170,10 @@ Build CMS-backed content and social interactions:
 
 - Posts, articles, educational videos, categories, featured content.
 - Create post, image upload, like, save, comments, views, search, and filters.
-- Elderly health tips list/detail/category/featured/read/save behavior.
+- Elderly health tips **bounded list/detail** and CMS authoring are delivered
+  (`docs/app/elderly/wellness-tips.md`, `docs/admin/wellness-tips.md`).
+  Featured, read/save, metrics, clinical review, and tenant-isolation behavior
+  remain owner-verification work.
 
 Video content is allowed as library content; this does not add video calls.
 
