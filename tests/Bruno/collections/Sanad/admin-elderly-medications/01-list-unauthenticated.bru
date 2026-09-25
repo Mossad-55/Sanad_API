@@ -1,0 +1,14 @@
+meta {
+  name: 01-list-unauthenticated
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/medications?page=1&pageSize=20
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

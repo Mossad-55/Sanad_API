@@ -35,6 +35,7 @@ public sealed class FamiliesDbContext :
     public DbSet<CareAssessment> CareAssessments => Set<CareAssessment>();
     public DbSet<Medication> Medications => Set<Medication>();
     public DbSet<MedicationDoseLog> MedicationDoseLogs => Set<MedicationDoseLog>();
+    public DbSet<AdminMedicationAccessAudit> AdminMedicationAccessAudits => Set<AdminMedicationAccessAudit>();
     public DbSet<ElderlyNote> ElderlyNotes => Set<ElderlyNote>();
     public DbSet<ElderlyActivityLog> ElderlyActivityLogs => Set<ElderlyActivityLog>();
     public DbSet<VisitReport> VisitReports => Set<VisitReport>();
@@ -77,6 +78,7 @@ public sealed class FamiliesDbContext :
         ThrowIfSubscriptionTaxRuleMutated();
         ThrowIfPaymobSubscriptionCallbackMutated();
         ThrowIfPaymobSubscriptionIdentityMutated();
+        ThrowIfAdminMedicationAccessAuditMutated();
 
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -99,6 +101,7 @@ public sealed class FamiliesDbContext :
         ThrowIfSubscriptionTaxRuleMutated();
         ThrowIfPaymobSubscriptionCallbackMutated();
         ThrowIfPaymobSubscriptionIdentityMutated();
+        ThrowIfAdminMedicationAccessAuditMutated();
 
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
@@ -125,6 +128,15 @@ public sealed class FamiliesDbContext :
                     $"Id '{entry.Entity.Id}' is in state '{entry.State}'. " +
                     "Discard the mutation instead of saving it.");
             }
+        }
+    }
+
+    private void ThrowIfAdminMedicationAccessAuditMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<AdminMedicationAccessAudit>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+                throw new InvalidOperationException("Admin medication access audits are append-only.");
         }
     }
 

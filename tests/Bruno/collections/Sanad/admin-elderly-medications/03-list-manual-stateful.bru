@@ -1,0 +1,18 @@
+meta {
+  name: 03-list-manual-stateful
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/medications?page=1&pageSize=20
+  auth: bearer
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-medications-list
+}
+
+auth:bearer {
+  token: {{adminElderlyMedicationJwt}}
+}

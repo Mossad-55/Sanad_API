@@ -31,6 +31,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Care-needs assessment quiz | `docs/admin/care-assessments.md` |
 | Bookings (cancellations & refunds) | `docs/admin/bookings.md` |
 | Subscription plans, publication/retirement, and coupon configuration | `docs/admin/subscriptions.md` |
+| Elderly medication operational reads (prescriptions, dose logs, adherence) | `docs/admin/elderly-medications.md` |
 | Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
 
 ## Caregiver lookups

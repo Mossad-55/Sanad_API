@@ -245,6 +245,16 @@ public static class DependencyInjection
                         AuthClaimNames.AccountType,
                         AccountType.Elderly.ToString());
                 });
+
+            options.AddPolicy(
+                AuthorizationPolicies.ElderlyMedicationOperationalRead,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                    policy.RequireClaim(AuthClaimNames.AccountType,
+                        AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+                });
         });
 
         services.AddMediatR(configuration =>

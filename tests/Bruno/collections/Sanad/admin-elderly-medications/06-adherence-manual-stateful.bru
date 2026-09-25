@@ -1,0 +1,18 @@
+meta {
+  name: 06-adherence-manual-stateful
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/medications/adherence
+  auth: bearer
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-medication-adherence
+}
+
+auth:bearer {
+  token: {{adminElderlyMedicationJwt}}
+}

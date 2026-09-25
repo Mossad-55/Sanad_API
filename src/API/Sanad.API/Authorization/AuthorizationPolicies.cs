@@ -22,4 +22,7 @@ public static class AuthorizationPolicies
 
     public const string ElderlyAccess =
         "ElderlyAccess";
+
+    public const string ElderlyMedicationOperationalRead =
+        "ElderlyMedicationOperationalRead";
 }

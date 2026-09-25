@@ -1,0 +1,18 @@
+meta {
+  name: 04-detail-manual-stateful
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/medications/{{medicationId}}
+  auth: bearer
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-medication-detail
+}
+
+auth:bearer {
+  token: {{adminElderlyMedicationJwt}}
+}

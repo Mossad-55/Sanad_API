@@ -14,6 +14,11 @@
       "key": "couponId",
       "value": "",
       "description": "Set by the manual create request when its optional test script runs, or paste an existing coupon UUID."
+    },
+    {
+      "key": "medicationId",
+      "value": "",
+      "description": "Paste an approved elderly medication UUID before running the manual detail or dose-timeline reads."
     }
   ],
   "item": [
@@ -2435,7 +2440,85 @@
       ]
     },
     {
-      "name": "14. Subscription VAT / tax rules (manual configuration)",
+      "name": "14. Elderly medication operational reads (manual/stateful)",
+      "item": [
+        {
+          "name": "List elderly medications (manual/stateful)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-medications-list"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/medications?page=1&pageSize=20"
+          },
+          "description": "Manual/stateful sensitive read. Requires SuperAdmin or SupportAdmin with a normal JWT under ElderlyMedicationOperationalRead. No request body. A successful GET first writes an immutable payload-free audit row, so do not run against shared/live environments without an approved fixture. Optional query filters: dependentId, status, search."
+        },
+        {
+          "name": "Get elderly medication (manual/stateful)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-medication-detail"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/medications/{{medicationId}}"
+          },
+          "description": "Manual/stateful sensitive read. Paste an approved medication UUID into medicationId. No request body. Success writes the audit row before returning the medication; an unknown UUID returns 404 Families.AdminMedication.NotFound after the audit attempt."
+        },
+        {
+          "name": "Get medication dose timeline (manual/stateful)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-medication-doses"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/medications/{{medicationId}}/doses?startDate=2026-09-01&endDate=2026-09-30"
+          },
+          "description": "Manual/stateful sensitive read. No request body. startDate and endDate are required ISO dates, inclusive, and may cover no more than 31 calendar days; optional status filters persisted dose logs. Invalid ranges return 400 Families.AdminMedication.InvalidDateRange. A successful read writes an audit row."
+        },
+        {
+          "name": "Get medication adherence aggregate (manual/stateful)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-medication-adherence"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/medications/adherence"
+          },
+          "description": "Manual/stateful sensitive read. Optional startDate, endDate, and dependentId filters. Returns counts and adherenceRate from persisted dose logs only; no scheduled rows are synthesized. A successful GET writes an immutable audit row. No request body."
+        }
+      ],
+      "description": "All four GETs are manual/stateful because successful sensitive reads append audit rows. Do not execute this folder against shared/live environments. Access: SuperAdmin or SupportAdmin plus access_type Normal; ContentAdmin, Family, Elderly, and restricted tokens are denied."
+    },
+    {
+      "name": "15. Subscription VAT / tax rules (manual configuration)",
       "item": [
         {
           "name": "Create subscription tax rule (manual)",

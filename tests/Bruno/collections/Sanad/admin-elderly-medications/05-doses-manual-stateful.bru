@@ -1,0 +1,18 @@
+meta {
+  name: 05-doses-manual-stateful
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/medications/{{medicationId}}/doses?startDate=2026-09-01&endDate=2026-09-30
+  auth: bearer
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-medication-doses
+}
+
+auth:bearer {
+  token: {{adminElderlyMedicationJwt}}
+}

@@ -24,6 +24,8 @@ public interface IFamiliesDbContext
     DbSet<CareAssessment> CareAssessments { get; }
     DbSet<Medication> Medications { get; }
     DbSet<MedicationDoseLog> MedicationDoseLogs { get; }
+    DbSet<AdminMedicationAccessAudit> AdminMedicationAccessAudits =>
+        throw new NotSupportedException("This context does not expose admin medication audits.");
     DbSet<ElderlyNote> ElderlyNotes { get; }
     DbSet<ElderlyActivityLog> ElderlyActivityLogs { get; }
     DbSet<VisitReport> VisitReports { get; }
