@@ -125,13 +125,17 @@ Complete the elderly flow on real data:
   take/skip contracts; add history and family synchronization where missing.
 - SOS creation, location capture, recipient notification, status tracking, and
   cancellation. Voice calling remains excluded as V2.
+- The primary phone-only emergency contact is now Family Owner-managed and
+  readable by linked Family members and the linked Elderly profile. This does
+  not implement SOS delivery, Admin contact inspection, or contact removal.
 - Elderly dashboard composition for check-in, next dose, daily activity, and
   alerts.
 
 Needs owner verification: help-request types and recipient rules, whether a
 caregiver can reject a request, SOS escalation/timeout rules, location
-precision and retention, emergency contacts, medication late threshold, and
-whether skipped-dose reasons are free text or lookup values.
+precision and retention, medication late threshold, and
+whether skipped-dose reasons are free text or lookup values. Contact clear/
+delete and Admin field-level visibility remain unverified.
 
 ### Phase 4 — Role dashboards and booking execution integration
 

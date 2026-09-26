@@ -235,6 +235,25 @@ public sealed class FamilyController :
 
     // ---------------------------- Dependents ----------------------------
 
+    [HttpGet("dependents/{dependentId:guid}/emergency-contact")]
+    [ProducesResponseType(typeof(EmergencyContactResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetEmergencyContact(Guid dependentId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        return ToActionResult(await _sender.Send(
+            new GetFamilyEmergencyContactQuery(userId, new ElderlyId(dependentId)), cancellationToken));
+    }
+
+    [HttpPut("dependents/{dependentId:guid}/emergency-contact")]
+    [ProducesResponseType(typeof(EmergencyContactResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> SetEmergencyContact(
+        Guid dependentId, [FromBody] SetEmergencyContactRequest request, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        return ToActionResult(await _sender.Send(
+            new SetFamilyEmergencyContactCommand(userId, new ElderlyId(dependentId), request.Name, request.Relationship, request.PhoneNumber), cancellationToken));
+    }
+
     [HttpPost("dependents")]
     [RequestSizeLimit(5_242_880)] // 5 MB, matches private storage limit
     [Consumes("multipart/form-data")]

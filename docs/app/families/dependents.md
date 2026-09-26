@@ -207,6 +207,53 @@ Content-Type: application/json
 The timezone is used by Elderly profile age calculation and future profile-local
 calendar features. It is not a family-member timezone setting.
 
+## Primary emergency contact
+
+Each dependent may have one optional phone-only emergency contact (name,
+relationship, and an E.164 phone number). All active Family members may read
+it; only the current Family Owner may add or update it. Editors and Viewers
+cannot change it. The contact does not need a Sanad account.
+
+```http
+GET /api/v1/family/dependents/{dependentId}/emergency-contact
+Authorization: Bearer {{familyToken}}
+```
+
+An unset contact returns `200` with `null`; a configured contact returns:
+
+```json
+{
+  "name": "Amina",
+  "relationship": "Daughter",
+  "phoneNumber": "+201000000000"
+}
+```
+
+Set or replace the contact with a single update:
+
+```http
+PUT /api/v1/family/dependents/{dependentId}/emergency-contact
+Authorization: Bearer {{familyToken}}
+Content-Type: application/json
+
+{
+  "name": "Amina",
+  "relationship": "Daughter",
+  "phoneNumber": "+201000000000"
+}
+```
+
+- `200` — the saved contact.
+- `400` — invalid name, relationship, or non-E.164 phone number (request validation or `Families.Elderly.InvalidProfile`).
+- `403 Families.Elderly.AccessDenied` — caller is not the current Family Owner.
+- `404 Families.Elderly.NotFound` — dependent is outside the owner's family.
+- `404 Families.Elderly.FamilyNotFound` — no active family is available for a read.
+
+Deleted families and their deactivated Elderly profiles cannot read or write
+this contact. There is currently no clear/delete operation. This API only
+stores the contact: it does not send SMS, create SOS events, open a device
+dialer, or expose the number to Admin operational endpoints.
+
 ## Error catalog (this surface)
 
 | HTTP | code | When |

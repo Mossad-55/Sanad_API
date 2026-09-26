@@ -1151,6 +1151,30 @@
           "description": "Returns the image bytes. 404 if no photo. Try with familyInviteeToken after accepting an invitation — Viewers can download."
         },
         {
+          "name": "Get primary emergency contact (all active Family members)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/emergency-contact"
+          },
+          "description": "Read-only; Owner, Editor and Viewer of the active owning Family may read. Returns null when unset. Cross-family dependent IDs return 404."
+        },
+        {
+          "name": "Set primary emergency contact (Owner only; manual mutation)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/emergency-contact",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Amina\",\n  \"relationship\": \"Daughter\",\n  \"phoneNumber\": \"+201000000000\"\n}" },
+            "description": "STATE-CHANGING: current Family Owner only; Editors/Viewers receive 403 Families.Elderly.AccessDenied. Name/relationship are required and phoneNumber must be E.164. Does not send SMS or trigger SOS. Run only against an approved disposable fixture."
+          }
+        },
+        {
           "name": "Remove dependent (hard delete; identity kept)",
           "request": {
             "method": "DELETE",

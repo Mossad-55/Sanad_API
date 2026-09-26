@@ -91,6 +91,18 @@ public sealed class ElderlyConfiguration :
             .HasColumnName("health_notes")
             .HasMaxLength(Elderly.MaximumHealthNotesLength);
 
+        builder.Property(elderly => elderly.EmergencyContactName)
+            .HasColumnName("emergency_contact_name")
+            .HasMaxLength(Elderly.MaximumEmergencyContactNameLength);
+
+        builder.Property(elderly => elderly.EmergencyContactRelationship)
+            .HasColumnName("emergency_contact_relationship")
+            .HasMaxLength(Elderly.MaximumEmergencyContactRelationshipLength);
+
+        builder.Property(elderly => elderly.EmergencyContactPhoneNumber)
+            .HasColumnName("emergency_contact_phone_number")
+            .HasMaxLength(16);
+
         builder.Property(elderly => elderly.RelationshipType)
             .HasConversion<int>()
             .HasColumnName("relationship_type")

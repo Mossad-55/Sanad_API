@@ -19,6 +19,7 @@ public sealed record ElderlyOwnProfileResponse(
     bool HasPhoto,
     string PhotoUrl,
     string TimeZoneId,
+    EmergencyContactResponse? EmergencyContact,
     FamilyAssessmentResultResponse? LatestAssessment,
     DateTime UpdatedOnUtc);
 
@@ -36,7 +37,8 @@ public sealed class GetOwnElderlyProfileQueryHandler(IFamiliesDbContext dbContex
             return ElderlyErrors.NotFound;
 
         Elderly? elderly = await dbContext.Elderlies.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.IdentityUserId == request.UserId, cancellationToken);
+            .SingleOrDefaultAsync(x => x.IdentityUserId == request.UserId
+                && dbContext.Families.Any(f => f.Id == x.FamilyId && f.DeletedOnUtc == null), cancellationToken);
         if (elderly is null)
             return ElderlyErrors.NotFound;
 
@@ -86,6 +88,10 @@ public sealed class GetOwnElderlyProfileQueryHandler(IFamiliesDbContext dbContex
             !string.IsNullOrWhiteSpace(elderly.ProfileImageKey),
             "/api/v1/elderly/profile/photo",
             elderly.TimeZoneId,
+            elderly.EmergencyContactName is null ? null : new EmergencyContactResponse(
+                elderly.EmergencyContactName,
+                elderly.EmergencyContactRelationship!,
+                elderly.EmergencyContactPhoneNumber!),
             assessment,
             elderly.UpdatedOnUtc);
     }
@@ -104,7 +110,8 @@ public sealed class GetOwnElderlyProfilePhotoQueryHandler(
         CancellationToken cancellationToken)
     {
         Elderly? elderly = await dbContext.Elderlies.AsNoTracking()
-            .SingleOrDefaultAsync(x => x.IdentityUserId == request.UserId, cancellationToken);
+            .SingleOrDefaultAsync(x => x.IdentityUserId == request.UserId
+                && dbContext.Families.Any(f => f.Id == x.FamilyId && f.DeletedOnUtc == null), cancellationToken);
         if (elderly is null || string.IsNullOrWhiteSpace(elderly.ProfileImageKey))
             return ElderlyErrors.NotFound;
 

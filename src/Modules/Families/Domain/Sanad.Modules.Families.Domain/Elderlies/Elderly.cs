@@ -14,6 +14,8 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
     public const int MaximumDetailedAddressLength = 500;
     public const int MaximumHealthNotesLength = 2000;
     public const int MaximumProfileImageKeyLength = 500;
+    public const int MaximumEmergencyContactNameLength = 200;
+    public const int MaximumEmergencyContactRelationshipLength = 100;
 
     private Elderly()
     {
@@ -63,6 +65,9 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
     public string? ProfileImageKey { get; private set; }
     public string? DetailedAddress { get; private set; }
     public string? HealthNotes { get; private set; }
+    public string? EmergencyContactName { get; private set; }
+    public string? EmergencyContactRelationship { get; private set; }
+    public string? EmergencyContactPhoneNumber { get; private set; }
     public string TimeZoneId { get; private set; } = ElderlyTimeZone.InitialDefaultId;
     public ElderlyMedicalProfile? MedicalProfile { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
@@ -198,6 +203,18 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void SetEmergencyContact(string name, string relationship, string phoneNumber)
+    {
+        string normalizedName = NormalizeRequired(name, MaximumEmergencyContactNameLength, "Emergency contact name");
+        string normalizedRelationship = NormalizeRequired(relationship, MaximumEmergencyContactRelationshipLength, "Emergency contact relationship");
+        string normalizedPhoneNumber = PhoneNumber.Create(phoneNumber).Value;
+
+        EmergencyContactName = normalizedName;
+        EmergencyContactRelationship = normalizedRelationship;
+        EmergencyContactPhoneNumber = normalizedPhoneNumber;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     private static string? NormalizeOptional(
         string? value,
         int maxLength,
@@ -216,6 +233,16 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
                 $"{fieldName} cannot exceed {maxLength} characters.");
         }
 
+        return normalized;
+    }
+
+    private static string NormalizeRequired(string value, int maxLength, string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            throw new DomainException($"{fieldName} is required.");
+        string normalized = value.Trim();
+        if (normalized.Length > maxLength)
+            throw new DomainException($"{fieldName} cannot exceed {maxLength} characters.");
         return normalized;
     }
 

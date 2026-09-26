@@ -39,6 +39,214 @@ public sealed class ElderlyProfileIndependentTests
     }
 
     [Fact]
+    public async Task EmergencyContact_FamilyMembersCanRead_AndOnlyCurrentOwnerCanWrite()
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        UserId member = UserId.New();
+        Family family = Family.Create(owner);
+        family.AddMember(FamilyMember.Create(member, owner, FamilyRelationshipType.Other, FamilyRole.Viewer));
+        Elderly elderly = CreateElderly(owner, UserId.New(), family.Id, ElderlyTimeZone.InitialDefaultId, DateOnly.Parse("1980-01-01"));
+        db.AddRange(family, elderly);
+        await db.SaveChangesAsync();
+
+        Result<EmergencyContactResponse> written = await new SetFamilyEmergencyContactCommandHandler(db)
+            .Handle(new SetFamilyEmergencyContactCommand(owner, elderly.Id, "Amina", "Daughter", "+201000000000"), CancellationToken.None);
+        Assert.True(written.IsSuccess);
+
+        Result<EmergencyContactResponse?> visible = await new GetFamilyEmergencyContactQueryHandler(db)
+            .Handle(new GetFamilyEmergencyContactQuery(member, elderly.Id), CancellationToken.None);
+        Assert.True(visible.IsSuccess);
+        Assert.Equal("Amina", visible.Value!.Name);
+        Assert.Equal("+201000000000", visible.Value.PhoneNumber);
+
+        Result<EmergencyContactResponse> denied = await new SetFamilyEmergencyContactCommandHandler(db)
+            .Handle(new SetFamilyEmergencyContactCommand(member, elderly.Id, "Other", "Friend", "+201111111111"), CancellationToken.None);
+        Assert.True(denied.IsFailure);
+        Assert.Equal("Families.Elderly.AccessDenied", denied.Error.Code);
+    }
+
+    [Theory]
+    [InlineData(FamilyRole.Editor)]
+    [InlineData(FamilyRole.Viewer)]
+    public async Task EmergencyContact_EveryLinkedMemberRoleCanRead(FamilyRole role)
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        UserId member = UserId.New();
+        Family family = Family.Create(owner);
+        family.AddMember(FamilyMember.Create(member, owner, FamilyRelationshipType.Other, role));
+        Elderly elderly = CreateElderly(owner, UserId.New(), family.Id, ElderlyTimeZone.InitialDefaultId, DateOnly.Parse("1980-01-01"));
+        elderly.SetEmergencyContact("Amina", "Daughter", "+201000000000");
+        db.AddRange(family, elderly);
+        await db.SaveChangesAsync();
+
+        Result<EmergencyContactResponse?> result = await new GetFamilyEmergencyContactQueryHandler(db)
+            .Handle(new GetFamilyEmergencyContactQuery(member, elderly.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Amina", result.Value!.Name);
+    }
+
+    [Theory]
+    [InlineData(FamilyRole.Editor)]
+    [InlineData(FamilyRole.Viewer)]
+    public async Task EmergencyContact_NonOwnerCannotWriteRegardlessOfMemberRole(FamilyRole role)
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        UserId member = UserId.New();
+        Family family = Family.Create(owner);
+        family.AddMember(FamilyMember.Create(member, owner, FamilyRelationshipType.Other, role));
+        Elderly elderly = CreateElderly(owner, UserId.New(), family.Id, ElderlyTimeZone.InitialDefaultId, DateOnly.Parse("1980-01-01"));
+        elderly.SetEmergencyContact("Amina", "Daughter", "+201000000000");
+        db.AddRange(family, elderly);
+        await db.SaveChangesAsync();
+
+        Result<EmergencyContactResponse> result = await new SetFamilyEmergencyContactCommandHandler(db)
+            .Handle(new SetFamilyEmergencyContactCommand(member, elderly.Id, "Other", "Friend", "+201111111111"), CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Families.Elderly.AccessDenied", result.Error.Code);
+        Assert.Equal("Amina", (await db.Elderlies.SingleAsync()).EmergencyContactName);
+    }
+
+    [Fact]
+    public async Task EmergencyContact_OwnerCanUpdateAndInvalidPhoneLeavesSavedContactUnchanged()
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        Family family = Family.Create(owner);
+        Elderly elderly = CreateElderly(owner, UserId.New(), family.Id, ElderlyTimeZone.InitialDefaultId, DateOnly.Parse("1980-01-01"));
+        db.AddRange(family, elderly);
+        await db.SaveChangesAsync();
+        var handler = new SetFamilyEmergencyContactCommandHandler(db);
+
+        Result<EmergencyContactResponse> updated = await handler.Handle(
+            new SetFamilyEmergencyContactCommand(owner, elderly.Id, "  Amina  ", "  Daughter ", "+201000000000"), CancellationToken.None);
+        Assert.True(updated.IsSuccess);
+        Assert.Equal("Amina", updated.Value.Name);
+
+        Result<EmergencyContactResponse> invalid = await handler.Handle(
+            new SetFamilyEmergencyContactCommand(owner, elderly.Id, "Other", "Friend", "01000000000"), CancellationToken.None);
+
+        Assert.True(invalid.IsFailure);
+        Assert.Equal("Families.Elderly.InvalidProfile", invalid.Error.Code);
+        Elderly persisted = await db.Elderlies.SingleAsync();
+        Assert.Equal("Amina", persisted.EmergencyContactName);
+        Assert.Equal("+201000000000", persisted.EmergencyContactPhoneNumber);
+    }
+
+    [Fact]
+    public async Task EmergencyContact_ReadAndWriteCannotCrossFamilyBoundary()
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId caller = UserId.New();
+        UserId otherOwner = UserId.New();
+        Family callerFamily = Family.Create(caller);
+        Family otherFamily = Family.Create(otherOwner);
+        Elderly elderly = CreateElderly(otherOwner, UserId.New(), otherFamily.Id, ElderlyTimeZone.InitialDefaultId, DateOnly.Parse("1980-01-01"));
+        elderly.SetEmergencyContact("Amina", "Daughter", "+201000000000");
+        db.AddRange(callerFamily, otherFamily, elderly);
+        await db.SaveChangesAsync();
+
+        Result<EmergencyContactResponse?> read = await new GetFamilyEmergencyContactQueryHandler(db)
+            .Handle(new GetFamilyEmergencyContactQuery(caller, elderly.Id), CancellationToken.None);
+        Result<EmergencyContactResponse> write = await new SetFamilyEmergencyContactCommandHandler(db)
+            .Handle(new SetFamilyEmergencyContactCommand(caller, elderly.Id, "Other", "Friend", "+201111111111"), CancellationToken.None);
+
+        Assert.True(read.IsFailure);
+        Assert.Equal("Families.Elderly.NotFound", read.Error.Code);
+        Assert.True(write.IsFailure);
+        Assert.Equal("Families.Elderly.NotFound", write.Error.Code);
+        Assert.Equal("Amina", (await db.Elderlies.SingleAsync()).EmergencyContactName);
+    }
+
+    [Fact]
+    public async Task EmergencyContact_DeletedFamilyCannotReadOrWrite()
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        Family family = Family.Create(owner);
+        Elderly elderly = CreateElderly(owner, UserId.New(), family.Id, ElderlyTimeZone.InitialDefaultId, DateOnly.Parse("1980-01-01"));
+        elderly.SetEmergencyContact("Amina", "Daughter", "+201000000000");
+        family.MarkDeleted("owner request", null);
+        db.AddRange(family, elderly);
+        await db.SaveChangesAsync();
+
+        Result<EmergencyContactResponse?> read = await new GetFamilyEmergencyContactQueryHandler(db)
+            .Handle(new GetFamilyEmergencyContactQuery(owner, elderly.Id), CancellationToken.None);
+        Result<EmergencyContactResponse> write = await new SetFamilyEmergencyContactCommandHandler(db)
+            .Handle(new SetFamilyEmergencyContactCommand(owner, elderly.Id, "Other", "Friend", "+201111111111"), CancellationToken.None);
+
+        Assert.True(read.IsFailure);
+        Assert.Equal("Families.Elderly.FamilyNotFound", read.Error.Code);
+        Assert.True(write.IsFailure);
+        Assert.Equal("Families.Elderly.AccessDenied", write.Error.Code);
+        Assert.Equal("Amina", (await db.Elderlies.SingleAsync()).EmergencyContactName);
+    }
+
+    [Theory]
+    [InlineData("01000000000")]
+    [InlineData("+0123456789")]
+    [InlineData("+1234567890123456")]
+    public async Task EmergencyContact_ValidatorRejectsInvalidPhoneNumber(string phoneNumber)
+    {
+        var validator = new SetFamilyEmergencyContactCommandValidator();
+        var command = new SetFamilyEmergencyContactCommand(UserId.New(), ElderlyId.New(), "Amina", "Daughter", phoneNumber);
+
+        FluentValidation.Results.ValidationResult result = await validator.ValidateAsync(command);
+
+        Assert.False(result.IsValid);
+        Assert.Contains(result.Errors, error => error.PropertyName == nameof(command.PhoneNumber));
+    }
+
+    [Fact]
+    public async Task OwnProfile_IncludesContactOnlyForIdentityLinkedElderly()
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        UserId identity = UserId.New();
+        Family family = Family.Create(owner);
+        Elderly elderly = CreateElderly(owner, identity, family.Id, ElderlyTimeZone.InitialDefaultId, DateOnly.Parse("1980-01-01"));
+        elderly.SetEmergencyContact("Amina", "Daughter", "+201000000000");
+        db.AddRange(family, elderly);
+        await db.SaveChangesAsync();
+
+        Result<ElderlyOwnProfileResponse> own = await new GetOwnElderlyProfileQueryHandler(db)
+            .Handle(new GetOwnElderlyProfileQuery(identity), CancellationToken.None);
+        Result<ElderlyOwnProfileResponse> familyOwner = await new GetOwnElderlyProfileQueryHandler(db)
+            .Handle(new GetOwnElderlyProfileQuery(owner), CancellationToken.None);
+        Result<ElderlyOwnProfileResponse> another = await new GetOwnElderlyProfileQueryHandler(db)
+            .Handle(new GetOwnElderlyProfileQuery(UserId.New()), CancellationToken.None);
+
+        Assert.True(own.IsSuccess);
+        Assert.Equal("Amina", own.Value.EmergencyContact!.Name);
+        Assert.True(familyOwner.IsFailure);
+        Assert.True(another.IsFailure);
+    }
+
+    [Fact]
+    public async Task OwnProfile_DoesNotExposeContactAfterFamilyDeletion()
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        UserId identity = UserId.New();
+        Family family = Family.Create(owner);
+        Elderly elderly = CreateElderly(owner, identity, family.Id, ElderlyTimeZone.InitialDefaultId, DateOnly.Parse("1980-01-01"));
+        elderly.SetEmergencyContact("Amina", "Daughter", "+201000000000");
+        family.MarkDeleted("owner request", null);
+        db.AddRange(family, elderly);
+        await db.SaveChangesAsync();
+
+        Result<ElderlyOwnProfileResponse> result = await new GetOwnElderlyProfileQueryHandler(db)
+            .Handle(new GetOwnElderlyProfileQuery(identity), CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Families.Elderly.NotFound", result.Error.Code);
+    }
+
+    [Fact]
     public async Task OwnProfilePhoto_RequiresIdentityOwnership_AndReadsPrivateStorageKey()
     {
         await using FamiliesDbContext db = CreateDb();

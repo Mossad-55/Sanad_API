@@ -35,6 +35,8 @@ public sealed record UpdateDependentRequest(
 
 public sealed record ChangeDependentTimeZoneRequest(string TimeZoneId);
 
+public sealed record SetEmergencyContactRequest(string Name, string Relationship, string PhoneNumber);
+
 public sealed record CreateFamilyInvitationRequest(
     string Email,
     FamilyRole Role,

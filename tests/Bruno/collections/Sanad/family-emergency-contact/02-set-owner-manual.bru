@@ -1,0 +1,28 @@
+meta {
+  name: 02-set-owner-manual
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{dependentId}}/emergency-contact
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyOwnerJwt}}
+}
+
+body:json {
+  {
+    "name": "Amina",
+    "relationship": "Daughter",
+    "phoneNumber": "+201000000000"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body: contains phoneNumber
+}

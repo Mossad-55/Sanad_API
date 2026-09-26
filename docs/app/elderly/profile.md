@@ -22,6 +22,11 @@ Authorization requires a Normal Elderly JWT. The response is `200` with:
   "hasPhoto": true,
   "photoUrl": "/api/v1/elderly/profile/photo",
   "timeZoneId": "Africa/Cairo",
+  "emergencyContact": {
+    "name": "Amina",
+    "relationship": "Daughter",
+    "phoneNumber": "+201000000000"
+  },
   "latestAssessment": null,
   "updatedOnUtc": "2026-09-25T12:30:00Z"
 }
@@ -31,6 +36,8 @@ Authorization requires a Normal Elderly JWT. The response is `200` with:
   the Elderly profile's IANA `timeZoneId`, not the server UTC date.
 - `latestAssessment` is nullable and contains the newest linked completed
   assessment when one exists.
+- `emergencyContact` is nullable and read-only for Elderly. It contains the
+  single phone-only contact managed by the Family Owner.
 - This self-service response intentionally does not expose `detailedAddress`
   or `healthNotes`.
 - `photoUrl` is the authorized API path, not a public file URL. It is returned
@@ -38,7 +45,8 @@ Authorization requires a Normal Elderly JWT. The response is `200` with:
   `404 Families.Elderly.NotFound`.
 
 Errors include `401` for a missing/invalid JWT and `404 Families.Elderly.NotFound`
-when the authenticated identity is not linked to an Elderly dependent.
+when the authenticated identity is not linked to an Elderly dependent in an
+active Family. A soft-deleted Family no longer exposes this profile/contact.
 
 ## Read my profile photo
 
