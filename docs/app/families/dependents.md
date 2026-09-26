@@ -28,7 +28,8 @@ All routes require policy `FamilyAccess`. Permission matrix:
   "healthNotes": "Diabetes type 2; takes metformin.",
   "createdOnUtc": "2026-09-01T09:05:00Z",
   "phoneNumber": "+201007654321",
-  "latestAssessment": null
+  "latestAssessment": null,
+  "timeZoneId": "Africa/Cairo"
 }
 ```
 
@@ -41,6 +42,7 @@ All routes require policy `FamilyAccess`. Permission matrix:
 - `hasPhoto`: boolean only. **The photo path/URL is never exposed**; photos are private and reachable solely through the authorized download route.
 - `identityUserId` is the Elderly Identity account; it links to SMS OTP login.
 - `latestAssessment` is nullable. When present it contains the newest linked completed assessment with its current care-tier metadata; ties use the assessment ID descending. Older assessment submissions remain stored, but this field exposes only the latest one.
+- `timeZoneId` is the dependent's stored IANA timezone. Existing rows are backfilled to `Africa/Cairo` by the generated `20260925235151_AddElderlyProfileTimeZone` migration; new rows use the configured `ElderlyProfile:DefaultTimeZoneId` (default `Africa/Cairo`).
 
 ## Add a dependent
 
@@ -183,6 +185,27 @@ Authorization: Bearer {{familyToken}}
 - `404 Storage.File.NotFound` — the stored file is missing.
 
 The stream is only ever returned to a member of the family that owns the dependent.
+
+## Change dependent timezone
+
+Family Owners may set the linked dependent's IANA timezone. Editors and Viewers
+cannot change it.
+
+```http
+PUT /api/v1/family/dependents/{dependentId}/timezone
+Authorization: Bearer {{familyToken}}
+Content-Type: application/json
+
+{ "timeZoneId": "Africa/Cairo" }
+```
+
+- `200` — `{ "dependentId": "…", "timeZoneId": "Africa/Cairo", "updatedOnUtc": "…" }`.
+- `400 Families.Elderly.InvalidProfile` — empty, overlong, unavailable, or non-IANA timezone ID.
+- `403 Families.Elderly.AccessDenied` — Editor or Viewer.
+- `404 Families.Elderly.NotFound` — dependent is not in the Owner's family.
+
+The timezone is used by Elderly profile age calculation and future profile-local
+calendar features. It is not a family-member timezone setting.
 
 ## Error catalog (this surface)
 

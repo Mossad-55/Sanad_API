@@ -2,9 +2,9 @@
 
 Status: Phase 0 inventory and API reconciliation in progress. Elderly
 medication self-service and Admin medication operations are implemented and
-pushed; the CMS wellness-tip feed/authoring slice is implemented and
-synchronized, pending its authorized checkpoint. Other screen/API gaps remain
-open and assigned to bounded roadmap slices.
+pushed; CMS wellness tips are implemented and pushed; Elderly profile/timezone
+is implemented and synchronized in the current uncommitted checkpoint. Other
+screen/API gaps remain open and assigned to bounded roadmap slices.
 
 Screens supplied: 17 images in `UI/Phase 0 - Elderly/`. The repository has no
 mobile client source or navigation map, so screen IDs and transitions are
@@ -51,27 +51,30 @@ confirmed against the mobile navigation flow before screen IDs are finalized.
 - User-specific or clinical facts (profile, medication prescriptions, dose
   events, check-ins, help requests, SOS events, notification events) are
   dynamic domain data, not CMS copy. They need domain APIs; admin visibility
-  is a separate, permissioned operational-read requirement. A CMS create/edit
-  API alone does not satisfy the owner's requirement that admins can inspect
-  the resulting records and activity.
+  is a separate, permissioned operational-read requirement. The owner-approved
+  role split is SuperAdmin broad access, ContentAdmin content plus aggregate
+  content metrics, and ElderlyOperations/SupportAdmin operational reads with
+  limited request/SOS status management; sensitive access is audited. A CMS
+  create/edit API alone does not satisfy the owner's requirement that admins
+  can inspect the resulting records and activity.
 - The owner requires admins to be able to see the data, not only create/update/
   delete it. Every future Admin/CMS slice must therefore assess list/search,
   detail, status/history, and useful aggregate/report views in addition to
-  mutations. Which admin roles may see sensitive elderly/health data remains
-  `Needs Owner Verification`.
+  mutations. The role split is owner-confirmed; exact sensitive field visibility,
+  retention/export rules, and audit-log retention remain `Needs Owner Verification`.
 
 ## Screen/API gap matrix
 
 | Screen / displayed data | Existing API and authorization | Evidence in tests/docs/collections | Gap and disposition |
 |---|---|---|---|
 | Welcome Senior; "ابدأ الآن" | `POST /api/v1/auth/elderly/request-otp`, `POST /api/v1/auth/elderly/verify-otp` support phone/SMS login for a family-provisioned Elderly identity. `GET /api/v1/splash-screens` is anonymous and serves published content to all roles; it has no audience targeting. CMS admins have `GET/POST /api/v1/admin/splash-screens`, `GET/PUT/DELETE /{id}`, and publish/unpublish actions, under `CmsContent` (SuperAdmin/ContentAdmin). | `docs/auth/elderly-sms-login.md`, `docs/app/public/splash-screens.md`, `docs/admin/splash-screens.md`; auth/splash Postman requests; SMS-login and splash unit tests; Bruno public splash request. | Owner confirmed CMS-published splash content after language selection and no static product copy. Existing splash API is dynamic and shared across roles. The separate Welcome Senior headline/benefit tiles are not represented by the current splash contract, and exact welcome-to-OTP/role-selection navigation remains unclear. **Gap; placement/content mapping Needs Owner Verification.** |
-| Elderly home header/profile summary | `GET/PUT /api/v1/account` serves the signed-in user's identity profile. `GET/PUT /api/v1/auth/avatar` supports Family and Caregiver account types, but explicitly rejects Elderly. Family-managed profile/photo routes exist under `/api/v1/family/dependents/{dependentId}` and `/photo`, but require `FamilyAccess`. | `docs/auth/account.md`, `docs/auth/avatar.md`, `docs/app/families/dependents.md`; auth Postman and account/avatar unit tests. No Elderly avatar Bruno scenario. | Owner confirmed each Elderly OTP identity uses its currently linked dependent. The Elderly app still lacks a dependent-profile read and avatar path; ownership/editability of name, age vs DOB, photo, and health-status badge remain unresolved. **Gap; profile-field ownership Needs Owner Verification.** |
+| Elderly home header/profile summary | `GET /api/v1/elderly/profile` and `/photo` require a Normal Elderly JWT and resolve the linked dependent by authenticated identity. The profile returns bilingual names, profile-local age, photo state/path, latest assessment, and stored IANA timezone; address and health notes are omitted. | `docs/app/elderly/profile.md`, `docs/app/families/dependents.md`; Elderly and Family Postman plus manual Bruno examples. | **Covered for the bounded profile read slice.** Emergency contact, health-status badge, profile editing, and Admin profile inspection remain separate unresolved contracts. |
 | Daily reassurance check-in and success state | No Elderly self check-in route or daily check-in persistence was found. Account notification preferences include `checkInAlerts`; this only stores a preference and does not create/deliver check-ins or alerts. | Preference docs/Postman/Bruno and user-preference tests cover storage only. No check-in endpoint/docs/test/Bruno flow. | Missing submit/read/status/history contract, family-visible state, and reminder/alert behavior. Owner confirmed day boundaries use a timezone stored on the Elderly profile; timezone storage/initialization must precede check-in implementation. Assign to Elderly check-in/dashboard work; Phase 3 roadmap covers elderly dashboard. **Gap.** |
 | Medication checklist, take action, missed-dose alert | Family routes remain FamilyAccess-scoped. Elderly self-service is now available through `GET /api/v1/elderly/medications`, `GET /api/v1/elderly/medications/dashboard?date=YYYY-MM-DD`, and `POST /api/v1/elderly/medications/{medicationId}/doses/take`. All require a Normal Elderly account and resolve the dependent from the authenticated user; callers cannot select another dependent. Dashboard date is required and uses the Elderly profile-local calendar date. Take reuses `RecordDoseTakenRequest`; only an active prescription in its date range at a scheduled time is eligible. The shared family dose history records the Elderly actor and stock is decremented; duplicate/concurrent takes are rejected. Elderly cannot edit or skip prescriptions. | `docs/app/elderly/medications.md`, `docs/app/families/medications.md`; Elderly and Family Postman collections; `ElderlyMedicationsControllerTests`, `MedicationHandlerTests`; Elderly read-only Bruno contract requests and existing Family medication requests. | **Covered for the approved self-service slice.** Late/missed alert threshold and notification delivery remain separate work; no prescription edit/skip API is exposed to Elderly. |
 | "Express your needs" sentence builder (actor/action/request/qualifier), custom sentence, speech input, send | No sentence-builder taxonomy, speech/phrase, or Elderly help-request route was found. | No matching tests, endpoint docs, Postman requests, or Bruno requests. | Both the selectable vocabulary/templates and supported order/combinations must be API/CMS-driven; custom sentence and microphone behavior need an explicit contract. Submission needs a real request lifecycle, recipient selection, visibility, notifications, and audit history. **Gap; Phase 3.** CMS authoring must include read/list/detail as well as content edits. |
 | SOS / contact family | No SOS/emergency event route was found. Family contact values are not exposed by an Elderly self-service route in the supplied relevant API surface. | No SOS test, docs, Postman, or Bruno coverage. | Owner confirmed one Family-managed primary emergency contact stored as a phone-only contact (name, relationship, phone), and SOS will create a tracked event, SMS only that contact, and open the device dialer. Location permission/accuracy/retention, status/cancel/escalation, duplicate presses, delivery/retry, and exact contact edit UI remain unresolved. **Gap; Phase 3.** |
 | Notifications list | `GET/PUT /api/v1/account/notification-preferences` stores preferences. There is no notification inbox/list/read-state/unread-count/delivery API. | `docs/auth/account.md` explicitly says preference storage only; Auth Postman and preference Bruno cover settings only; preference unit tests exist. | Every shown notification (request, caregiver en route, medication due/taken, SOS) must be generated from domain events and read dynamically. No inbox/event lifecycle/deep link/delivery exists. **Gap; Phase 2.** |
-| Profile and emergency contact | `GET/PUT /api/v1/account` reads/updates own name/email/phone; avatar API excludes Elderly. Family dependent profile GET/PUT and photo API exist for family roles. No Elderly self-service route for emergency contacts or the displayed health-status badge was found. | Account/avatar docs and Postman/tests; family dependent/profile docs and Family Postman/tests. | Emergency contact ownership is confirmed: the Family Owner manages one primary phone-only contact (name, relationship, phone); Elderly may read it and SupportAdmin cannot edit it. SOS sends SMS to that contact and opens the device dialer. APIs/UI are missing. Elderly identity name/age/photo and health-status badge source, editability and synchronization remain unclear; do not infer age-vs-date-of-birth. **Gap; Needs Owner Verification.** |
+| Profile and emergency contact | Elderly profile/name/age/photo/assessment/timezone reads are now covered by the identity-only profile routes. No emergency-contact route exists. | Elderly profile and account docs/Postman; Family dependent docs/Postman. | **Profile read covered.** Emergency contact ownership/SOS behavior and Admin profile inspection remain separate open gaps; do not infer profile editing or a health-status badge. |
 | Health and wellness tips list/detail | `GET /api/v1/elderly/wellness-tips` and `GET /api/v1/elderly/wellness-tips/{id}` provide a Normal Elderly JWT published-only paged feed/detail. CMS routes provide admin list/search/filter/detail/preview, multipart draft create/update, publish, and archive. | `docs/app/elderly/wellness-tips.md`, `docs/admin/wellness-tips.md`; Elderly/Admin Postman collections; WellnessTip controller/domain tests; Bruno wellness-tip contract requests. | **Covered for the bounded slice.** Content is bilingual and section-structured, images use generated `IFileStorage` keys, and page size is bounded (default 20, max 100). No featured/save/read/metrics/static/sample behavior is exposed. Clinical review workflow and tenant scope remain **Needs Owner Verification**; CMS storage is currently global/shared. |
 | Admin oversight of Elderly records and CMS content | Existing CMS admin APIs support splash/legal/help/assessment/lookups. Medication operational reads and the bounded wellness-tip CMS list/detail/lifecycle are available. No Admin API is defined here for check-ins, help requests, SOS, notification delivery, or Elderly profile/contact. Existing AdminBookings/Caregivers endpoints cover their own domains only. | Admin medication focused tests/collection examples and wellness-tip controller/domain tests, Admin Postman requests, and Bruno contract requests cover the delivered slices. Other Elderly workflows remain uncovered. | The supplied UI folder contains no Admin screens, so exact admin tables/filters/metrics/actions remain unknown outside delivered slices. Wellness CMS access is SuperAdmin/ContentAdmin with Normal access and is global/shared; tenant scope and clinical-review permissions remain **Needs Owner Verification**. |
 
@@ -155,10 +158,10 @@ and exact field-level access remain `Needs Owner Verification`.
   scheduled dose. Admin changes must be reflected by future dashboard/alert
   responses. Exact historical recalculation and reminder-delivery semantics
   remain open.
-- **Timezone:** daily check-in uses a timezone stored on the Elderly profile,
-  not the server's UTC day. The timezone field/API and how it is initialized
-  or changed still need implementation; daily recurrence and alert semantics
-  remain open.
+- **Timezone:** daily check-in will use the stored Elderly IANA timezone, not
+  the server's UTC day. The profile/timezone slice now stores and exposes the
+  value, defaults/backfills it to `Africa/Cairo`, and permits only the Family
+  Owner to change it. Daily recurrence and alert semantics remain open.
 
 ## Coverage summary
 
@@ -166,7 +169,7 @@ and exact field-level access remain `Needs Owner Verification`.
 |---|---|
 | Elderly phone/SMS login | API, docs, Postman and unit coverage exist; no Elderly-specific Bruno end-to-end scenario identified. |
 | Splash CMS/public | API, docs, Postman, unit and public Bruno coverage exist; audience is global. |
-| Elderly profile/avatar | Account read/update exists; Elderly avatar is expressly unsupported. No emergency-contact self-service route found. |
+| Elderly profile/avatar | Normal Elderly profile and photo reads are covered, including profile-local age and stored timezone. No emergency-contact self-service route or Admin profile inspection exists. |
 | Medication adherence | Family and Elderly read/take APIs, public docs, Postman, and focused unit coverage exist. Elderly Bruno coverage is read-only; dose-taking is state-mutating and is not an automated Bruno request. |
 | Check-in, needs/help, SOS, notification inbox | No matching API/domain docs/tests/Postman/Bruno surface found. |
 | Wellness tips | Elderly list/detail and CMS admin lifecycle are covered by focused tests, public docs, Postman, and Bruno contract requests; see the matrix row above. |
@@ -215,12 +218,13 @@ normal account may access a route explicitly protected by `FamilyAccess`.
 
 ## Needs Owner Verification
 
-1. Which Elderly profile fields and avatar can be edited by Elderly versus
-   Family; what creates the displayed health-status label; whether age or date
-   of birth is the UI/API contract; the IANA timezone default and who may
-   initialize/change it; whether emergency-contact writes are Owner-only or
-   available to Family Editors. The Family-managed phone-only contact itself
-   and the one-Elderly-identity-to-linked-dependent mapping are confirmed.
+1. The Family dependent is canonical for Elderly identity fields: Elderly sees
+   a read-only bilingual name/photo profile, age computed from DOB, and latest
+   linked assessment result; Family Owner/Editor retains the existing dependent
+   write policy. Only Family Owner changes the stored IANA timezone, defaulting
+   to Africa/Cairo. Emergency contact is one Family Owner-managed phone-only
+   record. Any later Elderly editing of these fields is outside the supplied
+   contract and must not be inferred.
 2. Medication read/take-recording against the currently linked dependent,
    with family visibility, is confirmed. Skip is not shown in the Elderly UI
    and is not added by inference. A CMS-managed missed-dose threshold with an
@@ -240,12 +244,14 @@ normal account may access a route explicitly protected by `FamilyAccess`.
    it does not require its own Sanad account.
 6. Notification categories, ordering, read state, retention, navigation targets,
    push/SMS policy, and the preference fields that suppress each event.
-7. Health-tip CMS fields, bilingual authoring, categories, content review,
-   publishing lifecycle, media limits, search/order and view/read metrics.
+7. Health-tip category taxonomy, clinical review, featured/save/read metrics,
+   and tenant scope. Bilingual structured authoring, Draft/Published/Archived,
+   image constraints, list/detail/preview and direct ContentAdmin publishing
+   are implemented; ContentAdmin publishing does not imply clinical approval.
 8. Elderly Admin UI routes/screens, exact support-role field-level read
-   permissions for clinical/medication/location/contact/communication data,
-   audit log contents, retention and export behavior. Admin role split and
-   support-role request/SOS status management are confirmed.
+   permissions for clinical/location/contact/communication data, audit log
+   contents, retention and export behavior. Admin role split and support-role
+   request/SOS status management are confirmed.
 9. Welcome screen placement relative to pre-auth language, CMS-published splash,
    OTP login, role selection and authenticated home. CMS-managed welcome/splash
    content is confirmed; screen-to-resource mapping and navigation are open.
@@ -263,10 +269,9 @@ normal account may access a route explicitly protected by `FamilyAccess`.
   successful sensitive GET writes an immutable, payload-free audit row and is
   covered by manual/stateful collection examples only.
 - CMS health/wellness library bounded list/detail and authoring slice: delivered. Featured/save/read metrics, clinical review, and tenant isolation remain deferred pending owner decisions.
-- Elderly profile/timezone and Family-managed emergency contact need bounded
-  API slices. Timezone default/ownership remains unresolved. The Family Owner's
-  contact-management permission and SOS SMS/dialer behavior are confirmed. The
-  contact is not CMS-managed.
+- Elderly profile/timezone API is delivered for identity-only reads and
+  Family-Owner timezone management. Emergency-contact APIs and Admin Elderly
+  profile inspection remain separate open gaps; the contact is not CMS-managed.
   Operational Admin visibility ships with each operational domain; do not
   defer it as an unowned CRUD-only project.
 

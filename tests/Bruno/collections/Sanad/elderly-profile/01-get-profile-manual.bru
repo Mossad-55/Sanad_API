@@ -1,0 +1,21 @@
+meta {
+  name: 01-get-profile-manual
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyProfileJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body: contains timeZoneId
+  res.body: contains photoUrl
+}

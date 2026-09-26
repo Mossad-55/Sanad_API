@@ -1444,6 +1444,19 @@
           }
         },
         {
+          "name": "Set dependent timezone (Owner only; manual mutation)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/timezone",
+            "body": { "mode": "raw", "raw": "{\n  \"timeZoneId\": \"Africa/Cairo\"\n}" },
+            "description": "STATE-CHANGING: Family Owner only. Editors and Viewers receive 403 Families.Elderly.AccessDenied. Use an IANA timezone ID; invalid values return 400 Families.Elderly.InvalidProfile. Existing dependent responses include timeZoneId. Run only against an approved disposable fixture."
+          }
+        },
+        {
           "name": "Update medication details",
           "request": {
             "auth": {

@@ -29,6 +29,7 @@ using Sanad.Modules.Identity.Application.Abstractions.Caregivers;
 using Sanad.Modules.Identity.Application.Abstractions.Families;
 using Sanad.API.CaregiversIntegration;
 using Sanad.API.Seeding;
+using Sanad.API.Options;
 
 namespace Sanad.API;
 
@@ -42,6 +43,12 @@ public static class DependencyInjection
 
         services.AddOptions<TestUserSeedOptions>()
             .Bind(configuration.GetSection(TestUserSeedOptions.SectionName));
+
+        services.AddOptions<ElderlyProfileOptions>()
+            .Bind(configuration.GetSection(ElderlyProfileOptions.SectionName))
+            .Validate(options => Sanad.Modules.Families.Domain.Elderlies.ElderlyTimeZone.IsValid(options.DefaultTimeZoneId),
+                "ElderlyProfile:DefaultTimeZoneId must be a valid IANA time zone.")
+            .ValidateOnStart();
 
         services.AddScoped<TestUserDataSeeder>();
 

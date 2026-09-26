@@ -31,7 +31,8 @@ public sealed record DependentResponse(
     string? HealthNotes,
     DateTime CreatedOnUtc,
     string? PhoneNumber,
-    FamilyAssessmentResultResponse? LatestAssessment = null);
+    FamilyAssessmentResultResponse? LatestAssessment = null,
+    string TimeZoneId = ElderlyTimeZone.InitialDefaultId);
 
 internal static class DependentMappings
 {
@@ -51,7 +52,9 @@ internal static class DependentMappings
             elderly.DetailedAddress,
             elderly.HealthNotes,
             elderly.CreatedOnUtc,
-            phoneNumber);
+            phoneNumber,
+            null,
+            elderly.TimeZoneId);
 
     public static async Task<string?> ResolvePhoneNumberAsync(
         IFamilyIdentityGateway gateway,
@@ -110,7 +113,8 @@ public sealed record AddDependentCommand(
     string? HealthNotes,
     DateOnly CurrentDate,
     DateTime UtcNow,
-    CareAssessmentId? AssessmentId = null)
+    CareAssessmentId? AssessmentId = null,
+    string? TimeZoneId = null)
     : ICommand<DependentResponse>;
 
 public sealed class AddDependentCommandValidator
@@ -275,6 +279,10 @@ public sealed class AddDependentCommandHandler
                 string.IsNullOrWhiteSpace(request.HealthNotes)
                     ? null
                     : request.HealthNotes.Trim());
+            if (!string.IsNullOrWhiteSpace(request.TimeZoneId))
+            {
+                elderly.ChangeTimeZone(request.TimeZoneId);
+            }
         }
         catch (DomainException)
         {

@@ -63,6 +63,7 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
     public string? ProfileImageKey { get; private set; }
     public string? DetailedAddress { get; private set; }
     public string? HealthNotes { get; private set; }
+    public string TimeZoneId { get; private set; } = ElderlyTimeZone.InitialDefaultId;
     public ElderlyMedicalProfile? MedicalProfile { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
@@ -179,6 +180,12 @@ public sealed class Elderly : AggregateRoot<ElderlyId>
             MaximumProfileImageKeyLength,
             "Profile image");
 
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void ChangeTimeZone(string timeZoneId)
+    {
+        TimeZoneId = ElderlyTimeZone.Normalize(timeZoneId);
         UpdatedOnUtc = DateTime.UtcNow;
     }
 

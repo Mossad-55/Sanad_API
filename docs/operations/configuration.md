@@ -98,6 +98,17 @@ Enabled when `SecretKey` is set. Otherwise `DevelopmentPaymobClient` serves paym
 | Paymob not configured | `DevelopmentPaymobClient` |
 | Paymob configured | `PaymobClient` |
 
+## Elderly profile timezone
+
+| Configuration key | Default | Purpose |
+|---|---|---|
+| `ElderlyProfile:DefaultTimeZoneId` (`ElderlyProfile__DefaultTimeZoneId` as an environment variable) | `Africa/Cairo` | IANA timezone assigned when a new Elderly dependent is created. |
+
+The value must be a valid IANA timezone identifier. Existing dependents are
+backfilled to `Africa/Cairo` by the generated
+`20260925235151_AddElderlyProfileTimeZone` migration when an authorized
+deployment applies it. Do not treat the generated migration as applied state.
+
 ## Example
 
 ```bash

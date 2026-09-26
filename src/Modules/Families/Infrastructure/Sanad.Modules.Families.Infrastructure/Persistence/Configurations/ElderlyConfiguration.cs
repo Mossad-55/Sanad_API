@@ -73,6 +73,12 @@ public sealed class ElderlyConfiguration :
             .HasColumnName("date_of_birth")
             .IsRequired();
 
+        builder.Property(elderly => elderly.TimeZoneId)
+            .HasColumnName("time_zone_id")
+            .HasMaxLength(ElderlyTimeZone.MaximumIdLength)
+            .HasDefaultValue(ElderlyTimeZone.InitialDefaultId)
+            .IsRequired();
+
         builder.Property(elderly => elderly.ProfileImageKey)
             .HasColumnName("profile_image_key")
             .HasMaxLength(Elderly.MaximumProfileImageKeyLength);

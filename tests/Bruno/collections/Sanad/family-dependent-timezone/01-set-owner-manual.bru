@@ -1,0 +1,26 @@
+meta {
+  name: 01-set-owner-manual
+  type: http
+  seq: 1
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{dependentId}}/timezone
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyOwnerJwt}}
+}
+
+body:json {
+  {
+    "timeZoneId": "Africa/Cairo"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body: contains timeZoneId
+}

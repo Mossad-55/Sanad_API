@@ -33,6 +33,8 @@ public sealed record UpdateDependentRequest(
     string? DetailedAddress,
     string? HealthNotes);
 
+public sealed record ChangeDependentTimeZoneRequest(string TimeZoneId);
+
 public sealed record CreateFamilyInvitationRequest(
     string Email,
     FamilyRole Role,

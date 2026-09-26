@@ -10,6 +10,31 @@
   },
   "item": [
     {
+      "name": "00. Profile (read-only)",
+      "item": [
+        {
+          "name": "Get my linked Elderly profile",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/elderly/profile",
+            "description": "Normal Elderly JWT. The dependent is resolved solely from the authenticated identity. Returns bilingual names, age computed in the stored IANA timezone, hasPhoto/photoUrl, latest linked assessment, and timeZoneId. Address and healthNotes are intentionally omitted. Read-only."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('profile is readable', function () { pm.response.to.have.status(200); });", "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('arabicFullName'); pm.expect(body).to.have.property('englishFullName'); pm.expect(body).to.have.property('age'); pm.expect(body).to.have.property('hasPhoto'); pm.expect(body).to.have.property('photoUrl'); pm.expect(body).to.have.property('timeZoneId'); pm.expect(body).not.have.property('detailedAddress'); pm.expect(body).not.have.property('healthNotes'); }"] } }]
+        },
+        {
+          "name": "Get my profile photo",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/elderly/profile/photo",
+            "description": "Normal Elderly JWT; returns private image bytes for the linked profile. No public file URL. 404 when no photo is stored. Read-only."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('photo is returned or absent', function () { pm.expect([200, 404]).to.include(pm.response.code); });"] } }]
+        }
+      ]
+    },
+    {
       "name": "01. Medications (read-only)",
       "item": [
         {

@@ -1,9 +1,11 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Options;
 using Org.BouncyCastle.Ocsp;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers.Requests;
+using Sanad.API.Options;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
@@ -21,13 +23,16 @@ public sealed class FamilyController :
 {
     private readonly ISender _sender;
     private readonly IFileStorage _fileStorage;
+    private readonly ElderlyProfileOptions _elderlyProfileOptions;
 
     public FamilyController(
         ISender sender,
-        IFileStorage fileStorage)
+        IFileStorage fileStorage,
+        IOptions<ElderlyProfileOptions>? elderlyProfileOptions = null)
     {
         _sender = sender;
         _fileStorage = fileStorage;
+        _elderlyProfileOptions = elderlyProfileOptions?.Value ?? new ElderlyProfileOptions();
     }
 
     // ------------------------------ Family ------------------------------
@@ -280,7 +285,8 @@ public sealed class FamilyController :
                     DateTime.UtcNow,
                     request.AssessmentId is Guid assessmentId
                         ? new CareAssessmentId(assessmentId)
-                        : null),
+                        : null,
+                    _elderlyProfileOptions.DefaultTimeZoneId),
                 cancellationToken);
 
         if (result.IsFailure && photoKey is not null)
@@ -298,6 +304,24 @@ public sealed class FamilyController :
         return StatusCode(
             StatusCodes.Status201Created,
             result.Value);
+    }
+
+    [HttpPut("dependents/{dependentId:guid}/timezone")]
+    [ProducesResponseType(typeof(DependentTimeZoneResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ChangeDependentTimeZone(
+        Guid dependentId,
+        [FromBody] ChangeDependentTimeZoneRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+            return Unauthorized();
+
+        return ToActionResult(await _sender.Send(
+            new ChangeDependentTimeZoneCommand(
+                userId,
+                new ElderlyId(dependentId),
+                request.TimeZoneId),
+            cancellationToken));
     }
 
     [HttpGet("dependents")]
