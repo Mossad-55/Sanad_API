@@ -184,7 +184,9 @@ public static class ResultProblemDetailsMapper
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,
             ["Storage.File.UnsupportedType"] = 400,
-            ["Storage.File.NotFound"] = 404
+            ["Storage.File.NotFound"] = 404,
+
+            ["Notifications.NotFound"] = 404
         };
 
     public static ProblemDetails Create(

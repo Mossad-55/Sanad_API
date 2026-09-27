@@ -1,0 +1,15 @@
+meta {
+  name: 04-unauthenticated-negative
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/notifications
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

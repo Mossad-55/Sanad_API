@@ -54,6 +54,16 @@
     <Project Path="src/Modules/Families/Presentation/Sanad.Modules.Families.Presentation/Sanad.Modules.Families.Presentation.csproj" />
   </Folder>
   <Folder Name="/src/Modules/Identity/" />
+  <Folder Name="/src/Modules/Notifications/" />
+  <Folder Name="/src/Modules/Notifications/Application/">
+    <Project Path="src/Modules/Notifications/Application/Sanad.Modules.Notifications.Application/Sanad.Modules.Notifications.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Notifications/Domain/">
+    <Project Path="src/Modules/Notifications/Domain/Sanad.Modules.Notifications.Domain/Sanad.Modules.Notifications.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Notifications/Infrastructure/">
+    <Project Path="src/Modules/Notifications/Infrastructure/Sanad.Modules.Notifications.Infrastructure/Sanad.Modules.Notifications.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Identity/Application/">
     <Project Path="src/Modules/Identity/Application/Sanad.Modules.Identity.Application/Sanad.Modules.Identity.Application.csproj" />
   </Folder>

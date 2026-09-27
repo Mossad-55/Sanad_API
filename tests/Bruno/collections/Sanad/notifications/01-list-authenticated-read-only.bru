@@ -1,0 +1,22 @@
+meta {
+  name: 01-list-authenticated-read-only
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/notifications?pageSize=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body: contains items
+  res.body: contains nextCursor
+  res.body: contains unreadCount
+}

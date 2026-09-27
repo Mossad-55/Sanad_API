@@ -224,8 +224,9 @@ curl -sS https://localhost:7296/api/v1/account/notification-preferences \
 
 - All eight toggles default to ON for existing and new users
 - One superset object holds every toggle; each client surfaces the subset relevant to the signed-in role
-- Delivery is email and in-app only (no SMS)
-- Storage only: the preference is persisted per user; delivery of notifications comes later
+- This endpoint only stores preferences; a delivery channel is not implied by a toggle
+- For the separately approved negative daily check-in event, enabled linked Family members receive a durable in-app alert, push may be added when a provider exists, and SMS is not used. Other event channels remain **Needs Owner Verification**
+- Preferences are persisted per user; Identity user IDs are taken from the authenticated identity, never from the request body
 
 | HTTP | `code` |
 |---|---|

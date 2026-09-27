@@ -1974,7 +1974,7 @@
             },
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/account/notification-preferences",
-            "description": "Requires Normal JWT. Returns the caller's notification preferences: checkInAlerts, medicationReminders, bookingUpdates, communityNotifications. All four default to ON. Storage only - nothing is sent yet."
+            "description": "Requires Normal JWT. Returns all eight caller-owned preferences: checkInAlerts, medicationReminders, bookingUpdates, communityNotifications, familyActivityAlerts, newOrders, messagesFromFamilies, systemNotifications. All default to ON. Storage only; event delivery is implemented separately."
           },
           "response": [
             {
@@ -1988,7 +1988,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": true,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": true\n}"
+              "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": true,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": true,\n  \"familyActivityAlerts\": true,\n  \"newOrders\": true,\n  \"messagesFromFamilies\": true,\n  \"systemNotifications\": true\n}"
             }
           ]
         },
@@ -2014,10 +2014,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false\n}"
+              "raw": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false,\n  \"familyActivityAlerts\": true,\n  \"newOrders\": false,\n  \"messagesFromFamilies\": true,\n  \"systemNotifications\": false\n}"
             },
             "url": "{{baseUrl}}/api/v1/account/notification-preferences",
-            "description": "Requires Normal JWT. Full replace of the caller's notification preferences; all four fields are required (a missing field is a 400). Submitting the current combination is a no-op. Storage only - delivery of notifications comes later."
+            "description": "Requires Normal JWT. Full replace of the caller's notification preferences; all eight fields are required (a missing field is a 400). Submitting the current combination is a no-op. This endpoint stores preferences only; event delivery is implemented separately."
           },
           "response": [
             {
@@ -2031,7 +2031,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false\n}"
+              "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false,\n  \"familyActivityAlerts\": true,\n  \"newOrders\": false,\n  \"messagesFromFamilies\": true,\n  \"systemNotifications\": false\n}"
             }
           ]
         },
@@ -2159,6 +2159,63 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "12. Notifications inbox",
+      "description": "Shared authenticated NormalAccess inbox foundation. The recipient is always the authenticated user; restricted-verification tokens receive 403. List/unread/read operations use one-year read-time availability. No check-in producer caller, push/email provider, retry policy, physical purge, complete category inventory, or Admin inspection is implied.",
+      "item": [
+        {
+          "name": "List notifications",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/notifications?pageSize=20",
+            "description": "Optional opaque cursor is used as `cursor`. `pageSize` defaults to 20 and is bounded 1–100. Returns newest-first items, nextCursor, and unreadCount; only the caller's notifications created within the last year are available. Each item contains category, type, title, body, createdOnUtc, nullable readOnUtc, and destinationEntityKind + destinationEntityId. 400 for invalid pageSize or Notifications.InvalidCursor; 401 missing/invalid token; 403 restricted token."
+          },
+          "response": [
+            {
+              "name": "200 Notification page",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "body": "{\n  \"items\": [{\n    \"id\": \"018f0000-0000-7000-8000-000000000001\",\n    \"category\": \"check-in\",\n    \"type\": \"elderly-not-okay\",\n    \"title\": \"Check-in needs attention\",\n    \"body\": \"An elderly check-in was marked not okay.\",\n    \"destinationEntityKind\": \"Elderly\",\n    \"destinationEntityId\": \"018f0000-0000-7000-8000-000000000002\",\n    \"createdOnUtc\": \"2026-09-27T08:00:00Z\",\n    \"readOnUtc\": null\n  }],\n  \"nextCursor\": null,\n  \"unreadCount\": 1\n}"
+            }
+          ],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["if (pm.response.code === 200) {", "  const body = pm.response.json();", "  pm.expect(body).to.have.property('items');", "  pm.expect(body).to.have.property('nextCursor');", "  pm.expect(body).to.have.property('unreadCount');", "  if (body.items.length) { pm.expect(body.items[0]).to.have.all.keys('id', 'category', 'type', 'title', 'body', 'destinationEntityKind', 'destinationEntityId', 'createdOnUtc', 'readOnUtc'); }", "}"] } }]
+        },
+        {
+          "name": "Get unread notification count",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/notifications/unread-count",
+            "description": "Returns a JSON integer for unread caller-owned notifications still available within the one-year read-time window. Read-only."
+          },
+          "response": [{ "name": "200 Unread count", "status": "OK", "code": 200, "_postman_previewlanguage": "json", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "1" }],
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["if (pm.response.code === 200) { pm.expect(pm.response.json()).to.be.a('number'); }"] } }]
+        },
+        {
+          "name": "Mark one notification read",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/read",
+            "description": "Marks the caller's current notification read and returns 204. This request changes read state; use only with an owner-approved disposable notificationId. Unknown, foreign, or older-than-one-year IDs return 404 Notifications.NotFound."
+          },
+          "response": [{ "name": "204 Read", "status": "No Content", "code": 204, "body": "" }]
+        },
+        {
+          "name": "Mark all notifications read",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "method": "PUT",
+            "url": "{{baseUrl}}/api/v1/notifications/read-all",
+            "description": "Marks all current unread notifications for the caller read and returns 204. This request changes read state; do not run against shared data without approval."
+          },
+          "response": [{ "name": "204 All read", "status": "No Content", "code": 204, "body": "" }]
         }
       ]
     }

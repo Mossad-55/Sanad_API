@@ -30,6 +30,9 @@ using Sanad.Modules.Identity.Application.Abstractions.Families;
 using Sanad.API.CaregiversIntegration;
 using Sanad.API.Seeding;
 using Sanad.API.Options;
+using Sanad.API.NotificationsIntegration;
+using Sanad.Modules.Notifications.Infrastructure;
+using Sanad.Modules.Notifications.Application.Abstractions.Recipients;
 
 namespace Sanad.API;
 
@@ -78,6 +81,8 @@ public static class DependencyInjection
 
         services.AddFamiliesInfrastructure(
             configuration);
+
+        services.AddNotificationsInfrastructure(configuration);
 
         services.AddOptions<LocalStorageOptions>()
             .Bind(
@@ -277,6 +282,9 @@ public static class DependencyInjection
 
             configuration.RegisterServicesFromAssembly(
                 typeof(BootstrapFamilyCommand).Assembly);
+
+            configuration.RegisterServicesFromAssembly(
+                typeof(Sanad.Modules.Notifications.Application.Notifications.ListNotificationsQuery).Assembly);
         });
         services.AddScoped<Sanad.Modules.Families.Application.Subscriptions.ISubscriptionInvoiceService,
             Sanad.Modules.Families.Application.Subscriptions.SubscriptionInvoiceService>();
@@ -303,6 +311,8 @@ public static class DependencyInjection
 
         services.AddScoped<
             IFamilyIdentityGateway, FamilyIdentityGateway>();
+
+        services.AddScoped<INotificationRecipientGateway, FamilyNotificationRecipientGateway>();
 
         services.AddScoped<
             ICaregiverAccountGateway, CaregiverAccountGateway>();

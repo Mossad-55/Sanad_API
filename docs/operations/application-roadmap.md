@@ -103,17 +103,34 @@ provider/transport.
 
 ### Phase 2 — Notification center and delivery foundation
 
-Implement one notification model shared by all roles:
+The durable inbox foundation is implemented and shared by all roles:
 
 - Cursor/page-based list with read state.
 - Mark one read, mark all read, and unread count.
 - Navigation target metadata for the related screen/entity.
-- In-app event creation and preference enforcement.
-- Email delivery after templates and provider are approved.
+- Authenticated NormalAccess list, unread count, mark-one-read, and mark-all-read
+  routes; see [`docs/app/notifications.md`](../app/notifications.md).
+- One-year read-time availability, cursor paging with default page size 20, and
+  typed destination entity kind + ID.
 
-Needs owner verification: retention period, pagination contract, notification
-categories, timezone behavior, deep-link format, email provider/templates,
-and whether push is required in V1 or can follow realtime chat.
+The check-in producer caller, complete category inventory, event-specific
+timezone behavior, preference enforcement at event creation, email/push
+providers and retries, and physical purge policy are not implemented or
+contracted by this slice. Admin delivery/inspection is also not included.
+
+Owner-approved initial in-app contract: a negative Elderly daily check-in
+creates a durable in-app alert for every active linked Family member whose
+`checkInAlerts` preference is enabled. Push may be added when a provider is
+available; SMS is not used for this event. The inbox read foundation is
+implemented; the approved check-in producer and provider delivery remain later
+work.
+
+Owner-approved inbox contract: retain notifications for one year; use cursor
+pagination with a default page size of 20; represent destinations as typed
+entity kind + ID metadata (the app owns route mapping). The complete
+notification category inventory, timezone behavior for other event types,
+email provider/templates, and push provider/retry semantics remain **Needs
+Owner Verification**.
 
 ### Phase 3 — Elderly assistance, medication execution, and SOS
 
@@ -128,6 +145,13 @@ Complete the elderly flow on real data:
 - The primary phone-only emergency contact is now Family Owner-managed and
   readable by linked Family members and the linked Elderly profile. This does
   not implement SOS delivery, Admin contact inspection, or contact removal.
+- **Daily check-in:** the owner confirmed one final true/false answer per
+  Elderly profile-local calendar day; retries return the saved answer. A
+  negative answer creates the durable in-app alert described in Phase 2,
+  respecting linked members' `checkInAlerts` preferences. SMS is excluded and
+  push can be added when a provider exists. Push retry/provider behavior,
+  reminders, missed-check-in semantics, and exact Family status/history reads
+  remain **Needs Owner Verification**.
 - Elderly dashboard composition for check-in, next dose, daily activity, and
   alerts.
 
