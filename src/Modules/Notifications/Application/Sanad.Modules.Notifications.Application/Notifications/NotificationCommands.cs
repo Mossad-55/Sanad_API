@@ -1,4 +1,5 @@
 using FluentValidation;
+using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.Modules.Notifications.Application.Abstractions.Data;
@@ -43,7 +44,8 @@ public sealed class CreateInAppNotificationCommandHandler(INotificationsDbContex
 /// </summary>
 public sealed record CreateCheckInAlertNotificationsCommand(
     Abstractions.Recipients.ElderlyRecipient Elderly,
-    string Category, string Type, string Title, string Body, DateTime CreatedOnUtc)
+    string Category, string Type, string Title, string Body, DateTime CreatedOnUtc,
+    DateOnly LocalDate = default)
     : ICommand<int>;
 
 public sealed class CreateCheckInAlertNotificationsCommandValidator : AbstractValidator<CreateCheckInAlertNotificationsCommand>
@@ -64,10 +66,16 @@ public sealed class CreateCheckInAlertNotificationsCommandHandler(
 {
     public async Task<Result<int>> Handle(CreateCheckInAlertNotificationsCommand r, CancellationToken ct)
     {
-        var userIds = await recipients.GetCheckInAlertRecipientsAsync(r.Elderly, ct);
-        foreach (var userId in userIds.Distinct())
-            db.Notifications.Add(Notification.Create(userId.Value, r.Category.Trim(), r.Type.Trim(), r.Title.Trim(), r.Body.Trim(), "Elderly", r.Elderly.ElderlyEntityId, r.CreatedOnUtc));
+        var userIds = (await recipients.GetCheckInAlertRecipientsAsync(r.Elderly, ct)).Distinct().ToArray();
+        var keys = r.LocalDate == default ? [] : userIds.Select(x => $"elderly-check-in:{r.Elderly.ElderlyEntityId:N}:{r.LocalDate:yyyy-MM-dd}:{x.Value:N}").ToArray();
+        var existing = keys.Length == 0 ? [] : await db.Notifications.Where(x => x.IdempotencyKey != null && keys.Contains(x.IdempotencyKey!)).Select(x => x.IdempotencyKey!).ToListAsync(ct);
+        foreach (var userId in userIds)
+        {
+            var key = r.LocalDate == default ? null : $"elderly-check-in:{r.Elderly.ElderlyEntityId:N}:{r.LocalDate:yyyy-MM-dd}:{userId.Value:N}";
+            if (key is not null && existing.Contains(key, StringComparer.Ordinal)) continue;
+            db.Notifications.Add(Notification.Create(userId.Value, r.Category.Trim(), r.Type.Trim(), r.Title.Trim(), r.Body.Trim(), "Elderly", r.Elderly.ElderlyEntityId, r.CreatedOnUtc, key));
+        }
         await db.SaveChangesAsync(ct);
-        return userIds.Distinct().Count();
+        return userIds.Length;
     }
 }

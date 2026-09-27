@@ -33,6 +33,7 @@ using Sanad.API.Options;
 using Sanad.API.NotificationsIntegration;
 using Sanad.Modules.Notifications.Infrastructure;
 using Sanad.Modules.Notifications.Application.Abstractions.Recipients;
+using Sanad.Modules.Families.Application.Abstractions.Notifications;
 
 namespace Sanad.API;
 
@@ -83,6 +84,7 @@ public static class DependencyInjection
             configuration);
 
         services.AddNotificationsInfrastructure(configuration);
+        services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
 
         services.AddOptions<LocalStorageOptions>()
             .Bind(

@@ -1,0 +1,18 @@
+meta {
+  name: 05-timeline-manual-read
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/check-ins/timeline/{{elderlyId}}?startDate=2026-09-01&endDate=2026-09-27
+  auth: bearer
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-check-ins-timeline
+}
+
+auth:bearer {
+  token: {{adminElderlyCheckInJwt}}
+}

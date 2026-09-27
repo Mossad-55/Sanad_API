@@ -1,0 +1,18 @@
+meta {
+  name: 03-list-manual-read
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/check-ins?page=1&pageSize=20&startDate=2026-09-01&endDate=2026-09-27
+  auth: bearer
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-check-ins-list
+}
+
+auth:bearer {
+  token: {{adminElderlyCheckInJwt}}
+}

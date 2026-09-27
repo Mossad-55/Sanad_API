@@ -118,6 +118,22 @@
           }
         }
       ]
+    },
+    {
+      "name": "04. Daily check-in (manual mutation only)",
+      "item": [
+        {
+          "name": "Submit daily check-in — manual fixture only",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"answer\": {{checkInAnswer}}\n}" },
+            "url": "{{baseUrl}}/api/v1/elderly/check-ins",
+            "description": "STATE-CHANGING: Normal Elderly JWT only. The server resolves the profile from the authenticated identity and records one final Boolean answer per profile-local IANA calendar day. Same-answer retry returns the saved record; an opposite answer returns 409 Families.ElderlyCheckIn.AlreadyAnswered. A false answer creates durable in-app alerts for active linked Family members with checkInAlerts enabled. Use only an approved disposable fixture; do not replay against shared or production data. Families and Notifications persistence are separate and not an atomic transaction. No SMS; push/provider retry, reminders, and missed-check-in behavior are deferred."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('check-in contract outcome', function () { pm.expect([200, 404, 409]).to.include(pm.response.code); });"] } }]
+        }
+      ]
     }
   ],
   "variable": [
@@ -127,6 +143,7 @@
     { "key": "scheduledTime", "value": "20:00:00", "type": "string" },
     { "key": "wellnessTipId", "value": "REPLACE_WITH_PUBLISHED_WELLNESS_TIP_ID", "type": "string" },
     { "key": "wellnessPage", "value": "1", "type": "string" },
-    { "key": "wellnessPageSize", "value": "20", "type": "string" }
+    { "key": "wellnessPageSize", "value": "20", "type": "string" },
+    { "key": "checkInAnswer", "value": "false", "type": "string", "description": "Manual disposable-fixture Boolean answer. Do not replay against shared or production data." }
   ]
 }

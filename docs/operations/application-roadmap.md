@@ -113,17 +113,20 @@ The durable inbox foundation is implemented and shared by all roles:
 - One-year read-time availability, cursor paging with default page size 20, and
   typed destination entity kind + ID.
 
-The check-in producer caller, complete category inventory, event-specific
-timezone behavior, preference enforcement at event creation, email/push
-providers and retries, and physical purge policy are not implemented or
-contracted by this slice. Admin delivery/inspection is also not included.
+The shared inbox remains a read foundation; delivery providers, complete
+category inventory, event-specific timezone behavior beyond check-in,
+email/push provider and retry semantics, and physical purge policy are not
+implemented by that foundation. The check-in producer and its Admin
+operational reads are now delivered separately below. Admin notification
+delivery/inspection is not included.
 
 Owner-approved initial in-app contract: a negative Elderly daily check-in
 creates a durable in-app alert for every active linked Family member whose
 `checkInAlerts` preference is enabled. Push may be added when a provider is
-available; SMS is not used for this event. The inbox read foundation is
-implemented; the approved check-in producer and provider delivery remain later
-work.
+available; SMS is not used for this event. The delivered producer uses a
+separate Notifications persistence boundary: the check-in write and alert
+fan-out are not one atomic cross-context transaction, while per-recipient,
+Elderly, and local-date idempotency makes same-answer retry safe.
 
 Owner-approved inbox contract: retain notifications for one year; use cursor
 pagination with a default page size of 20; represent destinations as typed
@@ -145,13 +148,19 @@ Complete the elderly flow on real data:
 - The primary phone-only emergency contact is now Family Owner-managed and
   readable by linked Family members and the linked Elderly profile. This does
   not implement SOS delivery, Admin contact inspection, or contact removal.
-- **Daily check-in:** the owner confirmed one final true/false answer per
-  Elderly profile-local calendar day; retries return the saved answer. A
-  negative answer creates the durable in-app alert described in Phase 2,
-  respecting linked members' `checkInAlerts` preferences. SMS is excluded and
-  push can be added when a provider exists. Push retry/provider behavior,
+- **Daily check-in:** `POST /api/v1/elderly/check-ins` accepts one final
+  Boolean answer per Elderly profile-local IANA calendar day; a same-answer
+  retry returns the saved record and an opposite answer returns `409
+  Families.ElderlyCheckIn.AlreadyAnswered`. Invalid stored timezones fail
+  closed. A negative answer creates durable in-app alerts for active linked
+  Family members with `checkInAlerts` enabled. Push/provider retry behavior,
   reminders, missed-check-in semantics, and exact Family status/history reads
-  remain **Needs Owner Verification**.
+  remain **Needs Owner Verification**; SMS is excluded.
+- **Admin check-in operations:** read-only list, detail, timeline, and
+  aggregate routes are available under the existing operational-read policy.
+  They use filters/paging, inclusive ranges up to 31 days, safe projected
+  fields, and audit-before-read behavior. See
+  [`docs/admin/elderly-check-ins.md`](../admin/elderly-check-ins.md).
 - Elderly dashboard composition for check-in, next dose, daily activity, and
   alerts.
 

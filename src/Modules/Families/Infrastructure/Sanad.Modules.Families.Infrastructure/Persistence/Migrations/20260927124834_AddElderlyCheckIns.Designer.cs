@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sanad.Modules.Families.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FamiliesDbContext))]
-    partial class FamiliesDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260927124834_AddElderlyCheckIns")]
+    partial class AddElderlyCheckIns
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -2010,15 +2013,6 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .WithMany()
                         .HasForeignKey("BookingId")
                         .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Sanad.Modules.Families.Domain.Elderlies.CheckIns.ElderlyCheckIn", b =>
-                {
-                    b.HasOne("Sanad.Modules.Families.Domain.Elderlies.Elderly", null)
-                        .WithMany()
-                        .HasForeignKey("ElderlyId")
-                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
 

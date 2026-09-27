@@ -44,6 +44,31 @@
       "key": "wellnessImageFile",
       "value": "",
       "description": "Local disposable JPEG/PNG/WebP file path for manual multipart create/update."
+    },
+    {
+      "key": "elderlyId",
+      "value": "REPLACE_WITH_ELDERLY_ID",
+      "description": "Approved Elderly UUID for manual operational reads."
+    },
+    {
+      "key": "elderlyCheckInId",
+      "value": "REPLACE_WITH_CHECK_IN_ID",
+      "description": "Approved check-in UUID for manual detail read."
+    },
+    {
+      "key": "checkInStartDate",
+      "value": "2026-09-01",
+      "description": "Inclusive ISO date; Admin check-in ranges are capped at 31 days."
+    },
+    {
+      "key": "checkInEndDate",
+      "value": "2026-09-27",
+      "description": "Inclusive ISO date; Admin check-in ranges are capped at 31 days."
+    },
+    {
+      "key": "checkInAnswer",
+      "value": "false",
+      "description": "Optional Admin list answer filter."
     }
   ],
   "item": [
@@ -2613,6 +2638,51 @@
           "name": "Archive wellness tip",
           "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/archive" },
           "description": "STATE-CHANGING manual request."
+        }
+      ]
+    },
+    {
+      "name": "15A. Elderly check-in operations (safe reads)",
+      "item": [
+        {
+          "name": "List Elderly check-ins (manual read)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin check-in list contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-check-in-list" }],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins?page=1&pageSize=20&startDate={{checkInStartDate}}&endDate={{checkInEndDate}}&answer={{checkInAnswer}}",
+            "description": "Safe read for a Normal SuperAdmin or SupportAdmin JWT. Optional elderlyId, inclusive startDate/endDate, and answer filters are supported; page defaults to 1/20 and pageSize is bounded 1–100. Valid reads audit before querying. The inclusive date range may not exceed 31 days. Response fields intentionally exclude timezone, contact, location, and clinical source data. GET writes an operational access-audit row; use only an approved disposable/local fixture."
+          }
+        },
+        {
+          "name": "Get Elderly check-in detail (manual read)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin check-in detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-check-in-detail" }],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins/{{elderlyCheckInId}}",
+            "description": "Safe read for a Normal SuperAdmin or SupportAdmin JWT. Returns 404 when the UUID is absent or its Family is inactive/deleted. Successful reads audit before the result and expose only safe operational check-in fields."
+          }
+        },
+        {
+          "name": "Get Elderly check-in timeline (manual read)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin check-in timeline contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-check-in-timeline" }],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins/timeline/{{elderlyId}}?startDate={{checkInStartDate}}&endDate={{checkInEndDate}}",
+            "description": "Safe read for a Normal SuperAdmin or SupportAdmin JWT. Both ISO dates are required; the range is inclusive and capped at 31 days. Reversed/over-wide ranges return 400 Families.AdminCheckIn.InvalidDateRange."
+          }
+        },
+        {
+          "name": "Get Elderly check-in aggregate (manual read)",
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin check-in aggregate contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-check-in-aggregate" }],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins/aggregate?elderlyId={{elderlyId}}&startDate={{checkInStartDate}}&endDate={{checkInEndDate}}",
+            "description": "Safe read for a Normal SuperAdmin or SupportAdmin JWT. Returns total/positive/negative counts over the optional Elderly/date filters. Valid reads audit before querying; no timezone, contact, location, or clinical source fields are returned."
+          }
         }
       ]
     },

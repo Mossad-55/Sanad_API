@@ -9,6 +9,7 @@ public sealed class Notification : Entity<Guid>
     public const int MaximumTitleLength = 240;
     public const int MaximumBodyLength = 2000;
     public const int MaximumDestinationKindLength = 80;
+    public const int MaximumIdempotencyKeyLength = 240;
 
     private Notification() { }
 
@@ -21,7 +22,8 @@ public sealed class Notification : Entity<Guid>
         string body,
         string destinationEntityKind,
         Guid destinationEntityId,
-        DateTime createdOnUtc) : base(id)
+        DateTime createdOnUtc,
+        string? idempotencyKey) : base(id)
     {
         RecipientUserId = recipientUserId;
         Category = category;
@@ -31,6 +33,7 @@ public sealed class Notification : Entity<Guid>
         DestinationEntityKind = destinationEntityKind;
         DestinationEntityId = destinationEntityId;
         CreatedOnUtc = createdOnUtc;
+        IdempotencyKey = idempotencyKey;
     }
 
     public Guid RecipientUserId { get; private set; }
@@ -42,6 +45,7 @@ public sealed class Notification : Entity<Guid>
     public Guid DestinationEntityId { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime? ReadOnUtc { get; private set; }
+    public string? IdempotencyKey { get; private set; }
 
     public static Notification Create(
         Guid recipientUserId,
@@ -51,14 +55,17 @@ public sealed class Notification : Entity<Guid>
         string body,
         string destinationEntityKind,
         Guid destinationEntityId,
-        DateTime createdOnUtc)
+        DateTime createdOnUtc,
+        string? idempotencyKey = null)
     {
         if (recipientUserId == Guid.Empty || destinationEntityId == Guid.Empty)
             throw new ArgumentException("Notification identifiers are required.");
         if (createdOnUtc.Kind != DateTimeKind.Utc)
             throw new ArgumentException("Notification time must be UTC.");
+        if (idempotencyKey is { Length: > MaximumIdempotencyKeyLength })
+            throw new ArgumentException("Notification idempotency key is too long.");
         return new Notification(Guid.NewGuid(), recipientUserId, category, type, title, body,
-            destinationEntityKind, destinationEntityId, createdOnUtc);
+            destinationEntityKind, destinationEntityId, createdOnUtc, idempotencyKey);
     }
 
     public void MarkRead(DateTime utcNow)

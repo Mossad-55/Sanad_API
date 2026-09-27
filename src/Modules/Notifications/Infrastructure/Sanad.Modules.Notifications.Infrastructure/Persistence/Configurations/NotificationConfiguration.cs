@@ -15,6 +15,8 @@ public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notific
         b.Property(x => x.DestinationEntityKind).HasColumnName("destination_entity_kind").HasMaxLength(Notification.MaximumDestinationKindLength).IsRequired();
         b.Property(x => x.DestinationEntityId).HasColumnName("destination_entity_id").IsRequired();
         b.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired(); b.Property(x => x.ReadOnUtc).HasColumnName("read_on_utc");
+        b.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(Notification.MaximumIdempotencyKeyLength);
         b.HasIndex(x => new { x.RecipientUserId, x.CreatedOnUtc, x.Id }); b.HasIndex(x => new { x.RecipientUserId, x.ReadOnUtc, x.CreatedOnUtc });
+        b.HasIndex(x => x.IdempotencyKey).IsUnique();
     }
 }

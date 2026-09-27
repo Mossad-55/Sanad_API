@@ -1,0 +1,18 @@
+meta {
+  name: 04-detail-manual-read
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/check-ins/{{elderlyCheckInId}}
+  auth: bearer
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-check-ins-detail
+}
+
+auth:bearer {
+  token: {{adminElderlyCheckInJwt}}
+}

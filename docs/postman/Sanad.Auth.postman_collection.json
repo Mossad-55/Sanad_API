@@ -2164,7 +2164,7 @@
     },
     {
       "name": "12. Notifications inbox",
-      "description": "Shared authenticated NormalAccess inbox foundation. The recipient is always the authenticated user; restricted-verification tokens receive 403. List/unread/read operations use one-year read-time availability. No check-in producer caller, push/email provider, retry policy, physical purge, complete category inventory, or Admin inspection is implied.",
+      "description": "Shared authenticated NormalAccess inbox foundation. The recipient is always the authenticated user; restricted-verification tokens receive 403. List/unread/read operations use one-year read-time availability. The negative daily check-in producer now creates idempotent durable alerts; push/email provider, delivery retry policy, physical purge, complete category inventory, and Admin notification inspection remain separate or deferred.",
       "item": [
         {
           "name": "List notifications",

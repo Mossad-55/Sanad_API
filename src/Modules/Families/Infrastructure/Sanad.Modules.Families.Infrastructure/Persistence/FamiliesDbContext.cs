@@ -4,6 +4,7 @@ using Sanad.Modules.Families.Domain.Activities;
 using Sanad.Modules.Families.Domain.Assessments;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
+using Sanad.Modules.Families.Domain.Elderlies.CheckIns;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Invitations;
 using Sanad.Modules.Families.Domain.Medications;
@@ -27,6 +28,7 @@ public sealed class FamiliesDbContext :
 
     public DbSet<Family> Families => Set<Family>();
     public DbSet<Elderly> Elderlies => Set<Elderly>();
+    public DbSet<ElderlyCheckIn> ElderlyCheckIns => Set<ElderlyCheckIn>();
     public DbSet<FamilyInvitation> Invitations => Set<FamilyInvitation>();
     public DbSet<Booking> Bookings => Set<Booking>();
     public DbSet<BookingCancellationFact> BookingCancellationFacts => Set<BookingCancellationFact>();

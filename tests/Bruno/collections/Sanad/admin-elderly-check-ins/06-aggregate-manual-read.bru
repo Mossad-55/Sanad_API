@@ -1,0 +1,18 @@
+meta {
+  name: 06-aggregate-manual-read
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/check-ins/aggregate?elderlyId={{elderlyId}}&startDate=2026-09-01&endDate=2026-09-27
+  auth: bearer
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-check-ins-aggregate
+}
+
+auth:bearer {
+  token: {{adminElderlyCheckInJwt}}
+}

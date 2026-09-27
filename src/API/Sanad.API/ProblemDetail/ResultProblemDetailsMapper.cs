@@ -186,7 +186,12 @@ public static class ResultProblemDetailsMapper
             ["Storage.File.UnsupportedType"] = 400,
             ["Storage.File.NotFound"] = 404,
 
-            ["Notifications.NotFound"] = 404
+            ["Notifications.NotFound"] = 404,
+            ["Families.AdminCheckIn.NotFound"] = 404,
+            ["Families.AdminCheckIn.InvalidDateRange"] = 400,
+            ["Families.ElderlyCheckIn.NotFound"] = 404,
+            ["Families.ElderlyCheckIn.InvalidTimeZone"] = 409,
+            ["Families.ElderlyCheckIn.AlreadyAnswered"] = 409
         };
 
     public static ProblemDetails Create(

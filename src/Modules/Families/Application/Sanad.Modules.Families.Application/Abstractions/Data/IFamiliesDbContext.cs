@@ -3,6 +3,7 @@ using Sanad.Modules.Families.Domain.Activities;
 using Sanad.Modules.Families.Domain.Assessments;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
+using Sanad.Modules.Families.Domain.Elderlies.CheckIns;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Invitations;
 using Sanad.Modules.Families.Domain.Medications;
@@ -16,6 +17,7 @@ public interface IFamiliesDbContext
 {
     DbSet<Family> Families { get; }
     DbSet<Elderly> Elderlies { get; }
+    DbSet<ElderlyCheckIn> ElderlyCheckIns => throw new NotSupportedException("This context does not expose elderly check-ins.");
     DbSet<FamilyInvitation> Invitations { get; }
     DbSet<Booking> Bookings { get; }
     DbSet<BookingCancellationFact> BookingCancellationFacts { get; }
