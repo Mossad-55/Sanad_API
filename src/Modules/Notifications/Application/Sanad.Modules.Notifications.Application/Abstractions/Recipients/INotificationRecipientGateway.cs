@@ -9,6 +9,7 @@ public interface INotificationRecipientGateway
         CancellationToken cancellationToken = default);
     Task<IReadOnlyList<UserId>> GetHelpRequestAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<UserId>> GetMedicationAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<UserId>> GetSosAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default);
 }
 
 public sealed record ElderlyRecipient(UserId ElderlyIdentityUserId, Guid ElderlyEntityId);

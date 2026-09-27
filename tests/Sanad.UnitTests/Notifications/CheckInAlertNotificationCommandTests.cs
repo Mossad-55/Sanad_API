@@ -53,5 +53,8 @@ public sealed class CheckInAlertNotificationCommandTests
 
         public Task<IReadOnlyList<UserId>> GetMedicationAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<UserId>>([]);
+
+        public Task<IReadOnlyList<UserId>> GetSosAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<UserId>>([]);
     }
 }

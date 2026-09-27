@@ -94,3 +94,14 @@ The current event is `category = MedicationReminders` and
 `type = MedicationDoseMissed`, with a typed `Medication` destination. Rows are
 durable and idempotent per recipient and scheduled dose. Push/email delivery,
 outbox, and scheduler behavior are deferred and remain Needs Owner Verification.
+
+SOS creation uses the same durable inbox foundation. It creates
+`category = ElderlySos`, `type = SosCreated`, and destination kind
+`ElderlySos`, idempotent per SOS and recipient. Current recipients are active
+linked Family members eligible for the current alert lookup, the assigned
+caregiver during an active `Confirmed` or `InProgress` booking, and active
+`SupportAdmin` users. The current implementation reuses the help-request
+preference lookup; a dedicated SOS preference and exact preference semantics
+are **Needs Owner Verification**. Push/email delivery, outbox, scheduler,
+physical purge, device-dialer behavior, and export remain **Needs Owner
+Verification**. SMS and server-side dialing are excluded.

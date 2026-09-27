@@ -11,6 +11,7 @@ using Sanad.Modules.Families.Domain.Notes;
 using Sanad.Modules.Families.Domain.Reports;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Domain.HelpRequests;
+using Sanad.Modules.Families.Domain.Sos;
 
 namespace Sanad.Modules.Families.Application.Abstractions.Data;
 
@@ -44,6 +45,8 @@ public interface IFamiliesDbContext
     DbSet<SubscriptionInvoice> SubscriptionInvoices => throw new NotSupportedException("This context does not expose subscription invoices.");
     DbSet<ElderlyHelpRequest> ElderlyHelpRequests => throw new NotSupportedException("This context does not expose help requests.");
     DbSet<ElderlyHelpRequestHistory> ElderlyHelpRequestHistories => throw new NotSupportedException("This context does not expose help request history.");
+    DbSet<ElderlySos> ElderlySos => throw new NotSupportedException("This context does not expose SOS events.");
+    DbSet<ElderlySosHistory> ElderlySosHistories => throw new NotSupportedException("This context does not expose SOS history.");
 
     /// <summary>
     /// Queues the provider identity claim in the same unit of work as the callback mutation.

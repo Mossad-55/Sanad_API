@@ -55,4 +55,24 @@ public sealed class FamilyNotificationRecipientGateway(IFamiliesDbContext famili
         var admins = await sender.Send(new GetActiveSupportAdminUserIdsQuery(), cancellationToken);
         return familyRecipients.Value.Concat(caregiverRecipients.Value).Concat(admins.Value).Distinct().ToArray();
     }
+
+    public async Task<IReadOnlyList<UserId>> GetSosAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default)
+    {
+        var profile = await families.Elderlies.AsNoTracking()
+            .Where(x => x.IdentityUserId == elderly.ElderlyIdentityUserId && x.Id.Value == elderly.ElderlyEntityId)
+            .Select(x => new { x.FamilyId }).SingleOrDefaultAsync(cancellationToken);
+        if (profile is null) return [];
+        var familyIds = await families.Families.AsNoTracking()
+            .Where(x => x.Id == profile.FamilyId && x.DeletedOnUtc == null)
+            .SelectMany(x => x.Members.Select(m => m.Id)).Distinct().ToListAsync(cancellationToken);
+        var familyRecipients = await sender.Send(new GetActiveUsersWithHelpRequestAlertsQuery(familyIds), cancellationToken);
+        var caregiverIds = await families.Bookings.AsNoTracking()
+            .Where(x => x.ElderlyId.Value == elderly.ElderlyEntityId && (x.Status == BookingStatus.Confirmed || x.Status == BookingStatus.InProgress))
+            .Select(x => x.CaregiverId.Value).Distinct().ToListAsync(cancellationToken);
+        var caregiverUsers = await caregivers.Caregivers.AsNoTracking()
+            .Where(x => caregiverIds.Contains(x.Id.Value)).Select(x => x.UserId).ToListAsync(cancellationToken);
+        var caregiverRecipients = await sender.Send(new GetActiveUsersWithHelpRequestAlertsQuery(caregiverUsers), cancellationToken);
+        var admins = await sender.Send(new GetActiveSupportAdminUserIdsQuery(), cancellationToken);
+        return familyRecipients.Value.Concat(caregiverRecipients.Value).Concat(admins.Value).Distinct().ToArray();
+    }
 }

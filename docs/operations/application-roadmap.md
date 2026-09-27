@@ -155,10 +155,18 @@ Complete the elderly flow on real data:
   outbox, and scheduler delivery remain deferred/Needs Owner Verification; SMS
   is excluded. Preserve the existing prescription, dose-timeline, adherence,
   and Elderly dose-taking contracts.
-- SOS creation, location capture, recipient notification, status tracking, and
-  cancellation. The owner-approved outcome is only a tracked SOS with intended
-  contact notification and device-dialer behavior where documented; voice
-  calling remains excluded as V2.
+- **Delivered bounded SOS slice:** `POST/GET /api/v1/elderly/sos`, identity-bound
+  detail/cancel, and Admin list/detail/history/status routes are documented in
+  [`docs/app/elderly/sos.md`](../app/elderly/sos.md) and
+  [`docs/admin/elderly-sos.md`](../admin/elderly-sos.md). The slice uses the
+  `Open` → `Acknowledged` → `Resolved`/`Cancelled` lifecycle, required
+  idempotency, consent-gated paired coordinates rounded to three decimals,
+  30-day coordinate read visibility, deleted-Family isolation, audit-before-
+  Admin-read, and durable in-app recipients (active linked Family members,
+  active-booking caregivers, and active SupportAdmin users). SMS and server
+  dialing are excluded. Dedicated SOS preference semantics, push/email,
+  outbox/scheduler, physical purge, device dialer, and export remain **Needs
+  Owner Verification**; voice calling remains excluded as V2.
 - The primary phone-only emergency contact is now Family Owner-managed and
   readable by linked Family members and the linked Elderly profile. This does
   not implement SOS delivery, Admin contact inspection, or contact removal.
@@ -179,14 +187,11 @@ Complete the elderly flow on real data:
   alerts.
 
 Needs owner verification for this phase now excludes the delivered
-help-request/CMS contract. Remaining decisions are the complete SOS
-implementation contract:
-trigger actor/route; location fields, consent, precision, storage/retention;
-recipients and active membership; notification categories/preferences/
-channels, retry/idempotency under existing no-SMS/email-plus-in-app
-constraints; lifecycle, duplicate, cancel, escalation, timeout; and Admin
-read/audit/retention/export. No SOS route/domain/persistence/tests/Postman/
-Bruno surface exists. Medication skipped-dose reasons, alert recipients, event
+help-request/CMS and bounded SOS route/lifecycle contracts. Remaining SOS
+decisions are dedicated preference semantics; delivery providers/retries,
+outbox/scheduler and physical purge; device dialer; exact precision,
+location-retention and export policy; and any escalation/timeout behavior.
+Medication skipped-dose reasons, alert recipients, event
 category/payload/deep-link, preference/channel mapping, durable retry/
 idempotency, historical recalculation, and Admin alert/threshold audit also
 remain unresolved. Contact clear/delete and Admin field-level visibility remain

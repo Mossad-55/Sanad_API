@@ -12,6 +12,7 @@ using Sanad.Modules.Families.Domain.Notes;
 using Sanad.Modules.Families.Domain.Reports;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Domain.HelpRequests;
+using Sanad.Modules.Families.Domain.Sos;
 
 namespace Sanad.Modules.Families.Infrastructure.Persistence;
 
@@ -54,6 +55,8 @@ public sealed class FamiliesDbContext :
     public DbSet<SubscriptionInvoice> SubscriptionInvoices => Set<SubscriptionInvoice>();
     public DbSet<ElderlyHelpRequest> ElderlyHelpRequests => Set<ElderlyHelpRequest>();
     public DbSet<ElderlyHelpRequestHistory> ElderlyHelpRequestHistories => Set<ElderlyHelpRequestHistory>();
+    public DbSet<ElderlySos> ElderlySos => Set<ElderlySos>();
+    public DbSet<ElderlySosHistory> ElderlySosHistories => Set<ElderlySosHistory>();
 
     public void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
         PaymobSubscriptionIdentities.Add(identity);
@@ -85,6 +88,7 @@ public sealed class FamiliesDbContext :
         ThrowIfPaymobSubscriptionIdentityMutated();
         ThrowIfAdminMedicationAccessAuditMutated();
         ThrowIfHelpRequestHistoryMutated();
+        ThrowIfSosHistoryMutated();
 
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -109,6 +113,7 @@ public sealed class FamiliesDbContext :
         ThrowIfPaymobSubscriptionIdentityMutated();
         ThrowIfAdminMedicationAccessAuditMutated();
         ThrowIfHelpRequestHistoryMutated();
+        ThrowIfSosHistoryMutated();
 
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
@@ -162,6 +167,18 @@ public sealed class FamiliesDbContext :
 
                 entry.State = EntityState.Unchanged;
             }
+        }
+    }
+
+    private void ThrowIfSosHistoryMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<ElderlySosHistory>())
+        {
+            if (entry.State == EntityState.Deleted ||
+                (entry.State == EntityState.Modified && entry.Properties.Any(property => property.IsModified)))
+                throw new InvalidOperationException("SOS history is append-only.");
+            if (entry.State == EntityState.Modified)
+                entry.State = EntityState.Unchanged;
         }
     }
 

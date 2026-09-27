@@ -2825,6 +2825,32 @@
           "description": "Safe read for Super Admin normal JWT. Returns 200 with all rules ordered by descending version. Historical rules remain immutable except for deactivation."
         }
       ]
+    },
+    {
+      "name": "17. Elderly SOS operations (safe reads; manual status)",
+      "description": "Normal SuperAdmin or SupportAdmin only under ElderlySosOperational. GETs are safe but audit before reading. Deleted Families are filtered and return 404 Families.Sos.NotFound. Status changes are manual fixture-only. Coordinates are visible only for the 30-day read window; push/email/outbox/scheduler, physical purge, dialer, and export are not claimed.",
+      "item": [
+        {
+          "name": "List Elderly SOS",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-list" }], "url": "{{baseUrl}}/api/v1/admin/elderly/sos?page=1&pageSize=20&status={{sosStatus}}&elderlyId={{elderlyId}}", "description": "SAFE READ: Normal SuperAdmin/SupportAdmin. Optional status and elderlyId filters; pageSize is bounded 1–100. Successful reads create an audit row." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS list contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Get Elderly SOS detail",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-detail" }], "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}", "description": "SAFE READ: audit-before-read; unknown, foreign, or deleted-Family SOS returns 404 Families.Sos.NotFound." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Get Elderly SOS history",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-history" }], "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/history", "description": "SAFE READ: chronological append-only Created/Acknowledged/Resolved/Cancelled history; audit-before-read." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS history contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Change Elderly SOS status — manual fixture",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-status" }], "body": { "mode": "raw", "raw": "{\n  \"action\": \"Acknowledged\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/status", "description": "STATE-CHANGING: manual disposable fixture only. Normal SuperAdmin/SupportAdmin. Allowed transitions are Open→Acknowledged/Resolved/Cancelled and Acknowledged→Resolved/Cancelled; invalid transitions return 400 Families.Sos.InvalidOperation." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS status contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        }
+      ]
     }
   ]
 }

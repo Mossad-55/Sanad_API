@@ -1,0 +1,19 @@
+meta {
+  name: 03-detail-authenticated-read-only
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/sos/{{sosId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyJwt}}
+}
+
+assert {
+  res.status: in 200 401 403 404
+}

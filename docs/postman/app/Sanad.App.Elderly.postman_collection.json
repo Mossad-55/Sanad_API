@@ -183,6 +183,42 @@
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('check-in contract outcome', function () { pm.expect([200, 404, 409]).to.include(pm.response.code); });"] } }]
         }
       ]
+    },
+    {
+      "name": "05. SOS (manual mutation and safe reads)",
+      "description": "Elderly Normal JWT only. The server binds SOS to the authenticated Elderly identity. Create/cancel are state-changing and manual-fixture-only; reads are safe contract requests. No SMS or server-side dialer is claimed.",
+      "item": [
+        {
+          "name": "Create SOS — manual disposable fixture",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{elderlyJwt}}" },
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Idempotency-Key", "value": "{{sosIdempotencyKey}}" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"locationConsentGranted\": true,\n  \"latitude\": 30.0444209,\n  \"longitude\": 31.2357112\n}" },
+            "url": "{{baseUrl}}/api/v1/elderly/sos",
+            "description": "STATE-CHANGING: use only with an approved disposable Elderly/Family fixture. Coordinates must be paired, consent-gated, and are stored rounded to three decimals. Replaying the same key and payload is idempotent; a different payload conflicts with 409 Families.Sos.IdempotencyConflict."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('SOS create contract outcome', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "List my SOS events",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{elderlyJwt}}" }], "url": "{{baseUrl}}/api/v1/elderly/sos", "description": "SAFE READ: identity-bound to the Elderly JWT; newest first. Coordinates are returned only within 30 days of creation." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('SOS list contract outcome', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Get SOS detail",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{elderlyJwt}}" }], "url": "{{baseUrl}}/api/v1/elderly/sos/{{sosId}}", "description": "SAFE READ: foreign, unknown, or deleted-Family events return 404 Families.Sos.NotFound; terminal states remain terminal." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('SOS detail contract outcome', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Cancel SOS — manual disposable fixture",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{elderlyJwt}}" }], "url": "{{baseUrl}}/api/v1/elderly/sos/{{sosId}}/cancel", "description": "STATE-CHANGING: manual fixture only. Cancels Open or Acknowledged; Resolved and Cancelled are terminal." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('SOS cancel contract outcome', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        }
+      ]
     }
   ],
   "variable": [
@@ -196,5 +232,7 @@
     { "key": "checkInAnswer", "value": "false", "type": "string", "description": "Manual disposable-fixture Boolean answer. Do not replay against shared or production data." },
     { "key": "helpRequestId", "value": "REPLACE_WITH_HELP_REQUEST_ID", "type": "string" },
     { "key": "helpRequestIdempotencyKey", "value": "elderly-help-request-example-001", "type": "string", "description": "Unique per Elderly actor; do not reuse with a different payload." }
+    ,{ "key": "sosId", "value": "REPLACE_WITH_SOS_ID", "type": "string" }
+    ,{ "key": "sosIdempotencyKey", "value": "elderly-sos-example-001", "type": "string", "description": "Unique per Elderly actor; do not reuse with a different payload." }
   ]
 }

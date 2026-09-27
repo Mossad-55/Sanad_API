@@ -1,0 +1,23 @@
+meta {
+  name: 02-list-authenticated-read-only
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/sos?page=1&pageSize=20
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-sos-list
+}
+
+auth:bearer {
+  token: {{adminJwt}}
+}
+
+assert {
+  res.status: in 200 401 403 400
+}

@@ -292,6 +292,12 @@ public static class DependencyInjection
                 policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
                 policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
             });
+            options.AddPolicy(AuthorizationPolicies.ElderlySosOperational, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+            });
         });
 
         services.AddMediatR(configuration =>
@@ -338,6 +344,7 @@ public static class DependencyInjection
             IFamilyIdentityGateway, FamilyIdentityGateway>();
 
         services.AddScoped<INotificationRecipientGateway, FamilyNotificationRecipientGateway>();
+        services.AddScoped<Sanad.Modules.Families.Application.Abstractions.Sos.ISosNotificationGateway, SosNotificationGateway>();
 
         services.AddScoped<
             ICaregiverAccountGateway, CaregiverAccountGateway>();

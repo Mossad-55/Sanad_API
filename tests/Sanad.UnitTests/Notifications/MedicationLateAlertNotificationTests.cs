@@ -39,5 +39,6 @@ public sealed class MedicationLateAlertNotificationTests
             => Task.FromResult<IReadOnlyList<UserId>>([recipient]);
         public Task<IReadOnlyList<UserId>> GetCheckInAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default) => throw new NotSupportedException();
         public Task<IReadOnlyList<UserId>> GetHelpRequestAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<IReadOnlyList<UserId>> GetSosAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

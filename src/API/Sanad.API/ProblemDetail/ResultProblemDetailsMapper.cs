@@ -199,6 +199,10 @@ public static class ResultProblemDetailsMapper
             ["Families.HelpRequest.NotFound"] = 404,
             ["Families.HelpRequest.IdempotencyConflict"] = 409,
             ["Families.HelpRequest.InvalidOperation"] = 409
+            , ["Families.Sos.NotFound"] = 404
+            , ["Families.Sos.IdempotencyConflict"] = 409
+            , ["Families.Sos.InvalidOperation"] = 409
+            , ["Families.Sos.InvalidLocation"] = 400
         };
 
     public static ProblemDetails Create(

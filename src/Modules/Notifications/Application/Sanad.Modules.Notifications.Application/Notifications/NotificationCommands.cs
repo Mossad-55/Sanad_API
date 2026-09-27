@@ -207,3 +207,55 @@ public sealed class CreateMedicationLateAlertNotificationsCommandHandler(
         return created;
     }
 }
+
+public sealed record CreateSosAlertNotificationsCommand(
+    Abstractions.Recipients.ElderlyRecipient Elderly, Guid SosId, DateTime CreatedOnUtc) : ICommand<int>;
+
+public sealed class CreateSosAlertNotificationsCommandHandler(
+    INotificationsDbContext db, Abstractions.Recipients.INotificationRecipientGateway recipients)
+    : ICommandHandler<CreateSosAlertNotificationsCommand, int>
+{
+    public async Task<Result<int>> Handle(CreateSosAlertNotificationsCommand r, CancellationToken ct)
+    {
+        var users = (await recipients.GetSosAlertRecipientsAsync(r.Elderly, ct)).Distinct().ToArray();
+        var keys = users.Select(x => $"elderly-sos:{r.SosId:N}:{x.Value:N}").ToArray();
+        var existing = (await db.Notifications.Where(x => x.IdempotencyKey != null && keys.Contains(x.IdempotencyKey!))
+            .Select(x => x.IdempotencyKey!).ToListAsync(ct)).ToHashSet(StringComparer.Ordinal);
+        var created = 0;
+        var pending = new List<Notification>();
+        foreach (var user in users)
+        {
+            var key = $"elderly-sos:{r.SosId:N}:{user.Value:N}";
+            if (!existing.Add(key)) continue;
+            var notification = Notification.Create(user.Value, "ElderlySos", "SosCreated", "SOS alert", "An elderly family member raised an SOS alert.", "ElderlySos", r.SosId, r.CreatedOnUtc, key);
+            db.Notifications.Add(notification);
+            pending.Add(notification);
+            created++;
+        }
+        if (created > 0)
+        {
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                if (db is DbContext context)
+                {
+                    foreach (var notification in pending)
+                        context.Entry(notification).State = EntityState.Detached;
+                }
+
+                var committedKeys = await db.Notifications
+                    .Where(x => x.IdempotencyKey != null && keys.Contains(x.IdempotencyKey!))
+                    .Select(x => x.IdempotencyKey!)
+                    .ToListAsync(ct);
+                if (committedKeys.ToHashSet(StringComparer.Ordinal).Count != keys.Length)
+                    throw;
+
+                return 0;
+            }
+        }
+        return created;
+    }
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 03-history-authenticated-read-only
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/history
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-sos-history
+}
+
+auth:bearer {
+  token: {{adminJwt}}
+}
+
+assert {
+  res.status: in 200 401 403 404
+}
