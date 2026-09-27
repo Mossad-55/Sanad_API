@@ -224,6 +224,21 @@ normal account may access a route explicitly protected by `FamilyAccess`.
 
 ## Needs Owner Verification
 
+### Scout gate reconfirmation (2026-09-27)
+
+The Phase 3 sentence-builder/help-request slice remains gated and is not
+implementation-ready. Owner decisions are still missing for builder
+vocabulary/schema/localization; sentence ordering, combinations, and
+validation; custom-text limits/rules; speech-to-text provider, ownership, and
+persistence; request types; recipients/selection; visibility and active-
+membership behavior; lifecycle/statuses including duplicate, retry, and
+cancel; notification categories, payloads, preferences, providers, and
+retries; Admin fields, visibility, audit contents, retention, and export; and
+the exact `SupportAdmin`/`ElderlyOperations` mutation semantics. No API,
+collection, test, or implementation contract should be inferred until these
+decisions are resolved. The existing notification inbox and daily
+check-in/Admin read slices remain delivered and are unaffected by this gate.
+
 1. The Family dependent is canonical for Elderly identity fields: Elderly sees
    a read-only bilingual name/photo profile, age computed from DOB, and latest
    linked assessment result; Family Owner/Editor retains the existing dependent
@@ -307,7 +322,7 @@ the records, so visibility and privacy are designed with the data lifecycle.
 | 1 / Phase 2 | **Delivered foundation:** shared notification inbox | Authenticated NormalAccess list with cursor paging (default 20, bounds 1–100), unread count, mark-one-read, mark-all-read, one-year read-time availability, read timestamps, and typed entity-kind/ID destinations. The negative check-in producer now writes eligible durable alerts through a separate Notifications context with local-date recipient idempotency. | No Admin notification inspection or provider delivery/retry surface is included. | Delivered: inbox reads, check-in alert fan-out and deduplication. **Needs Owner Verification:** complete category inventory, other event timezones, email/push provider/retry, and physical purge policy. |
 | 2 / Phase 3 | Elderly daily check-in | One final Boolean answer per profile-local IANA calendar day; retries return saved answer; invalid timezone fails closed; no same-day edit; negative answer creates durable in-app alerts for active linked members with `checkInAlerts` enabled; no SMS. | Admin read-only list/detail/timeline/aggregate under the operational-read policy, with filters/paging, inclusive ranges up to 31 days, safe projections, and audit-before-read. | Core check-in/alert behavior and Admin operational reads are delivered. Separate Families/Notifications persistence is not an atomic transaction; push provider/retry, reminders, missed-state rules, and exact Family status/history remain verification items. |
 | 3 / Phase 3 | Elderly medication self-service and operational reads | **Core delivered:** Elderly-scoped prescription list, required-date profile-local dashboard, and scheduled-dose take; shared persisted history with Family and Elderly actor; duplicate/racing take rejection and stock decrement. Prescription edit/skip are not exposed. | Admin medication list/detail, persisted dose timeline, and dose-log adherence aggregate are delivered under `ElderlyMedicationOperationalRead`; SuperAdmin and SupportAdmin with Normal access only. Every successful sensitive read is audited before the result; late/missed alerts and notification delivery remain separate. | Core self-service and Admin read contracts are approved; collection examples are manual/stateful because GETs write audit rows. |
-| 4 / Phase 3 | Sentence-builder catalog and help requests | CMS-driven localized builder vocabulary/templates plus custom sentence rules; request create/list/status and recipient workflow. | CMS full list/detail/preview/version/publish for vocabulary; operational requests queue/detail/timeline and approved accept/resolve actions. | Builder schema, recipient rules, request lifecycle, and permissions approved. |
+| 4 / Phase 3 | Sentence-builder catalog and help requests | CMS-driven localized builder vocabulary/templates plus custom sentence rules; request create/list/status and recipient workflow. | CMS full list/detail/preview/version/publish for vocabulary; operational requests queue/detail/timeline and approved accept/resolve actions. | **Gated; Needs Owner Verification.** Builder schema/localization, ordering and validation, custom text, speech-to-text, recipients/visibility, request lifecycle, notifications, Admin field/audit/retention/export rules, and `SupportAdmin`/`ElderlyOperations` mutation semantics remain unresolved. |
 | 5 / Phase 3 | SOS / emergency response | SOS creation, location consent/capture, recipients, status, duplicate protection, cancel/escalation and notification integration. | Restricted urgent-event queue/detail, response timeline, purpose-logged contact/location view and aggregate response measures. | Button behavior, responder rules, location precision/retention, and escalation/timeout approved. |
 | 6 / Phase 6 | Health and wellness tips | **Delivered bounded slice:** public Elderly published-only feed/detail with bilingual titles/sections and bounded pagination. | CMS list/search/filter/detail/preview, multipart image-backed draft create/update, publish/archive. | Localization, media, and lifecycle are implemented; clinical review, tenant scope, featured/save/read metrics remain **Needs Owner Verification**. |
 
