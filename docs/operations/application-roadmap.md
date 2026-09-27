@@ -142,16 +142,19 @@ Complete the elderly flow on real data:
 - **Delivered bounded help-request/sentence-builder slice:** Elderly create/list/detail/cancel routes use identity-bound `ElderlyAccess`; Admin list/detail/history/aggregate/status routes use `ElderlyHelpRequestOperational`; and CMS catalog list/detail/create/activate/deactivate routes use `CmsContent`. The catalog is bilingual and revisioned. Requests persist `Pending`, `Accepted`, `InProgress`, `Resolved`, `Rejected`, `Cancelled`, or `Reopened`; history is append-only, available for one year, and operator reasons are capped at 500 characters. `Idempotency-Key` replay returns the original request and a different payload conflicts. Durable in-app alerts are filtered to active linked Family members with `helpRequestAlerts` enabled and deduplicated per recipient/request. Push/email remain deferred to Notifications/Events; SMS is excluded. See [`docs/app/elderly/help-requests.md`](../app/elderly/help-requests.md) and [`docs/admin/elderly-help-requests.md`](../admin/elderly-help-requests.md).
 - Medication task execution using the existing medication schedule and
   take/skip contracts; add history and family synchronization where missing.
-- Medication late/missed alerts are a separate gated contract. The owner-approved
-  lateness threshold is CMS-managed with an initial value of 60 minutes after
-  the scheduled dose, but no CMS setting/ownership/scope/versioning API exists.
-  `DoseStatus.Missed` has no transition logic, and no scheduler, outbox, or
-  dispatcher exists. No late-alert route/domain/persistence/tests/Postman/Bruno
-  implementation exists. Alert recipients, event category/payload/deep-link,
-  preference/channel mapping, durable retry/idempotency, historical
-  recalculation, and Admin alert/threshold audit surface remain unresolved.
-  Preserve the delivered Elderly medication self-service and Admin prescription,
-  dose-timeline, and adherence reads.
+- **Delivered medication late/missed slice:** `GET /api/v1/elderly/medications/late`
+  evaluates only the authenticated Elderly profile's current IANA-local day;
+  the CMS-managed threshold is versioned and initially 60 minutes after the
+  scheduled dose, with no historical recalculation. Normal `SuperAdmin` and
+  `SupportAdmin` can use the audited `POST
+  /api/v1/admin/elderly/medications/late/evaluate?dependentId=...` action under
+  `ElderlyMedicationOperationalManage`; CMS reads/revisions use `CmsContent`.
+  Durable in-app notifications target active linked Family members honoring
+  `MedicationReminders`, the assigned caregiver only during an active
+  `Confirmed`/`InProgress` booking, and active SupportAdmin users. Push/email,
+  outbox, and scheduler delivery remain deferred/Needs Owner Verification; SMS
+  is excluded. Preserve the existing prescription, dose-timeline, adherence,
+  and Elderly dose-taking contracts.
 - SOS creation, location capture, recipient notification, status tracking, and
   cancellation. The owner-approved outcome is only a tracked SOS with intended
   contact notification and device-dialer behavior where documented; voice

@@ -32,6 +32,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Bookings (cancellations & refunds) | `docs/admin/bookings.md` |
 | Subscription plans, publication/retirement, and coupon configuration | `docs/admin/subscriptions.md` |
 | Elderly medication operational reads (prescriptions, dose logs, adherence) | `docs/admin/elderly-medications.md` |
+| Medication lateness CMS and operational evaluation | `docs/admin/elderly-medications.md` |
 | Elderly help-request operations and history | `docs/admin/elderly-help-requests.md` |
 | Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
 
@@ -87,3 +88,15 @@ POST   /identity-documents/{userId}/revoke             Verified → Revoked; Use
 ```
 
 See `docs/admin/identity-documents.md`.
+
+## Medication lateness boundary
+
+The active medication lateness threshold is CMS-managed and versioned. CMS
+`GET/POST /api/v1/admin/cms/medication-lateness...` uses `CmsContent` and is
+available to Normal `SuperAdmin` and `ContentAdmin` accounts. The operational
+`POST /api/v1/admin/elderly/medications/late/evaluate?dependentId=...` route
+uses `ElderlyMedicationOperationalManage` and is available only to Normal
+`SuperAdmin` and `SupportAdmin` accounts. SupportAdmin may manage this
+evaluation action but does not edit prescription, dose-log, or identity source
+records. Successful operational actions are audited; late alerts are durable
+in-app only, with push/email/outbox/scheduler delivery deferred.

@@ -2672,6 +2672,24 @@
       ]
     },
     {
+      "name": "15. Medication lateness (manual/read-only contract)",
+      "description": "CMS threshold reads/revisions use CmsContent. The evaluate action uses ElderlyMedicationOperationalManage and is limited to Normal SuperAdmin/SupportAdmin. GETs are safe; POSTs may change CMS or dose/notification state and are manual fixture-only requests.",
+      "item": [
+        {
+          "name": "Get active medication lateness setting",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/cms/medication-lateness", "description": "Read-only CMS setting. Normal SuperAdmin or ContentAdmin. Returns the active immutable revision, including version and thresholdMinutes; 404 Cms.MedicationLateness.NotFound when no setting is configured." }
+        },
+        {
+          "name": "Create medication lateness revision (manual mutation)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"thresholdMinutes\": 60\n}" }, "url": "{{baseUrl}}/api/v1/admin/cms/medication-lateness/revisions", "description": "STATE-CHANGING CMS authoring. Normal SuperAdmin or ContentAdmin only. Creates the next immutable active revision; thresholdMinutes must be 1–1440. Do not replay without owner-approved disposable CMS data." }
+        },
+        {
+          "name": "Evaluate Elderly late/missed doses (manual mutation)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-medication-lateness" }], "url": "{{baseUrl}}/api/v1/admin/elderly/medications/late/evaluate?dependentId={{elderlyId}}", "description": "STATE-CHANGING: Normal SuperAdmin or SupportAdmin under ElderlyMedicationOperationalManage. Audits the action, evaluates only the selected profile's current IANA-local day using the versioned CMS threshold, and may persist current-day missed logs plus idempotent durable in-app alerts. Assigned caregivers qualify only for active Confirmed/InProgress bookings; active linked Family recipients must honor MedicationReminders; active SupportAdmin users are included. Push/email/outbox/scheduler are deferred/Needs Owner Verification. Use only an approved disposable fixture." }
+        }
+      ]
+    },
+    {
       "name": "15A. Elderly check-in operations (safe reads)",
       "item": [
         {

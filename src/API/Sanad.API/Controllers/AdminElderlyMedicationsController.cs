@@ -34,6 +34,11 @@ public sealed class AdminElderlyMedicationsController : ApiControllerBase
     public async Task<IActionResult> Adherence([FromQuery] DateOnly? startDate = null, [FromQuery] DateOnly? endDate = null, [FromQuery] Guid? dependentId = null, CancellationToken ct = default)
         => await Send(new GetAdminMedicationAdherenceQuery(Actor(), AccountType(), CorrelationId(), startDate, endDate, dependentId), ct);
 
+    [Authorize(Policy = AuthorizationPolicies.ElderlyMedicationOperationalManage)]
+    [HttpPost("late/evaluate")]
+    public async Task<IActionResult> EvaluateLate([FromQuery] Guid dependentId, CancellationToken ct)
+        => ToActionResult(await _sender.Send(new EvaluateAdminMedicationLatenessCommand(Actor(), new ElderlyId(dependentId), AccountType(), CorrelationId(), DateTime.UtcNow), ct));
+
     private async Task<IActionResult> Send<T>(Sanad.BuildingBlocks.Application.CQRS.IQuery<T> query, CancellationToken ct)
     {
         var result = await _sender.Send(query, ct);

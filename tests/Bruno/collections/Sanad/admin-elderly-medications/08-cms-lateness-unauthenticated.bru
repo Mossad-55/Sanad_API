@@ -1,0 +1,14 @@
+meta {
+  name: 08-cms-lateness-unauthenticated
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/cms/medication-lateness
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

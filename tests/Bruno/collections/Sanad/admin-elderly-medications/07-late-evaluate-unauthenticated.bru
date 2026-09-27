@@ -1,0 +1,19 @@
+meta {
+  name: 07-late-evaluate-unauthenticated
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/elderly/medications/late/evaluate?dependentId=00000000-0000-0000-0000-000000000000
+  body: none
+  auth: none
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-medication-lateness-unauthenticated
+}
+
+assert {
+  res.status: eq 401
+}

@@ -5,6 +5,7 @@ using Sanad.Modules.Cms.Domain.Legal;
 using Sanad.Modules.Cms.Domain.Splash;
 using Sanad.Modules.Cms.Domain.Wellness;
 using Sanad.Modules.Cms.Domain.SentenceBuilder;
+using Sanad.Modules.Cms.Domain.MedicationLateness;
 
 namespace Sanad.Modules.Cms.Infrastructure.Persistence;
 
@@ -35,6 +36,8 @@ public sealed class CmsDbContext :
     public DbSet<WellnessTip> WellnessTips => Set<WellnessTip>();
     public DbSet<SentenceBuilderCatalogEntry> SentenceBuilderCatalogEntries => Set<SentenceBuilderCatalogEntry>();
     public DbSet<SentenceBuilderCatalogRevision> SentenceBuilderCatalogRevisions => Set<SentenceBuilderCatalogRevision>();
+    public DbSet<MedicationLatenessSetting> MedicationLatenessSettings => Set<MedicationLatenessSetting>();
+    public DbSet<MedicationLatenessSettingRevision> MedicationLatenessSettingRevisions => Set<MedicationLatenessSettingRevision>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
@@ -55,6 +58,7 @@ public sealed class CmsDbContext :
     public override int SaveChanges(bool acceptAllChangesOnSuccess)
     {
         ThrowIfSentenceBuilderRevisionMutated();
+        ThrowIfMedicationLatenessRevisionMutated();
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
 
@@ -64,6 +68,7 @@ public sealed class CmsDbContext :
     public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
     {
         ThrowIfSentenceBuilderRevisionMutated();
+        ThrowIfMedicationLatenessRevisionMutated();
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
 
@@ -77,6 +82,16 @@ public sealed class CmsDbContext :
             if (entry.State == EntityState.Modified && entry.Properties.Any(property =>
                     property.IsModified && property.Metadata.Name is not nameof(SentenceBuilderCatalogRevision.IsActive)))
                 throw new InvalidOperationException("Sentence-builder catalog fields are immutable; only activation may change.");
+        }
+    }
+
+    private void ThrowIfMedicationLatenessRevisionMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<MedicationLatenessSettingRevision>())
+        {
+            if (entry.State == EntityState.Deleted || entry.State == EntityState.Modified && entry.Properties.Any(property =>
+                    property.IsModified && property.Metadata.Name is not nameof(MedicationLatenessSettingRevision.IsActive)))
+                throw new InvalidOperationException("Medication lateness setting revisions are immutable; only activation may change.");
         }
     }
 }

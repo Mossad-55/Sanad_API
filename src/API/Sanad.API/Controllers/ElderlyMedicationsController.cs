@@ -55,4 +55,12 @@ public sealed class ElderlyMedicationsController : ApiControllerBase
             request.Notes,
             DateTime.UtcNow), cancellationToken));
     }
+
+    [HttpGet("late")]
+    [ProducesResponseType(typeof(MedicationLatenessEvaluationResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> Late(CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        return ToActionResult(await _sender.Send(new EvaluateOwnMedicationLatenessCommand(userId, DateTime.UtcNow), cancellationToken));
+    }
 }

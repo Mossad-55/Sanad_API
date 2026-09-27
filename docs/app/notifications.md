@@ -85,3 +85,12 @@ No complete category list or general event delivery policy should be inferred
 from the current fields. The delivered help-request and negative check-in
 producers create durable in-app alerts only; push/email providers and retries
 remain deferred to Notifications/Events, and SMS is excluded.
+
+Medication late/missed evaluation uses the `MedicationReminders` preference for
+eligible active linked Family recipients. It also targets the assigned caregiver
+only during an active `Confirmed` or `InProgress` booking for the Elderly, plus
+active `SupportAdmin` users. Unassigned or unbooked caregivers are excluded.
+The current event is `category = MedicationReminders` and
+`type = MedicationDoseMissed`, with a typed `Medication` destination. Rows are
+durable and idempotent per recipient and scheduled dose. Push/email delivery,
+outbox, and scheduler behavior are deferred and remain Needs Owner Verification.

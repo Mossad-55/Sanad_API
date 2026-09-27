@@ -21,6 +21,7 @@ management and the shared response shapes are documented in
 |---|---|---|
 | `GET` | `/api/v1/elderly/medications` | List prescriptions for the linked dependent. |
 | `GET` | `/api/v1/elderly/medications/dashboard?date=YYYY-MM-DD` | Return the medication schedule and dashboard for a required profile-local calendar date. |
+| `GET` | `/api/v1/elderly/medications/late` | Evaluate the current profile-local day against the active CMS lateness threshold and return missed doses. |
 | `POST` | `/api/v1/elderly/medications/{medicationId}/doses/take` | Record an eligible scheduled dose as taken. |
 
 `date` is required for the dashboard and must use the ISO `YYYY-MM-DD` format.
@@ -50,16 +51,38 @@ The take response is the existing `MedicationDoseResponse` shape, including
 `loggedByUserId`. The dashboard returns the existing `MedicationDashboardResponse`
 shape. See the Family medication reference for full response examples.
 
+## Late and missed doses
+
+`GET /api/v1/elderly/medications/late` is available to the authenticated Normal
+Elderly identity and resolves the currently linked dependent. It evaluates only
+the current day in that Elderly profile's IANA time zone. An active CMS setting
+controls lateness; the initial threshold is 60 minutes after the scheduled dose.
+The response includes `thresholdMinutes`, its immutable `settingVersion`, the
+profile-local `localDate`, and `missedDoses`. A dose is marked `Missed` only
+after its scheduled time plus the threshold, and active prescriptions in their
+date range are considered.
+
+Evaluation does not recalculate historical dates. It may materialize the
+current day's scheduled dose log and is safe to retry: durable in-app alert
+rows are idempotent per recipient and dose. Eligible recipients are active
+linked Family members with `MedicationReminders` enabled, the assigned
+caregiver only while an active booking for this dependent is `Confirmed` or
+`InProgress`, and active `SupportAdmin` users. Unassigned or unbooked
+caregivers are not recipients. Push, email, outbox, and scheduler delivery are
+deferred and remain Needs Owner Verification; SMS is not part of this contract.
+
 ## Not available to Elderly callers
 
 There is no Elderly route to add, edit, pause, resume, discontinue, or skip a
 prescription, or to directly choose the dependent whose medications are read.
-Those operations remain under Family management. These routes also do not
-define late/missed-dose alerts or notification delivery.
+Those operations remain under Family management. The `late` GET is the
+read/evaluation surface for current-day missed doses; it does not expose
+prescription editing or dose skipping.
 
 ## Postman and Bruno
 
 The [Elderly Postman collection](../../postman/app/Sanad.App.Elderly.postman_collection.json)
 contains read requests and an explicitly state-changing take-dose example.
-The Bruno Elderly medication folder covers dashboard/list reads only; it does
-not issue a take request.
+The Bruno Elderly medication folder covers list/dashboard reads and safe
+unauthenticated late-route rejection; it does not issue a take or evaluation
+request.

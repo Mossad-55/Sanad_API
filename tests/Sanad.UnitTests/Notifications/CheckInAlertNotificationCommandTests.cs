@@ -28,7 +28,7 @@ public sealed class CheckInAlertNotificationCommandTests
         Assert.Equal(2, result.Value);
         var rows = await db.Notifications.ToListAsync();
         Assert.Equal(2, rows.Count);
-        Assert.Equal(new[] { first.Value, second.Value }, rows.Select(x => x.RecipientUserId).OrderBy(x => x));
+        Assert.Equal(new[] { first.Value, second.Value }.OrderBy(x => x), rows.Select(x => x.RecipientUserId).OrderBy(x => x));
         Assert.All(rows, row =>
         {
             Assert.Equal("ElderlyCheckIn", row.Category);
@@ -49,6 +49,9 @@ public sealed class CheckInAlertNotificationCommandTests
             Task.FromResult<IReadOnlyList<UserId>>([first, second, first]);
 
         public Task<IReadOnlyList<UserId>> GetHelpRequestAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<UserId>>([]);
+
+        public Task<IReadOnlyList<UserId>> GetMedicationAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default) =>
             Task.FromResult<IReadOnlyList<UserId>>([]);
     }
 }

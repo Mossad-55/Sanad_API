@@ -1,9 +1,9 @@
 # Admin Elderly medication operational reads
 
 These routes provide a restricted operational view of elderly medication
-prescriptions, persisted dose logs, and dose-log adherence aggregates. They are
-read endpoints only: there are no Admin prescription, dose, or stock write
-routes.
+prescriptions, persisted dose logs, dose-log adherence aggregates, and the
+explicit late/missed evaluation action. There are no Admin prescription, dose,
+or stock write routes.
 
 ## Access and audit
 
@@ -33,6 +33,31 @@ fixture and owner approval.
 | `GET` | `/api/v1/admin/elderly/medications/{medicationId}` | — | One medication record with linked Elderly Arabic/English names and Family ID. |
 | `GET` | `/api/v1/admin/elderly/medications/{medicationId}/doses` | Required `startDate` and `endDate` (`YYYY-MM-DD`), optional `status` | Persisted dose logs for the selected medication, inclusive and ordered by scheduled date/time. The range is at most 31 calendar days. |
 | `GET` | `/api/v1/admin/elderly/medications/adherence` | Optional `startDate`, `endDate`, `dependentId` | Counts and adherence percentage computed from persisted dose logs only. |
+| `POST` | `/api/v1/admin/elderly/medications/late/evaluate` | Required `dependentId` | Evaluate the current profile-local day for the selected Elderly and create durable in-app late-dose alerts. No body. |
+
+The evaluate route requires the separate
+`ElderlyMedicationOperationalManage` policy, with `access_type = Normal` and
+`account_type = SuperAdmin` or `SupportAdmin`. It audits the operational action
+and resolves the selected active Family-linked Elderly profile. It uses the
+versioned CMS threshold (initially 60 minutes), evaluates only that profile's
+current IANA-local day, and never recalculates historical dates. It returns the
+same `thresholdMinutes`, `settingVersion`, `localDate`, and `missedDoses`
+contract as the Elderly route. The action is stateful: it may persist current-day
+scheduled/missed dose logs and idempotent notification rows.
+
+The CMS threshold surface is separate:
+
+- `GET /api/v1/admin/cms/medication-lateness` reads the active revision.
+- `POST /api/v1/admin/cms/medication-lateness/revisions` creates and activates
+  the next immutable revision from `{ "thresholdMinutes": 60 }`.
+
+CMS routes require `CmsContent` (Normal `SuperAdmin` or `ContentAdmin`). The
+threshold is constrained to 1–1440 minutes; old revisions remain immutable and
+only one revision is active. Late alerts are durable in-app only. Recipients
+are active linked Family members honoring `MedicationReminders`, the assigned
+caregiver only for an active `Confirmed`/`InProgress` booking, and active
+SupportAdmin users. Push/email, outbox, and scheduler delivery are deferred and
+Needs Owner Verification; SMS is excluded.
 
 The dose timeline rejects a reversed range or an inclusive range longer than
 31 days with `400 Families.AdminMedication.InvalidDateRange`. The medication

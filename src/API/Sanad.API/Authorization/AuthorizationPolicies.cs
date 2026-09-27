@@ -25,5 +25,7 @@ public static class AuthorizationPolicies
 
     public const string ElderlyMedicationOperationalRead =
         "ElderlyMedicationOperationalRead";
+    public const string ElderlyMedicationOperationalManage =
+        "ElderlyMedicationOperationalManage";
     public const string ElderlyHelpRequestOperational = "ElderlyHelpRequestOperational";
 }

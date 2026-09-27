@@ -83,7 +83,7 @@ public sealed class NotificationDomainAndHandlerTests
     }
 
     private static object Create(Guid recipient, Guid destination, DateTime created, string category = "category", string type = "type")
-        => Notification.GetMethod("Create")!.Invoke(null, [recipient, category, type, "title", "body", "Elderly", destination, created])!;
+        => Notification.GetMethod("Create")!.Invoke(null, [recipient, category, type, "title", "body", "Elderly", destination, created, null])!;
 
     private static async Task<object> Handle(string handlerName, string requestName, object db, params object?[] args)
     {

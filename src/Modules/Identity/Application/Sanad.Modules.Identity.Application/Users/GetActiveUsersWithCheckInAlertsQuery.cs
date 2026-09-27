@@ -27,3 +27,11 @@ public sealed class GetActiveUsersWithCheckInAlertsQueryHandler(IIdentityDbConte
 public sealed record GetActiveUsersWithHelpRequestAlertsQuery(IReadOnlyCollection<UserId> UserIds) : IQuery<IReadOnlyList<UserId>>;
 public sealed class GetActiveUsersWithHelpRequestAlertsQueryHandler(IIdentityDbContext db) : IQueryHandler<GetActiveUsersWithHelpRequestAlertsQuery, IReadOnlyList<UserId>>
 { public async Task<Result<IReadOnlyList<UserId>>> Handle(GetActiveUsersWithHelpRequestAlertsQuery r, CancellationToken ct) => await db.Users.AsNoTracking().Where(x => r.UserIds.Contains(x.Id) && x.Status == UserStatus.Active && x.NotificationPreferences.HelpRequestAlerts).Select(x => x.Id).ToListAsync(ct); }
+
+public sealed record GetActiveUsersWithMedicationRemindersQuery(IReadOnlyCollection<UserId> UserIds) : IQuery<IReadOnlyList<UserId>>;
+public sealed class GetActiveUsersWithMedicationRemindersQueryHandler(IIdentityDbContext db) : IQueryHandler<GetActiveUsersWithMedicationRemindersQuery, IReadOnlyList<UserId>>
+{ public async Task<Result<IReadOnlyList<UserId>>> Handle(GetActiveUsersWithMedicationRemindersQuery r, CancellationToken ct) => await db.Users.AsNoTracking().Where(x => r.UserIds.Contains(x.Id) && x.Status == UserStatus.Active && x.NotificationPreferences.MedicationReminders).Select(x => x.Id).ToListAsync(ct); }
+
+public sealed record GetActiveSupportAdminUserIdsQuery : IQuery<IReadOnlyList<UserId>>;
+public sealed class GetActiveSupportAdminUserIdsQueryHandler(IIdentityDbContext db) : IQueryHandler<GetActiveSupportAdminUserIdsQuery, IReadOnlyList<UserId>>
+{ public async Task<Result<IReadOnlyList<UserId>>> Handle(GetActiveSupportAdminUserIdsQuery r, CancellationToken ct) => await db.Users.AsNoTracking().Where(x => x.Status == UserStatus.Active && x.Accounts.Any(a => a.AccountType == AccountType.SupportAdmin)).Select(x => x.Id).ToListAsync(ct); }

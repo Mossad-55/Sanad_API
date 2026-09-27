@@ -83,6 +83,17 @@ public sealed class MedicationDoseLog : Entity<MedicationDoseLogId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void MarkAsMissed(DateTime utcNow)
+    {
+        if (utcNow.Kind != DateTimeKind.Utc) throw new ArgumentException("Missed time must be UTC.");
+        if (Status is DoseStatus.Taken or DoseStatus.Skipped) return;
+        Status = DoseStatus.Missed;
+        TakenAtUtc = null;
+        SkippedAtUtc = null;
+        LoggedByUserId = null;
+        UpdatedOnUtc = utcNow;
+    }
+
     private static string? NormalizeOptional(string? value, int maxLength, string fieldName)
     {
         if (string.IsNullOrWhiteSpace(value))

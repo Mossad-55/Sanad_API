@@ -97,6 +97,21 @@
       ]
     },
     {
+      "name": "02A. Medication lateness (read-only contract)",
+      "item": [
+        {
+          "name": "Evaluate current-day late/missed doses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/elderly/medications/late",
+            "description": "Normal Elderly JWT only. Resolves the currently linked dependent and evaluates only the current profile-local day against the active versioned CMS threshold (initially 60 minutes). Response includes thresholdMinutes, settingVersion, localDate, and missedDoses. This request may persist current-day dose logs and idempotent durable in-app alerts; use only an approved disposable fixture. Push/email/outbox/scheduler delivery is deferred/Needs Owner Verification; SMS is excluded."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('late evaluation contract outcome', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        }
+      ]
+    },
+    {
       "name": "03. Wellness tips (read-only)",
       "item": [
         {

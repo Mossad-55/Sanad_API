@@ -1,0 +1,14 @@
+meta {
+  name: 04-late-unauthenticated
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/medications/late
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

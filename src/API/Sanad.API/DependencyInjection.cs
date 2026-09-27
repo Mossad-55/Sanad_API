@@ -36,6 +36,8 @@ using Sanad.Modules.Notifications.Application.Abstractions.Recipients;
 using Sanad.Modules.Families.Application.Abstractions.Notifications;
 using Sanad.Modules.Families.Application.Abstractions.HelpRequests;
 using Sanad.API.HelpRequestsIntegration;
+using Sanad.API.MedicationIntegration;
+using Sanad.Modules.Families.Application.Abstractions.Medications;
 
 namespace Sanad.API;
 
@@ -89,6 +91,8 @@ public static class DependencyInjection
         services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
         services.AddScoped<IHelpRequestCatalogGateway, HelpRequestCatalogGateway>();
         services.AddScoped<IHelpRequestNotificationGateway, HelpRequestNotificationGateway>();
+        services.AddScoped<IMedicationLatenessSettingGateway, MedicationLatenessSettingGateway>();
+        services.AddScoped<IMedicationLateAlertGateway, MedicationLateAlertGateway>();
 
         services.AddOptions<LocalStorageOptions>()
             .Bind(
@@ -266,6 +270,15 @@ public static class DependencyInjection
 
             options.AddPolicy(
                 AuthorizationPolicies.ElderlyMedicationOperationalRead,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                    policy.RequireClaim(AuthClaimNames.AccountType,
+                        AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+                });
+            options.AddPolicy(
+                AuthorizationPolicies.ElderlyMedicationOperationalManage,
                 policy =>
                 {
                     policy.RequireAuthenticatedUser();
