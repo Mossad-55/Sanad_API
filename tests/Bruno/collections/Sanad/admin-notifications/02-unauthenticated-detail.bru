@@ -1,0 +1,14 @@
+meta {
+  name: 02-unauthenticated-detail
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/notifications/6ab3d866-3a6f-4c09-8d9c-75d46cc24de1
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

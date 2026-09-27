@@ -1,0 +1,14 @@
+meta {
+  name: 03-unauthenticated-timeline
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/notifications/timeline?startDate=2026-09-01&endDate=2026-09-02&page=1&pageSize=20
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

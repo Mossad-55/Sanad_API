@@ -24,12 +24,16 @@ namespace Sanad.UnitTests.API;
 public sealed class AdminNotificationsControllerTests
 {
     [Fact]
-    public void Controller_UsesOperationalReadPolicyAndPagedListRoute()
+    public void Controller_UsesOperationalReadPolicyAndExposesAllFourRoutes()
     {
-        var authorization = Assert.Single(typeof(AdminNotificationsController).GetCustomAttributes<AuthorizeAttribute>());
+        var controller = typeof(AdminNotificationsController);
+        var authorization = Assert.Single(controller.GetCustomAttributes<AuthorizeAttribute>());
         Assert.Equal(AuthorizationPolicies.AdminNotificationOperationalRead, authorization.Policy);
-        Assert.Equal("api/v1/admin/notifications", Assert.Single(typeof(AdminNotificationsController).GetCustomAttributes<RouteAttribute>()).Template);
-        Assert.NotNull(typeof(AdminNotificationsController).GetMethod(nameof(AdminNotificationsController.List))!.GetCustomAttribute<HttpGetAttribute>());
+        Assert.Equal("api/v1/admin/notifications", Assert.Single(controller.GetCustomAttributes<RouteAttribute>()).Template);
+        AssertRoute(nameof(AdminNotificationsController.List), "");
+        AssertRoute(nameof(AdminNotificationsController.Get), "{notificationId:guid}");
+        AssertRoute(nameof(AdminNotificationsController.Timeline), "timeline");
+        AssertRoute(nameof(AdminNotificationsController.Aggregate), "aggregate");
     }
 
     [Fact]
@@ -48,34 +52,69 @@ public sealed class AdminNotificationsControllerTests
         Assert.False(Satisfies(policy, AccountType.SupportAdmin, AuthAccessType.RestrictedVerification));
     }
 
-    [Fact]
-    public async Task List_PersistsPayloadFreeAuditBeforeQueryAndForwardsPaging()
+    [Theory]
+    [InlineData("list", "ListNotifications", "NotificationList")]
+    [InlineData("detail", "GetNotification", "Notification")]
+    [InlineData("timeline", "GetNotificationTimeline", "NotificationTimeline")]
+    [InlineData("aggregate", "GetNotificationAggregate", "NotificationAggregate")]
+    public async Task Routes_PersistActorAndAuditMarkerBeforeDispatch(string route, string action, string resourceType)
     {
         await using var families = CreateFamiliesDb();
-        var sender = new CapturingSender(() => families.AdminMedicationAccessAudits.AsNoTracking().CountAsync());
         var actorId = Guid.NewGuid();
+        var sender = new CapturingSender(() => families.AdminMedicationAccessAudits.AsNoTracking().CountAsync());
         var controller = CreateController(sender, actorId, families);
         controller.HttpContext.Request.Headers["X-Correlation-ID"] = "admin-notification-test";
+        var notificationId = Guid.NewGuid();
 
-        var result = await controller.List(2, 17, CancellationToken.None);
+        var result = route switch
+        {
+            "list" => await controller.List(2, 17, "Sos", "Created", new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 3), CancellationToken.None),
+            "detail" => await controller.Get(notificationId, CancellationToken.None),
+            "timeline" => await controller.Timeline(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 2), 3, 11, CancellationToken.None),
+            "aggregate" => await controller.Aggregate(new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 2), CancellationToken.None),
+            _ => throw new ArgumentOutOfRangeException(nameof(route))
+        };
 
         Assert.IsType<OkObjectResult>(result);
         Assert.Equal(1, sender.AuditCountWhenCalled);
         var audit = await families.AdminMedicationAccessAudits.AsNoTracking().SingleAsync();
         Assert.Equal(new UserId(actorId), audit.ActorUserId);
         Assert.Equal(AccountType.SupportAdmin.ToString(), audit.ActorAccountType);
-        Assert.Equal("ListNotifications", audit.Action);
-        Assert.Equal("Notification", audit.ResourceType);
-        Assert.Null(audit.ResourceId);
+        Assert.Equal(action, audit.Action);
+        Assert.Equal(resourceType, audit.ResourceType);
+        Assert.Equal(route == "detail" ? notificationId : null, audit.ResourceId);
         Assert.Equal("admin-notification-test", audit.CorrelationId);
-        Assert.IsType<ListAdminNotificationsQuery>(sender.LastRequest);
-        var query = (ListAdminNotificationsQuery)sender.LastRequest!;
-        Assert.Equal(2, query.Page);
-        Assert.Equal(17, query.PageSize);
+
+        switch (sender.LastRequest)
+        {
+            case ListAdminNotificationsQuery query:
+                Assert.Equal(2, query.Page);
+                Assert.Equal(17, query.PageSize);
+                Assert.Equal("Sos", query.Category);
+                Assert.Equal("Created", query.Type);
+                Assert.Equal(new DateOnly(2026, 8, 1), query.StartDate);
+                Assert.Equal(new DateOnly(2026, 8, 3), query.EndDate);
+                break;
+            case GetAdminNotificationQuery query:
+                Assert.Equal(notificationId, query.NotificationId);
+                break;
+            case GetAdminNotificationTimelineQuery query:
+                Assert.Equal(new DateOnly(2026, 8, 1), query.StartDate);
+                Assert.Equal(new DateOnly(2026, 8, 2), query.EndDate);
+                Assert.Equal(3, query.Page);
+                Assert.Equal(11, query.PageSize);
+                break;
+            case GetAdminNotificationAggregateQuery query:
+                Assert.Equal(new DateOnly(2026, 8, 1), query.StartDate);
+                Assert.Equal(new DateOnly(2026, 8, 2), query.EndDate);
+                break;
+            default:
+                throw new Xunit.Sdk.XunitException($"Unexpected query: {sender.LastRequest?.GetType().Name ?? "null"}");
+        }
     }
 
     [Fact]
-    public async Task List_DoesNotQueryWhenAuditPersistenceFails()
+    public async Task Route_DoesNotDispatchWhenAuditPersistenceFails()
     {
         var options = new DbContextOptionsBuilder<FamiliesDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
@@ -85,7 +124,8 @@ public sealed class AdminNotificationsControllerTests
         var sender = new CapturingSender();
         var controller = CreateController(sender, Guid.NewGuid(), families);
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() => controller.List(1, 20, CancellationToken.None));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => controller.Timeline(
+            new DateOnly(2026, 8, 1), new DateOnly(2026, 8, 2), 1, 20, CancellationToken.None));
 
         Assert.Equal(0, sender.CallCount);
     }
@@ -95,6 +135,12 @@ public sealed class AdminNotificationsControllerTests
     {
         var properties = typeof(AdminNotificationRecord).GetProperties().Select(x => x.Name).Order().ToArray();
         Assert.Equal(new[] { "Category", "CreatedOnUtc", "Id", "ReadOnUtc", "Type" }.Order(), properties);
+    }
+
+    private static void AssertRoute(string methodName, string expectedTemplate)
+    {
+        var method = typeof(AdminNotificationsController).GetMethod(methodName)!;
+        Assert.Equal(expectedTemplate, method.GetCustomAttribute<HttpGetAttribute>()!.Template ?? "");
     }
 
     private static AdminNotificationsController CreateController(CapturingSender sender, Guid actorId, IFamiliesDbContext families)
@@ -132,8 +178,15 @@ public sealed class AdminNotificationsControllerTests
             CallCount++;
             LastRequest = request;
             if (auditCount is not null) AuditCountWhenCalled = await auditCount();
-            var page = new AdminNotificationPage([], 1, 20, false);
-            return (TResponse)(object)Result<AdminNotificationPage>.Success(page);
+            object response = request switch
+            {
+                ListAdminNotificationsQuery => Result<AdminNotificationPage>.Success(new AdminNotificationPage([], 1, 20, false)),
+                GetAdminNotificationQuery => Result<AdminNotificationRecord>.Success(default!),
+                GetAdminNotificationTimelineQuery query => Result<AdminNotificationPage>.Success(new AdminNotificationPage([], query.Page, query.PageSize, false)),
+                GetAdminNotificationAggregateQuery => Result<AdminNotificationAggregate>.Success(new AdminNotificationAggregate(0, 0, 0, [])),
+                _ => throw new NotSupportedException(request.GetType().Name)
+            };
+            return (TResponse)response;
         }
 
         public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default) where TRequest : MediatR.IRequest => throw new NotSupportedException();

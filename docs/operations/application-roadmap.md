@@ -117,11 +117,12 @@ The shared inbox remains a read foundation; delivery providers, complete
 category inventory, event-specific timezone behavior beyond check-in,
 email/push provider and retry semantics, and physical purge policy are not
 implemented by that foundation. The check-in producer and its Admin
-operational reads are now delivered separately below. A bounded Admin metadata
-list for durable notifications is also delivered; recipient identity, payload,
-destination, detail/timeline/aggregate views, and deleted-recipient mapping
-remain gated as **Needs Owner Verification**. Provider delivery and retries are
-not included.
+operational reads are now delivered separately below. Admin notification
+list/detail/timeline/aggregate views are delivered with audit-before-query, a
+rolling one-year cutoff, and ID/category/type/created/read record projections.
+Recipient identity, title, body, and destination are omitted. Deleted-recipient
+mapping remains **Needs Owner Verification**. Provider delivery and retries
+are not included.
 
 Owner-approved initial in-app contract: a negative Elderly daily check-in
 creates a durable in-app alert for every active linked Family member whose

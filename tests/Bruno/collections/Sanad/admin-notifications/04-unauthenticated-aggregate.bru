@@ -1,0 +1,14 @@
+meta {
+  name: 04-unauthenticated-aggregate
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/notifications/aggregate?startDate=2026-09-01&endDate=2026-09-02
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

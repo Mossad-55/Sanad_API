@@ -40,14 +40,15 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 
 ## Durable notification inspection
 
-`GET /api/v1/admin/notifications` is a metadata-only operational read under
+Admin notification list, detail, timeline, and aggregate GET routes use
 `AdminNotificationOperationalRead` for Normal SuperAdmin and SupportAdmin.
-ContentAdmin cannot inspect individual notification records. Access is audited
-before data is read; audit failure returns no notification data. The endpoint
-excludes rows older than one year and does not expose notification text,
-destination details, or aggregate metrics. See
-[docs/admin/notifications.md](notifications.md) for the provisional contract
-and owner-verification items.
+ContentAdmin cannot inspect notification records. Every request is audited
+before its query; audit failure returns no notification data. All views exclude
+records older than one rolling year. Record projections expose only ID,
+category, type, created time, and read time; they omit recipient identity,
+title, body, and destination. See
+[docs/admin/notifications.md](notifications.md) for filters, paging, date
+validation, response shapes, and remaining owner-verification items.
 
 ## Caregiver lookups
 

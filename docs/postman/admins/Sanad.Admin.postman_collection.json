@@ -2854,7 +2854,7 @@
     },
     {
       "name": "18. Admin notification inspection (safe read)",
-      "description": "Normal SuperAdmin/SupportAdmin only under AdminNotificationOperationalRead; ContentAdmin is excluded. Audit is written before reading. Response contains notification ID, category/type, and created/read timestamps only; recipient identity, payload, destination, detail/timeline/aggregate views, and deleted-recipient mapping remain Needs Owner Verification. Rows older than one year are excluded.",
+      "description": "Normal SuperAdmin/SupportAdmin only under AdminNotificationOperationalRead; ContentAdmin is excluded. Every GET is audited before query. Record views contain notification ID, category/type, and created/read timestamps only; recipient identity, title, body, and destination are omitted. All views exclude records older than one rolling year. Deleted-recipient mapping, full event inventory, physical purge, and audit-retention enforcement remain Needs Owner Verification.",
       "item": [
         {
           "name": "List notification metadata",
@@ -2864,12 +2864,51 @@
               { "key": "Authorization", "value": "Bearer {{accessToken}}" },
               { "key": "X-Correlation-ID", "value": "postman-admin-notifications-list" }
             ],
-            "url": "{{baseUrl}}/api/v1/admin/notifications?page=1&pageSize=20",
-            "description": "SAFE READ: audited before query; pageSize is 1–100. Audit persistence failure returns no notification data."
+            "url": "{{baseUrl}}/api/v1/admin/notifications?page=1&pageSize=20&category=ElderlySos&type=SosCreated&startDate=2026-09-01&endDate=2026-09-30",
+            "description": "SAFE READ: audited before query. page/pageSize default 1/20 and are bounded 1–100. Optional exact category/type and UTC calendar startDate/endDate filters; inclusive dates. Audit persistence failure returns no notification data."
           },
           "event": [
             { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification metadata read contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }
           ]
+        },
+        {
+          "name": "Get notification metadata detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "X-Correlation-ID", "value": "postman-admin-notifications-detail" }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/notifications/{{notificationId}}",
+            "description": "SAFE READ: metadata only (ID/category/type/created/read); audited before query. An unknown or out-of-window ID is not found."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Get notification timeline page",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "X-Correlation-ID", "value": "postman-admin-notifications-timeline" }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/notifications/timeline?startDate=2026-09-01&endDate=2026-09-30&page=1&pageSize=20",
+            "description": "SAFE READ: required UTC calendar dates are inclusive and must span at most 31 days. page/pageSize default 1/20 and are bounded 1–100; response includes page metadata and hasMore. Audited before query."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification timeline contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Get notification aggregate",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "X-Correlation-ID", "value": "postman-admin-notifications-aggregate" }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/notifications/aggregate?startDate=2026-09-01&endDate=2026-09-30",
+            "description": "SAFE READ: optional UTC calendar date bounds; when both are supplied they must be ordered and span at most 31 inclusive days. Returns total/read/unread and category counts. Audited before query."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification aggregate contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }]
         }
       ]
     }
