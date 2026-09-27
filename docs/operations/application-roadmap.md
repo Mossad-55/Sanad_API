@@ -144,7 +144,9 @@ Complete the elderly flow on real data:
 - Medication task execution using the existing medication schedule and
   take/skip contracts; add history and family synchronization where missing.
 - SOS creation, location capture, recipient notification, status tracking, and
-  cancellation. Voice calling remains excluded as V2.
+  cancellation. The owner-approved outcome is only a tracked SOS with intended
+  contact notification and device-dialer behavior where documented; voice
+  calling remains excluded as V2.
 - The primary phone-only emergency contact is now Family Owner-managed and
   readable by linked Family members and the linked Elderly profile. This does
   not implement SOS delivery, Admin contact inspection, or contact removal.
@@ -165,10 +167,15 @@ Complete the elderly flow on real data:
   alerts.
 
 Needs owner verification: help-request types and recipient rules, whether a
-caregiver can reject a request, SOS escalation/timeout rules, location
-precision and retention, medication late threshold, and
-whether skipped-dose reasons are free text or lookup values. Contact clear/
-delete and Admin field-level visibility remain unverified.
+caregiver can reject a request, and the complete SOS implementation contract:
+trigger actor/route; location fields, consent, precision, storage/retention;
+recipients and active membership; notification categories/preferences/
+channels, retry/idempotency under existing no-SMS/email-plus-in-app
+constraints; lifecycle, duplicate, cancel, escalation, timeout; and Admin
+read/audit/retention/export. No SOS route/domain/persistence/tests/Postman/
+Bruno surface exists. Medication late threshold, whether skipped-dose reasons
+are free text or lookup values, contact clear/delete, and Admin field-level
+visibility also remain unverified.
 
 ### Phase 4 — Role dashboards and booking execution integration
 
