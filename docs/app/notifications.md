@@ -10,6 +10,8 @@ idempotent `ElderlyHelpRequest` / `HelpRequestCreated` notifications for active
 linked Family recipients whose `helpRequestAlerts` preference is enabled. The
 app maps a destination
 using the stored entity kind and ID; the API does not return a client route.
+Admin operational inspection is separate from this recipient-owned inbox and
+is documented in [`docs/admin/notifications.md`](../admin/notifications.md).
 
 Preferences are managed separately at
 `GET/PUT /api/v1/account/notification-preferences`. The full-replacement

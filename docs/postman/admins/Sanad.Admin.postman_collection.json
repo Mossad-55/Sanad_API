@@ -2851,6 +2851,27 @@
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS status contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"] } }]
         }
       ]
+    },
+    {
+      "name": "18. Admin notification inspection (safe read)",
+      "description": "Normal SuperAdmin/SupportAdmin only under AdminNotificationOperationalRead; ContentAdmin is excluded. Audit is written before reading. Response contains notification ID, category/type, and created/read timestamps only; recipient identity, payload, destination, detail/timeline/aggregate views, and deleted-recipient mapping remain Needs Owner Verification. Rows older than one year are excluded.",
+      "item": [
+        {
+          "name": "List notification metadata",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "X-Correlation-ID", "value": "postman-admin-notifications-list" }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/notifications?page=1&pageSize=20",
+            "description": "SAFE READ: audited before query; pageSize is 1–100. Audit persistence failure returns no notification data."
+          },
+          "event": [
+            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification metadata read contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }
+          ]
+        }
+      ]
     }
   ]
 }

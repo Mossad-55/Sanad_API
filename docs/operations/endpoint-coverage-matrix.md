@@ -60,6 +60,7 @@ For product-screen reconciliation, see the [Family UI audit](family-ui-audit.md)
 | Family bookings/reports | List/detail and lifecycle/payment/report visibility | Family controllers | `docs/app/families/*.md` | Family collection | Existing lifecycle Bruno suites |
 | Caregiver app | Profile, pricing, schedule, availability, booking list/detail/lifecycle/reports | Caregiver controllers | `docs/app/caregivers/*.md` | Caregiver collection | Existing caregiver Bruno suites |
 | Public/auth/support | Public reads, authentication/session/account, legal/help/support | Public/auth controllers | `docs/auth/`, `docs/app/public/`, `docs/app/settings/` | Auth/public collections | Existing auth/public Bruno suites |
+| Admin notification inspection | `GET /api/v1/admin/notifications` | `AdminNotificationsController` with `AdminNotificationOperationalRead`; Normal SuperAdmin/SupportAdmin only; payload-free audit is persisted before the query; metadata-only projection; one-year read-time cutoff; no ContentAdmin access | `docs/admin/notifications.md`; `docs/admin/admin-overview.md` | Admin Postman safe read | Contract shape, metrics, payload/destination visibility, deleted-recipient mapping, and physical retention remain Needs Owner Verification; no schema migration required |
 
 ## Closeout rule
 

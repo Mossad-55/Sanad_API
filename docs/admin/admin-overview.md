@@ -35,7 +35,19 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Medication lateness CMS and operational evaluation | `docs/admin/elderly-medications.md` |
 | Elderly help-request operations and history | `docs/admin/elderly-help-requests.md` |
 | Elderly SOS operational reads, history, and status | `docs/admin/elderly-sos.md` |
+| Durable notification inspection | `docs/admin/notifications.md` |
 | Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
+
+## Durable notification inspection
+
+`GET /api/v1/admin/notifications` is a metadata-only operational read under
+`AdminNotificationOperationalRead` for Normal SuperAdmin and SupportAdmin.
+ContentAdmin cannot inspect individual notification records. Access is audited
+before data is read; audit failure returns no notification data. The endpoint
+excludes rows older than one year and does not expose notification text,
+destination details, or aggregate metrics. See
+[docs/admin/notifications.md](notifications.md) for the provisional contract
+and owner-verification items.
 
 ## Caregiver lookups
 
