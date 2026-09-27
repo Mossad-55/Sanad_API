@@ -96,6 +96,10 @@ public static class ResultProblemDetailsMapper
             ["Cms.WellnessTip.NotPublished"] = 404,
             ["Cms.WellnessTip.InvalidOperation"] = 409,
 
+            ["Cms.SentenceBuilder.NotFound"] = 404,
+            ["Cms.SentenceBuilder.InvalidOperation"] = 409,
+            ["Cms.SentenceBuilder.Conflict"] = 409,
+
             ["Cms.Help.FaqNotFound"] = 404,
             ["Cms.Help.SupportContactNotFound"] = 404,
 
@@ -191,7 +195,10 @@ public static class ResultProblemDetailsMapper
             ["Families.AdminCheckIn.InvalidDateRange"] = 400,
             ["Families.ElderlyCheckIn.NotFound"] = 404,
             ["Families.ElderlyCheckIn.InvalidTimeZone"] = 409,
-            ["Families.ElderlyCheckIn.AlreadyAnswered"] = 409
+            ["Families.ElderlyCheckIn.AlreadyAnswered"] = 409,
+            ["Families.HelpRequest.NotFound"] = 404,
+            ["Families.HelpRequest.IdempotencyConflict"] = 409,
+            ["Families.HelpRequest.InvalidOperation"] = 409
         };
 
     public static ProblemDetails Create(

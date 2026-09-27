@@ -34,6 +34,8 @@ using Sanad.API.NotificationsIntegration;
 using Sanad.Modules.Notifications.Infrastructure;
 using Sanad.Modules.Notifications.Application.Abstractions.Recipients;
 using Sanad.Modules.Families.Application.Abstractions.Notifications;
+using Sanad.Modules.Families.Application.Abstractions.HelpRequests;
+using Sanad.API.HelpRequestsIntegration;
 
 namespace Sanad.API;
 
@@ -85,6 +87,8 @@ public static class DependencyInjection
 
         services.AddNotificationsInfrastructure(configuration);
         services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
+        services.AddScoped<IHelpRequestCatalogGateway, HelpRequestCatalogGateway>();
+        services.AddScoped<IHelpRequestNotificationGateway, HelpRequestNotificationGateway>();
 
         services.AddOptions<LocalStorageOptions>()
             .Bind(
@@ -269,6 +273,12 @@ public static class DependencyInjection
                     policy.RequireClaim(AuthClaimNames.AccountType,
                         AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
                 });
+            options.AddPolicy(AuthorizationPolicies.ElderlyHelpRequestOperational, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+            });
         });
 
         services.AddMediatR(configuration =>

@@ -120,6 +120,40 @@
       ]
     },
     {
+      "name": "05. Help requests",
+      "description": "ElderlyAccess routes are identity-bound to the authenticated Elderly user. GET requests are safe and limited to one-year availability. POST create/cancel requests are manual fixture-only mutations; do not replay them against shared or production data.",
+      "item": [
+        {
+          "name": "List my help requests",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/elderly/help-requests", "description": "Read-only. Returns the authenticated Elderly user's newest-first requests from the last year. Deleted/inactive Family links and foreign IDs are not disclosed." }
+        },
+        {
+          "name": "Get my help request",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/elderly/help-requests/{{helpRequestId}}", "description": "Read-only. Returns the caller-owned request or 404 Families.HelpRequest.NotFound. The server does not accept an Elderly ID." }
+        },
+        {
+          "name": "Create help request (manual fixture only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "{{helpRequestIdempotencyKey}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"actorKey\": \"self\",\n  \"actionKey\": \"need\",\n  \"needKey\": \"water\",\n  \"qualifierKey\": \"now\",\n  \"customText\": null\n}" },
+            "url": "{{baseUrl}}/api/v1/elderly/help-requests",
+            "description": "STATE-CHANGING: active catalog keys are required for actor/action/need; qualifier and plain-text customText are optional, customText max 500 chars. Same idempotency key plus same normalized payload replays the original request; a different payload returns 409 Families.HelpRequest.IdempotencyConflict. Creates durable in-app alerts only for active linked Family recipients with helpRequestAlerts enabled. Use an approved disposable fixture; push/email are deferred and SMS is excluded."
+          }
+        },
+        {
+          "name": "Cancel help request (manual fixture only)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"No longer needed\"\n}" },
+            "url": "{{baseUrl}}/api/v1/elderly/help-requests/{{helpRequestId}}/cancel",
+            "description": "STATE-CHANGING: Pending requests may be cancelled by their Elderly owner. Reason is optional and capped at 500 characters. Use an approved disposable fixture only."
+          }
+        }
+      ]
+    },
+    {
       "name": "04. Daily check-in (manual mutation only)",
       "item": [
         {
@@ -144,6 +178,8 @@
     { "key": "wellnessTipId", "value": "REPLACE_WITH_PUBLISHED_WELLNESS_TIP_ID", "type": "string" },
     { "key": "wellnessPage", "value": "1", "type": "string" },
     { "key": "wellnessPageSize", "value": "20", "type": "string" },
-    { "key": "checkInAnswer", "value": "false", "type": "string", "description": "Manual disposable-fixture Boolean answer. Do not replay against shared or production data." }
+    { "key": "checkInAnswer", "value": "false", "type": "string", "description": "Manual disposable-fixture Boolean answer. Do not replay against shared or production data." },
+    { "key": "helpRequestId", "value": "REPLACE_WITH_HELP_REQUEST_ID", "type": "string" },
+    { "key": "helpRequestIdempotencyKey", "value": "elderly-help-request-example-001", "type": "string", "description": "Unique per Elderly actor; do not reuse with a different payload." }
   ]
 }

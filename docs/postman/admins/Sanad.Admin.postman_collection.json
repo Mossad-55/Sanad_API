@@ -69,6 +69,36 @@
       "key": "checkInAnswer",
       "value": "false",
       "description": "Optional Admin list answer filter."
+    },
+    {
+      "key": "helpRequestId",
+      "value": "REPLACE_WITH_HELP_REQUEST_ID",
+      "description": "Approved help-request UUID for manual operational reads/actions."
+    },
+    {
+      "key": "helpRequestStatus",
+      "value": "Pending",
+      "description": "Optional status filter: Pending, Accepted, InProgress, Resolved, Rejected, Cancelled, or Reopened."
+    },
+    {
+      "key": "helpRequestAction",
+      "value": "accepted",
+      "description": "Manual action path segment: accepted, started, resolved, rejected, cancelled, or reopened."
+    },
+    {
+      "key": "sentenceBuilderCategory",
+      "value": "3",
+      "description": "Optional category enum: 1 Actor, 2 Action, 3 Need, 4 Qualifier."
+    },
+    {
+      "key": "sentenceBuilderActive",
+      "value": "true",
+      "description": "Optional active filter."
+    },
+    {
+      "key": "sentenceBuilderRevisionId",
+      "value": "REPLACE_WITH_SENTENCE_BUILDER_REVISION_ID",
+      "description": "Approved catalog revision UUID for manual reads/actions."
     }
   ],
   "item": [
@@ -2684,6 +2714,43 @@
             "description": "Safe read for a Normal SuperAdmin or SupportAdmin JWT. Returns total/positive/negative counts over the optional Elderly/date filters. Valid reads audit before querying; no timezone, contact, location, or clinical source fields are returned."
           }
         }
+      ]
+    },
+    {
+      "name": "15B. Elderly help-request operations (manual/read-only)",
+      "description": "Normal SuperAdmin or SupportAdmin only under ElderlyHelpRequestOperational. GETs audit before reading, filter deleted Families, and expose safe projections. GETs are manual/stateful because they append audit rows; POST actions mutate status and must use an approved disposable fixture.",
+      "item": [
+        {
+          "name": "List Elderly help requests (manual read)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-help-request-list" }], "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests?page=1&pageSize=20&status={{helpRequestStatus}}&elderlyId={{elderlyId}}", "description": "Manual stateful read. One-year availability; pageSize 1–100. Optional status values are Pending, Accepted, InProgress, Resolved, Rejected, Cancelled, Reopened. Deleted Families are excluded." }
+        },
+        {
+          "name": "Get Elderly help request (manual read)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-help-request-detail" }], "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}", "description": "Manual stateful safe projection. Successful reads audit before the query; missing, expired, or deleted-Family records return 404 Families.HelpRequest.NotFound." }
+        },
+        {
+          "name": "Get Elderly help-request history (manual read)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-help-request-history" }], "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}/history", "description": "Manual stateful read. Returns chronological append-only history for the last year, including action, resulting status, optional reason, actor user ID, and UTC timestamp." }
+        },
+        {
+          "name": "Aggregate Elderly help requests (manual read)",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-help-request-aggregate" }], "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/aggregate", "description": "Manual stateful read. Returns status counts for one-year requests belonging to non-deleted Families and audits before querying." }
+        },
+        {
+          "name": "Change Elderly help-request status (manual mutation)",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Reviewed by support\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}/{{helpRequestAction}}", "description": "STATE-CHANGING: action is accepted, started, resolved, rejected, cancelled, or reopened. Reject/resolve/reopen and operator cancel require a nonblank reason max 500 chars. Reopen persists Reopened then returns the request to InProgress. Use only an approved disposable fixture; do not replay against shared data." }
+        }
+      ]
+    },
+    {
+      "name": "15C. Sentence-builder CMS (manual authoring/read-only)",
+      "description": "Normal SuperAdmin or ContentAdmin under CmsContent. CMS is global/shared. GETs are safe; create and activate/deactivate change catalog state and are manual authoring examples only.",
+      "item": [
+        { "name": "List sentence-builder catalog", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog?page=1&pageSize=50&category={{sentenceBuilderCategory}}&active={{sentenceBuilderActive}}", "description": "Read-only. Categories: Actor=1, Action=2, Need=3, Qualifier=4. Page size is bounded 1–100; results include immutable revisions and active state." } },
+        { "name": "Get sentence-builder revision", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}", "description": "Read-only bilingual revision detail; 404 Cms.SentenceBuilder.NotFound when absent." } },
+        { "name": "Create sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"stableKey\": \"water\",\n  \"category\": 3,\n  \"arabicLabel\": \"ماء\",\n  \"englishLabel\": \"Water\",\n  \"displayOrder\": 10\n}" }, "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog", "description": "STATE-CHANGING authoring example. Labels are required, bilingual, max 200 chars; stableKey max 120 chars; displayOrder is nonnegative. Upsert creates a new immutable revision and activates it while deactivating the prior revision for the same stable key/category. Do not run without owner-approved CMS fixture data." } },
+        { "name": "Activate sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}/activate", "description": "STATE-CHANGING authoring example. Activates this revision and deactivates other revisions for its stable key/category. Use only with approved disposable CMS data." } },
+        { "name": "Deactivate sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}/deactivate", "description": "STATE-CHANGING authoring example. Deactivates only this revision; old content is not mutated. Use only with approved disposable CMS data." } }
       ]
     },
     {

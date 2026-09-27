@@ -1,0 +1,71 @@
+# Elderly help requests
+
+Help requests are created by the authenticated Elderly account from the
+current active bilingual sentence-builder catalog. The server resolves the
+linked profile; the client cannot submit another Elderly or Family ID.
+
+## Sentence-builder fields
+
+`actorKey`, `actionKey`, and `needKey` are required active catalog keys.
+`qualifierKey` and `customText` are optional. `customText`, when supplied, is
+plain text and is limited to 500 characters. The catalog is bilingual and
+separates `Actor`, `Action`, `Need`, and `Qualifier` categories; clients should
+not hard-code vocabulary or assume combinations not represented by active
+catalog entries. Speech-to-text remains client-side; no audio is uploaded.
+
+## Create
+
+`POST /api/v1/elderly/help-requests`
+
+Requires a Normal Elderly JWT and an `Idempotency-Key` header. The key is scoped
+to the Elderly actor. A successful request starts as `Pending` and stores the
+resolved bilingual catalog labels. The response contains the request ID,
+identity-bound Elderly ID, selected keys, optional custom text, status, and UTC
+created/updated timestamps.
+
+```json
+{
+  "actorKey": "self",
+  "actionKey": "need",
+  "needKey": "water",
+  "qualifierKey": "now",
+  "customText": null
+}
+```
+
+Reusing the same key with the same normalized payload returns the original
+request. Reusing it with a different payload returns `409` with
+`Families.HelpRequest.IdempotencyConflict`. The request is persisted before a
+durable in-app alert is created for each active linked Family member whose
+`helpRequestAlerts` preference is enabled. Alert creation is idempotent per
+request and recipient. Push/email delivery is deferred to Notifications/Events;
+SMS is excluded.
+
+## List and detail
+
+- `GET /api/v1/elderly/help-requests`
+- `GET /api/v1/elderly/help-requests/{requestId}`
+
+Both return only the caller's requests from the last year, newest first. A
+missing request, deleted/inactive Family, or request outside the availability
+window is reported as `404 Families.HelpRequest.NotFound` without disclosing
+another user's data.
+
+## Cancel
+
+`POST /api/v1/elderly/help-requests/{requestId}/cancel`
+
+The optional body is `{ "reason": "..." }`; a reason is trimmed and may not
+exceed 500 characters. Cancellation is valid from `Pending` and is recorded in
+the append-only history.
+
+## Status lifecycle
+
+The persisted statuses are `Pending`, `Accepted`, `InProgress`, `Resolved`,
+`Rejected`, `Cancelled`, and `Reopened`. Operational transitions are described
+in the [Admin guide](../../admin/elderly-help-requests.md). Requests and
+history are available for one year; this slice has no delete or export route.
+
+Common failures are `400 Families.HelpRequest.InvalidOperation`, `401` for a
+missing/invalid token, `403` for a non-Elderly or restricted token, and `404`
+for an unavailable request.

@@ -1,0 +1,15 @@
+meta {
+  name: 02-aggregate-unauthenticated
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/help-requests/aggregate
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

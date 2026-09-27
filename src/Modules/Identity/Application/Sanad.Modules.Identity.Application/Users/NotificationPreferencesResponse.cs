@@ -8,4 +8,5 @@ public sealed record NotificationPreferencesResponse(
     bool FamilyActivityAlerts,
     bool NewOrders,
     bool MessagesFromFamilies,
-    bool SystemNotifications);
+    bool SystemNotifications,
+    bool HelpRequestAlerts);

@@ -17,7 +17,8 @@ public sealed class NotificationPreferences :
         bool familyActivityAlerts,
         bool newOrders,
         bool messagesFromFamilies,
-        bool systemNotifications)
+        bool systemNotifications,
+        bool helpRequestAlerts = true)
     {
         CheckInAlerts = checkInAlerts;
         MedicationReminders = medicationReminders;
@@ -27,6 +28,7 @@ public sealed class NotificationPreferences :
         NewOrders = newOrders;
         MessagesFromFamilies = messagesFromFamilies;
         SystemNotifications = systemNotifications;
+        HelpRequestAlerts = helpRequestAlerts;
     }
 
     public bool CheckInAlerts { get; private set; }
@@ -44,6 +46,7 @@ public sealed class NotificationPreferences :
     public bool MessagesFromFamilies { get; private set; }
 
     public bool SystemNotifications { get; private set; }
+    public bool HelpRequestAlerts { get; private set; }
 
     public static NotificationPreferences Create(
         bool checkInAlerts,
@@ -53,7 +56,8 @@ public sealed class NotificationPreferences :
         bool familyActivityAlerts,
         bool newOrders,
         bool messagesFromFamilies,
-        bool systemNotifications)
+        bool systemNotifications,
+        bool helpRequestAlerts = true)
     {
         return new NotificationPreferences(
             checkInAlerts,
@@ -63,7 +67,7 @@ public sealed class NotificationPreferences :
             familyActivityAlerts,
             newOrders,
             messagesFromFamilies,
-            systemNotifications);
+            systemNotifications, helpRequestAlerts);
     }
 
     public static NotificationPreferences CreateDefault()
@@ -97,5 +101,6 @@ public sealed class NotificationPreferences :
         yield return MessagesFromFamilies;
 
         yield return SystemNotifications;
+        yield return HelpRequestAlerts;
     }
 }

@@ -344,6 +344,9 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                                 .HasDefaultValue(true)
                                 .HasColumnName("family_activity_alerts");
 
+                            b1.Property<bool>("HelpRequestAlerts")
+                                .HasColumnType("boolean");
+
                             b1.Property<bool>("MedicationReminders")
                                 .ValueGeneratedOnAdd()
                                 .HasColumnType("boolean")

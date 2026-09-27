@@ -79,3 +79,79 @@ public sealed class CreateCheckInAlertNotificationsCommandHandler(
         return userIds.Length;
     }
 }
+
+public sealed record CreateHelpRequestAlertNotificationsCommand(
+    Abstractions.Recipients.ElderlyRecipient Elderly, Guid HelpRequestId,
+    DateTime CreatedOnUtc) : ICommand<int>;
+public sealed class CreateHelpRequestAlertNotificationsCommandHandler(
+    INotificationsDbContext db, Abstractions.Recipients.INotificationRecipientGateway recipients)
+    : ICommandHandler<CreateHelpRequestAlertNotificationsCommand, int>
+{
+    public async Task<Result<int>> Handle(CreateHelpRequestAlertNotificationsCommand r, CancellationToken ct)
+    {
+        var users = (await recipients.GetHelpRequestAlertRecipientsAsync(r.Elderly, ct))
+            .Distinct()
+            .ToArray();
+        var keys = users
+            .Select(user => $"elderly-help-request:{r.HelpRequestId:N}:{user.Value:N}")
+            .ToArray();
+        var existing = (await db.Notifications
+                .Where(notification => notification.IdempotencyKey != null && keys.Contains(notification.IdempotencyKey!))
+                .Select(notification => notification.IdempotencyKey!)
+                .ToListAsync(ct))
+            .ToHashSet(StringComparer.Ordinal);
+
+        var created = 0;
+        var pending = new List<Notification>();
+        foreach (var user in users)
+        {
+            var key = $"elderly-help-request:{r.HelpRequestId:N}:{user.Value:N}";
+            if (!existing.Add(key))
+                continue;
+
+            var notification = Notification.Create(
+                user.Value,
+                "ElderlyHelpRequest",
+                "HelpRequestCreated",
+                "Help request",
+                "An elderly family member created a help request.",
+                "HelpRequest",
+                r.HelpRequestId,
+                r.CreatedOnUtc,
+                key);
+            db.Notifications.Add(notification);
+            pending.Add(notification);
+            created++;
+        }
+
+        if (created > 0)
+        {
+            try
+            {
+                await db.SaveChangesAsync(ct);
+            }
+            catch (DbUpdateException)
+            {
+                // A concurrent producer may have won the unique idempotency-key race.
+                // Only treat the failure as an idempotent replay when every key now exists;
+                // unrelated persistence failures must still surface to the caller.
+                if (db is DbContext context)
+                {
+                    foreach (var notification in pending)
+                        context.Entry(notification).State = EntityState.Detached;
+                }
+
+                var committedKeys = await db.Notifications
+                    .Where(notification => notification.IdempotencyKey != null && keys.Contains(notification.IdempotencyKey!))
+                    .Select(notification => notification.IdempotencyKey!)
+                    .ToListAsync(ct);
+                if (committedKeys.ToHashSet(StringComparer.Ordinal).Count != keys.Length)
+                    throw;
+
+                return 0;
+            }
+        }
+
+        return created;
+    }
+}

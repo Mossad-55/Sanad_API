@@ -1,0 +1,15 @@
+meta {
+  name: 01-list-unauthenticated
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/sentence-builder/catalog?page=1&pageSize=50&category=3&active=true
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

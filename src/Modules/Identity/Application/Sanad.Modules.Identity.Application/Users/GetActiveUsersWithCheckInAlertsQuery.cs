@@ -23,3 +23,7 @@ public sealed class GetActiveUsersWithCheckInAlertsQueryHandler(IIdentityDbConte
         return result;
     }
 }
+
+public sealed record GetActiveUsersWithHelpRequestAlertsQuery(IReadOnlyCollection<UserId> UserIds) : IQuery<IReadOnlyList<UserId>>;
+public sealed class GetActiveUsersWithHelpRequestAlertsQueryHandler(IIdentityDbContext db) : IQueryHandler<GetActiveUsersWithHelpRequestAlertsQuery, IReadOnlyList<UserId>>
+{ public async Task<Result<IReadOnlyList<UserId>>> Handle(GetActiveUsersWithHelpRequestAlertsQuery r, CancellationToken ct) => await db.Users.AsNoTracking().Where(x => r.UserIds.Contains(x.Id) && x.Status == UserStatus.Active && x.NotificationPreferences.HelpRequestAlerts).Select(x => x.Id).ToListAsync(ct); }

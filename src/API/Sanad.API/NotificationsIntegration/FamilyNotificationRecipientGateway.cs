@@ -25,4 +25,12 @@ public sealed class FamilyNotificationRecipientGateway(IFamiliesDbContext famili
         var result = await sender.Send(new GetActiveUsersWithCheckInAlertsQuery(userIds), cancellationToken);
         return result.IsSuccess ? result.Value.Distinct().ToArray() : [];
     }
+    public async Task<IReadOnlyList<UserId>> GetHelpRequestAlertRecipientsAsync(ElderlyRecipient elderly, CancellationToken cancellationToken = default)
+    {
+        var familyId = await families.Elderlies.AsNoTracking().Where(x => x.IdentityUserId == elderly.ElderlyIdentityUserId && x.Id.Value == elderly.ElderlyEntityId).Select(x => (Guid?)x.FamilyId.Value).SingleOrDefaultAsync(cancellationToken);
+        if (familyId is null) return [];
+        var ids = await families.Families.AsNoTracking().Where(x => x.Id.Value == familyId && x.DeletedOnUtc == null).SelectMany(x => x.Members.Select(m => m.Id)).Distinct().ToListAsync(cancellationToken);
+        var result = await sender.Send(new GetActiveUsersWithHelpRequestAlertsQuery(ids), cancellationToken);
+        return result.IsSuccess ? result.Value : [];
+    }
 }

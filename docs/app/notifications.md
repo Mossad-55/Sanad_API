@@ -5,10 +5,17 @@ account with a Normal JWT. It is recipient-isolated: the recipient is taken from
 the token, not from a request parameter. Restricted-verification tokens and
 unauthenticated requests are not accepted.
 
-This slice is the inbox foundation only. It does not yet have a check-in
-producer caller, push or email providers, delivery retries, physical purge, a
-complete category inventory, or Admin inspection. The app maps a destination
+This slice is the durable in-app foundation. Help-request creation now creates
+idempotent `ElderlyHelpRequest` / `HelpRequestCreated` notifications for active
+linked Family recipients whose `helpRequestAlerts` preference is enabled. The
+app maps a destination
 using the stored entity kind and ID; the API does not return a client route.
+
+Preferences are managed separately at
+`GET/PUT /api/v1/account/notification-preferences`. The full-replacement
+request includes `helpRequestAlerts`; it defaults to `true`, and omitted legacy
+stored data is read backward-compatibly as enabled. Preferences do not cause
+push, email, or SMS delivery by themselves.
 
 ## List notifications
 
@@ -74,7 +81,7 @@ Marks all current unread notifications belonging to the caller read and returns
 - `404 Notifications.NotFound` for a missing, foreign, or expired notification
   in the single-read route.
 
-No category list or event delivery policy should be inferred from the current
-fields. The approved negative daily check-in event will create durable in-app
-alerts for eligible Family recipients when its producer is delivered; push may
-be attempted when a provider exists, and SMS is not used for that event.
+No complete category list or general event delivery policy should be inferred
+from the current fields. The delivered help-request and negative check-in
+producers create durable in-app alerts only; push/email providers and retries
+remain deferred to Notifications/Events, and SMS is excluded.

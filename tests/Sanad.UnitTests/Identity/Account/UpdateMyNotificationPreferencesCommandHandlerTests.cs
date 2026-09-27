@@ -46,7 +46,8 @@ public sealed class UpdateMyNotificationPreferencesCommandHandlerTests
                 FamilyActivityAlerts: true,
                 NewOrders: false,
                 MessagesFromFamilies: true,
-                SystemNotifications: false);
+                SystemNotifications: false,
+                HelpRequestAlerts: false);
 
         Result<NotificationPreferencesResponse> result =
             await handler.Handle(
@@ -78,6 +79,8 @@ public sealed class UpdateMyNotificationPreferencesCommandHandlerTests
 
         Assert.False(
             result.Value.SystemNotifications);
+
+        Assert.False(result.Value.HelpRequestAlerts);
 
         Assert.Equal(
             1,
@@ -153,7 +156,8 @@ public sealed class UpdateMyNotificationPreferencesCommandHandlerTests
                 FamilyActivityAlerts: false,
                 NewOrders: false,
                 MessagesFromFamilies: false,
-                SystemNotifications: false);
+                SystemNotifications: false,
+                HelpRequestAlerts: false);
 
         Result<NotificationPreferencesResponse> result =
             await handler.Handle(

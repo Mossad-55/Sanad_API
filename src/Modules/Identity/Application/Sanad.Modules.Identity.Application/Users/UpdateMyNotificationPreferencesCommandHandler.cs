@@ -57,7 +57,8 @@ public sealed class UpdateMyNotificationPreferencesCommandHandler :
                 request.FamilyActivityAlerts,
                 request.NewOrders,
                 request.MessagesFromFamilies,
-                request.SystemNotifications),
+                request.SystemNotifications,
+                request.HelpRequestAlerts ?? user.NotificationPreferences.HelpRequestAlerts),
             _dateTimeProvider.UtcNow);
 
         await _dbContext.SaveChangesAsync(
@@ -71,6 +72,7 @@ public sealed class UpdateMyNotificationPreferencesCommandHandler :
             user.NotificationPreferences.FamilyActivityAlerts,
             user.NotificationPreferences.NewOrders,
             user.NotificationPreferences.MessagesFromFamilies,
-            user.NotificationPreferences.SystemNotifications);
+            user.NotificationPreferences.SystemNotifications,
+            user.NotificationPreferences.HelpRequestAlerts);
     }
 }

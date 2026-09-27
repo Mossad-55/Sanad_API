@@ -45,6 +45,7 @@ public sealed class GetMyNotificationPreferencesQueryHandler :
             user.NotificationPreferences.FamilyActivityAlerts,
             user.NotificationPreferences.NewOrders,
             user.NotificationPreferences.MessagesFromFamilies,
-            user.NotificationPreferences.SystemNotifications);
+            user.NotificationPreferences.SystemNotifications,
+            user.NotificationPreferences.HelpRequestAlerts);
     }
 }

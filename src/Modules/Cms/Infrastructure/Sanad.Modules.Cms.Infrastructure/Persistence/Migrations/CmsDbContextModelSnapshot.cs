@@ -162,6 +162,74 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                     b.ToTable("legal_documents", "cms");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.SentenceBuilder.SentenceBuilderCatalogEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Category")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("StableKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StableKey", "Category")
+                        .IsUnique();
+
+                    b.ToTable("sentence_builder_catalog_entries", "cms");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.SentenceBuilder.SentenceBuilderCatalogRevision", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ArabicLabel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("CatalogEntryId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("EnglishLabel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CatalogEntryId", "IsActive")
+                        .IsUnique()
+                        .HasFilter("is_active = TRUE");
+
+                    b.HasIndex("CatalogEntryId", "Version")
+                        .IsUnique();
+
+                    b.ToTable("sentence_builder_catalog_revisions", "cms");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Cms.Domain.Splash.SplashScreen", b =>
                 {
                     b.Property<Guid>("Id")
@@ -369,6 +437,17 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                     b.Navigation("Sections");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.SentenceBuilder.SentenceBuilderCatalogRevision", b =>
+                {
+                    b.HasOne("Sanad.Modules.Cms.Domain.SentenceBuilder.SentenceBuilderCatalogEntry", "CatalogEntry")
+                        .WithMany("Revisions")
+                        .HasForeignKey("CatalogEntryId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("CatalogEntry");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Cms.Domain.Wellness.WellnessTip", b =>
                 {
                     b.OwnsMany("Sanad.Modules.Cms.Domain.Wellness.WellnessTipSection", "Sections", b1 =>
@@ -409,6 +488,11 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Sections");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.SentenceBuilder.SentenceBuilderCatalogEntry", b =>
+                {
+                    b.Navigation("Revisions");
                 });
 #pragma warning restore 612, 618
         }

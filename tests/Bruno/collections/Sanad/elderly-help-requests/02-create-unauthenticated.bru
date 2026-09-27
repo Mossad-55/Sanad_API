@@ -1,0 +1,30 @@
+meta {
+  name: 02-create-unauthenticated
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/help-requests
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Idempotency-Key: unauthenticated-contract-example
+}
+
+body:json {
+  {
+    "actorKey": "self",
+    "actionKey": "need",
+    "needKey": "water",
+    "qualifierKey": null,
+    "customText": null
+  }
+}
+
+assert {
+  res.status: eq 401
+}

@@ -1974,7 +1974,7 @@
             },
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/account/notification-preferences",
-            "description": "Requires Normal JWT. Returns all eight caller-owned preferences: checkInAlerts, medicationReminders, bookingUpdates, communityNotifications, familyActivityAlerts, newOrders, messagesFromFamilies, systemNotifications. All default to ON. Storage only; event delivery is implemented separately."
+            "description": "Requires Normal JWT. Returns all nine caller-owned preferences: checkInAlerts, medicationReminders, bookingUpdates, communityNotifications, familyActivityAlerts, newOrders, messagesFromFamilies, systemNotifications, and helpRequestAlerts. All default to ON; helpRequestAlerts is backward-compatible when omitted by older stored data. Storage only; event delivery is implemented separately."
           },
           "response": [
             {
@@ -1988,7 +1988,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": true,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": true,\n  \"familyActivityAlerts\": true,\n  \"newOrders\": true,\n  \"messagesFromFamilies\": true,\n  \"systemNotifications\": true\n}"
+              "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": true,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": true,\n  \"familyActivityAlerts\": true,\n  \"newOrders\": true,\n  \"messagesFromFamilies\": true,\n  \"systemNotifications\": true,\n  \"helpRequestAlerts\": true\n}"
             }
           ]
         },
@@ -2014,10 +2014,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false,\n  \"familyActivityAlerts\": true,\n  \"newOrders\": false,\n  \"messagesFromFamilies\": true,\n  \"systemNotifications\": false\n}"
+              "raw": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false,\n  \"familyActivityAlerts\": true,\n  \"newOrders\": false,\n  \"messagesFromFamilies\": true,\n  \"systemNotifications\": false,\n  \"helpRequestAlerts\": true\n}"
             },
             "url": "{{baseUrl}}/api/v1/account/notification-preferences",
-            "description": "Requires Normal JWT. Full replace of the caller's notification preferences; all eight fields are required (a missing field is a 400). Submitting the current combination is a no-op. This endpoint stores preferences only; event delivery is implemented separately."
+            "description": "Requires Normal JWT. Full replace of the caller's notification preferences; all nine fields are required (a missing field is a 400). Submitting the current combination is a no-op. This endpoint stores preferences only; help-request alerts are durable in-app notifications for eligible Family recipients; push/email delivery is deferred and SMS is excluded."
           },
           "response": [
             {
@@ -2031,7 +2031,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false,\n  \"familyActivityAlerts\": true,\n  \"newOrders\": false,\n  \"messagesFromFamilies\": true,\n  \"systemNotifications\": false\n}"
+              "body": "{\n  \"checkInAlerts\": true,\n  \"medicationReminders\": false,\n  \"bookingUpdates\": true,\n  \"communityNotifications\": false,\n  \"familyActivityAlerts\": true,\n  \"newOrders\": false,\n  \"messagesFromFamilies\": true,\n  \"systemNotifications\": false,\n  \"helpRequestAlerts\": true\n}"
             }
           ]
         },

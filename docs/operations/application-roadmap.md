@@ -139,8 +139,7 @@ Owner Verification**.
 
 Complete the elderly flow on real data:
 
-- Help-request domain with recipient, accept/reject, status history, and audit.
-- Connect sentence-builder submission to the same help-request API.
+- **Delivered bounded help-request/sentence-builder slice:** Elderly create/list/detail/cancel routes use identity-bound `ElderlyAccess`; Admin list/detail/history/aggregate/status routes use `ElderlyHelpRequestOperational`; and CMS catalog list/detail/create/activate/deactivate routes use `CmsContent`. The catalog is bilingual and revisioned. Requests persist `Pending`, `Accepted`, `InProgress`, `Resolved`, `Rejected`, `Cancelled`, or `Reopened`; history is append-only, available for one year, and operator reasons are capped at 500 characters. `Idempotency-Key` replay returns the original request and a different payload conflicts. Durable in-app alerts are filtered to active linked Family members with `helpRequestAlerts` enabled and deduplicated per recipient/request. Push/email remain deferred to Notifications/Events; SMS is excluded. See [`docs/app/elderly/help-requests.md`](../app/elderly/help-requests.md) and [`docs/admin/elderly-help-requests.md`](../admin/elderly-help-requests.md).
 - Medication task execution using the existing medication schedule and
   take/skip contracts; add history and family synchronization where missing.
 - Medication late/missed alerts are a separate gated contract. The owner-approved
@@ -176,8 +175,9 @@ Complete the elderly flow on real data:
 - Elderly dashboard composition for check-in, next dose, daily activity, and
   alerts.
 
-Needs owner verification: help-request types and recipient rules, whether a
-caregiver can reject a request, and the complete SOS implementation contract:
+Needs owner verification for this phase now excludes the delivered
+help-request/CMS contract. Remaining decisions are the complete SOS
+implementation contract:
 trigger actor/route; location fields, consent, precision, storage/retention;
 recipients and active membership; notification categories/preferences/
 channels, retry/idempotency under existing no-SMS/email-plus-in-app

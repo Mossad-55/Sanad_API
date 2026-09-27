@@ -11,6 +11,7 @@ using Sanad.Modules.Families.Domain.Medications;
 using Sanad.Modules.Families.Domain.Notes;
 using Sanad.Modules.Families.Domain.Reports;
 using Sanad.Modules.Families.Domain.Subscriptions;
+using Sanad.Modules.Families.Domain.HelpRequests;
 
 namespace Sanad.Modules.Families.Infrastructure.Persistence;
 
@@ -51,6 +52,8 @@ public sealed class FamiliesDbContext :
     public DbSet<PaymobSubscriptionCallback> PaymobSubscriptionCallbacks => Set<PaymobSubscriptionCallback>();
     public DbSet<PaymobSubscriptionIdentity> PaymobSubscriptionIdentities => Set<PaymobSubscriptionIdentity>();
     public DbSet<SubscriptionInvoice> SubscriptionInvoices => Set<SubscriptionInvoice>();
+    public DbSet<ElderlyHelpRequest> ElderlyHelpRequests => Set<ElderlyHelpRequest>();
+    public DbSet<ElderlyHelpRequestHistory> ElderlyHelpRequestHistories => Set<ElderlyHelpRequestHistory>();
 
     public void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
         PaymobSubscriptionIdentities.Add(identity);
@@ -81,6 +84,7 @@ public sealed class FamiliesDbContext :
         ThrowIfPaymobSubscriptionCallbackMutated();
         ThrowIfPaymobSubscriptionIdentityMutated();
         ThrowIfAdminMedicationAccessAuditMutated();
+        ThrowIfHelpRequestHistoryMutated();
 
         return base.SaveChanges(acceptAllChangesOnSuccess);
     }
@@ -104,6 +108,7 @@ public sealed class FamiliesDbContext :
         ThrowIfPaymobSubscriptionCallbackMutated();
         ThrowIfPaymobSubscriptionIdentityMutated();
         ThrowIfAdminMedicationAccessAuditMutated();
+        ThrowIfHelpRequestHistoryMutated();
 
         return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
     }
@@ -139,6 +144,24 @@ public sealed class FamiliesDbContext :
         {
             if (entry.State is EntityState.Modified or EntityState.Deleted)
                 throw new InvalidOperationException("Admin medication access audits are append-only.");
+        }
+    }
+    private void ThrowIfHelpRequestHistoryMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<ElderlyHelpRequestHistory>())
+        {
+            if (entry.State == EntityState.Deleted)
+                throw new InvalidOperationException("Help request history is append-only.");
+
+            // Relationship fix-up can mark an unchanged historical row Modified when a new
+            // history row is appended through the aggregate. Only reject actual property edits.
+            if (entry.State == EntityState.Modified)
+            {
+                if (entry.Properties.Any(property => property.IsModified))
+                    throw new InvalidOperationException("Help request history is append-only.");
+
+                entry.State = EntityState.Unchanged;
+            }
         }
     }
 

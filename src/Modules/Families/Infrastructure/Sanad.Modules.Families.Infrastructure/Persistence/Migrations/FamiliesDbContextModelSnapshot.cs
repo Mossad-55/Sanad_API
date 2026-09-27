@@ -623,6 +623,135 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.ToTable("families", "families");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.HelpRequests.ElderlyHelpRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ActionArabicLabel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ActionEnglishLabel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ActionKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("ActorArabicLabel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ActorEnglishLabel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("ActorKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("CustomText")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid>("ElderlyIdentityUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NeedArabicLabel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NeedEnglishLabel")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("NeedKey")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<string>("QualifierArabicLabel")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("QualifierEnglishLabel")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<string>("QualifierKey")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedOnUtc");
+
+                    b.HasIndex("ElderlyIdentityUserId", "IdempotencyKey")
+                        .IsUnique();
+
+                    b.ToTable("elderly_help_requests", "families");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.HelpRequests.ElderlyHelpRequestHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("HelpRequestId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HelpRequestId", "OccurredOnUtc");
+
+                    b.ToTable("elderly_help_request_history", "families");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Invitations.FamilyInvitation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2112,6 +2241,15 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.Navigation("Members");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.HelpRequests.ElderlyHelpRequestHistory", b =>
+                {
+                    b.HasOne("Sanad.Modules.Families.Domain.HelpRequests.ElderlyHelpRequest", null)
+                        .WithMany("History")
+                        .HasForeignKey("HelpRequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Reports.MedicalReport", b =>
                 {
                     b.HasOne("Sanad.Modules.Families.Domain.Bookings.Booking", null)
@@ -2362,6 +2500,11 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         });
 
                     b.Navigation("Benefits");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.HelpRequests.ElderlyHelpRequest", b =>
+                {
+                    b.Navigation("History");
                 });
 #pragma warning restore 612, 618
         }
