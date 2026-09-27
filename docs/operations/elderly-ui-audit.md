@@ -291,9 +291,10 @@ excluded. The bounded SOS route/lifecycle/Admin-read slice is documented below; 
    require its own Sanad account.
 6. The complete notification category inventory, event-specific timezone
    semantics, preference enforcement for every event, push/email provider and
-   retry rules, physical purge policy, and Admin inspection/trace surface.
-   The delivered foundation defines one-year read-time availability, cursor
-   paging, read state, and typed destination metadata only.
+   retry rules, physical purge policy, and any future recipient-level trace
+   beyond the delivered metadata-only Admin list/detail/timeline/aggregate
+   views. The inbox defines one-year read-time availability, cursor paging,
+   read state, and typed destination metadata.
 7. Health-tip category taxonomy, clinical review, featured/save/read metrics,
    and tenant scope. Bilingual structured authoring, Draft/Published/Archived,
    image constraints, list/detail/preview and direct ContentAdmin publishing
@@ -315,9 +316,11 @@ excluded. The bounded SOS route/lifecycle/Admin-read slice is documented below; 
 ## Deferred to assigned roadmap slices
 
 - Notification producers and delivery: Phase 2. The durable inbox read
-  foundation is delivered; check-in creation, providers/retries, physical
-  purge and category inventory remain open; a metadata-only Admin list is
-  delivered, while detail/timeline/aggregate inspection remains open.
+  foundation and negative check-in producer are delivered; provider/retry,
+  physical purge, complete category inventory, and other event producers remain
+  open or assigned to their domain slices. Audited metadata-only Admin
+  list/detail/timeline/aggregate inspection is delivered; recipient-level
+  tracing is not exposed.
 - Elderly check-in/dashboard, sentence-builder/help-request, and the bounded
   SOS route/lifecycle/Admin-read slice are delivered in Phase 3. SOS delivery,
   preference, dialer, purge, export, escalation, and timeout decisions remain
