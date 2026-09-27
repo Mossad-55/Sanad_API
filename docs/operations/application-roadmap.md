@@ -143,6 +143,16 @@ Complete the elderly flow on real data:
 - Connect sentence-builder submission to the same help-request API.
 - Medication task execution using the existing medication schedule and
   take/skip contracts; add history and family synchronization where missing.
+- Medication late/missed alerts are a separate gated contract. The owner-approved
+  lateness threshold is CMS-managed with an initial value of 60 minutes after
+  the scheduled dose, but no CMS setting/ownership/scope/versioning API exists.
+  `DoseStatus.Missed` has no transition logic, and no scheduler, outbox, or
+  dispatcher exists. No late-alert route/domain/persistence/tests/Postman/Bruno
+  implementation exists. Alert recipients, event category/payload/deep-link,
+  preference/channel mapping, durable retry/idempotency, historical
+  recalculation, and Admin alert/threshold audit surface remain unresolved.
+  Preserve the delivered Elderly medication self-service and Admin prescription,
+  dose-timeline, and adherence reads.
 - SOS creation, location capture, recipient notification, status tracking, and
   cancellation. The owner-approved outcome is only a tracked SOS with intended
   contact notification and device-dialer behavior where documented; voice
@@ -173,9 +183,11 @@ recipients and active membership; notification categories/preferences/
 channels, retry/idempotency under existing no-SMS/email-plus-in-app
 constraints; lifecycle, duplicate, cancel, escalation, timeout; and Admin
 read/audit/retention/export. No SOS route/domain/persistence/tests/Postman/
-Bruno surface exists. Medication late threshold, whether skipped-dose reasons
-are free text or lookup values, contact clear/delete, and Admin field-level
-visibility also remain unverified.
+Bruno surface exists. Medication skipped-dose reasons, alert recipients, event
+category/payload/deep-link, preference/channel mapping, durable retry/
+idempotency, historical recalculation, and Admin alert/threshold audit also
+remain unresolved. Contact clear/delete and Admin field-level visibility remain
+unverified.
 
 ### Phase 4 — Role dashboards and booking execution integration
 
