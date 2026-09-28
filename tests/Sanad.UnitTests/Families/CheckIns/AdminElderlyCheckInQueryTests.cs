@@ -24,7 +24,7 @@ public sealed class AdminElderlyCheckInQueryTests
         Assert.Equal(second.Id, item.Id);
         Assert.Equal("Elderly", item.ElderlyEnglishName);
         Assert.Equal(elderly.FamilyId.Value, item.FamilyId);
-        Assert.Equal(false, item.Answer);
+        Assert.False(item.Answer);
         Assert.Equal(1, result.Value.Page);
         Assert.Equal(20, result.Value.PageSize);
         Assert.Equal(1, result.Value.TotalCount);

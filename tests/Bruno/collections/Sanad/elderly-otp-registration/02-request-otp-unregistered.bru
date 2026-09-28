@@ -1,0 +1,35 @@
+meta {
+  name: 02-request-otp-unregistered
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/elderly/request-otp
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  const baseUrl = bru.getEnvVar("baseUrl");
+  if (baseUrl !== "http://localhost:5235") throw new Error("OTP registration tests may run only against the guarded local fixture API.");
+  if (bru.getEnvVar("appEnvironment") !== "Development" || bru.getEnvVar("smsSenderMode") !== "development-noop") {
+    throw new Error("OTP registration tests require the local Development API with its no-op SMS sender.");
+  }
+}
+
+body:json {
+  {
+    "phoneNumber": "+201009999999"
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Identity.ElderlyLogin.AccountNotRegistered
+  res.body.detail: eq "Elderly account not registered."
+}

@@ -53,7 +53,7 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                 table: "medication_lateness_setting_revisions",
                 columns: new[] { "SettingId", "IsActive" },
                 unique: true,
-                filter: "is_active = TRUE");
+                filter: "\"IsActive\" = TRUE");
 
             migrationBuilder.CreateIndex(
                 name: "IX_medication_lateness_setting_revisions_SettingId_Version",

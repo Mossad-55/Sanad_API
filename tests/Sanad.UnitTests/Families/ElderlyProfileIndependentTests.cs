@@ -17,6 +17,88 @@ namespace Sanad.UnitTests.Families;
 public sealed class ElderlyProfileIndependentTests
 {
     [Fact]
+    public async Task HasUsableElderlyProfile_ReturnsTrue_WhenMatchingFamilyIsActive()
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        UserId identity = UserId.New();
+        Family family = Family.Create(owner, "Family");
+        Elderly elderly = CreateElderly(
+            owner,
+            identity,
+            family.Id,
+            ElderlyTimeZone.InitialDefaultId,
+            DateOnly.Parse("1980-01-01"));
+        db.AddRange(family, elderly);
+        await db.SaveChangesAsync();
+
+        Result<bool> result = await new HasUsableElderlyProfileQueryHandler(db)
+            .Handle(
+                new HasUsableElderlyProfileQuery(identity),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value);
+    }
+
+    [Fact]
+    public async Task HasUsableElderlyProfile_ReturnsFalse_WhenIdentityDoesNotMatchProfile()
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        Family family = Family.Create(owner, "Family");
+        Elderly elderly = CreateElderly(
+            owner,
+            UserId.New(),
+            family.Id,
+            ElderlyTimeZone.InitialDefaultId,
+            DateOnly.Parse("1980-01-01"));
+        db.AddRange(family, elderly);
+        await db.SaveChangesAsync();
+
+        Result<bool> result = await new HasUsableElderlyProfileQueryHandler(db)
+            .Handle(
+                new HasUsableElderlyProfileQuery(UserId.New()),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async Task HasUsableElderlyProfile_ReturnsFalse_WhenMatchingFamilyIsDeletedOrMissing(
+        bool addFamily)
+    {
+        await using FamiliesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        UserId identity = UserId.New();
+        Family family = Family.Create(owner, "Family");
+        Elderly elderly = CreateElderly(
+            owner,
+            identity,
+            family.Id,
+            ElderlyTimeZone.InitialDefaultId,
+            DateOnly.Parse("1980-01-01"));
+        family.MarkDeleted("test", null);
+        db.Elderlies.Add(elderly);
+        if (addFamily)
+        {
+            db.Families.Add(family);
+        }
+        await db.SaveChangesAsync();
+
+        Result<bool> result = await new HasUsableElderlyProfileQueryHandler(db)
+            .Handle(
+                new HasUsableElderlyProfileQuery(identity),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value);
+    }
+
+    [Fact]
     public async Task OwnProfile_ResolvesByIdentity_UsesTimezoneAgeAndLatestAssessment()
     {
         await using FamiliesDbContext db = CreateDb();

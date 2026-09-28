@@ -1,0 +1,29 @@
+meta {
+  name: 04-check-in-wrong-role
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/check-ins
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWellnessFamilyOwnerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "answer": false
+  }
+}
+
+assert {
+  res.status: eq 403
+}

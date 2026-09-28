@@ -1,0 +1,26 @@
+meta {
+  name: 10-inbox-unassigned-caregiver
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/notifications?pageSize=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestUnassignedCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const match = (res.body.items || []).some(item =>
+    item.type === "HelpRequestCreated" &&
+    String(item.destinationEntityId).toLowerCase() === String(bru.getVar("helpRequestFanoutId")).toLowerCase());
+  if (match) throw new Error("Caregiver without an active Elderly booking received the help-request notification.");
+}

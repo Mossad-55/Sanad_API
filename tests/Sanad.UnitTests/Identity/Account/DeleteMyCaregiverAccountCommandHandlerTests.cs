@@ -560,6 +560,11 @@ public sealed class DeleteMyCaregiverAccountCommandHandlerTests
         internal IReadOnlyList<FamilyMembership> ActiveRoles { get; set; } = [];
         internal Result LeaveResult { get; set; } = Result.Success();
 
+        public Task<bool> HasUsableElderlyProfileAsync(UserId userId, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(false);
+        }
+
         public Task<bool> IsElderlyDependentAsync(UserId userId, CancellationToken cancellationToken = default)
         {
             return Task.FromResult(IsElderlyDependent);

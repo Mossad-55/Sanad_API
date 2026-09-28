@@ -287,6 +287,13 @@ public sealed class DeleteMyFamilyAccountCommandHandlerTests
         internal int GetActiveRolesCalls { get; private set; }
         internal int LeaveCalls { get; private set; }
 
+        public Task<bool> HasUsableElderlyProfileAsync(
+            UserId userId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(false);
+        }
+
         public Task<bool> IsElderlyDependentAsync(
             UserId userId,
             CancellationToken cancellationToken = default)

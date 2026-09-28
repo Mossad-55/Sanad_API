@@ -274,6 +274,7 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
+                        .HasSentinel(1)
                         .HasColumnName("ui_language");
 
                     b.Property<DateTime>("UpdatedOnUtc")

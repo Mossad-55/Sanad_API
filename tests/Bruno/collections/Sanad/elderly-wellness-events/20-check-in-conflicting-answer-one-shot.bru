@@ -1,0 +1,29 @@
+meta {
+  name: 20-check-in-conflicting-answer-one-shot
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/check-ins
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWellnessJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "answer": true
+  }
+}
+
+assert {
+  res.status: eq 409
+}

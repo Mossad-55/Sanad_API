@@ -1,0 +1,26 @@
+meta {
+  name: 05-late-medications
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/medications/late
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWellnessJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const missed = res.body.missedDoses || [];
+  const fixtureDose = missed.find(dose => dose.medicationName === "Test late-evaluation medication");
+  if (!fixtureDose) throw new Error("Expected deterministic overdue medication fixture to produce a missed dose.");
+  bru.setVar("elderlyWellnessMedicationId", fixtureDose.medicationId);
+}

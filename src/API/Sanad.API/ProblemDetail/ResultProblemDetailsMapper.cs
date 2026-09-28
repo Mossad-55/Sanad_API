@@ -11,6 +11,7 @@ public static class ResultProblemDetailsMapper
         new Dictionary<string, int>(
             StringComparer.Ordinal)
         {
+            ["Identity.ElderlyLogin.AccountNotRegistered"] = 404,
             ["Identity.ElderlyLogin.OtpVerificationFailed"] = 401,
             ["Identity.ElderlyLogin.SessionLimitReached"] = 409,
 
@@ -226,6 +227,11 @@ public static class ResultProblemDetailsMapper
                 Detail = GetSafeDetail(statusCode),
                 Instance = httpContext.Request.Path
             };
+
+        if (error.Code == "Identity.ElderlyLogin.AccountNotRegistered")
+        {
+            problemDetails.Detail = "Elderly account not registered.";
+        }
 
         problemDetails.Extensions["code"] =
             error.Code;

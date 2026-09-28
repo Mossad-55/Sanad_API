@@ -11,6 +11,27 @@ using Sanad.Modules.Families.Domain.Elderlies;
 
 namespace Sanad.Modules.Families.Application.Elderlies;
 
+public sealed record HasUsableElderlyProfileQuery(UserId UserId) : IQuery<bool>;
+
+public sealed class HasUsableElderlyProfileQueryHandler(IFamiliesDbContext dbContext)
+    : IQueryHandler<HasUsableElderlyProfileQuery, bool>
+{
+    public async Task<Result<bool>> Handle(
+        HasUsableElderlyProfileQuery request,
+        CancellationToken cancellationToken)
+    {
+        bool exists = await dbContext.Elderlies.AsNoTracking()
+            .AnyAsync(elderly =>
+                elderly.IdentityUserId == request.UserId &&
+                dbContext.Families.Any(family =>
+                    family.Id == elderly.FamilyId &&
+                    family.DeletedOnUtc == null),
+                cancellationToken);
+
+        return exists;
+    }
+}
+
 public sealed record ElderlyOwnProfileResponse(
     ElderlyId Id,
     string ArabicFullName,

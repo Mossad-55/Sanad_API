@@ -50,6 +50,8 @@ Hash-only storage
 
 Phone numbers on the wire must be exact ASCII E.164: `+[1-9][0-9]{1,14}`.
 
+Elderly request-OTP returns `204` only for an active registered Elderly account with a matching usable Elderly profile. Unknown and all other ineligible phones return the same `404 Identity.ElderlyLogin.AccountNotRegistered`; PendingVerification accounts are ineligible. The eligible request dispatches an OTP, so examples may only be run against a local Development API using the no-op SMS sender.
+
 ## Delivery
 
 Handlers persist OTP hashes first, then call `IEmailSender` / `ISmsSender`.

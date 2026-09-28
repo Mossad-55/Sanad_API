@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
+using Sanad.Modules.Identity.Application.Abstractions.Families;
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
@@ -18,17 +19,20 @@ public sealed class RequestElderlyLoginOtpCommandHandler :
     private readonly IOtpService _otpService;
     private readonly ISmsSender _smsSender;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IFamilyAccountGateway _familyAccountGateway;
 
     public RequestElderlyLoginOtpCommandHandler(
         IIdentityDbContext dbContext,
         IOtpService otpService,
         ISmsSender smsSender,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IFamilyAccountGateway familyAccountGateway)
     {
         _dbContext = dbContext;
         _otpService = otpService;
         _smsSender = smsSender;
         _dateTimeProvider = dateTimeProvider;
+        _familyAccountGateway = familyAccountGateway;
     }
 
     public async Task<Result> Handle(
@@ -47,10 +51,13 @@ public sealed class RequestElderlyLoginOtpCommandHandler :
                         phoneNumber,
                     cancellationToken);
 
-        if (user is null ||
-            !IsEligibleElderlyUser(user))
+        if (user is null || !IsEligibleElderlyUser(user) ||
+            !await _familyAccountGateway.HasUsableElderlyProfileAsync(
+                user.Id,
+                cancellationToken))
         {
-            return Result.Success();
+            return Result.Failure(
+                ElderlyLoginErrors.AccountNotRegistered);
         }
 
         DateTime utcNow =
@@ -122,11 +129,9 @@ public sealed class RequestElderlyLoginOtpCommandHandler :
     private static bool IsEligibleElderlyUser(
         User user)
     {
-        return (user.Status is
-                UserStatus.PendingVerification or
-                UserStatus.Active &&
+        return user.Status == UserStatus.Active &&
             user.Accounts.Count == 1 &&
             user.Accounts.Single().AccountType ==
-                AccountType.Elderly);
+                AccountType.Elderly;
     }
 }

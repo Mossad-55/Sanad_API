@@ -25,6 +25,6 @@ public sealed class MedicationLatenessSettingRevisionConfiguration : IEntityType
         b.Property(x => x.ThresholdMinutes).IsRequired();
         b.Property(x => x.CreatedOnUtc).IsRequired();
         b.HasIndex(x => new { x.SettingId, x.Version }).IsUnique();
-        b.HasIndex(x => new { x.SettingId, x.IsActive }).IsUnique().HasFilter("is_active = TRUE");
+        b.HasIndex(x => new { x.SettingId, x.IsActive }).IsUnique().HasFilter("\"IsActive\" = TRUE");
     }
 }

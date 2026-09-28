@@ -1,0 +1,26 @@
+meta {
+  name: 12-inbox-support-admin
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/notifications?pageSize=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestSupportAdminJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const match = (res.body.items || []).some(item =>
+    item.type === "HelpRequestCreated" &&
+    String(item.destinationEntityId).toLowerCase() === String(bru.getVar("helpRequestFanoutId")).toLowerCase());
+  if (!match) throw new Error("Active SupportAdmin did not receive the help-request notification.");
+}

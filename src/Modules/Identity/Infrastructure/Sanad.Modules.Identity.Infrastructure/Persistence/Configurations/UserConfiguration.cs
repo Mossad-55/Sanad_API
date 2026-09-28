@@ -101,6 +101,7 @@ public sealed class UserConfiguration :
             .HasColumnName("ui_language")
             .HasDefaultValue(
                 UiLanguage.Arabic)
+            .HasSentinel(UiLanguage.Arabic)
             .IsRequired();
 
         builder.OwnsOne(

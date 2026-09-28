@@ -91,5 +91,6 @@ Families.Elderly.AccessDenied`; an invalid or non-IANA identifier returns
 ```
 
 Family dependent list/get/create/update responses also include `timeZoneId`.
-The emergency-contact flow and Admin Elderly profile inspection are separate
-open gaps and are not provided by these routes.
+The Family emergency-contact read/write flow is documented in
+`docs/app/families/dependents.md`. Admin Elderly profile/contact inspection is a
+separate open gap and is not provided by these routes.

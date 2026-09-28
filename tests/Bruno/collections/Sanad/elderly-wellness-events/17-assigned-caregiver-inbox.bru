@@ -1,0 +1,29 @@
+meta {
+  name: 17-assigned-caregiver-inbox
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{baseUrl}}/api/v1/notifications?pageSize=100
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWellnessCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = res.body.items || [];
+  const matches = (type, destinationId) => items.some(item =>
+    item.type === type &&
+    String(item.destinationEntityId).toLowerCase() === String(destinationId).toLowerCase());
+  if (!matches("MedicationDoseMissed", bru.getVar("elderlyWellnessMedicationId"))) throw new Error("Assigned active-booking caregiver did not receive the missed-medication alert.");
+  if (!matches("SosCreated", bru.getVar("elderlyWellnessSosId"))) throw new Error("Assigned active-booking caregiver did not receive the created SOS alert.");
+  if (matches("NegativeCheckIn", bru.getVar("elderlyWellnessEntityId"))) throw new Error("Check-in alert unexpectedly included the assigned caregiver.");
+}

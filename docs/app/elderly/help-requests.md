@@ -37,9 +37,15 @@ Reusing the same key with the same normalized payload returns the original
 request. Reusing it with a different payload returns `409` with
 `Families.HelpRequest.IdempotencyConflict`. The request is persisted before a
 durable in-app alert is created for each active linked Family member whose
-`helpRequestAlerts` preference is enabled. Alert creation is idempotent per
-request and recipient. Push/email delivery is deferred to Notifications/Events;
-SMS is excluded.
+`helpRequestAlerts` preference is enabled, the assigned caregiver while an
+active `Confirmed` or `InProgress` booking exists and the caregiver account is
+active with `helpRequestAlerts` enabled, and active `SupportAdmin` accounts.
+The Elderly profile must match both the authenticated identity and resolved
+profile; a missing or mismatched profile produces no recipients. If any
+required Identity recipient query fails, fan-out returns no recipients (fail
+closed). Alert creation remains idempotent per request and recipient. Push,
+email, provider delivery, outbox, and retry remain deferred to
+Notifications/Events; SMS is excluded.
 
 ## List and detail
 

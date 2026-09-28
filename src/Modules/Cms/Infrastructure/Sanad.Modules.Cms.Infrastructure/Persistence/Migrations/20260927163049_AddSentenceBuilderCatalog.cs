@@ -65,7 +65,7 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                 table: "sentence_builder_catalog_revisions",
                 columns: new[] { "CatalogEntryId", "IsActive" },
                 unique: true,
-                filter: "is_active = TRUE");
+                filter: "\"IsActive\" = TRUE");
 
             migrationBuilder.CreateIndex(
                 name: "IX_sentence_builder_catalog_revisions_CatalogEntryId_Version",

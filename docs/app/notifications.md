@@ -7,9 +7,29 @@ unauthenticated requests are not accepted.
 
 This slice is the durable in-app foundation. Help-request creation now creates
 idempotent `ElderlyHelpRequest` / `HelpRequestCreated` notifications for active
-linked Family recipients whose `helpRequestAlerts` preference is enabled. The
-app maps a destination
-using the stored entity kind and ID; the API does not return a client route.
+linked Family recipients whose `helpRequestAlerts` preference is enabled, the
+assigned caregiver only while an active `Confirmed`/`InProgress` booking exists
+and the caregiver is active with `helpRequestAlerts` enabled, and active
+`SupportAdmin` users. A missing/mismatched identity-bound Elderly profile or a
+failed required Identity recipient lookup yields no recipients. The app maps a
+destination using the stored entity kind and ID; the API does not return a
+client route.
+
+For the verified elderly wellness-event recipient flow, eligible linked Family
+members are selected according to the event preference. The assigned caregiver
+is eligible only when an active `Confirmed` or `InProgress` booking exists;
+caregiver account activity and event preference rules also apply where that
+event defines them. Active `SupportAdmin` accounts are eligible. Unassigned or
+otherwise unrelated caregivers are excluded. Check-in alerts target eligible
+Family members with `checkInAlerts` enabled; the SOS implementation currently
+reuses the help-request preference lookup, so dedicated SOS preference
+semantics remain **Needs Owner Verification**.
+
+The bounded check-in/SOS recipient-flow Bruno run is
+`tests/Bruno/collections/Sanad/elderly-wellness-events/` and passed **20/20
+requests and assertions** against local fixtures. This verifies the scoped
+current behavior; it does not establish the historical check-in 500 root
+exception, which was not captured.
 Admin operational inspection is separate from this recipient-owned inbox and
 is documented in [`docs/admin/notifications.md`](../admin/notifications.md).
 
@@ -100,10 +120,12 @@ outbox, and scheduler behavior are deferred and remain Needs Owner Verification.
 SOS creation uses the same durable inbox foundation. It creates
 `category = ElderlySos`, `type = SosCreated`, and destination kind
 `ElderlySos`, idempotent per SOS and recipient. Current recipients are active
-linked Family members eligible for the current alert lookup, the assigned
-caregiver during an active `Confirmed` or `InProgress` booking, and active
-`SupportAdmin` users. The current implementation reuses the help-request
-preference lookup; a dedicated SOS preference and exact preference semantics
+linked Family members eligible under the current help-request preference
+lookup, the assigned caregiver only during an active `Confirmed` or
+`InProgress` booking (and subject to the applicable active-account rule), and
+active `SupportAdmin` users. Unrelated caregivers are excluded. The current
+implementation reuses the help-request preference lookup; a dedicated SOS
+preference and exact preference semantics
 are **Needs Owner Verification**. Push/email delivery, outbox, scheduler,
 physical purge, device-dialer behavior, and export remain **Needs Owner
 Verification**. SMS and server-side dialing are excluded.

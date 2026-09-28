@@ -3,14 +3,18 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Options;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Enums;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
+using Sanad.Modules.Cms.Application.Abstractions.Data;
+using Sanad.Modules.Cms.Domain.SentenceBuilder;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
+using Sanad.Modules.Families.Domain.Medications;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Domain.Users;
@@ -25,6 +29,8 @@ public sealed record TestUserSeedOptions
     public bool Enabled { get; init; }
 
     public string Password { get; init; } = "Test-1234!";
+
+    public string? ElderlyPassword { get; init; }
 }
 
 // Opt-in idempotent fixture for end-to-end testing (Development environments ONLY).
@@ -47,6 +53,7 @@ public sealed class TestUserDataSeeder
     private readonly IdentityDbContext _identityDbContext;
     private readonly IFamiliesDbContext _familiesDbContext;
     private readonly CaregiversDbContext _caregiversDbContext;
+    private readonly ICmsDbContext _cmsDbContext;
     private readonly IPasswordHasher _passwordHasher;
     private readonly IDateTimeProvider _dateTimeProvider;
     private readonly TestUserSeedOptions _options;
@@ -57,6 +64,7 @@ public sealed class TestUserDataSeeder
         IdentityDbContext identityDbContext,
         IFamiliesDbContext familiesDbContext,
         CaregiversDbContext caregiversDbContext,
+        ICmsDbContext cmsDbContext,
         IPasswordHasher passwordHasher,
         IDateTimeProvider dateTimeProvider,
         IOptions<TestUserSeedOptions> options,
@@ -66,6 +74,7 @@ public sealed class TestUserDataSeeder
         _identityDbContext = identityDbContext;
         _familiesDbContext = familiesDbContext;
         _caregiversDbContext = caregiversDbContext;
+        _cmsDbContext = cmsDbContext;
         _passwordHasher = passwordHasher;
         _dateTimeProvider = dateTimeProvider;
         _options = options.Value;
@@ -85,6 +94,12 @@ public sealed class TestUserDataSeeder
         if (!_options.Enabled)
         {
             return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.ElderlyPassword))
+        {
+            throw new InvalidOperationException(
+                "App:TestUserSeed:ElderlyPassword must be supplied locally when fixture seeding is enabled.");
         }
 
         string? paymobSecretKey =
@@ -138,6 +153,15 @@ public sealed class TestUserDataSeeder
             utcNow,
             cancellationToken);
 
+        _ = await EnsureUserAsync(
+            arabicFullName: "Ø¯Ø¹Ù… Ø§Ù„Ø¹ÙŠÙ„Ø© Ø§Ù„ØªØ¬Ø±ÙŠØ¨ÙŠ",
+            englishFullName: "Test Support Admin",
+            email: "support.admin@test.sanad.local",
+            phoneNumber: "+201000000007",
+            AccountType.SupportAdmin,
+            utcNow,
+            cancellationToken);
+
         User grandfatherUser = await EnsureElderlyUserAsync(
             arabicFullName: "الجد التجريبي",
             englishFullName: "Test Grandfather",
@@ -155,6 +179,8 @@ public sealed class TestUserDataSeeder
             new DateOnly(1952, 3, 20),
             utcNow,
             cancellationToken);
+
+        await EnsureHelpRequestCatalogAsync(cancellationToken);
 
         // ---------------- Families: aggregate + dependents ----------------
 
@@ -203,14 +229,32 @@ public sealed class TestUserDataSeeder
             await _familiesDbContext.SaveChangesAsync(cancellationToken);
         }
 
+        bool hasExpectedFamilyViewer = family.Members.Any(member => member.Id == viewer.Id);
+        bool hasGrandfatherDependent = await _familiesDbContext.Elderlies
+            .AnyAsync(
+                e => e.FamilyId == family.Id && e.IdentityUserId == grandfatherUser.Id,
+                cancellationToken);
+        bool hasGrandmotherDependent = await _familiesDbContext.Elderlies
+            .AnyAsync(
+                e => e.FamilyId == family.Id && e.IdentityUserId == grandmotherUser.Id,
+                cancellationToken);
+
+        if (!hasExpectedFamilyViewer || !hasGrandfatherDependent || !hasGrandmotherDependent)
+        {
+            throw new InvalidOperationException(
+                "Existing test-family fixture is missing its expected viewer or linked Elderly accounts. No domain rows were inserted or changed.");
+        }
+
         // ---------------- Caregivers: lookups + two Active caregivers ----------------
 
         // Load-or-create: a crashed earlier run may have persisted the caregivers
         // but never reached the bookings section - never early-return past it.
         Caregiver? medical = await _caregiversDbContext.Caregivers
+            .AsSplitQuery()
             .FirstOrDefaultAsync(c => c.UserId == medicalCaregiverUser.Id, cancellationToken);
 
         Caregiver? companion = await _caregiversDbContext.Caregivers
+            .AsSplitQuery()
             .FirstOrDefaultAsync(c => c.UserId == companionCaregiverUser.Id, cancellationToken);
 
         if (medical is null || companion is null)
@@ -387,16 +431,39 @@ public sealed class TestUserDataSeeder
 
         // ---------------- Bookings portfolio (no slot conflicts: distinct dates per caregiver) ----------------
 
+        Elderly? grandfather = await _familiesDbContext.Elderlies
+            .SingleOrDefaultAsync(
+                e => e.FamilyId == family.Id && e.IdentityUserId == grandfatherUser.Id,
+                cancellationToken);
+
+        if (grandfather is null)
+        {
+            throw new InvalidOperationException(
+                "Test fixture is missing the expected Elderly dependent for the confirmed caregiver booking.");
+        }
+
+        await EnsureMedicationFixtureAsync(grandfather, owner.Id, utcNow, cancellationToken);
+
         bool bookingsSeeded = await _familiesDbContext.Bookings
             .AnyAsync(b => b.FamilyId == family.Id, cancellationToken);
 
         if (bookingsSeeded)
         {
+            bool hasActiveBookingForFixtureElderly = await _familiesDbContext.Bookings
+                .AnyAsync(
+                    b => b.ElderlyId == grandfather.Id
+                        && b.CaregiverId == medical.Id
+                        && (b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.InProgress),
+                    cancellationToken);
+
+            if (!hasActiveBookingForFixtureElderly)
+            {
+                throw new InvalidOperationException(
+                    "Existing test-family bookings do not include a Confirmed or InProgress booking for the seeded Elderly and assigned medical caregiver fixtures. No booking was added or changed.");
+            }
+
             return;
         }
-
-        Elderly grandfather = await _familiesDbContext.Elderlies
-            .FirstAsync(e => e.FamilyId == family.Id, cancellationToken);
 
         decimal medicalHomeVisitFee = medical.MedicalPricing!.HomeVisitPrice;
         decimal companionHourlyFee = companion.CompanionPricing!.HourlyPrice;
@@ -456,6 +523,103 @@ public sealed class TestUserDataSeeder
         await _familiesDbContext.SaveChangesAsync(cancellationToken);
     }
 
+    private async Task EnsureMedicationFixtureAsync(
+        Elderly elderly,
+        UserId createdByUserId,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        TimeZoneInfo timeZone;
+        try
+        {
+            timeZone = TimeZoneInfo.FindSystemTimeZoneById(elderly.TimeZoneId);
+        }
+        catch (TimeZoneNotFoundException exception)
+        {
+            throw new InvalidOperationException(
+                "The seeded Elderly fixture has an invalid time zone; no medication fixture was added or changed.",
+                exception);
+        }
+        catch (InvalidTimeZoneException exception)
+        {
+            throw new InvalidOperationException(
+                "The seeded Elderly fixture has an invalid time zone; no medication fixture was added or changed.",
+                exception);
+        }
+
+        DateTime localNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, timeZone);
+        DateOnly localDate = DateOnly.FromDateTime(localNow);
+        int thresholdMinutes = await GetMedicationLatenessThresholdAsync(cancellationToken);
+        TimeSpan overdueBy = TimeSpan.FromMinutes(thresholdMinutes + 1);
+        TimeSpan localTime = localNow.TimeOfDay - overdueBy;
+        TimeOnly scheduledTime = localTime >= TimeSpan.Zero
+            ? TimeOnly.FromTimeSpan(localTime)
+            : new TimeOnly(0, 0);
+
+        const string fixtureName = "Test late-evaluation medication";
+        Medication? medication = await _familiesDbContext.Medications
+            .SingleOrDefaultAsync(
+                item => item.ElderlyId == elderly.Id && item.Name == fixtureName,
+                cancellationToken);
+
+        if (medication is null)
+        {
+            medication = Medication.Create(
+                elderly.Id,
+                createdByUserId,
+                fixtureName,
+                "500 mg",
+                "tablet",
+                doseQuantity: 1,
+                doseTimes: [scheduledTime],
+                startDate: localDate.AddDays(-1),
+                endDate: null,
+                instructions: "Seeded overdue dose for late-evaluation testing.",
+                stockQuantity: 30,
+                lowStockThreshold: 5);
+
+            _familiesDbContext.Medications.Add(medication);
+            await _familiesDbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        if (medication.Status != MedicationStatus.Active
+            || medication.StartDate > localDate
+            || medication.EndDate < localDate
+            || medication.Dosage != "500 mg"
+            || medication.DoseUnit != "tablet"
+            || medication.DoseQuantity != 1)
+        {
+            throw new InvalidOperationException(
+                "The deterministic late-evaluation medication fixture already exists with incompatible stored terms. No medication fixture was changed.");
+        }
+
+        if (localNow.TimeOfDay < scheduledTime.ToTimeSpan().Add(TimeSpan.FromMinutes(thresholdMinutes)))
+        {
+            medication.UpdateDetails(
+                fixtureName,
+                "500 mg",
+                "tablet",
+                doseQuantity: 1,
+                doseTimes: [scheduledTime],
+                startDate: medication.StartDate,
+                endDate: medication.EndDate,
+                instructions: "Seeded overdue dose for late-evaluation testing.");
+            await _familiesDbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private async Task<int> GetMedicationLatenessThresholdAsync(
+        CancellationToken cancellationToken)
+    {
+        var setting = await _cmsDbContext.MedicationLatenessSettings
+            .Include(item => item.Revisions)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return setting?.Revisions.SingleOrDefault(item => item.IsActive)?.ThresholdMinutes
+            ?? 60;
+    }
+
     private async Task EnsureSubscriptionFixturesAsync(
         Family family,
         DateTime utcNow,
@@ -463,6 +627,7 @@ public sealed class TestUserDataSeeder
     {
         SubscriptionPlanVersion? free = await _familiesDbContext.SubscriptionPlanVersions
             .Include(plan => plan.Benefits)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(
                 plan => plan.Key == SubscriptionPlan.FreeKey && plan.Version == 1,
                 cancellationToken);
@@ -484,6 +649,7 @@ public sealed class TestUserDataSeeder
 
         SubscriptionPlanVersion? premium = await _familiesDbContext.SubscriptionPlanVersions
             .Include(plan => plan.Benefits)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(
                 plan => plan.Key == SubscriptionPlan.PremiumKey && plan.Version == 1,
                 cancellationToken);
@@ -505,6 +671,7 @@ public sealed class TestUserDataSeeder
 
         SubscriptionPlanVersion? premiumPlus = await _familiesDbContext.SubscriptionPlanVersions
             .Include(plan => plan.Benefits)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(
                 plan => plan.Key == SubscriptionPlan.PremiumPlusKey && plan.Version == 1,
                 cancellationToken);
@@ -525,6 +692,7 @@ public sealed class TestUserDataSeeder
 
         FamilySubscription? current = await _familiesDbContext.FamilySubscriptions
             .Include(subscription => subscription.Benefits)
+            .AsSplitQuery()
             .SingleOrDefaultAsync(
                 subscription => subscription.FamilyId == family.Id && subscription.IsCurrent,
                 cancellationToken);
@@ -678,6 +846,19 @@ public sealed class TestUserDataSeeder
 
         if (user is not null)
         {
+            bool changed = false;
+            if (!user.Accounts.Any(account => account.AccountType == accountType))
+            {
+                user.AddAccount(accountType);
+                changed = true;
+            }
+
+            changed |= EnsureFixturePassword(user, _options.Password, utcNow);
+
+            if (changed)
+            {
+                await _identityDbContext.SaveChangesAsync(cancellationToken);
+            }
             return user;
         }
 
@@ -720,6 +901,9 @@ public sealed class TestUserDataSeeder
 
         if (user is not null)
         {
+            if (EnsureFixturePassword(user, _options.ElderlyPassword!, utcNow))
+                await _identityDbContext.SaveChangesAsync(cancellationToken);
+
             return user;
         }
 
@@ -733,10 +917,78 @@ public sealed class TestUserDataSeeder
             dateOfBirth,
             utcNow);
 
+        EnsureFixturePassword(user, _options.ElderlyPassword!, utcNow);
+
         _identityDbContext.Users.Add(user);
         await _identityDbContext.SaveChangesAsync(cancellationToken);
 
         return user;
+    }
+
+    private bool EnsureFixturePassword(User user, string password, DateTime utcNow)
+    {
+        if (user.Password is not null
+            && _passwordHasher.Verify(user.Password.PasswordHash, password)
+                != PasswordVerificationResult.Failed)
+        {
+            return false;
+        }
+
+        if (user.HasPassword)
+        {
+            user.ResetPasswordHash(_passwordHasher.Hash(password), utcNow);
+        }
+        else
+        {
+            user.SetInitialPasswordHash(_passwordHasher.Hash(password), utcNow);
+        }
+
+        return true;
+    }
+
+    private async Task EnsureHelpRequestCatalogAsync(
+        CancellationToken cancellationToken)
+    {
+        (string Key, SentenceBuilderCategory Category, string Arabic, string English)[] entries =
+        [
+            ("self", SentenceBuilderCategory.Actor, "أنا", "I"),
+            ("need", SentenceBuilderCategory.Action, "أحتاج", "need"),
+            ("water", SentenceBuilderCategory.Need, "ماء", "water"),
+            ("now", SentenceBuilderCategory.Qualifier, "الآن", "now")
+        ];
+
+        for (int index = 0; index < entries.Length; index++)
+        {
+            var fixture = entries[index];
+            SentenceBuilderCatalogEntry? entry = await _cmsDbContext.SentenceBuilderCatalogEntries
+                .Include(item => item.Revisions)
+                .SingleOrDefaultAsync(
+                    item => item.StableKey == fixture.Key && item.Category == fixture.Category,
+                    cancellationToken);
+
+            if (entry is null)
+            {
+                entry = SentenceBuilderCatalogEntry.Create(fixture.Key, fixture.Category);
+                SentenceBuilderCatalogRevision revision = entry.AddRevision(
+                    fixture.Arabic,
+                    fixture.English,
+                    index);
+                revision.Activate();
+                _cmsDbContext.SentenceBuilderCatalogEntries.Add(entry);
+                continue;
+            }
+
+            if (!entry.Revisions.Any(revision => revision.IsActive))
+            {
+                SentenceBuilderCatalogRevision revision = entry.AddRevision(
+                    fixture.Arabic,
+                    fixture.English,
+                    index);
+                revision.Activate();
+            }
+        }
+
+        await _cmsDbContext.SaveChangesAsync(cancellationToken);
     }
 
     private async Task<T> EnsureLookupAsync<T>(

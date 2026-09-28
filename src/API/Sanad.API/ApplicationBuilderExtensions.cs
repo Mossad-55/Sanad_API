@@ -10,12 +10,17 @@ using Sanad.Modules.Cms.Infrastructure.Persistence;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence.Seeding;
+using Sanad.Modules.Notifications.Infrastructure.Persistence;
 
 public static class ApplicationBuilderExtensions
 {
     public static WebApplication UseSanadApi(
         this WebApplication app)
     {
+        TestUserSeedTargetGuard.EnsureSafeTarget(
+            app.Configuration,
+            app.Environment);
+
         app.UseExceptionHandler();
 
         app.UseStatusCodePages();
@@ -48,6 +53,7 @@ public static class ApplicationBuilderExtensions
         ApplyCmsMigrations(app);
         ApplyCaregiversMigrations(app);
         ApplyFamiliesMigrations(app);
+        ApplyNotificationsMigrations(app);
 
         SeedSuperAdmin(app);
         SeedTestUsers(app);
@@ -140,6 +146,13 @@ public static class ApplicationBuilderExtensions
             scope.ServiceProvider.GetRequiredService<
             FamiliesDbContext>();
 
+        dbContext.Database.Migrate();
+    }
+
+    private static void ApplyNotificationsMigrations(WebApplication app)
+    {
+        using IServiceScope scope = app.Services.CreateScope();
+        NotificationsDbContext dbContext = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
         dbContext.Database.Migrate();
     }
 

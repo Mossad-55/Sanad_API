@@ -11,5 +11,5 @@ public sealed class SentenceBuilderCatalogEntryConfiguration : IEntityTypeConfig
 public sealed class SentenceBuilderCatalogRevisionConfiguration : IEntityTypeConfiguration<SentenceBuilderCatalogRevision>
 {
     public void Configure(EntityTypeBuilder<SentenceBuilderCatalogRevision> b)
-    { b.ToTable("sentence_builder_catalog_revisions"); b.HasKey(x => x.Id); b.Property(x => x.Id).ValueGeneratedNever(); b.Property(x => x.ArabicLabel).HasMaxLength(200).IsRequired(); b.Property(x => x.EnglishLabel).HasMaxLength(200).IsRequired(); b.Property(x => x.CreatedOnUtc).IsRequired(); b.HasIndex(x => new { x.CatalogEntryId, x.Version }).IsUnique(); b.HasIndex(x => new { x.CatalogEntryId, x.IsActive }).IsUnique().HasFilter("is_active = TRUE"); }
+    { b.ToTable("sentence_builder_catalog_revisions"); b.HasKey(x => x.Id); b.Property(x => x.Id).ValueGeneratedNever(); b.Property(x => x.ArabicLabel).HasMaxLength(200).IsRequired(); b.Property(x => x.EnglishLabel).HasMaxLength(200).IsRequired(); b.Property(x => x.CreatedOnUtc).IsRequired(); b.HasIndex(x => new { x.CatalogEntryId, x.Version }).IsUnique(); b.HasIndex(x => new { x.CatalogEntryId, x.IsActive }).IsUnique().HasFilter("\"IsActive\" = TRUE"); }
 }

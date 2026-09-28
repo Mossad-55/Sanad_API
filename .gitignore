@@ -5,6 +5,7 @@
 
 # dotenv files
 .env
+tests/Bruno/environments/local-fixtures.bru
 sanad-files/
 
 # User-specific files

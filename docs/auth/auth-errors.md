@@ -43,6 +43,7 @@ Validation failures are also Problem Details. `detail` is a safe public message.
 | `Identity.Refresh.UserNotFound` | 401 |
 | `Identity.Refresh.UserNotActive` | 403 |
 | `Identity.Refresh.ReuseDetected` | 401 |
+| `Identity.ElderlyLogin.AccountNotRegistered` | 404 |
 | `Identity.ElderlyLogin.OtpVerificationFailed` | 401 |
 | `Identity.ElderlyLogin.SessionLimitReached` | 409 |
 | `Identity.Password.UserNotFound` | 401 |
@@ -86,3 +87,5 @@ Unmapped application errors become `400`.
 | Other 400 | The request could not be completed. |
 
 Clients should branch on `status` and `code`, not on `detail`.
+
+For `Identity.ElderlyLogin.AccountNotRegistered`, the safe public detail is `Elderly account not registered.` This same 404 is returned for an unknown phone and every ineligible Elderly login account/profile.

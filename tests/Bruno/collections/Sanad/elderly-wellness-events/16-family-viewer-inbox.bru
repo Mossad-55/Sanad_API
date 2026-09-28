@@ -1,0 +1,29 @@
+meta {
+  name: 16-family-viewer-inbox
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/notifications?pageSize=100
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWellnessFamilyViewerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = res.body.items || [];
+  const matches = (type, destinationId) => items.some(item =>
+    item.type === type &&
+    String(item.destinationEntityId).toLowerCase() === String(destinationId).toLowerCase());
+  if (!matches("NegativeCheckIn", bru.getVar("elderlyWellnessEntityId"))) throw new Error("Linked Family viewer did not receive the negative check-in alert.");
+  if (!matches("MedicationDoseMissed", bru.getVar("elderlyWellnessMedicationId"))) throw new Error("Linked Family viewer did not receive the missed-medication alert.");
+  if (!matches("SosCreated", bru.getVar("elderlyWellnessSosId"))) throw new Error("Linked Family viewer did not receive the created SOS alert.");
+}

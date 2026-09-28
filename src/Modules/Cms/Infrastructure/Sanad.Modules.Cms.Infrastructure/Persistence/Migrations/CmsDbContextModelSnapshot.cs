@@ -196,7 +196,7 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("SettingId", "IsActive")
                         .IsUnique()
-                        .HasFilter("is_active = TRUE");
+                        .HasFilter("\"IsActive\" = TRUE");
 
                     b.HasIndex("SettingId", "Version")
                         .IsUnique();
@@ -262,7 +262,7 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CatalogEntryId", "IsActive")
                         .IsUnique()
-                        .HasFilter("is_active = TRUE");
+                        .HasFilter("\"IsActive\" = TRUE");
 
                     b.HasIndex("CatalogEntryId", "Version")
                         .IsUnique();

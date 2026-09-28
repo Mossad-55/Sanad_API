@@ -202,6 +202,9 @@ public sealed class AuthController :
     [HttpPost("elderly/request-otp")]
     [ProducesResponseType(
     StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
     public async Task<IActionResult> RequestElderlyOtp(
     [FromBody] RequestElderlyLoginOtpRequest request,
     CancellationToken cancellationToken)

@@ -1,0 +1,30 @@
+meta {
+  name: 13-create-unauthenticated
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/help-requests
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Idempotency-Key: bruno-help-request-unauthenticated
+}
+
+body:json {
+  {
+    "actorKey": "self",
+    "actionKey": "need",
+    "needKey": "water",
+    "qualifierKey": "now",
+    "customText": null
+  }
+}
+
+assert {
+  res.status: eq 401
+}

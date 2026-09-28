@@ -1,0 +1,32 @@
+meta {
+  name: 09-sos-wrong-role
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/sos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWellnessFamilyOwnerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+  Idempotency-Key: bruno-elderly-wellness-sos-wrong-role
+}
+
+body:json {
+  {
+    "locationConsentGranted": true,
+    "latitude": null,
+    "longitude": null
+  }
+}
+
+assert {
+  res.status: eq 403
+}

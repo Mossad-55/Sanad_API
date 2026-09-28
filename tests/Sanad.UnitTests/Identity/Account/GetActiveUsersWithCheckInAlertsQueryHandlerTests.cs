@@ -34,6 +34,31 @@ public sealed class GetActiveUsersWithCheckInAlertsQueryHandlerTests
         Assert.Equal([enabled.Id], result.Value);
     }
 
+    [Fact]
+    public async Task HelpRequestAlertsQuery_ShouldReturnOnlyActiveUsersWithPreferenceEnabled()
+    {
+        await using var db = new IdentityTestDbContext(
+            new DbContextOptionsBuilder<IdentityTestDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString())
+                .Options);
+
+        var enabled = CreateActiveUser();
+        var disabled = CreateActiveUser();
+        disabled.ChangeNotificationPreferences(
+            NotificationPreferences.Create(true, true, true, true, true, true, true, true, helpRequestAlerts: false), DateTime.UtcNow);
+        var suspended = CreateActiveUser();
+        suspended.Suspend("temporarily unavailable", DateTime.UtcNow);
+        db.Users.AddRange(enabled, disabled, suspended);
+        await db.SaveChangesAsync();
+
+        var result = await new GetActiveUsersWithHelpRequestAlertsQueryHandler(db).Handle(
+            new GetActiveUsersWithHelpRequestAlertsQuery([enabled.Id, disabled.Id, suspended.Id, enabled.Id]),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal([enabled.Id], result.Value);
+    }
+
     private static User CreateActiveUser() => User.CreateElderly(
         FullName.Create("عمر"),
         FullName.Create("Family member"),

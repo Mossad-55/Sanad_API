@@ -24,6 +24,10 @@ public interface IFamilyAccountGateway
         UserId userId,
         CancellationToken cancellationToken = default);
 
+    Task<bool> HasUsableElderlyProfileAsync(
+        UserId userId,
+        CancellationToken cancellationToken = default);
+
     Task<Result> LeaveFamiliesForSelfDeletionAsync(
         UserId userId,
         CancellationToken cancellationToken = default);

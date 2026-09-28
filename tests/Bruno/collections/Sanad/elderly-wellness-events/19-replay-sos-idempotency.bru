@@ -1,0 +1,36 @@
+meta {
+  name: 19-replay-sos-idempotency
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/sos
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWellnessJwt}}
+}
+
+headers {
+  Content-Type: application/json
+  Idempotency-Key: {{elderlyWellnessSosKey}}
+}
+
+body:json {
+  {
+    "locationConsentGranted": true,
+    "latitude": null,
+    "longitude": null
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (String(res.body.id).toLowerCase() !== String(bru.getVar("elderlyWellnessSosId")).toLowerCase()) throw new Error("Idempotent SOS replay did not return the original SOS event.");
+}

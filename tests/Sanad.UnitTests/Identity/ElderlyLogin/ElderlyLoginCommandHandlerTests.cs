@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
+using Sanad.Modules.Identity.Application.Abstractions.Families;
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Application.Authentication;
@@ -19,7 +21,7 @@ namespace Sanad.UnitTests.Identity.ElderlyLogin;
 public sealed class ElderlyLoginCommandHandlerTests
 {
     [Fact]
-    public async Task Request_ShouldPersistHashedOtpAndSendSms_ForEligiblePendingElderlyUser()
+    public async Task Request_ShouldPersistHashedOtpAndSendSms_ForActiveElderlyWithUsableProfile()
     {
         await using IdentityTestDbContext dbContext =
             CreateDbContext();
@@ -27,7 +29,7 @@ public sealed class ElderlyLoginCommandHandlerTests
         User user =
             await SeedUserAsync(
                 dbContext,
-                UserStatus.PendingVerification,
+                UserStatus.Active,
                 AccountType.Elderly);
 
         dbContext.ResetSaveChangesCalls();
@@ -38,7 +40,8 @@ public sealed class ElderlyLoginCommandHandlerTests
         RequestElderlyLoginOtpCommandHandler handler =
             CreateRequestHandler(
                 dbContext,
-                smsSender);
+                smsSender,
+                hasUsableProfile: true);
 
         Result result =
             await handler.Handle(
@@ -73,10 +76,12 @@ public sealed class ElderlyLoginCommandHandlerTests
     }
 
     [Theory]
-    [InlineData(UserStatus.PendingVerification, AccountType.Family)]
+    [InlineData(UserStatus.PendingVerification, AccountType.Elderly)]
     [InlineData(UserStatus.Suspended, AccountType.Elderly)]
     [InlineData(UserStatus.Blocked, AccountType.Elderly)]
-    public async Task Request_ShouldReturnGenericSuccessWithoutPersistenceOrSms_ForIneligibleUser(
+    [InlineData(UserStatus.Active, AccountType.Family)]
+    [InlineData(UserStatus.Active, AccountType.MedicalCaregiver)]
+    public async Task Request_ShouldReturnNotRegisteredWithoutPersistenceOrSms_ForIneligibleUser(
         UserStatus status,
         AccountType accountType)
     {
@@ -105,14 +110,15 @@ public sealed class ElderlyLoginCommandHandlerTests
                     user.PhoneNumber.Value),
                 CancellationToken.None);
 
-        Assert.True(result.IsSuccess);
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ElderlyLoginErrors.AccountNotRegistered, result.Error);
         Assert.Empty(dbContext.VerificationRequests);
         Assert.Empty(smsSender.SentMessages);
         Assert.Equal(0, dbContext.SaveChangesCalls);
     }
 
     [Fact]
-    public async Task Request_ShouldReturnGenericSuccessWithoutPersistenceOrSms_ForUnknownPhone()
+    public async Task Request_ShouldReturnNotRegisteredWithoutPersistenceOrSms_ForUnknownPhone()
     {
         await using IdentityTestDbContext dbContext =
             CreateDbContext();
@@ -133,7 +139,29 @@ public sealed class ElderlyLoginCommandHandlerTests
                     "+201009999999"),
                 CancellationToken.None);
 
-        Assert.True(result.IsSuccess);
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ElderlyLoginErrors.AccountNotRegistered, result.Error);
+        Assert.Empty(dbContext.VerificationRequests);
+        Assert.Empty(smsSender.SentMessages);
+        Assert.Equal(0, dbContext.SaveChangesCalls);
+    }
+
+    [Fact]
+    public async Task Request_ShouldReturnNotRegisteredWithoutPersistenceOrSms_WhenElderlyProfileIsUnavailable()
+    {
+        await using IdentityTestDbContext dbContext = CreateDbContext();
+        User user = await SeedUserAsync(dbContext, UserStatus.Active, AccountType.Elderly);
+        dbContext.ResetSaveChangesCalls();
+        RecordingSmsSender smsSender = new();
+
+        Result result = await CreateRequestHandler(
+                dbContext,
+                smsSender,
+                hasUsableProfile: false)
+            .Handle(new RequestElderlyLoginOtpCommand(user.PhoneNumber.Value), CancellationToken.None);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal(ElderlyLoginErrors.AccountNotRegistered, result.Error);
         Assert.Empty(dbContext.VerificationRequests);
         Assert.Empty(smsSender.SentMessages);
         Assert.Equal(0, dbContext.SaveChangesCalls);
@@ -148,7 +176,7 @@ public sealed class ElderlyLoginCommandHandlerTests
         User user =
             await SeedUserAsync(
                 dbContext,
-                UserStatus.PendingVerification,
+                UserStatus.Active,
                 AccountType.Elderly);
 
         VerificationRequest existingRequest =
@@ -165,7 +193,8 @@ public sealed class ElderlyLoginCommandHandlerTests
         Result result =
             await CreateRequestHandler(
                     dbContext,
-                    smsSender)
+                    smsSender,
+                    hasUsableProfile: true)
                 .Handle(
                     new RequestElderlyLoginOtpCommand(
                         user.PhoneNumber.Value),
@@ -187,7 +216,7 @@ public sealed class ElderlyLoginCommandHandlerTests
         User user =
             await SeedUserAsync(
                 dbContext,
-                UserStatus.PendingVerification,
+                UserStatus.Active,
                 AccountType.Elderly);
 
         VerificationRequest existingRequest =
@@ -205,7 +234,8 @@ public sealed class ElderlyLoginCommandHandlerTests
         Result result =
             await CreateRequestHandler(
                     dbContext,
-                    smsSender)
+                    smsSender,
+                    hasUsableProfile: true)
                 .Handle(
                     new RequestElderlyLoginOtpCommand(
                         user.PhoneNumber.Value),
@@ -672,13 +702,39 @@ public sealed class ElderlyLoginCommandHandlerTests
 
     private static RequestElderlyLoginOtpCommandHandler CreateRequestHandler(
         IdentityTestDbContext dbContext,
-        ISmsSender smsSender)
+        ISmsSender smsSender,
+        bool hasUsableProfile = true)
     {
         return new RequestElderlyLoginOtpCommandHandler(
             dbContext,
             new FakeOtpService(),
             smsSender,
-            new FixedDateTimeProvider());
+            new FixedDateTimeProvider(),
+            new FakeFamilyAccountGateway(hasUsableProfile));
+    }
+
+    private sealed class FakeFamilyAccountGateway(
+        bool hasUsableProfile) : IFamilyAccountGateway
+    {
+        public Task<IReadOnlyList<FamilyMembership>> GetActiveFamilyRolesAsync(
+            UserId userId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<IReadOnlyList<FamilyMembership>>([]);
+
+        public Task<bool> IsElderlyDependentAsync(
+            UserId userId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(false);
+
+        public Task<bool> HasUsableElderlyProfileAsync(
+            UserId userId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(hasUsableProfile);
+
+        public Task<Result> LeaveFamiliesForSelfDeletionAsync(
+            UserId userId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result.Success());
     }
 
     private static VerifyElderlyLoginOtpCommandHandler CreateVerifyHandler(
@@ -712,13 +768,23 @@ public sealed class ElderlyLoginCommandHandlerTests
             User.Create(
                 FullName.Create("محمد أحمد"),
                 FullName.Create("Mohamed Ahmed"),
-                email: null,
+                email: accountType == AccountType.Elderly
+                    ? null
+                    : Email.Create("otp-ineligible@example.com"),
                 PhoneNumber.Create("+201001234567"));
 
         user.AddAccount(accountType);
 
         if (status is UserStatus.Active or UserStatus.Suspended)
         {
+            if (accountType != AccountType.Elderly)
+            {
+                user.VerifyEmail(FixedDateTimeProvider.UtcNowValue);
+                user.SetInitialPasswordHash(
+                    "test-hash",
+                    FixedDateTimeProvider.UtcNowValue);
+            }
+
             user.VerifyPhone(FixedDateTimeProvider.UtcNowValue);
             user.Activate(FixedDateTimeProvider.UtcNowValue);
         }

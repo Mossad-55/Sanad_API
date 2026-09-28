@@ -1,0 +1,34 @@
+meta {
+  name: 02-submit-negative-check-in-one-shot
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/check-ins
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWellnessJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "answer": false
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body.elderlyId) throw new Error("Expected check-in response to identify the Elderly profile.");
+  bru.setVar("elderlyWellnessEntityId", res.body.elderlyId);
+}

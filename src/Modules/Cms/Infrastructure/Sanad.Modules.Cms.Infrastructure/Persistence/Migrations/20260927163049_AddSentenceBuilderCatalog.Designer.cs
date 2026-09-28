@@ -225,7 +225,7 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("CatalogEntryId", "IsActive")
                         .IsUnique()
-                        .HasFilter("is_active = TRUE");
+                        .HasFilter("\"IsActive\" = TRUE");
 
                     b.HasIndex("CatalogEntryId", "Version")
                         .IsUnique();

@@ -1,0 +1,26 @@
+meta {
+  name: 08-inbox-assigned-caregiver
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/notifications?pageSize=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestAssignedCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const match = (res.body.items || []).some(item =>
+    item.type === "HelpRequestCreated" &&
+    String(item.destinationEntityId).toLowerCase() === String(bru.getVar("helpRequestFanoutId")).toLowerCase());
+  if (!match) throw new Error("Caregiver with the active Elderly booking did not receive the help-request notification.");
+}

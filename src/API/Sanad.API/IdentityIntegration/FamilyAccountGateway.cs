@@ -1,6 +1,7 @@
 using MediatR;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Families.Application.Elderlies;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Identity.Application.Abstractions.Families;
 
@@ -50,6 +51,17 @@ public sealed class FamilyAccountGateway : IFamilyAccountGateway
         }
 
         return result.Value;
+    }
+
+    public async Task<bool> HasUsableElderlyProfileAsync(
+        UserId userId,
+        CancellationToken cancellationToken = default)
+    {
+        Result<bool> result = await _sender.Send(
+            new HasUsableElderlyProfileQuery(userId),
+            cancellationToken);
+
+        return result.IsSuccess && result.Value;
     }
 
     public async Task<Result> LeaveFamiliesForSelfDeletionAsync(

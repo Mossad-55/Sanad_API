@@ -1,0 +1,33 @@
+meta {
+  name: 07-login-assigned-caregiver
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{caregiverEmail}}",
+    "password": "{{caregiverPassword}}",
+    "deviceName": "bruno-help-request-fixture",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("helpRequestAssignedCaregiverJwt", res.body.accessToken);
+}

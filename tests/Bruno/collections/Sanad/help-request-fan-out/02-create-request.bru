@@ -1,0 +1,43 @@
+meta {
+  name: 02-create-request
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/help-requests
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestElderlyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+  Idempotency-Key: {{helpRequestFanoutKey}}
+}
+
+script:pre-request {
+  bru.setVar("helpRequestFanoutKey", `bruno-help-request-fanout-${Date.now()}`);
+}
+
+body:json {
+  {
+    "actorKey": "self",
+    "actionKey": "need",
+    "needKey": "water",
+    "qualifierKey": "now",
+    "customText": null
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body.id) throw new Error("Expected created help request ID.");
+  bru.setVar("helpRequestFanoutId", res.body.id);
+}

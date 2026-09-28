@@ -17,3 +17,7 @@ Avoid long-running autonomous loops, duplicate role passes, and repeated full-su
 ## Release checks
 
 For an API contract change, synchronize affected docs and Postman requests and run the relevant tests. Add a targeted Bruno gate if integration behavior requires it. For schema or production changes, verify the exact database and seek owner authorization. Choose wider review and validation according to the specific risk; do not schedule every worker or gate automatically.
+
+Whenever the mastermind runs `dotnet build` or `dotnet test`, a successful exit is not sufficient: the command must finish with zero warnings to count as a passing gate. Investigate and resolve warnings surfaced by the run; do not mask them with blanket suppression. If an environmental or unrelated warning cannot safely be resolved within scope, report the gate as not clean and identify the warning.
+
+Every endpoint added or behaviorally changed must have Bruno coverage, and that coverage must be run successfully before commit. Include the relevant successful and failure/authentication cases. Stateful requests must use disposable local/test fixtures and must never target production. If the required Bruno run is missing, failing, or blocked, do not commit the endpoint change; report the exact blocker and leave the changes uncommitted.
