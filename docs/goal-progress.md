@@ -95,4 +95,11 @@ This latest checkpoint is authoritative over earlier in-progress notes above.
 - Exact final diff and staging audit: **Done**. Verified `HEAD == origin/main == 4758e25114960a0a8d002f41f636172e3ec81726`; reviewed candidate source, tests, docs, Postman and fixture files, and `git diff --cached --check` passed. Only reviewed goal files are staged.
 - Protected paths explicitly excluded from staging: `Sanad_Operations.md`, `Sanad_Master_Context.md`, `UI/`, `subscription-vat-tax/`, `tests/Bruno/environments/vps.bru`, and the three unrelated booking test files. `src/API/Sanad.API/appsettings.Development.json` is also excluded because it is local environment configuration and is not required to deliver the code.
 - The final source review confirms the OTP eligibility check fails closed before OTP persistence/dispatch, returns the approved uniform 404, and the test-fixture API safety guard/no-op SMS setup stays opt-in and local. Recipient changes include assigned active-booking caregivers and SupportAdmin, with focused gateway/Bruno coverage.
-- Current task: commit/push and final handoff: **In progress**. Remaining: commit/push the reviewed staged set, record the resulting commit, create the separate next-goal task file, and ensure protected/unrelated work remains untouched. No deployment or production data mutation.
+- Commit/push and final handoff: **Done**. Commit `1b641a83a25fda656fc1380961760ed83ae829d7` is on `main` and `origin/main`; the separate next-goal task file has been created. Protected/private and unrelated files were not staged. No deployment or production data mutation.
+
+## Goal completion checkpoint (2026-09-28)
+
+- Current goal implementation, scoped tests, Bruno, docs/Postman synchronization, full zero-warning build/test gates, exact-file review, commit, and push: **Done**.
+- Owner decisions still pending and carried forward as explicit blockers for any future implementation: Welcome placement/audience/benefit/CTA mapping; Admin visibility of sensitive Elderly profile/contact fields; dedicated SOS preference semantics; other retention, privacy, and event-delivery items called out in the public audit.
+- Push/email/provider/outbox/retry/scheduling and expanded event inventory are **Deferred to the Notifications/Events goal**. They were not represented as implemented or deployed here.
+- Deployment and production data mutation: **Not started / not authorized**.
