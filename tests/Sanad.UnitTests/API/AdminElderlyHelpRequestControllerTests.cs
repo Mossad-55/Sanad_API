@@ -23,7 +23,7 @@ public sealed class AdminElderlyHelpRequestControllerTests
         Assert.Equal("api/v1/admin/elderly/help-requests", Assert.Single(typeof(AdminElderlyHelpRequestsController).GetCustomAttributes<RouteAttribute>()).Template);
         Assert.Equal("{requestId:guid}/history", typeof(AdminElderlyHelpRequestsController).GetMethod(nameof(AdminElderlyHelpRequestsController.History))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
         Assert.Equal("aggregate", typeof(AdminElderlyHelpRequestsController).GetMethod(nameof(AdminElderlyHelpRequestsController.Aggregate))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
-        Assert.Equal("{requestId:guid}/{action}", typeof(AdminElderlyHelpRequestsController).GetMethod(nameof(AdminElderlyHelpRequestsController.Change))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
+        Assert.Equal("{requestId:guid}/{statusAction}", typeof(AdminElderlyHelpRequestsController).GetMethod(nameof(AdminElderlyHelpRequestsController.Change))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
     }
 
     [Fact]

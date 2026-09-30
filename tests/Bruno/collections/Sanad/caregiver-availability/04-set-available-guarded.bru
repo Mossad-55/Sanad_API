@@ -1,0 +1,18 @@
+meta {
+  name: 04-set-available-restore-baseline
+  type: http
+  seq: 4
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/availability/available
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverAvailabilityJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.status: eq 4
+  res.body.availability: eq 1
+}

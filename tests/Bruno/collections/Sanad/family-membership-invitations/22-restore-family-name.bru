@@ -1,0 +1,31 @@
+meta {
+  name: 22-restore-family-name
+  type: http
+  seq: 23
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/name
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"name":"{{originalFamilyName}}"}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.body.name !== bru.getVar("originalFamilyName")) throw new Error("Family name baseline was not restored");
+}

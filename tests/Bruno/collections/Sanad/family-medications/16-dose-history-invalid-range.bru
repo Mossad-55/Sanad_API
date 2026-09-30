@@ -1,0 +1,20 @@
+meta {
+  name: 16-dose-history-invalid-range
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationDependentId}}/medications/{{familyMedicationId}}/doses/history?startDate=2026-09-30&endDate=2026-09-01
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Families.Medication.InvalidDateRange
+}

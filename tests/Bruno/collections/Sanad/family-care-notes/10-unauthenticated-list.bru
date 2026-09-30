@@ -1,0 +1,15 @@
+meta {
+  name: 10-unauthenticated-list
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyCareNotesDependentId}}/notes
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

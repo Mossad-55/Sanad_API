@@ -63,13 +63,14 @@ Content-Type: application/json
 
 Rules:
 
-- All four booleans are required; the endpoint is a full replace, not partial.
+- All four booleans are required; the endpoint is a full replace, not partial. Omitting any field returns standard framework `400 ValidationProblemDetails` with per-field errors (no application `code`) and does not alter preferences.
 - Allowed in any status that allows profile edits today (Onboarding, NeedsCorrection, Active, etc). The update only changes the visibility flags and `updated_on_utc`; it does not change status or availability.
+- Repeated updates persist each supplied value; a subsequent GET returns the latest stored preferences.
 - `showProfile = false` hides the caregiver from discovery search (`GET /api/v1/caregivers`). The other three toggles are stored-only for now (rating = Phase I, phone not exposed anywhere yet, location = Phase G).
 
 | HTTP | `code` |
 |---|---|
-| 400 | `Api.Validation.Failed` |
+| 400 | Standard `ValidationProblemDetails` with field errors; no application `code` property |
 | 401 | — |
 | 403 | — (bare policy Forbid) |
 | 404 | `Caregivers.Onboarding.NotFound` |
@@ -97,4 +98,5 @@ See `Sanad.App.Caregiver` collection: folder `07. Privacy` with `GET privacy` an
 ## Bruno
 
 - `collections/Sanad/caregiver/10-privacy-get.bru` — seq 10, GET privacy, bearer `{{jwt}}`, asserts 200 + `showProfile` eq true.
+- `collections/Sanad/caregiver-privacy/` — guarded local read/update/read-back, restoration to the exact seeded state, 400/401/403 checks, and exact-session logout.
 - Logout requests keep logout last: `08-logout-owner.bru` seq 8→9, `09-logout-caregiver.bru` seq 9→11 if needed.

@@ -1,0 +1,27 @@
+meta {
+  name: 04-limit-lower-bound
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyActivitiesDependentId}}/activities?limit=0
+  body: none
+  auth: bearer
+}
+
+script:pre-request {
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(bru.getVar("familyActivitiesDependentId")))) throw new Error("Family dependent GUID was not set by the preceding fixture lookup.");
+}
+
+auth:bearer {
+  token: {{familyActivitiesOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body.activities) || res.body.activities.length > 1) throw new Error("Activity limit below 1 must be clamped to one result.");
+}

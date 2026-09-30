@@ -1,0 +1,36 @@
+meta {
+  name: 04-invalid-profile-validation
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/account
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accountSelfServiceJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "englishFullName": ""
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.status: eq 400
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Account mutations require the guarded local Development API.");
+  }
+}

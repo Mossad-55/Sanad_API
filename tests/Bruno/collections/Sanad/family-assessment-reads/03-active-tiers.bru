@@ -1,0 +1,28 @@
+meta {
+  name: 03-active-tiers
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/assessment/tiers
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyAssessmentReadsJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body)) throw new Error("Active assessment tiers must be returned as an array.");
+  for (let i = 0; i < res.body.length; i++) {
+    const tier = res.body[i];
+    if (!tier.id || !Number.isInteger(tier.screenOrder) || typeof tier.arabicTitle !== "string" || typeof tier.englishTitle !== "string" || typeof tier.backgroundColor !== "string" || !Array.isArray(tier.arabicRecommendations) || !Array.isArray(tier.englishRecommendations)) throw new Error("Tier response shape is incomplete.");
+    if (i > 0 && res.body[i - 1].screenOrder > tier.screenOrder) throw new Error("Tiers are not ordered by screenOrder ascending.");
+  }
+}

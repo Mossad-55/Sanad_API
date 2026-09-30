@@ -1,0 +1,25 @@
+meta {
+  name: 15-detail-revision-two-inactive
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{adminSentenceBuilderRevisionTwoId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSentenceBuilderJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder readback requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+  res.body.revisionId: eq {{adminSentenceBuilderRevisionTwoId}}
+  res.body.version: eq 2
+  res.body.isActive: eq false
+}

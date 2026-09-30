@@ -1,0 +1,24 @@
+meta {
+  name: 11-get-support-contact-after-upsert
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/help-center/support-contact
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminHelpCenterJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.body.supportPhone !== "+201000000099" || res.body.supportEmail !== "support-bruno@example.test") {
+    throw new Error("Support-contact GET did not return the upserted test pair.");
+  }
+}

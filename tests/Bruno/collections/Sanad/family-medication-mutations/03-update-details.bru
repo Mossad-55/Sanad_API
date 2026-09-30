@@ -1,0 +1,37 @@
+meta {
+  name: 03-update-details
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications/{{familyMedicationMutationId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationMutationOwnerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Medication writes require guarded local Development only.");
+}
+
+body:json {
+  {
+    "name": "{{familyMedicationMutationName}} Updated",
+    "dosage": "20 mg",
+    "doseUnit": "tablet",
+    "doseQuantity": 1,
+    "doseTimes": ["08:00", "20:00"],
+    "startDate": "2026-09-30",
+    "endDate": null,
+    "instructions": "Updated disposable fixture"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.dosage: eq 20 mg
+}

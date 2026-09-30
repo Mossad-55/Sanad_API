@@ -233,7 +233,7 @@ public sealed class CaregiverPricingIntegrationTests
     }
 
     [Fact]
-    public void UpdateMedicalPricing_ShouldReplacePreviousPricing()
+    public void UpdateMedicalPricing_ShouldUpdateExistingPricingValue()
     {
         Caregiver caregiver =
             CreateCaregiver(
@@ -254,7 +254,7 @@ public sealed class CaregiverPricingIntegrationTests
             900m,
             1600m);
 
-        Assert.NotSame(
+        Assert.Same(
             originalPricing,
             caregiver.MedicalPricing);
 
@@ -262,6 +262,40 @@ public sealed class CaregiverPricingIntegrationTests
             250m,
             caregiver.MedicalPricing!
                 .HomeVisitPrice);
+    }
+
+    [Fact]
+    public void UpdateCompanionPricing_ShouldUpdateExistingPricingValue()
+    {
+        Caregiver caregiver =
+            CreateCaregiver(
+                CaregiverType.Companion);
+
+        caregiver.UpdateCompanionPricing(
+            75m,
+            500m,
+            650m);
+
+        CompanionCaregiverPricing originalPricing =
+            caregiver.CompanionPricing!;
+
+        caregiver.UpdateCompanionPricing(
+            80m,
+            550m,
+            700m);
+
+        Assert.Same(
+            originalPricing,
+            caregiver.CompanionPricing);
+        Assert.Equal(
+            80m,
+            caregiver.CompanionPricing!.HourlyPrice);
+        Assert.Equal(
+            550m,
+            caregiver.CompanionPricing.EightHourDayPrice);
+        Assert.Equal(
+            700m,
+            caregiver.CompanionPricing.OvernightPrice);
     }
 
     private static void MakeMedicalCaregiverCompliantAndAvailable(

@@ -1,0 +1,20 @@
+meta {
+  name: 05-academic-degrees-active
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/lookups/academic-degrees
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const rows = res.body;
+  if (!Array.isArray(rows) || rows.length === 0 || !rows[0].id?.value) throw new Error("Expected active academic degrees with typed IDs.");
+}

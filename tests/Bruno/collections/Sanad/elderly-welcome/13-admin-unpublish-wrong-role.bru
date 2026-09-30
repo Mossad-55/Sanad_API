@@ -1,0 +1,18 @@
+meta {
+  name: 13-admin-unpublish-wrong-role
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome/unpublish
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWelcomeFamilyJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

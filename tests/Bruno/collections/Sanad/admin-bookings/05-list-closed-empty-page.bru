@@ -1,0 +1,22 @@
+meta {
+  name: 05-list-closed-empty-page
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/bookings?page=1&pageSize=10&finance=0
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminBookingsContentJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body || !Array.isArray(res.body.items) || res.body.page !== 1 || res.body.pageSize !== 10 || typeof res.body.totalCount !== "number") throw new Error("Admin booking list page contract failed.");
+}

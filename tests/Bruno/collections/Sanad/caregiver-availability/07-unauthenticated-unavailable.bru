@@ -1,0 +1,13 @@
+meta {
+  name: 07-unauthenticated-unavailable
+  type: http
+  seq: 7
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/availability/unavailable
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 401
+}

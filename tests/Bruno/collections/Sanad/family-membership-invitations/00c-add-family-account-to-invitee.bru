@@ -1,0 +1,27 @@
+meta {
+  name: 00c-add-family-account-to-invitee
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/account/accounts
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{inviteeSetupJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"accountType":1}
+}
+
+assert {
+  res.status: eq 200
+}

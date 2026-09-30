@@ -1,0 +1,19 @@
+meta {
+  name: 22-logout-family-viewer
+  type: http
+  seq: 22
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+headers {
+  X-Device-Session-Id: {{scheduleViewerSessionId}}
+}
+auth:bearer {
+  token: {{scheduleViewerJwt}}
+}
+assert {
+  res.status: eq 204
+}

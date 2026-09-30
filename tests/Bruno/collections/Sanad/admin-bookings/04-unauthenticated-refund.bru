@@ -1,0 +1,14 @@
+meta {
+  name: 04-unauthenticated-refund
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/bookings/0f000000-0000-4000-8000-000000000001/refund
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

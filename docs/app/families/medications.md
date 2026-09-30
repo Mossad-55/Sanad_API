@@ -8,7 +8,7 @@ All routes live under `/api/v1/family/dependents/{dependentId}/medications/...`.
 
 - **Normal JWT** for a **Family** account (`access_type = Normal`, `account_type = Family`).
 - The caller must be an active member of the family that owns the dependent.
-- Every operation is scoped to the selected dependent's owning family. A dependent ID from another family, or a missing dependent on a dependent-scoped read/update/action, returns `403 Families.Medication.AccessDenied` without exposing whether medication data exists.
+- Every operation is scoped to the selected dependent's owning family. A dependent ID from another family, or a missing dependent on a dependent-scoped read/update/action, returns `403 Families.Medication.AccessDenied` without exposing whether medication data exists. The shared ProblemDetails mapper now explicitly maps this medication error to HTTP 403 (it previously fell back to 400 despite the established contract).
 - **Write actions** (Add, Update, Stock Update, Status Toggles, Dose Take/Skip) require an **Owner** or **Editor** role (`403 Families.Medication.AccessDenied` for Viewers). The same access-denied result applies to a Viewer, a non-member, or a foreign/missing dependent on dependent-scoped operations.
 - **Read actions** (List, Get by ID, Dashboard) are available to all members of the owning family (**Owner**, **Editor**, **Viewer**).
 - The Add command is the boundary exception: after caller/family write authorization, a missing or foreign dependent returns `404 Families.Medication.DependentNotFound`; it never creates medication data.
@@ -387,3 +387,8 @@ This route remains supported for clients that intentionally update only inventor
 | `Families.Medication.AccessDenied` | `403` | Caller is not an active family member, lacks the required Owner/Editor write role, or the dependent is missing/owned by another family for a dependent-scoped operation. |
 | `Families.Medication.DoseAlreadyTaken` | `400` | The specified dose has already been taken. |
 | `Families.Medication.InvalidMedication` | `400` | Validation failed (e.g. empty times list, negative stock). |
+| `Families.Medication.InvalidDateRange` | `400` | Dose-history range is reversed or exceeds 31 days. |
+
+The shared ProblemDetails mapper explicitly maps `DependentNotFound` and
+`NotFound` to 404 and `AccessDenied` to 403. Previously, those codes fell
+through to the generic 400 response despite the contracts above.

@@ -201,7 +201,7 @@ public sealed class GetCaregiverPublicProfileQueryHandler : IQueryHandler<GetCar
         if (caregiver is null)
         {
             return Result<CaregiverPublicProfileResponse>.Failure(
-                new Error("Caregivers.Discovery.NotFound", "Caregiver was not found or is currently inactive."));
+                new Error("Caregivers.Discovery.CaregiverNotFound", "Caregiver was not found or is currently inactive."));
         }
 
         // 2. Fetch User Identity Record from DB

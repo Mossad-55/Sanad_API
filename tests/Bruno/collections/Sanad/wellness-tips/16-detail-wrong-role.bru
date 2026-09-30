@@ -1,0 +1,22 @@
+meta {
+  name: 16-detail-wrong-role
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips/00000000-0000-0000-0000-000000000000
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsViewerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips role coverage requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 403
+}

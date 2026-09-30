@@ -1,0 +1,18 @@
+meta {
+  name: 11-delete-success
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyCareNotesDependentId}}/notes/{{familyCareNotesNoteId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyCareNotesOwnerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

@@ -1,0 +1,18 @@
+meta {
+  name: 09a-find-companion-specialization
+  type: http
+  seq: 10
+}
+get {
+  url: {{baseUrl}}/api/v1/lookups/specializations
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const spec = res.body.find(x => x.englishName === "Test Elderly Companionship" && x.caregiverType === 2);
+  if (!spec?.id?.value) throw new Error("Seeded Companion specialization lookup not found.");
+  bru.setVar("onboardingCompanionSpecializationId", spec.id.value);
+}

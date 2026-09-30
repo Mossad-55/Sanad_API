@@ -1,0 +1,18 @@
+meta {
+  name: 10-support-admin-forbidden
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/identity-documents?page=1&pageSize=10
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminIdentityDocumentsSupportJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

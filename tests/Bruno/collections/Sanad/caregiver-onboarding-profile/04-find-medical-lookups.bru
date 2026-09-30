@@ -1,0 +1,18 @@
+meta {
+  name: 04-find-medical-lookups
+  type: http
+  seq: 4
+}
+get {
+  url: {{baseUrl}}/api/v1/lookups/specializations
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const spec = res.body.find(x => x.englishName === "Test Geriatric Care" && x.caregiverType === 1);
+  if (!spec?.id?.value) throw new Error("Seeded Medical specialization lookup not found.");
+  bru.setVar("onboardingMedicalSpecializationId", spec.id.value);
+}

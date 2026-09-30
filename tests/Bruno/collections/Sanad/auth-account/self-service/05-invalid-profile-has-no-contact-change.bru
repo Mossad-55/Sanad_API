@@ -1,0 +1,38 @@
+meta {
+  name: 05-invalid-profile-has-no-contact-change
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/account
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accountSelfServiceJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.email: isNotEmpty
+  res.body.phoneNumber: isNotEmpty
+  res.body.arabicFullName: isNotEmpty
+  res.body.englishFullName: isNotEmpty
+}
+
+script:post-response {
+  if (res.body.email !== bru.getVar("accountSelfServiceOriginalEmail")) {
+    throw new Error("The names-only update changed the email address.");
+  }
+  if (res.body.phoneNumber !== bru.getVar("accountSelfServiceOriginalPhone")) {
+    throw new Error("The names-only update changed the phone number.");
+  }
+  if (res.body.arabicFullName !== "فرد العائلة التجريبي - Bruno Self-Service 20260928") {
+    throw new Error("Arabic name was not persisted exactly.");
+  }
+  if (res.body.englishFullName !== "Test Family Viewer Bruno Self-Service 20260928") {
+    throw new Error("English name was not persisted exactly.");
+  }
+}

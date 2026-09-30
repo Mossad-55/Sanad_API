@@ -1,0 +1,35 @@
+meta {
+  name: 18-create-city
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/lookups/cities
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLookupsJwt}}
+}
+
+body:json {
+  {
+    "governorateId": "{{governorateId}}",
+    "arabicName": "مدينة {{lookupUnique}}",
+    "englishName": "City {{lookupUnique}}"
+  }
+}
+
+script:post-response {
+  if (res.status !== 201) throw new Error(`Expected 201, got ${res.status}`);
+  const id = res.body.id && (res.body.id.value || res.body.id);
+  if (!id) throw new Error("Create response did not include an ID");
+  bru.setVar("cityId", id);
+}
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Admin lookup mutations require the guarded local Development API.");
+  }
+}

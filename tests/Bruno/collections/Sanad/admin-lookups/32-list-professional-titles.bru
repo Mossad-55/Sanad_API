@@ -1,0 +1,18 @@
+meta {
+  name: 32-list-professional-titles
+  type: http
+  seq: 32
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/lookups/professional-titles
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLookupsJwt}}
+}
+
+script:post-response {
+if (res.status !== 200) throw new Error(`Expected 200, got ${res.status}`);
+}

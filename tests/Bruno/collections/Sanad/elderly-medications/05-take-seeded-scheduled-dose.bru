@@ -1,0 +1,36 @@
+meta {
+  name: 05-take-seeded-scheduled-dose
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/medications/{{elderlyMedicationId}}/doses/take
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyMedicationJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Elderly dose writes require guarded local Development only.");
+}
+
+body:json {
+  {
+    "scheduledDate": "{{elderlyMedicationLocalDate}}",
+    "scheduledTime": "{{elderlyMedicationScheduledTime}}",
+    "notes": "Disposable local Bruno dose test"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 2
+}
+
+script:post-response {
+  if (!res.body.doseLogId || !res.body.loggedByUserId) throw new Error("Taken dose must persist a log and attribute the Elderly actor.");
+}

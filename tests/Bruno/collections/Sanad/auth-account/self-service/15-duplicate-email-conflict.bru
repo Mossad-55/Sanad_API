@@ -1,0 +1,35 @@
+meta {
+  name: 15-duplicate-email-conflict
+  type: http
+  seq: 15
+}
+
+put {
+  url: {{baseUrl}}/api/v1/account
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accountSelfServiceJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{familyOwnerEmail}}"
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Account conflict coverage requires the guarded local Development API.");
+  }
+}

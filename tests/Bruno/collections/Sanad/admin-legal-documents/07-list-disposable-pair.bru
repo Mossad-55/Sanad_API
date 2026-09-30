@@ -1,0 +1,34 @@
+meta {
+  name: 07-list-disposable-pair
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/legal-documents?documentType=2&audience=3&status=1
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLegalDocumentsJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin legal-document coverage requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+  res.body: isArray
+}
+
+script:post-response {
+  const documents = res.body;
+  const cleanupId = String(bru.getVar("adminLegalDocumentCleanupId"));
+  if (!documents.some(document => String(document.id && (document.id.value || document.id)) === cleanupId)) {
+    throw new Error("Filtered legal-document list did not include the created draft.");
+  }
+  if (documents.some(document => document.documentType !== 2 || document.audience !== 3 || document.status !== 1)) {
+    throw new Error("Filtered legal-document list returned an item outside its type/audience/status filters.");
+  }
+}

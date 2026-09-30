@@ -1,0 +1,35 @@
+meta {
+  name: 44-create-service-missing-file-validation
+  type: http
+  seq: 44
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/lookups/services
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLookupsJwt}}
+}
+
+body:multipart-form {
+  arabicName: Arabic service missing-file-{{lookupUnique}}
+  englishName: Missing file service {{lookupUnique}}
+  caregiverType: 1
+  isActive: true
+}
+
+assert {
+  res.status: eq 400
+}
+
+script:post-response {
+  if (res.status !== 400) throw new Error(`Expected 400 for missing service icon, got ${res.status}`);
+}
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Admin lookup mutations require the guarded local Development API.");
+  }
+}

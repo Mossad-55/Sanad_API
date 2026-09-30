@@ -1,0 +1,31 @@
+meta {
+  name: 31-update-malformed-sections
+  type: http
+  seq: 31
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips mutations require the guarded local Development API.");
+}
+
+body:multipart-form {
+  arabicTitle: تحديث صيغة أقسام
+  englishTitle: Malformed update
+  category: general
+  sectionsJson: not-json
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 400
+}

@@ -1,0 +1,22 @@
+meta {
+  name: 06-list-cancellations-empty-page
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/bookings/cancellations?page=1&pageSize=10&actor=1
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminBookingsContentJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body || !Array.isArray(res.body.items) || res.body.page !== 1 || res.body.pageSize !== 10 || res.body.totalCount !== 0) throw new Error("Admin cancellation empty list contract failed.");
+}

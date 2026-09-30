@@ -1,0 +1,14 @@
+meta {
+  name: 01-list-unauthenticated
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/identity-documents?page=1&pageSize=10
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

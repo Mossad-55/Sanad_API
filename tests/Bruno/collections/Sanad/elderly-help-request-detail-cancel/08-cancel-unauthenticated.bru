@@ -1,0 +1,21 @@
+meta {
+  name: 08-cancel-unauthenticated
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/help-requests/{{elderlyHelpRequestId}}/cancel
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "reason": "Unauthenticated cancellation must be rejected"
+  }
+}
+
+assert {
+  res.status: eq 401
+}

@@ -33,6 +33,7 @@ Errors:
 - `409 Caregivers.Onboarding.InvalidSchedule` — overlap, duplicate-day shift, shift/window mix on a day, or an Active caregiver removing all availability.
 - `409 Caregivers.Onboarding.WrongCaregiverType` — caller is a Companion account.
 - `400 Api.Validation.Failed` — bad enum values or a window whose end ≤ start.
+- `401` — unauthenticated; `403` — authenticated account does not satisfy `CaregiverAccess`; `404 Caregivers.Onboarding.NotFound` — no caregiver profile.
 
 ## Companion schedule
 
@@ -51,8 +52,16 @@ Content-Type: application/json
 ```
 
 - `bookingType`: `1` Hourly, `2` EightHourDay (must be exactly 8 hours, no overnight), `3` Overnight (fixed 20:00–08:00).
+- Overnight is the one cross-midnight exception to the request-level end-after-start check; the domain accepts only the fixed 20:00–08:00 window. Equal endpoints remain invalid.
 - Overlapping windows (including the Saturday↔Sunday cyclic overnight case) are rejected.
 - Empty schedule allowed while onboarding; an Active caregiver cannot remove all windows.
+
+Errors:
+
+- `400 Api.Validation.Failed` — invalid enum values, equal endpoints, or an end time not after the start for Hourly/EightHourDay windows.
+- `409 Caregivers.Onboarding.InvalidSchedule` — invalid booking-type duration/window, overlap, or an Active caregiver removing all availability.
+- `409 Caregivers.Onboarding.WrongCaregiverType` — caller is a Medical account.
+- `401` — unauthenticated; `403` — authenticated account does not satisfy `CaregiverAccess`; `404 Caregivers.Onboarding.NotFound` — no caregiver profile.
 
 ## Availability toggle
 
@@ -65,12 +74,14 @@ Authorization: Bearer {{caregiverToken}}
 
 - `200` — `availability` becomes `Available`.
 - `409 Caregivers.Onboarding.NotActive` — caregiver is not Active (e.g. still Onboarding/PendingReview/Suspended), or mandatory certificates are not compliant.
+- `401` — unauthenticated; `403` — authenticated account does not satisfy `CaregiverAccess`; `404 Caregivers.Onboarding.NotFound` — no caregiver profile.
 
 ```http
 POST /api/v1/caregiver/availability/unavailable
 ```
 
 Always allowed for an existing profile; sets `availability` to `Unavailable`.
+Returns `200` with the full caregiver profile; unauthenticated requests return `401`, callers outside `CaregiverAccess` receive `403`, and a missing profile returns `404 Caregivers.Onboarding.NotFound`.
 
 Note: editing the professional profile, replacing a mandatory certificate file, or a certificate rejection/revocation while Active also forces `Unavailable` (and profile/certificate changes re-enter review).
 

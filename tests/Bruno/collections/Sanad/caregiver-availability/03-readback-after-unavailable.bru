@@ -1,0 +1,18 @@
+meta {
+  name: 03-readback-after-unavailable
+  type: http
+  seq: 3
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverAvailabilityJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.status: eq 4
+  res.body.availability: eq 2
+}

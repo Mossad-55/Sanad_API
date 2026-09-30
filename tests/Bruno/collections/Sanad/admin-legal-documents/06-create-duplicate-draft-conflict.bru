@@ -1,0 +1,47 @@
+meta {
+  name: 06-create-duplicate-draft-conflict
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/legal-documents
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLegalDocumentsJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin legal-document mutations require the guarded local Development API.");
+}
+
+body:json {
+  {
+    "documentType": 2,
+    "audience": 3,
+    "sections": [
+      {
+        "sectionType": 1,
+        "displayOrder": 1,
+        "arabicTitle": "مسودة مكررة",
+        "englishTitle": "Duplicate draft",
+        "arabicDescription": "يجب رفض المسودة الثانية.",
+        "englishDescription": "The second draft must be rejected.",
+        "arabicBullets": null,
+        "englishBullets": null
+      }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Cms.Legal.DraftAlreadyExists
+}

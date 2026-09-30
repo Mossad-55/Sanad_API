@@ -1,0 +1,34 @@
+meta {
+  name: 14-read-back-notification-preferences
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/v1/account/notification-preferences
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accountSelfServiceJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.checkInAlerts: eq true
+  res.body.medicationReminders: eq false
+  res.body.bookingUpdates: eq true
+  res.body.communityNotifications: eq false
+  res.body.familyActivityAlerts: eq true
+  res.body.newOrders: eq false
+  res.body.messagesFromFamilies: eq true
+  res.body.systemNotifications: eq false
+}
+
+script:post-response {
+  const before = bru.getVar("accountSelfServiceOriginalHelpRequestAlerts");
+  if (res.body.helpRequestAlerts !== before) {
+    throw new Error("helpRequestAlerts changed when omitted from update");
+  }
+}

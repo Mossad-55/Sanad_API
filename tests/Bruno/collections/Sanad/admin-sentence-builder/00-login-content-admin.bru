@@ -1,0 +1,41 @@
+meta {
+  name: 00-login-content-admin
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder coverage requires the guarded local Development API.");
+  if (bru.getEnvVar("adminEmail") !== "content.admin@test.sanad.local") throw new Error("Sentence Builder coverage requires the seeded ContentAdmin fixture identity.");
+}
+
+body:json {
+  {
+    "email": "{{adminEmail}}",
+    "password": "{{adminPassword}}",
+    "deviceName": "bruno-admin-sentence-builder",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body.accessToken) throw new Error("Seeded ContentAdmin login did not return an access token.");
+  bru.setVar("adminSentenceBuilderJwt", res.body.accessToken);
+  bru.setVar("adminSentenceBuilderRun", Date.now().toString(36));
+  bru.setVar("adminSentenceBuilderKey", `bruno-sentence-builder-${bru.getVar("adminSentenceBuilderRun")}`);
+}

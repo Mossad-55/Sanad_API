@@ -1,0 +1,28 @@
+meta {
+  name: 10-put-viewer-forbidden
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicalDependentId}}/medical-profile
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicalViewerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"bloodType": 0, "chronicConditions": [], "allergies": [], "medicalHistory": []}
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq Families.Elderly.AccessDenied
+}

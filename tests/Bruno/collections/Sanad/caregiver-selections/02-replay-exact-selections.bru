@@ -1,0 +1,41 @@
+meta {
+  name: 02-replay-exact-selections
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/selections
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverSelectionsJwt}}
+}
+
+body:json {
+  {
+    "serviceIds": {{caregiverSelectionServices}},
+    "languageIds": {{caregiverSelectionLanguages}},
+    "areaIds": {{caregiverSelectionAreas}}
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.serviceIds: isNotEmpty
+  res.body.languageIds: isNotEmpty
+  res.body.areaIds: isNotEmpty
+}
+
+script:post-response {
+  const ids = values => JSON.stringify(values.map(x => x.value ?? x));
+  if (ids(res.body.serviceIds) !== bru.getVar("caregiverSelectionServices")) throw new Error("Service selection set changed during exact replay.");
+  if (ids(res.body.languageIds) !== bru.getVar("caregiverSelectionLanguages")) throw new Error("Language selection set changed during exact replay.");
+  if (ids(res.body.areaIds) !== bru.getVar("caregiverSelectionAreas")) throw new Error("Area selection set changed during exact replay.");
+}

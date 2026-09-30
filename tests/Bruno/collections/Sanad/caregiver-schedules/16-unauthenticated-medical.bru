@@ -1,0 +1,19 @@
+meta {
+  name: 16-unauthenticated-medical
+  type: http
+  seq: 16
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/schedule/medical
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "shifts": [], "homeVisitWindows": [] }
+}
+assert {
+  res.status: eq 401
+}

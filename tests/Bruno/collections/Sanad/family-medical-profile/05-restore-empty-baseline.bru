@@ -1,0 +1,39 @@
+meta {
+  name: 05-restore-empty-baseline
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicalDependentId}}/medical-profile
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicalOwnerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "bloodType": 0,
+    "heightCm": null,
+    "weightKg": null,
+    "chronicConditions": [],
+    "allergies": [],
+    "medicalHistory": []
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const p = res.body;
+  if (p.bloodType !== 0 || p.heightCm !== null || p.weightKg !== null || p.chronicConditions.length !== 0 || p.allergies.length !== 0 || p.medicalHistory.length !== 0) throw new Error("Original empty fixture baseline was not restored.");
+}

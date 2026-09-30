@@ -1,0 +1,30 @@
+meta {
+  name: 10-reject-certificate-missing
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/caregivers/0f000000-0000-4000-8000-000000000001/certificates/0f000000-0000-4000-8000-000000000002/reject
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{adminCaregiversContentJwt}}
+}
+
+body:json {
+  {
+    "reason": "Missing caregiver"
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Caregivers.Onboarding.NotFound
+}

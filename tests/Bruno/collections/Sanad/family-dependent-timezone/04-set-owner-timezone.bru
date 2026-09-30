@@ -1,0 +1,28 @@
+meta {
+  name: 04-set-owner-timezone
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyTimezoneDependentId}}/timezone
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyTimezoneOwnerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Timezone writes require guarded local Development only.");
+}
+
+body:json {
+  {"timeZoneId": "Africa/Cairo"}
+}
+
+assert {
+  res.status: eq 200
+  res.body.timeZoneId: eq Africa/Cairo
+}

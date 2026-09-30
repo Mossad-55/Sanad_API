@@ -1,0 +1,19 @@
+meta {
+  name: 21-logout-companion
+  type: http
+  seq: 21
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+headers {
+  X-Device-Session-Id: {{scheduleCompanionSessionId}}
+}
+auth:bearer {
+  token: {{scheduleCompanionJwt}}
+}
+assert {
+  res.status: eq 204
+}

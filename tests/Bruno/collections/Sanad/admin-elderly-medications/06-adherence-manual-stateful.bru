@@ -16,3 +16,17 @@ headers {
 auth:bearer {
   token: {{adminElderlyMedicationJwt}}
 }
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin medication operational reads require the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+  res.body.totalDoses: isNumber
+  res.body.takenDoses: isNumber
+  res.body.skippedDoses: isNumber
+  res.body.missedDoses: isNumber
+  res.body.scheduledDoses: isNumber
+  res.body.adherenceRate: isNumber
+}

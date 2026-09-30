@@ -1,0 +1,19 @@
+meta {
+  name: 26-revoke-invitation-success
+  type: http
+  seq: 26
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/family/invitations/{{coverageInvitationId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

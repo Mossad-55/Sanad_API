@@ -1,0 +1,18 @@
+meta {
+  name: 10-content-list-forbidden
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/notifications?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminNotificationsContentJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

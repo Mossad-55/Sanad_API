@@ -1,0 +1,39 @@
+meta {
+  name: 04-temporary-profile-update
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicalDependentId}}/medical-profile
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicalOwnerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "bloodType": 7,
+    "heightCm": 168,
+    "weightKg": 70.0,
+    "chronicConditions": ["Bruno temporary condition"],
+    "allergies": [{"category": 1, "allergen": "Bruno temporary allergen", "reaction": "Temporary"}],
+    "medicalHistory": [{"year": 2020, "procedureDate": "2020-06-14", "title": "Bruno temporary procedure", "description": "Temporary fixture only"}]
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const p = res.body;
+  if (p.bloodType !== 7 || p.heightCm !== 168 || p.weightKg !== 70 || p.chronicConditions[0] !== "Bruno temporary condition" || p.allergies[0].allergen !== "Bruno temporary allergen" || p.medicalHistory[0].title !== "Bruno temporary procedure" || p.medicalHistory[0].procedureDate !== "2020-06-14") throw new Error("Temporary full-profile update did not return the requested values.");
+}

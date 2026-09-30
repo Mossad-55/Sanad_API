@@ -1,0 +1,38 @@
+meta {
+  name: 03-update-names-only
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/account
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accountSelfServiceJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "arabicFullName": "فرد العائلة التجريبي - Bruno Self-Service 20260928",
+    "englishFullName": "Test Family Viewer Bruno Self-Service 20260928"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.emailVerified: isDefined
+  res.body.phoneVerified: isDefined
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Account mutations require the guarded local Development API.");
+  }
+}

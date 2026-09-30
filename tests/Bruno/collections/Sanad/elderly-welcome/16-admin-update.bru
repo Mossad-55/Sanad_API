@@ -1,0 +1,42 @@
+meta {
+  name: 16-admin-update
+  type: http
+  seq: 16
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "arabicHeadline": "أهلاً بك من جديد",
+    "englishHeadline": "Welcome again",
+    "arabicCtaLabel": "تابع",
+    "englishCtaLabel": "Continue",
+    "benefits": [
+      { "displayOrder": 1, "arabicTitle": "رعاية موثوقة", "englishTitle": "Trusted care", "arabicDescription": "رعاية يومية", "englishDescription": "Everyday care" }
+    ]
+  }
+}
+
+auth:bearer {
+  token: {{elderlyWelcomeAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Elderly Welcome fixture mutation is allowed only against the guarded local Development API.");
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.englishHeadline: eq Welcome again
+}

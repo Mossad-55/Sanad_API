@@ -1,0 +1,25 @@
+meta {
+  name: 16-get-archived-first-version
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/legal-documents/{{adminLegalDocumentId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLegalDocumentsJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin legal-document lifecycle coverage requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+  res.body.id.value: eq {{adminLegalDocumentId}}
+  res.body.version: eq 1
+  res.body.status: eq 3
+}

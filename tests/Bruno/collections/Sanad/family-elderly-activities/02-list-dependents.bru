@@ -1,0 +1,27 @@
+meta {
+  name: 02-list-dependents
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyActivitiesOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const dependents = Array.isArray(res.body) ? res.body : (res.body.items || res.body.results || []);
+  if (!dependents.length || !dependents[0].id) throw new Error("Expected the seeded Family Owner to have a dependent fixture.");
+  const dependentId = typeof dependents[0].id === "object" ? dependents[0].id.value : dependents[0].id;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(dependentId))) throw new Error("Family dependent ID was not serialized as a GUID.");
+  bru.setVar("familyActivitiesDependentId", dependentId);
+}

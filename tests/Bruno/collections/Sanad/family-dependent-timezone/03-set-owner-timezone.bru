@@ -1,0 +1,28 @@
+meta {
+  name: 03-invalid-timezone
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyTimezoneDependentId}}/timezone
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyTimezoneOwnerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Timezone writes require guarded local Development only.");
+}
+
+body:json {
+  {"timeZoneId": "Not/A_Real_Time_Zone"}
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Families.Elderly.InvalidProfile
+}

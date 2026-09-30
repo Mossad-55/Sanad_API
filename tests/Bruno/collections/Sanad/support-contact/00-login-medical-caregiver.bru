@@ -1,0 +1,32 @@
+meta {
+  name: 00-login-medical-caregiver
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Support Contact requires guarded local Development.");
+}
+
+body:json {
+  { "email": "{{caregiverEmail}}", "password": "{{caregiverPassword}}", "deviceName": "bruno-support-contact", "devicePlatform": 3, "appVersion": "1.0.0" }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("supportContactJwt", res.body.accessToken);
+  bru.setVar("supportContactSessionId", res.body.deviceSessionId.value);
+}

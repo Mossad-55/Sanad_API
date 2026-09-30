@@ -1,0 +1,24 @@
+meta {
+  name: 21-verify-role-restored
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const viewer = res.body.members.find(member => (member.userId.value || member.userId) === bru.getVar("viewerUserId"));
+  if (!viewer || viewer.role !== 3) throw new Error("Seeded viewer role was not restored");
+}

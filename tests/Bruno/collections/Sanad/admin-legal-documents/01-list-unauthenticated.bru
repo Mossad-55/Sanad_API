@@ -1,0 +1,18 @@
+meta {
+  name: 01-list-unauthenticated
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/legal-documents
+  auth: none
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin legal-document auth coverage requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 401
+}

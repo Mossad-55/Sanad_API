@@ -1,0 +1,34 @@
+meta {
+  name: 11-companion-pricing-restore
+  type: http
+  seq: 11
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/pricing/companion
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverPricingCompanionJwt}}
+}
+
+body:json {
+  {
+    "hourlyPrice": 80.00,
+    "eightHourDayPrice": 500.00,
+    "overnightPrice": 700.00
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.companionPricing.hourlyPrice: eq 80
+  res.body.companionPricing.eightHourDayPrice: eq 500
+  res.body.companionPricing.overnightPrice: eq 700
+}

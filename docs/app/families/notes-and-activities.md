@@ -178,6 +178,8 @@ All routes live under `/api/v1/family/dependents/{dependentId}/notes` and `/api/
 ### E. Get Activity Access Timeline & Metrics
 `GET /api/v1/family/dependents/{dependentId}/activities?limit=50`
 
+The optional `limit` defaults to 50 and is clamped to the inclusive range 1–100 (values below 1 return at most one activity; values above 100 return at most 100). The summary counts cover all matching family-scoped activity rows, while `activities` contains only the newest entries up to the clamped limit.
+
 #### Response `200 OK`
 ```json
 {
@@ -267,3 +269,5 @@ This lookup is anonymous; no `Authorization` header is required.
 | `Families.Notes.AccessDenied` | `403` | You do not have permission to manage notes for this dependent. |
 | `Families.Notes.InvalidNote` | `400` | Note validation failed (e.g. empty title, length overflow). |
 | `Families.Family.AccessDenied` | `403` | User is a Viewer for the Activity Access Log; Family Owners and Editors may read it. |
+
+The API maps these note error codes explicitly to their documented HTTP statuses (including `Families.Notes.AccessDenied` → `403`); an unmapped error would otherwise fall back to `400`.

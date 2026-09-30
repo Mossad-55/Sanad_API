@@ -1,0 +1,27 @@
+meta {
+  name: 21-create-unauthenticated
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips
+  body: multipart-form
+  auth: none
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips auth coverage requires the guarded local Development API.");
+}
+
+body:multipart-form {
+  arabicTitle: عنوان غير مصرح
+  englishTitle: Unauthenticated wellness tip
+  category: general
+  sectionsJson: [{"displayOrder":1,"arabicText":"نصيحة","englishText":"Advice"}]
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 401
+}

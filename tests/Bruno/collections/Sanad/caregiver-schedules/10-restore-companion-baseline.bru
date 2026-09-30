@@ -1,0 +1,26 @@
+meta {
+  name: 10-restore-companion-baseline
+  type: http
+  seq: 10
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/schedule/companion
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+auth:bearer {
+  token: {{scheduleCompanionJwt}}
+}
+body:json {
+  { "windows": {{scheduleCompanionWindows}} }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const windows = JSON.stringify((res.body.companionSchedule?.windows ?? []).map(x => ({bookingType:x.bookingType,dayOfWeek:x.dayOfWeek,startTime:x.startTime.slice(0,5),endTime:x.endTime.slice(0,5)})));
+  if (windows !== bru.getVar("scheduleCompanionWindows")) throw new Error("Companion baseline restore did not match.");
+}

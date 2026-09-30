@@ -1,0 +1,33 @@
+meta {
+  name: 03-medical-invalid-price
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/pricing/medical
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverPricingMedicalJwt}}
+}
+
+body:json {
+  {
+    "homeVisitPrice": 0,
+    "eightHourShiftPrice": 901.25,
+    "twelveHourShiftPrice": 1301.25,
+    "twentyFourHourShiftPrice": 1801.25
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Api.Validation.Failed
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 03-quote-home-visit-success
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregivers/{{caregiverDiscoveryTargetId}}/quote?shiftType=1&startTime=10:00&endTime=12:00
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverDiscoveryJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.caregiverId: isNotEmpty
+  res.body.baseCaregiverFee: gt 0
+  res.body.totalPayableAmount: gt 0
+  res.body.currency: eq EGP
+}

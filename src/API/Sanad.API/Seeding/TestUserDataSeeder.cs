@@ -162,6 +162,15 @@ public sealed class TestUserDataSeeder
             utcNow,
             cancellationToken);
 
+        _ = await EnsureUserAsync(
+            arabicFullName: "إدارة المحتوى التجريبية",
+            englishFullName: "Test Content Admin",
+            email: "content.admin@test.sanad.local",
+            phoneNumber: "+201000000009",
+            AccountType.ContentAdmin,
+            utcNow,
+            cancellationToken);
+
         User grandfatherUser = await EnsureElderlyUserAsync(
             arabicFullName: "الجد التجريبي",
             englishFullName: "Test Grandfather",

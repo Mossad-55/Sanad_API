@@ -1,0 +1,20 @@
+meta {
+  name: 09-pause
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications/{{familyMedicationMutationId}}/pause
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationMutationOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 2
+}

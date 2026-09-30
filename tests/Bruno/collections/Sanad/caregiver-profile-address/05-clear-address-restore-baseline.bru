@@ -1,0 +1,30 @@
+meta {
+  name: 05-clear-address-restore-baseline
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/profile/address
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverProfileAddressJwt}}
+}
+
+body:json {
+  {
+    "detailedAddress": null
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.detailedAddress: eq null
+}

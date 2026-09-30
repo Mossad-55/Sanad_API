@@ -1,0 +1,17 @@
+meta {
+  name: 01-bootstrap-existing-profile
+  type: http
+  seq: 1
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{onboardingMedicalJwt}}
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq Caregivers.Onboarding.AlreadyExists
+}

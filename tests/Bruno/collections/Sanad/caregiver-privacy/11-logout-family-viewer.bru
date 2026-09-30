@@ -1,0 +1,23 @@
+meta {
+  name: 11-logout-family-viewer
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{caregiverPrivacyViewerSessionId}}
+}
+
+auth:bearer {
+  token: {{caregiverPrivacyViewerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

@@ -1,0 +1,30 @@
+meta {
+  name: 02-set-temporary-address
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/profile/address
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverProfileAddressJwt}}
+}
+
+body:json {
+  {
+    "detailedAddress": "Bruno temporary caregiver address"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.detailedAddress: eq Bruno temporary caregiver address
+}

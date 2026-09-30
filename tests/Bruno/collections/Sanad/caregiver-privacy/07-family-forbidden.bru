@@ -1,0 +1,32 @@
+meta {
+  name: 07-family-forbidden
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/privacy
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverPrivacyViewerJwt}}
+}
+
+body:json {
+  {
+    "showProfile": true,
+    "showRating": true,
+    "showPhone": false,
+    "shareLocation": false
+  }
+}
+
+assert {
+  res.status: eq 403
+}

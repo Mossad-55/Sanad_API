@@ -1,0 +1,30 @@
+meta {
+  name: 07-reject-missing
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/identity-documents/0f000000-0000-4000-8000-000000000001/reject
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{adminIdentityDocumentsContentJwt}}
+}
+
+body:json {
+  {
+    "reason": "Missing disposable user"
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Identity.IdentityDocument.UserNotFound
+}

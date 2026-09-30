@@ -43,8 +43,11 @@ and optional end dates, and the scheduled time must appear in its daily
 schedule. A successful take creates a shared dose-log entry, records the
 Elderly actor, and decrements tracked stock by the prescribed dose quantity.
 The unique medication/date/time dose-log constraint rejects duplicate and
-racing takes, so clients should treat an already-recorded dose as a conflict
-and refresh the dashboard. Dose taking is not an idempotent retry operation.
+racing takes. A repeated take returns `400 Families.Medication.DoseAlreadyTaken`;
+a medication/date/time that is not currently scheduled returns
+`400 Families.Medication.DoseNotScheduled`. Unauthenticated calls return 401.
+Clients should refresh the dashboard after a duplicate response. Dose taking is
+not an idempotent retry operation.
 
 The take response is the existing `MedicationDoseResponse` shape, including
 `doseLogId`, medication and scheduled-dose details, status, `takenAtUtc`, and

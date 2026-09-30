@@ -1,0 +1,15 @@
+meta {
+  name: 13-list-unauthenticated
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationDependentId}}/medications
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

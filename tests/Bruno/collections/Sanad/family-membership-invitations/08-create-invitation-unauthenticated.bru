@@ -1,0 +1,23 @@
+meta {
+  name: 08-create-invitation-unauthenticated
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/invitations
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"email":"nobody@example.invalid","role":3,"relationshipType":6}
+}
+
+assert {
+  res.status: eq 401
+}

@@ -1,0 +1,20 @@
+meta {
+  name: 03-read-temporary-address
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverProfileAddressJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.detailedAddress: eq Bruno temporary caregiver address
+}

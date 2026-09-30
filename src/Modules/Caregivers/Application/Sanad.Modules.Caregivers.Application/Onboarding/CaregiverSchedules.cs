@@ -145,9 +145,13 @@ public sealed class UpdateCompanionScheduleCommandValidator
                 window.RuleFor(w => w.DayOfWeek).IsInEnum();
                 window.RuleFor(w => w.BookingType).IsInEnum();
                 window.RuleFor(w => w.EndTime)
-                    .GreaterThan(w => w.StartTime)
+                    .Must((item, endTime) =>
+                        item.BookingType ==
+                            CompanionBookingType.Overnight
+                            ? endTime != item.StartTime
+                            : endTime > item.StartTime)
                     .WithMessage(
-                        "Availability window must end after it starts.");
+                        "Availability window must have a valid duration.");
             });
     }
 }

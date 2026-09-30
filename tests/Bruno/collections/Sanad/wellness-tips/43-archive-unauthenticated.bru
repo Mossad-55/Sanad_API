@@ -1,0 +1,18 @@
+meta {
+  name: 43-archive-unauthenticated
+  type: http
+  seq: 43
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/archive
+  auth: none
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips auth coverage requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 401
+}

@@ -26,7 +26,7 @@ Strongly typed ids are returned as `{ "id": { "value": "<guid>" }, ... }`.
 ## Cities
 `GET /api/v1/lookups/cities?governorateId={governorateGuid}` — cities of one governorate.
 
-The `governorateId` query parameter is **required**. Returns a city only when **both** the city and its governorate are active; `200` with `[]` if the governorate is inactive or has no active cities. Ordered by English name.
+The `governorateId` query parameter is **required**. Omitting it returns `400 Api.Validation.Failed`. Returns a city only when **both** the city and its governorate are active; `200` with `[]` if the governorate is inactive or has no active cities. Ordered by English name.
 ```json
 [
   { "id": { "value": "…" }, "arabicName": "دمنهور", "englishName": "Damanhur" }
@@ -36,7 +36,7 @@ The `governorateId` query parameter is **required**. Returns a city only when **
 ## Areas
 `GET /api/v1/lookups/areas?cityId={cityGuid}` — areas of one city (service locations the caregiver selects).
 
-The `cityId` query parameter is **required**. Returns an area only when the **full chain** (area + city + governorate) is active; deactivating a parent hides the area here even though the area itself remains active. Ordered by English name.
+The `cityId` query parameter is **required**. Omitting it returns `400 Api.Validation.Failed`. Returns an area only when the **full chain** (area + city + governorate) is active; deactivating a parent hides the area here even though the area itself remains active. Ordered by English name.
 ```json
 [
   { "id": { "value": "…" }, "arabicName": "مركز دمنهور", "englishName": "Damanhur Markaz" }
@@ -80,3 +80,14 @@ Inactive records never appear here. Admin management (including inactive records
 - Languages & governorates: `docs/admin/lookups-languages-governorates.md`
 - Cities & areas: `docs/admin/lookups-cities-areas.md`
 - Specializations, titles & degrees: `docs/admin/lookups-specializations-titles-degrees.md`
+
+## Note categories and priorities
+
+`GET /api/v1/note-categories` is an anonymous lookup and returns note categories and priorities. Each option has a numeric `id` plus bilingual `nameAr` and `nameEn` strings:
+
+```json
+{
+  "categories": [{ "id": 1, "nameAr": "تغذية وشهية", "nameEn": "Nutrition & Appetite" }],
+  "priorities": [{ "id": 1, "nameAr": "منخفضة", "nameEn": "Low" }]
+}
+```

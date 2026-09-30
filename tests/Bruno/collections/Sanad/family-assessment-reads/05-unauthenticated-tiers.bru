@@ -1,0 +1,15 @@
+meta {
+  name: 05-unauthenticated-tiers
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/assessment/tiers
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

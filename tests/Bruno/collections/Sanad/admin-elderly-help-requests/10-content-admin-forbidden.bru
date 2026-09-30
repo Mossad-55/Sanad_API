@@ -1,0 +1,18 @@
+meta {
+  name: 10-content-admin-forbidden
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/help-requests/aggregate
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminElderlyHelpContentJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

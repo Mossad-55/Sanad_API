@@ -1,0 +1,40 @@
+meta {
+  name: 10-login-content-admin
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips coverage requires the guarded local Development API.");
+  if (bru.getEnvVar("adminEmail") !== "content.admin@test.sanad.local") throw new Error("Wellness tips coverage requires the seeded ContentAdmin fixture identity.");
+}
+
+body:json {
+  {
+    "email": "{{adminEmail}}",
+    "password": "{{adminPassword}}",
+    "deviceName": "bruno-wellness-tips-content-admin",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body.accessToken) throw new Error("ContentAdmin login did not return an access token.");
+  bru.setVar("wellnessTipsAdminJwt", res.body.accessToken);
+  bru.setVar("wellnessTipsRun", Date.now().toString(36));
+}

@@ -1,0 +1,26 @@
+meta {
+  name: 11-deactivate-revision-two
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{adminSentenceBuilderRevisionTwoId}}/deactivate
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSentenceBuilderJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder lifecycle mutations require the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.body.revisionId !== bru.getVar("adminSentenceBuilderRevisionTwoId") || res.body.version !== 2 || res.body.isActive !== false) throw new Error("Deactivate did not return revision 2 as inactive.");
+}

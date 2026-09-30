@@ -41,7 +41,7 @@ All routes require policy `FamilyAccess`. Permission matrix:
 - `healthNotes`: optional, ≤ 2000 characters.
 - `hasPhoto`: boolean only. **The photo path/URL is never exposed**; photos are private and reachable solely through the authorized download route.
 - `identityUserId` is the Elderly Identity account; it links to SMS OTP login.
-- `latestAssessment` is nullable. When present it contains the newest linked completed assessment with its current care-tier metadata; ties use the assessment ID descending. Older assessment submissions remain stored, but this field exposes only the latest one.
+- `latestAssessment` is nullable. When present it contains the newest linked completed assessment with its current care-tier metadata; ties use the mapped assessment ID descending. This ordering is executed by the relational database and remains SQL-translatable. Older assessment submissions remain stored, but this field exposes only the latest one.
 - `timeZoneId` is the dependent's stored IANA timezone. Existing rows are backfilled to `Africa/Cairo` by the generated `20260925235151_AddElderlyProfileTimeZone` migration; new rows use the configured `ElderlyProfile:DefaultTimeZoneId` (default `Africa/Cairo`).
 
 ## Add a dependent
@@ -219,7 +219,7 @@ GET /api/v1/family/dependents/{dependentId}/emergency-contact
 Authorization: Bearer {{familyToken}}
 ```
 
-An unset contact returns `200` with `null`; a configured contact returns:
+An unset contact returns `200 OK` with JSON `null` (not `204 No Content`); a configured contact returns:
 
 ```json
 {

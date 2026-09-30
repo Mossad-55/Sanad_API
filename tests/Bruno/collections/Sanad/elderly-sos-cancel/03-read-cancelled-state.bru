@@ -1,0 +1,19 @@
+meta {
+  name: 03-read-cancelled-state
+  type: http
+  seq: 3
+}
+get {
+  url: {{baseUrl}}/api/v1/elderly/sos/{{elderlySosCancelId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{elderlySosCancelJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  if (res.body.status !== "Cancelled" && res.body.status !== 4) throw new Error("Expected persisted Cancelled SOS state.");
+}

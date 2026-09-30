@@ -1,0 +1,42 @@
+meta {
+  name: 10-upsert-success
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/sentence-builder/catalog
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSentenceBuilderJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder mutations require the guarded local Development API.");
+}
+
+body:json {
+  {
+    "stableKey": "{{adminSentenceBuilderKey}}",
+    "category": 3,
+    "arabicLabel": "مساعدة تجريبية محدثة",
+    "englishLabel": "Disposable help updated",
+    "displayOrder": 901
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.body.entryId !== bru.getVar("adminSentenceBuilderEntryId") || res.body.revisionId === bru.getVar("adminSentenceBuilderRevisionOneId") || res.body.stableKey !== bru.getVar("adminSentenceBuilderKey") || res.body.version !== 2 || res.body.arabicLabel !== "مساعدة تجريبية محدثة" || res.body.englishLabel !== "Disposable help updated" || res.body.displayOrder !== 901 || res.body.isActive !== true) throw new Error("Upsert did not create the expected immutable version 2 revision.");
+  bru.setVar("adminSentenceBuilderRevisionTwoId", res.body.revisionId);
+}

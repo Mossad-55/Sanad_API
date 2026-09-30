@@ -1,0 +1,23 @@
+meta {
+  name: 06-update-dependent-unauthenticated
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/00000000-0000-4000-8000-000000000001
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"relationshipType":7,"arabicFullName":"سعيد نصر","englishFullName":"Saeed Nasr","gender":1,"dateOfBirth":"1948-07-20"}
+}
+
+assert {
+  res.status: eq 401
+}

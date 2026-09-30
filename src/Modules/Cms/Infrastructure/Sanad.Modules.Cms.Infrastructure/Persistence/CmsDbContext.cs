@@ -6,6 +6,7 @@ using Sanad.Modules.Cms.Domain.Splash;
 using Sanad.Modules.Cms.Domain.Wellness;
 using Sanad.Modules.Cms.Domain.SentenceBuilder;
 using Sanad.Modules.Cms.Domain.MedicationLateness;
+using Sanad.Modules.Cms.Domain.Welcome;
 
 namespace Sanad.Modules.Cms.Infrastructure.Persistence;
 
@@ -38,6 +39,7 @@ public sealed class CmsDbContext :
     public DbSet<SentenceBuilderCatalogRevision> SentenceBuilderCatalogRevisions => Set<SentenceBuilderCatalogRevision>();
     public DbSet<MedicationLatenessSetting> MedicationLatenessSettings => Set<MedicationLatenessSetting>();
     public DbSet<MedicationLatenessSettingRevision> MedicationLatenessSettingRevisions => Set<MedicationLatenessSettingRevision>();
+    public DbSet<ElderlyWelcome> ElderlyWelcomes => Set<ElderlyWelcome>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

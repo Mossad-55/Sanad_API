@@ -1,0 +1,19 @@
+meta {
+  name: 12-logout-all-owner
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicalOwnerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

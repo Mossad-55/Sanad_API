@@ -1,0 +1,28 @@
+meta {
+  name: 06-take-duplicate-dose
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications/{{familyMedicationMutationId}}/doses/take
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationMutationOwnerJwt}}
+}
+
+body:json {
+  {
+    "scheduledDate": "2026-09-30",
+    "scheduledTime": "08:00",
+    "notes": "Duplicate guard"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Families.Medication.DoseAlreadyTaken
+}

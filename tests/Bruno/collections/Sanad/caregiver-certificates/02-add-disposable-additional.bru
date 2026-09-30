@@ -1,0 +1,29 @@
+meta {
+  name: 02-add-disposable-additional
+  type: http
+  seq: 2
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/certificates
+  body: multipart-form
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverCertificatesJwt}}
+}
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Certificate uploads require the guarded local Development API.");
+}
+body:multipart-form {
+  type: 3
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const added = (res.body.certificates ?? []).find(c=>c.type===3);
+  if (!added || added.verificationStatus !== 1) throw new Error("Additional certificate was not returned as Pending.");
+  bru.setVar("caregiverAddedCertificateId", added.id.value ?? added.id);
+  if (res.body.status !== 4 || res.body.availability !== 1) throw new Error("Adding an Additional certificate changed Active/Available state.");
+}

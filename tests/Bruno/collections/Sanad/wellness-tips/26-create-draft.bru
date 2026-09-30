@@ -1,0 +1,40 @@
+meta {
+  name: 26-create-draft
+  type: http
+  seq: 26
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips mutations require the guarded local Development API.");
+}
+
+body:multipart-form {
+  arabicTitle: نصيحة برونو {{wellnessTipsRun}}
+  englishTitle: Bruno wellness draft {{wellnessTipsRun}}
+  category: general
+  sectionsJson: [{"DisplayOrder":2,"ArabicText":"اشرب الماء","EnglishText":"Drink water"},{"DisplayOrder":1,"ArabicText":"تحرك يوميا","EnglishText":"Move daily"}]
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 201
+  res.body.status: eq 1
+}
+
+script:post-response {
+  const id = res.body.id && (res.body.id.value || res.body.id);
+  if (!id) throw new Error("Created wellness tip response did not include an ID.");
+  if (!res.body.imagePath) throw new Error("Created wellness tip response did not include imagePath.");
+  bru.setVar("wellnessTipId", id);
+  bru.setVar("wellnessTipOriginalImagePath", res.body.imagePath);
+}

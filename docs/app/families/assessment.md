@@ -19,6 +19,8 @@ GET    /api/v1/family/assessment/tiers        Fetch care tiers display content &
 POST   /api/v1/family/assessment              Submit answers → Server-side score & tier calculation
 ```
 
+The question and tier GETs return only active CMS entries and may return an empty array when no active catalog content is configured. Questions are ordered by question order, tiers by screen order, and question-option scoring weights are never exposed to the client.
+
 ---
 
 ### 1. Get Active Questions

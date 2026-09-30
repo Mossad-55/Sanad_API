@@ -1,0 +1,23 @@
+meta {
+  name: 03-pending-downgrade-unauthenticated
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/subscriptions/pending-downgrade
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"planVersionId":"00000000-0000-4000-8000-000000000001"}
+}
+
+assert {
+  res.status: eq 401
+}

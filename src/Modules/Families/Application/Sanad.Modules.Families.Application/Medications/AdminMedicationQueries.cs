@@ -56,28 +56,24 @@ public sealed class GetAdminMedicationsQueryHandler : IQueryHandler<GetAdminMedi
         if (!string.IsNullOrWhiteSpace(request.Search)) query = query.Where(x => x.Name.ToLower().Contains(request.Search.Trim().ToLower()));
         int total = await query.CountAsync(ct);
         long offset = ((long)page - 1) * pageSize;
-        List<Medication> medications = offset > int.MaxValue
-            ? []
-            : await query.OrderByDescending(x => x.UpdatedOnUtc)
-                .Skip((int)offset)
-                .Take(pageSize)
-                .ToListAsync(ct);
-        Guid[] dependentIds = medications.Select(x => x.ElderlyId.Value).Distinct().ToArray();
-        var elderly = await _db.Elderlies.AsNoTracking()
-            .Where(x => dependentIds.Contains(x.Id.Value))
+        if (offset > int.MaxValue)
+            return new PagedAdminMedicationRecords([], page, pageSize, total);
+
+        var rows = await query.OrderByDescending(x => x.UpdatedOnUtc)
+            .Skip((int)offset)
+            .Take(pageSize)
+            .Join(_db.Elderlies.AsNoTracking(), medication => medication.ElderlyId, elderly => elderly.Id,
+                (medication, elderly) => new { medication, elderly })
             .Select(x => new
             {
-                Id = x.Id.Value,
-                FamilyId = x.FamilyId.Value,
-                ArabicName = x.ArabicFullName.Value,
-                EnglishName = x.EnglishFullName.Value
+                Medication = x.medication,
+                FamilyId = x.elderly.FamilyId.Value,
+                ArabicName = x.elderly.ArabicFullName.Value,
+                EnglishName = x.elderly.EnglishFullName.Value
             })
-            .ToDictionaryAsync(x => x.Id, ct);
-        var items = medications.Select(m => new AdminMedicationRecord(
-            m.ToResponse(),
-            elderly[m.ElderlyId.Value].FamilyId,
-            elderly[m.ElderlyId.Value].ArabicName,
-            elderly[m.ElderlyId.Value].EnglishName)).ToList();
+            .ToListAsync(ct);
+        var items = rows.Select(x => new AdminMedicationRecord(
+            x.Medication.ToResponse(), x.FamilyId, x.ArabicName, x.EnglishName)).ToList();
         return new PagedAdminMedicationRecords(items, page, pageSize, total);
     }
 }

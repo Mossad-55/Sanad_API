@@ -1,0 +1,24 @@
+meta {
+  name: 07-list-after-take
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/medications
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const medication = Array.isArray(res.body) ? res.body.find((item) => item.name === "Test late-evaluation medication") : null;
+  if (!medication || medication.stockQuantity !== 29) throw new Error("Expected exactly one stock decrement from 30 to 29.");
+}

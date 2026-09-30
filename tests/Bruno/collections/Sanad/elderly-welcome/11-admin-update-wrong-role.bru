@@ -1,0 +1,23 @@
+meta {
+  name: 11-admin-update-wrong-role
+  type: http
+  seq: 11
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome
+  body: json
+  auth: bearer
+}
+
+body:json {
+  {}
+}
+
+auth:bearer {
+  token: {{elderlyWelcomeFamilyJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

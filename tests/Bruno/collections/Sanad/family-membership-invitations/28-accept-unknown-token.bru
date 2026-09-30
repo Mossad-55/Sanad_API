@@ -1,0 +1,28 @@
+meta {
+  name: 28-accept-unknown-token
+  type: http
+  seq: 28
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/invitations/accept
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{inviteeFamilyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"token":"not-a-real-token"}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Families.Invitation.NotFound
+}

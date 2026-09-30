@@ -1,0 +1,31 @@
+meta {
+  name: 05-set-viewer-forbidden
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyTimezoneDependentId}}/timezone
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyTimezoneViewerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235") throw new Error("Timezone writes are allowed only against the local fixture API.");
+  if (bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Timezone writes require Development.");
+}
+
+body:json {
+  {
+    "timeZoneId": "Africa/Cairo"
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq Families.Elderly.AccessDenied
+}

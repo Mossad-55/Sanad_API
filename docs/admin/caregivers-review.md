@@ -123,7 +123,7 @@ GET /api/v1/admin/caregivers/{caregiverId}/certificates/{certificateId}/file
 
 Streams the stored scan from private storage (PDF/JPEG/PNG/WebP) as a file download, `CaregiversAdmin` required. The response `Content-Type` matches the stored file; the download filename is `certificate-{certificateId}.<ext>`.
 
-- `404 Caregivers.Onboarding.CaregiverNotFound` / `Caregivers.Onboarding.CertificateNotFound`
+- `404 Caregivers.Onboarding.NotFound` when the caregiver id is unknown; `Caregivers.Onboarding.CertificateNotFound` when the caregiver exists but the certificate id is unknown.
 - `404 Storage.File.NotFound` — the stored file is missing.
 
 Certificate metadata (type, expiry, status, review reason) is in the detail response; never construct or share file URLs outside this endpoint. Caregiver self-service onboarding is documented under `docs/app/caregivers/`.

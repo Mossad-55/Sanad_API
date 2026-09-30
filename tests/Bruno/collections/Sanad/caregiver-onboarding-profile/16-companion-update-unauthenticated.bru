@@ -1,0 +1,19 @@
+meta {
+  name: 16-companion-update-unauthenticated
+  type: http
+  seq: 16
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/profile/companion
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "yearsOfExperience": 0, "specializationId": "00000000-0000-4000-8000-000000000001" }
+}
+assert {
+  res.status: eq 401
+}

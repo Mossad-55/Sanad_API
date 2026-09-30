@@ -528,10 +528,10 @@ public sealed class CaregiverController :
             await _sender.Send(
                 new UpdateCaregiverPrivacyCommand(
                     userId,
-                    request.ShowProfile,
-                    request.ShowRating,
-                    request.ShowPhone,
-                    request.ShareLocation),
+                    request.ShowProfile!.Value,
+                    request.ShowRating!.Value,
+                    request.ShowPhone!.Value,
+                    request.ShareLocation!.Value),
                 cancellationToken);
 
         if (result.IsFailure)

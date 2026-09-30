@@ -1,0 +1,23 @@
+meta {
+  name: 21-activate-city
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/lookups/cities/{{cityId}}/activate
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLookupsJwt}}
+}
+
+script:post-response {
+if (res.status !== 200) throw new Error(`Expected 200, got ${res.status}`);
+}
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Admin lookup mutations require the guarded local Development API.");
+  }
+}

@@ -57,6 +57,20 @@ public sealed class CompanionCaregiverPricing :
             overnightPrice);
     }
 
+    internal void Update(
+        decimal hourlyPrice,
+        decimal eightHourDayPrice,
+        decimal overnightPrice)
+    {
+        ValidatePrice(hourlyPrice, "Hourly price");
+        ValidatePrice(eightHourDayPrice, "8-hour day price");
+        ValidatePrice(overnightPrice, "Overnight price");
+
+        HourlyPrice = hourlyPrice;
+        EightHourDayPrice = eightHourDayPrice;
+        OvernightPrice = overnightPrice;
+    }
+
     protected override IEnumerable<object?>
         GetEqualityComponents()
     {

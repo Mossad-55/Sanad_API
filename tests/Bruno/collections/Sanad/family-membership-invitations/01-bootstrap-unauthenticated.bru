@@ -1,0 +1,23 @@
+meta {
+  name: 01-bootstrap-unauthenticated
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"name":"Bruno disposable family"}
+}
+
+assert {
+  res.status: eq 401
+}

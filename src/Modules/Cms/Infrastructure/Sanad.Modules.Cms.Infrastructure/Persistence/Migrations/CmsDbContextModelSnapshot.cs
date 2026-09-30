@@ -356,6 +356,65 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                     b.ToTable("splash_screens", "cms");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Welcome.ElderlyWelcome", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ArabicCtaLabel")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("arabic_cta_label");
+
+                    b.Property<string>("ArabicHeadline")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("arabic_headline");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("CtaAction")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("cta_action");
+
+                    b.Property<string>("EnglishCtaLabel")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("english_cta_label");
+
+                    b.Property<string>("EnglishHeadline")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("english_headline");
+
+                    b.Property<DateTime?>("PublishedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_on_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.ToTable("elderly_welcomes", "cms");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Cms.Domain.Wellness.WellnessTip", b =>
                 {
                     b.Property<Guid>("Id")
@@ -497,6 +556,60 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                         .IsRequired();
 
                     b.Navigation("CatalogEntry");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Welcome.ElderlyWelcome", b =>
+                {
+                    b.OwnsMany("Sanad.Modules.Cms.Domain.Welcome.ElderlyWelcomeBenefit", "Benefits", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.Property<string>("ArabicDescription")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("arabic_description");
+
+                            b1.Property<string>("ArabicTitle")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("arabic_title");
+
+                            b1.Property<int>("DisplayOrder")
+                                .HasColumnType("integer")
+                                .HasColumnName("display_order");
+
+                            b1.Property<Guid>("ElderlyWelcomeId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("elderly_welcome_id");
+
+                            b1.Property<string>("EnglishDescription")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("english_description");
+
+                            b1.Property<string>("EnglishTitle")
+                                .IsRequired()
+                                .HasMaxLength(500)
+                                .HasColumnType("character varying(500)")
+                                .HasColumnName("english_title");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("ElderlyWelcomeId", "DisplayOrder")
+                                .IsUnique();
+
+                            b1.ToTable("elderly_welcome_benefits", "cms");
+
+                            b1.WithOwner()
+                                .HasForeignKey("ElderlyWelcomeId");
+                        });
+
+                    b.Navigation("Benefits");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Cms.Domain.Wellness.WellnessTip", b =>

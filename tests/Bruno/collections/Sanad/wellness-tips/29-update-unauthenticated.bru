@@ -1,0 +1,27 @@
+meta {
+  name: 29-update-unauthenticated
+  type: http
+  seq: 29
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}
+  body: multipart-form
+  auth: none
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips auth coverage requires the guarded local Development API.");
+}
+
+body:multipart-form {
+  arabicTitle: تحديث غير مصرح
+  englishTitle: Unauthenticated update
+  category: general
+  sectionsJson: [{"displayOrder":1,"arabicText":"نصيحة","englishText":"Advice"}]
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 401
+}

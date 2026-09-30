@@ -1,0 +1,15 @@
+meta {
+  name: 04-cancel-pending-downgrade-unauthenticated
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/family/subscriptions/pending-downgrade
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

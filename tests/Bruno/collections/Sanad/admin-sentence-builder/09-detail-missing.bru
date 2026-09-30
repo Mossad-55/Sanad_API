@@ -1,0 +1,23 @@
+meta {
+  name: 09-detail-missing
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/sentence-builder/catalog/00000000-0000-0000-0000-000000000001
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSentenceBuilderJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder coverage requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Cms.SentenceBuilder.NotFound
+}

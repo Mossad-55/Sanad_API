@@ -1,0 +1,31 @@
+meta {
+  name: 09-rename-language
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/lookups/languages/{{languageId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLookupsJwt}}
+}
+
+body:json {
+  {
+    "arabicName": "اسم محدث {{lookupUnique}}",
+    "englishName": "Renamed {{lookupUnique}}"
+  }
+}
+
+script:post-response {
+if (res.status !== 200) throw new Error(`Expected 200, got ${res.status}`);
+}
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Admin lookup mutations require the guarded local Development API.");
+  }
+}

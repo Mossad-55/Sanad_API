@@ -1,0 +1,57 @@
+meta {
+  name: 14-create-second-disposable-version
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/legal-documents
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLegalDocumentsJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin legal-document mutations require the guarded local Development API.");
+}
+
+body:json {
+  {
+    "documentType": 2,
+    "audience": 3,
+    "sections": [
+      {
+        "sectionType": 1,
+        "displayOrder": 1,
+        "arabicTitle": "شروط تجريبية الإصدار الثاني",
+        "englishTitle": "Disposable terms version two",
+        "arabicDescription": "إصدار ثانٍ تجريبي محلي قابل للحذف.",
+        "englishDescription": "Second disposable local-only version.",
+        "arabicBullets": null,
+        "englishBullets": null
+      }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.documentType: eq 2
+  res.body.audience: eq 3
+  res.body.version: eq 2
+  res.body.status: eq 1
+}
+
+script:post-response {
+  const id = res.body.id && (res.body.id.value || res.body.id);
+  if (!id) throw new Error("Second legal document response did not include an ID.");
+  bru.setVar("adminLegalDocumentSecondId", id);
+  console.log("ADMIN_LEGAL_DOCUMENT_SECOND_ID=" + id);
+}

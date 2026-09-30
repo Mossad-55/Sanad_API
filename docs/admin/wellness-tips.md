@@ -28,7 +28,9 @@ Create and update use `multipart/form-data`, with a request limit of 5 MiB.
 The required fields are `arabicTitle`, `englishTitle`, `category`, and
 `sectionsJson`; `file` is required for create and optional for update.
 `sectionsJson` is a JSON array of at least one section (maximum 40), each with
-`displayOrder`, `arabicText`, and `englishText`. Display orders must be unique.
+`DisplayOrder`, `ArabicText`, and `EnglishText`. The current parser treats the
+embedded section JSON property names case-sensitively; use this exact casing.
+Display orders must be unique.
 
 The file is saved through `IFileStorage` under `wellness-tips` with a generated
 storage key. Only non-empty `image/jpeg`, `image/png`, and `image/webp` files
@@ -42,8 +44,12 @@ clinical-review state, reviewer workflow, metrics, and tenant isolation are
 not implemented and are **Needs Owner Verification**; do not infer them from
 the CMS status.
 
-Errors include `Cms.WellnessTip.NotFound` (404),
+Create returns `201`; successful reads, updates, publish, and archive return
+`200`. Unauthenticated requests return `401`, and authenticated roles outside
+`CmsContent` return `403`. Errors include `Cms.WellnessTip.NotFound` (404),
 `Cms.WellnessTip.NotPublished` (404 for the Elderly published-only detail),
 and `Cms.WellnessTip.InvalidOperation` (409 for invalid lifecycle/content
-operations). Storage empty/unsupported/too-large errors are returned as
-validation failures.
+operations). Malformed `sectionsJson` returns `400`. Empty/missing files return
+`400 Storage.File.Empty`; oversized files return `400 Storage.File.TooLarge`;
+unsupported content type or mismatched byte signatures return
+`400 Storage.File.UnsupportedType`.

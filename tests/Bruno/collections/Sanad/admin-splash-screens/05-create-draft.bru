@@ -1,0 +1,42 @@
+meta {
+  name: 05-create-draft
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/splash-screens
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSplashScreensJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin splash screen mutations require the guarded local Development API.");
+}
+
+body:multipart-form {
+  internalName: bruno-splash-{{adminSplashRun}}
+  arabicTitle: شاشة سند التجريبية
+  englishTitle: Bruno disposable splash screen
+  arabicDescription: محتوى تجريبي محلي
+  englishDescription: Disposable local content
+  arabicButtonText: التالي
+  englishButtonText: Next
+  backgroundColor: #1A73E8
+  displayOrder: 900
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 201
+  res.body.status: eq 1
+}
+
+script:post-response {
+  bru.setVar("adminSplashScreenId", res.body.id.value);
+  bru.setVar("adminSplashImagePath", res.body.imagePath);
+}

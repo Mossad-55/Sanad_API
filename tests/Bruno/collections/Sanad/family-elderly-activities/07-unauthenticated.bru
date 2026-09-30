@@ -1,0 +1,15 @@
+meta {
+  name: 07-unauthenticated
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyActivitiesDependentId}}/activities
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

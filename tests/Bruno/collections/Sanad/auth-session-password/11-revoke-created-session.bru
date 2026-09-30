@@ -1,0 +1,23 @@
+meta {
+  name: 11-revoke-created-session
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/auth/sessions/{{authSessionPasswordDeviceSessionId}}
+  auth: bearer
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Auth coverage requires the guarded local Development API.");
+  if (!bru.getVar("authSessionPasswordDeviceSessionId")) throw new Error("Run the SupportAdmin login before revoking its session.");
+}
+
+auth:bearer {
+  token: {{authSessionPasswordAccessToken}}
+}
+
+assert {
+  res.status: eq 204
+}

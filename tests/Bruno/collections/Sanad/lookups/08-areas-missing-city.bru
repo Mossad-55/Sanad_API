@@ -1,0 +1,16 @@
+meta {
+  name: 08-areas-missing-city
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/lookups/areas
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Api.Validation.Failed
+}

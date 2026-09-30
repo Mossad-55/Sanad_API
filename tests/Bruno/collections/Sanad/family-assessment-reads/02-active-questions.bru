@@ -1,0 +1,31 @@
+meta {
+  name: 02-active-questions
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/assessment/questions
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyAssessmentReadsJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body)) throw new Error("Active assessment questions must be returned as an array.");
+  for (let i = 0; i < res.body.length; i++) {
+    const question = res.body[i];
+    if (!question.id || !Number.isInteger(question.order) || typeof question.arabicText !== "string" || typeof question.englishText !== "string" || typeof question.isRequired !== "boolean" || !Array.isArray(question.options)) throw new Error("Question response shape is incomplete.");
+    if (i > 0 && res.body[i - 1].order > question.order) throw new Error("Questions are not ordered by order ascending.");
+    for (const option of question.options) {
+      if (!option.id || !Number.isInteger(option.order) || typeof option.arabicText !== "string" || typeof option.englishText !== "string" || Object.prototype.hasOwnProperty.call(option, "weight")) throw new Error("Question option shape is invalid or exposes a scoring weight.");
+    }
+  }
+}

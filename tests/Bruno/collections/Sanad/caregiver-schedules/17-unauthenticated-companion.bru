@@ -1,0 +1,19 @@
+meta {
+  name: 17-unauthenticated-companion
+  type: http
+  seq: 17
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/schedule/companion
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "windows": [] }
+}
+assert {
+  res.status: eq 401
+}

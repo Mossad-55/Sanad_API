@@ -1,0 +1,26 @@
+meta {
+  name: 06-cancel-terminal-again
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/help-requests/{{elderlyHelpRequestId}}/cancel
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyHelpRequestJwt}}
+}
+
+body:json {
+  {
+    "reason": "Repeat cancellation must be rejected"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Families.HelpRequest.InvalidOperation
+}

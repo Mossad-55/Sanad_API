@@ -1,0 +1,16 @@
+meta {
+  name: 07-cities-missing-governorate
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/lookups/cities
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Api.Validation.Failed
+}

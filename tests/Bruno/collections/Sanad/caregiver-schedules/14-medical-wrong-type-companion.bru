@@ -1,0 +1,23 @@
+meta {
+  name: 14-medical-wrong-type-companion
+  type: http
+  seq: 14
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/schedule/companion
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+auth:bearer {
+  token: {{scheduleMedicalJwt}}
+}
+body:json {
+  { "windows": [] }
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq "Caregivers.Onboarding.WrongCaregiverType"
+}

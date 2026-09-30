@@ -1,0 +1,32 @@
+meta {
+  name: 02-medical-wrong-type-companion-pricing
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/pricing/companion
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverPricingMedicalJwt}}
+}
+
+body:json {
+  {
+    "hourlyPrice": 81.25,
+    "eightHourDayPrice": 501.25,
+    "overnightPrice": 701.25
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Caregivers.Onboarding.WrongCaregiverType
+}

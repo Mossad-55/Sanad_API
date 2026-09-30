@@ -1,0 +1,21 @@
+meta {
+  name: 06-read-restored-profile
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverProfileAddressJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.type: eq 1
+  res.body.detailedAddress: eq null
+}

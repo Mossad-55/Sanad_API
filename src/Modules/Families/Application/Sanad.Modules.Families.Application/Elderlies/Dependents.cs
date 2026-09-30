@@ -505,7 +505,7 @@ public sealed class GetDependentQueryHandler
             .AsNoTracking()
             .Where(a => a.ElderlyId == elderly.Id && a.FamilyId == family.Id)
             .OrderByDescending(a => a.CompletedOnUtc)
-            .ThenByDescending(a => a.Id.Value)
+            .ThenByDescending(a => a.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
         FamilyAssessmentResultResponse? assessmentResponse = null;

@@ -1,0 +1,13 @@
+meta {
+  name: 06-cancel-unauthenticated
+  type: http
+  seq: 6
+}
+post {
+  url: {{baseUrl}}/api/v1/elderly/sos/{{elderlySosCancelId}}/cancel
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 401
+}

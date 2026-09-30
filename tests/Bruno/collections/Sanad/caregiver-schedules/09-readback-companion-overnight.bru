@@ -1,0 +1,19 @@
+meta {
+  name: 09-readback-companion-overnight
+  type: http
+  seq: 9
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{scheduleCompanionJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.companionSchedule.windows[0].bookingType: eq 3
+  res.body.companionSchedule.windows[0].startTime: startsWith "20:00"
+  res.body.companionSchedule.windows[0].endTime: startsWith "08:00"
+}

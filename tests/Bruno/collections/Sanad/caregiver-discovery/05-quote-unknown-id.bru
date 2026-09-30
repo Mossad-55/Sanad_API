@@ -1,0 +1,20 @@
+meta {
+  name: 05-quote-unknown-id
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregivers/00000000-0000-0000-0000-000000000001/quote?shiftType=1&startTime=10:00&endTime=12:00
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverDiscoveryJwt}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Caregivers.Discovery.CaregiverNotFound
+}

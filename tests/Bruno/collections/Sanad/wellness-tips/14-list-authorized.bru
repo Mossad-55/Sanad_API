@@ -1,0 +1,24 @@
+meta {
+  name: 14-list-authorized
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips?status=1&category=general&search=Bruno&page=1&pageSize=1000
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips reads require the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+  res.body.page: eq 1
+  res.body.pageSize: eq 100
+}

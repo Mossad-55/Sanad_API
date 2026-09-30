@@ -1,0 +1,23 @@
+meta {
+  name: 07-put-unauthenticated
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicalDependentId}}/medical-profile
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"bloodType": 0, "chronicConditions": [], "allergies": [], "medicalHistory": []}
+}
+
+assert {
+  res.status: eq 401
+}

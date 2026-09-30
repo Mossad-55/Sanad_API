@@ -1,0 +1,38 @@
+meta {
+  name: 06-invalid-blank-label
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/sentence-builder/catalog
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSentenceBuilderJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder validation requires the guarded local Development API.");
+}
+
+body:json {
+  {
+    "stableKey": "bruno-sentence-builder-blank-label",
+    "category": 3,
+    "arabicLabel": " ",
+    "englishLabel": "Blank label",
+    "displayOrder": 902
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Cms.SentenceBuilder.InvalidOperation
+}

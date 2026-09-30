@@ -1,0 +1,24 @@
+meta {
+  name: 39-publish-draft
+  type: http
+  seq: 39
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/publish
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips mutations require the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 2
+  res.body.imagePath: eq {{wellnessTipReplacementImagePath}}
+}

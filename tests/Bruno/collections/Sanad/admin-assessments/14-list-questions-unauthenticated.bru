@@ -1,0 +1,14 @@
+meta {
+  name: 14-list-questions-unauthenticated
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/assessments/questions
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

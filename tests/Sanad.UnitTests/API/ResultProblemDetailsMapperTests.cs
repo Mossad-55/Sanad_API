@@ -59,6 +59,74 @@ public sealed class ResultProblemDetailsMapperTests
         "Bookings.NoRefundDue",
         StatusCodes.Status409Conflict,
         "The request conflicts with the current state.")]
+    [InlineData(
+        "Cms.ElderlyWelcome.NotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Cms.ElderlyWelcome.NotPublished",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Cms.ElderlyWelcome.AlreadyExists",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
+        "Cms.ElderlyWelcome.InvalidState",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
+        "Cms.ElderlyWelcome.Invalid",
+        StatusCodes.Status400BadRequest,
+        "The request could not be completed.")]
+    [InlineData(
+        "Notifications.AdminNotification.NotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Caregivers.Discovery.CaregiverNotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Cms.MedicationLateness.NotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Families.AdminMedication.NotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Families.Notes.DependentNotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Families.Notes.AccessDenied",
+        StatusCodes.Status403Forbidden,
+        "The requested operation is not allowed.")]
+    [InlineData(
+        "Families.Notes.NotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Families.Notes.InvalidNote",
+        StatusCodes.Status400BadRequest,
+        "The request could not be completed.")]
+    [InlineData(
+        "Families.Medication.DependentNotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Families.Medication.AccessDenied",
+        StatusCodes.Status403Forbidden,
+        "The requested operation is not allowed.")]
+    [InlineData(
+        "Families.Medication.NotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "Families.Medication.InvalidDateRange",
+        StatusCodes.Status400BadRequest,
+        "The request could not be completed.")]
     public void Create_ShouldMapStableErrorCode(
         string errorCode,
         int expectedStatusCode,

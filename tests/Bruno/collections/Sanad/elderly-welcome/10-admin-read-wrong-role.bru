@@ -1,0 +1,18 @@
+meta {
+  name: 10-admin-read-wrong-role
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWelcomeFamilyJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

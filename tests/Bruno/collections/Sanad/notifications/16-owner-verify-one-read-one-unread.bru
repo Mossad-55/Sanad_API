@@ -1,0 +1,22 @@
+meta {
+  name: 16-owner-verify-one-read-one-unread
+  type: http
+  seq: 16
+}
+get {
+  url: {{baseUrl}}/api/v1/notifications?pageSize=100
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{notificationOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const alerts = res.body.items.filter(item => item.type === "HelpRequestCreated");
+  const readCount = alerts.filter(item => item.readOnUtc !== null).length;
+  const unreadCount = alerts.filter(item => item.readOnUtc === null).length;
+  if (readCount !== 1 || unreadCount < 1) throw new Error("Mark-one must only mark the caller's selected alert read.");
+}

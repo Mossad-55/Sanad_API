@@ -1,0 +1,21 @@
+meta {
+  name: 01-cities-active
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/lookups/cities?governorateId={{publicLookupGovernorateId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const rows = res.body;
+  if (!Array.isArray(rows) || rows.length === 0 || !rows[0].id?.value) throw new Error("Expected active cities for the first active governorate.");
+  bru.setVar("publicLookupCityId", rows[0].id.value);
+}

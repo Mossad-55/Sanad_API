@@ -1,0 +1,41 @@
+meta {
+  name: 03-submit-success-disposable
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/support/contact
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{supportContactJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Support Contact requires guarded local Development.");
+  const marker = `Bruno Support ${Date.now()}`;
+  bru.setVar("supportContactSubject", marker);
+  bru.setVar("supportContactMessage", `Disposable local Bruno support-ticket fixture ${marker}.`);
+}
+
+body:json {
+  { "subject": "{{supportContactSubject}}", "message": "{{supportContactMessage}}" }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const id = res.body.ticketId?.value;
+  if (!id || res.body.status !== 1 || !res.body.submittedOnUtc) throw new Error("Support Contact success response contract failed.");
+  bru.setVar("supportContactDisposableTicketId", id);
+  console.log("Disposable local support ticket ID:", id);
+}

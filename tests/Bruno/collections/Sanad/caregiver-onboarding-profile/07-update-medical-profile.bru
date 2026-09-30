@@ -1,0 +1,24 @@
+meta {
+  name: 07-update-medical-profile
+  type: http
+  seq: 7
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/profile/medical
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{onboardingMedicalJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "professionalTitleId": "{{onboardingProfessionalTitleId}}", "yearsOfExperience": 8, "specializationId": "{{onboardingMedicalSpecializationId}}", "academicDegreeId": "{{onboardingAcademicDegreeId}}", "currentWorkplace": "Test Clinic", "biography": "Seeded test medical caregiver." }
+}
+assert {
+  res.status: eq 200
+  res.body.type: eq 1
+  res.body.medicalProfile.yearsOfExperience: eq 8
+}

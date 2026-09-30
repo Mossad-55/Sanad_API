@@ -1,0 +1,19 @@
+meta {
+  name: 15-medical-update-unauthenticated
+  type: http
+  seq: 15
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/profile/medical
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "professionalTitleId": "00000000-0000-4000-8000-000000000001", "yearsOfExperience": 0, "specializationId": "00000000-0000-4000-8000-000000000002", "academicDegreeId": "00000000-0000-4000-8000-000000000003" }
+}
+assert {
+  res.status: eq 401
+}

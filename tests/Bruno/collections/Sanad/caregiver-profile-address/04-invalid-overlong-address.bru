@@ -1,0 +1,34 @@
+meta {
+  name: 04-invalid-overlong-address
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/profile/address
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  bru.setVar("invalidOverlongAddress", "x".repeat(501));
+}
+
+auth:bearer {
+  token: {{caregiverProfileAddressJwt}}
+}
+
+body:json {
+  {
+    "detailedAddress": "{{invalidOverlongAddress}}"
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Api.Validation.Failed
+}

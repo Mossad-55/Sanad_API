@@ -44,7 +44,7 @@
               "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"emailVerificationRequestId\": \"018f0000-0000-7000-8000-000000000002\",\n  \"phoneVerificationRequestId\": \"018f0000-0000-7000-8000-000000000003\"\n}"
             },
             {
-              "name": "400 Unsupported account type",
+              "name": "400 Unsupported account type validation",
               "status": "Bad Request",
               "code": 400,
               "_postman_previewlanguage": "json",
@@ -54,7 +54,7 @@
                   "value": "application/problem+json"
                 }
               ],
-              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/auth/register\",\n  \"code\": \"Identity.Registration.UnsupportedAccountType\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
+              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Validation Failed\",\n  \"status\": 400,\n  \"detail\": \"One or more validation errors occurred.\",\n  \"instance\": \"/api/v1/auth/register\",\n  \"code\": \"Api.Validation.Failed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\",\n  \"errors\": {\"AccountType\": [\"Registration supports Family, Medical Caregiver, or Companion Caregiver only.\"]}\n}"
             },
             {
               "name": "400 Validation failed",
@@ -2119,7 +2119,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/support/contact",
-            "description": "Requires Normal JWT. Submit a support request. The ticket id is captured into the supportTicketId collection variable.",
+            "description": "Requires Normal JWT. Persists the support ticket, then attempts support email; email failure does not fail submission. The ticket id is captured into supportTicketId. Use Development no-op email for local tests.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"subject\": \"Help needed\",\n  \"message\": \"I need assistance with my account.\"\n}"

@@ -1,0 +1,18 @@
+meta {
+  name: 06-find-medical-degree
+  type: http
+  seq: 6
+}
+get {
+  url: {{baseUrl}}/api/v1/lookups/academic-degrees
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const item = res.body.find(x => x.englishName === "Test BSc Nursing");
+  if (!item?.id?.value) throw new Error("Seeded academic degree lookup not found.");
+  bru.setVar("onboardingAcademicDegreeId", item.id.value);
+}

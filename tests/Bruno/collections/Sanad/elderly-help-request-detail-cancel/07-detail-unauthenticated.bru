@@ -1,0 +1,15 @@
+meta {
+  name: 07-detail-unauthenticated
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/help-requests/{{elderlyHelpRequestId}}
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

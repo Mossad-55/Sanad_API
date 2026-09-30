@@ -1,0 +1,27 @@
+meta {
+  name: 00b-get-family-baseline
+  type: http
+  seq: 0
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body.id || !res.body.name || !Array.isArray(res.body.members)) throw new Error("Family baseline missing required shape");
+  bru.setVar("originalFamilyName", res.body.name);
+  const viewer = res.body.members.find(member => member.role === 3);
+  if (!viewer) throw new Error("Seeded Family Viewer not found");
+  bru.setVar("viewerUserId", viewer.userId.value || viewer.userId);
+}

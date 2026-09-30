@@ -1,0 +1,21 @@
+meta {
+  name: 11-companion-certificate-forbidden
+  type: http
+  seq: 11
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/certificates
+  body: multipart-form
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverCertificatesCompanionJwt}}
+}
+body:multipart-form {
+  type: 3
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq "Caregivers.Onboarding.InvalidCertificateOperation"
+}

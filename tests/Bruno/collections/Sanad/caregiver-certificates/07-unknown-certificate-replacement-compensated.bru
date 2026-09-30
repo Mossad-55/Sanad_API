@@ -1,0 +1,20 @@
+meta {
+  name: 07-unknown-certificate-replacement-compensated
+  type: http
+  seq: 7
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/certificates/11111111-1111-1111-1111-111111111111/file
+  body: multipart-form
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverCertificatesJwt}}
+}
+body:multipart-form {
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+assert {
+  res.status: eq 404
+  res.body.code: eq "Caregivers.Onboarding.CertificateNotFound"
+}

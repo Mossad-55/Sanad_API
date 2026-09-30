@@ -1,0 +1,23 @@
+meta {
+  name: 08-login-family-viewer
+  type: http
+  seq: 8
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "email": "{{viewerEmail}}", "password": "{{viewerPassword}}", "deviceName": "bruno-caregiver-availability-viewer", "devicePlatform": 3, "appVersion": "1.0.0" }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("caregiverAvailabilityViewerJwt", res.body.accessToken);
+  bru.setVar("caregiverAvailabilityViewerSessionId", res.body.deviceSessionId.value);
+}

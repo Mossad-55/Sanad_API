@@ -14,7 +14,7 @@ fields only; deleted Families are filtered out.
 | `GET /api/v1/admin/elderly/help-requests/{requestId}` | Safe request detail. |
 | `GET /api/v1/admin/elderly/help-requests/{requestId}/history` | Chronological append-only history. |
 | `GET /api/v1/admin/elderly/help-requests/aggregate` | Counts grouped by persisted status for the last-year, non-deleted-Family population. |
-| `POST /api/v1/admin/elderly/help-requests/{requestId}/{action}` | Status action; action is `accepted`, `started`, `resolved`, `rejected`, `cancelled`, or `reopened`. |
+| `POST /api/v1/admin/elderly/help-requests/{requestId}/{action}` | Status action; action is `accepted`, `started`, `resolved`, `rejected`, `cancelled`, or `reopened`. The route’s action segment is bound as `statusAction` internally so MVC does not interpret it as its reserved controller-action selector. |
 
 The `aggregate` route must be matched before a GUID detail route by clients that
 build route templates. The request projection contains IDs, selected catalog
@@ -56,3 +56,12 @@ Create/upsert adds an immutable revision and leaves at most one active revision
 per stable key/category; activation changes active state without mutating old
 revision content. Labels are bilingual and each is limited to 200 characters;
 stable keys are limited to 120 characters and display order must be nonnegative.
+
+The catalog routes return `200 OK` on successful reads, create/upsert, and
+activation changes. An unauthenticated request returns `401`; an authenticated
+token outside `CmsContent` (including Family/Viewer) returns `403`. A missing
+revision returns `404` with code `Cms.SentenceBuilder.NotFound`. Invalid
+category, blank or overlong stable key/labels, or negative display order returns
+`409` with code `Cms.SentenceBuilder.InvalidOperation`. A persistence
+concurrency conflict is also mapped to `409` with code
+`Cms.SentenceBuilder.Conflict`.

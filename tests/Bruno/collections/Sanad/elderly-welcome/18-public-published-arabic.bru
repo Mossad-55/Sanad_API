@@ -1,0 +1,25 @@
+meta {
+  name: 18-public-published-arabic
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/welcome?language=ar
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+  res.body.language: eq ar
+  res.body.headline: eq أهلاً بك من جديد
+  res.body.ctaLabel: eq تابع
+  res.body.ctaAction: eq elderly.request-otp
+}
+
+script:post-response {
+  const firstBenefit = res.body.benefits?.[0];
+  if (firstBenefit?.displayOrder !== 1 || firstBenefit?.title !== "رعاية موثوقة") {
+    throw new Error("Expected the first localized Elderly Welcome benefit.");
+  }
+}

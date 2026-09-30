@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 
 namespace Sanad.API.Controllers.Requests;
@@ -70,7 +71,7 @@ public sealed record ReviewCaregiverRequest(
     string Reason);
 
 public sealed record UpdateCaregiverPrivacyRequest(
-    bool ShowProfile,
-    bool ShowRating,
-    bool ShowPhone,
-    bool ShareLocation);
+    [Required] bool? ShowProfile,
+    [Required] bool? ShowRating,
+    [Required] bool? ShowPhone,
+    [Required] bool? ShareLocation);

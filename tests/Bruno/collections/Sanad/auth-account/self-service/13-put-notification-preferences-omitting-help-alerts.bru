@@ -1,0 +1,57 @@
+meta {
+  name: 13-put-notification-preferences-omitting-help-alerts
+  type: http
+  seq: 13
+}
+
+put {
+  url: {{baseUrl}}/api/v1/account/notification-preferences
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accountSelfServiceJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "checkInAlerts": true,
+    "medicationReminders": false,
+    "bookingUpdates": true,
+    "communityNotifications": false,
+    "familyActivityAlerts": true,
+    "newOrders": false,
+    "messagesFromFamilies": true,
+    "systemNotifications": false
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.checkInAlerts: eq true
+  res.body.medicationReminders: eq false
+  res.body.bookingUpdates: eq true
+  res.body.communityNotifications: eq false
+  res.body.familyActivityAlerts: eq true
+  res.body.newOrders: eq false
+  res.body.messagesFromFamilies: eq true
+  res.body.systemNotifications: eq false
+}
+
+script:post-response {
+  const before = bru.getVar("accountSelfServiceOriginalHelpRequestAlerts");
+  if (res.body.helpRequestAlerts !== before) {
+    throw new Error("helpRequestAlerts changed when omitted from the update");
+  }
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Preference mutations require the guarded local Development API.");
+  }
+}

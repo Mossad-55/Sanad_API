@@ -1,0 +1,20 @@
+meta {
+  name: 12-readback-after-failures
+  type: http
+  seq: 12
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverCertificatesJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const normalize = xs => xs.map(c => ({id:c.id.value ?? c.id,type:c.type,verificationStatus:c.verificationStatus,expiryDate:c.expiryDate})).sort((a,b)=>a.id.localeCompare(b.id));
+  if (JSON.stringify(normalize(res.body.certificates ?? [])) !== bru.getVar("caregiverCertificatesBaseline")) throw new Error("Failed certificate operations changed the baseline.");
+}

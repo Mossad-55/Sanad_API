@@ -1,0 +1,33 @@
+meta {
+  name: 09-validation-failure
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/privacy
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverPrivacyJwt}}
+}
+
+body:json {
+  {
+    "showProfile": true,
+    "showRating": true
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.status: eq 400
+  res.body.errors.ShowPhone: isNotEmpty
+  res.body.errors.ShareLocation: isNotEmpty
+}

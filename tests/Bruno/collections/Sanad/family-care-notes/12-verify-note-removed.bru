@@ -1,0 +1,23 @@
+meta {
+  name: 12-verify-note-removed
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyCareNotesDependentId}}/notes
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyCareNotesOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body) || res.body.some(note => note.id === bru.getVar("familyCareNotesNoteId"))) throw new Error("Disposable care note still exists after the delete request.");
+}

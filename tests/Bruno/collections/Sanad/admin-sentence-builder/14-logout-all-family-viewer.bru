@@ -1,0 +1,23 @@
+meta {
+  name: 14-logout-all-family-viewer
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSentenceBuilderViewerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder fixture logout must target the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 204
+}

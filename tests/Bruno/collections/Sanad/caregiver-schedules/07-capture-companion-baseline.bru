@@ -1,0 +1,21 @@
+meta {
+  name: 07-capture-companion-baseline
+  type: http
+  seq: 7
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{scheduleCompanionJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.type: eq 2
+}
+script:post-response {
+  const windows = res.body.companionSchedule?.windows ?? [];
+  bru.setVar("scheduleCompanionWindows", JSON.stringify(windows.map(x => ({bookingType:x.bookingType,dayOfWeek:x.dayOfWeek,startTime:x.startTime.slice(0,5),endTime:x.endTime.slice(0,5)}))));
+}

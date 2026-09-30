@@ -1,0 +1,17 @@
+meta {
+  name: 02-submit-already-active
+  type: http
+  seq: 2
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/submit
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{onboardingMedicalJwt}}
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq Caregivers.Onboarding.InvalidState
+}

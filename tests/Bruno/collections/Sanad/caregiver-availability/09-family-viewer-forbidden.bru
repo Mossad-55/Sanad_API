@@ -1,0 +1,16 @@
+meta {
+  name: 09-family-viewer-forbidden
+  type: http
+  seq: 9
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/availability/unavailable
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverAvailabilityViewerJwt}}
+}
+assert {
+  res.status: eq 403
+}

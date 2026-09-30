@@ -1,0 +1,18 @@
+meta {
+  name: 16-get-question-not-found
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/assessments/questions/00000000-0000-0000-0000-000000000000
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminAssessmentsJwt}}
+}
+
+assert {
+  res.status: eq 404
+}

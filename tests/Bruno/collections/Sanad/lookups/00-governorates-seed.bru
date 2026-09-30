@@ -1,0 +1,21 @@
+meta {
+  name: 00-governorates-seed
+  type: http
+  seq: 0
+}
+
+get {
+  url: {{baseUrl}}/api/v1/lookups/governorates
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const rows = res.body;
+  if (!Array.isArray(rows) || rows.length === 0 || !rows[0].id?.value) throw new Error("Expected active governorates with typed IDs.");
+  bru.setVar("publicLookupGovernorateId", rows[0].id.value);
+}

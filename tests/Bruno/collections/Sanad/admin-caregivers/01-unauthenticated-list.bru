@@ -1,0 +1,14 @@
+meta {
+  name: 01-unauthenticated-list
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/caregivers?page=1&pageSize=10
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

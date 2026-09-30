@@ -1,0 +1,20 @@
+meta {
+  name: 20-verify-dependent-removed
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{coverageDependentId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Families.Elderly.NotFound
+}

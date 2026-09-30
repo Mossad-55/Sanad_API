@@ -137,7 +137,7 @@
                 }
               ]
             },
-            "description": "Anonymous. Required governorateId. Returns cities where both city and governorate are active."
+            "description": "Anonymous. Required governorateId; omission returns 400 Api.Validation.Failed. Returns cities where both city and governorate are active."
           }
         },
         {
@@ -163,7 +163,7 @@
                 }
               ]
             },
-            "description": "Anonymous. Required cityId. Returns areas only when area + city + governorate are all active."
+            "description": "Anonymous. Required cityId; omission returns 400 Api.Validation.Failed. Returns areas only when area + city + governorate are all active."
           }
         },
         {
@@ -208,7 +208,7 @@
                 "note-categories"
               ]
             },
-            "description": "App lookup. GET /api/v1/note-categories returns note categories and priorities; no Authorization header is required by the route."
+            "description": "Anonymous GET /api/v1/note-categories returns categories and priorities; each option has numeric id and bilingual nameAr/nameEn."
           }
         }
       ]

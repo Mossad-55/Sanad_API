@@ -1,0 +1,24 @@
+meta {
+  name: 25-list-invitee-pending
+  type: http
+  seq: 25
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/invitations
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{inviteeFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body) || res.body.length !== 1) throw new Error("Expected exactly one pending invitation");
+  if (res.body[0].invitedEmail.toLowerCase() !== bru.getEnvVar("caregiverEmail").toLowerCase()) throw new Error("Invitee email did not match");
+}

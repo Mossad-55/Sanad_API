@@ -1,0 +1,20 @@
+meta {
+  name: 15-detail-missing
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationDependentId}}/medications/00000000-0000-4000-8000-000000000002
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Families.Medication.NotFound
+}

@@ -1,0 +1,20 @@
+meta {
+  name: 10-read-back-language
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/account/language
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accountSelfServiceJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.uiLanguage: eq 2
+}

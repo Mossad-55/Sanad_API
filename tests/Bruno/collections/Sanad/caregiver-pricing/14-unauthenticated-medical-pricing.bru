@@ -1,0 +1,28 @@
+meta {
+  name: 14-unauthenticated-medical-pricing
+  type: http
+  seq: 14
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/pricing/medical
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "homeVisitPrice": 501.25,
+    "eightHourShiftPrice": 901.25,
+    "twelveHourShiftPrice": 1301.25,
+    "twentyFourHourShiftPrice": 1801.25
+  }
+}
+
+assert {
+  res.status: eq 401
+}

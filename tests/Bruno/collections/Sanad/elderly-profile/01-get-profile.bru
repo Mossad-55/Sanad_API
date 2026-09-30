@@ -1,0 +1,30 @@
+meta {
+  name: 01-get-profile
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyProfileJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isNotEmpty
+  res.body.timeZoneId: isNotEmpty
+}
+
+script:post-response {
+  if (!Object.prototype.hasOwnProperty.call(res.body, "photoUrl") ||
+      !Object.prototype.hasOwnProperty.call(res.body, "emergencyContact") ||
+      typeof res.body.hasPhoto !== "boolean") {
+    throw new Error("Expected profile response to include photoUrl and emergencyContact properties.");
+  }
+  bru.setVar("elderlyProfileHasPhoto", res.body.hasPhoto);
+}

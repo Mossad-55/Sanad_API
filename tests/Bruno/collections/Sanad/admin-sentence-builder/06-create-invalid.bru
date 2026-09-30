@@ -1,0 +1,38 @@
+meta {
+  name: 06-create-invalid
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/sentence-builder/catalog
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSentenceBuilderJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder mutations require the guarded local Development API.");
+}
+
+body:json {
+  {
+    "stableKey": "{{adminSentenceBuilderKey}}-invalid",
+    "category": 999,
+    "arabicLabel": "غير صالح",
+    "englishLabel": "Invalid",
+    "displayOrder": 900
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Cms.SentenceBuilder.InvalidOperation
+}

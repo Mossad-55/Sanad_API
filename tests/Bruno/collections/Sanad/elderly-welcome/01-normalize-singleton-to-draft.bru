@@ -1,0 +1,28 @@
+meta {
+  name: 01-normalize-singleton-to-draft
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome/unpublish
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWelcomeAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Elderly Welcome fixture mutation is allowed only against the guarded local Development API.");
+  }
+}
+
+script:post-response {
+  if (![200, 404].includes(res.status)) throw new Error(`Expected 200 or 404, got ${res.status}`);
+}
+
+docs {
+  Repeated Bruno runs are normalized without deleting fixture data: an existing Published record is returned to Draft; an existing Draft is a no-op; an absent singleton is accepted as 404.
+}

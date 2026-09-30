@@ -1,0 +1,24 @@
+meta {
+  name: 02-get-profile-photo
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/profile/photo
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyProfileJwt}}
+}
+
+script:post-response {
+  const hasPhoto = bru.getVar("elderlyProfileHasPhoto");
+  const expectedStatus = hasPhoto ? 200 : 404;
+  if (res.status !== expectedStatus) throw new Error(`Expected ${expectedStatus} for hasPhoto=${hasPhoto}, got ${res.status}`);
+  if (hasPhoto && !String(res.headers.get("content-type") || "").startsWith("image/")) {
+    throw new Error("Expected profile photo bytes to have an image content type.");
+  }
+}

@@ -1,0 +1,20 @@
+meta {
+  name: 03-specializations-active
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/lookups/specializations
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const rows = res.body;
+  if (!Array.isArray(rows) || rows.length === 0 || !rows[0].id?.value || ![1, 2].includes(rows[0].caregiverType)) throw new Error("Expected active specializations with typed IDs and caregiver type.");
+}

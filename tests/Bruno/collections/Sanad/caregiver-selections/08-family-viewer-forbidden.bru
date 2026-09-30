@@ -1,0 +1,27 @@
+meta {
+  name: 08-family-viewer-forbidden
+  type: http
+  seq: 8
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/selections
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverSelectionsViewerJwt}}
+}
+
+body:json {
+  { "serviceIds": [], "languageIds": [], "areaIds": [] }
+}
+
+assert {
+  res.status: eq 403
+}

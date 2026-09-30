@@ -1,0 +1,19 @@
+meta {
+  name: 05-back-missing
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/identity-documents/0f000000-0000-4000-8000-000000000001/back
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminIdentityDocumentsContentJwt}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Identity.IdentityDocument.UserNotFound
+}

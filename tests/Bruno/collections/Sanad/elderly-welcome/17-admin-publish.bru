@@ -1,0 +1,25 @@
+meta {
+  name: 17-admin-publish
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome/publish
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWelcomeAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Elderly Welcome fixture mutation is allowed only against the guarded local Development API.");
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 2
+}

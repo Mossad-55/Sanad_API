@@ -1,0 +1,23 @@
+meta {
+  name: 50-logout-all-family-viewer
+  type: http
+  seq: 50
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsViewerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips fixture logout must target the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 204
+}

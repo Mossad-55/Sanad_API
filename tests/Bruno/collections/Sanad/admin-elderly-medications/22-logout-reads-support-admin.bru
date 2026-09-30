@@ -1,0 +1,24 @@
+meta {
+  name: 22-logout-reads-support-admin
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Fixture-account logout must target the guarded local Development API.");
+  if (!bru.getVar("adminElderlyMedicationJwt")) throw new Error("SupportAdmin operational-read login was not completed.");
+}
+
+auth:bearer {
+  token: {{adminElderlyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

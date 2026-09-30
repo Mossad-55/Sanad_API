@@ -5,14 +5,34 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/admin/elderly/medications?page=1&pageSize=20
+  url: {{baseUrl}}/api/v1/admin/elderly/medications?page=1&pageSize=20&search=Test%20late-evaluation%20medication
   auth: bearer
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin medication operational reads require the guarded local Development API.");
 }
 
 headers {
   X-Correlation-ID: bruno-admin-medications-list
 }
 
+assert {
+  res.status: eq 200
+  res.body.page: eq 1
+  res.body.pageSize: eq 20
+  res.body.totalCount: gt 0
+  res.body.items: isArray
+}
+
 auth:bearer {
   token: {{adminElderlyMedicationJwt}}
+}
+
+script:post-response {
+  if (res.status == 200 && Array.isArray(res.body.items) && res.body.items.length > 0) {
+    bru.setVar("brunoAdminMedicationId", res.body.items[0].medication.id);
+  } else {
+    throw new Error("Seeded late-evaluation medication was not returned by the authorized list.");
+  }
 }

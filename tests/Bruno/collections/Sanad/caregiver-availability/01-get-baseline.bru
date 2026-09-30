@@ -1,0 +1,22 @@
+meta {
+  name: 01-get-baseline
+  type: http
+  seq: 1
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverAvailabilityJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.type: eq 1
+  res.body.status: eq 4
+  res.body.availability: eq 1
+}
+script:post-response {
+  bru.setVar("caregiverAvailabilityBaseline", JSON.stringify({status:res.body.status,availability:res.body.availability}));
+}

@@ -83,7 +83,7 @@ public sealed class GetOwnElderlyProfileQueryHandler(IFamiliesDbContext dbContex
         CareAssessment? latest = await dbContext.CareAssessments.AsNoTracking()
             .Where(x => x.ElderlyId == elderly.Id && x.FamilyId == elderly.FamilyId)
             .OrderByDescending(x => x.CompletedOnUtc)
-            .ThenByDescending(x => x.Id.Value)
+            .ThenByDescending(x => x.Id)
             .FirstOrDefaultAsync(cancellationToken);
 
         FamilyAssessmentResultResponse? assessment = null;

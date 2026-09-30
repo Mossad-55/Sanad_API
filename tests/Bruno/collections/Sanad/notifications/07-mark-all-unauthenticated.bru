@@ -1,0 +1,15 @@
+meta {
+  name: 07-mark-all-unauthenticated
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/v1/notifications/read-all
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

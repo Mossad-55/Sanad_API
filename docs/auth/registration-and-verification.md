@@ -25,7 +25,7 @@ Anonymous. Success `201`. Duplicate email or phone `409`.
 }
 ```
 
-`accountType`: `1` Family, `2` MedicalCaregiver, `3` CompanionCaregiver. Other values `400 Identity.Registration.UnsupportedAccountType`.
+`accountType`: `1` Family, `2` MedicalCaregiver, `3` CompanionCaregiver. An unsupported value is rejected by request validation with `400 Api.Validation.Failed` (including an `AccountType` validation error).
 
 Password: 10–128 characters, at least one uppercase, one lowercase, and one number.
 

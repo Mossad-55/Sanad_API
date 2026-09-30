@@ -31,12 +31,15 @@ Errors:
 - `404 Caregivers.Onboarding.NotFound` — no profile.
 - `404 Caregivers.Lookups.NotFound` — any referenced id does not exist.
 - `409 Caregivers.Onboarding.InactiveLookup` — a referenced service/language/area is inactive, a service is for the other caregiver type, or the area's city/governorate chain is inactive.
+- `400 Api.Validation.Failed` — request validation fails, including more than 10 areas.
+- `401` — no valid caregiver authentication; `403` — authenticated account does not satisfy `CaregiverAccess`.
 
 > Lookup ids come from the anonymous catalog endpoints: `GET /api/v1/lookups/services`, `/languages`, `/governorates`, `/cities?governorateId=`, `/areas?cityId=`, `/specializations`, `/professional-titles`, `/academic-degrees` (see `docs/app/public/lookups.md`).
 
 ## Medical pricing
 
 Medical caregiver accounts only. Four prices, all required, all greater than zero, at most two decimal places.
+Successful updates return the updated caregiver profile and persist the full four-price snapshot; repeating an update replaces all four values.
 
 ```http
 PUT /api/v1/caregiver/pricing/medical
@@ -55,6 +58,7 @@ Validation failures return `400 Api.Validation.Failed` with field messages (e.g.
 ## Companion pricing
 
 Companion caregiver accounts only. Three prices, same >0 / ≤2-decimal rules.
+Successful updates return the updated caregiver profile and persist the full three-price snapshot; repeating an update replaces all three values.
 
 ```http
 PUT /api/v1/caregiver/pricing/companion

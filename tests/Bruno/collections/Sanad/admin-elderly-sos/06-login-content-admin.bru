@@ -1,0 +1,33 @@
+meta {
+  name: 06-login-content-admin
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{adminEmail}}",
+    "password": "{{adminPassword}}",
+    "deviceName": "bruno-admin-elderly-sos-content",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("adminSosContentJwt", res.body.accessToken);
+}

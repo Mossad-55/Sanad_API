@@ -1,0 +1,23 @@
+meta {
+  name: 17-detail-missing
+  type: http
+  seq: 17
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips/00000000-0000-0000-0000-000000000000
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips reads require the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Cms.WellnessTip.NotFound
+}

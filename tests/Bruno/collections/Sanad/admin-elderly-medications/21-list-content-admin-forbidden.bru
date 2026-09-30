@@ -1,0 +1,23 @@
+meta {
+  name: 21-list-content-admin-forbidden
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/medications?page=1&pageSize=20
+  auth: bearer
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin medication operational reads require the guarded local Development API.");
+  if (!bru.getVar("adminMedicationLatenessContentJwt")) throw new Error("Run the ContentAdmin login first to verify the forbidden role.");
+}
+
+auth:bearer {
+  token: {{adminMedicationLatenessContentJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

@@ -1,0 +1,14 @@
+meta {
+  name: 01-list-services-unauthenticated
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/lookups/services
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

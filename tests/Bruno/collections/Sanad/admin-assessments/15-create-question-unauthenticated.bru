@@ -1,0 +1,27 @@
+meta {
+  name: 15-create-question-unauthenticated
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/assessments/questions
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Assessment mutation coverage requires the guarded local Development API.");
+}
+
+body:json {
+  { "order": 1, "arabicText": "Unauthenticated Bruno question", "englishText": "Unauthenticated Bruno question", "isRequired": true, "isActive": false, "options": [ { "order": 1, "arabicText": "نعم", "englishText": "Yes", "weight": 0 }, { "order": 2, "arabicText": "لا", "englishText": "No", "weight": 1 } ] }
+}
+
+assert {
+  res.status: eq 401
+}

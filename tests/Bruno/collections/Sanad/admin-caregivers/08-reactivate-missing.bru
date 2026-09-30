@@ -1,0 +1,20 @@
+meta {
+  name: 08-reactivate-missing
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/caregivers/0f000000-0000-4000-8000-000000000001/reactivate
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCaregiversContentJwt}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Caregivers.Onboarding.CaregiverNotFound
+}

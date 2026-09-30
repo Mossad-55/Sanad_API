@@ -1,0 +1,23 @@
+meta {
+  name: 27-list-invitee-after-revoke
+  type: http
+  seq: 27
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/invitations
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{inviteeFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body) || res.body.length !== 0) throw new Error("Revoked invitation remained in pending inbox");
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 02-get-owner-contact
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyEmergencyDependentId}}/emergency-contact
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyEmergencyOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.body !== null) throw new Error("Seeded emergency contact is already configured; do not overwrite it.");
+}

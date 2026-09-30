@@ -1,0 +1,31 @@
+meta {
+  name: 22-create-wrong-role
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsViewerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips role coverage requires the guarded local Development API.");
+}
+
+body:multipart-form {
+  arabicTitle: إنشاء مرفوض
+  englishTitle: Forbidden wellness tip
+  category: general
+  sectionsJson: [{"displayOrder":1,"arabicText":"نصيحة","englishText":"Advice"}]
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 403
+}

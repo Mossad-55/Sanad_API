@@ -1,0 +1,26 @@
+meta {
+  name: 05-readback-after-rejected-update
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverSelectionsJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const ids = values => JSON.stringify(values.map(x => x.value ?? x));
+  if (ids(res.body.serviceIds) !== bru.getVar("caregiverSelectionServices")) throw new Error("Rejected update changed service selections.");
+  if (ids(res.body.languageIds) !== bru.getVar("caregiverSelectionLanguages")) throw new Error("Rejected update changed language selections.");
+  if (ids(res.body.areaIds) !== bru.getVar("caregiverSelectionAreas")) throw new Error("Rejected update changed area selections.");
+}

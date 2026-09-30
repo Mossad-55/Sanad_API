@@ -18,10 +18,10 @@ unauthenticated requests are not authorized.
 The status request body is:
 
 ```json
-{ "action": "Acknowledged" }
+{ "action": 2 }
 ```
 
-The API enum values are `Open = 1`, `Acknowledged = 2`, `Resolved = 3`, and
+The JSON request uses the numeric enum values: `Open = 1`, `Acknowledged = 2`, `Resolved = 3`, and
 `Cancelled = 4`; history actions are `Created`, `Acknowledged`, `Resolved`,
 and `Cancelled`. `Open` may be acknowledged, resolved, or cancelled;
 `Acknowledged` may be resolved or cancelled; terminal states cannot transition.

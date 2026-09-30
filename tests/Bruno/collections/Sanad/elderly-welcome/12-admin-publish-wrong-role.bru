@@ -1,0 +1,18 @@
+meta {
+  name: 12-admin-publish-wrong-role
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome/publish
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWelcomeFamilyJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

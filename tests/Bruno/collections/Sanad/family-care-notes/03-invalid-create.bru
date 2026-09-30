@@ -1,0 +1,32 @@
+meta {
+  name: 03-invalid-create
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyCareNotesDependentId}}/notes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyCareNotesOwnerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "",
+    "description": "invalid disposable note",
+    "category": 1,
+    "priority": 2
+  }
+}
+
+assert {
+  res.status: eq 400
+}

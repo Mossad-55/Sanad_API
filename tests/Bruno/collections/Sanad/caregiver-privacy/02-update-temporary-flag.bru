@@ -1,0 +1,32 @@
+meta {
+  name: 02-update-temporary-flag
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/privacy
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverPrivacyJwt}}
+}
+
+body:json {
+  {
+    "showProfile": true,
+    "showRating": false,
+    "showPhone": false,
+    "shareLocation": false
+  }
+}
+
+assert {
+  res.status: eq 204
+}

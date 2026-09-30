@@ -1,0 +1,19 @@
+meta {
+  name: 11-detail-viewer
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationDependentId}}/medications/{{familyMedicationId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationViewerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

@@ -1,0 +1,18 @@
+meta {
+  name: 07-list-languages
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/lookups/languages
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLookupsJwt}}
+}
+
+script:post-response {
+  if (res.status !== 200) throw new Error(`Expected 200, got ${res.status}`);
+}

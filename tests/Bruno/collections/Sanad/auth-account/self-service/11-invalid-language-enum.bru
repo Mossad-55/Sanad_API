@@ -1,0 +1,35 @@
+meta {
+  name: 11-invalid-language-enum
+  type: http
+  seq: 11
+}
+
+put {
+  url: {{baseUrl}}/api/v1/account/language
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accountSelfServiceJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "uiLanguage": 99
+  }
+}
+
+assert {
+  res.status: eq 400
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Account mutations require the guarded local Development API.");
+  }
+}

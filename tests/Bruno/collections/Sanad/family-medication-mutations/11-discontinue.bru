@@ -1,0 +1,20 @@
+meta {
+  name: 11-discontinue
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications/{{familyMedicationMutationId}}/discontinue
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationMutationOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 4
+}

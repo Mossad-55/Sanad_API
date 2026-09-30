@@ -1,0 +1,13 @@
+meta {
+  name: 17-submit-unauthenticated
+  type: http
+  seq: 17
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/submit
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 401
+}

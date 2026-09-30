@@ -1,0 +1,23 @@
+meta {
+  name: 10-accept-invitation-unauthenticated
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/invitations/accept
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"token":"not-a-real-token"}
+}
+
+assert {
+  res.status: eq 401
+}

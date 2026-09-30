@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using FluentValidation.TestHelper;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
@@ -134,6 +135,63 @@ public sealed class CaregiverSchedulesTests
         Assert.Equal(
             CompanionBookingType.Hourly,
             result.Value.CompanionSchedule.Windows[0].BookingType);
+    }
+
+    [Fact]
+    public async Task UpdateCompanionSchedule_ShouldAcceptAndPersistFixedOvernightWindow()
+    {
+        using CaregiversDbContext dbContext =
+            CreateDbContext();
+
+        UserId userId = await BootstrapAsync(
+            dbContext,
+            CaregiverType.Companion);
+
+        var command =
+            new UpdateCompanionScheduleCommand(
+                userId,
+                [new CompanionAvailabilityWindowItem(
+                    CompanionBookingType.Overnight,
+                    DayOfWeek.Sunday,
+                    new TimeOnly(20, 0),
+                    new TimeOnly(8, 0))]);
+
+        Assert.True(
+            new UpdateCompanionScheduleCommandValidator()
+                .TestValidate(command)
+                .IsValid);
+
+        var handler =
+            new UpdateCompanionScheduleCommandHandler(
+                dbContext);
+
+        var result = await handler.Handle(command, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.NotNull(result.Value.CompanionSchedule);
+        var window = Assert.Single(
+            result.Value.CompanionSchedule!.Windows);
+        Assert.Equal(CompanionBookingType.Overnight, window.BookingType);
+        Assert.Equal(new TimeOnly(20, 0), window.StartTime);
+        Assert.Equal(new TimeOnly(8, 0), window.EndTime);
+    }
+
+    [Fact]
+    public void UpdateCompanionScheduleValidator_ShouldRejectReverseHourlyWindow()
+    {
+        var command =
+            new UpdateCompanionScheduleCommand(
+                UserId.New(),
+                [new CompanionAvailabilityWindowItem(
+                    CompanionBookingType.Hourly,
+                    DayOfWeek.Sunday,
+                    new TimeOnly(20, 0),
+                    new TimeOnly(8, 0))]);
+
+        Assert.False(
+            new UpdateCompanionScheduleCommandValidator()
+                .TestValidate(command)
+                .IsValid);
     }
 
     [Fact]

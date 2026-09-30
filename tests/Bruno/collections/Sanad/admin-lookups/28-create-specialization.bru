@@ -1,0 +1,36 @@
+meta {
+  name: 28-create-specialization
+  type: http
+  seq: 28
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/lookups/specializations
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLookupsJwt}}
+}
+
+body:json {
+  {
+    "arabicName": "تخصص {{lookupUnique}}",
+    "englishName": "Specialization {{lookupUnique}}",
+    "caregiverType": 1,
+    "isActive": true
+  }
+}
+
+script:post-response {
+  if (res.status !== 201) throw new Error(`Expected 201, got ${res.status}`);
+  const id = res.body.id && (res.body.id.value || res.body.id);
+  if (!id) throw new Error("Create response did not include an ID");
+  bru.setVar("specializationId", id);
+}
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Admin lookup mutations require the guarded local Development API.");
+  }
+}

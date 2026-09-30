@@ -14,6 +14,7 @@ public sealed record CreateElderlySosCommand(UserId ElderlyIdentityUserId, strin
 public sealed record CancelElderlySosCommand(UserId ElderlyIdentityUserId, Guid SosId) : ICommand<ElderlySosResponse>;
 public sealed record ChangeElderlySosStatusCommand(UserId ActorUserId, string ActorAccountType, string CorrelationId, Guid SosId, ElderlySosHistoryAction Action) : ICommand<ElderlySosResponse>;
 public sealed record GetElderlySosQuery(UserId ElderlyIdentityUserId, Guid? SosId = null) : IQuery<IReadOnlyList<ElderlySosResponse>>;
+public sealed record GetElderlySosDetailQuery(UserId ElderlyIdentityUserId, Guid SosId) : IQuery<ElderlySosResponse>;
 public sealed record AdminListElderlySosQuery(UserId ActorUserId, string ActorAccountType, string CorrelationId, ElderlySosStatus? Status = null, Guid? ElderlyId = null, int Page = 1, int PageSize = 20) : IQuery<PagedElderlySos>;
 public sealed record AdminGetElderlySosQuery(UserId ActorUserId, string ActorAccountType, string CorrelationId, Guid SosId) : IQuery<ElderlySosResponse>;
 public sealed record AdminGetElderlySosHistoryQuery(UserId ActorUserId, string ActorAccountType, string CorrelationId, Guid SosId) : IQuery<IReadOnlyList<ElderlySosHistoryResponse>>;
@@ -94,6 +95,17 @@ public sealed class GetElderlySosQueryHandler(IFamiliesDbContext db) : IQueryHan
         if (r.SosId.HasValue) q = q.Where(x => x.Id == r.SosId.Value);
         var rows = await q.OrderByDescending(x => x.CreatedOnUtc).ToListAsync(ct);
         return rows.Select(x => SosMap.Map(x, elderly.Id.Value)).ToList();
+    }
+}
+
+public sealed class GetElderlySosDetailQueryHandler(IFamiliesDbContext db) : IQueryHandler<GetElderlySosDetailQuery, ElderlySosResponse>
+{
+    public async Task<Result<ElderlySosResponse>> Handle(GetElderlySosDetailQuery r, CancellationToken ct)
+    {
+        var elderly = await db.Elderlies.AsNoTracking().SingleOrDefaultAsync(x => x.IdentityUserId == r.ElderlyIdentityUserId, ct);
+        if (elderly is null || !await db.Families.AnyAsync(x => x.Id == elderly.FamilyId && x.DeletedOnUtc == null, ct)) return SosErrors.NotFound;
+        var sos = await db.ElderlySos.AsNoTracking().SingleOrDefaultAsync(x => x.Id == r.SosId && x.ElderlyIdentityUserId == r.ElderlyIdentityUserId, ct);
+        return sos is null ? SosErrors.NotFound : SosMap.Map(sos, elderly.Id.Value);
     }
 }
 

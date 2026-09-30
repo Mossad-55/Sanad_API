@@ -91,7 +91,7 @@
               "raw": "{\n  \"scheduledDate\": \"{{elderlyLocalDate}}\",\n  \"scheduledTime\": \"{{scheduledTime}}\",\n  \"notes\": \"Taken from approved disposable fixture\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/elderly/medications/{{medicationId}}/doses/take",
-            "description": "STATE-CHANGING: records a shared dose log, attributes the action to the Elderly user, and decrements tracked stock. Only use an approved disposable fixture where this medication is Active, the date is in range, and scheduledTime is configured. A second or racing take must be rejected. Do not replay against shared or production data."
+            "description": "STATE-CHANGING: returns 200 after recording a shared dose log, attributing the action to the Elderly user, and decrementing tracked stock. A duplicate/racing take returns 400 Families.Medication.DoseAlreadyTaken; a non-scheduled dose returns 400 Families.Medication.DoseNotScheduled; unauthenticated calls return 401. Only use an approved disposable fixture where this medication is Active, the date is in range, and scheduledTime is configured. Do not replay against shared or production data."
           }
         }
       ]
@@ -144,7 +144,7 @@
         },
         {
           "name": "Get my help request",
-          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/elderly/help-requests/{{helpRequestId}}", "description": "Read-only. Returns the caller-owned request or 404 Families.HelpRequest.NotFound. The server does not accept an Elderly ID." }
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/v1/elderly/help-requests/{{helpRequestId}}", "description": "Read-only. Returns one caller-owned request object (not an array) or 404 Families.HelpRequest.NotFound for missing, foreign, deleted-Family, or older-than-one-year requests. The server does not accept an Elderly ID." }
         },
         {
           "name": "Create help request (manual fixture only)",
@@ -163,7 +163,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": { "mode": "raw", "raw": "{\n  \"reason\": \"No longer needed\"\n}" },
             "url": "{{baseUrl}}/api/v1/elderly/help-requests/{{helpRequestId}}/cancel",
-            "description": "STATE-CHANGING: Pending requests may be cancelled by their Elderly owner. Reason is optional and capped at 500 characters. Use an approved disposable fixture only."
+            "description": "STATE-CHANGING: Pending requests may be cancelled by their Elderly owner and return the updated request object (200). Reason is optional and capped at 500 characters. Repeating cancellation after a terminal transition returns 409 Families.HelpRequest.InvalidOperation; missing/unavailable requests return 404 Families.HelpRequest.NotFound. Use an approved disposable fixture only."
           }
         }
       ]
@@ -210,13 +210,13 @@
         },
         {
           "name": "Get SOS detail",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{elderlyJwt}}" }], "url": "{{baseUrl}}/api/v1/elderly/sos/{{sosId}}", "description": "SAFE READ: foreign, unknown, or deleted-Family events return 404 Families.Sos.NotFound; terminal states remain terminal." },
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{elderlyJwt}}" }], "url": "{{baseUrl}}/api/v1/elderly/sos/{{sosId}}", "description": "SAFE READ: returns one caller-owned event object (not a list). Foreign, unknown, or deleted-Family events return 404 Families.Sos.NotFound; terminal states remain terminal." },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('SOS detail contract outcome', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
         },
         {
           "name": "Cancel SOS — manual disposable fixture",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{elderlyJwt}}" }], "url": "{{baseUrl}}/api/v1/elderly/sos/{{sosId}}/cancel", "description": "STATE-CHANGING: manual fixture only. Cancels Open or Acknowledged; Resolved and Cancelled are terminal." },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('SOS cancel contract outcome', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{elderlyJwt}}" }], "url": "{{baseUrl}}/api/v1/elderly/sos/{{sosId}}/cancel", "description": "STATE-CHANGING: manual fixture only. Cancels Open or Acknowledged and returns the updated event (200). Unavailable IDs return 404 Families.Sos.NotFound; repeating cancellation after terminal state returns 409 Families.Sos.InvalidOperation." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('SOS cancel contract outcome', function () { pm.expect([200, 401, 403, 404, 409]).to.include(pm.response.code); });"] } }]
         }
       ]
     }

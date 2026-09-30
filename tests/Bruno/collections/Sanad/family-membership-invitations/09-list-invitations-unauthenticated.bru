@@ -1,0 +1,15 @@
+meta {
+  name: 09-list-invitations-unauthenticated
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/invitations
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

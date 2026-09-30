@@ -52,8 +52,9 @@ Notifications/Events; SMS is excluded.
 - `GET /api/v1/elderly/help-requests`
 - `GET /api/v1/elderly/help-requests/{requestId}`
 
-Both return only the caller's requests from the last year, newest first. A
-missing request, deleted/inactive Family, or request outside the availability
+The list returns the caller's requests from the last year, newest first. Detail
+returns one request object (not a list) for the requested ID. A missing request,
+foreign request ID, deleted/inactive Family, or request outside the availability
 window is reported as `404 Families.HelpRequest.NotFound` without disclosing
 another user's data.
 
@@ -63,7 +64,9 @@ another user's data.
 
 The optional body is `{ "reason": "..." }`; a reason is trimmed and may not
 exceed 500 characters. Cancellation is valid from `Pending` and is recorded in
-the append-only history.
+the append-only history. Success returns the updated request object; attempting
+to cancel again after a terminal transition returns `409
+Families.HelpRequest.InvalidOperation`.
 
 ## Status lifecycle
 
@@ -72,6 +75,6 @@ The persisted statuses are `Pending`, `Accepted`, `InProgress`, `Resolved`,
 in the [Admin guide](../../admin/elderly-help-requests.md). Requests and
 history are available for one year; this slice has no delete or export route.
 
-Common failures are `400 Families.HelpRequest.InvalidOperation`, `401` for a
+Common failures are `409 Families.HelpRequest.InvalidOperation`, `401` for a
 missing/invalid token, `403` for a non-Elderly or restricted token, and `404`
 for an unavailable request.

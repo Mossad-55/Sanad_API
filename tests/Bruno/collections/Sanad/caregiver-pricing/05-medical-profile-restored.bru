@@ -1,0 +1,23 @@
+meta {
+  name: 05-medical-profile-restored
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverPricingMedicalJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.medicalPricing.homeVisitPrice: eq 500
+  res.body.medicalPricing.eightHourShiftPrice: eq 900
+  res.body.medicalPricing.twelveHourShiftPrice: eq 1300
+  res.body.medicalPricing.twentyFourHourShiftPrice: eq 1800
+}

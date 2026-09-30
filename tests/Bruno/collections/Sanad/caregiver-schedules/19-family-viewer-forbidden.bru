@@ -1,0 +1,22 @@
+meta {
+  name: 19-family-viewer-forbidden
+  type: http
+  seq: 19
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/schedule/medical
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+auth:bearer {
+  token: {{scheduleViewerJwt}}
+}
+body:json {
+  { "shifts": [], "homeVisitWindows": [] }
+}
+assert {
+  res.status: eq 403
+}

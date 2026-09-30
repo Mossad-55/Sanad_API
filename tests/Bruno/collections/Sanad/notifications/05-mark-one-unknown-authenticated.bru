@@ -1,0 +1,20 @@
+meta {
+  name: 05-mark-one-unknown-authenticated
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/notifications/7f4b7a2f-678a-4e5d-a5b0-2bbbeaa1c76a/read
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Notifications.NotFound
+}

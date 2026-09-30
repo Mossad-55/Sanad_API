@@ -1,0 +1,18 @@
+meta {
+  name: 03-get-faq
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/help-center/faqs/{{adminHelpFaqId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminHelpCenterJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

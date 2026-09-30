@@ -1,0 +1,23 @@
+meta {
+  name: 07-put-unauthenticated
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyTimezoneDependentId}}/timezone
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"timeZoneId": "Africa/Cairo"}
+}
+
+assert {
+  res.status: eq 401
+}

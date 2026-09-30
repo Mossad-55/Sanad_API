@@ -1,0 +1,23 @@
+meta {
+  name: 01-plan-change-quote-unauthenticated
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plan-change/quote
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"planVersionId":"00000000-0000-4000-8000-000000000001"}
+}
+
+assert {
+  res.status: eq 401
+}

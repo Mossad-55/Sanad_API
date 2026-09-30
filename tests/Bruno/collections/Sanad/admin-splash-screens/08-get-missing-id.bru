@@ -1,0 +1,18 @@
+meta {
+  name: 08-get-missing-id
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/splash-screens/00000000-0000-0000-0000-000000000001
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSplashScreensJwt}}
+}
+
+assert {
+  res.status: eq 404
+}

@@ -1,0 +1,22 @@
+meta {
+  name: 05-support-list
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/notifications?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminNotificationsSupportJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body || !Array.isArray(res.body.items) || res.body.page !== 1 || res.body.pageSize !== 20) throw new Error("Admin notification list metadata contract failed.");
+}

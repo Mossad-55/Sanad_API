@@ -1,0 +1,18 @@
+meta {
+  name: 37-list-academic-degrees
+  type: http
+  seq: 37
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/lookups/academic-degrees
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLookupsJwt}}
+}
+
+script:post-response {
+if (res.status !== 200) throw new Error(`Expected 200, got ${res.status}`);
+}

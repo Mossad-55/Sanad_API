@@ -1,0 +1,22 @@
+meta {
+  name: 12-deactivate-tier
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/assessments/tiers/{{assessmentTierId}}/deactivate
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminAssessmentsJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Assessment mutations require the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+}

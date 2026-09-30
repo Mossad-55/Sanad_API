@@ -1,0 +1,23 @@
+meta {
+  name: 05-get-cancelled
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/help-requests/{{elderlyHelpRequestId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyHelpRequestJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.body.status !== "Cancelled" && res.body.status !== 6) throw new Error("Expected persisted Cancelled state after owner cancellation.");
+}

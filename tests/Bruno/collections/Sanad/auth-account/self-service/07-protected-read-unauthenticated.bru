@@ -1,0 +1,15 @@
+meta {
+  name: 07-protected-read-unauthenticated
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/account/language
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

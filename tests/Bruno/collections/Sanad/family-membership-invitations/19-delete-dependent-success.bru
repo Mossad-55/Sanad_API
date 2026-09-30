@@ -1,0 +1,19 @@
+meta {
+  name: 19-delete-dependent-success
+  type: http
+  seq: 19
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/family/dependents/{{coverageDependentId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

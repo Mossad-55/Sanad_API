@@ -1,0 +1,26 @@
+meta {
+  name: 15-admin-read
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyWelcomeAdminJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 1
+  res.body.benefits: isArray
+}
+
+script:post-response {
+  if (!Array.isArray(res.body.benefits) || res.body.benefits[0]?.displayOrder !== 1) {
+    throw new Error("Expected ordered Elderly Welcome benefits.");
+  }
+}

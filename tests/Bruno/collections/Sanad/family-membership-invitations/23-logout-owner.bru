@@ -1,0 +1,23 @@
+meta {
+  name: 23-logout-owner
+  type: http
+  seq: 31
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{ownerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

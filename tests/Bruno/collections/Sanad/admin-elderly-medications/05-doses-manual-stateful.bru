@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/admin/elderly/medications/{{medicationId}}/doses?startDate=2026-09-01&endDate=2026-09-30
+  url: {{baseUrl}}/api/v1/admin/elderly/medications/{{brunoAdminMedicationId}}/doses?startDate=2026-09-01&endDate=2026-09-30
   auth: bearer
 }
 
@@ -15,4 +15,14 @@ headers {
 
 auth:bearer {
   token: {{adminElderlyMedicationJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin medication operational reads require the guarded local Development API.");
+  if (!bru.getVar("brunoAdminMedicationId")) throw new Error("Run the authorized medication list first to capture a seeded medication ID.");
+}
+
+assert {
+  res.status: eq 200
+  res.body: isArray
 }

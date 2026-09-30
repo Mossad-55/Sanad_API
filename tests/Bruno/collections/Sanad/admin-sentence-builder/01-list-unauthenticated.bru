@@ -10,6 +10,10 @@ get {
   auth: none
 }
 
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder auth coverage requires the guarded local Development API.");
+}
+
 assert {
   res.status: eq 401
 }

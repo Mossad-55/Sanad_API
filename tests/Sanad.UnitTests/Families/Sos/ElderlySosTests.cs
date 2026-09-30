@@ -79,6 +79,24 @@ public sealed class ElderlySosTests
         Assert.Equal(new[] { "ListSos", "GetSos", "GetSosHistory", "GetSosHistory" }, await db.AdminMedicationAccessAudits.OrderBy(x => x.OccurredOnUtc).Select(x => x.Action).ToListAsync());
     }
 
+    [Fact]
+    public async Task Detail_ReturnsOneCallerOwnedSos_AndNotFoundForUnknownOrForeignIds()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New(); var identity = UserId.New(); var family = Family.Create(owner, "active");
+        var elderly = MakeElderly(owner, identity, family.Id);
+        var sos = ElderlySos.Create(identity, family.Id.Value, "detail", false, null, null);
+        db.Families.Add(family); db.Elderlies.Add(elderly); db.ElderlySos.Add(sos); await db.SaveChangesAsync();
+        var handler = new GetElderlySosDetailQueryHandler(db);
+
+        var found = await handler.Handle(new(identity, sos.Id), default);
+        var missing = await handler.Handle(new(identity, Guid.NewGuid()), default);
+        var foreign = await handler.Handle(new(UserId.New(), sos.Id), default);
+
+        Assert.True(found.IsSuccess); Assert.Equal(sos.Id, found.Value.Id); Assert.Equal(elderly.Id.Value, found.Value.ElderlyId);
+        Assert.Equal("Families.Sos.NotFound", missing.Error.Code); Assert.Equal("Families.Sos.NotFound", foreign.Error.Code);
+    }
+
     private static Elderly MakeElderly(UserId owner, UserId identity, FamilyId familyId) => Elderly.Create(owner, identity, familyId, FamilyRelationshipType.Father, FullName.Create("Omar"), FullName.Create("Omar"), Gender.Male, new DateOnly(1950, 1, 1), DateOnly.FromDateTime(DateTime.UtcNow));
     private static FamiliesDbContext CreateDb() => new(new DbContextOptionsBuilder<FamiliesDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
     private sealed class RecordingNotifications : Sanad.Modules.Families.Application.Abstractions.Sos.ISosNotificationGateway { public List<Guid> SosIds { get; } = []; public Task NotifyCreatedAsync(UserId identity, Guid elderlyId, Guid sosId, CancellationToken ct = default) { SosIds.Add(sosId); return Task.CompletedTask; } }

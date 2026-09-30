@@ -1,0 +1,18 @@
+meta {
+  name: 09-get-tier
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/assessments/tiers/{{assessmentTierId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminAssessmentsJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

@@ -1,0 +1,35 @@
+meta {
+  name: 13-create-faq-unauthenticated
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/help-center/faqs
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Help Center auth coverage requires the guarded local Development API.");
+}
+
+body:json {
+  {
+    "audience": 1,
+    "arabicQuestion": "Unauthenticated test",
+    "englishQuestion": "Unauthenticated test",
+    "arabicAnswer": "Not persisted",
+    "englishAnswer": "Not persisted",
+    "displayOrder": 1,
+    "isActive": true
+  }
+}
+
+assert {
+  res.status: eq 401
+}

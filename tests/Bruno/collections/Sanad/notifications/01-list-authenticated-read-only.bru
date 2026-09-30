@@ -16,7 +16,18 @@ auth:bearer {
 
 assert {
   res.status: eq 200
-  res.body: contains items
-  res.body: contains nextCursor
-  res.body: contains unreadCount
+}
+
+script:post-response {
+  const body = res.body;
+  if (!Array.isArray(body.items) || !("nextCursor" in body) || typeof body.unreadCount !== "number") {
+    throw new Error("Notification list response must include items, nextCursor, and unreadCount");
+  }
+  const items = res.body.items ?? [];
+  const readItems = items.filter(item => item.readOnUtc !== null);
+  console.log("Notification inbox scout items/read/unread:", items.length, readItems.length, res.body.unreadCount);
+  if (readItems.length > 0) {
+    bru.setVar("notificationReadCandidateId", readItems[0].id);
+    bru.setVar("notificationReadCandidateTimestamp", readItems[0].readOnUtc);
+  }
 }

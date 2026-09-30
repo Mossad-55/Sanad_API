@@ -1,0 +1,22 @@
+meta {
+  name: 07-support-timeline
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/notifications/timeline?startDate=2026-09-01&endDate=2026-09-02&page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminNotificationsSupportJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body || !Array.isArray(res.body.items) || res.body.page !== 1 || res.body.pageSize !== 20) throw new Error("Admin notification timeline metadata contract failed.");
+}

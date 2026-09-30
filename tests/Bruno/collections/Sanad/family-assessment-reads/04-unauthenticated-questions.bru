@@ -1,0 +1,15 @@
+meta {
+  name: 04-unauthenticated-questions
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/assessment/questions
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

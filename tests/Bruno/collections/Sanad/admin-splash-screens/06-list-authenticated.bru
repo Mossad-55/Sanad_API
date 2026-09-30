@@ -1,0 +1,24 @@
+meta {
+  name: 06-list-authenticated
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/splash-screens
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSplashScreensJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const match = res.body.find(item => item.internalName === `bruno-splash-${bru.getVar("adminSplashRun")}`);
+  if (!match) throw new Error("The unique Draft splash screen was not present in the admin list.");
+  if (match.status !== 1) throw new Error("The new splash screen must remain Draft before the lifecycle requests.");
+}

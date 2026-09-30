@@ -1,0 +1,36 @@
+meta {
+  name: 03-set-owner-contact
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyEmergencyDependentId}}/emergency-contact
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyEmergencyOwnerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Emergency-contact writes require guarded local Development only.");
+}
+
+body:json {
+  {
+    "name": "Bruno Fixture Contact",
+    "relationship": "Daughter",
+    "phoneNumber": "+201000000000"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.name: eq Bruno Fixture Contact
+}
+
+script:post-response {
+  if (res.body.phoneNumber !== "+201000000000") throw new Error("Saved emergency contact phone did not match the exact fixture value.");
+}

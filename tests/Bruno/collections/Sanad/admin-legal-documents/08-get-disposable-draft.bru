@@ -1,0 +1,24 @@
+meta {
+  name: 08-get-disposable-draft
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/legal-documents/{{adminLegalDocumentId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLegalDocumentsJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin legal-document coverage requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+  res.body.id.value: eq {{adminLegalDocumentId}}
+  res.body.status: eq 1
+}

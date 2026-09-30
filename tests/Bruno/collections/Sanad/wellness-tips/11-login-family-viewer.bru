@@ -1,0 +1,38 @@
+meta {
+  name: 11-login-family-viewer
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips authorization coverage requires the guarded local Development API.");
+}
+
+body:json {
+  {
+    "email": "{{viewerEmail}}",
+    "password": "{{viewerPassword}}",
+    "deviceName": "bruno-wellness-tips-family-viewer",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body.accessToken) throw new Error("Family Viewer login did not return an access token.");
+  bru.setVar("wellnessTipsViewerJwt", res.body.accessToken);
+}

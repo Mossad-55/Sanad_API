@@ -1,0 +1,18 @@
+meta {
+  name: 13-content-aggregate-forbidden
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/notifications/aggregate?startDate=2026-09-01&endDate=2026-09-02
+  auth: bearer
+}
+
+assert {
+  res.status: eq 403
+}
+
+auth:bearer {
+  token: {{adminNotificationsContentJwt}}
+}

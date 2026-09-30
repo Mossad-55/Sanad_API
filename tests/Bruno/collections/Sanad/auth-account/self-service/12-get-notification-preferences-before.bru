@@ -1,0 +1,24 @@
+meta {
+  name: 12-get-notification-preferences-before
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/account/notification-preferences
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accountSelfServiceJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.helpRequestAlerts: isDefined
+}
+
+script:post-response {
+  bru.setVar("accountSelfServiceOriginalHelpRequestAlerts", res.body.helpRequestAlerts);
+}

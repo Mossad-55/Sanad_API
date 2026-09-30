@@ -1,0 +1,31 @@
+meta {
+  name: 04-update-stock
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications/{{familyMedicationMutationId}}/stock
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationMutationOwnerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Medication writes require guarded local Development only.");
+}
+
+body:json {
+  {
+    "stockQuantity": 7,
+    "lowStockThreshold": 2
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.stockQuantity: eq 7
+}

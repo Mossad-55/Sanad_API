@@ -1,0 +1,32 @@
+meta {
+  name: 04-unknown-service-id
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/selections
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverSelectionsJwt}}
+}
+
+body:json {
+  {
+    "serviceIds": ["00000000-0000-0000-0000-000000000000"],
+    "languageIds": {{caregiverSelectionLanguages}},
+    "areaIds": {{caregiverSelectionAreas}}
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq "Caregivers.Lookups.NotFound"
+}

@@ -1,0 +1,26 @@
+meta {
+  name: 02-get-profile-before
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/account
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{accountSelfServiceJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.email: isNotEmpty
+  res.body.phoneNumber: isNotEmpty
+}
+
+script:post-response {
+  bru.setVar("accountSelfServiceOriginalEmail", res.body.email);
+  bru.setVar("accountSelfServiceOriginalPhone", res.body.phoneNumber);
+}

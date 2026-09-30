@@ -1,0 +1,32 @@
+meta {
+  name: 42-update-published-domain-failure
+  type: http
+  seq: 42
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips mutations require the guarded local Development API.");
+}
+
+body:multipart-form {
+  arabicTitle: تحديث منشور
+  englishTitle: Published update must fail
+  category: mobility
+  sectionsJson: [{"DisplayOrder":1,"ArabicText":"نصيحة","EnglishText":"Advice"}]
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Cms.WellnessTip.InvalidOperation
+}

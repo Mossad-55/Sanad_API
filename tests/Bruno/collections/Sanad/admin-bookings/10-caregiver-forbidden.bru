@@ -1,0 +1,18 @@
+meta {
+  name: 10-support-admin-forbidden
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/bookings?page=1&pageSize=10&finance=0
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminBookingsSupportJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

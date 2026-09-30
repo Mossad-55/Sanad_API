@@ -240,8 +240,13 @@ public sealed class FamilyController :
     public async Task<IActionResult> GetEmergencyContact(Guid dependentId, CancellationToken cancellationToken)
     {
         if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
-        return ToActionResult(await _sender.Send(
-            new GetFamilyEmergencyContactQuery(userId, new ElderlyId(dependentId)), cancellationToken));
+        var result = await _sender.Send(
+            new GetFamilyEmergencyContactQuery(userId, new ElderlyId(dependentId)), cancellationToken);
+        if (result.IsFailure) return ToActionResult(result);
+
+        // Ok(null) is converted to 204 by ASP.NET's null output formatter. This read contract
+        // deliberately returns 200 with JSON null when no primary contact is configured.
+        return new JsonResult(result.Value) { StatusCode = StatusCodes.Status200OK };
     }
 
     [HttpPut("dependents/{dependentId:guid}/emergency-contact")]

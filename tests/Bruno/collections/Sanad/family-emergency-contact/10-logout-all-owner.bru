@@ -1,0 +1,19 @@
+meta {
+  name: 10-logout-all-owner
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyEmergencyOwnerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

@@ -1,0 +1,46 @@
+meta {
+  name: 02-add-disposable
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationMutationOwnerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Medication writes require guarded local Development only.");
+  bru.setVar("familyMedicationMutationName", "Bruno Disposable Family Medication " + Date.now());
+}
+
+body:json {
+  {
+    "name": "{{familyMedicationMutationName}}",
+    "dosage": "10 mg",
+    "doseUnit": "tablet",
+    "doseQuantity": 1,
+    "doseTimes": ["08:00", "20:00"],
+    "startDate": "2026-09-30",
+    "endDate": null,
+    "instructions": "Disposable local Bruno fixture",
+    "stockQuantity": 8,
+    "lowStockThreshold": 2
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.id: isNotEmpty
+}
+
+script:post-response {
+  const id = typeof res.body.id === "object" ? res.body.id.value : res.body.id;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id))) throw new Error("Expected created medication GUID.");
+  bru.setVar("familyMedicationMutationId", id);
+}

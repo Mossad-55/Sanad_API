@@ -71,6 +71,23 @@ public sealed class MedicalCaregiverPricing : ValueObject
             twentyFourHourShiftPrice);
     }
 
+    internal void Update(
+        decimal homeVisitPrice,
+        decimal eightHourShiftPrice,
+        decimal twelveHourShiftPrice,
+        decimal twentyFourHourShiftPrice)
+    {
+        ValidatePrice(homeVisitPrice, "Home Visit price");
+        ValidatePrice(eightHourShiftPrice, "8-hour shift price");
+        ValidatePrice(twelveHourShiftPrice, "12-hour shift price");
+        ValidatePrice(twentyFourHourShiftPrice, "24-hour shift price");
+
+        HomeVisitPrice = homeVisitPrice;
+        EightHourShiftPrice = eightHourShiftPrice;
+        TwelveHourShiftPrice = twelveHourShiftPrice;
+        TwentyFourHourShiftPrice = twentyFourHourShiftPrice;
+    }
+
     protected override IEnumerable<object?>
         GetEqualityComponents()
     {

@@ -1,0 +1,22 @@
+meta {
+  name: 02-profile-success
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregivers/{{caregiverDiscoveryTargetId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverDiscoveryJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isNotEmpty
+  res.body.pricing: isNotEmpty
+  res.body.services: isNotEmpty
+}

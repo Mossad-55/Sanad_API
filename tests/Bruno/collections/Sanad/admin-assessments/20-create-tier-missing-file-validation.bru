@@ -1,0 +1,39 @@
+meta {
+  name: 20-create-tier-missing-file-validation
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/assessments/tiers
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminAssessmentsJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Assessment mutations require the guarded local Development API.");
+}
+
+body:multipart-form {
+  screenOrder: 1
+  arabicTitle: Assessment Bruno missing-image validation
+  englishTitle: Assessment Bruno missing-image validation
+  arabicSubtitle: Disposable local assessment tier
+  englishSubtitle: Disposable local assessment tier
+  backgroundColor: #4CAF50
+  arabicButtonText: متابعة
+  englishButtonText: Continue
+  minScore: 0
+  maxScore: 10
+  arabicRecommendations[0]: متابعة دورية
+  englishRecommendations[0]: Periodic check-ins
+  isActive: false
+}
+
+assert {
+  res.status: eq 400
+}

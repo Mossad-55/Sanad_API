@@ -1,0 +1,68 @@
+{
+  "info": {
+    "name": "Sanad Elderly Welcome",
+    "description": "Elderly-only CMS Welcome API. Public read is anonymous and published-only. Admin requests require CmsContent. CMS requests are state-changing; use disposable local/test fixtures only. The fixed CTA action maps to Elderly OTP and does not dispatch OTP.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Public Welcome (safe read)",
+      "item": [
+        {
+          "name": "Get localized published Welcome",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/elderly/welcome?language={{language}}",
+            "description": "Anonymous; `language` is ar or en. Returns only published Elderly content. Unpublished/missing content is 404; unsupported language is 400. Does not send OTP."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('Welcome public contract', function () { pm.expect([200, 404, 400]).to.include(pm.response.code); });", "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.benefits.length).to.be.within(1, 8); pm.expect(body.ctaAction).to.eql('elderly.request-otp'); }"] } }]
+        }
+      ]
+    },
+    {
+      "name": "CMS authoring (manual state changes)",
+      "description": "Normal SuperAdmin/ContentAdmin with CmsContent. Run only against an approved disposable local/test fixture.",
+      "item": [
+        {
+          "name": "Get Welcome singleton",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/cms/elderly-welcome", "description": "Read Draft or Published singleton; 404 when absent." }
+        },
+        {
+          "name": "Create Welcome draft (manual fixture)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicHeadline\": \"{{welcomeArabicHeadline}}\",\n  \"englishHeadline\": \"{{welcomeEnglishHeadline}}\",\n  \"arabicCtaLabel\": \"{{welcomeArabicCtaLabel}}\",\n  \"englishCtaLabel\": \"{{welcomeEnglishCtaLabel}}\",\n  \"benefits\": [{ \"displayOrder\": 1, \"arabicTitle\": \"{{tileArabicTitle}}\", \"englishTitle\": \"{{tileEnglishTitle}}\", \"arabicDescription\": \"{{tileArabicDescription}}\", \"englishDescription\": \"{{tileEnglishDescription}}\" }]\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/cms/elderly-welcome",
+            "description": "STATE-CHANGING: creates singleton Draft once (201); duplicate create is 409. Requires localized headline/CTA and 1–8 ordered bilingual benefit tiles; server fixes the CTA action."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('create response', function () { pm.expect([201, 400, 401, 403, 409]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Update Welcome draft (manual fixture)",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"arabicHeadline\": \"{{welcomeArabicHeadline}}\",\n  \"englishHeadline\": \"{{welcomeEnglishHeadline}}\",\n  \"arabicCtaLabel\": \"{{welcomeArabicCtaLabel}}\",\n  \"englishCtaLabel\": \"{{welcomeEnglishCtaLabel}}\",\n  \"benefits\": [{ \"displayOrder\": 1, \"arabicTitle\": \"{{tileArabicTitle}}\", \"englishTitle\": \"{{tileEnglishTitle}}\", \"arabicDescription\": \"{{tileArabicDescription}}\", \"englishDescription\": \"{{tileEnglishDescription}}\" }]\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/cms/elderly-welcome",
+            "description": "STATE-CHANGING: replaces Draft content; missing is 404, invalid content 400, non-Draft state 409."
+          }
+        },
+        { "name": "Publish Welcome", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/cms/elderly-welcome/publish", "description": "STATE-CHANGING: publishes the singleton; missing is 404, invalid lifecycle state is 409." } },
+        { "name": "Unpublish Welcome", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/cms/elderly-welcome/unpublish", "description": "STATE-CHANGING: returns Published content to Draft; missing is 404, invalid lifecycle state is 409." } }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "language", "value": "en" },
+    { "key": "welcomeArabicHeadline", "value": "REPLACE_WITH_ARABIC_CMS_TEXT" },
+    { "key": "welcomeEnglishHeadline", "value": "REPLACE_WITH_ENGLISH_CMS_TEXT" },
+    { "key": "welcomeArabicCtaLabel", "value": "REPLACE_WITH_ARABIC_CTA_LABEL" },
+    { "key": "welcomeEnglishCtaLabel", "value": "REPLACE_WITH_ENGLISH_CTA_LABEL" },
+    { "key": "tileArabicTitle", "value": "REPLACE_WITH_ARABIC_TILE_TITLE" },
+    { "key": "tileEnglishTitle", "value": "REPLACE_WITH_ENGLISH_TILE_TITLE" },
+    { "key": "tileArabicDescription", "value": "REPLACE_WITH_ARABIC_TILE_DESCRIPTION" },
+    { "key": "tileEnglishDescription", "value": "REPLACE_WITH_ENGLISH_TILE_DESCRIPTION" }
+  ]
+}

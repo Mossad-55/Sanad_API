@@ -1,0 +1,38 @@
+meta {
+  name: 10-update-tier
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/assessments/tiers/{{assessmentTierId}}
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminAssessmentsJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Assessment mutations require the guarded local Development API.");
+}
+
+body:multipart-form {
+  screenOrder: 1
+  arabicTitle: Updated assessment tier
+  englishTitle: Updated assessment tier
+  arabicSubtitle: Updated disposable local assessment tier
+  englishSubtitle: Updated disposable local assessment tier
+  backgroundColor: #4CAF50
+  arabicButtonText: متابعة
+  englishButtonText: Continue
+  minScore: 0
+  maxScore: 10
+  arabicRecommendations[0]: متابعة دورية
+  englishRecommendations[0]: Periodic check-ins
+}
+
+assert {
+  res.status: eq 200
+}

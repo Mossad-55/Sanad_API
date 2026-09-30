@@ -1,0 +1,36 @@
+meta {
+  name: 09-update-without-file
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/splash-screens/{{adminSplashScreenId}}
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSplashScreensJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin splash screen mutations require the guarded local Development API.");
+}
+
+body:multipart-form {
+  arabicTitle: شاشة سند بعد التحديث
+  englishTitle: Bruno disposable splash screen updated
+  arabicDescription: محتوى تجريبي محلي بعد التحديث
+  englishDescription: Updated disposable local content
+  arabicButtonText: متابعة
+  englishButtonText: Continue
+  backgroundColor: #2457A7
+  displayOrder: 900
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 1
+  res.body.imagePath: eq {{adminSplashImagePath}}
+}

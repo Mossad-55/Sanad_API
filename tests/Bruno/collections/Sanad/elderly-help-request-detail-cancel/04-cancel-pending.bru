@@ -1,0 +1,30 @@
+meta {
+  name: 04-cancel-pending
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/help-requests/{{elderlyHelpRequestId}}/cancel
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyHelpRequestJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Help-request cancellation requires guarded local Development only.");
+}
+
+body:json {
+  {
+    "reason": "Disposable local Bruno cancellation"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isNotEmpty
+}

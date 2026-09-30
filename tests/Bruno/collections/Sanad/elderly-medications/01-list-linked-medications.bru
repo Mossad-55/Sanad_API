@@ -17,3 +17,13 @@ auth:bearer {
 assert {
   res.status: eq 200
 }
+
+script:post-response {
+  if (!Array.isArray(res.body)) throw new Error("Expected linked Elderly medications array.");
+  const medication = res.body.find((item) => item.name === "Test late-evaluation medication");
+  if (!medication || medication.status !== 1 || !Array.isArray(medication.doseTimes) || medication.doseTimes.length === 0) throw new Error("Expected active seeded test medication with a scheduled dose.");
+  const id = typeof medication.id === "object" ? medication.id.value : medication.id;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id))) throw new Error("Expected seeded medication GUID.");
+  bru.setVar("elderlyMedicationId", id);
+  bru.setVar("elderlyMedicationScheduledTime", medication.doseTimes[0]);
+}

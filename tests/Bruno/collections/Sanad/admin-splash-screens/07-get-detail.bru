@@ -1,0 +1,19 @@
+meta {
+  name: 07-get-detail
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/splash-screens/{{adminSplashScreenId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSplashScreensJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 1
+}

@@ -1,0 +1,32 @@
+meta {
+  name: 10-companion-invalid-price
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/pricing/companion
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverPricingCompanionJwt}}
+}
+
+body:json {
+  {
+    "hourlyPrice": 0,
+    "eightHourDayPrice": 501.25,
+    "overnightPrice": 701.25
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Api.Validation.Failed
+}

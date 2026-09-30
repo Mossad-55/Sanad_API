@@ -1,0 +1,19 @@
+meta {
+  name: 30-logout-all-invitee
+  type: http
+  seq: 30
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{inviteeFamilyJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

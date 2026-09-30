@@ -1,0 +1,14 @@
+meta {
+  name: 06-admin-publish-unauthenticated
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome/publish
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

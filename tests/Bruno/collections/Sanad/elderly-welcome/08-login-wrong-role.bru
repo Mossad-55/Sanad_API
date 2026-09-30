@@ -1,0 +1,33 @@
+meta {
+  name: 08-login-wrong-role
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{viewerEmail}}",
+    "password": "{{viewerPassword}}",
+    "deviceName": "bruno-elderly-welcome-family-viewer",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("elderlyWelcomeFamilyJwt", res.body.accessToken);
+}

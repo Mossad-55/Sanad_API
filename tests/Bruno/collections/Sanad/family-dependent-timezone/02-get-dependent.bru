@@ -1,0 +1,24 @@
+meta {
+  name: 02-get-dependent
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyTimezoneDependentId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyTimezoneOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isNotEmpty
+}
+
+script:post-response {
+  if (res.body.timeZoneId !== "Africa/Cairo") throw new Error("Seeded timezone changed; do not alter the dependent.");
+}

@@ -131,6 +131,35 @@ public sealed class ElderlyHelpRequestTests
         Assert.Equal("GetHelpRequest", (await db.AdminMedicationAccessAudits.OrderByDescending(x => x.OccurredOnUtc).FirstAsync()).Action);
     }
 
+    [Fact]
+    public async Task Detail_ReturnsSingleCallerOwnedRequest_AndNotFoundForUnknownOrForeignIds()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var identity = UserId.New();
+        var family = Family.Create(owner, "family");
+        var elderly = Elderly.Create(owner, identity, family.Id, FamilyRelationshipType.Father,
+            FullName.Create("عمر"), FullName.Create("Omar"), Gender.Male, new DateOnly(1950, 1, 1), new DateOnly(2020, 1, 1));
+        var request = CreateRequest(identity);
+        db.Families.Add(family);
+        db.Elderlies.Add(elderly);
+        db.ElderlyHelpRequests.Add(request);
+        await db.SaveChangesAsync();
+        var handler = new GetElderlyHelpRequestQueryHandler(db);
+
+        var found = await handler.Handle(new(identity, request.Id), default);
+        var missing = await handler.Handle(new(identity, Guid.NewGuid()), default);
+        var foreign = await handler.Handle(new(UserId.New(), request.Id), default);
+
+        Assert.True(found.IsSuccess);
+        Assert.Equal(request.Id, found.Value.Id);
+        Assert.Equal(elderly.Id.Value, found.Value.ElderlyId);
+        Assert.True(missing.IsFailure);
+        Assert.Equal("Families.HelpRequest.NotFound", missing.Error.Code);
+        Assert.True(foreign.IsFailure);
+        Assert.Equal("Families.HelpRequest.NotFound", foreign.Error.Code);
+    }
+
     private static ElderlyHelpRequest CreateRequest(UserId actor) => ElderlyHelpRequest.Create(actor, Guid.NewGuid(), "elderly", "مسن", "Elderly", "ask", "يطلب", "asks", "needs", "مساعدة", "Help", null, null, null, null, Guid.NewGuid().ToString());
     private static FamiliesDbContext CreateDb() => new(new DbContextOptionsBuilder<FamiliesDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 

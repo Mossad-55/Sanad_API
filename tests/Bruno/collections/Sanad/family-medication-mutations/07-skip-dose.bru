@@ -1,0 +1,32 @@
+meta {
+  name: 07-skip-dose
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications/{{familyMedicationMutationId}}/doses/skip
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationMutationOwnerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Dose writes require guarded local Development only.");
+}
+
+body:json {
+  {
+    "scheduledDate": "2026-09-30",
+    "scheduledTime": "20:00",
+    "reason": "Disposable Bruno test skip"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 3
+}

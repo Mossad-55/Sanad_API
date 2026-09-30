@@ -1,0 +1,17 @@
+meta {
+  name: 04-repeat-cancel-terminal-sos
+  type: http
+  seq: 4
+}
+post {
+  url: {{baseUrl}}/api/v1/elderly/sos/{{elderlySosCancelId}}/cancel
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{elderlySosCancelJwt}}
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq Families.Sos.InvalidOperation
+}

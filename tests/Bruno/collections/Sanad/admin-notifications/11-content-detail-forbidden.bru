@@ -1,0 +1,18 @@
+meta {
+  name: 11-content-detail-forbidden
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/notifications/6ab3d866-3a6f-4c09-8d9c-75d46cc24de1
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminNotificationsContentJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

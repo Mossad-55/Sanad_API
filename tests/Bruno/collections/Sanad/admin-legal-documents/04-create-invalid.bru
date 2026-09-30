@@ -1,0 +1,36 @@
+meta {
+  name: 04-create-invalid
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/legal-documents
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLegalDocumentsJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin legal-document mutations require the guarded local Development API.");
+}
+
+body:json {
+  {
+    "documentType": 999,
+    "audience": 999,
+    "sections": []
+  }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Api.Validation.Failed
+}

@@ -1,0 +1,22 @@
+meta {
+  name: 08-support-aggregate
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/notifications/aggregate?startDate=2026-09-01&endDate=2026-09-02
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminNotificationsSupportJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (typeof res.body.totalCount !== "number" || typeof res.body.readCount !== "number" || typeof res.body.unreadCount !== "number" || !Array.isArray(res.body.categoryCounts)) throw new Error("Admin notification aggregate contract failed.");
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 06-unauthenticated-update
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/selections
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "serviceIds": [], "languageIds": [], "areaIds": [] }
+}
+
+assert {
+  res.status: eq 401
+}

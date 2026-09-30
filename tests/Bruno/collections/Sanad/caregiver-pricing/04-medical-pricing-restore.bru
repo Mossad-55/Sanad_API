@@ -1,0 +1,36 @@
+meta {
+  name: 04-medical-pricing-restore
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/pricing/medical
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverPricingMedicalJwt}}
+}
+
+body:json {
+  {
+    "homeVisitPrice": 500.00,
+    "eightHourShiftPrice": 900.00,
+    "twelveHourShiftPrice": 1300.00,
+    "twentyFourHourShiftPrice": 1800.00
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.medicalPricing.homeVisitPrice: eq 500
+  res.body.medicalPricing.eightHourShiftPrice: eq 900
+  res.body.medicalPricing.twelveHourShiftPrice: eq 1300
+  res.body.medicalPricing.twentyFourHourShiftPrice: eq 1800
+}

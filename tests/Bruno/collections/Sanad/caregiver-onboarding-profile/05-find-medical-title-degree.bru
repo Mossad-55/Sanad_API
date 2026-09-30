@@ -1,0 +1,18 @@
+meta {
+  name: 05-find-medical-title-degree
+  type: http
+  seq: 5
+}
+get {
+  url: {{baseUrl}}/api/v1/lookups/professional-titles
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const item = res.body.find(x => x.englishName === "Test Nurse");
+  if (!item?.id?.value) throw new Error("Seeded professional title lookup not found.");
+  bru.setVar("onboardingProfessionalTitleId", item.id.value);
+}

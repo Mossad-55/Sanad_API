@@ -96,6 +96,7 @@ public static class ResultProblemDetailsMapper
             ["Cms.WellnessTip.NotFound"] = 404,
             ["Cms.WellnessTip.NotPublished"] = 404,
             ["Cms.WellnessTip.InvalidOperation"] = 409,
+            ["Cms.MedicationLateness.NotFound"] = 404,
 
             ["Cms.SentenceBuilder.NotFound"] = 404,
             ["Cms.SentenceBuilder.InvalidOperation"] = 409,
@@ -130,6 +131,16 @@ public static class ResultProblemDetailsMapper
             ["Families.Family.AccessDenied"] = 403,
             ["Families.Family.MemberNotFound"] = 404,
             ["Families.Family.OwnerProtected"] = 409,
+
+            ["Families.Notes.DependentNotFound"] = 404,
+            ["Families.Notes.AccessDenied"] = 403,
+            ["Families.Notes.NotFound"] = 404,
+            ["Families.Notes.InvalidNote"] = 400,
+
+            ["Families.Medication.DependentNotFound"] = 404,
+            ["Families.Medication.AccessDenied"] = 403,
+            ["Families.Medication.NotFound"] = 404,
+            ["Families.Medication.InvalidDateRange"] = 400,
 
             ["Families.Family.AcknowledgementRequired"] = 400,
             ["Families.Family.ActiveBookingExists"] = 409,
@@ -192,6 +203,7 @@ public static class ResultProblemDetailsMapper
             ["Storage.File.NotFound"] = 404,
 
             ["Notifications.NotFound"] = 404,
+            ["Notifications.AdminNotification.NotFound"] = 404,
             ["Families.AdminCheckIn.NotFound"] = 404,
             ["Families.AdminCheckIn.InvalidDateRange"] = 400,
             ["Families.ElderlyCheckIn.NotFound"] = 404,
@@ -200,10 +212,17 @@ public static class ResultProblemDetailsMapper
             ["Families.HelpRequest.NotFound"] = 404,
             ["Families.HelpRequest.IdempotencyConflict"] = 409,
             ["Families.HelpRequest.InvalidOperation"] = 409
+            , ["Families.AdminMedication.NotFound"] = 404
             , ["Families.Sos.NotFound"] = 404
             , ["Families.Sos.IdempotencyConflict"] = 409
             , ["Families.Sos.InvalidOperation"] = 409
             , ["Families.Sos.InvalidLocation"] = 400
+
+            , ["Cms.ElderlyWelcome.NotFound"] = 404
+            , ["Cms.ElderlyWelcome.NotPublished"] = 404
+            , ["Cms.ElderlyWelcome.AlreadyExists"] = 409
+            , ["Cms.ElderlyWelcome.InvalidState"] = 409
+            , ["Cms.ElderlyWelcome.Invalid"] = 400
         };
 
     public static ProblemDetails Create(

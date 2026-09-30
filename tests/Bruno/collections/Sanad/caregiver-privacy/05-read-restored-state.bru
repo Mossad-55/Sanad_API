@@ -1,0 +1,23 @@
+meta {
+  name: 05-read-restored-state
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/privacy
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverPrivacyJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.showProfile: eq true
+  res.body.showRating: eq true
+  res.body.showPhone: eq false
+  res.body.shareLocation: eq false
+}

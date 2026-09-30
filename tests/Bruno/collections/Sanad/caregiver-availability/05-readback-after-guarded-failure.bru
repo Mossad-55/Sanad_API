@@ -1,0 +1,19 @@
+meta {
+  name: 05-readback-after-guarded-failure
+  type: http
+  seq: 5
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverAvailabilityJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  if (JSON.stringify({status:res.body.status,availability:res.body.availability}) !== bru.getVar("caregiverAvailabilityBaseline")) throw new Error("Availability baseline was not restored.");
+}

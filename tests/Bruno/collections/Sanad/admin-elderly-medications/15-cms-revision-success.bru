@@ -1,0 +1,44 @@
+meta {
+  name: 15-cms-revision-success
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/cms/medication-lateness/revisions
+  body: json
+  auth: bearer
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Medication lateness CMS mutations require the guarded local Development API.");
+  if (!bru.getVar("adminMedicationLatenessOriginalRevisionId") || !bru.getVar("adminMedicationLatenessOriginalThreshold")) throw new Error("Run the authorized CMS GET first to capture the original active revision for restoration.");
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{adminMedicationLatenessContentJwt}}
+}
+
+body:json {
+  {
+    "thresholdMinutes": 61
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.revisionId: isString
+  res.body.thresholdMinutes: eq 61
+  res.body.isActive: eq true
+}
+
+script:post-response {
+  const revisionId = res.body.revisionId;
+  bru.setVar("adminMedicationLatenessCreatedRevisionId", revisionId);
+  console.log("ADMIN_MEDICATION_LATENESS_CREATED_REVISION_ID=" + revisionId);
+  console.log("CLEANUP IDS: originalRevision=" + bru.getVar("adminMedicationLatenessOriginalRevisionId") + ", createdRevision=" + revisionId + ". Restore the original revision after deleting the generated revisions in SanadBrunoTestDb.");
+}

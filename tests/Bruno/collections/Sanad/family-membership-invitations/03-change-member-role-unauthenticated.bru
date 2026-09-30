@@ -1,0 +1,23 @@
+meta {
+  name: 03-change-member-role-unauthenticated
+  type: http
+  seq: 3
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/members/00000000-0000-4000-8000-000000000001/role
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"role":3}
+}
+
+assert {
+  res.status: eq 401
+}

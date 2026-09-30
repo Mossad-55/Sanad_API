@@ -1,0 +1,23 @@
+meta {
+  name: 02-rename-unauthenticated
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/name
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"name":"Bruno disposable family"}
+}
+
+assert {
+  res.status: eq 401
+}

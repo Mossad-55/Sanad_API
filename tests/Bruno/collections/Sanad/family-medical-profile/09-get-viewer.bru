@@ -1,0 +1,20 @@
+meta {
+  name: 09-get-viewer
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicalDependentId}}/medical-profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicalViewerJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.bloodType: eq 0
+}

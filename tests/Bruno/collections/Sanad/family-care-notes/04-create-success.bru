@@ -1,0 +1,38 @@
+meta {
+  name: 04-create-success
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyCareNotesDependentId}}/notes
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyCareNotesOwnerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Codex disposable care note 20260930",
+    "description": "Temporary guarded Bruno fixture; removed by the final delete request.",
+    "category": 1,
+    "priority": 2
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  const note = res.body;
+  if (!note.id || note.dependentId !== bru.getVar("familyCareNotesDependentId") || note.title !== "Codex disposable care note 20260930" || note.category !== 1 || note.priority !== 2) throw new Error("Created note does not match the disposable fixture.");
+  bru.setVar("familyCareNotesNoteId", note.id);
+}

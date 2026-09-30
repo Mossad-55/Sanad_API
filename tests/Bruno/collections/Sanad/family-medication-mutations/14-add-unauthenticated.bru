@@ -1,0 +1,30 @@
+meta {
+  name: 14-add-unauthenticated
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "name": "Unauthenticated mutation rejection",
+    "dosage": "1 mg",
+    "doseUnit": "tablet",
+    "doseQuantity": 1,
+    "doseTimes": ["08:00"],
+    "startDate": "2026-09-30",
+    "endDate": null,
+    "instructions": null,
+    "stockQuantity": 2,
+    "lowStockThreshold": 0
+  }
+}
+
+assert {
+  res.status: eq 401
+}

@@ -1,0 +1,25 @@
+meta {
+  name: 08-companion-fixed-overnight-success
+  type: http
+  seq: 8
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/schedule/companion
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+auth:bearer {
+  token: {{scheduleCompanionJwt}}
+}
+body:json {
+  { "windows": [{"bookingType":3,"dayOfWeek":0,"startTime":"20:00","endTime":"08:00"}] }
+}
+assert {
+  res.status: eq 200
+  res.body.companionSchedule.windows[0].bookingType: eq 3
+  res.body.companionSchedule.windows[0].startTime: startsWith "20:00"
+  res.body.companionSchedule.windows[0].endTime: startsWith "08:00"
+}

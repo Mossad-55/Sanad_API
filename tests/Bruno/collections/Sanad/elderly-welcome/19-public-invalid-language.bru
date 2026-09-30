@@ -1,0 +1,14 @@
+meta {
+  name: 19-public-invalid-language
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/welcome?language=fr
+  auth: none
+}
+
+assert {
+  res.status: eq 400
+}

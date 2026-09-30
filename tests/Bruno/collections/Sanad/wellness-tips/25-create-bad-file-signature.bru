@@ -1,0 +1,32 @@
+meta {
+  name: 25-create-bad-file-signature
+  type: http
+  seq: 25
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips mutations require the guarded local Development API.");
+}
+
+body:multipart-form {
+  arabicTitle: اختبار توقيع الصورة
+  englishTitle: Bad image signature
+  category: general
+  sectionsJson: [{"displayOrder":1,"arabicText":"نصيحة","englishText":"Advice"}]
+  file: @file(service-icon-fixture.png) @contentType(image/jpeg)
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Storage.File.UnsupportedType
+}

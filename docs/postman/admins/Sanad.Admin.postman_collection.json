@@ -48,7 +48,7 @@
     {
       "key": "elderlyId",
       "value": "REPLACE_WITH_ELDERLY_ID",
-      "description": "Approved Elderly UUID for manual operational reads."
+      "description": "Approved Elderly UUID for manual operational reads and lateness evaluation; the evaluator requires an Elderly linked to a non-deleted Family."
     },
     {
       "key": "elderlyCheckInId",
@@ -1251,6 +1251,7 @@
         {
           "name": "Verify certificate",
           "request": {
+            "description": "Returns 204 when the certificate is verified. Unknown caregiver ids return 404 Caregivers.Onboarding.NotFound; unknown certificate ids for an existing caregiver return 404 Caregivers.Onboarding.CertificateNotFound.",
             "method": "POST",
             "header": [
               {
@@ -1272,6 +1273,7 @@
         {
           "name": "Reject certificate",
           "request": {
+            "description": "Returns 204 when the certificate is rejected. Unknown caregiver ids return 404 Caregivers.Onboarding.NotFound; unknown certificate ids for an existing caregiver return 404 Caregivers.Onboarding.CertificateNotFound.",
             "method": "POST",
             "header": [
               {
@@ -1293,6 +1295,7 @@
         {
           "name": "Revoke certificate",
           "request": {
+            "description": "Returns 204 when the certificate is revoked. Unknown caregiver ids return 404 Caregivers.Onboarding.NotFound; unknown certificate ids for an existing caregiver return 404 Caregivers.Onboarding.CertificateNotFound.",
             "method": "POST",
             "header": [
               {
@@ -1419,6 +1422,7 @@
         {
           "name": "Download certificate file",
           "request": {
+            "description": "Streams the private certificate file. Unknown caregiver ids return 404 Caregivers.Onboarding.NotFound; unknown certificate ids for an existing caregiver return 404 Caregivers.Onboarding.CertificateNotFound; missing stored files return 404 Storage.File.NotFound.",
             "method": "GET",
             "header": [
               {
@@ -2538,7 +2542,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/elderly/medications?page=1&pageSize=20"
           },
-          "description": "Manual/stateful sensitive read. Requires SuperAdmin or SupportAdmin with a normal JWT under ElderlyMedicationOperationalRead. No request body. A successful GET first writes an immutable payload-free audit row, so do not run against shared/live environments without an approved fixture. Optional query filters: dependentId, status, search."
+          "description": "Manual/stateful sensitive read. Requires SuperAdmin or SupportAdmin with a normal JWT under ElderlyMedicationOperationalRead. No request body. A successful GET first writes an immutable payload-free audit row, so do not run against shared/live environments without an approved fixture. Optional query filters: dependentId, status, search. The implementation joins the paged medication rows to Elderly in the database to support EF Core value-converted IDs; response shape, filtering/paging behavior, and HTTP statuses are unchanged."
         },
         {
           "name": "Get elderly medication (manual/stateful)",
@@ -2636,12 +2640,12 @@
               { "key": "arabicTitle", "value": "عنوان تجريبي", "type": "text" },
               { "key": "englishTitle", "value": "Example wellness tip", "type": "text" },
               { "key": "category", "value": "general", "type": "text" },
-              { "key": "sectionsJson", "value": "[{\"displayOrder\":1,\"arabicText\":\"نصيحة\",\"englishText\":\"Advice\"}]", "type": "text" },
+              { "key": "sectionsJson", "value": "[{\"DisplayOrder\":1,\"ArabicText\":\"نصيحة\",\"EnglishText\":\"Advice\"}]", "type": "text" },
               { "key": "file", "type": "file", "src": "{{wellnessImageFile}}" }
             ] },
             "url": "{{baseUrl}}/api/v1/admin/wellness-tips"
           },
-          "description": "STATE-CHANGING manual request. File must be non-empty JPEG/PNG/WebP; max request size 5 MiB. Storage key is generated. Do not replay without approved disposable data."
+          "description": "STATE-CHANGING manual request. Returns 201 when created; malformed sectionsJson returns 400; missing/empty file returns 400 Storage.File.Empty; unsupported/mismatched image content returns 400 Storage.File.UnsupportedType; invalid domain content returns 409 Cms.WellnessTip.InvalidOperation. The embedded sectionsJson property names are case-sensitive: use DisplayOrder, ArabicText, EnglishText. File must be non-empty JPEG/PNG/WebP; max request size 5 MiB. Storage key is generated. Do not replay without approved disposable data."
         },
         {
           "name": "Update wellness tip draft (manual multipart)",
@@ -2652,12 +2656,12 @@
               { "key": "arabicTitle", "value": "عنوان محدث", "type": "text" },
               { "key": "englishTitle", "value": "Updated wellness tip", "type": "text" },
               { "key": "category", "value": "general", "type": "text" },
-              { "key": "sectionsJson", "value": "[{\"displayOrder\":1,\"arabicText\":\"نصيحة محدثة\",\"englishText\":\"Updated advice\"}]", "type": "text" },
+              { "key": "sectionsJson", "value": "[{\"DisplayOrder\":1,\"ArabicText\":\"نصيحة محدثة\",\"EnglishText\":\"Updated advice\"}]", "type": "text" },
               { "key": "file", "type": "file", "src": "{{wellnessImageFile}}", "disabled": true }
             ] },
             "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}"
           },
-          "description": "STATE-CHANGING manual request. Only drafts can be edited. Omit file to keep the existing image; supplying one replaces the image key."
+          "description": "STATE-CHANGING manual request. Returns 200 when updated; malformed sectionsJson returns 400; a missing tip returns 404 Cms.WellnessTip.NotFound; invalid content/lifecycle returns 409 Cms.WellnessTip.InvalidOperation. The embedded sectionsJson property names are case-sensitive: use DisplayOrder, ArabicText, EnglishText. Only drafts can be edited. Omit file to keep the existing image; supplying one replaces the image key."
         },
         {
           "name": "Publish wellness tip",
@@ -2672,20 +2676,23 @@
       ]
     },
     {
-      "name": "15. Medication lateness (manual/read-only contract)",
-      "description": "CMS threshold reads/revisions use CmsContent. The evaluate action uses ElderlyMedicationOperationalManage and is limited to Normal SuperAdmin/SupportAdmin. GETs are safe; POSTs may change CMS or dose/notification state and are manual fixture-only requests.",
+      "name": "15. Medication lateness (manual/stateful contract)",
+      "description": "CMS threshold GET/revision POST use CmsContent (Normal SuperAdmin or ContentAdmin). The evaluate POST has an action-level ElderlyMedicationOperationalManage override on the read controller (Normal SuperAdmin or SupportAdmin). The CMS GET is read-only; both POSTs can change state and are manual disposable-fixture requests.",
       "item": [
         {
           "name": "Get active medication lateness setting",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/cms/medication-lateness", "description": "Read-only CMS setting. Normal SuperAdmin or ContentAdmin. Returns the active immutable revision, including version and thresholdMinutes; 404 Cms.MedicationLateness.NotFound when no setting is configured." }
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/cms/medication-lateness", "description": "Read-only CMS setting under CmsContent (Normal SuperAdmin or ContentAdmin). Returns the active immutable revision with revisionId, version, thresholdMinutes, isActive, and createdOnUtc. If no active setting exists, returns 404 Cms.MedicationLateness.NotFound." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('CMS medication lateness GET contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });", "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.revisionId).to.be.a('string'); pm.expect(body.version).to.be.a('number'); pm.expect(body.thresholdMinutes).to.be.a('number'); pm.expect(body.isActive).to.eql(true); }", "if (pm.response.code === 404) { pm.expect(pm.response.json().code).to.eql('Cms.MedicationLateness.NotFound'); }"] } }]
         },
         {
           "name": "Create medication lateness revision (manual mutation)",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"thresholdMinutes\": 60\n}" }, "url": "{{baseUrl}}/api/v1/admin/cms/medication-lateness/revisions", "description": "STATE-CHANGING CMS authoring. Normal SuperAdmin or ContentAdmin only. Creates the next immutable active revision; thresholdMinutes must be 1–1440. Do not replay without owner-approved disposable CMS data." }
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"thresholdMinutes\": 60\n}" }, "url": "{{baseUrl}}/api/v1/admin/cms/medication-lateness/revisions", "description": "STATE-CHANGING CMS authoring under CmsContent (Normal SuperAdmin or ContentAdmin). Creates and activates the next immutable revision, deactivating the previous active revision; only one revision remains active. thresholdMinutes must be 1–1440; invalid values return 400 Cms.MedicationLateness.Invalid. Success returns revisionId, version, thresholdMinutes, isActive, and createdOnUtc. Do not replay without owner-approved disposable CMS data." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('CMS medication lateness revision contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });", "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.revisionId).to.be.a('string'); pm.expect(body.thresholdMinutes).to.be.a('number'); pm.expect(body.isActive).to.eql(true); }", "if (pm.response.code === 400) { pm.expect(pm.response.json().code).to.eql('Cms.MedicationLateness.Invalid'); }"] } }]
         },
         {
           "name": "Evaluate Elderly late/missed doses (manual mutation)",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-medication-lateness" }], "url": "{{baseUrl}}/api/v1/admin/elderly/medications/late/evaluate?dependentId={{elderlyId}}", "description": "STATE-CHANGING: Normal SuperAdmin or SupportAdmin under ElderlyMedicationOperationalManage. Audits the action, evaluates only the selected profile's current IANA-local day using the versioned CMS threshold, and may persist current-day missed logs plus idempotent durable in-app alerts. Assigned caregivers qualify only for active Confirmed/InProgress bookings; active linked Family recipients must honor MedicationReminders; active SupportAdmin users are included. Push/email/outbox/scheduler are deferred/Needs Owner Verification. Use only an approved disposable fixture." }
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-medication-lateness" }], "url": "{{baseUrl}}/api/v1/admin/elderly/medications/late/evaluate?dependentId={{elderlyId}}", "description": "STATE-CHANGING: the action-level policy override is ElderlyMedicationOperationalManage (Normal SuperAdmin or SupportAdmin), despite the controller's class-level ElderlyMedicationOperationalRead policy. The action audits before resolving the target; a missing Elderly or Elderly linked to a deleted Family returns 404 Families.AdminMedication.NotFound. On success it evaluates only the selected profile's current IANA-local day using the active versioned CMS threshold, returns thresholdMinutes/settingVersion/localDate/missedDoses, and may persist current-day scheduled/missed dose logs plus idempotent durable in-app alerts. Assigned caregivers qualify only for active Confirmed/InProgress bookings; active linked Family recipients must honor MedicationReminders; active SupportAdmin users are included. Push/email/outbox/scheduler are deferred/Needs Owner Verification. Use only an approved disposable fixture." },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin medication lateness evaluation contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });", "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.thresholdMinutes).to.be.a('number'); pm.expect(body.settingVersion).to.be.a('number'); pm.expect(body.localDate).to.be.a('string'); pm.expect(body.missedDoses).to.be.an('array'); }", "if (pm.response.code === 404) { pm.expect(pm.response.json().code).to.eql('Families.AdminMedication.NotFound'); }"] } }]
         }
       ]
     },
@@ -2756,19 +2763,19 @@
         },
         {
           "name": "Change Elderly help-request status (manual mutation)",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Reviewed by support\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}/{{helpRequestAction}}", "description": "STATE-CHANGING: action is accepted, started, resolved, rejected, cancelled, or reopened. Reject/resolve/reopen and operator cancel require a nonblank reason max 500 chars. Reopen persists Reopened then returns the request to InProgress. Use only an approved disposable fixture; do not replay against shared data." }
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Reviewed by support\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}/{{helpRequestAction}}", "description": "STATE-CHANGING: action is accepted, started, resolved, rejected, cancelled, or reopened. The API binds this URL segment as statusAction to avoid MVC's reserved action selector. Reject/resolve/reopen and operator cancel require a nonblank reason max 500 chars. Reopen persists Reopened then returns the request to InProgress. Use only an approved disposable fixture; do not replay against shared data." }
         }
       ]
     },
     {
       "name": "15C. Sentence-builder CMS (manual authoring/read-only)",
-      "description": "Normal SuperAdmin or ContentAdmin under CmsContent. CMS is global/shared. GETs are safe; create and activate/deactivate change catalog state and are manual authoring examples only.",
+      "description": "Normal SuperAdmin or ContentAdmin under CmsContent. CMS is global/shared. GETs are safe; create and activate/deactivate change catalog state and are manual authoring examples only. Successful catalog routes return 200 OK. Unauthenticated requests return 401; authenticated roles outside CmsContent return 403; missing revisions return 404 Cms.SentenceBuilder.NotFound; invalid category, blank/overlong key or labels, and negative display order return 409 Cms.SentenceBuilder.InvalidOperation. Persistence concurrency conflicts are 409 Cms.SentenceBuilder.Conflict.",
       "item": [
-        { "name": "List sentence-builder catalog", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog?page=1&pageSize=50&category={{sentenceBuilderCategory}}&active={{sentenceBuilderActive}}", "description": "Read-only. Categories: Actor=1, Action=2, Need=3, Qualifier=4. Page size is bounded 1–100; results include immutable revisions and active state." } },
-        { "name": "Get sentence-builder revision", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}", "description": "Read-only bilingual revision detail; 404 Cms.SentenceBuilder.NotFound when absent." } },
-        { "name": "Create sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"stableKey\": \"water\",\n  \"category\": 3,\n  \"arabicLabel\": \"ماء\",\n  \"englishLabel\": \"Water\",\n  \"displayOrder\": 10\n}" }, "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog", "description": "STATE-CHANGING authoring example. Labels are required, bilingual, max 200 chars; stableKey max 120 chars; displayOrder is nonnegative. Upsert creates a new immutable revision and activates it while deactivating the prior revision for the same stable key/category. Do not run without owner-approved CMS fixture data." } },
-        { "name": "Activate sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}/activate", "description": "STATE-CHANGING authoring example. Activates this revision and deactivates other revisions for its stable key/category. Use only with approved disposable CMS data." } },
-        { "name": "Deactivate sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}/deactivate", "description": "STATE-CHANGING authoring example. Deactivates only this revision; old content is not mutated. Use only with approved disposable CMS data." } }
+        { "name": "List sentence-builder catalog", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog?page=1&pageSize=50&category={{sentenceBuilderCategory}}&active={{sentenceBuilderActive}}", "description": "Read-only. Success returns 200. Categories: Actor=1, Action=2, Need=3, Qualifier=4. Page size is bounded 1–100; results include immutable revisions and active state. Unauthenticated returns 401; roles outside CmsContent return 403." } },
+        { "name": "Get sentence-builder revision", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}", "description": "Read-only bilingual revision detail. Success returns 200; unauthenticated returns 401; roles outside CmsContent return 403; an absent revision returns 404 Cms.SentenceBuilder.NotFound." } },
+        { "name": "Create sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"stableKey\": \"water\",\n  \"category\": 3,\n  \"arabicLabel\": \"ماء\",\n  \"englishLabel\": \"Water\",\n  \"displayOrder\": 10\n}" }, "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog", "description": "STATE-CHANGING authoring example. Success returns 200. Labels are required, bilingual, max 200 chars; stableKey max 120 chars; displayOrder is nonnegative. Invalid category, blank/overlong key or labels, or negative order returns 409 Cms.SentenceBuilder.InvalidOperation; a persistence concurrency conflict returns 409 Cms.SentenceBuilder.Conflict. Upsert creates a new immutable revision and activates it while deactivating the prior revision for the same stable key/category. Unauthenticated returns 401 and roles outside CmsContent return 403. Do not run without owner-approved disposable CMS fixture data." } },
+        { "name": "Activate sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}/activate", "description": "STATE-CHANGING authoring example. Success returns 200. Unauthenticated returns 401; roles outside CmsContent return 403; an absent revision returns 404 Cms.SentenceBuilder.NotFound; a persistence concurrency conflict returns 409 Cms.SentenceBuilder.Conflict. Activates this revision and deactivates other revisions for its stable key/category. Use only with approved disposable CMS data." } },
+        { "name": "Deactivate sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}/deactivate", "description": "STATE-CHANGING authoring example. Success returns 200. Unauthenticated returns 401; roles outside CmsContent return 403; an absent revision returns 404 Cms.SentenceBuilder.NotFound; a persistence concurrency conflict returns 409 Cms.SentenceBuilder.Conflict. Deactivates only this revision; old content is not mutated. Use only with approved disposable CMS data." } }
       ]
     },
     {
@@ -2847,7 +2854,7 @@
         },
         {
           "name": "Change Elderly SOS status — manual fixture",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-status" }], "body": { "mode": "raw", "raw": "{\n  \"action\": \"Acknowledged\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/status", "description": "STATE-CHANGING: manual disposable fixture only. Normal SuperAdmin/SupportAdmin. Allowed transitions are Open→Acknowledged/Resolved/Cancelled and Acknowledged→Resolved/Cancelled; invalid transitions return 400 Families.Sos.InvalidOperation." },
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-status" }], "body": { "mode": "raw", "raw": "{\n  \"action\": 2\n}" }, "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/status", "description": "STATE-CHANGING: manual disposable fixture only. The JSON action uses numeric enum values (Open=1, Acknowledged=2, Resolved=3, Cancelled=4). Normal SuperAdmin/SupportAdmin. Allowed transitions are Open→Acknowledged/Resolved/Cancelled and Acknowledged→Resolved/Cancelled; invalid transitions return 400 Families.Sos.InvalidOperation." },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS status contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"] } }]
         }
       ]
@@ -2880,7 +2887,7 @@
               { "key": "X-Correlation-ID", "value": "postman-admin-notifications-detail" }
             ],
             "url": "{{baseUrl}}/api/v1/admin/notifications/{{notificationId}}",
-            "description": "SAFE READ: metadata only (ID/category/type/created/read); audited before query. An unknown or out-of-window ID is not found."
+            "description": "SAFE READ: metadata only (ID/category/type/created/read); audited before query. An unknown or out-of-window ID returns 404 Notifications.AdminNotification.NotFound."
           },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
         },

@@ -11,6 +11,7 @@ public sealed record CreateElderlyHelpRequestCommand(UserId ElderlyIdentityUserI
 public sealed record CancelElderlyHelpRequestCommand(UserId ElderlyIdentityUserId, Guid RequestId, string? Reason) : ICommand<ElderlyHelpRequestResponse>;
 public sealed record ChangeElderlyHelpRequestStatusCommand(UserId ActorUserId, Guid RequestId, ElderlyHelpRequestHistoryAction Action, string? Reason) : ICommand<ElderlyHelpRequestResponse>;
 public sealed record GetElderlyHelpRequestsQuery(UserId ElderlyIdentityUserId, Guid? RequestId = null) : IQuery<IReadOnlyList<ElderlyHelpRequestResponse>>;
+public sealed record GetElderlyHelpRequestQuery(UserId ElderlyIdentityUserId, Guid RequestId) : IQuery<ElderlyHelpRequestResponse>;
 public sealed record AdminListElderlyHelpRequestsQuery(UserId ActorUserId, string ActorAccountType, string CorrelationId, ElderlyHelpRequestStatus? Status = null, Guid? ElderlyId = null, int Page = 1, int PageSize = 20) : IQuery<PagedElderlyHelpRequests>;
 public sealed record AdminGetElderlyHelpRequestQuery(UserId ActorUserId, string ActorAccountType, string CorrelationId, Guid RequestId) : IQuery<ElderlyHelpRequestResponse>;
 public sealed record AdminGetElderlyHelpRequestHistoryQuery(UserId ActorUserId, string ActorAccountType, string CorrelationId, Guid RequestId) : IQuery<IReadOnlyList<ElderlyHelpRequestHistoryResponse>>;
@@ -94,6 +95,20 @@ public sealed class GetElderlyHelpRequestsQueryHandler(IFamiliesDbContext db) : 
         if (r.RequestId.HasValue) q = q.Where(x => x.Id == r.RequestId);
         var rows = await q.OrderByDescending(x => x.CreatedOnUtc).ToListAsync(ct);
         return rows.Select(x => HelpRequestMap.Map(x, e.Id.Value)).ToList();
+    }
+}
+public sealed class GetElderlyHelpRequestQueryHandler(IFamiliesDbContext db) : IQueryHandler<GetElderlyHelpRequestQuery, ElderlyHelpRequestResponse>
+{
+    public async Task<Result<ElderlyHelpRequestResponse>> Handle(GetElderlyHelpRequestQuery r, CancellationToken ct)
+    {
+        var elderly = await db.Elderlies.AsNoTracking().SingleOrDefaultAsync(x => x.IdentityUserId == r.ElderlyIdentityUserId, ct);
+        if (elderly is null || !await db.Families.AnyAsync(x => x.Id == elderly.FamilyId && x.DeletedOnUtc == null, ct))
+            return HelpRequestErrors.NotFound;
+
+        var cutoff = DateTime.UtcNow.AddYears(-1);
+        var request = await db.ElderlyHelpRequests.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.Id == r.RequestId && x.ElderlyIdentityUserId == r.ElderlyIdentityUserId && x.CreatedOnUtc >= cutoff, ct);
+        return request is null ? HelpRequestErrors.NotFound : HelpRequestMap.Map(request, elderly.Id.Value);
     }
 }
 public sealed class CancelElderlyHelpRequestCommandHandler(IFamiliesDbContext db) : ICommandHandler<CancelElderlyHelpRequestCommand, ElderlyHelpRequestResponse>

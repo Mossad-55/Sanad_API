@@ -1,0 +1,46 @@
+meta {
+  name: 07-create-tier
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/assessments/tiers
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminAssessmentsJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Assessment mutations require the guarded local Development API.");
+}
+
+body:multipart-form {
+  screenOrder: 1
+  arabicTitle: Assessment Bruno {{assessmentRun}}
+  englishTitle: Assessment Bruno {{assessmentRun}}
+  arabicSubtitle: Disposable local assessment tier
+  englishSubtitle: Disposable local assessment tier
+  backgroundColor: #4CAF50
+  arabicButtonText: متابعة
+  englishButtonText: Continue
+  minScore: 0
+  maxScore: 10
+  arabicRecommendations[0]: متابعة دورية
+  englishRecommendations[0]: Periodic check-ins
+  isActive: false
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  const id = res.body.id && (res.body.id.value || res.body.id);
+  if (!id) throw new Error("Create tier response did not include an ID");
+  bru.setVar("assessmentTierId", id);
+}

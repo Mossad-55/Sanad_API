@@ -1,0 +1,18 @@
+meta {
+  name: 02-set-unavailable
+  type: http
+  seq: 2
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/availability/unavailable
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverAvailabilityJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.status: eq 4
+  res.body.availability: eq 2
+}

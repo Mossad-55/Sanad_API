@@ -1,0 +1,21 @@
+meta {
+  name: 03-readback-medical-baseline
+  type: http
+  seq: 3
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{scheduleMedicalJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const schedule = res.body.medicalSchedule ?? {};
+  const windows = JSON.stringify((schedule.homeVisitWindows ?? []).map(x => ({dayOfWeek:x.dayOfWeek,startTime:x.startTime.slice(0,5),endTime:x.endTime.slice(0,5)})));
+  if (JSON.stringify(schedule.shifts ?? []) !== bru.getVar("scheduleMedicalShifts") || windows !== bru.getVar("scheduleMedicalWindows")) throw new Error("Medical schedule did not persist exactly.");
+}

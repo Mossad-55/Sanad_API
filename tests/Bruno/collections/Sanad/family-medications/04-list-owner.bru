@@ -1,0 +1,27 @@
+meta {
+  name: 04-list-owner
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationDependentId}}/medications
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body) || res.body.length === 0) throw new Error("Expected seeded family medication read data; no writes were issued.");
+  const item = res.body[0];
+  const id = typeof item.id === "object" ? item.id.value : item.id;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id))) throw new Error("Expected medication response GUID.");
+  bru.setVar("familyMedicationId", id);
+}

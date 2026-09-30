@@ -1,0 +1,24 @@
+meta {
+  name: 01-search-seeded-active
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregivers?type=1&availability=1&page=1&pageSize=10
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverDiscoveryJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.totalCount: gt 0
+}
+
+script:post-response {
+  bru.setVar("caregiverDiscoveryTargetId", res.body.items[0].id);
+}

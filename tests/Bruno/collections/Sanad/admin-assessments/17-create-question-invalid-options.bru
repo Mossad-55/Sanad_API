@@ -1,0 +1,31 @@
+meta {
+  name: 17-create-question-invalid-options
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/assessments/questions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminAssessmentsJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Assessment mutation coverage requires the guarded local Development API.");
+}
+
+body:json {
+  { "order": 1, "arabicText": "Invalid Bruno question", "englishText": "Invalid Bruno question", "isRequired": true, "isActive": false, "options": [ { "order": 1, "arabicText": "Only option", "englishText": "Only option", "weight": 0 } ] }
+}
+
+assert {
+  res.status: eq 400
+}

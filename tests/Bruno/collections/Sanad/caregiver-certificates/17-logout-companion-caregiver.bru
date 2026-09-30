@@ -1,0 +1,19 @@
+meta {
+  name: 17-logout-companion-caregiver
+  type: http
+  seq: 17
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+headers {
+  X-Device-Session-Id: {{caregiverCertificatesCompanionSessionId}}
+}
+auth:bearer {
+  token: {{caregiverCertificatesCompanionJwt}}
+}
+assert {
+  res.status: eq 204
+}

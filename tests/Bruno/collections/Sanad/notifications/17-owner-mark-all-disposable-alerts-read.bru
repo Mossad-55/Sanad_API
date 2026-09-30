@@ -1,0 +1,16 @@
+meta {
+  name: 17-owner-mark-all-disposable-alerts-read
+  type: http
+  seq: 17
+}
+put {
+  url: {{baseUrl}}/api/v1/notifications/read-all
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{notificationOwnerJwt}}
+}
+assert {
+  res.status: eq 204
+}

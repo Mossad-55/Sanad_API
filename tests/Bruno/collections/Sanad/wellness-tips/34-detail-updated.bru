@@ -1,0 +1,25 @@
+meta {
+  name: 34-detail-updated
+  type: http
+  seq: 34
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips lifecycle reads require the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 1
+  res.body.imagePath: eq {{wellnessTipReplacementImagePath}}
+  res.body.imagePath: neq {{wellnessTipOriginalImagePath}}
+}

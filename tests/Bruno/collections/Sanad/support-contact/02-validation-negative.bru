@@ -1,0 +1,32 @@
+meta {
+  name: 02-validation-negative
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/support/contact
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{supportContactJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Support Contact requires guarded local Development.");
+}
+
+body:json {
+  { "subject": "x", "message": "short" }
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq Api.Validation.Failed
+}

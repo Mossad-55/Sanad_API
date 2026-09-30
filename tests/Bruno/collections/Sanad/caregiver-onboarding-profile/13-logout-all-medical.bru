@@ -1,0 +1,16 @@
+meta {
+  name: 13-logout-all-medical
+  type: http
+  seq: 13
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{onboardingMedicalJwt}}
+}
+assert {
+  res.status: eq 204
+}

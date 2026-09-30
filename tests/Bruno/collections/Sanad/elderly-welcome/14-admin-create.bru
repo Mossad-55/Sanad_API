@@ -1,0 +1,46 @@
+meta {
+  name: 14-admin-create
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "arabicHeadline": "أهلاً بك",
+    "englishHeadline": "Welcome",
+    "arabicCtaLabel": "ابدأ الآن",
+    "englishCtaLabel": "Get started",
+    "benefits": [
+      { "displayOrder": 2, "arabicTitle": "راحة البال", "englishTitle": "Peace of mind", "arabicDescription": "ابق على تواصل", "englishDescription": "Stay connected" },
+      { "displayOrder": 1, "arabicTitle": "رعاية موثوقة", "englishTitle": "Trusted care", "arabicDescription": "رعاية يومية", "englishDescription": "Everyday care" }
+    ]
+  }
+}
+
+auth:bearer {
+  token: {{elderlyWelcomeAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Elderly Welcome fixture mutation is allowed only against the guarded local Development API.");
+  }
+}
+
+script:post-response {
+  if (![201, 409].includes(res.status)) throw new Error(`Expected 201 or 409, got ${res.status}`);
+}
+
+docs {
+  The first disposable-database run creates the singleton (201). On repeated runs, the earlier normalization step preserves the Draft and this one-time create returns 409 before the update step.
+}

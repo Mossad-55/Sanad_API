@@ -1,0 +1,27 @@
+meta {
+  name: 16-list-final-state
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/sentence-builder/catalog?page=1&pageSize=100&category=3&active=true
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSentenceBuilderJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder readback requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const revisions = res.body.items.filter(item => item.stableKey === bru.getVar("adminSentenceBuilderKey"));
+  if (revisions.length !== 1 || revisions[0].revisionId !== bru.getVar("adminSentenceBuilderRevisionOneId") || revisions[0].version !== 1 || revisions[0].isActive !== true) throw new Error("Final active catalog state did not restore only revision 1.");
+}

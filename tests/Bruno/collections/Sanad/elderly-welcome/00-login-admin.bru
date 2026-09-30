@@ -1,0 +1,39 @@
+meta {
+  name: 00-login-admin
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  const baseUrl = bru.getEnvVar("baseUrl");
+  if (baseUrl !== "http://localhost:5235") throw new Error("Elderly Welcome CMS mutation tests may run only against the guarded local fixture API.");
+  if (bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Elderly Welcome CMS mutation tests require Development.");
+}
+
+body:json {
+  {
+    "email": "{{adminEmail}}",
+    "password": "{{adminPassword}}",
+    "deviceName": "bruno-elderly-welcome-admin",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("elderlyWelcomeAdminJwt", res.body.accessToken);
+}

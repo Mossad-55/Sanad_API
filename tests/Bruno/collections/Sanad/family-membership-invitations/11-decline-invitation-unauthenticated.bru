@@ -1,0 +1,23 @@
+meta {
+  name: 11-decline-invitation-unauthenticated
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/invitations/decline
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"token":"not-a-real-token"}
+}
+
+assert {
+  res.status: eq 401
+}

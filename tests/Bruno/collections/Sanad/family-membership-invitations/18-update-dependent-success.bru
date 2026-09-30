@@ -1,0 +1,29 @@
+meta {
+  name: 18-update-dependent-success
+  type: http
+  seq: 18
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{coverageDependentId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"relationshipType":7,"arabicFullName":"سعيد محدث","englishFullName":"Saeed Updated","gender":1,"dateOfBirth":"1948-07-20","detailedAddress":"Updated disposable address","healthNotes":"Updated temporary note"}
+}
+
+assert {
+  res.status: eq 200
+  res.body.englishFullName: eq Saeed Updated
+  res.body.detailedAddress: eq Updated disposable address
+}

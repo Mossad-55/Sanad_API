@@ -1,0 +1,22 @@
+meta {
+  name: 10-login-elderly-disposable
+  type: http
+  seq: 10
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "identifier": "{{elderlyPhone}}", "password": "{{elderlyPassword}}", "deviceName": "bruno-notification-owner-fixture", "devicePlatform": 3, "appVersion": "1.0.0" }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("notificationElderlyJwt", res.body.accessToken);
+}

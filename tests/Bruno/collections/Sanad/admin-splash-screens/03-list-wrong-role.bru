@@ -1,0 +1,18 @@
+meta {
+  name: 03-list-wrong-role
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/splash-screens
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSplashCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

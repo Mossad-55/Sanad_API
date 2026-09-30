@@ -1,0 +1,20 @@
+meta {
+  name: 09-add-missing-file
+  type: http
+  seq: 9
+}
+post {
+  url: {{baseUrl}}/api/v1/caregiver/certificates
+  body: multipart-form
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverCertificatesJwt}}
+}
+body:multipart-form {
+  type: 3
+}
+assert {
+  res.status: eq 400
+  res.body.code: eq "Storage.File.Empty"
+}

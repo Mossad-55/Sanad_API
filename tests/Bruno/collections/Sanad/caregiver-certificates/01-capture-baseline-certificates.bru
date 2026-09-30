@@ -1,0 +1,28 @@
+meta {
+  name: 01-capture-baseline-certificates
+  type: http
+  seq: 1
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverCertificatesJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.type: eq 1
+  res.body.status: eq 4
+  res.body.availability: eq 1
+  res.body.certificates.length: eq 2
+}
+script:post-response {
+  const normalize = xs => xs.map(c => ({id:c.id.value ?? c.id,type:c.type,verificationStatus:c.verificationStatus,expiryDate:c.expiryDate})).sort((a,b)=>a.id.localeCompare(b.id));
+  const certificates = normalize(res.body.certificates);
+  if (certificates.filter(c=>c.type===1).length !== 1 || certificates.filter(c=>c.type===2).length !== 1) throw new Error("Expected the two seeded mandatory certificates.");
+  if (certificates.some(c=>c.verificationStatus !== 2)) throw new Error("Expected seeded mandatory certificates to be Verified.");
+  bru.setVar("caregiverCertificatesBaseline", JSON.stringify(certificates));
+  bru.setVar("caregiverPracticeCertificateId", certificates.find(c=>c.type===1).id);
+}

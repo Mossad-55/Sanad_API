@@ -42,9 +42,15 @@ location returns `400 Families.Sos.InvalidOperation` or
 ## Read and cancel
 
 - `GET /api/v1/elderly/sos` lists the caller's events, newest first.
-- `GET /api/v1/elderly/sos/{sosId}` reads one caller-owned event.
+- `GET /api/v1/elderly/sos/{sosId}` returns one caller-owned event object (not
+  a list).
 - `POST /api/v1/elderly/sos/{sosId}/cancel` cancels an `Open` or
   `Acknowledged` event.
+
+Successful cancellation returns the updated `Cancelled` event. Repeating
+cancellation after the event is terminal returns `409
+Families.Sos.InvalidOperation`; an unavailable event returns `404
+Families.Sos.NotFound`.
 
 The Elderly routes reject foreign identities and records belonging to a
 deleted Family with `404 Families.Sos.NotFound`. Location is returned only

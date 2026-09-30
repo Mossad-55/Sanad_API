@@ -1,0 +1,23 @@
+meta {
+  name: 08-read-dose-history
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications/{{familyMedicationMutationId}}/doses/history?startDate=2026-09-30&endDate=2026-09-30
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationMutationOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body) || res.body.length !== 2) throw new Error("Expected the one taken and one skipped disposable dose log.");
+}

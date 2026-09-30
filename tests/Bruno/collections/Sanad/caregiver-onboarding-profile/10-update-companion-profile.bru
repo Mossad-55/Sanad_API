@@ -1,0 +1,27 @@
+meta {
+  name: 10-update-companion-profile
+  type: http
+  seq: 10
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/profile/companion
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{onboardingCompanionJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Caregiver profile writes require guarded local Development only.");
+}
+body:json {
+  { "yearsOfExperience": 5, "specializationId": "{{onboardingCompanionSpecializationId}}", "biography": "Seeded test companion caregiver." }
+}
+assert {
+  res.status: eq 200
+  res.body.type: eq 2
+  res.body.companionProfile.yearsOfExperience: eq 5
+}

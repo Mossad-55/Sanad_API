@@ -1,0 +1,21 @@
+meta {
+  name: 14-owner-list-captures-disposable-alerts
+  type: http
+  seq: 14
+}
+get {
+  url: {{baseUrl}}/api/v1/notifications?pageSize=100
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{notificationOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const alerts = res.body.items.filter(item => item.type === "HelpRequestCreated" && item.readOnUtc === null);
+  if (alerts.length < 2) throw new Error("Expected two unread disposable help-request alerts in Family Owner inbox.");
+  bru.setVar("notificationOneId", alerts[0].id);
+}

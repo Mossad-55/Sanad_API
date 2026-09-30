@@ -1,0 +1,19 @@
+meta {
+  name: 09-logout-medical-caregiver-scout
+  type: http
+  seq: 10
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+headers {
+  X-Device-Session-Id: {{notificationMedicalScoutSessionId}}
+}
+auth:bearer {
+  token: {{jwt}}
+}
+assert {
+  res.status: eq 204
+}

@@ -1,0 +1,29 @@
+meta {
+  name: 09-list-active-sessions
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/auth/sessions
+  auth: bearer
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Auth coverage requires the guarded local Development API.");
+}
+
+auth:bearer {
+  token: {{authSessionPasswordAccessToken}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.sessions: isArray
+}
+
+script:post-response {
+  const sessionId = bru.getVar("authSessionPasswordDeviceSessionId");
+  if (!res.body.sessions.some(session => session.deviceSessionId?.value === sessionId)) throw new Error("The newly created active session was not returned.");
+  if (res.body.sessions.some(session => "refreshToken" in session || "refreshTokenHash" in session)) throw new Error("Session listing exposed a refresh token/hash.");
+}

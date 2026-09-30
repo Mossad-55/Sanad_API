@@ -1,0 +1,39 @@
+meta {
+  name: 08-create-faq-invalid
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/help-center/faqs
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminHelpCenterJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Help Center mutation coverage requires the guarded local Development API.");
+}
+
+body:json {
+  {
+    "audience": 999,
+    "arabicQuestion": "",
+    "englishQuestion": "",
+    "arabicAnswer": "",
+    "englishAnswer": "",
+    "displayOrder": -1,
+    "isActive": true
+  }
+}
+
+assert {
+  res.status: eq 400
+}

@@ -1,0 +1,20 @@
+meta {
+  name: 10-resume
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications/{{familyMedicationMutationId}}/resume
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationMutationOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 1
+}

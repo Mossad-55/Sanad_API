@@ -1,0 +1,14 @@
+meta {
+  name: 21-public-unpublished-after-unpublish
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/welcome?language=en
+  auth: none
+}
+
+assert {
+  res.status: eq 404
+}

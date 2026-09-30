@@ -1,0 +1,23 @@
+meta {
+  name: 10-login-companion-caregiver
+  type: http
+  seq: 10
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "email": "{{companionCaregiverEmail}}", "password": "{{caregiverPassword}}", "deviceName": "bruno-caregiver-certificates-companion", "devicePlatform": 3, "appVersion": "1.0.0" }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("caregiverCertificatesCompanionJwt", res.body.accessToken);
+  bru.setVar("caregiverCertificatesCompanionSessionId", res.body.deviceSessionId.value);
+}

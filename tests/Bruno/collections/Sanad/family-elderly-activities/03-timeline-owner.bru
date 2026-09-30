@@ -1,0 +1,36 @@
+meta {
+  name: 03-timeline-owner
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyActivitiesDependentId}}/activities?limit=50
+  body: none
+  auth: bearer
+}
+
+script:pre-request {
+  const dependentId = bru.getVar("familyActivitiesDependentId");
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(dependentId))) throw new Error("Family dependent GUID was not set by the preceding fixture lookup.");
+}
+
+auth:bearer {
+  token: {{familyActivitiesOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const body = res.body;
+  if (!Number.isInteger(body.totalEventsCount) || !Number.isInteger(body.thisWeekEventsCount) || !Number.isInteger(body.uniqueUsersCount) || !Array.isArray(body.activities)) throw new Error("Activity timeline dashboard shape is incomplete.");
+  if (body.activities.length > 50) throw new Error("Activity timeline exceeded the requested limit.");
+  for (let i = 1; i < body.activities.length; i++) {
+    if (Date.parse(body.activities[i - 1].createdOnUtc) < Date.parse(body.activities[i].createdOnUtc)) throw new Error("Activity entries are not newest-first.");
+  }
+  for (const item of body.activities) {
+    if (!item.id || item.dependentId !== bru.getVar("familyActivitiesDependentId") || !Number.isInteger(item.activityType) || typeof item.summary !== "string" || !item.createdOnUtc) throw new Error("Activity entry shape or dependent scope is invalid.");
+  }
+}

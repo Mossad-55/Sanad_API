@@ -1,0 +1,35 @@
+meta {
+  name: 08-change-missing
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestMissingId}}/{{helpRequestAction}}
+  body: json
+  auth: bearer
+}
+
+script:pre-request {
+  bru.setVar("helpRequestMissingId", "0f000000-0000-4000-8000-000000000001");
+  bru.setVar("helpRequestAction", "accepted");
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{adminElderlyHelpSupportJwt}}
+}
+
+body:json {
+  {
+    "reason": "Missing disposable request"
+  }
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Families.HelpRequest.NotFound
+}

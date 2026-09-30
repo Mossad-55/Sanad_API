@@ -1,0 +1,18 @@
+meta {
+  name: 19-list-submissions-caregiver-forbidden
+  type: http
+  seq: 19
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/assessments/submissions
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{assessmentCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

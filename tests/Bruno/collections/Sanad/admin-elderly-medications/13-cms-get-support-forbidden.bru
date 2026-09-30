@@ -1,0 +1,18 @@
+meta {
+  name: 13-cms-get-support-forbidden
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/cms/medication-lateness
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminMedicationLatenessSupportJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

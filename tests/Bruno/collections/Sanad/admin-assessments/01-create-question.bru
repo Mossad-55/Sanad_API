@@ -1,0 +1,47 @@
+meta {
+  name: 01-create-question
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/assessments/questions
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminAssessmentsJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Assessment mutations require the guarded local Development API.");
+}
+
+body:json {
+  {
+    "order": 1,
+    "arabicText": "Assessment Bruno {{assessmentRun}} mobility question",
+    "englishText": "Assessment Bruno {{assessmentRun}} mobility question",
+    "isRequired": true,
+    "isActive": false,
+    "options": [
+      { "order": 1, "arabicText": "مستقل", "englishText": "Independent", "weight": 0 },
+      { "order": 2, "arabicText": "يحتاج مساعدة", "englishText": "Needs assistance", "weight": 5 }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  const id = res.body.id && (res.body.id.value || res.body.id);
+  if (!id) throw new Error("Create question response did not include an ID");
+  bru.setVar("assessmentQuestionId", id);
+}

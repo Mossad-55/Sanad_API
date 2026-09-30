@@ -1,0 +1,19 @@
+meta {
+  name: 21-remove-seeded-viewer-last
+  type: http
+  seq: 22
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/family/members/{{viewerUserId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

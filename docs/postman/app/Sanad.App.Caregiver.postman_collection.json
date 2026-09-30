@@ -97,6 +97,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/profile",
+            "description": "Bootstrap once: 201 with the new CaregiverProfileResponse; 409 Caregivers.Onboarding.AlreadyExists when this user already has a profile.",
             "body": {
               "mode": "raw",
               "raw": ""
@@ -196,7 +197,8 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"detailedAddress\": \"12 Tahrir Street, apartment 4\"\n}"
-            }
+            },
+            "description": "200 returns the full profile. Blank/null clears the address; whitespace is trimmed. 400 Api.Validation.Failed when over 500 characters, 401 unauthenticated, 403 non-caregiver account, 404 Caregivers.Onboarding.NotFound."
           }
         }
       ]
@@ -219,6 +221,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/selections",
+            "description": "Full-replacement update for service, language, and area selections. Replaying the same arrays is a no-op. Expected failures: 400 Api.Validation.Failed (request validation, including more than 10 areas), 401 unauthenticated, 403 wrong policy, 404 Caregivers.Onboarding.NotFound or Caregivers.Lookups.NotFound, and 409 Caregivers.Onboarding.InactiveLookup.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"serviceIds\": [\"{{serviceId}}\"],\n  \"languageIds\": [\"{{languageId}}\"],\n  \"areaIds\": [\"{{areaId}}\"]\n}"
@@ -243,7 +246,8 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"homeVisitPrice\": 150.00,\n  \"eightHourShiftPrice\": 500.00,\n  \"twelveHourShiftPrice\": 700.50,\n  \"twentyFourHourShiftPrice\": 1200.00\n}"
-            }
+            },
+            "description": "Medical caregiver only. 200 returns the updated full caregiver profile; 400 Api.Validation.Failed for nonpositive prices or more than two decimals; 409 Caregivers.Onboarding.WrongCaregiverType for Companion accounts. Repeated updates replace and persist all four prices."
           }
         },
         {
@@ -264,7 +268,8 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"hourlyPrice\": 40.00,\n  \"eightHourDayPrice\": 300.00,\n  \"overnightPrice\": 450.00\n}"
-            }
+            },
+            "description": "Companion caregiver only. 200 returns the updated full caregiver profile; 400 Api.Validation.Failed for nonpositive prices or more than two decimals; 409 Caregivers.Onboarding.WrongCaregiverType for Medical accounts. Repeated updates replace and persist all three prices."
           }
         }
       ],
@@ -288,6 +293,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/schedule/medical",
+            "description": "Full-replacement Medical weekly schedule. Expected failures: 400 Api.Validation.Failed for invalid enum/time shape; 401 unauthenticated; 403 wrong access policy; 404 Caregivers.Onboarding.NotFound; 409 Caregivers.Onboarding.WrongCaregiverType or InvalidSchedule.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"shifts\": [\n    { \"dayOfWeek\": 0, \"shiftType\": 1 },\n    { \"dayOfWeek\": 2, \"shiftType\": 4 }\n  ],\n  \"homeVisitWindows\": [\n    { \"dayOfWeek\": 1, \"startTime\": \"09:00\", \"endTime\": \"12:00\" }\n  ]\n}"
@@ -309,6 +315,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/schedule/companion",
+            "description": "Full-replacement Companion weekly schedule. Overnight accepts only 20:00–08:00 next day; equal endpoints are invalid. Expected failures: 400 Api.Validation.Failed for invalid enum/time shape; 401 unauthenticated; 403 wrong access policy; 404 Caregivers.Onboarding.NotFound; 409 Caregivers.Onboarding.WrongCaregiverType or InvalidSchedule.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"windows\": [\n    { \"bookingType\": 1, \"dayOfWeek\": 0, \"startTime\": \"10:00\", \"endTime\": \"14:00\" },\n    { \"bookingType\": 3, \"dayOfWeek\": 4, \"startTime\": \"20:00\", \"endTime\": \"08:00\" }\n  ]\n}"
@@ -330,6 +337,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/availability/available",
+            "description": "Sets availability to Available only for an Active caregiver; Medical caregivers also need mandatory certificates Verified and unexpired. Returns 200; 401 unauthenticated; 403 wrong access policy; 404 Caregivers.Onboarding.NotFound; 409 Caregivers.Onboarding.NotActive when status/certificates do not qualify.",
             "body": {
               "mode": "raw",
               "raw": ""
@@ -351,6 +359,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/availability/unavailable",
+            "description": "Idempotently sets availability to Unavailable for an existing caregiver. Returns 200; 401 unauthenticated; 403 wrong access policy; 404 Caregivers.Onboarding.NotFound.",
             "body": {
               "mode": "raw",
               "raw": ""
@@ -373,6 +382,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/certificates",
+            "description": "Adds a Medical caregiver certificate; a successful upload returns 200 and a Pending certificate. Errors include 400 Storage.File.Empty/TooLarge/UnsupportedType, 401 unauthenticated, 403 wrong access policy, 404 missing caregiver profile, and 409 Caregivers.Onboarding.InvalidCertificateOperation. Failed post-upload commands clean up the uploaded file.",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -421,6 +431,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/certificates",
+            "description": "Adds a Medical caregiver certificate; see the Practice License request for status/error contracts and private file cleanup behavior.",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -449,6 +460,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/certificates/{{certificateId}}/file",
+            "description": "Replaces a certificate file. A mandatory replacement resets review and can move an Active caregiver to PendingReview/Unavailable. Errors: 400 validation/storage failure, 401/403 auth, 404 Caregivers.Onboarding.CertificateNotFound for a non-empty unknown ID, 409 invalid certificate operation. Use only disposable local fixtures.",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -480,7 +492,8 @@
                 "value": "Bearer {{ caregiverToken }}"
               }
             ],
-            "url": "{{baseUrl}}/api/v1/caregiver/certificates/{{certificateId}}"
+            "url": "{{baseUrl}}/api/v1/caregiver/certificates/{{certificateId}}",
+            "description": "Removes only an Additional certificate; mandatory certificate removal returns 409 Caregivers.Onboarding.InvalidCertificateOperation. Success 200; 401/403 auth; 404 Caregivers.Onboarding.CertificateNotFound. The stored private file is deleted."
           }
         }
       ],
@@ -504,6 +517,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/submit",
+            "description": "200 moves a ready Onboarding/NeedsCorrection caregiver to PendingReview and Unavailable. 409 Caregivers.Onboarding.InvalidState when already Active/PendingReview or readiness is incomplete; 404 Caregivers.Onboarding.NotFound when no profile exists.",
             "body": {
               "mode": "raw",
               "raw": ""
@@ -713,7 +727,7 @@
               "raw": "{\n  \"showProfile\": true,\n  \"showRating\": true,\n  \"showPhone\": false,\n  \"shareLocation\": false\n}"
             },
             "url": "{{baseUrl}}/api/v1/caregiver/privacy",
-            "description": "204 on success. Full replace, all 4 bools required. showProfile=false hides from discovery search (GET /api/v1/caregivers). Other toggles stored-only for now (rating = Phase I, phone not exposed anywhere yet, location = Phase G)."
+            "description": "204 on success. Full replace, all 4 booleans required. Missing fields return standard framework 400 ValidationProblemDetails with per-field errors (no application code) and do not change preferences; 401 unauthenticated, 403 non-caregiver account (bare policy Forbid), 404 Caregivers.Onboarding.NotFound. showProfile=false hides from discovery search (GET /api/v1/caregivers). Other toggles are stored-only for now (rating = Phase I, phone not exposed anywhere yet, location = Phase G)."
           }
         },
         {

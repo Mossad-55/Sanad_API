@@ -1,0 +1,33 @@
+meta {
+  name: 09-update-viewer-forbidden
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyCareNotesDependentId}}/notes/{{familyCareNotesNoteId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyCareNotesViewerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Viewer must not update",
+    "description": "Forbidden test request.",
+    "category": 2,
+    "priority": 1
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq Families.Notes.AccessDenied
+}

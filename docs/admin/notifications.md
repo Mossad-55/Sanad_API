@@ -12,7 +12,7 @@ If audit persistence fails, the request returns no notification data.
 | Route | Query parameters | Result |
 |---|---|---|
 | `GET /api/v1/admin/notifications` | `page` (default 1), `pageSize` (default 20, maximum 100); optional exact `category`, `type`, `startDate`, and `endDate` | Paged `items`, `page`, `pageSize`, `hasMore` |
-| `GET /api/v1/admin/notifications/{notificationId}` | UUID path value | One notification metadata record; a missing or out-of-window record is not found |
+| `GET /api/v1/admin/notifications/{notificationId}` | UUID path value | One notification metadata record; a missing or out-of-window record returns `404 Notifications.AdminNotification.NotFound` |
 | `GET /api/v1/admin/notifications/timeline` | Required UTC calendar `startDate` and `endDate`; `page` (default 1), `pageSize` (default 20, maximum 100) | Chronological page with `items`, `page`, `pageSize`, `hasMore` |
 | `GET /api/v1/admin/notifications/aggregate` | Optional `startDate` and `endDate` | `totalCount`, `readCount`, `unreadCount`, and `categoryCounts` |
 
@@ -63,7 +63,7 @@ All four views apply the rolling one-year creation-time cutoff. Older records
 are unavailable through these reads but are not physically purged by this
 capability. Authentication failures return 401; authenticated roles outside
 the policy, including `ContentAdmin`, receive 403. Detail for an unknown or
-out-of-window ID returns not found.
+out-of-window ID returns `404 Notifications.AdminNotification.NotFound`.
 
 The existing Families operational access-audit store records each read. No
 schema change is required. The approved seven-year audit retention duration is

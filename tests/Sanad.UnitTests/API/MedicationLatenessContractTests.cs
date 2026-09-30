@@ -18,12 +18,15 @@ public sealed class MedicationLatenessContractTests
     }
 
     [Fact]
-    public void AdminEvaluateLate_UsesOperationalReadAndApprovedRoute()
+    public void AdminEvaluateLate_UsesReadClassPolicy_AndManageActionOverride()
     {
         var authorization = Assert.Single(typeof(AdminElderlyMedicationsController).GetCustomAttributes<AuthorizeAttribute>());
+        var evaluateLate = typeof(AdminElderlyMedicationsController).GetMethod(nameof(AdminElderlyMedicationsController.EvaluateLate))!;
+
         Assert.Equal(AuthorizationPolicies.ElderlyMedicationOperationalRead, authorization.Policy);
-        Assert.Equal("late/evaluate", typeof(AdminElderlyMedicationsController).GetMethod(nameof(AdminElderlyMedicationsController.EvaluateLate))!
-            .GetCustomAttribute<HttpPostAttribute>()!.Template);
+        Assert.Equal(AuthorizationPolicies.ElderlyMedicationOperationalManage,
+            evaluateLate.GetCustomAttribute<AuthorizeAttribute>()!.Policy);
+        Assert.Equal("late/evaluate", evaluateLate.GetCustomAttribute<HttpPostAttribute>()!.Template);
     }
 
     [Fact]

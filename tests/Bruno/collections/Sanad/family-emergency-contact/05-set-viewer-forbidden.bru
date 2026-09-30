@@ -1,0 +1,33 @@
+meta {
+  name: 05-set-viewer-forbidden
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyEmergencyDependentId}}/emergency-contact
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyEmergencyViewerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235") throw new Error("Emergency-contact writes are allowed only against the local fixture API.");
+  if (bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Emergency-contact writes require Development.");
+}
+
+body:json {
+  {
+    "name": "Bruno Fixture Contact",
+    "relationship": "Daughter",
+    "phoneNumber": "+201000000000"
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq Families.Elderly.AccessDenied
+}

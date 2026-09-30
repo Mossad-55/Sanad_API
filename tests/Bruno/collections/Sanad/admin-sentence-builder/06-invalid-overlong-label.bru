@@ -1,0 +1,38 @@
+meta {
+  name: 06-invalid-overlong-label
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/sentence-builder/catalog
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSentenceBuilderJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder validation requires the guarded local Development API.");
+}
+
+body:json {
+  {
+    "stableKey": "bruno-sentence-builder-overlong-label",
+    "category": 3,
+    "arabicLabel": "صالح",
+    "englishLabel": "This label is intentionally longer than two hundred characters: abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz abcdefghijklmnopqrstuvwxyz",
+    "displayOrder": 903
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq Cms.SentenceBuilder.InvalidOperation
+}

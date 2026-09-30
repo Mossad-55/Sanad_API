@@ -1,0 +1,33 @@
+meta {
+  name: 04-verify-elderly-unregistered
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/elderly/verify-otp
+  body: json
+  auth: none
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development" || bru.getEnvVar("smsSenderMode") !== "development-noop") throw new Error("Elderly OTP tests require the guarded local API with its no-op sender.");
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "phoneNumber": "+201009999999",
+    "code": "123456",
+    "deviceName": "bruno-auth-negative",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 401
+}

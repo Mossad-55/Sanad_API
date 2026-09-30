@@ -1,0 +1,25 @@
+meta {
+  name: 07-unauthenticated-address-update
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/profile/address
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "detailedAddress": "Should not persist"
+  }
+}
+
+assert {
+  res.status: eq 401
+}

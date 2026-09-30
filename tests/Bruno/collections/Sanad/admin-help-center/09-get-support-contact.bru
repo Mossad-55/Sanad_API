@@ -1,0 +1,22 @@
+meta {
+  name: 09-get-support-contact
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/help-center/support-contact
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminHelpCenterJwt}}
+}
+
+script:post-response {
+  if (![200, 404].includes(res.status)) throw new Error(`Expected support-contact GET to return 200 or 404, got ${res.status}`);
+  if (res.status === 200) {
+    bru.setVar("supportContactOriginalPhone", res.body.supportPhone);
+    bru.setVar("supportContactOriginalEmail", res.body.supportEmail);
+  }
+}

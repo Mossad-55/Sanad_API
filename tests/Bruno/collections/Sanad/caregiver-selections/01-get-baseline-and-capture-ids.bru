@@ -1,0 +1,29 @@
+meta {
+  name: 01-get-baseline-and-capture-ids
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverSelectionsJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.type: eq 1
+  res.body.serviceIds: isNotEmpty
+  res.body.languageIds: isNotEmpty
+  res.body.areaIds: isNotEmpty
+}
+
+script:post-response {
+  bru.setVar("caregiverSelectionServices", JSON.stringify(res.body.serviceIds.map(x => x.value ?? x)));
+  bru.setVar("caregiverSelectionLanguages", JSON.stringify(res.body.languageIds.map(x => x.value ?? x)));
+  bru.setVar("caregiverSelectionAreas", JSON.stringify(res.body.areaIds.map(x => x.value ?? x)));
+}

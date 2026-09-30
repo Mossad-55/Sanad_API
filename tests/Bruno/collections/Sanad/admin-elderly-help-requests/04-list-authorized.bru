@@ -1,0 +1,26 @@
+meta {
+  name: 04-list-authorized
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/elderly/help-requests?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminElderlyHelpSupportJwt}}
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-elderly-help-list
+}
+
+assert {
+  res.status: eq 200
+  res.body.page: eq 1
+  res.body.pageSize: eq 20
+  res.body.totalCount: isNumber
+  res.body.items: isArray
+}

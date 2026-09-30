@@ -64,22 +64,18 @@ public sealed class CaregiverVisibilityTests
     }
 
     [Fact]
-    public void UpdateVisibility_ShouldReplacePreviousValue()
+    public void UpdateVisibility_ShouldApplyRepeatedChanges()
     {
         var caregiver = Caregiver.Create(
             UserId.New(),
             CaregiverType.Medical);
 
         caregiver.UpdateVisibility(false, false, true, true);
-        var first = caregiver.Visibility;
-
         caregiver.UpdateVisibility(true, true, false, false);
-        var second = caregiver.Visibility;
 
-        Assert.NotEqual(first, second);
-        Assert.True(second.ShowProfile);
-        Assert.True(second.ShowRating);
-        Assert.False(second.ShowPhone);
-        Assert.False(second.ShareLocation);
+        Assert.True(caregiver.Visibility.ShowProfile);
+        Assert.True(caregiver.Visibility.ShowRating);
+        Assert.False(caregiver.Visibility.ShowPhone);
+        Assert.False(caregiver.Visibility.ShareLocation);
     }
 }

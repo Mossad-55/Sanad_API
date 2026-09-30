@@ -1,0 +1,23 @@
+meta {
+  name: 04-medical-invalid-window
+  type: http
+  seq: 4
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/schedule/medical
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+auth:bearer {
+  token: {{scheduleMedicalJwt}}
+}
+body:json {
+  { "shifts": [], "homeVisitWindows": [{"dayOfWeek":1,"startTime":"11:00","endTime":"10:00"}] }
+}
+assert {
+  res.status: eq 400
+  res.body.code: eq "Api.Validation.Failed"
+}

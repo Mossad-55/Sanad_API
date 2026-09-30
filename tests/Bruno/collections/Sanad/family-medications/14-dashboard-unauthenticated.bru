@@ -1,0 +1,15 @@
+meta {
+  name: 14-dashboard-unauthenticated
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationDependentId}}/medications/dashboard?date=2026-09-30
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

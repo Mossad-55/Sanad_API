@@ -1,0 +1,23 @@
+meta {
+  name: 09-take-unauthenticated
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/medications/{{elderlyMedicationId}}/doses/take
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "scheduledDate": "{{elderlyMedicationLocalDate}}",
+    "scheduledTime": "{{elderlyMedicationScheduledTime}}",
+    "notes": null
+  }
+}
+
+assert {
+  res.status: eq 401
+}

@@ -1,0 +1,27 @@
+meta {
+  name: 16-restore-viewer-role
+  type: http
+  seq: 16
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/members/{{viewerUserId}}/role
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"role":3}
+}
+
+assert {
+  res.status: eq 204
+}

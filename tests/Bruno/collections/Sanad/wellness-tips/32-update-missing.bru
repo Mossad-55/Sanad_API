@@ -1,0 +1,32 @@
+meta {
+  name: 32-update-missing
+  type: http
+  seq: 32
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/wellness-tips/00000000-0000-0000-0000-000000000000
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{wellnessTipsAdminJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Wellness tips mutations require the guarded local Development API.");
+}
+
+body:multipart-form {
+  arabicTitle: تحديث معرف مفقود
+  englishTitle: Missing wellness tip
+  category: general
+  sectionsJson: [{"displayOrder":1,"arabicText":"نصيحة","englishText":"Advice"}]
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Cms.WellnessTip.NotFound
+}

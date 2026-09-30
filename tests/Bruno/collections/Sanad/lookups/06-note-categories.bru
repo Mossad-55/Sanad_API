@@ -1,0 +1,23 @@
+meta {
+  name: 06-note-categories
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/note-categories
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const body = res.body;
+  if (!Array.isArray(body.categories) || body.categories.length === 0 || !Array.isArray(body.priorities) || body.priorities.length === 0) throw new Error("Note categories response must include categories and priorities.");
+  for (const item of [...body.categories, ...body.priorities]) {
+    if (typeof item.id !== "number" || typeof item.nameAr !== "string" || typeof item.nameEn !== "string") throw new Error("Note lookup items must include numeric id and bilingual names.");
+  }
+}

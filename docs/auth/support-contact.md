@@ -36,6 +36,8 @@ curl -sS -X POST https://localhost:7296/api/v1/support/contact \
 - `status`: `1` for `New`
 - `submittedOnUtc`: the UTC timestamp when the ticket was created
 
+The ticket is persisted before a support email is attempted. Email delivery failure does not fail the request or remove the ticket. Local tests should use the Development email sender to prevent outbound delivery.
+
 Validation limits:
 
 - `subject`: 3–150 characters

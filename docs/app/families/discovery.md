@@ -43,5 +43,5 @@ Returns the caregiver's base fee for the requested product plus the 15% platform
 
 | Code | HTTP | When |
 |---|---|---|
-| `Caregivers.Discovery.CaregiverNotFound` | 404 | Caregiver id unknown. |
+| `Caregivers.Discovery.CaregiverNotFound` | 404 | Caregiver id is unknown or the caregiver is not active (profile and quote). |
 | `Caregivers.Discovery.QuoteNotAvailable` | 409 | Pricing not configured for the product, or product/caregiver-type mismatch. |

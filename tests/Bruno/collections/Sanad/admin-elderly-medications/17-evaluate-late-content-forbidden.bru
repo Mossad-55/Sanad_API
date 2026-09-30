@@ -1,0 +1,19 @@
+meta {
+  name: 17-evaluate-late-content-forbidden
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/elderly/medications/late/evaluate?dependentId={{adminMedicationLatenessDependentId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminMedicationLatenessContentJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

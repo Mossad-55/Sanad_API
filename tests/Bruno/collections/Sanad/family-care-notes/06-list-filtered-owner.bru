@@ -1,0 +1,23 @@
+meta {
+  name: 06-list-filtered-owner
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyCareNotesDependentId}}/notes?category=2&priority=1
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyCareNotesOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body) || !res.body.some(note => note.id === bru.getVar("familyCareNotesNoteId"))) throw new Error("Category/priority filtering did not return the updated fixture note.");
+}

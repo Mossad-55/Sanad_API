@@ -1,0 +1,27 @@
+meta {
+  name: 15-change-viewer-role-editor
+  type: http
+  seq: 15
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/members/{{viewerUserId}}/role
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"role":2}
+}
+
+assert {
+  res.status: eq 204
+}

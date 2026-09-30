@@ -1,0 +1,33 @@
+meta {
+  name: 09-login-support-admin
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{supportAdminEmail}}",
+    "password": "{{supportAdminPassword}}",
+    "deviceName": "bruno-admin-identity-documents-support",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("adminIdentityDocumentsSupportJwt", res.body.accessToken);
+}

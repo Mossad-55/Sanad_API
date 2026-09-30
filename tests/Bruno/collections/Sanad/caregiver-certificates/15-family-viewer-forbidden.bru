@@ -1,0 +1,16 @@
+meta {
+  name: 15-family-viewer-forbidden
+  type: http
+  seq: 15
+}
+delete {
+  url: {{baseUrl}}/api/v1/caregiver/certificates/{{caregiverPracticeCertificateId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverCertificatesViewerJwt}}
+}
+assert {
+  res.status: eq 403
+}

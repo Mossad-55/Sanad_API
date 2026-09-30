@@ -1,0 +1,23 @@
+meta {
+  name: 05-dashboard-owner
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationDependentId}}/medications/dashboard?date=2026-09-30
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body || typeof res.body !== "object") throw new Error("Expected medication dashboard object.");
+}

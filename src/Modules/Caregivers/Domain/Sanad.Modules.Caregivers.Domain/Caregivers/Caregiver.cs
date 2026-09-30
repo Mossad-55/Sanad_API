@@ -309,14 +309,23 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
                 "Medical pricing.");
         }
 
-        MedicalCaregiverPricing pricing =
-            MedicalCaregiverPricing.Create(
+        if (MedicalPricing is null)
+        {
+            MedicalPricing = MedicalCaregiverPricing.Create(
                 homeVisitPrice,
                 eightHourShiftPrice,
                 twelveHourShiftPrice,
                 twentyFourHourShiftPrice);
+        }
+        else
+        {
+            MedicalPricing.Update(
+                homeVisitPrice,
+                eightHourShiftPrice,
+                twelveHourShiftPrice,
+                twentyFourHourShiftPrice);
+        }
 
-        MedicalPricing = pricing;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
@@ -332,13 +341,21 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
                 "Companion pricing.");
         }
 
-        CompanionCaregiverPricing pricing =
-            CompanionCaregiverPricing.Create(
+        if (CompanionPricing is null)
+        {
+            CompanionPricing = CompanionCaregiverPricing.Create(
                 hourlyPrice,
                 eightHourDayPrice,
                 overnightPrice);
+        }
+        else
+        {
+            CompanionPricing.Update(
+                hourlyPrice,
+                eightHourDayPrice,
+                overnightPrice);
+        }
 
-        CompanionPricing = pricing;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
@@ -812,11 +829,22 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         bool showPhone,
         bool shareLocation)
     {
-        Visibility = VisibilityPreferences.Create(
-            showProfile,
-            showRating,
-            showPhone,
-            shareLocation);
+        if (Visibility is null)
+        {
+            Visibility = VisibilityPreferences.Create(
+                showProfile,
+                showRating,
+                showPhone,
+                shareLocation);
+        }
+        else
+        {
+            Visibility.Update(
+                showProfile,
+                showRating,
+                showPhone,
+                shareLocation);
+        }
 
         UpdatedOnUtc = DateTime.UtcNow;
     }

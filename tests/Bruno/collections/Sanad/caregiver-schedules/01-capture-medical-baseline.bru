@@ -1,0 +1,22 @@
+meta {
+  name: 01-capture-medical-baseline
+  type: http
+  seq: 1
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{scheduleMedicalJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.type: eq 1
+}
+script:post-response {
+  const schedule = res.body.medicalSchedule ?? {};
+  bru.setVar("scheduleMedicalShifts", JSON.stringify(schedule.shifts ?? []));
+  bru.setVar("scheduleMedicalWindows", JSON.stringify((schedule.homeVisitWindows ?? []).map(x => ({dayOfWeek:x.dayOfWeek,startTime:x.startTime.slice(0,5),endTime:x.endTime.slice(0,5)}))));
+}

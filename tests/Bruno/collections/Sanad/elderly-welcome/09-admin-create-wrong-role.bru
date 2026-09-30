@@ -1,0 +1,23 @@
+meta {
+  name: 09-admin-create-wrong-role
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/cms/elderly-welcome
+  body: json
+  auth: bearer
+}
+
+body:json {
+  {}
+}
+
+auth:bearer {
+  token: {{elderlyWelcomeFamilyJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

@@ -1,0 +1,18 @@
+meta {
+  name: 43-list-services-caregiver-forbidden
+  type: http
+  seq: 43
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/lookups/services
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLookupNonAdminJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

@@ -1,0 +1,31 @@
+meta {
+  name: 01-create-disposable-sos
+  type: http
+  seq: 1
+}
+post {
+  url: {{baseUrl}}/api/v1/elderly/sos
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{elderlySosCancelJwt}}
+}
+headers {
+  Content-Type: application/json
+  Idempotency-Key: {{elderlySosCancelKey}}
+}
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("SOS writes require guarded local Development only.");
+  bru.setVar("elderlySosCancelKey", "bruno-sos-cancel-" + Date.now());
+}
+body:json {
+  { "locationConsentGranted": false, "latitude": null, "longitude": null }
+}
+assert {
+  res.status: eq 200
+  res.body.id: isNotEmpty
+}
+script:post-response {
+  bru.setVar("elderlySosCancelId", res.body.id);
+}

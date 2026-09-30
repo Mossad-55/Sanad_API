@@ -1,0 +1,20 @@
+meta {
+  name: 03-get-medical-profile-baseline
+  type: http
+  seq: 3
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{onboardingMedicalJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.type: eq 1
+}
+script:post-response {
+  bru.setVar("onboardingMedicalOriginalStatus", String(res.body.status));
+}

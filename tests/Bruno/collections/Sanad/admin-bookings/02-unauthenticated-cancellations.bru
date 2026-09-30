@@ -1,0 +1,14 @@
+meta {
+  name: 02-unauthenticated-cancellations
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/bookings/cancellations?page=1&pageSize=10&actor=1
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

@@ -1,0 +1,20 @@
+meta {
+  name: 06-verify-missing
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/identity-documents/0f000000-0000-4000-8000-000000000001/verify
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminIdentityDocumentsContentJwt}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Identity.IdentityDocument.UserNotFound
+}

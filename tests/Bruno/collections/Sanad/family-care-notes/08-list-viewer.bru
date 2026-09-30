@@ -1,0 +1,23 @@
+meta {
+  name: 08-list-viewer
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyCareNotesDependentId}}/notes
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyCareNotesViewerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body) || !res.body.some(note => note.id === bru.getVar("familyCareNotesNoteId"))) throw new Error("Family Viewer cannot read the linked family's care note.");
+}

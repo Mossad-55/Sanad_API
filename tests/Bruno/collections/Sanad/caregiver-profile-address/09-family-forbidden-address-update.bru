@@ -1,0 +1,29 @@
+meta {
+  name: 09-family-forbidden-address-update
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/v1/caregiver/profile/address
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{caregiverProfileViewerJwt}}
+}
+
+body:json {
+  {
+    "detailedAddress": "Should not persist"
+  }
+}
+
+assert {
+  res.status: eq 403
+}

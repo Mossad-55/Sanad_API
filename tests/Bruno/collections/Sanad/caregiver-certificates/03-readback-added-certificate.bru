@@ -1,0 +1,20 @@
+meta {
+  name: 03-readback-added-certificate
+  type: http
+  seq: 3
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverCertificatesJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const added = (res.body.certificates ?? []).find(c=>(c.id.value ?? c.id)===bru.getVar("caregiverAddedCertificateId"));
+  if (!added || added.type !== 3 || added.verificationStatus !== 1) throw new Error("Added Additional certificate did not persist as Pending.");
+}

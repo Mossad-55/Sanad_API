@@ -28,6 +28,18 @@ public sealed class VisibilityPreferences : ValueObject
 
     public bool ShareLocation { get; private set; } = false;
 
+    internal void Update(
+        bool showProfile,
+        bool showRating,
+        bool showPhone,
+        bool shareLocation)
+    {
+        ShowProfile = showProfile;
+        ShowRating = showRating;
+        ShowPhone = showPhone;
+        ShareLocation = shareLocation;
+    }
+
     public static VisibilityPreferences Create(
         bool showProfile = true,
         bool showRating = true,

@@ -1,0 +1,28 @@
+meta {
+  name: 12-create-second-disposable-alert
+  type: http
+  seq: 12
+}
+post {
+  url: {{baseUrl}}/api/v1/elderly/help-requests
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{notificationElderlyJwt}}
+}
+headers {
+  Content-Type: application/json
+  Idempotency-Key: {{notificationSecondKey}}
+}
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Disposable notification production is local-only.");
+  bru.setVar("notificationSecondKey", "bruno-notification-second-" + Date.now());
+}
+body:json {
+  { "actorKey": "self", "actionKey": "need", "needKey": "water", "qualifierKey": "now", "customText": null }
+}
+assert {
+  res.status: eq 200
+  res.body.id: isNotEmpty
+}

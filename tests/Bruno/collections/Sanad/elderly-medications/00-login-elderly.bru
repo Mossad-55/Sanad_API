@@ -1,0 +1,36 @@
+meta {
+  name: 00-login-elderly
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "identifier": "{{elderlyPhone}}",
+    "password": "{{elderlyPassword}}",
+    "deviceName": "bruno-elderly-medication-dose",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("elderlyMedicationJwt", res.body.accessToken);
+  const now = new Date();
+  const pad = (value) => String(value).padStart(2, "0");
+  bru.setVar("elderlyMedicationLocalDate", now.getFullYear() + "-" + pad(now.getMonth() + 1) + "-" + pad(now.getDate()));
+}

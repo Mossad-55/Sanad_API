@@ -1,0 +1,36 @@
+meta {
+  name: 16-evaluate-late-support-authorized
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/elderly/medications/late/evaluate?dependentId={{adminMedicationLatenessDependentId}}
+  body: none
+  auth: bearer
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Medication lateness evaluation mutations require the guarded local Development API.");
+  if (!(bru.getVar("adminMedicationLatenessDependentId") || bru.getEnvVar("adminMedicationLatenessDependentId"))) throw new Error("Inject adminMedicationLatenessDependentId from the guarded SanadBrunoTestDb seed before running this evaluation request.");
+}
+
+headers {
+  X-Correlation-ID: bruno-admin-medication-lateness-evaluate
+}
+
+auth:bearer {
+  token: {{adminMedicationLatenessSupportJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.thresholdMinutes: isNumber
+  res.body.missedDoses: isArray
+}
+
+script:post-response {
+  const missed = res.body.missedDoses || [];
+  console.log("ADMIN_MEDICATION_LATENESS_EVALUATION_FIXTURE=" + JSON.stringify(missed.map(dose => ({ doseLogId: dose.doseLogId, medicationId: dose.medicationId, scheduledDate: dose.scheduledDate, scheduledTime: dose.scheduledTime }))));
+  console.log("CLEANUP CORRELATION: bruno-admin-medication-lateness-evaluate; delete only the logged returned doseLogIds and corresponding MedicationReminders notifications for the returned medication/date/time keys in SanadBrunoTestDb.");
+}

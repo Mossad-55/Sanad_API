@@ -1,0 +1,43 @@
+meta {
+  name: 00-login-admin
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") {
+    throw new Error("Admin lookup mutation coverage requires the guarded local Development API.");
+  }
+}
+
+body:json {
+  {
+    "email": "{{adminEmail}}",
+    "password": "{{adminPassword}}",
+    "deviceName": "bruno-admin-lookups",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("adminLookupsJwt", res.body.accessToken);
+  bru.setVar("lookupUnique", Date.now().toString(36));
+  const alphabet = "abcdefghijklmnopqrstuvwxyz";
+  const codeValue = Date.now();
+  bru.setVar("languageCode", alphabet[Math.floor(codeValue / 676) % 26] + alphabet[Math.floor(codeValue / 26) % 26] + alphabet[codeValue % 26]);
+}

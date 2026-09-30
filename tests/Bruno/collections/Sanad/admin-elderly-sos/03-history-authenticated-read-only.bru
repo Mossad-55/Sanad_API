@@ -5,7 +5,7 @@ meta {
 }
 
 get {
-  url: {{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/history
+  url: {{baseUrl}}/api/v1/admin/elderly/sos/0f000000-0000-4000-8000-000000000001/history
   body: none
   auth: bearer
 }
@@ -15,9 +15,10 @@ headers {
 }
 
 auth:bearer {
-  token: {{adminJwt}}
+  token: {{adminSosSupportJwt}}
 }
 
 assert {
-  res.status: in 200 401 403 404
+  res.status: eq 404
+  res.body.code: eq Families.Sos.NotFound
 }

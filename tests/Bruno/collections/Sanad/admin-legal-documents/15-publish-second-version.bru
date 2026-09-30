@@ -1,0 +1,25 @@
+meta {
+  name: 15-publish-second-version
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/legal-documents/{{adminLegalDocumentSecondId}}/publish
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminLegalDocumentsJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin legal-document mutations require the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+  res.body.id.value: eq {{adminLegalDocumentSecondId}}
+  res.body.version: eq 2
+  res.body.status: eq 2
+}

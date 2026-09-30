@@ -1,0 +1,17 @@
+meta {
+  name: 02-cancel-open-sos
+  type: http
+  seq: 2
+}
+post {
+  url: {{baseUrl}}/api/v1/elderly/sos/{{elderlySosCancelId}}/cancel
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{elderlySosCancelJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.id: isNotEmpty
+}

@@ -7,10 +7,12 @@ or stock write routes.
 
 ## Access and audit
 
-Every route requires a JWT with `access_type = Normal` and the
-`ElderlyMedicationOperationalRead` policy. Only `SuperAdmin` and
-`SupportAdmin` account types are admitted. `ContentAdmin`, Family, Elderly,
-and restricted-verification tokens are denied.
+The operational read controller has the
+`ElderlyMedicationOperationalRead` class-level policy. Its list, detail, dose
+timeline, and adherence GET methods therefore require a JWT with
+`access_type = Normal` and an account type of `SuperAdmin` or `SupportAdmin`.
+`ContentAdmin`, Family, Elderly, and restricted-verification tokens are
+denied.
 
 Each successful sensitive read first appends one immutable audit row and then
 reads the requested data. The row records the actor user ID, actor account
@@ -35,15 +37,24 @@ fixture and owner approval.
 | `GET` | `/api/v1/admin/elderly/medications/adherence` | Optional `startDate`, `endDate`, `dependentId` | Counts and adherence percentage computed from persisted dose logs only. |
 | `POST` | `/api/v1/admin/elderly/medications/late/evaluate` | Required `dependentId` | Evaluate the current profile-local day for the selected Elderly and create durable in-app late-dose alerts. No body. |
 
-The evaluate route requires the separate
-`ElderlyMedicationOperationalManage` policy, with `access_type = Normal` and
-`account_type = SuperAdmin` or `SupportAdmin`. It audits the operational action
-and resolves the selected active Family-linked Elderly profile. It uses the
-versioned CMS threshold (initially 60 minutes), evaluates only that profile's
-current IANA-local day, and never recalculates historical dates. It returns the
-same `thresholdMinutes`, `settingVersion`, `localDate`, and `missedDoses`
-contract as the Elderly route. The action is stateful: it may persist current-day
-scheduled/missed dose logs and idempotent notification rows.
+The Admin medication list performs its linked-Elderly projection with a
+provider-translatable database join after applying the medication filters and
+page window. This avoids an EF Core translation failure for value-converted
+Elderly IDs; it does not change the response shape, filtering/paging behavior,
+authorization, or HTTP status contract.
+
+The evaluate route has an action-level override to the separate
+`ElderlyMedicationOperationalManage` policy; it is not authorized by the
+controller's read policy. It requires `access_type = Normal` and
+`account_type = SuperAdmin` or `SupportAdmin`. The action audits the requested
+operation, then resolves the selected Elderly only when it is linked to a
+non-deleted Family. A missing Elderly or a deleted Family returns
+`404 Families.AdminMedication.NotFound` after the audit attempt. For a valid
+target, it uses the versioned CMS threshold (initially 60 minutes), evaluates
+only that profile's current IANA-local day, and never recalculates historical
+dates. Success returns `thresholdMinutes`, `settingVersion`, `localDate`, and
+`missedDoses`. The action is stateful: it may persist current-day scheduled and
+missed dose logs and idempotent durable in-app notification rows.
 
 The CMS threshold surface is separate:
 
@@ -52,8 +63,11 @@ The CMS threshold surface is separate:
   the next immutable revision from `{ "thresholdMinutes": 60 }`.
 
 CMS routes require `CmsContent` (Normal `SuperAdmin` or `ContentAdmin`). The
-threshold is constrained to 1–1440 minutes; old revisions remain immutable and
-only one revision is active. Late alerts are durable in-app only. Recipients
+GET returns `404 Cms.MedicationLateness.NotFound` when no active setting exists.
+The revision POST accepts only `thresholdMinutes` from 1–1440; an invalid value
+returns `400 Cms.MedicationLateness.Invalid`. It creates the next immutable
+revision, activates it, and deactivates the previous active revision; only one
+revision is active. Late alerts are durable in-app only. Recipients
 are active linked Family members honoring `MedicationReminders`, the assigned
 caregiver only for an active `Confirmed`/`InProgress` booking, and active
 SupportAdmin users. Push/email, outbox, and scheduler delivery are deferred and

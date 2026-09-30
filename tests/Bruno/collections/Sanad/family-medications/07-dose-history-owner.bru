@@ -1,0 +1,23 @@
+meta {
+  name: 07-dose-history-owner
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationDependentId}}/medications/{{familyMedicationId}}/doses/history?startDate=2026-09-01&endDate=2026-09-30
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body)) throw new Error("Expected dose history array.");
+}

@@ -1,0 +1,45 @@
+meta {
+  name: 01-create-faq
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/help-center/faqs
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminHelpCenterJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Help Center mutations require the guarded local Development API.");
+}
+
+body:json {
+  {
+    "audience": 1,
+    "arabicQuestion": "سؤال Bruno {{helpCenterRun}}",
+    "englishQuestion": "Bruno help FAQ {{helpCenterRun}}",
+    "arabicAnswer": "إجابة تجريبية آمنة في قاعدة البيانات المحلية.",
+    "englishAnswer": "Disposable local database FAQ answer.",
+    "displayOrder": 900,
+    "isActive": false
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  const id = res.body.id && (res.body.id.value || res.body.id);
+  if (!id) throw new Error("Created FAQ response did not include an ID.");
+  bru.setVar("adminHelpFaqId", id);
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 02-plan-change-payment-intent-unauthenticated
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plan-change/payment-intent
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"planVersionId":"00000000-0000-4000-8000-000000000001","method":1,"billing":{"firstName":"Test","lastName":"User","email":"test@example.invalid","phoneNumber":"+201000000000"}}
+}
+
+assert {
+  res.status: eq 401
+}

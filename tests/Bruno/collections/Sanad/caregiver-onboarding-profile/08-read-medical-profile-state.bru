@@ -1,0 +1,19 @@
+meta {
+  name: 08-read-medical-profile-state
+  type: http
+  seq: 8
+}
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{onboardingMedicalJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  if (String(res.body.status) === bru.getVar("onboardingMedicalOriginalStatus")) throw new Error("Editing an Active caregiver profile must request a review.");
+}

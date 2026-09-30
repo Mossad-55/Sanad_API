@@ -1,0 +1,24 @@
+meta {
+  name: 03-get-owner-baseline
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicalDependentId}}/medical-profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicalOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const p = res.body;
+  if (p.bloodType !== 0 || p.heightCm !== null || p.weightKg !== null || p.updatedOnUtc !== null || p.chronicConditions.length !== 0 || p.allergies.length !== 0 || p.medicalHistory.length !== 0) throw new Error("Fresh fixture medical profile is not empty; stopped before changing data.");
+}

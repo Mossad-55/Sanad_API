@@ -1,0 +1,27 @@
+meta {
+  name: 02-replay-medical-baseline
+  type: http
+  seq: 2
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/schedule/medical
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+auth:bearer {
+  token: {{scheduleMedicalJwt}}
+}
+body:json {
+  { "shifts": {{scheduleMedicalShifts}}, "homeVisitWindows": {{scheduleMedicalWindows}} }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const schedule = res.body.medicalSchedule ?? {};
+  const windows = JSON.stringify((schedule.homeVisitWindows ?? []).map(x => ({dayOfWeek:x.dayOfWeek,startTime:x.startTime.slice(0,5),endTime:x.endTime.slice(0,5)})));
+  if (JSON.stringify(schedule.shifts ?? []) !== bru.getVar("scheduleMedicalShifts") || windows !== bru.getVar("scheduleMedicalWindows")) throw new Error("Medical schedule changed during exact replay.");
+}

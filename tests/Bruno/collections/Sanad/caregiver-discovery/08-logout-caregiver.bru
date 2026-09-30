@@ -1,0 +1,23 @@
+meta {
+  name: 08-logout-caregiver
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{caregiverDiscoverySessionId}}
+}
+
+auth:bearer {
+  token: {{caregiverDiscoveryJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

@@ -1,0 +1,28 @@
+meta {
+  name: 14-rename-family-success
+  type: http
+  seq: 14
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/name
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"name":"Bruno Family Coverage"}
+}
+
+assert {
+  res.status: eq 200
+  res.body.name: eq Bruno Family Coverage
+}

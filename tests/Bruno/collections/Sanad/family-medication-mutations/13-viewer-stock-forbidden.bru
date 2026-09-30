@@ -1,0 +1,27 @@
+meta {
+  name: 13-viewer-stock-forbidden
+  type: http
+  seq: 13
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyMedicationMutationDependentId}}/medications/{{familyMedicationMutationId}}/stock
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyMedicationMutationViewerJwt}}
+}
+
+body:json {
+  {
+    "stockQuantity": 99,
+    "lowStockThreshold": 1
+  }
+}
+
+assert {
+  res.status: eq 403
+  res.body.code: eq Families.Medication.AccessDenied
+}

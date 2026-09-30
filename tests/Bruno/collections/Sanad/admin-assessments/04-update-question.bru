@@ -1,0 +1,40 @@
+meta {
+  name: 04-update-question
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/assessments/questions/{{assessmentQuestionId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminAssessmentsJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Assessment mutations require the guarded local Development API.");
+}
+
+body:json {
+  {
+    "order": 1,
+    "arabicText": "Assessment Bruno {{assessmentRun}} updated mobility question",
+    "englishText": "Assessment Bruno {{assessmentRun}} updated mobility question",
+    "isRequired": true,
+    "options": [
+      { "order": 1, "arabicText": "مستقل", "englishText": "Independent", "weight": 0 },
+      { "order": 2, "arabicText": "يحتاج مساعدة", "englishText": "Needs assistance", "weight": 5 }
+    ]
+  }
+}
+
+assert {
+  res.status: eq 200
+}

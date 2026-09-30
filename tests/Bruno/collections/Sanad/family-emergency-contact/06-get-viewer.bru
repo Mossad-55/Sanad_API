@@ -1,0 +1,24 @@
+meta {
+  name: 06-get-viewer
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyEmergencyDependentId}}/emergency-contact
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyEmergencyViewerJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.name: eq Bruno Fixture Contact
+}
+
+script:post-response {
+  if (res.body.phoneNumber !== "+201000000000") throw new Error("Viewer did not read the exact saved contact value.");
+}

@@ -31,6 +31,7 @@ Content-Type: multipart/form-data
 ```
 
 - `200` — full profile response; the new certificate is Pending.
+- `401` — unauthenticated; `403` — caller does not satisfy `CaregiverAccess`; `404 Caregivers.Onboarding.NotFound` — caregiver profile is absent.
 - `400 Storage.File.Empty` / `Storage.File.TooLarge` / `Storage.File.UnsupportedType` — missing, >5 MB, or disallowed content type.
 - `409 Caregivers.Onboarding.InvalidCertificateOperation` — duplicate Practice License / Graduation Certificate, already 5 additional, expiry date in the past, or a Companion account.
 
@@ -49,11 +50,14 @@ Content-Type: multipart/form-data
 ```
 
 - `404 Caregivers.Onboarding.CertificateNotFound` — the certificate does not belong to this caregiver.
+- `400 Api.Validation.Failed` — invalid/empty certificate ID or invalid expiry date.
+- `401` — unauthenticated; `403` — caller does not satisfy `CaregiverAccess`.
 - Storage errors and InvalidState as with add.
 
 ## Remove an additional certificate
 
 Only additional certificates (`type: 3`) can be removed; attempting to remove a mandatory certificate returns `409 Caregivers.Onboarding.InvalidCertificateOperation`. The stored file is deleted.
+Success returns `200` with the updated profile. Unauthenticated requests return `401`, callers outside `CaregiverAccess` receive `403`, and an unknown/non-owned ID returns `404 Caregivers.Onboarding.CertificateNotFound`.
 
 ```http
 DELETE /api/v1/caregiver/certificates/{certificateId}

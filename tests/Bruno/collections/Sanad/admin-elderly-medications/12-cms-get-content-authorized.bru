@@ -1,0 +1,28 @@
+meta {
+  name: 12-cms-get-content-authorized
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/cms/medication-lateness
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminMedicationLatenessContentJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.revisionId: isString
+  res.body.thresholdMinutes: isNumber
+  res.body.isActive: eq true
+}
+
+script:post-response {
+  bru.setVar("adminMedicationLatenessOriginalRevisionId", res.body.revisionId);
+  bru.setVar("adminMedicationLatenessOriginalThreshold", res.body.thresholdMinutes);
+  console.log("ADMIN_MEDICATION_LATENESS_ORIGINAL_REVISION_ID=" + res.body.revisionId);
+  console.log("ADMIN_MEDICATION_LATENESS_ORIGINAL_THRESHOLD=" + res.body.thresholdMinutes);
+}

@@ -57,7 +57,7 @@ public sealed class CalculateBookingQuoteQueryHandler : IQueryHandler<CalculateB
         if (caregiver is null)
         {
             return Result<BookingQuoteResponse>.Failure(
-                new Error("Caregivers.Pricing.CaregiverNotFound", "Caregiver not found or is currently inactive."));
+                new Error("Caregivers.Discovery.CaregiverNotFound", "Caregiver not found or is currently inactive."));
         }
 
         try

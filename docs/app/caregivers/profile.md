@@ -97,7 +97,7 @@ Content-Type: application/json
 }
 ```
 
-Blank/whitespace clears the address (stored as `null`); whitespace is trimmed.
+Blank/whitespace clears the address (stored as `null`); whitespace is trimmed. `200` returns the full caregiver profile. Values longer than 500 characters return `400 Api.Validation.Failed`; unauthenticated requests return `401`, non-caregiver accounts receive `403`, and a missing profile returns `404 Caregivers.Onboarding.NotFound`.
 
 ## Response shape — `CaregiverProfileResponse`
 

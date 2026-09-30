@@ -1,0 +1,17 @@
+meta {
+  name: 18-owner-verify-zero-unread
+  type: http
+  seq: 18
+}
+get {
+  url: {{baseUrl}}/api/v1/notifications/unread-count
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{notificationOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body: eq 0
+}

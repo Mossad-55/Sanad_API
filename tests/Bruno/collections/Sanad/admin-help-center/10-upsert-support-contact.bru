@@ -1,0 +1,40 @@
+meta {
+  name: 10-upsert-support-contact
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{baseUrl}}/api/v1/admin/help-center/support-contact
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminHelpCenterJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Support-contact mutation requires the guarded local Development API.");
+}
+
+body:json {
+  {
+    "supportPhone": "+201000000099",
+    "supportEmail": "support-bruno@example.test"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.body.supportPhone !== "+201000000099" || res.body.supportEmail !== "support-bruno@example.test") {
+    throw new Error("Support-contact upsert did not persist the test pair exactly.");
+  }
+}

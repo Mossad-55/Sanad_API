@@ -1,0 +1,37 @@
+meta {
+  name: 04-create-wrong-role
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/sentence-builder/catalog
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminSentenceBuilderViewerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Sentence Builder mutation auth coverage requires the guarded local Development API.");
+}
+
+body:json {
+  {
+    "stableKey": "{{adminSentenceBuilderKey}}-forbidden",
+    "category": 3,
+    "arabicLabel": "مرفوض",
+    "englishLabel": "Forbidden",
+    "displayOrder": 901
+  }
+}
+
+assert {
+  res.status: eq 403
+}

@@ -1,0 +1,18 @@
+meta {
+  name: 04-remove-disposable-additional
+  type: http
+  seq: 4
+}
+delete {
+  url: {{baseUrl}}/api/v1/caregiver/certificates/{{caregiverAddedCertificateId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{caregiverCertificatesJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.status: eq 4
+  res.body.availability: eq 1
+}

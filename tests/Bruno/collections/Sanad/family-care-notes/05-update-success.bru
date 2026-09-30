@@ -1,0 +1,36 @@
+meta {
+  name: 05-update-success
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyCareNotesDependentId}}/notes/{{familyCareNotesNoteId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyCareNotesOwnerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "title": "Codex disposable care note updated 20260930",
+    "description": "Updated temporary fixture; deleted by the final cleanup request.",
+    "category": 2,
+    "priority": 1
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.body.id !== bru.getVar("familyCareNotesNoteId") || res.body.title !== "Codex disposable care note updated 20260930" || res.body.category !== 2 || res.body.priority !== 1) throw new Error("Updated note was not returned with the expected values.");
+}

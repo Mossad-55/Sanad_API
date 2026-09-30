@@ -1,0 +1,22 @@
+meta {
+  name: 12-companion-profile-restored
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverPricingCompanionJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.companionPricing.hourlyPrice: eq 80
+  res.body.companionPricing.eightHourDayPrice: eq 500
+  res.body.companionPricing.overnightPrice: eq 700
+}

@@ -17,3 +17,8 @@ auth:bearer {
 assert {
   res.status: eq 200
 }
+
+script:post-response {
+  console.log("Notification inbox scout unread count:", res.body);
+  bru.setVar("notificationScoutUnreadCount", String(res.body));
+}

@@ -1,0 +1,19 @@
+meta {
+  name: 20-logout-medical
+  type: http
+  seq: 20
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+headers {
+  X-Device-Session-Id: {{scheduleMedicalSessionId}}
+}
+auth:bearer {
+  token: {{scheduleMedicalJwt}}
+}
+assert {
+  res.status: eq 204
+}

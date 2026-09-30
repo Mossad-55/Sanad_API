@@ -1,0 +1,15 @@
+meta {
+  name: 06-mark-one-unauthenticated
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/v1/notifications/7f4b7a2f-678a-4e5d-a5b0-2bbbeaa1c76a/read
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

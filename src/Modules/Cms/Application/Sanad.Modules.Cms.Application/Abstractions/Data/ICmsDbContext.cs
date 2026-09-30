@@ -5,6 +5,7 @@ using Sanad.Modules.Cms.Domain.Splash;
 using Sanad.Modules.Cms.Domain.Wellness;
 using Sanad.Modules.Cms.Domain.SentenceBuilder;
 using Sanad.Modules.Cms.Domain.MedicationLateness;
+using Sanad.Modules.Cms.Domain.Welcome;
 
 namespace Sanad.Modules.Cms.Application.Abstractions.Data;
 
@@ -23,6 +24,7 @@ public interface ICmsDbContext
     DbSet<SentenceBuilderCatalogRevision> SentenceBuilderCatalogRevisions { get; }
     DbSet<MedicationLatenessSetting> MedicationLatenessSettings { get; }
     DbSet<MedicationLatenessSettingRevision> MedicationLatenessSettingRevisions { get; }
+    DbSet<ElderlyWelcome> ElderlyWelcomes { get; }
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

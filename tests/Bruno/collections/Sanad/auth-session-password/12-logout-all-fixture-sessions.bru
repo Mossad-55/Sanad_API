@@ -1,0 +1,24 @@
+meta {
+  name: 12-logout-all-fixture-sessions
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Fixture logout must target the guarded local Development API.");
+  if (!bru.getVar("authSessionPasswordAccessToken")) throw new Error("Run the SupportAdmin login before fixture logout.");
+}
+
+auth:bearer {
+  token: {{authSessionPasswordAccessToken}}
+}
+
+assert {
+  res.status: eq 204
+}

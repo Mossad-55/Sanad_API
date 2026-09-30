@@ -1,0 +1,20 @@
+meta {
+  name: 02-get-detail-owner
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/help-requests/{{elderlyHelpRequestId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{elderlyHelpRequestJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: isNotEmpty
+}

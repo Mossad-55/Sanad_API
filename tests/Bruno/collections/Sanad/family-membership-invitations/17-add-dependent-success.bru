@@ -1,0 +1,37 @@
+meta {
+  name: 17-add-dependent-success
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{ownerJwt}}
+}
+
+body:multipart-form {
+  arabicFullName: سعيد نصر
+  englishFullName: Saeed Bruno Coverage
+  phoneNumber: +201199998877
+  gender: 1
+  relationshipType: 7
+  dateOfBirth: 1948-07-20
+  detailedAddress: Disposable Bruno fixture
+  healthNotes: Temporary coverage fixture
+}
+
+assert {
+  res.status: eq 201
+  res.body.englishFullName: eq Saeed Bruno Coverage
+}
+
+script:post-response {
+  const id = res.body.id && (res.body.id.value || res.body.id);
+  if (!id) throw new Error("Dependent response did not contain an ID");
+  bru.setVar("coverageDependentId", id);
+}

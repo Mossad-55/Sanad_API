@@ -1,0 +1,23 @@
+meta {
+  name: 12-companion-invalid-hourly-reverse-time
+  type: http
+  seq: 12
+}
+put {
+  url: {{baseUrl}}/api/v1/caregiver/schedule/companion
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+auth:bearer {
+  token: {{scheduleCompanionJwt}}
+}
+body:json {
+  { "windows": [{"bookingType":1,"dayOfWeek":1,"startTime":"20:00","endTime":"08:00"}] }
+}
+assert {
+  res.status: eq 400
+  res.body.code: eq "Api.Validation.Failed"
+}
