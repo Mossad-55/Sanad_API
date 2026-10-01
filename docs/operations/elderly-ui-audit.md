@@ -1,6 +1,6 @@
 # Elderly UI audit
 
-Status: Authorized Elderly UI/API slices are implemented and in final verification.
+Status: Prior authorized Elderly UI/API slices are delivered. The active sequential goal is continuing; the owner-approved Elderly Welcome slice is now verified and delivered.
 Dynamic self-service, CMS content, operational Admin reads, notification inbox,
 and Elderly OTP pre-validation are covered by current implementation and tests.
 Welcome placement/content mapping and support visibility of sensitive profile
@@ -34,9 +34,10 @@ approved seed/static production data.
 | `sos.png` | Emergency confirmation, location/family-alert promise, call-now and cancel actions. |
 | `profile.png` | Photo/edit affordance, name, age, health-state label, personal phone, emergency contact name/relationship/phone. |
 
-The route/screen ordering is not supplied. In particular, the welcome screen,
-SMS OTP login, role selection, and authenticated home relationship must be
-confirmed against the mobile navigation flow before screen IDs are finalized.
+The owner-approved sequence is language selection, Elderly Welcome, then Elderly
+OTP. The backend has no language persistence or role-selection navigation
+contract; this Welcome API accepts the client's selected `ar`/`en` language.
+Other screen ordering remains outside this bounded resource.
 
 ## Data and CMS rule from the owner
 
@@ -67,7 +68,7 @@ confirmed against the mobile navigation flow before screen IDs are finalized.
 
 | Screen / displayed data | Existing API and authorization | Evidence in tests/docs/collections | Gap and disposition |
 |---|---|---|---|
-| Welcome Senior; "ابدأ الآن" | `POST /api/v1/auth/elderly/request-otp`, `POST /api/v1/auth/elderly/verify-otp` support phone/SMS login for a family-provisioned Elderly identity. `GET /api/v1/splash-screens` is anonymous and serves published content to all roles; it has no audience targeting. CMS admins have `GET/POST /api/v1/admin/splash-screens`, `GET/PUT/DELETE /{id}`, and publish/unpublish actions, under `CmsContent` (SuperAdmin/ContentAdmin). | `docs/auth/elderly-sms-login.md`, `docs/app/public/splash-screens.md`, `docs/admin/splash-screens.md`; auth/splash Postman requests; SMS-login and splash unit tests; Bruno public splash request. | Owner confirmed CMS-published splash content after language selection and no static product copy. Existing splash API is dynamic and shared across roles. The separate Welcome Senior headline/benefit tiles are not represented by the current splash contract, and exact welcome-to-OTP/role-selection navigation remains unclear. **Gap; placement/content mapping Needs Owner Verification.** |
+| Welcome Senior; "ابدأ الآن" | `GET /api/v1/elderly/welcome?language=ar|en` is anonymous and returns published Elderly-specific localized headline, ordered benefit tiles, and the fixed `elderly.request-otp` CTA action. CMS authoring/read/publish routes are `/api/v1/admin/cms/elderly-welcome` under `CmsContent` (SuperAdmin/ContentAdmin). The shared `GET /api/v1/splash-screens` contract remains unchanged. Existing Elderly request/verify OTP routes are reused; Welcome does not send OTP. | `docs/app/elderly/welcome.md`, `docs/admin/elderly-welcome.md`; dedicated Elderly Welcome Postman collection (valid JSON, six requests); focused Welcome tests (43/43); full solution tests (Architecture 1/1, Unit 2076/2076); `tests/Bruno/collections/Sanad/elderly-welcome/` (22 passed, 29/29 assertions; one skipped). | **Delivered.** Public reads are published-only; Admin writes require `CmsContent`; lifecycle/error mappings are explicit and singleton Bruno reruns normalize to Draft without deleting data. Full solution build: 0 warnings/0 errors. EF model snapshot has no pending changes. The migration was applied only to the owner-authorized local `SanadBrunoTestDb` by the fixture API; no other database or production was touched. Bruno CLI reports a pre-existing parser warning in an unrelated wellness-tip request, which was not modified. |
 | Elderly home header/profile summary | `GET /api/v1/elderly/profile` and `/photo` require a Normal Elderly JWT and resolve the linked dependent by authenticated identity. The profile returns bilingual names, profile-local age, photo state/path, latest assessment, stored IANA timezone, and nullable primary emergency contact; address and health notes are omitted. | `docs/app/elderly/profile.md`, `docs/app/families/dependents.md`; Elderly and Family Postman plus manual Bruno examples. | **Covered for the bounded profile/contact read slice.** Health-status badge, Elderly profile editing, and Admin profile inspection remain separate unresolved contracts. |
 | Daily reassurance check-in and success state | `POST /api/v1/elderly/check-ins` accepts `{ "answer": boolean }` for the authenticated Elderly identity. One final answer is persisted per profile-local IANA calendar day; same-answer retries return the saved record and opposite answers reject. Invalid stored timezone fails closed. | `docs/app/elderly/check-in.md`; Elderly Postman manual request; API project build: 0 warnings/0 errors; focused `FamilyNotificationRecipientGateway` tests: 7/7; `tests/Bruno/collections/Sanad/elderly-wellness-events/` (scoped local-fixture run: 20/20 requests and assertions). | **Delivered for the approved core contract.** A negative answer creates durable in-app alerts for each eligible active linked Family member with `checkInAlerts` enabled, with per-recipient/Elderly/local-date deduplication. No caregiver recipient is implied for check-in. Families and Notifications use separate persistence boundaries; no atomic cross-context transaction is claimed. Push/provider/retry, reminders, missed-check-in semantics, and Family status/history reads remain `Needs Owner Verification`; no SMS. |
 | Medication checklist, take action, missed-dose alert | Family routes remain FamilyAccess-scoped. Elderly self-service is available through `GET /api/v1/elderly/medications`, `GET /api/v1/elderly/medications/dashboard?date=YYYY-MM-DD`, `GET /api/v1/elderly/medications/late`, and `POST /api/v1/elderly/medications/{medicationId}/doses/take`. All resolve the dependent from the authenticated Elderly identity; callers cannot select another dependent. The late evaluation is current-day/profile-local only, uses the versioned CMS threshold (initially 60 minutes), and does not recalculate history. | `docs/app/elderly/medications.md`, `docs/app/families/medications.md`; Elderly and Family Postman collections; Elderly read-only/negative Bruno requests and existing Family medication requests. | **Delivered for the approved slice.** The Admin CMS threshold GET/revision POST and audited Admin evaluate POST are documented under `CmsContent` and `ElderlyMedicationOperationalManage`; Normal SuperAdmin/SupportAdmin manage the evaluation, while ContentAdmin also manages CMS revisions. Durable in-app alerts are idempotent and target active linked Family members with `MedicationReminders`, the assigned caregiver only for active Confirmed/InProgress booking, and active SupportAdmin. Push/email/outbox/scheduler remain deferred/Needs Owner Verification; SMS is excluded. Preserve the current owner recipient rule and the delivered prescription/list/dashboard/take/Admin-read behavior; prescription edit/skip remains out of scope. |
@@ -304,19 +305,35 @@ excluded. The bounded SOS route/lifecycle/Admin-read slice is documented below; 
    and tenant scope. Bilingual structured authoring, Draft/Published/Archived,
    image constraints, list/detail/preview and direct ContentAdmin publishing
    are implemented; ContentAdmin publishing does not imply clinical approval.
-8. Elderly Admin UI routes/screens, exact support-role field-level read
-   permissions for clinical/location/contact/communication data, audit log
-   contents, retention and export behavior. The Admin role split is confirmed;
-   support-role request/SOS status-management semantics remain gated on the
-   respective implementation contracts.
-9. Welcome screen placement relative to pre-auth language, CMS-published splash,
-   OTP login, role selection and authenticated home. CMS-managed welcome/splash
-   content is confirmed; screen-to-resource mapping and navigation are open.
-10. Emergency-contact clearing/removal and Admin visibility remain unverified;
-    current contract supports one Owner-managed contact and member/Elderly reads,
-    but intentionally exposes no delete route or Admin read route.
-11. Whether a stored emergency contact must be erased during Family account
-    deletion/anonymization, and the required retention period, remain unverified.
+8. Elderly Admin UI routes/screens and the field-level read contract for
+   clinical/location/contact/communication data. Owner-approved default is
+   deny for operational roles; any exception must be field-specific, minimum
+   scope, purpose/reason-bound, and audited. No Admin profile/contact endpoint
+   is implemented in this goal yet. Audit contents, retention and export are
+   being handled by their ordered tasks; operational management remains
+   event-scoped.
+9. **Owner decision resolved:** Elderly Welcome is separate from shared splash,
+   shown after language selection and before OTP; it has CMS-managed localized
+   headline/benefit tiles and a fixed Elderly OTP CTA. API implementation,
+   tests, docs and Bruno verification are tracked in the active goal checklist.
+10. Emergency-contact clearing/removal is not implemented; current contract
+    supports one Owner-managed contact and member/Elderly reads, with no delete
+    route or Admin read route. Owner approved Owner-only removal if supported.
+11. Owner approved removing/anonymizing the stored contact on Family deletion,
+    except for a specifically defined legal hold or active incident. The
+    implementation and hold lifecycle remain to be completed in the active
+    goal; do not infer a blanket retention period.
+
+Owner-approved defaults (2026-09-28) for the remaining goal are recorded in
+`docs/goal-progress.md`: default-deny sensitive Admin profile reads with
+field-specific audited exceptions; dedicated SOS preference; explicit event
+preferences and timezone rules; durable outbox for later push/email delivery;
+separate retention windows and neutral deleted-recipient representation;
+explicit check-in/medication temporal rules; current SOS precision/location
+window with no server dialing; defined Health Tip clinical/tenant governance;
+Owner-only emergency-contact removal/anonymization; and event-scoped Admin
+management. These decisions are approved policy, not yet implemented unless
+the corresponding bounded task is marked Done in the goal checklist.
 
 ## Deferred to assigned roadmap slices
 

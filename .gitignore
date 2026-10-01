@@ -7,6 +7,15 @@
 .env
 tests/Bruno/environments/local-fixtures.bru
 sanad-files/
+UI
+
+# Local UI/screenshots and image fixtures are never repository artifacts.
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.bmp
 
 # User-specific files
 *.rsuser
@@ -484,3 +493,4 @@ $RECYCLE.BIN/
 # Vim temporary swap files
 *.swp
 .kilo/
+UI/Phase 0 - Family/Community.png

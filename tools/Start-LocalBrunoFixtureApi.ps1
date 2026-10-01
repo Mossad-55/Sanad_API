@@ -41,6 +41,13 @@ for ($index = $passwordCharacters.Count - 1; $index -gt 0; $index--) {
 }
 $elderlyPassword = -join $passwordCharacters
 $random.Dispose()
+if (Test-Path -LiteralPath (Join-Path $repoRoot 'tests/Bruno/service-icon-fixture.png')) {
+    throw 'The reserved Bruno service-icon fixture path already exists; refusing to overwrite it.'
+}
+$serviceIconFile = Join-Path $repoRoot 'tests/Bruno/service-icon-fixture.png'
+[System.IO.File]::WriteAllBytes(
+    $serviceIconFile,
+    [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/F5sAAAAASUVORK5CYII='))
 
 $localBrunoText = Get-Content -LiteralPath $localEnvironment -Raw
 $fixtureVariables = @"
@@ -52,6 +59,8 @@ $fixtureVariables = @"
   companionCaregiverPassword: Test-1234!
   supportAdminEmail: support.admin@test.sanad.local
   supportAdminPassword: Test-1234!
+  adminEmail: content.admin@test.sanad.local
+  adminPassword: Test-1234!
 "@
 $fixtureText = [regex]::Replace(
     $localBrunoText,
@@ -63,6 +72,14 @@ $fixtureText = [regex]::Replace(
     '(?m)^\s*baseUrl\s*:\s*.*$',
     '  baseUrl: http://localhost:5235',
     1)
+$fixtureText = [regex]::Replace(
+    $fixtureText,
+    '(?m)^\s*adminEmail\s*:\s*.*$',
+    '  adminEmail: content.admin@test.sanad.local')
+$fixtureText = [regex]::Replace(
+    $fixtureText,
+    '(?m)^\s*adminPassword\s*:\s*.*$',
+    '  adminPassword: Test-1234!')
 if ($fixtureText -eq $localBrunoText) {
     throw 'Could not locate the Bruno vars block; no fixture environment was written.'
 }
@@ -91,6 +108,11 @@ try {
     [Environment]::SetEnvironmentVariable('ASPNETCORE_ENVIRONMENT', 'Development', 'Process')
     [Environment]::SetEnvironmentVariable('App__TestUserSeed__Enabled', 'true', 'Process')
     [Environment]::SetEnvironmentVariable('App__TestUserSeed__Password', 'Test-1234!', 'Process')
+    [Environment]::SetEnvironmentVariable('Identity__AdminSeed__ArabicFullName', 'Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø§Ø®ØªØ¨Ø§Ø±', 'Process')
+    [Environment]::SetEnvironmentVariable('Identity__AdminSeed__EnglishFullName', 'Elderly Welcome Test Admin', 'Process')
+    [Environment]::SetEnvironmentVariable('Identity__AdminSeed__Email', 'elderly.welcome.admin@test.sanad.local', 'Process')
+    [Environment]::SetEnvironmentVariable('Identity__AdminSeed__PhoneNumber', '+201000000008', 'Process')
+    [Environment]::SetEnvironmentVariable('Identity__AdminSeed__Password', 'Welcome-Admin-1234!', 'Process')
     [Environment]::SetEnvironmentVariable('Identity__Sms__SmsMisr__Username', '', 'Process')
     [Environment]::SetEnvironmentVariable('Identity__Sms__SmsMisr__Password', '', 'Process')
     [Environment]::SetEnvironmentVariable('Identity__Sms__SmsMisr__Sender', '', 'Process')
@@ -113,6 +135,9 @@ try {
 finally {
     foreach ($name in $environmentNames) {
         [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process')
+    }
+    if (Test-Path -LiteralPath $serviceIconFile) {
+        Remove-Item -LiteralPath $serviceIconFile -Force
     }
 }
 $elderlyPassword = $null
