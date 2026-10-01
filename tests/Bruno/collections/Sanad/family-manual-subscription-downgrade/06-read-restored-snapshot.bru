@@ -1,0 +1,33 @@
+meta {
+  name: 06-read-restored-snapshot
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/current
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{manualDowngradeDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{manualDowngradeJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const current = res.body.currentSubscription ?? res.body.CurrentSubscription;
+  if (current?.pendingDowngrade || current?.PendingDowngrade) {
+    throw new Error("Pending downgrade should be cleared after cancellation.");
+  }
+  if ((current?.planKey ?? current?.PlanKey) !== "premium") {
+    throw new Error("Cancelling the pending downgrade must leave the current Premium plan unchanged.");
+  }
+}

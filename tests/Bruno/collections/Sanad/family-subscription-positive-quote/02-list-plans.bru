@@ -1,0 +1,30 @@
+meta {
+  name: 02-list-plans
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plans
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{positiveQuoteOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positiveQuoteOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const plans = Array.isArray(res.body) ? res.body : [];
+  const premium = plans.find((plan) => (plan.key ?? plan.Key) === "premium" && (plan.version ?? plan.Version) === 2);
+  if (!premium) throw new Error("The published disposable Premium version-2 plan was not returned.");
+  bru.setVar("positiveQuotePremiumPlanId", premium.id ?? premium.Id);
+}

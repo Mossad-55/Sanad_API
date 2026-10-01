@@ -1,0 +1,28 @@
+meta {
+  name: 06-payment-intent-unknown-booking
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/00000000-0000-0000-0000-000000000000/payments/intent
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{bookingFamilyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"method":1,"billing":{"firstName":"Local","lastName":"Fixture","email":"family.owner@test.sanad.local","phoneNumber":"+201000000001"}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Bookings.NotFound
+}

@@ -1,0 +1,35 @@
+meta {
+  name: 08-plan-change-quote-free-success
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plan-change/quote
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{familySubscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familySubscriptionOwnerJwt}}
+}
+
+body:json {
+  {
+    "planVersionId": "{{familySubscriptionFreePlanId}}"
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+script:post-response {
+  const code = res.body && (res.body.code ?? res.body.Code);
+  if (code !== "Subscriptions.Quote.TaxNotConfigured") throw new Error("A plan-change quote without an active tax rule must return Subscriptions.Quote.TaxNotConfigured.");
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 07-read-deleted-coupon
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/coupons/{{adminSubscriptionCouponId}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{adminSubscriptionLifecycleSessionId}}
+}
+
+auth:bearer {
+  token: {{adminSubscriptionLifecycleJwt}}
+}
+
+assert {
+  res.status: eq 404
+}

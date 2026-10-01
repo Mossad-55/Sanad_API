@@ -1,0 +1,30 @@
+meta {
+  name: 04-family-booking-detail-success
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/bookings/{{familyCheckoutBookingId}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{familyBookingDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familyBookingJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const id = res.body && (res.body.id ?? res.body.Id);
+  const total = res.body && (res.body.totalPayableAmount ?? res.body.TotalPayableAmount);
+  const address = res.body && (res.body.serviceAddress ?? res.body.ServiceAddress);
+  if (id !== bru.getVar("familyCheckoutBookingId") || typeof total !== "number" || total <= 0 || address !== "Disposable local Bruno booking fixture") throw new Error("The booking detail did not match the local checkout response.");
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 08-retire-premium-v2
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/plans/{{adminSubscriptionPremiumV2Id}}/retire
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{adminSubscriptionLifecycleSessionId}}
+}
+
+auth:bearer {
+  token: {{adminSubscriptionLifecycleJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

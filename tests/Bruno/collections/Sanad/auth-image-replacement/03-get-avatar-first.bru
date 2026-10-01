@@ -1,0 +1,23 @@
+meta {
+  name: 03-get-avatar-first
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/auth/avatar
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{imageReplacementSessionId}}
+}
+
+auth:bearer {
+  token: {{imageReplacementJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

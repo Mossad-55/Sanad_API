@@ -1,0 +1,19 @@
+meta {
+  name: 07-read-photo-after-delete
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{photoDependentId}}/photo
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{photoOwnerJwt}}
+}
+
+assert {
+  res.status: eq 404
+}

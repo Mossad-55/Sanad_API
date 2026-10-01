@@ -1,0 +1,37 @@
+meta {
+  name: 03-quote-premium-upgrade
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plan-change/quote
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{positiveQuoteOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positiveQuoteOwnerJwt}}
+}
+
+body:json {
+  {
+    "planVersionId": "{{positiveQuotePremiumPlanId}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const quote = res.body;
+  if (!quote || Number(quote.taxRatePercentage) !== 15 || Number(quote.totalPayable) <= 0) {
+    throw new Error("Premium upgrade quote must apply the active 15% tax rule and produce a positive total.");
+  }
+}

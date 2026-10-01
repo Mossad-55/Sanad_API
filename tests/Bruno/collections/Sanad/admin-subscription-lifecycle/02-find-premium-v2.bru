@@ -1,0 +1,30 @@
+meta {
+  name: 02-find-premium-v2
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/plans?page=1&pageSize=100
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{adminSubscriptionLifecycleSessionId}}
+}
+
+auth:bearer {
+  token: {{adminSubscriptionLifecycleJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const plans = res.body.items ?? [];
+  const premium = plans.find((plan) => plan.key === "premium" && plan.version === 2 && plan.isAvailableForNewSales);
+  if (!premium) throw new Error("Expected an available published Premium v2 test plan.");
+  bru.setVar("adminSubscriptionPremiumV2Id", premium.id);
+}

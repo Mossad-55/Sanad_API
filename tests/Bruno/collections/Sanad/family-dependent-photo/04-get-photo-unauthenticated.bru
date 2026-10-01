@@ -1,0 +1,15 @@
+meta {
+  name: 04-get-photo-unauthenticated
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/00000000-0000-0000-0000-000000000000/photo
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

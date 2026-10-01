@@ -1,0 +1,28 @@
+meta {
+  name: 02-decline-unknown-booking
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/00000000-0000-0000-0000-000000000000/decline
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{bookingCaregiverJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"reason":"Disposable unknown booking negative case"}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Bookings.NotFound
+}

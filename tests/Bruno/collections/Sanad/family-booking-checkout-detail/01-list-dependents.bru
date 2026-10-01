@@ -1,0 +1,32 @@
+meta {
+  name: 01-list-dependents
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{familyBookingDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familyBookingJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const dependents = Array.isArray(res.body) ? res.body : [];
+  const first = dependents[0];
+  const id = first && (first.id ?? first.Id);
+  const dependentId = id && (id.value ?? id.Value ?? id);
+  if (!dependentId) throw new Error("The seeded family has no dependent available for the disposable checkout.");
+  bru.setVar("familyBookingDependentId", dependentId);
+}

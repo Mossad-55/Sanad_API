@@ -1,0 +1,19 @@
+meta {
+  name: 02-accept-booking
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{caregiverDecisionAcceptBookingId}}/accept
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 204
+}

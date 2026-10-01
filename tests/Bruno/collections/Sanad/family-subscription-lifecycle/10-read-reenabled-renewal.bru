@@ -1,0 +1,30 @@
+meta {
+  name: 10-read-reenabled-renewal
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/current
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{familySubscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familySubscriptionOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const current = res.body && (res.body.currentSubscription ?? res.body.CurrentSubscription);
+  const autoRenew = current && (current.autoRenewEnabled ?? current.AutoRenewEnabled);
+  const cancelledOn = current && (current.cancellationRequestedOnUtc ?? current.CancellationRequestedOnUtc);
+  if (autoRenew !== true || cancelledOn != null) throw new Error("Auto-renew was not restored in the current subscription.");
+}

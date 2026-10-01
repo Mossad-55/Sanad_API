@@ -1,0 +1,27 @@
+meta {
+  name: 03-login-family-owner
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"email":"{{familyOwnerEmail}}","password":"{{familyOwnerPassword}}","deviceName":"booking-route-negative-family","devicePlatform":3,"appVersion":"1.0.0"}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("bookingFamilyJwt", res.body.accessToken);
+}

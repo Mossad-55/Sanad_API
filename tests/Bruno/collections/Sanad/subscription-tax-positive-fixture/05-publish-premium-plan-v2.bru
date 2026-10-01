@@ -1,0 +1,23 @@
+meta {
+  name: 05-publish-premium-plan-v2
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/plans/{{subscriptionPremiumV2Id}}/publish
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{subscriptionSuperAdminDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{subscriptionSuperAdminJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

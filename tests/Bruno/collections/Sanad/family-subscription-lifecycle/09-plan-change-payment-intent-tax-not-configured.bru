@@ -1,0 +1,42 @@
+meta {
+  name: 09-plan-change-payment-intent-tax-not-configured
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plan-change/payment-intent
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{familySubscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familySubscriptionOwnerJwt}}
+}
+
+body:json {
+  {
+    "planVersionId": "{{familySubscriptionFreePlanId}}",
+    "method": 1,
+    "billing": {
+      "firstName": "Test",
+      "lastName": "Family",
+      "email": "test@example.invalid",
+      "phoneNumber": "+201000000000"
+    }
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+script:post-response {
+  const code = res.body && (res.body.code ?? res.body.Code);
+  if (code !== "Subscriptions.Quote.TaxNotConfigured") throw new Error("Missing tax must reject the quote before the payment provider is called.");
+}

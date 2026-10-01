@@ -1,0 +1,30 @@
+meta {
+  name: 03-schedule-free-downgrade
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/subscriptions/pending-downgrade
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{manualDowngradeDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{manualDowngradeJwt}}
+}
+
+body:json {
+  {
+    "planVersionId": "{{manualDowngradeFreePlanId}}"
+  }
+}
+
+assert {
+  res.status: eq 204
+}

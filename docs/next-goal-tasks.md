@@ -1,19 +1,19 @@
 # Next Goal: Notifications/Events and Remaining Elderly Owner Decisions
 
-This is a planning checklist only. The next goal has **not started**. Begin it only after the owner authorizes scope and resolves the business decisions below. No deployment or production-data operation is implied.
+The owner approved the recommendations on 2026-09-28. This goal is now **In progress** and is tracked in `docs/goal-progress.md`; execute strictly one task at a time. No deployment or production-data operation is implied.
 
 ## Phase 1 — Owner decisions and event contract
 
-- [ ] **Blocked — Needs Owner Verification** — Decide Welcome placement, Elderly targeting, benefit-tile content/source, and the Welcome-to-OTP/navigation CTA contract.
-- [ ] **Blocked — Needs Owner Verification** — Decide field-by-field Support/Admin visibility for Elderly emergency-contact name/relationship/phone, DOB/derived age, photo, detailed address, health notes, and latest assessment.
-- [ ] **Blocked — Needs Owner Verification** — Decide dedicated SOS notification preference behavior versus the current help-request preference reuse.
-- [ ] **Not started** — Confirm event inventory, recipient eligibility, preference policy, sensitive-data policy, retention, and delivery expectations for each notification class.
-- [ ] **Not started** — Carry forward public-audit questions for missed check-in/history semantics, deleted-recipient mapping, physical purge/audit retention, SOS precision/export/escalation, and any required operational-management actions.
+- [x] **Done — Owner approved** — Welcome is Elderly-specific, CMS-managed after language selection and before OTP, with localized headline/benefit tiles and CTA to Elderly OTP; preserve shared splash behavior.
+- [x] **Done — Owner approved** — Default-deny operational Admin access to sensitive Elderly profile/contact fields; any exception requires field-specific minimum scope, purpose/reason, and audited read.
+- [x] **Done — Owner approved** — SOS uses a dedicated preference; safety-required Family and SupportAdmin alerts are not silently suppressed by general help-request preference; caregiver remains active-booking/eligibility bound.
+- [x] **Done — Owner approved** — Event categories/preferences are explicit per event; UTC timestamps and Elderly-local rules govern date-based behavior.
+- [x] **Done — Owner approved** — Carry-forward defaults for check-in, medication history, retention/purge, deleted-recipient representation, SOS location/export/escalation/dialing, clinical review/tenant scope, emergency-contact lifecycle, and event-scoped Admin management are recorded in `docs/goal-progress.md`.
 
 ## Phase 2 — Push/email delivery architecture
 
-- [ ] **Not started** — Scout existing notification contracts and provider integrations; define an outbox/job boundary, idempotency, retry/backoff, dead-letter/observability, and delivery-status model before implementation.
-- [ ] **Not started** — Implement approved push-provider delivery for the agreed event inventory, preserving the durable in-app inbox as the source of truth.
+- [x] **Done — Scout existing notification contracts and provider integrations** — The durable inbox is `notifications.notifications`, with per-recipient content/read state and a unique optional idempotency key; it has no channel delivery state, attempts, scheduling, or provider receipts. Event fan-out currently runs synchronously after business-context saves through gateways into the Notifications context, so those writes are not atomic and can leave a committed business event without its alert if notification persistence fails. SMTP exists for identity/support email and SMS Misr is used for OTP; Development implementations are no-ops. No push provider, device-token registration/store, notification outbox, `IHostedService`/`BackgroundService`, or scheduler was found. | Recommended before implementation: agree on provider/device-token lifecycle and transactional outbox ownership. Source/event transactions currently span different module contexts, so the outbox must be committed with each source event (or an explicit recovery/consistency model approved); do not assume a separate Notifications DB outbox is atomic.
+- [ ] **Blocked — Implement approved push-provider delivery** — No push provider or device-token lifecycle is selected/configured. Needs owner decision on provider/platform and token registration/retirement contract before safe implementation.
 - [ ] **Not started** — Implement approved email-provider delivery only for owner-approved event classes and templates.
 - [ ] **Not started** — Add scheduling/reminder behavior only for explicitly approved events and timing rules.
 - [ ] **Not started** — Add least-privilege Admin/support delivery inspection and management, if approved; sensitive record reads must remain audited.

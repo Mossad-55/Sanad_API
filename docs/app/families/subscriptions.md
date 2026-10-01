@@ -196,13 +196,27 @@ supported.
 Typical outcomes are `401` unauthenticated, `403`
 `Subscriptions.PlanChange.NotOwner`, `404`
 `Subscriptions.PlanChange.NotFound` or `Subscriptions.PlanChange.PlanNotFound`,
-and `409` for a non-upgrade/non-downgrade target, renewal grace, cancelled
+`409 Subscriptions.PlanChange.NotUpgrade` when an immediate-payment target is
+not higher priced, `409 Subscriptions.PendingDowngrade.NotDowngrade` when a
+scheduled target is not lower priced, and `409` for renewal grace, cancelled
 renewal, unavailable tax/provider state, or another invalid lifecycle
-transition. Provider failures return `502` (`Paymob.GatewayError`) and missing
+transition. A missing active tax rule is `409
+Subscriptions.Quote.TaxNotConfigured`. Provider failures return `502`
+(`Paymob.GatewayError`) and missing
 provider configuration returns `503` (`Paymob.NotConfigured`). A failed Card
 provider amount update leaves local pending state unchanged and is safe to
 retry; do not replay payment or downgrade mutations against shared data
 without an approved fixture.
+
+### Local Development no-provider downgrade fixture
+
+When the opt-in `App:TestUserSeed` runs in Development, it also seeds a
+dedicated family owner with a current Premium v1 subscription that has no
+Paymob subscription ID. This fixture exercises scheduling a lower-priced Free
+plan, reading the pending downgrade, cancelling it, and confirming the current
+Premium snapshot remains unchanged. Because the fixture has no provider
+subscription association, those operations do not call Paymob. It is test-only
+state and must never be enabled with a live Paymob key.
 
 ## Subscription invoices
 

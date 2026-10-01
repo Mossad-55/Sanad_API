@@ -18,6 +18,10 @@ All routes live under `/api/v1/caregiver/bookings...`.
 - **Normal JWT** for a caregiver account (`access_type = Normal`, `account_type = MedicalCaregiver` or `CompanionCaregiver`). Policy: `CaregiverAccess`.
 - Every query/command is scoped to the caller’s caregiver profile (`caregivers.user_id`). Another caregiver’s booking is `404 Bookings.NotFound`. A JWT without a caregiver profile is `401`.
 
+## Local Development decision fixtures
+
+When `App:TestUserSeed` is explicitly enabled in Development, the test seeder creates two isolated, paid `PendingCaregiverApproval` bookings for the seeded medical caregiver. One is reserved for accept; the other has captured test evidence without a Paymob transaction reference and is reserved for decline, so the decline handler does not issue an external refund request. Bruno locates the fixtures from the caregiver Upcoming list and reads each result back. These are local test fixtures only; they do not represent a provider-confirmed payment and must never be enabled with a live Paymob key.
+
 ## List & detail
 
 | Method | Route | Description |
@@ -43,8 +47,8 @@ Detail matches family booking detail plus `refundedOnUtc` and `refundState`.
 
 | Method | Route | Body | Description |
 |---|---|---|---|
-| `POST` | `/api/v1/caregiver/bookings/{bookingId}/accept` | — | Accept a paid booking awaiting approval |
-| `POST` | `/api/v1/caregiver/bookings/{bookingId}/decline` | `{ "reason": string ≤ 500 }` | Decline — refund attempted in full |
+| `POST` | `/api/v1/caregiver/bookings/{bookingId}/accept` | — | Accept a paid booking awaiting approval; `204` |
+| `POST` | `/api/v1/caregiver/bookings/{bookingId}/decline` | `{ "reason": string ≤ 500 }` | Decline; `204`, with a full refund attempted when a provider transaction reference exists |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/cancel` | `{ "reason": string?, "reasonCategory": int? }` | Cancel an accepted booking before the visit starts |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/start` | — | Mark the visit as started |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/complete` | `{ "notes": string? ≤ 2000 }` | Complete the visit with optional notes |
@@ -58,8 +62,8 @@ For a `Confirmed` booking, caregiver cancellation requires a valid reason catego
 
 | Action | Required current status | Extra guard | Resulting status |
 |---|---|---|---|
-| accept | `PendingCaregiverApproval (2)` | Before the acceptance deadline (`min(paid + 24h, booking start)`) | `Confirmed (3)` |
-| decline | `PendingCaregiverApproval (2)` | — | `DeclinedByCaregiver (7)` (or `Refunded (9)` if Paymob refund succeeds) |
+| accept | `PendingCaregiverApproval (2)` | Before the acceptance deadline (`min(paid + 24h, booking start)`) | `Confirmed (3)`; HTTP `204` |
+| decline | `PendingCaregiverApproval (2)` | — | `DeclinedByCaregiver (7)` (or `Refunded (9)` if Paymob refund succeeds); HTTP `204` |
 | cancel | `Confirmed (3)` | Before visit start; category + non-blank note required | `CancelledByCaregiver (8)` (or `Refunded (9)` if a full captured refund succeeds) |
 | start | `Confirmed (3)` | `utcNow >= ConfirmedOnUtc` | `InProgress (4)` |
 | complete | `InProgress (4)` | `utcNow >= StartedOnUtc` | `Completed (5)` |

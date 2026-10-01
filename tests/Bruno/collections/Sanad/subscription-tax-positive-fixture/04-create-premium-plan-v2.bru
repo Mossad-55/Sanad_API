@@ -1,0 +1,51 @@
+meta {
+  name: 04-create-premium-plan-v2
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/plans
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{subscriptionSuperAdminDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{subscriptionSuperAdminJwt}}
+}
+
+body:json {
+  {
+    "key": "premium",
+    "version": 2,
+    "price": 350,
+    "cycle": 1,
+    "currency": "EGP",
+    "benefits": [
+      { "key": 1, "isIncluded": true },
+      { "key": 2, "isIncluded": true },
+      { "key": 3, "isIncluded": true },
+      { "key": 4, "isIncluded": true },
+      { "key": 5, "isIncluded": true },
+      { "key": 6, "isIncluded": true },
+      { "key": 7, "isIncluded": true },
+      { "key": 8, "isIncluded": true }
+    ],
+    "memberLimit": { "kind": 1, "value": 10 },
+    "monthlyBookingLimit": { "kind": 1, "value": 20 },
+    "rollover": 1
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("subscriptionPremiumV2Id", res.body);
+}

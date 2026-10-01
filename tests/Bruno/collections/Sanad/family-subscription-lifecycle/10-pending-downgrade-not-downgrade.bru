@@ -1,0 +1,40 @@
+meta {
+  name: 10-pending-downgrade-not-downgrade
+  type: http
+  seq: 10
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/subscriptions/pending-downgrade
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{familySubscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familySubscriptionOwnerJwt}}
+}
+
+body:json {
+  {
+    "planVersionId": "{{familySubscriptionFreePlanId}}"
+  }
+}
+
+assert {
+  res.status: eq 409
+}
+
+script:post-response {
+  const code = res.body && (res.body.code ?? res.body.Code);
+  if (code !== "Subscriptions.PendingDowngrade.NotDowngrade") throw new Error("An equal-priced target must return Subscriptions.PendingDowngrade.NotDowngrade.");
+}
+
+script:post-response {
+  const code = res.body && (res.body.code ?? res.body.Code);
+  if (code !== "Subscriptions.PendingDowngrade.NotDowngrade") throw new Error("An equal-priced target must not schedule a downgrade.");
+}

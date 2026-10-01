@@ -1,0 +1,25 @@
+meta {
+  name: 05-get-coupon
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/coupons/{{adminSubscriptionCouponId}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{adminSubscriptionLifecycleSessionId}}
+}
+
+auth:bearer {
+  token: {{adminSubscriptionLifecycleJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.code: eq BRUNO-AUDIT-20261001
+  res.body.discountPercentage: eq 10
+}

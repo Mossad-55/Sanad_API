@@ -1,0 +1,27 @@
+meta {
+  name: 04-put-avatar-replacement
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/auth/avatar
+  body: multipart-form
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{imageReplacementSessionId}}
+}
+
+auth:bearer {
+  token: {{imageReplacementJwt}}
+}
+
+body:multipart-form {
+  file: @file(disposable-upload-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 204
+}

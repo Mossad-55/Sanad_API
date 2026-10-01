@@ -1,0 +1,30 @@
+meta {
+  name: 02-get-tax-rule-history
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/tax-rules/history
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{adminSubscriptionLifecycleSessionId}}
+}
+
+auth:bearer {
+  token: {{adminSubscriptionLifecycleJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const history = Array.isArray(res.body) ? res.body : [];
+  if (history.length < 3 || !history.some((rule) => rule.isActive && rule.version === 3)) {
+    throw new Error("Tax history must include the active disposable version-3 rule and prior immutable versions.");
+  }
+}

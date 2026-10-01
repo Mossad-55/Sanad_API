@@ -1,0 +1,26 @@
+meta {
+  name: 05-read-declined-booking
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{caregiverDecisionDeclineBookingId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const status = res.body.status ?? res.body.Status;
+  if (status !== 7 && status !== "DeclinedByCaregiver") {
+    throw new Error(`Expected declined booking status DeclinedByCaregiver; got ${status}.`);
+  }
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 05-cancel-pending-downgrade
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/family/subscriptions/pending-downgrade
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{manualDowngradeDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{manualDowngradeJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

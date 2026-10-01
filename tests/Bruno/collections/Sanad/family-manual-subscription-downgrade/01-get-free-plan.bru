@@ -1,0 +1,30 @@
+meta {
+  name: 01-get-free-plan
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plans
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{manualDowngradeDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{manualDowngradeJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const plans = Array.isArray(res.body) ? res.body : [];
+  const free = plans.find(plan => (plan.key ?? plan.Key) === "free" && (plan.version ?? plan.Version) === 1);
+  if (!free?.id && !free?.Id) throw new Error("Published Free v1 plan was not returned.");
+  bru.setVar("manualDowngradeFreePlanId", free.id ?? free.Id);
+}

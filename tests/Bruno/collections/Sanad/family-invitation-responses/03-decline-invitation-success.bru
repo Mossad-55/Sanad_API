@@ -1,0 +1,27 @@
+meta {
+  name: 03-decline-invitation-success
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/invitations/decline
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{invitationViewerJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"token":"{{familyInvitationToken}}"}
+}
+
+assert {
+  res.status: eq 204
+}

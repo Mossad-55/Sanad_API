@@ -40,7 +40,9 @@ public sealed record TestUserSeedOptions
 // the family aggregate with two elderly dependents, one Active+Available MEDICAL
 // and one Active+Available COMPANION caregiver (built through the real domain
 // readiness flow), and a booking portfolio: Completed, Confirmed, PendingPayment,
-// CancelledByFamily, CancelledByCaregiver (refunded) and DeclinedByCaregiver (refunded).
+// CancelledByFamily, CancelledByCaregiver (refunded), DeclinedByCaregiver (refunded),
+// isolated paid caregiver-decision requests that never call Paymob, and a separate
+// manual Premium subscription for no-provider downgrade lifecycle coverage.
 public sealed class TestUserDataSeeder
 {
     private static readonly SemaphoreSlim SubscriptionFixtureGate = new(1, 1);
@@ -150,6 +152,15 @@ public sealed class TestUserDataSeeder
             email: "companion.caregiver@test.sanad.local",
             phoneNumber: "+201000000004",
             AccountType.CompanionCaregiver,
+            utcNow,
+            cancellationToken);
+
+        User manualSubscriptionOwner = await EnsureUserAsync(
+            arabicFullName: "مالك اشتراك الاختبار اليدوي",
+            englishFullName: "Test Manual Subscription Owner",
+            email: "family.downgrade@test.sanad.local",
+            phoneNumber: "+201000000010",
+            AccountType.Family,
             utcNow,
             cancellationToken);
 
@@ -432,6 +443,10 @@ public sealed class TestUserDataSeeder
         try
         {
             await EnsureSubscriptionFixturesAsync(family, utcNow, cancellationToken);
+            await EnsureManualDowngradeSubscriptionFixtureAsync(
+                manualSubscriptionOwner,
+                utcNow,
+                cancellationToken);
         }
         finally
         {
@@ -470,6 +485,14 @@ public sealed class TestUserDataSeeder
                 throw new InvalidOperationException(
                     "Existing test-family bookings do not include a Confirmed or InProgress booking for the seeded Elderly and assigned medical caregiver fixtures. No booking was added or changed.");
             }
+
+            await EnsureCaregiverDecisionFixturesAsync(
+                family,
+                owner,
+                grandfather,
+                medical,
+                utcNow,
+                cancellationToken);
 
             return;
         }
@@ -527,9 +550,110 @@ public sealed class TestUserDataSeeder
         declined.DeclineByCaregiver("Seeded caregiver decline.", utcNow.AddMinutes(4));
         declined.MarkRefunded($"test-refund-{declined.Id.Value:N}", utcNow.AddMinutes(5));
 
+        Booking caregiverAccept = NewPaidPendingCaregiverDecisionBooking(
+            family,
+            owner,
+            grandfather,
+            medical,
+            utcNow,
+            today.AddDays(8),
+            "Seeded Bruno caregiver accept fixture.");
+        Booking caregiverDecline = NewPaidPendingCaregiverDecisionBooking(
+            family,
+            owner,
+            grandfather,
+            medical,
+            utcNow,
+            today.AddDays(9),
+            "Seeded Bruno caregiver decline fixture.");
+
         _familiesDbContext.Bookings.AddRange(
-            completed, confirmed, pending, cancelledByFamily, cancelledByCaregiver, declined);
+            completed,
+            confirmed,
+            pending,
+            cancelledByFamily,
+            cancelledByCaregiver,
+            declined,
+            caregiverAccept,
+            caregiverDecline);
         await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureCaregiverDecisionFixturesAsync(
+        Family family,
+        User owner,
+        Elderly elderly,
+        Caregiver medical,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        (string Instructions, int DayOffset)[] fixtures =
+        [
+            ("Seeded Bruno caregiver accept fixture.", 8),
+            ("Seeded Bruno caregiver decline fixture.", 9)
+        ];
+        string[] fixtureInstructions = fixtures.Select(fixture => fixture.Instructions).ToArray();
+        var existing = await _familiesDbContext.Bookings
+            .Where(booking => booking.SpecialInstructions != null
+                && fixtureInstructions.Contains(booking.SpecialInstructions))
+            .Select(booking => new { Instructions = booking.SpecialInstructions!, booking.Status })
+            .ToListAsync(cancellationToken);
+
+        DateOnly today = DateOnly.FromDateTime(utcNow);
+
+        foreach ((string instructions, int dayOffset) in fixtures)
+        {
+            var matching = existing.Where(fixture => fixture.Instructions == instructions).ToList();
+            if (matching.Any(fixture => fixture.Status == BookingStatus.PendingCaregiverApproval))
+            {
+                continue;
+            }
+
+            int nextDayOffset = dayOffset + matching.Count * fixtures.Length;
+            _familiesDbContext.Bookings.Add(
+                NewPaidPendingCaregiverDecisionBooking(
+                    family,
+                    owner,
+                    elderly,
+                    medical,
+                    utcNow,
+                    today.AddDays(nextDayOffset),
+                    instructions));
+        }
+
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static Booking NewPaidPendingCaregiverDecisionBooking(
+        Family family,
+        User owner,
+        Elderly elderly,
+        Caregiver medical,
+        DateTime utcNow,
+        DateOnly bookingDate,
+        string fixtureInstructions)
+    {
+        Booking booking = NewBooking(
+            family,
+            owner,
+            elderly,
+            medical,
+            BookingCaregiverType.Medical,
+            BookingShiftType.HomeVisit,
+            bookingDate,
+            new TimeOnly(14, 0),
+            new TimeOnly(16, 0),
+            utcNow,
+            medical.MedicalPricing!.HomeVisitPrice,
+            fixtureInstructions);
+
+        string orderId = booking.Id.Value.ToString();
+        booking.RecordPaymentIntent(orderId, PaymentMethod.Card, utcNow);
+
+        // Test-only captured evidence without a gateway transaction reference. The decline handler
+        // can persist the local state transition but will not issue an external refund request.
+        booking.MarkAsPaid(orderId, paymobTransactionId: null!, utcNow);
+        return booking;
     }
 
     private async Task EnsureMedicationFixtureAsync(
@@ -750,6 +874,56 @@ public sealed class TestUserDataSeeder
         }
     }
 
+    private async Task EnsureManualDowngradeSubscriptionFixtureAsync(
+        User owner,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        Family? family = await _familiesDbContext.Families
+            .Include(item => item.Members)
+            .SingleOrDefaultAsync(item => item.OwnerUserId == owner.Id, cancellationToken);
+
+        if (family is null)
+        {
+            family = Family.Create(owner.Id, "Test Manual Subscription Family");
+            _familiesDbContext.Families.Add(family);
+            await _familiesDbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        SubscriptionPlanVersion premium = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .AsSplitQuery()
+            .SingleAsync(
+                plan => plan.Key == SubscriptionPlan.PremiumKey && plan.Version == 1,
+                cancellationToken);
+
+        FamilySubscription? current = await _familiesDbContext.FamilySubscriptions
+            .Include(subscription => subscription.Benefits)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(
+                subscription => subscription.FamilyId == family.Id && subscription.IsCurrent,
+                cancellationToken);
+
+        if (current is null)
+        {
+            current = FamilySubscription.Create(family.Id, premium, utcNow);
+            current.SetCurrentPeriodSettlement(premium.Price, taxRatePercentage: 0m);
+            _familiesDbContext.FamilySubscriptions.Add(current);
+        }
+        else
+        {
+            ValidateFamilySubscription(current, SubscriptionPlan.Premium);
+        }
+
+        if (current.PaymobSubscriptionId is not null)
+        {
+            throw new InvalidOperationException(
+                "The manual subscription downgrade fixture must not have a Paymob subscription ID.");
+        }
+
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
     private static void ValidateFamilySubscription(FamilySubscription actual, SubscriptionPlan expected)
     {
         if (!actual.IsCurrent
@@ -803,7 +977,8 @@ public sealed class TestUserDataSeeder
         TimeOnly startTime,
         TimeOnly endTime,
         DateTime utcNow,
-        decimal baseFee)
+        decimal baseFee,
+        string? specialInstructions = null)
     {
         return Booking.Create(
             family.Id,
@@ -816,7 +991,7 @@ public sealed class TestUserDataSeeder
             startTime,
             endTime,
             "14 شارع الكورنيش، الإسكندرية (بيانات اختبار)",
-            specialInstructions: null,
+            specialInstructions,
             BookingPriceSnapshot.Calculate(baseFee, 15m),
             acceptanceDeadlineUtc: utcNow.AddHours(24),
             currentDate: DateOnly.FromDateTime(utcNow),

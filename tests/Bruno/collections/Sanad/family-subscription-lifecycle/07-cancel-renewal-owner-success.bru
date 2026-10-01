@@ -1,0 +1,23 @@
+meta {
+  name: 07-cancel-renewal-owner-success
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/cancel-renewal
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{familySubscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familySubscriptionOwnerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

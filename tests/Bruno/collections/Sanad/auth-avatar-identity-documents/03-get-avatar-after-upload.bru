@@ -1,0 +1,19 @@
+meta {
+  name: 03-get-avatar-after-upload
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/auth/avatar
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{authImageOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

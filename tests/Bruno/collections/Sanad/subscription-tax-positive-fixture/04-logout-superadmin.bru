@@ -1,0 +1,23 @@
+meta {
+  name: 04-logout-superadmin
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{subscriptionSuperAdminDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{subscriptionSuperAdminJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

@@ -1,0 +1,27 @@
+meta {
+  name: 05-checkout-missing-dependent
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/checkout
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{bookingFamilyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"elderlyId":"00000000-0000-0000-0000-000000000000","caregiverId":"00000000-0000-0000-0000-000000000000","shiftType":1,"bookingDate":"2030-01-01","startTime":"10:00:00","endTime":"11:00:00","serviceAddress":"Disposable unknown-department case","specialInstructions":null}
+}
+
+assert {
+  res.status: eq 404
+}

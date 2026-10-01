@@ -1,0 +1,23 @@
+meta {
+  name: 09-reenable-auto-renew-owner-success
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/reenable-auto-renew
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{familySubscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familySubscriptionOwnerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

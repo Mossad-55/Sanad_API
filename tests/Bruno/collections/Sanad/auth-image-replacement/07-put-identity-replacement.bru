@@ -1,0 +1,29 @@
+meta {
+  name: 07-put-identity-replacement
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/v1/auth/identity-document
+  body: multipart-form
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{imageReplacementSessionId}}
+}
+
+auth:bearer {
+  token: {{imageReplacementJwt}}
+}
+
+body:multipart-form {
+  front: @file(disposable-upload-fixture.png) @contentType(image/png)
+  back: @file(disposable-upload-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 200
+  res.body.uploaded: eq true
+}

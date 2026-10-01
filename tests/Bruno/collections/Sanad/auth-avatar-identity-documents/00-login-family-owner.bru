@@ -1,0 +1,27 @@
+meta {
+  name: 00-login-family-owner
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"email":"{{familyOwnerEmail}}","password":"{{familyOwnerPassword}}","deviceName":"auth-image-coverage","devicePlatform":3,"appVersion":"1.0.0"}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("authImageOwnerJwt", res.body.accessToken);
+}

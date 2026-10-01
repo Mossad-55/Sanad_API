@@ -1,0 +1,23 @@
+meta {
+  name: 11-cancel-pending-downgrade-no-provider-success
+  type: http
+  seq: 11
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/family/subscriptions/pending-downgrade
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{familySubscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familySubscriptionOwnerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

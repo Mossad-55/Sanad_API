@@ -1,0 +1,33 @@
+meta {
+  name: 02-search-active-medical-caregiver
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregivers?type=1&availability=1&page=1&pageSize=10
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{familyBookingDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familyBookingJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.totalCount: gt 0
+}
+
+script:post-response {
+  const items = res.body && (res.body.items ?? res.body.Items);
+  const first = Array.isArray(items) && items[0];
+  const id = first && (first.id ?? first.Id);
+  const caregiverId = id && (id.value ?? id.Value ?? id);
+  if (!caregiverId) throw new Error("No active Medical caregiver was returned for the disposable checkout.");
+  bru.setVar("familyBookingCaregiverId", caregiverId);
+}

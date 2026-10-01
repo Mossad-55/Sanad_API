@@ -1,0 +1,30 @@
+meta {
+  name: 03-read-current-tax-rule
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/tax-rules/current
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{subscriptionSuperAdminDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{subscriptionSuperAdminJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const rule = res.body;
+  if (!rule || rule.isActive !== true || rule.version !== 3 || Number(rule.ratePercentage) !== 15) {
+    throw new Error("Current tax rule must match the active disposable 15% version-3 fixture.");
+  }
+}

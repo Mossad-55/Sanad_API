@@ -1,0 +1,27 @@
+meta {
+  name: 05-accept-invitation-success
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/invitations/accept
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{inviteeFamilyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {"token":"{{familyInvitationToken}}"}
+}
+
+assert {
+  res.status: eq 204
+}

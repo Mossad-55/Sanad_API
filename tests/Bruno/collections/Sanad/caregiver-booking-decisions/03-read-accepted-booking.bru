@@ -1,0 +1,26 @@
+meta {
+  name: 03-read-accepted-booking
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{caregiverDecisionAcceptBookingId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const status = res.body.status ?? res.body.Status;
+  if (status !== 3 && status !== "Confirmed") {
+    throw new Error(`Expected accepted booking status Confirmed; got ${status}.`);
+  }
+}

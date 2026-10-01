@@ -1,0 +1,19 @@
+meta {
+  name: 08-logout-caregiver
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{bookingCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

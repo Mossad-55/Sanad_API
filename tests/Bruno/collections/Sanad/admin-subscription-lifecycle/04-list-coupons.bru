@@ -1,0 +1,30 @@
+meta {
+  name: 04-list-coupons
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/coupons
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{adminSubscriptionLifecycleSessionId}}
+}
+
+auth:bearer {
+  token: {{adminSubscriptionLifecycleJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const coupons = Array.isArray(res.body) ? res.body : [];
+  if (!coupons.some((coupon) => coupon.code === "BRUNO-AUDIT-20261001")) {
+    throw new Error("Created disposable coupon must appear in the admin list.");
+  }
+}

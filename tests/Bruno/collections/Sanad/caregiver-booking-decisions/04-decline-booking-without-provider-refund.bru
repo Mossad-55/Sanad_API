@@ -1,0 +1,29 @@
+meta {
+  name: 04-decline-booking-without-provider-refund
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/bookings/{{caregiverDecisionDeclineBookingId}}/decline
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+body:json {
+  {
+    "reason": "Local Bruno fixture decline"
+  }
+}
+
+assert {
+  res.status: eq 204
+}

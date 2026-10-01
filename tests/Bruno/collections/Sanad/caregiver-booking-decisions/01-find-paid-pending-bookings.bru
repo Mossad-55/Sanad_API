@@ -1,0 +1,34 @@
+meta {
+  name: 01-find-paid-pending-bookings
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/bookings?tab=Upcoming
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = Array.isArray(res.body) ? res.body : (res.body?.items ?? res.body?.results ?? []);
+  const statusOf = item => item.status ?? item.Status;
+  const dateOf = item => String(item.bookingDate ?? item.BookingDate ?? "");
+  const idOf = item => item.id ?? item.Id ?? item.bookingId ?? item.BookingId;
+  const pending = items
+    .filter(item => statusOf(item) === 2 || statusOf(item) === "PendingCaregiverApproval")
+    .sort((left, right) => dateOf(left).localeCompare(dateOf(right)));
+  if (pending.length < 2 || !idOf(pending[0]) || !idOf(pending[1])) {
+    throw new Error("Expected two seeded paid PendingCaregiverApproval fixtures.");
+  }
+  bru.setVar("caregiverDecisionAcceptBookingId", idOf(pending[0]));
+  bru.setVar("caregiverDecisionDeclineBookingId", idOf(pending[1]));
+}

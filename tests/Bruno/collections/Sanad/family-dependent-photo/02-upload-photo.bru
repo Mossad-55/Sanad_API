@@ -1,0 +1,24 @@
+meta {
+  name: 02-upload-photo
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/dependents/{{photoDependentId}}/photo
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{photoOwnerJwt}}
+}
+
+body:multipart-form {
+  photo: @file(disposable-upload-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 200
+  res.body.englishFullName: eq Bruno Disposable Photo
+}

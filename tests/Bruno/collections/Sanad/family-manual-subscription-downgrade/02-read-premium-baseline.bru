@@ -1,0 +1,35 @@
+meta {
+  name: 02-read-premium-baseline
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/current
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{manualDowngradeDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{manualDowngradeJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const current = res.body.currentSubscription ?? res.body.CurrentSubscription;
+  const planKey = current?.planKey ?? current?.PlanKey;
+  if (planKey !== "premium") throw new Error(`Expected the isolated Premium baseline; got ${planKey}.`);
+  if (current?.paymobSubscriptionId || current?.PaymobSubscriptionId) {
+    throw new Error("The manual test fixture must not reference a Paymob subscription.");
+  }
+  if (current?.pendingDowngrade || current?.PendingDowngrade) {
+    throw new Error("The manual test fixture must start without a pending downgrade.");
+  }
+}

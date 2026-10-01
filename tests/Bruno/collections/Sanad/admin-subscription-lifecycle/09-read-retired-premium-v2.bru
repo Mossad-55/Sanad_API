@@ -1,0 +1,29 @@
+meta {
+  name: 09-read-retired-premium-v2
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/subscriptions/plans/{{adminSubscriptionPremiumV2Id}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{adminSubscriptionLifecycleSessionId}}
+}
+
+auth:bearer {
+  token: {{adminSubscriptionLifecycleJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.body.isAvailableForNewSales !== false) {
+    throw new Error("Retired Premium v2 plan must no longer be available for new sales.");
+  }
+}

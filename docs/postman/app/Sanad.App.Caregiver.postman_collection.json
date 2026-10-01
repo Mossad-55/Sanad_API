@@ -585,7 +585,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/accept"
           },
-          "description": "Only from PendingCaregiverApproval and before the acceptance deadline."
+          "description": "Returns 204. Only from PendingCaregiverApproval and before the acceptance deadline. Local Development coverage can use the opt-in TestUserDataSeeder paid decision fixture; it does not call Paymob."
         },
         {
           "name": "Decline booking",
@@ -606,7 +606,8 @@
               "mode": "raw",
               "raw": "{\n  \"reason\": \"عدم توفر الموعد\"\n}"
             }
-          }
+          },
+          "description": "Returns 204 and declines a PendingCaregiverApproval booking. A full refund is attempted only when a Paymob transaction reference exists. In local Development, the opt-in TestUserDataSeeder provides a separate captured test fixture with no Paymob transaction reference, so the route transition can be covered without an external refund call. This fixture is not provider-confirmed and must never be used outside the guarded test database."
         },
         {
           "name": "Start visit",

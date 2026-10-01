@@ -1,0 +1,30 @@
+meta {
+  name: 04-read-scheduled-downgrade
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/current
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{manualDowngradeDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{manualDowngradeJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const current = res.body.currentSubscription ?? res.body.CurrentSubscription;
+  const pending = current?.pendingDowngrade ?? current?.PendingDowngrade;
+  const planKey = pending?.planKey ?? pending?.PlanKey;
+  if (planKey !== "free") throw new Error(`Expected pending Free downgrade; got ${planKey}.`);
+}

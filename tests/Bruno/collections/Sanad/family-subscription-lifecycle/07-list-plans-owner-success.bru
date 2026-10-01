@@ -1,0 +1,30 @@
+meta {
+  name: 07-list-plans-owner-success
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plans
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{familySubscriptionOwnerDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familySubscriptionOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const plans = Array.isArray(res.body) ? res.body : [];
+  const free = plans.find((plan) => (plan.key ?? plan.Key) === "free");
+  if (!free) throw new Error("The seeded published Free plan was not returned.");
+  bru.setVar("familySubscriptionFreePlanId", free.id ?? free.Id);
+}

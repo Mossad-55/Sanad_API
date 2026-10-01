@@ -1,0 +1,44 @@
+meta {
+  name: 03-checkout-success-no-payment
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/checkout
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{familyBookingDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{familyBookingJwt}}
+}
+
+body:json {
+  {
+    "elderlyId": "{{familyBookingDependentId}}",
+    "caregiverId": "{{familyBookingCaregiverId}}",
+    "shiftType": 1,
+    "bookingDate": "{{familyBookingDate}}",
+    "startTime": "10:00",
+    "endTime": "12:00",
+    "serviceAddress": "Disposable local Bruno booking fixture",
+    "specialInstructions": "Checkout coverage only; do not create a payment intent."
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const id = res.body && (res.body.bookingId ?? res.body.BookingId);
+  const total = res.body && (res.body.totalPayableAmount ?? res.body.TotalPayableAmount);
+  if (!id || typeof total !== "number" || total <= 0) throw new Error("Checkout did not return a priced disposable booking.");
+  bru.setVar("familyCheckoutBookingId", id);
+}

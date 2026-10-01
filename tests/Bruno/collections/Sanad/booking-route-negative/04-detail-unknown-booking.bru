@@ -1,0 +1,20 @@
+meta {
+  name: 04-detail-unknown-booking
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/bookings/00000000-0000-0000-0000-000000000000
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{bookingFamilyJwt}}
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq Bookings.NotFound
+}
