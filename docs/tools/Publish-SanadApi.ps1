@@ -9,7 +9,7 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
-$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+$repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '../..')).Path
 $projectPath = Join-Path $repositoryRoot 'src\API\Sanad.API\Sanad.API.csproj'
 $OutputPath = if ([string]::IsNullOrWhiteSpace($OutputPath)) { 'deploy\publish-out' } else { $OutputPath }
 $resolvedOutputPath = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot $OutputPath))

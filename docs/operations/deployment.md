@@ -1,14 +1,14 @@
 # Deployment handoff
 
 The repository contains a repeatable package step in
-`tools/Publish-SanadApi.ps1`. It publishes the API and writes
+`docs/tools/Publish-SanadApi.ps1`. It publishes the API and writes
 `sanad-deployment-manifest.json` containing the Git revision, package time, and
 the billing migration expected by this release.
 
 From the repository root, run:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\Publish-SanadApi.ps1 -Configuration Release
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\tools\Publish-SanadApi.ps1 -Configuration Release
 ```
 
 The default package directory is `deploy/publish-out/` and is intentionally
@@ -19,7 +19,7 @@ After the published API starts, verify the exact package and run the anonymous
 smoke contract with:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\tools\Verify-SanadDeployment.ps1 `
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\tools\Verify-SanadDeployment.ps1 `
   -ManifestPath .\deploy\publish-out\sanad-deployment-manifest.json `
   -BaseUrl https://your-authorized-host `
   -ExpectedRevision <pushed-sha>
@@ -41,5 +41,8 @@ Before a remote launch:
    completion path, including the allowance-exhausted `409` contract.
 
 The script packages the application; it does not contain hostnames, credentials,
-SSH keys, or an implicit production write. VPS deployment evidence must be
-returned by the deployment owner and recorded in the private operations handoff.
+SSH keys, or an implicit production write. Deployment evidence must be returned
+by the deployment owner and recorded without credentials in the active slice
+identified by the Mastermind handoff. The former generated release task file is
+superseded and is not release authorization.
+The [Mastermind handoff](../Mastermind_Handoff.md) links to the active checkpoint.

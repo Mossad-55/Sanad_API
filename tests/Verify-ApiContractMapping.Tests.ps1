@@ -4,7 +4,7 @@ param()
 $ErrorActionPreference = 'Stop'
 
 $repositoryRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
-$checkerPath = Join-Path $repositoryRoot 'tools/Verify-ApiContractMapping.ps1'
+$checkerPath = Join-Path $repositoryRoot 'docs/tools/Verify-ApiContractMapping.ps1'
 $tokens = $null
 $parseErrors = $null
 $checkerAst = [System.Management.Automation.Language.Parser]::ParseFile(

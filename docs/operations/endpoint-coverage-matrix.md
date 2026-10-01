@@ -15,7 +15,7 @@ For a group-by-group progress view, see [endpoint-coverage-tracker.md](endpoint-
 Run:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File tools/Verify-ApiContractMapping.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File docs/tools/Verify-ApiContractMapping.ps1
 ```
 
 The checker normalizes route parameters and compares controller actions with every Postman collection in both directions. The current audit result is:

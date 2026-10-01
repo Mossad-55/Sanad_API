@@ -1,23 +1,27 @@
 # Codex local workflow
 
-The active instructions are in `AGENTS.md`. The mastermind coordinates one sequential pass through the five bounded roles for implementation goals: scout, implementer, test author, reviewer, and documenter. A role without applicable work is marked inapplicable briefly. The old 16-step release checklist is historical and is not an execution plan.
+Follow [repository instructions](../governance/AGENTS.md). Start with [Mastermind handoff](../Mastermind_Handoff.md), then its active slice. [Project goal](../Project_Main_Goal.md) indexes the owner-approved priorities.
 
-## Resuming interrupted work
+## One sequential pass
 
-1. Stop the previous CLI turn, inspect `git status` and `git diff`, and preserve unfinished edits.
-2. Start a new session. State the unfinished objective and ask the mastermind to inspect only relevant files and resume at the unfinished role.
-3. Complete the remaining task and run targeted validation. Reuse valid prior gate results where no relevant file has changed.
+Before this implementation sequence, the planning mastermind must ask what already exists in the owner's application for the slice, review provided UI/instructions, discuss recommendations and missing decisions, and adjust tasks with the owner. Development begins only after explicit plan approval. The planning mastermind supplies the approved plan and exact handoff prompt to the executing mastermind. Only Care homes is currently in intake; other features remain unplanned.
 
-## Model and cost controls
+Scout → implementer → test author → reviewer → documenter → mastermind integration, verification, and handoff. One worker at a time. Mark an inapplicable role briefly. Concrete corrections receive a bounded follow-up; do not restart the sequence or add another review round.
 
-The persisted project default is `gpt-5.6-luna` at `medium` reasoning effort for the mastermind and all five Sanad workers (scout, implementer, test author, reviewer, and documenter); one subagent runs at a time. A persisted project default does not change the model already selected by a running session. Verify the active runtime model and reasoning effort with `/status`; the persisted default takes effect when the session is reloaded or a new session starts. Explicit CLI settings may override the persisted default.
+Every brief specifies the revision/worktree delta, objective, owned files, acceptance criteria, dependencies, and required output. Scout identifies every affected endpoint and test prerequisite. Test author supplies unit and Bruno coverage for each new or behaviorally changed endpoint. Documenter keeps feature guides separate and organizes matching Postman requests into clear feature folders or appropriate separate collections.
 
-Avoid long-running autonomous loops, duplicate role passes, and repeated full-suite validation. Check the five-hour and weekly balances in Settings > Usage. Those percentages represent shared Work/Codex allowance, not a direct token counter.
+## Required gates
 
-## Release checks
+For every implementation slice, the mastermind builds the project, runs focused slice tests, then the full suite, and executes slice Bruno coverage against disposable local/test fixtures. Build/test gates require successful exit and zero warnings. No endpoint commit without successful required Bruno coverage. Setup, readback, cleanup, and untestable cases must be explicit. Documentation/script-only changes receive relevant static/script validation.
 
-For an API contract change, synchronize affected docs and Postman requests and run the relevant tests. Add a targeted Bruno gate if integration behavior requires it. For schema or production changes, verify the exact database and seek owner authorization. Choose wider review and validation according to the specific risk; do not schedule every worker or gate automatically.
+Reuse successful gates unless later changes invalidate them. Record commands, scope, results, warnings/skips, cleanup, and limitations in the owning slice. Static request mapping is not an executed test. Owner-confirmed historical results remain labelled separately.
 
-Whenever the mastermind runs `dotnet build` or `dotnet test`, a successful exit is not sufficient: the command must finish with zero warnings to count as a passing gate. Investigate and resolve warnings surfaced by the run; do not mask them with blanket suppression. If an environmental or unrelated warning cannot safely be resolved within scope, report the gate as not clean and identify the warning.
+## Resume and closeout
 
-Every endpoint added or behaviorally changed must have Bruno coverage, and that coverage must be run successfully before commit. Include the relevant successful and failure/authentication cases. Stateful requests must use disposable local/test fixtures and must never target production. If the required Bruno run is missing, failing, or blocked, do not commit the endpoint change; report the exact blocker and leave the changes uncommitted.
+1. Inspect the worktree and preserve unfinished and unrelated changes.
+2. Read the active slice, current role, and next action; resume there.
+3. Resolve only decisions needed now; block dependent tasks narrowly.
+4. Complete verification, update the slice and short handoff, and report.
+5. Obtain separate authorization for release actions and exact-target database operations. Do not silently start the next product goal.
+
+The persisted model/effort remains gpt-5.6-luna / medium. Root AGENTS.md is the instruction-discovery pointer. Consolidated logs are retired sources awaiting separately confirmed cleanup.
