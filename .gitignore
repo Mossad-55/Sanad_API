@@ -11,11 +11,17 @@ UI
 
 # Local UI/screenshots and image fixtures are never repository artifacts.
 *.png
+*.png.*
 *.jpg
+*.jpg.*
 *.jpeg
+*.jpeg.*
 *.gif
+*.gif.*
 *.webp
+*.webp.*
 *.bmp
+*.bmp.*
 
 # User-specific files
 *.rsuser
