@@ -3,7 +3,9 @@
 The repository contains a repeatable package step in
 `docs/tools/Publish-SanadApi.ps1`. It publishes the API and writes
 `sanad-deployment-manifest.json` containing the Git revision, package time, and
-the billing migration expected by this release.
+the billing migration expected by this release. Development settings are
+excluded from publish output, and the publisher fails if
+`appsettings.Development.json` is present in the package.
 
 From the repository root, run:
 
