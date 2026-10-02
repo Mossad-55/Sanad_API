@@ -524,6 +524,54 @@ public sealed class FamilyController :
             result.Value.FileName);
     }
 
+    // -------------------------- Check-ins --------------------------
+
+    [HttpGet("dependents/{dependentId:guid}/check-ins/today")]
+    [ProducesResponseType(typeof(IReadOnlyList<FamilyDependentCheckInResponse>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDependentCheckInsToday(
+        Guid dependentId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new GetFamilyDependentCheckInsTodayQuery(
+                userId,
+                new ElderlyId(dependentId)),
+            cancellationToken));
+    }
+
+    [HttpGet("dependents/{dependentId:guid}/check-ins")]
+    [ProducesResponseType(typeof(PagedFamilyDependentCheckIns), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDependentCheckIns(
+        Guid dependentId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] DateOnly? startDate = null,
+        [FromQuery] DateOnly? endDate = null,
+        [FromQuery] bool? answer = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new GetFamilyDependentCheckInsQuery(
+                userId,
+                new ElderlyId(dependentId),
+                page,
+                pageSize,
+                startDate,
+                endDate,
+                answer),
+            cancellationToken));
+    }
+
     private async Task<Result<StoredFile>> SavePrivatePhotoAsync(
         IFormFile? photo,
         CancellationToken cancellationToken)
@@ -724,5 +772,61 @@ public sealed class FamilyController :
                 cancellationToken);
 
         return ToActionResult(result);
+    }
+
+    // -------------------------- Help Requests --------------------------
+
+    [HttpGet("dependents/{dependentId:guid}/help-requests")]
+    [ProducesResponseType(typeof(PagedFamilyDependentHelpRequests), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDependentHelpRequests(
+        Guid dependentId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? actorKey = null,
+        [FromQuery] string? actionKey = null,
+        [FromQuery] string? needKey = null,
+        [FromQuery] string? qualifierKey = null,
+        [FromQuery] DateOnly? startDate = null,
+        [FromQuery] DateOnly? endDate = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new GetFamilyDependentHelpRequestsQuery(
+                userId,
+                new ElderlyId(dependentId),
+                page,
+                pageSize,
+                actorKey,
+                actionKey,
+                needKey,
+                qualifierKey,
+                startDate,
+                endDate),
+            cancellationToken));
+    }
+
+    [HttpGet("dependents/{dependentId:guid}/help-requests/{requestId:guid}")]
+    [ProducesResponseType(typeof(FamilyDependentHelpRequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetDependentHelpRequest(
+        Guid dependentId,
+        Guid requestId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new GetFamilyDependentHelpRequestQuery(
+                userId,
+                new ElderlyId(dependentId),
+                requestId),
+            cancellationToken));
     }
 }

@@ -542,6 +542,50 @@ public sealed class CaregiverController :
         return NoContent();
     }
 
+    // -------------------------- Help Requests --------------------------
+
+    [HttpGet("help-requests")]
+    [ProducesResponseType(typeof(PagedCaregiverHelpRequests), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetHelpRequests(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] Sanad.Modules.Families.Domain.HelpRequests.ElderlyHelpRequestStatus? status = null,
+        [FromQuery] Guid? elderlyId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new GetCaregiverHelpRequestsQuery(
+                userId,
+                page,
+                pageSize,
+                status,
+                elderlyId),
+            cancellationToken));
+    }
+
+    [HttpGet("help-requests/{requestId:guid}")]
+    [ProducesResponseType(typeof(CaregiverHelpRequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetHelpRequest(
+        Guid requestId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new GetCaregiverHelpRequestQuery(
+                userId,
+                requestId),
+            cancellationToken));
+    }
+
     private async Task<Result<StoredFile>>
         SavePrivateCertificateAsync(
             IFormFile? file,
