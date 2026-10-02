@@ -11,6 +11,12 @@ public static class AuthorizationPolicies
     public const string CaregiversAdmin =
         "CaregiversAdmin";
 
+    public const string CaregiverReviewAdmin =
+        "CaregiverReviewAdmin";
+
+    public const string CareHomesOperationalAdmin =
+        "CareHomesOperationalAdmin";
+
     public const string SubscriptionPlanAdmin =
         "SubscriptionPlanAdmin";
 
@@ -19,6 +25,9 @@ public static class AuthorizationPolicies
 
     public const string FamilyAccess =
         "FamilyAccess";
+
+    public const string CareHomeOwnerAccess =
+        "CareHomeOwnerAccess";
 
     public const string ElderlyAccess =
         "ElderlyAccess";

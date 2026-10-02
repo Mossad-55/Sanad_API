@@ -1,6 +1,7 @@
 # Registration and verification
 
-Family, Medical Caregiver, and Companion Caregiver register with email + password, then verify email and phone.
+Family, Medical Caregiver, Companion Caregiver, and CareHomeOwner accounts
+register with email + password, then verify email and phone.
 
 Elderly cannot call `POST /register`.
 
@@ -25,7 +26,7 @@ Anonymous. Success `201`. Duplicate email or phone `409`.
 }
 ```
 
-`accountType`: `1` Family, `2` MedicalCaregiver, `3` CompanionCaregiver. An unsupported value is rejected by request validation with `400 Api.Validation.Failed` (including an `AccountType` validation error).
+`accountType`: `1` Family, `2` MedicalCaregiver, `3` CompanionCaregiver, `8` CareHomeOwner. Care-home owners verify the email and phone identities before receiving a normal token; OTP is not a login method. Values such as Elderly (`4`) and all Admin account types remain unavailable for public registration and are rejected by request validation with `400 Api.Validation.Failed` (including an `AccountType` validation error).
 
 Password: 10–128 characters, at least one uppercase, one lowercase, and one number.
 

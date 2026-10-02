@@ -1,7 +1,7 @@
 meta {
   name: 03-detail-missing
   type: http
-  seq: 3
+  seq: 4
 }
 
 get {
@@ -10,7 +10,7 @@ get {
 }
 
 auth:bearer {
-  token: {{adminCaregiversContentJwt}}
+  token: {{adminCaregiversSuperJwt}}
 }
 
 assert {

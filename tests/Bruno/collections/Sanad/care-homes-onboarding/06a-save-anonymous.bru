@@ -1,0 +1,23 @@
+meta {
+  name: 06a-save-anonymous
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/profile
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "expectedVersion": 1, "draft": {} }
+}
+
+assert {
+  res.status: eq 401
+}

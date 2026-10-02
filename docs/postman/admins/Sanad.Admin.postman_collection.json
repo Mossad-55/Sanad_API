@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sanad Admin",
-    "description": "Admin CMS and all Caregiver lookups. Login as the seeded Super Admin first. Splash writes use CmsContent; lookup writes use CaregiversAdmin (both require a Normal token with account_type SuperAdmin or ContentAdmin).",
+    "description": "Admin CMS, caregiver lookups and operational caregiver review. Login as the seeded Super Admin first. Splash writes use CmsContent and lookups use CaregiversAdmin (Normal SuperAdmin or ContentAdmin). Caregiver review uses CaregiverReviewAdmin (Normal SuperAdmin or SupportAdmin); ContentAdmin is denied.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -1438,7 +1438,7 @@
           }
         }
       ],
-      "description": "caregiverId/certificateId are captured by the Caregiver onboarding collection. Review order: verify certificates, then approve (or request correction/reject). Suspend/reactivate apply to Active/Suspended caregivers. File download is the only access path to certificate scans."
+      "description": "Caregiver review routes use CaregiverReviewAdmin: Normal SuperAdmin or SupportAdmin only; ContentAdmin receives 403. caregiverId/certificateId are captured by the Caregiver onboarding collection. Review order: verify certificates, then approve (or request correction/reject). Suspend/reactivate apply to Active/Suspended caregivers. File download is the only access path to certificate scans."
     },
     {
       "name": "04. Care Assessment CMS",
@@ -2856,6 +2856,42 @@
           "name": "Change Elderly SOS status — manual fixture",
           "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-status" }], "body": { "mode": "raw", "raw": "{\n  \"action\": 2\n}" }, "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/status", "description": "STATE-CHANGING: manual disposable fixture only. The JSON action uses numeric enum values (Open=1, Acknowledged=2, Resolved=3, Cancelled=4). Normal SuperAdmin/SupportAdmin. Allowed transitions are Open→Acknowledged/Resolved/Cancelled and Acknowledged→Resolved/Cancelled; invalid transitions return 400 Families.Sos.InvalidOperation." },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS status contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        }
+      ]
+    },
+    {
+      "name": "19. Care homes operational review",
+      "description": "SuperAdmin/SupportAdmin only. ContentAdmin must receive 403. Requests are authored against the current controller contract and require an existing submitted disposable application; no Bruno execution is claimed.",
+      "item": [
+        {
+          "name": "List care-home applications",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/care-homes?page=1&pageSize=20", "description": "Returns page/pageSize/totalCount/items. Invalid paging or status returns 400 CareHomes.Admin.InvalidQuery." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('care-home list contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Get care-home application detail",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}", "description": "Returns revisions, document metadata and review history without private storage keys. Unknown IDs return 404 CareHomes.Admin.ApplicationNotFound." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('care-home detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Read private care-home document",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}/file", "description": "Streams private content only for PendingReview/Approved/Suspended applications. Draft/correction returns CareHomes.Admin.PrivateDocumentUnavailable." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('private-file contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Verify non-expiring document",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"expectedVersion\": {{careHomeVersion}},\n  \"expiryDate\": null,\n  \"confirmNonExpiring\": true\n}" }, "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}/verify", "description": "Explicit confirmation is required for a verified document with no expiry. Stale version returns 409 CareHomes.Admin.Conflict." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('document verify contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Reject care-home document",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"expectedVersion\": {{careHomeVersion}},\n  \"reason\": \"Unreadable document\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}/reject", "description": "Reasoned rejection returns the updated detail. Invalid state returns 400 CareHomes.Admin.InvalidOperation." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('document reject contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Review care-home application",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"expectedVersion\": {{careHomeVersion}},\n  \"action\": 1,\n  \"reason\": null\n}" }, "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/review", "description": "Action enum: 1 Approved, 2 Rejected, 3 CorrectionsRequested, 4 Suspended, 5 Reactivated. Supply a reason for rejection, correction, or suspension." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('application review contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"] } }]
         }
       ]
     },

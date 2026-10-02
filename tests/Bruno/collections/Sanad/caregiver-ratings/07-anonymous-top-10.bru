@@ -1,0 +1,15 @@
+meta {
+  name: 07-anonymous-top-10
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/caregiver-ratings/top-10
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

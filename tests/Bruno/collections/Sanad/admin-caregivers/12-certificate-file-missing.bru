@@ -1,7 +1,7 @@
 meta {
   name: 12-certificate-file-missing
   type: http
-  seq: 12
+  seq: 13
 }
 
 get {
@@ -10,7 +10,7 @@ get {
 }
 
 auth:bearer {
-  token: {{adminCaregiversContentJwt}}
+  token: {{adminCaregiversSuperJwt}}
 }
 
 assert {

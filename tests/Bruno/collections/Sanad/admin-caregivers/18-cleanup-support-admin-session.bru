@@ -1,0 +1,24 @@
+meta {
+  name: 18-cleanup-support-admin-session
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Fixture cleanup must target the guarded local Development API.");
+  if (!bru.getVar("adminCaregiversSupportJwt")) throw new Error("Run the SupportAdmin login before fixture cleanup.");
+}
+
+auth:bearer {
+  token: {{adminCaregiversSupportJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

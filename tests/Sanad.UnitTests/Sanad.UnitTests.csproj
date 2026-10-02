@@ -21,6 +21,9 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\BuildingBlocks\Domain\Sanad.BuildingBlocks.Domain\Sanad.BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Caregivers\Domain\Sanad.Modules.Caregivers.Domain\Sanad.Modules.Caregivers.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\CareHomes\Domain\Sanad.Modules.CareHomes.Domain\Sanad.Modules.CareHomes.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\CareHomes\Application\Sanad.Modules.CareHomes.Application\Sanad.Modules.CareHomes.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\CareHomes\Infrastructure\Sanad.Modules.CareHomes.Infrastructure\Sanad.Modules.CareHomes.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\Domain\Sanad.Modules.Identity.Domain\Sanad.Modules.Identity.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\Application\Sanad.Modules.Identity.Application\Sanad.Modules.Identity.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Identity\Infrastructure\Sanad.Modules.Identity.Infrastructure\Sanad.Modules.Identity.Infrastructure.csproj" />

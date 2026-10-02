@@ -1,0 +1,26 @@
+meta {
+  name: 09c-upload-mismatched-signature
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/documents
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+body:multipart-form {
+  expectedVersion: {{careHomeFacilityVersion}}
+  type: 1
+  file: @file(service-icon-fixture.png) @contentType(application/pdf)
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq CareHomes.Document.InvalidContent
+}

@@ -1,0 +1,19 @@
+meta {
+  name: 02-invalid-page
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes?page=0&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq CareHomes.Admin.InvalidQuery
+}

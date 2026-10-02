@@ -1,0 +1,33 @@
+meta {
+  name: 21-approve-application
+  type: http
+  seq: 28
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}/review
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": {{adminCareHomeVersion}},
+    "action": 1,
+    "reason": null
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 5
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected application approval response.");
+  bru.setVar("adminCareHomeVersion", res.body.version);
+}

@@ -78,6 +78,23 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public IReadOnlyCollection<CaregiverLanguageSelection> LanguageSelections => _languageSelections.AsReadOnly();
     public IReadOnlyCollection<CaregiverAreaSelection> AreaSelections => _areaSelections.AsReadOnly();
 
+    public void UpdateFamilyRatingSummary(
+        decimal averageRating,
+        int reviewsCount,
+        DateTime utcNow)
+    {
+        if (averageRating is < 0m or > 5m)
+            throw new DomainException("Average rating must be between 0 and 5.");
+        if (reviewsCount < 0)
+            throw new DomainException("Review count cannot be negative.");
+        if (utcNow.Kind != DateTimeKind.Utc)
+            throw new DomainException("Rating timestamps must be UTC.");
+
+        AverageRating = Math.Round(averageRating, 2, MidpointRounding.ToEven);
+        ReviewsCount = reviewsCount;
+        UpdatedOnUtc = utcNow;
+    }
+
     internal void ValidateSubmissionReadiness(
         DateOnly currentDate)
     {

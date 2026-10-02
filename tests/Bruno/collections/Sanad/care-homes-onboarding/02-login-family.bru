@@ -1,0 +1,33 @@
+meta {
+  name: 02-login-family
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{viewerEmail}}",
+    "password": "{{familyOwnerPassword}}",
+    "deviceName": "bruno-care-homes-family-denial",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("careHomeFamilyJwt", res.body.accessToken);
+}

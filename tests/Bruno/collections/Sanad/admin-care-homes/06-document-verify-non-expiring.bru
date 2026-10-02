@@ -1,0 +1,34 @@
+meta {
+  name: 06-document-reject
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}/documents/{{adminCareHomeDocument1}}/reject
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": {{adminCareHomeVersion}},
+    "reason": "Operating license scan is unreadable"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.documents: isArray
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected document rejection response.");
+  const rejected = res.body.documents.find(document => document.id === bru.getVar("adminCareHomeDocument1"));
+  if (!rejected || rejected.status !== 3 || rejected.reviewReason !== "Operating license scan is unreadable") throw new Error("Expected reasoned document rejection.");
+  bru.setVar("adminCareHomeVersion", res.body.version);
+}

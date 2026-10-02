@@ -38,7 +38,7 @@ For implementation: sanad_scout → sanad_implementer → sanad_test_author → 
 
 ## Models and runtime
 
-The persisted default remains gpt-5.6-luna at medium reasoning for the mastermind and all five Sanad roles. This document cannot change a running session's model. The owner can inspect the runtime with /status; reload/new sessions apply persisted defaults unless overridden. Worker runtime configuration and role order are unchanged.
+The requested repository default is gpt-6-luna at medium reasoning for the mastermind and all five Sanad roles. Repository guidance cannot change a running session or a platform-pinned role runtime; the current Sanad role tools report gpt-5.6-luna as fixed and non-overridable. The owner can inspect the effective runtime with /status; reload/new sessions apply platform or persisted defaults unless overridden. Worker runtime configuration and role order are unchanged.
 
 ## Safety and release
 

@@ -39,6 +39,8 @@ public sealed class AccountChoicesTests
     [InlineData(AccountType.Family, AccountType.CompanionCaregiver)]
     [InlineData(AccountType.MedicalCaregiver, AccountType.Family)]
     [InlineData(AccountType.CompanionCaregiver, AccountType.Family)]
+    [InlineData(AccountType.Family, AccountType.CareHomeOwner)]
+    [InlineData(AccountType.CareHomeOwner, AccountType.Family)]
     public async Task Add_PersistsAllowedHybridsAndRequiresRefresh(AccountType first, AccountType second)
     {
         // The lightweight IdentityTestDbContext deliberately ignores Accounts.

@@ -1,0 +1,21 @@
+meta {
+  name: 14-submit-anonymous
+  type: http
+  seq: 21
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/submit
+  body: json
+  auth: none
+}
+
+body:json {
+  {
+    "expectedVersion": 1
+  }
+}
+
+assert {
+  res.status: eq 401
+}

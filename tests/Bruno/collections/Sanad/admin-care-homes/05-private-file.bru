@@ -1,0 +1,18 @@
+meta {
+  name: 05-private-file
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}/documents/{{adminCareHomeDocumentId}}/file
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+assert {
+  res.status: eq 200
+}

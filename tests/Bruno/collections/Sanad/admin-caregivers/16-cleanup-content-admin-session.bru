@@ -1,0 +1,24 @@
+meta {
+  name: 16-cleanup-content-admin-session
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Fixture cleanup must target the guarded local Development API.");
+  if (!bru.getVar("adminCaregiversContentJwt")) throw new Error("Run the ContentAdmin login before fixture cleanup.");
+}
+
+auth:bearer {
+  token: {{adminCaregiversContentJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

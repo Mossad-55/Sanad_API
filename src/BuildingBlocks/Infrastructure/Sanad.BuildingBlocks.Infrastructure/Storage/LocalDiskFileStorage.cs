@@ -135,13 +135,22 @@ public sealed class LocalDiskFileStorage : IFileStorage
         long contentLength,
         string folder,
         CancellationToken cancellationToken = default)
+        => await SavePrivateAsync(content, contentType, contentLength, folder, PrivateMaxBytes, cancellationToken);
+
+    public async Task<Result<StoredFile>> SavePrivateAsync(
+        Stream content,
+        string contentType,
+        long contentLength,
+        string folder,
+        long maximumBytes,
+        CancellationToken cancellationToken = default)
     {
         if (contentLength <= 0)
         {
             return StorageErrors.Empty;
         }
 
-        if (contentLength > PrivateMaxBytes)
+        if (maximumBytes <= 0 || contentLength > maximumBytes)
         {
             return StorageErrors.TooLarge;
         }
@@ -180,12 +189,30 @@ public sealed class LocalDiskFileStorage : IFileStorage
         Directory.CreateDirectory(
             Path.GetDirectoryName(fullPath)!);
 
-        await using FileStream fileStream =
-            File.Create(fullPath);
+        bool exceededLimit = false;
+        await using (FileStream fileStream = File.Create(fullPath))
+        {
+            byte[] buffer = new byte[81920];
+            long bytesWritten = 0;
+            int bytesRead;
+            while ((bytesRead = await content.ReadAsync(buffer.AsMemory(), cancellationToken)) > 0)
+            {
+                bytesWritten += bytesRead;
+                if (bytesWritten > maximumBytes)
+                {
+                    exceededLimit = true;
+                    break;
+                }
 
-        await content.CopyToAsync(
-            fileStream,
-            cancellationToken);
+                await fileStream.WriteAsync(buffer.AsMemory(0, bytesRead), cancellationToken);
+            }
+        }
+
+        if (exceededLimit)
+        {
+            File.Delete(fullPath);
+            return StorageErrors.TooLarge;
+        }
 
         return new StoredFile(key);
     }

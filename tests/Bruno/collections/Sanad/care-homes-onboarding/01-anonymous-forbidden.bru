@@ -1,0 +1,15 @@
+meta {
+  name: 01-anonymous-forbidden
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

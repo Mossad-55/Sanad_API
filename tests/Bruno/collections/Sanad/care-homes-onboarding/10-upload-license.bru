@@ -1,0 +1,35 @@
+meta {
+  name: 10-upload-license
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/documents
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care homes document uploads require the guarded local Development API.");
+}
+
+body:multipart-form {
+  expectedVersion: {{careHomeFacilityVersion}}
+  type: 1
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 1
+  res.body.verifiedNonExpiring: eq false
+}
+
+script:post-response {
+  bru.setVar("careHomeFacilityVersion", Number(bru.getVar("careHomeFacilityVersion")) + 1);
+}

@@ -1,0 +1,27 @@
+meta {
+  name: 01-list-applications
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.page: eq 1
+  res.body.pageSize: eq 20
+  res.body.totalCount: isNumber
+  res.body.items: isArray
+}
+
+script:post-response {
+  if (!res.body.items || res.body.items.length === 0) throw new Error("Expected the authorized disposable target to contain a Care Home application.");
+  bru.setVar("adminCareHomeId", res.body.items[0].id);
+}

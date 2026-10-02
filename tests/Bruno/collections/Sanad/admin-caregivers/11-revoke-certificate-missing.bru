@@ -1,7 +1,7 @@
 meta {
   name: 11-revoke-certificate-missing
   type: http
-  seq: 11
+  seq: 12
 }
 
 post {
@@ -15,7 +15,7 @@ headers {
 }
 
 auth:bearer {
-  token: {{adminCaregiversContentJwt}}
+  token: {{adminCaregiversSuperJwt}}
 }
 
 body:json {

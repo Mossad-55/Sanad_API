@@ -1,0 +1,34 @@
+meta {
+  name: 18-verify-registration-non-expiring
+  type: http
+  seq: 25
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}/documents/{{adminCareHomeDocument2}}/verify
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": {{adminCareHomeVersion}},
+    "expiryDate": null,
+    "confirmNonExpiring": true
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected registration verification response.");
+  const document = res.body.documents.find(item => item.id === bru.getVar("adminCareHomeDocument2"));
+  if (!document || document.status !== 2 || !document.verifiedNonExpiring) throw new Error("Expected explicit non-expiring registration verification.");
+  bru.setVar("adminCareHomeVersion", res.body.version);
+}

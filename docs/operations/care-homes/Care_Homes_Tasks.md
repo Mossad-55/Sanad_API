@@ -1,0 +1,109 @@
+# Care Homes — Backend Task Checklist
+
+Status: Execution in progress. All unchecked items are Not started unless explicitly marked In progress or Blocked. Block only dependent work on unresolved contracts in [Care_Homes_Decisions.md](Care_Homes_Decisions.md). Backend/API only. Preserve the existing worker execution phases: scout → implementer → test author → reviewer → documenter; the groupings below are dependency groupings, not a replacement workflow.
+
+## Guardrails and acceptance
+
+- [x] HC-TASK-001 — Pinned revision `c4a4040`; `git status --short` showed no tracked worktree delta. Scout inspected identity/payment/notification/storage conventions; unrelated changes preserved.
+- [x] HC-TASK-002 — Existing conventions mapped and owner contracts resolved: shared separate percentage fee and tax rates, each on base price, for caregiver/Care homes/Family subscription payments; manual Care homes payout only after completed stay, with post-payout refund/reversal tracked as facility balance owed. No tax-on-fee rule was added.
+- [x] HC-TASK-007 — Scout endpoint/dependency snapshot at pinned revision `c4a4040` recorded the greenfield Care homes boundary and bounded manifest. Existing caregiver review used `CaregiversAdmin` (SuperAdmin + ContentAdmin); no payout ledger/provider or Care homes fee service existed at that snapshot.
+- [ ] HC-TASK-003 — Keep all Care homes APIs backend-only; do not modify UI repositories or broaden into caregiver booking work.
+- [ ] HC-TASK-004 — Every new or behaviorally changed endpoint has unit tests and Bruno requests covering success, validation, authentication, authorization, and applicable conflict/state cases, using disposable fixtures with readback and cleanup.
+- [ ] HC-TASK-005 — Maintain a separate Postman collection or feature folder for Care homes with verified examples, variables, descriptions, and response assertions; do not document unverified behavior.
+- [x] HC-TASK-006 — Mastermind build (0 warnings/errors), focused Care Homes/storage tests (23 passed), full suite (Architecture 1 + Unit 2,119 passed), and Care Homes owner/Admin Bruno coverage passed. Each Care Homes collection had one unrelated invalid Wellness Tips parser skip; see execution handoff for exact counts and cleanup.
+
+## Identity, facility ownership, and onboarding
+
+- [ ] HC-TASK-010 — In progress: public registration accepts `CareHomeOwner` (8), password/verification-OTP login applies, account choices recognize it, and `CareHomeOwnerAccess` is enforced. Facility ownership persistence, one-facility uniqueness, and create/read APIs are implemented and covered by the passing owner onboarding Bruno run; remaining onboarding gaps keep the task open.
+- [ ] HC-TASK-011 — In progress: versioned bilingual profile drafts, contact/address, amenities, medical services, and admission conditions have persistence and owner create/read/save endpoints. Media/gallery, facility-defined catalogs, complete limits, and endpoint closeout remain.
+- [ ] HC-TASK-012 — In progress: domain rules and persistence model cover the four required private document types, nullable expiry, pending/verified/rejected states, MIME/10 MB validation, and explicit Admin confirmation for non-expiring documents. Owner upload/replacement and Admin document/private-file routes passed disposable Bruno coverage; broader requirements remain.
+- [ ] HC-TASK-013 — In progress: aggregate lifecycle supports frozen submission revisions, reject/correction, approve, suspend/reactivate, reasoned history, expiry checks, and expected-version checks. Owner submission and Admin review HTTP routes passed disposable Bruno coverage; notification effects and last-approved public reads remain.
+- [ ] HC-TASK-014 — Implement required-license expiry behavior, distinguishing Admin-verified non-expiring documents from unverified null expiry: Admin alert and new-booking block while preserving existing stays; replacement upload remains pending review.
+
+## Inventory, rooms, beds, and availability
+
+- [ ] HC-TASK-020 — Add room types, physical rooms, beds, maintenance blocks, and lifecycle/state rules; derive availability from holds, stays, and maintenance.
+- [ ] HC-TASK-021 — Enforce room allocation rules: Family selects room type, facility assigns physical room/bed before check-in, shared reserves one bed, private room/suite reserves the whole room.
+- [ ] HC-TASK-022 — Add bilingual facility-defined room pricing in EGP and calendar-month period calculation (same date next month, month-end clamp), without automatic renewal.
+- [ ] HC-TASK-023 — Add room transfers and maintenance availability updates; explicitly defer walk-ins, automatic no-show cancellation, and advanced fault-management workflows.
+
+## Family discovery, stays, payments, and refunds
+
+- [ ] HC-TASK-030 — Add authorized elderly dropdown contract accepting `elderlyId`, server-side Family ownership authorization, server-derived name/age, medical-data access controls, additional care notes, and responsible contact.
+- [ ] HC-TASK-031 — Add approved/licensed public facility discovery with lowest active room-type monthly “starting from” price, and Family home top-10 Care homes ranking by eligible Family star ratings.
+- [ ] HC-TASK-032 — Add one-month prepaid Paymob Card/Wallet stay booking, 15-minute checkout hold, verified-payment 24-hour facility decision hold, 24-hour earliest arrival, accept/reject/timeout lifecycle, and concurrency protection.
+- [ ] HC-TASK-033 — Add/reuse platform-fee configuration/application for Family charges and facility payouts using Admin-configured percentages and confirmed proportional fee refunds; resolve remaining calculation basis before money movement, and version and snapshot quoted base/fees, rounding and totals so later fee edits do not change existing transactions. Map existing global consumers before changing shared fee behavior.
+- [ ] HC-TASK-038 — Implement facility payable ledger, percentage payout-fee deduction and Admin-recorded manual bank transfers with evidence/reference and settlement history; confirm missing payout eligibility/timing conventions before dependent behavior. Reconcile failed refunds and payout reversals; do not assume Paymob collection includes payouts.
+- [ ] HC-TASK-039 — Verify concurrent last-capacity checkout, duplicate/out-of-order provider callbacks, late successful payments, acceptance versus expiry/cancellation races and repeated/manual refunds. Authenticate callbacks, enforce idempotency and never overbook or double-refund; distinguish external payment completion from local state.
+- [ ] HC-TASK-034 — Add actual check-in/check-out, Family check-in confirmation, Admin dispute cases, room allocation, and auditable state transitions with evidence-based SuperAdmin/SupportAdmin dispute resolution and auditable effective check-in time.
+- [ ] HC-TASK-035 — Add refund policy: full refund before check-in, 50% of full monthly payment after Family cancellation post-check-in, full refund for facility rejection/cancellation/timeout; support Paymob status/retry/manual failed-refund action and duplicate protection.
+- [ ] HC-TASK-036 — Add paid, facility-approved extensions without automatic charging; anchor and capacity behavior must follow the resolved contract; fully refund future unused extension periods when applicable.
+- [ ] HC-TASK-037 — Add receipts, revenue/dashboard read models, exports, and internal booking notes; defer resident wallet and advanced financial claims until separately authorized.
+
+## Visits and ratings
+
+- [ ] HC-TASK-040 — Add prospective and resident visit request contracts, authorization, free one-hour slots, Egypt timezone, exact visitor count, facility hours/closures, 24-hour notice, pending capacity hold, 24-hour expiry, approval, cancellation, and rescheduling rules after unresolved semantics are confirmed.
+- [ ] HC-TASK-041 — Add one editable Care-home rating per verified booking after confirmed check-in/service received, with 1–5 stars and optional text, authorization, aggregation and ranking tie-breakers; no unapproved moderation workflow.
+- [x] HC-TASK-042 — Family can create/edit one rating for a completed caregiver booking in any Family they own or belong to; Family top-10 filters active/profile-visible/rating-visible caregivers and ranks by raw average, count, then UUID. Existing caregiver booking behavior is unchanged.
+
+## Admin operations and bounded caregiver permission correction
+
+- [ ] HC-TASK-050 — In progress: SuperAdmin/SupportAdmin-only queue, detail/submitted snapshot, private document inspection, revision history, reasoned review actions, suspend/reactivate, and private-file route are implemented and documented; expiring-license views remain.
+- [ ] HC-TASK-051 — Add SuperAdmin/SupportAdmin booking/payment/refund inspection, check-in dispute handling, failed-refund follow-up, fee configuration, and auditable manual refund operations according to resolved contracts.
+- [ ] HC-TASK-052 — In progress: policy route is SuperAdmin/SupportAdmin-only and authored ContentAdmin denial coverage exists; execution against the disposable fixture remains unverified.
+- [x] HC-TASK-053 — Policy implementation, focused unit tests, Bruno role scenarios, and Postman/auth documentation complete; Mastermind review found no mismatch. Caregiver booking scope unchanged.
+
+## Notifications and documentation
+
+- [ ] HC-TASK-060 — Add in-app and email events for onboarding/review, corrections, approvals, suspension/reactivation, license alerts, booking decisions/expiry, payments, refunds, disputes, and relevant Admin actions; no SMS.
+- [ ] HC-TASK-061 — In progress: owner draft/upload/submission guide is at `docs/care-homes/owner-onboarding.md`, Admin operations are at `docs/admin/care-homes.md`, and requests are synchronized in the corresponding Postman collections. The implemented onboarding/Admin routes have disposable Bruno execution evidence; broader slice examples remain incomplete.
+- [ ] HC-TASK-062 — Document deferred items and unresolved blockers; update slice evidence and handoff without duplicating this checklist.
+
+## Verification and closeout
+
+### Current Care Homes implementation/documentation delta (2026-10-02)
+
+- The first scout spawn attempt hit the agent thread limit; a retry succeeded before implementation, and the mandated scout → implementer → test author → reviewer → documenter sequence then completed one role at a time.
+- Implementer added owner submission, Admin queue/detail/document/private-file/review routes and corrected the implementation race identified during integration; the exact code and test changes remain in the shared worktree with unrelated edits preserved.
+- Test author added focused unit coverage and Bruno requests for owner submission and Admin success, validation, authentication, authorization, stale-version, private-file, document-review, lifecycle, and ContentAdmin-denial cases. Final disposable runs passed: owner onboarding 27 passed/44 assertions; Admin Care Homes 40 passed/69 assertions. Each had one unrelated Wellness Tips parser skip.
+- Reviewer completed the bounded correctness/privacy review and the resulting corrections are reflected in the implementation and requests. Owner authorized recreation of `localhost:5432/SanadBrunoTestDb`; migrations and disposable fixtures were used for Bruno coverage, then the API was stopped and the database and generated Care Homes uploads/results were cleaned. No other database was changed.
+- Documentation now separates owner/facility contracts under `docs/care-homes`, Admin operations under `docs/admin`, and requests in their corresponding collections. Implemented submission/Admin examples match the verified disposable Bruno behavior.
+
+### Mastermind verification checkpoint (2026-10-02)
+
+- `dotnet build Sanad.slnx --no-restore -m:1 --nologo` — first attempt failed on the missing test-double overload; after the correction, rerun exited 0 with 0 warnings and 0 errors.
+- `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-build --no-restore --filter "FullyQualifiedName~CareHomes|FullyQualifiedName~LocalDiskFileStorageTests" --nologo` — exit 0; 23 passed.
+- `dotnet test Sanad.slnx --no-build --no-restore --nologo` — exit 0; Architecture 1 passed and Unit 2,119 passed, with 0 failed/skipped.
+- Superseded by final disposable verification below: both owner onboarding and Admin Care Homes Bruno passed on the authorized target, then the API, target database, generated uploads, and local reporter outputs were cleaned. Endpoint tasks remain incomplete pending the broader checklist.
+- Static contract mapping: `powershell -NoProfile -ExecutionPolicy Bypass -File docs/tools/Verify-ApiContractMapping.ps1` — exit 0; 325 controller route-method signatures, 371 Postman requests, 0 missing/orphan Postman mappings, 1,081 Bruno API requests, and 0 missing/orphan Bruno mappings.
+- Entire-worktree `git diff --check` exited 0; Git emitted only CRLF replacement notices.
+
+### Mastermind evidence - caregiver review permission correction (2026-10-02)
+
+- Worktree base: `c4a4040`; preserved the owner-approved task/handoff changes.
+- `dotnet build Sanad.slnx --no-restore -m:1 --nologo` - first run exposed a missing reflection namespace in the new test; corrected it. Rerun exited 0, 0 warnings, 0 errors.
+- `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-build --no-restore --filter FullyQualifiedName~AdminCaregiverReviewAuthorizationTests --nologo` - exit 0; 2 passed, 0 failed/skipped.
+- `dotnet test Sanad.slnx --no-build --no-restore --nologo` - exit 0; ArchitectureTests 1 passed; UnitTests 2,097 passed; 0 failed/skipped.
+- Owner separately authorized the guarded disposable target `localhost:5432/SanadBrunoTestDb` for current migrations and caregiver Bruno coverage. API startup found identity, CMS, caregiver, and family schemas already current; no migrations were applied. The canonical helper refused to overwrite the existing reserved `tests/Bruno/service-icon-fixture.png`, so the API was started directly with the same development fixture settings; existing image/environment files were preserved.
+- `bru run 'collections/Sanad/admin-caregivers' --env local-fixtures --insecure` from `tests/Bruno` — final run exit 0; 20 passed, 1 skipped; 38/38 assertions, including logout-all cleanup for all three fixture Admin users. The skip/parser warning came from the unrelated invalid `wellness-tips/05-admin-create-manual-multipart.bru` (line 29); caregiver requests all passed. The Development API was stopped and port 5235 was confirmed closed. Runtime logs included existing DPAPI key-decryption errors and HTTPS/MediatR warnings; they did not prevent requests. These are distinct from the clean zero-warning build gate.
+- Auth documentation and the Admin Postman collection now describe `CaregiverReviewAdmin` (Normal SuperAdmin/SupportAdmin) and ContentAdmin denial. The broader Care homes slice has no implementation yet; these results do not close its gates.
+
+### Mastermind evidence - Family caregiver ratings and ranking (2026-10-02)
+
+- Added `caregivers.caregiver_ratings` with one unique rating per booking and preserved the existing caregiver summary fields. Generated and applied only `20261002003508_AddCaregiverRatings` to the owner-authorized disposable `localhost:5432/SanadBrunoTestDb` through the Development startup guard. No production/provider action occurred.
+- Family eligibility checks owner/member membership across all non-deleted Families and completed-booking status. Ratings are editable, 1–5 stars, optional trimmed review text (max 2,000 chars), and update the caregiver average/count; top-10 ranking uses active and visible caregivers with raw-average/count/UUID tie-breakers.
+- `dotnet build Sanad.slnx --no-restore -m:1 --nologo` — exit 0, 0 warnings, 0 errors. Focused `FamilyCaregiverRatingsTests` — 4 passed. Full `dotnet test Sanad.slnx --no-build --no-restore --nologo` — ArchitectureTests 1 passed; UnitTests 2,101 passed; 0 failed/skipped.
+- `bru run 'collections/Sanad/caregiver-ratings' --env local-fixtures --insecure` — 13 passed, 1 skipped; 15/15 assertions cover login, completed-booking selection, missing booking, Family top-10, non-Family 403, create/edit, invalid stars, anonymous 401, ranking readback, and session cleanup. The one skipped parser warning is the unrelated pre-existing invalid Wellness Tips request. The guarded Development API was stopped after execution.
+- Added endpoint documentation under `docs/app/caregivers/family-ratings.md` and requests in the existing Family Postman collection under `14. Caregiver ratings (Family)`. The API contract mapping script could not be executed because the environment blocks PowerShell scripts; mapping was covered by Bruno/Postman inspection. This does not complete the Care homes-specific rating or ranking tasks.
+
+### Mastermind evidence - Care homes owner onboarding foundation (2026-10-02)
+
+- Added `CareHomeOwner`-scoped create/read/versioned bilingual draft-save APIs, single-facility-per-owner persistence, draft/review/document domain rules, and the `care_homes` schema migration `20261002012952_InitCareHomesOnboarding`. The owner explicitly authorized creation/application only to `localhost:5432/SanadBrunoTestDb`; the guarded Development startup applied it and Bruno persisted/read back the draft there. No reset, other database, production, or provider action occurred.
+- `dotnet build Sanad.slnx --no-restore -m:1 --nologo` — exit 0, zero warnings/errors after fixes. Focused CareHomes tests passed 5/5 at the checkpoint before the nullable request-contract correction; rerun focused tests before closing this task. Tests cover incomplete draft acceptance, bilingual submission gate, document non-expiring distinction, freeze, approval, owner access, one-facility enforcement, persisted drafts, and stale versions.
+- `bru run 'collections/Sanad/care-homes-onboarding' --env local-fixtures --insecure` from `tests/Bruno` — final run exit 0; 14 passed, 1 skipped; 19/19 assertions. Coverage includes owner login, anonymous 401, seeded Family-viewer 403, create/repeat conflict, owner read, valid bilingual draft save/readback, invalid profile 400, stale version 409, and unauthorized create/save. The skipped parser warning is the existing unrelated invalid Wellness Tips request. The earlier run exposed a Family-owner fixture that already had CareHomeOwner and a required-field model-binding bug; fixture was changed to Family viewer and draft request fields made nullable; the successful run is after both corrections.
+- Endpoint guide: `docs/care-homes/owner-onboarding.md`; Postman collection: `docs/postman/care-homes/Sanad.CareHomes.postman_collection.json`. Postman JSON parsed before its final Family-login addition; validate again. Full Care homes build/focused/full-suite and later Bruno gates remain open as more endpoints are added.
+
+- [ ] HC-TASK-070 — Caregiver review authorization has 2 passing focused unit tests and passing Bruno 401/403/200 role coverage. The broader Care homes endpoints remain incomplete and require their own coverage.
+- [ ] HC-TASK-071 — Run disposable stateful booking/payment/refund/room-allocation fixtures with readback and cleanup; never use production state.
+- [ ] HC-TASK-072 — Mastermind integrates only approved changes, resolves concrete review findings without restarting the workflow, builds, runs focused tests then full suite with zero warnings, route/contract checks and all changed-endpoint Bruno coverage; validate synchronized Postman requests. Include month-end/leap-year, Egypt-timezone, cross-owner privacy, license expiry/null dates and ContentAdmin denial cases.
+- [ ] HC-TASK-073 — Mark tasks Done only with evidence, report remaining blockers, and prepare the completed-slice handoff. Do not silently start another slice or delete files. Migrations/database resets, commits/pushes and deployment require their own owner authorization.

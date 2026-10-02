@@ -155,6 +155,15 @@ public sealed class TestUserDataSeeder
             utcNow,
             cancellationToken);
 
+        _ = await EnsureUserAsync(
+            arabicFullName: "ØµØ§Ø­Ø¨ Ø¯Ø§Ø± Ø§Ù„Ø±Ø¹Ø§ÙŠØ© Ø§Ù„ØªØ¬Ø±ÙŠØ¨ÙŠ",
+            englishFullName: "Test Care Home Owner",
+            email: "carehome.owner@test.sanad.local",
+            phoneNumber: "+201000000011",
+            AccountType.CareHomeOwner,
+            utcNow,
+            cancellationToken);
+
         User manualSubscriptionOwner = await EnsureUserAsync(
             arabicFullName: "مالك اشتراك الاختبار اليدوي",
             englishFullName: "Test Manual Subscription Owner",
@@ -1034,6 +1043,27 @@ public sealed class TestUserDataSeeder
             if (!user.Accounts.Any(account => account.AccountType == accountType))
             {
                 user.AddAccount(accountType);
+                changed = true;
+            }
+
+            // Existing local fixtures may have been created by registration
+            // tests and left pending verification. The guarded fixture seed
+            // represents ready-to-use test accounts, not OTP lifecycle cases.
+            if (user.Status == UserStatus.PendingVerification)
+            {
+                if (!user.EmailVerified)
+                {
+                    user.VerifyEmail(utcNow);
+                    changed = true;
+                }
+
+                if (!user.PhoneVerified)
+                {
+                    user.VerifyPhone(utcNow);
+                    changed = true;
+                }
+
+                user.Activate(utcNow);
                 changed = true;
             }
 

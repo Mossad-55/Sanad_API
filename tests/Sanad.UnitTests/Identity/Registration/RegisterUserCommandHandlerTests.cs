@@ -18,6 +18,7 @@ public sealed class RegisterUserCommandHandlerTests
     [InlineData(AccountType.Family)]
     [InlineData(AccountType.MedicalCaregiver)]
     [InlineData(AccountType.CompanionCaregiver)]
+    [InlineData(AccountType.CareHomeOwner)]
     public async Task Handle_ShouldRegisterUserAndCreateDualVerificationRequests(
         AccountType accountType)
     {

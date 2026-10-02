@@ -1,0 +1,18 @@
+meta {
+  name: 15-content-admin-forbidden
+  type: http
+  seq: 16
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/caregivers?page=1&pageSize=10
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCaregiversContentJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

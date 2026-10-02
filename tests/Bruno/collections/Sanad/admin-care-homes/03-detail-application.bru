@@ -1,0 +1,29 @@
+meta {
+  name: 03-detail-application
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.id: eq {{adminCareHomeId}}
+  res.body.revisions: isArray
+  res.body.documents: isArray
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected Admin application detail before review.");
+  if (!res.body.documents || res.body.documents.length === 0) throw new Error("Expected private document metadata on the submitted application.");
+  bru.setVar("adminCareHomeDocumentId", res.body.documents[0].id);
+  for (const document of res.body.documents) bru.setVar("adminCareHomeDocument" + document.type, document.id);
+  bru.setVar("adminCareHomeVersion", res.body.version);
+}

@@ -1,0 +1,32 @@
+meta {
+  name: 12-owner-upload-registration-replacement
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/documents
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesOwnerJwt}}
+}
+
+body:multipart-form {
+  expectedVersion: {{adminCareHomeOwnerVersion}}
+  type: 2
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 200
+  res.body.type: eq 2
+  res.body.status: eq 1
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected registration replacement upload response.");
+  bru.setVar("adminCareHomeOwnerVersion", Number(bru.getVar("adminCareHomeOwnerVersion")) + 1);
+}

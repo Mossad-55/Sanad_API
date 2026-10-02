@@ -56,8 +56,8 @@ public sealed class RegisterUserCommandValidator :
                 command.AccountType)
             .Must(IsSupportedAccountType)
             .WithMessage(
-                "Registration supports Family, " +
-                "Medical Caregiver, or Companion Caregiver only.");
+                "Registration supports Family, Medical Caregiver, " +
+                "Companion Caregiver, or Care-home Owner only.");
     }
 
     private static bool IsSupportedAccountType(
@@ -66,6 +66,7 @@ public sealed class RegisterUserCommandValidator :
         return accountType is
             AccountType.Family or
             AccountType.MedicalCaregiver or
-            AccountType.CompanionCaregiver;
+            AccountType.CompanionCaregiver or
+            AccountType.CareHomeOwner;
     }
 }

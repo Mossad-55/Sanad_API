@@ -1,0 +1,31 @@
+meta {
+  name: 10a-upload-registration
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/documents
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+body:multipart-form {
+  expectedVersion: {{careHomeFacilityVersion}}
+  type: 2
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 200
+  res.body.type: eq 2
+  res.body.status: eq 1
+}
+
+script:post-response {
+  bru.setVar("careHomeFacilityVersion", Number(bru.getVar("careHomeFacilityVersion")) + 1);
+}

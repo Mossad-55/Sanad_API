@@ -31,7 +31,7 @@ The confirmed deletion set was **118 exact files**: all 102 withdrawn generated 
 
 | Proposed deletion | Retained replacement or disposition |
 |---|---|
-| `Sanad_Master_Context.md` | Sanitized scope and rules in `Project_Main_Goal.md`, `docs/care-homes/Care_Homes_Decisions.md`, and owning reference docs; private environment details are not retained. |
+| `Sanad_Master_Context.md` | Sanitized scope and rules in `Project_Main_Goal.md`, `docs/operations/care-homes/Care_Homes_Decisions.md`, and owning reference docs; private environment details are not retained. |
 | `Sanad_Operations.md` | Current state and next action in `Mastermind_Handoff.md`; feature evidence remains in retained modular docs. |
 | `subscription-vat-tax/*.txt` | Subscription tax constraints and evidence preserved in `docs/slices/subscriptions/Subscription_Tax_Reference.md`; no worker brief remains active. |
 | `docs/goal-progress.md` | Historical product-progress log; current Care homes status is owned by `Mastermind_Handoff.md` and `Care_Homes_Tasks.md`. |

@@ -9,8 +9,8 @@ Act as Sanad's cleanup Mastermind in D:/Sanad_API. This is documentation and
 workflow cleanup only, not product development.
 
 Read AGENTS.md, docs/governance/AGENTS.md, docs/Mastermind_Handoff.md,
-docs/Project_Main_Goal.md, docs/care-homes/Care_Homes_Decisions.md,
-docs/care-homes/Care_Homes_Tasks.md and docs/care-homes/Cleanup_Proposal.md.
+docs/Project_Main_Goal.md, docs/operations/care-homes/Care_Homes_Decisions.md,
+docs/operations/care-homes/Care_Homes_Tasks.md and docs/operations/care-homes/Cleanup_Proposal.md.
 Use the old migration record only as source evidence, never as an active workflow.
 
 I want irrelevant legacy workflow files, consolidated documentation, handoffs and

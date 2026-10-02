@@ -1,0 +1,18 @@
+meta {
+  name: 24-content-admin-denied
+  type: http
+  seq: 32
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesContentJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

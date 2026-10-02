@@ -24,6 +24,16 @@
   <Folder Name="/src/Modules/Caregivers/Domain/">
     <Project Path="src/Modules/Caregivers/Domain/Sanad.Modules.Caregivers.Domain/Sanad.Modules.Caregivers.Domain.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/CareHomes/" />
+  <Folder Name="/src/Modules/CareHomes/Application/">
+    <Project Path="src/Modules/CareHomes/Application/Sanad.Modules.CareHomes.Application/Sanad.Modules.CareHomes.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/CareHomes/Domain/">
+    <Project Path="src/Modules/CareHomes/Domain/Sanad.Modules.CareHomes.Domain/Sanad.Modules.CareHomes.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/CareHomes/Infrastructure/">
+    <Project Path="src/Modules/CareHomes/Infrastructure/Sanad.Modules.CareHomes.Infrastructure/Sanad.Modules.CareHomes.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Caregivers/Infrastructure/">
     <Project Path="src/Modules/Caregivers/Infrastructure/Sanad.Modules.Caregivers.Infrastructure/Sanad.Modules.Caregivers.Infrastructure.csproj" />
   </Folder>

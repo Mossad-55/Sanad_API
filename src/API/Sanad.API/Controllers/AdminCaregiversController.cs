@@ -14,7 +14,7 @@ public sealed record CaregiverAdminDetailResponse(
     CaregiverProfileResponse Profile,
     CaregiverCancellationSummaryResponse? Cancellations);
 
-[Authorize(Policy = AuthorizationPolicies.CaregiversAdmin)]
+[Authorize(Policy = AuthorizationPolicies.CaregiverReviewAdmin)]
 [Route("api/v1/admin/caregivers")]
 public sealed class AdminCaregiversController :
     ApiControllerBase

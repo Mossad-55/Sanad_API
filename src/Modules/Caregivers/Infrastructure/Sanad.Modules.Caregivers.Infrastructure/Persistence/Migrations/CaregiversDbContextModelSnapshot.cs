@@ -79,6 +79,59 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                     b.ToTable("caregivers", "caregivers");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverRating", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<Guid>("CaregiverId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caregiver_id");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_user_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<string>("ReviewText")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("review_text");
+
+                    b.Property<int>("Stars")
+                        .HasColumnType("integer")
+                        .HasColumnName("stars");
+
+                    b.Property<Guid>("UpdatedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("updated_by_user_id");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique();
+
+                    b.HasIndex("CaregiverId", "Stars");
+
+                    b.ToTable("caregiver_ratings", "caregivers");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.Lookups.AcademicDegree", b =>
                 {
                     b.Property<Guid>("Id")
@@ -816,6 +869,15 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                     b.Navigation("ServiceSelections");
 
                     b.Navigation("Visibility")
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverRating", b =>
+                {
+                    b.HasOne("Sanad.Modules.Caregivers.Domain.Caregivers.Caregiver", null)
+                        .WithMany()
+                        .HasForeignKey("CaregiverId")
+                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 #pragma warning restore 612, 618

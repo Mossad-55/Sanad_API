@@ -1,0 +1,27 @@
+meta {
+  name: 05-read-mine
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 1
+  res.body.version: isNumber
+}
+
+script:post-response {
+  bru.setVar("careHomeFacilityVersion", res.body.version);
+  bru.setVar("careHomeFacilityStaleVersion", res.body.version);
+  bru.setVar("careHomeFacilityId", res.body.id);
+}

@@ -19,7 +19,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/auth/register",
-            "description": "Anonymous. Family=1, MedicalCaregiver=2, CompanionCaregiver=3. Elderly=4 is rejected.",
+            "description": "Anonymous. Family=1, MedicalCaregiver=2, CompanionCaregiver=3, CareHomeOwner=8. Elderly=4 and Admin account types are rejected. CareHomeOwner uses the same password login and email/phone verification-only OTP flow; it does not receive platform Admin privileges.",
             "body": {
               "mode": "raw",
               "raw": "{\n  \"arabicFullName\": \"محمد أحمد\",\n  \"englishFullName\": \"Mohamed Ahmed\",\n  \"email\": \"{{email}}\",\n  \"phoneNumber\": \"{{phoneNumber}}\",\n  \"password\": \"{{password}}\",\n  \"accountType\": {{accountType}}\n}"
@@ -54,7 +54,7 @@
                   "value": "application/problem+json"
                 }
               ],
-              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Validation Failed\",\n  \"status\": 400,\n  \"detail\": \"One or more validation errors occurred.\",\n  \"instance\": \"/api/v1/auth/register\",\n  \"code\": \"Api.Validation.Failed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\",\n  \"errors\": {\"AccountType\": [\"Registration supports Family, Medical Caregiver, or Companion Caregiver only.\"]}\n}"
+              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Validation Failed\",\n  \"status\": 400,\n  \"detail\": \"One or more validation errors occurred.\",\n  \"instance\": \"/api/v1/auth/register\",\n  \"code\": \"Api.Validation.Failed\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\",\n  \"errors\": {\"AccountType\": [\"Registration supports Family, Medical Caregiver, Companion Caregiver, or Care-home Owner only.\"]}\n}"
             },
             {
               "name": "400 Validation failed",
@@ -1574,7 +1574,7 @@
             },
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/account",
-            "description": "Requires Normal JWT. Returns the caller's own profile. accountType is display-only: 1 Family, 2 Medical Caregiver, 3 Companion Caregiver, 4 Elderly."
+            "description": "Requires Normal JWT. Returns the caller's own profile. accountType is display-only: 1 Family, 2 Medical Caregiver, 3 Companion Caregiver, 4 Elderly, 8 CareHomeOwner."
           },
           "response": [
             {
@@ -2068,7 +2068,7 @@
             "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/account/accounts",
-            "description": "Safe read. Normal JWT required. 200 returns owned regular account types (1 Family, 2 Medical Caregiver, 3 Companion Caregiver); 404 user missing; 409 invalid account state."
+            "description": "Safe read. Normal JWT required. 200 returns owned regular account types (1 Family, 2 Medical Caregiver, 3 Companion Caregiver, 8 CareHomeOwner); 404 user missing; 409 invalid account state."
           }
         },
         {
@@ -2079,7 +2079,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": { "mode": "raw", "raw": "{\n  \"accountType\": 2\n}" },
             "url": "{{baseUrl}}/api/v1/account/accounts",
-            "description": "Manual account mutation. 200 returns accountType and refreshRequired=true; refresh the session afterward. Do not replay on shared data. 400 validation, 403 restricted token, 409 duplicate/exclusive/retained caregiver or invalid state."
+            "description": "Manual account mutation. 200 returns accountType and refreshRequired=true; refresh the session afterward. Regular account types include 1 Family, 2 MedicalCaregiver, 3 CompanionCaregiver, and 8 CareHomeOwner. Do not replay on shared data. 400 validation, 403 restricted token, 409 duplicate/exclusive/retained caregiver or invalid state."
           }
         },
         {
@@ -2090,7 +2090,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": { "mode": "raw", "raw": "{\n  \"accountType\": 2\n}" },
             "url": "{{baseUrl}}/api/v1/account/switch",
-            "description": "Safe selection validation. 200 returns accountType; no JWT/session is issued and the current JWT remains authoritative. 400 invalid type, 404 user missing, 409 unowned type or invalid state."
+            "description": "Safe selection validation. Regular choices include Family (1), MedicalCaregiver (2), CompanionCaregiver (3), and CareHomeOwner (8). 200 returns accountType; no JWT/session is issued and the current JWT remains authoritative. 400 invalid type, 404 user missing, 409 unowned type or invalid state."
           }
         }
       ]

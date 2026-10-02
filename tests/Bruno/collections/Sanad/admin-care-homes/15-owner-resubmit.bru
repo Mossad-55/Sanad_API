@@ -1,0 +1,31 @@
+meta {
+  name: 15-owner-resubmit
+  type: http
+  seq: 22
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/submit
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesOwnerJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": {{adminCareHomeOwnerVersion}}
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 2
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected owner resubmission response.");
+  bru.setVar("adminCareHomeVersion", res.body.version);
+}

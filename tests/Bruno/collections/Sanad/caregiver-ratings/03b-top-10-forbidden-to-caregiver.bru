@@ -1,0 +1,19 @@
+meta {
+  name: 03b-top-10-forbidden-to-caregiver
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/caregiver-ratings/top-10
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverRatingsCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

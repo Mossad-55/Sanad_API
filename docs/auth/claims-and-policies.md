@@ -61,8 +61,11 @@ Requires an authenticated user with `access_type` = `Normal` and `account_type` 
 Requires an authenticated user with `access_type` = `Normal` and `account_type` = `SuperAdmin` or `ContentAdmin`. Applied to:
 
 - Caregiver lookup admin routes (`/api/v1/admin/lookups/...`)
-- Caregiver review routes (`/api/v1/admin/caregivers/...`): paged list, detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, certificate file download
 - National ID admin review (`/api/v1/admin/identity-documents/...`): paged list, detail, front/back download, verify/reject/revoke
+
+## Policy `CaregiverReviewAdmin`
+
+Requires an authenticated user with `access_type` = `Normal` and `account_type` = `SuperAdmin` or `SupportAdmin`. Applied to caregiver review routes (`/api/v1/admin/caregivers/...`): paged list, detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, and certificate file download. ContentAdmin remains limited to CMS and caregiver lookup responsibilities and receives `403` for these operational review routes.
 
 ## Policy `CaregiverAccess`
 
@@ -88,6 +91,13 @@ Applied to all family self-service routes (`/api/v1/family/...`): family bootstr
 
 Within the family, authorization is role-based (Owner / Editor / Viewer) and enforced by the Families module; `403 Families.*.AccessDenied` / `Families.Family.NotOwner` are returned for role violations. See `docs/app/families/overview.md`.
 
+## Policy `CareHomeOwnerAccess`
+
+Requires an authenticated user with `access_type` = `Normal` and `account_type`
+= `CareHomeOwner`. It is reserved for Care homes owner self-service endpoints;
+facility persistence and routes are still being implemented. Verification OTP
+is for account verification only, not login.
+
 ## Account types
 
 | Value | Name |
@@ -99,6 +109,7 @@ Within the family, authorization is role-based (Owner / Editor / Viewer) and enf
 | `5` | SuperAdmin |
 | `6` | ContentAdmin |
 | `7` | SupportAdmin |
+| `8` | CareHomeOwner |
 
 Elderly cannot self-register and cannot share an identity with another account type.
 

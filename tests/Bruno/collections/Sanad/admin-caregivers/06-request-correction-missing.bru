@@ -1,7 +1,7 @@
 meta {
   name: 06-request-correction-missing
   type: http
-  seq: 6
+  seq: 7
 }
 
 post {
@@ -15,7 +15,7 @@ headers {
 }
 
 auth:bearer {
-  token: {{adminCaregiversContentJwt}}
+  token: {{adminCaregiversSuperJwt}}
 }
 
 body:json {

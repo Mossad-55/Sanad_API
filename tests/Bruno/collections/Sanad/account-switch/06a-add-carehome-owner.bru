@@ -1,0 +1,32 @@
+meta {
+  name: 06a-add-carehome-owner
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/account/accounts
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "accountType": 8 }
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: isNumber
+}
+
+script:post-response {
+  const duplicate = res.status === 409 && res.body.code === "Identity.Account.AccountAlreadyExists";
+  if (res.status !== 200 && !duplicate) throw new Error("Expected owner account creation or an idempotent already-owned result.");
+}

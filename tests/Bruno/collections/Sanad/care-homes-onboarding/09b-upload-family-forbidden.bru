@@ -1,0 +1,25 @@
+meta {
+  name: 09b-upload-family-forbidden
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/documents
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+
+body:multipart-form {
+  expectedVersion: 1
+  type: 1
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 403
+}

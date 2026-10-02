@@ -282,6 +282,25 @@ public sealed class LocalDiskFileStorageTests : IDisposable
         Assert.Equal(StorageErrors.UnsupportedType, result.Error);
     }
 
+    [Fact]
+    public async Task SavePrivate_ShouldDeletePartialFileWhenActualStreamExceedsDeclaredMaximum()
+    {
+        byte[] payload = new byte[40];
+        using MemoryStream content = new(payload);
+
+        Result<StoredFile> result = await _storage.SavePrivateAsync(
+            content,
+            "application/pdf",
+            contentLength: 16,
+            folder: "care-home-documents",
+            maximumBytes: 32,
+            cancellationToken: CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(StorageErrors.TooLarge.Code, result.Error.Code);
+        Assert.Empty(Directory.GetFiles(_rootPath, "*", SearchOption.AllDirectories));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(_rootPath))

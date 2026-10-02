@@ -1,0 +1,3 @@
+# Care homes onboarding
+
+Run against the guarded local Development API using the `local-fixtures` environment. The seeded care-home owner is `carehome.owner@test.sanad.local` / `Test-1234!`. This collection is a one-time clean-target setup: it creates the owner facility, uploads all four required document types using the protected `tests/Bruno/service-icon-fixture.png`, reads back the four pending documents and versions, submits the application, and logs out both the CareHomeOwner and Family viewer sessions created by the flow. Recreate the authorized disposable database before rerunning; there is no facility-delete API and the owner fixture is intentionally consumed by this flow. Never overwrite the protected fixture file.

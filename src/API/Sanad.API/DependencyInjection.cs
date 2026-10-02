@@ -19,6 +19,7 @@ using Sanad.Modules.Families.Infrastructure;
 using Sanad.BuildingBlocks.Infrastructure.Storage;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.Modules.Caregivers.Application.Lookups;
+using Sanad.Modules.Caregivers.Application.Discovery;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.API.IdentityIntegration;
@@ -38,6 +39,8 @@ using Sanad.Modules.Families.Application.Abstractions.HelpRequests;
 using Sanad.API.HelpRequestsIntegration;
 using Sanad.API.MedicationIntegration;
 using Sanad.Modules.Families.Application.Abstractions.Medications;
+using Sanad.Modules.CareHomes.Infrastructure;
+using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 
 namespace Sanad.API;
 
@@ -87,8 +90,11 @@ public static class DependencyInjection
         services.AddFamiliesInfrastructure(
             configuration);
 
+        services.AddCareHomesInfrastructure(configuration);
+
         services.AddNotificationsInfrastructure(configuration);
         services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
+        services.AddScoped<ICaregiverBookingRatingEligibility, CaregiverBookingRatingEligibilityGateway>();
         services.AddScoped<IHelpRequestCatalogGateway, HelpRequestCatalogGateway>();
         services.AddScoped<IHelpRequestNotificationGateway, HelpRequestNotificationGateway>();
         services.AddScoped<IMedicationLatenessSettingGateway, MedicationLatenessSettingGateway>();
@@ -209,6 +215,32 @@ public static class DependencyInjection
                 });
 
             options.AddPolicy(
+                AuthorizationPolicies.CaregiverReviewAdmin,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AuthAccessType.Normal.ToString());
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccountType,
+                        AccountType.SuperAdmin.ToString(),
+                        AccountType.SupportAdmin.ToString());
+                });
+
+            options.AddPolicy(
+                AuthorizationPolicies.CareHomesOperationalAdmin,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                    policy.RequireClaim(AuthClaimNames.AccountType,
+                        AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+                });
+
+            options.AddPolicy(
                 AuthorizationPolicies.SubscriptionPlanAdmin,
                 policy =>
                 {
@@ -253,6 +285,19 @@ public static class DependencyInjection
                         AuthClaimNames.AccountType,
                         AccountType.Family
                             .ToString());
+                });
+
+            options.AddPolicy(
+                AuthorizationPolicies.CareHomeOwnerAccess,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AuthAccessType.Normal.ToString());
+                    policy.RequireClaim(
+                        AuthClaimNames.AccountType,
+                        AccountType.CareHomeOwner.ToString());
                 });
 
             options.AddPolicy(
@@ -321,6 +366,9 @@ public static class DependencyInjection
                 typeof(BootstrapFamilyCommand).Assembly);
 
             configuration.RegisterServicesFromAssembly(
+                typeof(ICareHomesDbContext).Assembly);
+
+            configuration.RegisterServicesFromAssembly(
                 typeof(Sanad.Modules.Notifications.Application.Notifications.ListNotificationsQuery).Assembly);
         });
         services.AddScoped<Sanad.Modules.Families.Application.Subscriptions.ISubscriptionInvoiceService,
@@ -338,6 +386,9 @@ public static class DependencyInjection
 
         services.AddValidatorsFromAssembly(
             typeof(BootstrapFamilyCommand).Assembly);
+
+        services.AddValidatorsFromAssembly(
+            typeof(ICareHomesDbContext).Assembly);
 
         services.AddTransient(
             typeof(IPipelineBehavior<,>),

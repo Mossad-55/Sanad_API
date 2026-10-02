@@ -1,0 +1,30 @@
+meta {
+  name: 12-submit-application
+  type: http
+  seq: 19
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/submit
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": {{careHomeFacilityVersion}}
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 2
+}
+
+script:post-response {
+  bru.setVar("careHomeFacilityVersion", res.body.version);
+}

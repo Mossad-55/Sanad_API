@@ -1,0 +1,36 @@
+meta {
+  name: 04-rate-completed-booking
+  type: http
+  seq: 4
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/caregiver-ratings/bookings/{{caregiverRatingsBookingId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverRatingsFamilyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "stars": 4,
+    "reviewText": "Bruno caregiver rating verification"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.stars: eq 4
+}
+
+script:post-response {
+  bru.setVar("caregiverRatingsCaregiverId", String(res.body.caregiverId ?? res.body.CaregiverId));
+  bru.setVar("caregiverRatingsId", String(res.body.ratingId ?? res.body.RatingId));
+}

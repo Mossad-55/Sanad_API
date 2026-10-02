@@ -1,0 +1,19 @@
+meta {
+  name: 08-needs-correction-private-file-denied
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}/documents/{{adminCareHomeDocument1}}/file
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq CareHomes.Admin.PrivateDocumentUnavailable
+}

@@ -6,6 +6,7 @@ using Microsoft.Extensions.Options;
 using Sanad.API.Seeding;
 using Sanad.BuildingBlocks.Infrastructure.Storage;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
+using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Cms.Infrastructure.Persistence;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
@@ -53,6 +54,7 @@ public static class ApplicationBuilderExtensions
         ApplyCmsMigrations(app);
         ApplyCaregiversMigrations(app);
         ApplyFamiliesMigrations(app);
+        ApplyCareHomesMigrations(app);
         ApplyNotificationsMigrations(app);
 
         SeedSuperAdmin(app);
@@ -153,6 +155,13 @@ public static class ApplicationBuilderExtensions
     {
         using IServiceScope scope = app.Services.CreateScope();
         NotificationsDbContext dbContext = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
+        dbContext.Database.Migrate();
+    }
+
+    private static void ApplyCareHomesMigrations(WebApplication app)
+    {
+        using IServiceScope scope = app.Services.CreateScope();
+        CareHomesDbContext dbContext = scope.ServiceProvider.GetRequiredService<CareHomesDbContext>();
         dbContext.Database.Migrate();
     }
 

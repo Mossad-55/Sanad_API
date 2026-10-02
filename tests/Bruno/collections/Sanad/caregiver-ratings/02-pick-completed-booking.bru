@@ -1,0 +1,30 @@
+meta {
+  name: 02-pick-completed-booking
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/bookings?tab=Past
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverRatingsFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = Array.isArray(res.body) ? res.body : (res.body?.items || res.body?.results || []);
+  const completed = items.find(item => {
+    const status = item.status ?? item.Status;
+    return status === 5 || status === "Completed" || status === "completed";
+  });
+  const id = completed && (completed.id ?? completed.Id ?? completed.bookingId ?? completed.BookingId);
+  bru.setVar("caregiverRatingsBookingId", id ? String(id) : "");
+  if (!id) throw new Error("No seeded completed Family booking is available for the rating success cases.");
+}

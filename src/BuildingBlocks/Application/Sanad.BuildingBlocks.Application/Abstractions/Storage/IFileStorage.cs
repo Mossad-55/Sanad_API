@@ -19,6 +19,19 @@ public interface IFileStorage
         string folder,
         CancellationToken cancellationToken = default);
 
+    Task<Result<StoredFile>> SavePrivateAsync(
+        Stream content,
+        string contentType,
+        long contentLength,
+        string folder,
+        long maximumBytes,
+        CancellationToken cancellationToken = default)
+    {
+        if (contentLength > maximumBytes)
+            return Task.FromResult<Result<StoredFile>>(Result<StoredFile>.Failure(StorageErrors.TooLarge));
+        return SavePrivateAsync(content, contentType, contentLength, folder, cancellationToken);
+    }
+
     Task<Result<PrivateFileContent>> OpenReadAsync(
         string key,
         CancellationToken cancellationToken = default);

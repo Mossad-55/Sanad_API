@@ -1,0 +1,107 @@
+{
+  "info": {
+    "_postman_id": "a4fce7cf-2668-4d8e-9a3d-58ec5fd34573",
+    "name": "Sanad Care Homes",
+    "description": "Care-home facility owner onboarding. Admin operational APIs belong to the Sanad Admin collection and docs/admin; Family discovery/stay APIs will be added here when implemented.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }]
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5235" },
+    { "key": "careHomeOwnerJwt", "value": "" },
+    { "key": "careHomeFamilyJwt", "value": "" },
+    { "key": "careHomeFacilityVersion", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "01. Facility owner onboarding",
+      "description": "Owner-scoped draft lifecycle. Login requests use local test fixtures; replace credentials outside local development.",
+      "item": [
+        {
+          "name": "Login CareHomeOwner fixture",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "auth": { "type": "noauth" },
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"carehome.owner@test.sanad.local\",\n  \"password\": \"Test-1234!\",\n  \"deviceName\": \"postman-care-homes\",\n  \"devicePlatform\": 3,\n  \"appVersion\": \"1.0.0\"\n}" },
+            "url": "{{baseUrl}}/api/v1/auth/login"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('login succeeds', () => pm.response.to.have.status(200));", "if (pm.response.code === 200) pm.collectionVariables.set('careHomeOwnerJwt', pm.response.json().accessToken);"] } }]
+        },
+        {
+          "name": "Create facility draft",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('created or already exists for the one-facility owner rule', () => pm.expect([201, 409]).to.include(pm.response.code));"] } }]
+        },
+        {
+          "name": "Read my facility",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('facility is readable', () => pm.response.to.have.status(200));", "if (pm.response.code === 200) pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version);"] } }]
+        },
+        {
+          "name": "Save bilingual profile draft",
+          "request": {
+            "method": "PUT",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"draft\": {\n    \"arabicName\": \"دار الأمل\",\n    \"englishName\": \"Hope House\",\n    \"arabicDescription\": \"رعاية وإقامة آمنة\",\n    \"englishDescription\": \"Safe care and accommodation\",\n    \"contactName\": \"Test Contact\",\n    \"contactPhone\": \"+201000000011\",\n    \"contactEmail\": \"carehome.owner@test.sanad.local\",\n    \"governorate\": \"Cairo\",\n    \"city\": \"Nasr City\",\n    \"area\": \"District 1\",\n    \"address\": \"1 Example Street\",\n    \"arabicAdmissionConditions\": \"الشروط متاحة عند التواصل\",\n    \"englishAdmissionConditions\": \"Contact us for admission conditions\",\n    \"amenities\": [],\n    \"medicalServices\": []\n  }\n}" },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/profile"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('draft saved', () => pm.response.to.have.status(200));", "if (pm.response.code === 200) { pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version); pm.test('English name round-trips', () => pm.expect(pm.response.json().draft.englishName).to.eql('Hope House')); }"] } }]
+        },
+        {
+          "name": "Upload operating-license document",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "expectedVersion", "value": "{{careHomeFacilityVersion}}", "type": "text" },
+              { "key": "type", "value": "1", "type": "text" },
+              { "key": "expiryDate", "value": "2030-01-01", "type": "text", "disabled": true },
+              { "key": "file", "type": "file", "src": "" }
+            ] },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/documents"
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('document is stored pending review', () => pm.response.to.have.status(200));", "if (pm.response.code === 200) pm.test('document starts pending', () => pm.expect(pm.response.json().status).to.eql(1));"] } }]
+        },
+        {
+          "name": "Read back uploaded document metadata",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('document metadata is readable by its owner', () => pm.response.to.have.status(200));", "if (pm.response.code === 200) { pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version); pm.test('license is pending review', () => pm.expect(pm.response.json().documents.some(d => d.type === 1 && d.status === 1)).to.eql(true)); }"] } }]
+        }
+      ]
+    },
+    {
+      "name": "02. Submission",
+      "description": "Authored submission contract. Run after the owner has saved all required bilingual fields and uploaded all four private documents; the current disposable fixture has not yet been executed for this delta.",
+      "item": [
+        {
+          "name": "Submit application",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}}\n}" },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/submit",
+            "description": "Owner-only state change. Validates the bilingual profile and four required documents, freezes the submitted revision, and enters PendingReview. Expected errors: 409 CareHomes.Facility.InvalidSubmission for incomplete requirements or 409 CareHomes.Facility.Conflict for stale/non-editable versions."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('submission contract response', () => pm.expect([200, 400, 401, 403, 409]).to.include(pm.response.code));", "if (pm.response.code === 200) { pm.test('application is pending review', () => pm.expect(pm.response.json().status).to.eql(2)); pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version); }"] } }]
+        }
+      ]
+    },
+    {
+      "name": "03. Authorization and conflicts",
+      "item": [
+        { "name": "Login Family viewer for denial check", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "auth": { "type": "noauth" }, "body": { "mode": "raw", "raw": "{\n  \"email\": \"family.viewer@test.sanad.local\",\n  \"password\": \"Test-1234!\",\n  \"deviceName\": \"postman-care-homes-denial\",\n  \"devicePlatform\": 3,\n  \"appVersion\": \"1.0.0\"\n}" }, "url": "{{baseUrl}}/api/v1/auth/login" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('Family viewer login succeeds', () => pm.response.to.have.status(200));", "if (pm.response.code === 200) pm.collectionVariables.set('careHomeFamilyJwt', pm.response.json().accessToken);"] } }] },
+        { "name": "Anonymous read is rejected", "request": { "method": "GET", "header": [], "auth": { "type": "noauth" }, "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('anonymous rejected', () => pm.response.to.have.status(401));"] } }] },
+        { "name": "Family read is forbidden", "request": { "method": "GET", "header": [], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeFamilyJwt}}", "type": "string" }] }, "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('non-owner role forbidden', () => pm.response.to.have.status(403));"] } }] },
+        { "name": "Stale draft version conflicts", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"expectedVersion\": 1,\n  \"draft\": { \"amenities\": [], \"medicalServices\": [] }\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/profile" }, "event": [{ "listen": "test", "script": { "exec": ["pm.test('stale version conflicts', () => pm.response.to.have.status(409));"] } }] }
+      ]
+    }
+  ]
+}

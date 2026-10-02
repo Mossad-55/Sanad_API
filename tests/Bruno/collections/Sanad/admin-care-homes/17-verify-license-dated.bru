@@ -1,0 +1,34 @@
+meta {
+  name: 17-verify-license-dated
+  type: http
+  seq: 24
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}/documents/{{adminCareHomeDocument1}}/verify
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": {{adminCareHomeVersion}},
+    "expiryDate": "2035-01-01",
+    "confirmNonExpiring": false
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected dated license verification response.");
+  const document = res.body.documents.find(item => item.id === bru.getVar("adminCareHomeDocument1"));
+  if (!document || document.status !== 2 || document.expiryDate !== "2035-01-01" || document.verifiedNonExpiring) throw new Error("Expected dated verified operating license.");
+  bru.setVar("adminCareHomeVersion", res.body.version);
+}

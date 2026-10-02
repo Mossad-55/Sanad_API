@@ -2543,6 +2543,47 @@
         {"name": "Get subscription invoice", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{ familyToken }}"}], "url": "{{baseUrl}}/api/v1/family/subscriptions/invoices/{{subscriptionInvoiceId}}"}, "description": "Owner only; returns invoice metadata and family-isolated 404 behavior."},
         {"name": "Download subscription invoice PDF", "request": {"method": "GET", "header": [{"key": "Authorization", "value": "Bearer {{ familyToken }}"}], "url": "{{baseUrl}}/api/v1/family/subscriptions/invoices/{{subscriptionInvoiceId}}/pdf"}, "description": "Owner only; downloads the fixed branded private PDF as INV-YYYY-MM-######.pdf."}
       ]
+    },
+    {
+      "name": "14. Caregiver ratings (Family)",
+      "description": "FamilyAccess APIs for rating completed caregiver bookings and reading the Family top-10 caregiver ranking. Requires a normal Family token. Use only the guarded disposable fixture for the state-changing example.",
+      "item": [
+        {
+          "name": "Get top-10 rated caregivers",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ familyToken }}" }],
+            "url": "{{baseUrl}}/api/v1/family/caregiver-ratings/top-10",
+            "description": "200 returns at most ten active caregivers with profile/rating visibility and at least one review; sorted by raw average descending, review count descending, then caregiver UUID ascending. 401 anonymous; 403 non-Family."
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('200 and at most ten results', () => { pm.response.to.have.status(200); const list = pm.response.json(); pm.expect(list).to.be.an('array').and.have.length.at.most(10); });"
+            ] }
+          }]
+        },
+        {
+          "name": "Rate or edit completed caregiver booking",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{ familyToken }}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"stars\": 5,\n  \"reviewText\": \"Helpful care\"\n}", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/v1/family/caregiver-ratings/bookings/{{completedCaregiverBookingId}}",
+            "description": "200 creates or edits the caller Family's single rating for a Completed booking; stars are 1–5 and reviewText is optional (max 2000). 400 validation; 401 anonymous; 403 non-Family; 404 unknown/foreign/not-completed booking; 409 inconsistent legacy rating. Only run with a seeded completed booking in the guarded disposable fixture."
+          },
+          "event": [{
+            "listen": "test",
+            "script": { "type": "text/javascript", "exec": [
+              "pm.test('rating saved', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.have.property('stars', 5); });",
+              "pm.test('rating response includes booking identity', () => pm.expect(pm.response.json()).to.have.property('bookingId'));"
+            ] }
+          }]
+        }
+      ]
     }
   ]
 }

@@ -1,0 +1,19 @@
+meta {
+  name: 03-family-forbidden
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

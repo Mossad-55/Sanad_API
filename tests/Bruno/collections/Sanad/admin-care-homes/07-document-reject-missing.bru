@@ -1,0 +1,33 @@
+meta {
+  name: 07-request-correction
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}/review
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": {{adminCareHomeVersion}},
+    "action": 3,
+    "reason": "Please replace the operating license"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 3
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected correction request response.");
+  bru.setVar("adminCareHomeVersion", res.body.version);
+}

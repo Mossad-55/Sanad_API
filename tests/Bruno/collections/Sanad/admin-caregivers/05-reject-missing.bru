@@ -1,7 +1,7 @@
 meta {
   name: 05-reject-missing
   type: http
-  seq: 5
+  seq: 6
 }
 
 post {
@@ -15,7 +15,7 @@ headers {
 }
 
 auth:bearer {
-  token: {{adminCaregiversContentJwt}}
+  token: {{adminCaregiversSuperJwt}}
 }
 
 body:json {

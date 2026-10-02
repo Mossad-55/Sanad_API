@@ -1,0 +1,39 @@
+meta {
+  name: 07a-invalid-draft
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/profile
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "expectedVersion": {{careHomeFacilityVersion}},
+    "draft": {
+      "englishName": "{{careHomeTooLongName}}",
+      "amenities": [],
+      "medicalServices": []
+    }
+  }
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+script:pre-request {
+  bru.setVar("careHomeTooLongName", "x".repeat(201));
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq CareHomes.Facility.InvalidProfile
+}

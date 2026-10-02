@@ -40,7 +40,7 @@ public sealed class SwitchMyAccountCommandValidator : AbstractValidator<SwitchMy
 internal static class AccountChoiceRules
 {
     public static bool IsRegular(AccountType type) => type is
-        AccountType.Family or AccountType.MedicalCaregiver or AccountType.CompanionCaregiver;
+        AccountType.Family or AccountType.MedicalCaregiver or AccountType.CompanionCaregiver or AccountType.CareHomeOwner;
     public static bool IsCaregiver(AccountType type) => type is
         AccountType.MedicalCaregiver or AccountType.CompanionCaregiver;
     public static bool CanManage(User user) => user.Status == UserStatus.Active &&

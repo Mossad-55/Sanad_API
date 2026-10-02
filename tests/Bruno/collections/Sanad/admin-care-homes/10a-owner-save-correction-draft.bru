@@ -1,0 +1,48 @@
+meta {
+  name: 10a-owner-save-correction-draft
+  type: http
+  seq: 13
+}
+
+put {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/profile
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesOwnerJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": {{adminCareHomeOwnerVersion}},
+    "draft": {
+      "arabicName": "دار الأمل",
+      "englishName": "Hope House Corrected",
+      "arabicDescription": "رعاية وإقامة",
+      "englishDescription": "Care and recovery",
+      "contactName": "Contact",
+      "contactPhone": "+201000000000",
+      "contactEmail": null,
+      "governorate": "Cairo",
+      "city": "Nasr City",
+      "area": "District 1",
+      "address": "Corrected address",
+      "arabicAdmissionConditions": "الشروط",
+      "englishAdmissionConditions": "Admission conditions",
+      "amenities": [],
+      "medicalServices": []
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 1
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected corrected owner draft response.");
+  bru.setVar("adminCareHomeOwnerVersion", res.body.version);
+}

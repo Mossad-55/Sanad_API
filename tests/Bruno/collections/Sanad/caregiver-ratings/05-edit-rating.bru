@@ -1,0 +1,35 @@
+meta {
+  name: 05-edit-rating
+  type: http
+  seq: 5
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/caregiver-ratings/bookings/{{caregiverRatingsBookingId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverRatingsFamilyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "stars": 5,
+    "reviewText": "Updated Bruno rating"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.stars: eq 5
+}
+
+script:post-response {
+  if (String(res.body.ratingId ?? res.body.RatingId) !== bru.getVar("caregiverRatingsId")) throw new Error("Editing created a second rating instead of updating the existing booking rating.");
+}

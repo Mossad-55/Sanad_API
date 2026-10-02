@@ -1,6 +1,6 @@
 # Care Homes — Authoritative Decisions
 
-Status: Owner answers consolidated, including final clarifications; ready for execution handoff. Backend-only scope. Updated 2026-10-02. Implementation has not started.
+Status: Owner answers consolidated, including final clarifications; execution in progress. Backend-only scope. Updated 2026-10-02. The bounded caregiver review permission correction, Family caregiver rating/top-10 behavior, and the initial Care-home owner draft endpoints are implemented; remaining Care homes behavior is still in progress.
 
 This document consolidates owner-confirmed Care homes behavior from the operator and Family UI intake, including all 24 batch answers. It is authoritative for resolved requirements; unresolved contracts are explicitly listed below and must not override confirmed rules. Screenshots are evidence of user experience, not an authority for unapproved rules.
 
@@ -33,8 +33,9 @@ This document consolidates owner-confirmed Care homes behavior from the operator
 - Room types are facility-defined (single/shared/private suite are examples, not an exhaustive enum) and have bilingual information and a monthly EGP base price.
 - A stay charges one calendar month from the start date to the same date in the next calendar month, clamped to that month’s last day (for example, January 31 to February 28/29). It is not a fixed 30-night charge.
 - The facility base price is separate from platform fees. SuperAdmin and SupportAdmin administer platform fees across booking payments and facility payouts. The system must support a manual refund action when an automated refund fails.
-- Both platform fees are percentage-based and Admin-configurable. The Family cancellation refund percentage also applies to the Family platform fee: full-refund cases return that fee in full; a 50% refund returns 50% of the monthly base payment and 50% of its Family platform fee. Do not hardcode an invented percentage or silently default an absent configuration.
-- Facility payouts are manual bank transfers recorded by SuperAdmin/SupportAdmin, not automated provider transfers. Keep payout fee, gross/net amounts, transfer reference/evidence, actor and timestamp auditable. Recording a transfer is not permission to initiate one.
+- Admin configures separate percentage platform-fee and tax rates, each calculated on the payment base price, across caregiver payments, Care homes, and Family subscriptions. Do not calculate tax on the fee or silently default absent configuration. Preserve each quoted rate and amount on the transaction so later configuration changes do not reprice it.
+- The Family cancellation refund percentage also applies to the Family platform fee: full-refund cases return that fee in full; a 50% refund returns 50% of the monthly base payment and 50% of its Family platform fee.
+- Facility payouts are manual bank transfers recorded by SuperAdmin/SupportAdmin only after a completed stay, not automated provider transfers. Keep payout fee, gross/net amounts, transfer reference/evidence, actor and timestamp auditable. A later refund/reversal after payout is recorded as a facility balance owed. Recording a transfer is not permission to initiate one.
 - No automatic renewal. An extension purchases another calendar month starting at the existing paid-through date, with a new Family payment and facility approval. Rejection does not cancel the current stay; future unused extension periods are fully refundable if the stay ends before they begin.
 
 ## Family stay booking and lifecycle
@@ -68,12 +69,8 @@ This document consolidates owner-confirmed Care homes behavior from the operator
 
 ## Execution contract details — inspect existing conventions first
 
-The final owner answers resolved fee type/refund applicability, payout mechanism, nullable expiry, SMS OTP and dispute authority. Do not ask those questions again. Scout must map existing conventions and raise only genuinely missing business choices in one bounded request:
+The final owner answers resolved fee type/refund applicability, percentage fee and tax basis, payout mechanism and eligibility, nullable expiry, SMS OTP and dispute authority. Do not ask those questions again. Existing verification/recovery provider and exact check-in/out time contracts remain to be mapped; reuse compatible established behavior. No automatic confirmation timeout is approved. Extensions already begin at the paid-through date.
 
-1. Fee calculation basis, EGP rounding and existing tax integration; actual percentages are operational Admin configuration, not a reason to block unrelated implementation. No new tax percentage is approved.
-2. Manual payout eligibility/timing, settlement reconciliation and recovery if a booking is refunded after a payout. No automated payout schedule is approved.
-3. Existing verification/recovery provider and exact check-in/out time contracts; reuse compatible established behavior. No automatic confirmation timeout is approved. Extensions already begin at the paid-through date.
-
-Additional boundary for contract review: the owner allows SuperAdmin/SupportAdmin to manage fees across payments/bookings, but this slice must first map existing global fee configuration and consumers. Reuse an established shared mechanism if suitable; do not silently reprice unrelated domains. Obtain approval for any additional affected contract before changing it.
+The owner explicitly approved a shared Admin rate configuration across caregiver payments, Care homes, and Family subscriptions. Map and reuse an established global mechanism if suitable; preserve existing transactions and do not silently reprice them. No unrelated product workflows are in scope.
 
 Only genuinely unresolved dependent behavior should be blocked; proceed with independent authorized work. Do not convert resolved intake questions into recurring gates.

@@ -1,0 +1,26 @@
+meta {
+  name: 13-submit-stale-version
+  type: http
+  seq: 20
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/submit
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": 1
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq CareHomes.Facility.Conflict
+}

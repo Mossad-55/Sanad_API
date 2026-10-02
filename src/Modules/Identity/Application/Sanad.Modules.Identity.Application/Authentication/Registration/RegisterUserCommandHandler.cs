@@ -165,7 +165,8 @@ public sealed class RegisterUserCommandHandler :
         return accountType is
             AccountType.Family or
             AccountType.MedicalCaregiver or
-            AccountType.CompanionCaregiver;
+            AccountType.CompanionCaregiver or
+            AccountType.CareHomeOwner;
     }
 
 }

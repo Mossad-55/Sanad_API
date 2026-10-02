@@ -1,7 +1,7 @@
 meta {
   name: 10-reject-certificate-missing
   type: http
-  seq: 10
+  seq: 11
 }
 
 post {
@@ -15,7 +15,7 @@ headers {
 }
 
 auth:bearer {
-  token: {{adminCaregiversContentJwt}}
+  token: {{adminCaregiversSuperJwt}}
 }
 
 body:json {

@@ -13,6 +13,7 @@ public sealed class RegisterUserCommandValidatorTests
     [InlineData(AccountType.Family)]
     [InlineData(AccountType.MedicalCaregiver)]
     [InlineData(AccountType.CompanionCaregiver)]
+    [InlineData(AccountType.CareHomeOwner)]
     public void Validate_ShouldAcceptValidCommand(
         AccountType accountType)
     {

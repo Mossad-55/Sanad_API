@@ -1,0 +1,33 @@
+meta {
+  name: 23-reactivate-application
+  type: http
+  seq: 30
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}/review
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": {{adminCareHomeVersion}},
+    "action": 5,
+    "reason": null
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 5
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected application reactivation response.");
+  bru.setVar("adminCareHomeVersion", res.body.version);
+}

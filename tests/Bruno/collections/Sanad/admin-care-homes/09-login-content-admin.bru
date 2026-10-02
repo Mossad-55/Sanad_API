@@ -1,0 +1,33 @@
+meta {
+  name: 09-login-care-home-owner
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "carehome.owner@test.sanad.local",
+    "password": "Test-1234!",
+    "deviceName": "bruno-admin-care-homes-owner",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("adminCareHomesOwnerJwt", res.body.accessToken);
+}

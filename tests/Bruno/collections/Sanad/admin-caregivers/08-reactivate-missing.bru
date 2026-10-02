@@ -1,7 +1,7 @@
 meta {
   name: 08-reactivate-missing
   type: http
-  seq: 8
+  seq: 9
 }
 
 post {
@@ -11,7 +11,7 @@ post {
 }
 
 auth:bearer {
-  token: {{adminCaregiversContentJwt}}
+  token: {{adminCaregiversSuperJwt}}
 }
 
 assert {

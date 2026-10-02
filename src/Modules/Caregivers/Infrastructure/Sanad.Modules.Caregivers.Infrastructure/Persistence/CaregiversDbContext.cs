@@ -24,6 +24,7 @@ public sealed class CaregiversDbContext :
     }
 
     public DbSet<Caregiver> Caregivers => Set<Caregiver>();
+    public DbSet<CaregiverRating> CaregiverRatings => Set<CaregiverRating>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<Language> Languages => Set<Language>();
     public DbSet<Governorate> Governorates => Set<Governorate>();
@@ -115,6 +116,57 @@ public sealed class CaregiversDbContext :
                         GetNullableString(reader, "PhoneNumber"),
                         reader.GetDateTime(
                             reader.GetOrdinal("UpdatedOnUtc"))));
+            }
+        }
+        finally
+        {
+            await Database.CloseConnectionAsync();
+        }
+
+        return items;
+    }
+
+    public async Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(
+        CancellationToken cancellationToken = default)
+    {
+        const string sql =
+            """
+            SELECT
+                c.id AS "CaregiverId",
+                c.type AS "Type",
+                u.arabic_full_name AS "ArabicFullName",
+                u.english_full_name AS "EnglishFullName",
+                u.avatar_url AS "AvatarUrl",
+                ROUND(AVG(r.stars)::numeric, 2) AS "AverageRating",
+                COUNT(*)::int AS "ReviewsCount"
+            FROM caregivers.caregivers c
+            INNER JOIN caregivers.caregiver_ratings r ON r.caregiver_id = c.id
+            INNER JOIN identity.users u ON u.id = c.user_id
+            WHERE c.status = 4
+              AND c.show_profile = TRUE
+              AND c.show_rating = TRUE
+            GROUP BY c.id, c.type, u.arabic_full_name, u.english_full_name, u.avatar_url
+            ORDER BY AVG(r.stars) DESC, COUNT(*) DESC, c.id ASC
+            LIMIT 10
+            """;
+
+        List<TopRatedCaregiverCard> items = [];
+        await Database.OpenConnectionAsync(cancellationToken);
+        try
+        {
+            using DbCommand command = Database.GetDbConnection().CreateCommand();
+            command.CommandText = sql;
+            await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                items.Add(new TopRatedCaregiverCard(
+                    reader.GetGuid(reader.GetOrdinal("CaregiverId")),
+                    reader.GetInt32(reader.GetOrdinal("Type")),
+                    reader.GetString(reader.GetOrdinal("ArabicFullName")),
+                    reader.GetString(reader.GetOrdinal("EnglishFullName")),
+                    GetNullableString(reader, "AvatarUrl"),
+                    reader.GetDecimal(reader.GetOrdinal("AverageRating")),
+                    reader.GetInt32(reader.GetOrdinal("ReviewsCount"))));
             }
         }
         finally

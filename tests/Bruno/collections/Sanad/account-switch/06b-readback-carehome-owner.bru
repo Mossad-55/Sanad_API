@@ -1,0 +1,24 @@
+meta {
+  name: 06b-readback-carehome-owner
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/account/accounts
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const accounts = res.body.accounts;
+  if (!Array.isArray(accounts) || !accounts.includes(8)) throw new Error("CareHomeOwner account type was not returned by the account choices readback.");
+}

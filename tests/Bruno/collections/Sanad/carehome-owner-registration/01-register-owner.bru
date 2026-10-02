@@ -1,0 +1,41 @@
+meta {
+  name: 01-register-owner
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/register
+  body: json
+  auth: none
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care-home owner registration tests require the guarded local Development API.");
+  const stamp = Date.now().toString();
+  const phoneSuffix = String(Math.floor(Math.random() * 900000000) + 100000000);
+  bru.setVar("careHomeOwnerEmail", "bruno.carehome." + stamp + "@test.sanad.local");
+  bru.setVar("careHomeOwnerPhone", "+201" + phoneSuffix);
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "arabicFullName": "ØµØ§Ø­Ø¨ Ø¯Ø§Ø± Ø±Ø¹Ø§ÙŠØ© ØªØ¬Ø±ÙŠØ¨ÙŠ",
+    "englishFullName": "Bruno Care Home Owner",
+    "email": "{{careHomeOwnerEmail}}",
+    "phoneNumber": "{{careHomeOwnerPhone}}",
+    "password": "Test-1234!",
+    "accountType": 8
+  }
+}
+
+assert {
+  res.status: eq 201
+  res.body.userId: isNotEmpty
+  res.body.emailVerificationRequestId: isNotEmpty
+  res.body.phoneVerificationRequestId: isNotEmpty
+}

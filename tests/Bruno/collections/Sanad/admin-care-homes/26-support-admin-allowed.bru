@@ -1,0 +1,19 @@
+meta {
+  name: 26-support-admin-allowed
+  type: http
+  seq: 35
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSupportJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isArray
+}

@@ -1,0 +1,31 @@
+meta {
+  name: 10b-upload-health-certificate
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/documents
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+body:multipart-form {
+  expectedVersion: {{careHomeFacilityVersion}}
+  type: 3
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 200
+  res.body.type: eq 3
+  res.body.status: eq 1
+}
+
+script:post-response {
+  bru.setVar("careHomeFacilityVersion", Number(bru.getVar("careHomeFacilityVersion")) + 1);
+}

@@ -1,0 +1,30 @@
+meta {
+  name: 06-invalid-stars
+  type: http
+  seq: 6
+}
+
+put {
+  url: {{baseUrl}}/api/v1/family/caregiver-ratings/bookings/{{caregiverRatingsBookingId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverRatingsFamilyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "stars": 6,
+    "reviewText": null
+  }
+}
+
+assert {
+  res.status: eq 400
+}

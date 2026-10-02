@@ -1,7 +1,7 @@
 meta {
   name: 09-verify-certificate-missing
   type: http
-  seq: 9
+  seq: 10
 }
 
 post {
@@ -11,7 +11,7 @@ post {
 }
 
 auth:bearer {
-  token: {{adminCaregiversContentJwt}}
+  token: {{adminCaregiversSuperJwt}}
 }
 
 assert {

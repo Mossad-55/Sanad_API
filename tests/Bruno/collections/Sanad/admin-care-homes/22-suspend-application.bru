@@ -1,0 +1,33 @@
+meta {
+  name: 22-suspend-application
+  type: http
+  seq: 29
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}/review
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": {{adminCareHomeVersion}},
+    "action": 4,
+    "reason": "Operational suspension review"
+  }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 6
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected application suspension response.");
+  bru.setVar("adminCareHomeVersion", res.body.version);
+}

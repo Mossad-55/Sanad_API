@@ -1,0 +1,27 @@
+meta {
+  name: 11-readback-uploaded-document
+  type: http
+  seq: 18
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.documents: isArray
+}
+
+script:post-response {
+  if (res.body.documents.length !== 4) throw new Error("Expected all four required private documents before submission.");
+  const types = res.body.documents.map(document => document.type).sort((a, b) => a - b).join(",");
+  if (types !== "1,2,3,4") throw new Error("Expected operating license, registration, health, and civil-defense documents.");
+  bru.setVar("careHomeFacilityVersion", res.body.version);
+}

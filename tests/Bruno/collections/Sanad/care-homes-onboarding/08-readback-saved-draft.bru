@@ -1,0 +1,20 @@
+meta {
+  name: 08-readback-saved-draft
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.draft.englishName: eq Hope House
+}

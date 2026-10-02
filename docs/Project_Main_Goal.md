@@ -9,10 +9,10 @@ Only this slice is planned. Future direction is Care homes → Chat → Notifica
 ## Canonical files
 
 - [Mastermind handoff](Mastermind_Handoff.md): current state and next action.
-- [Care homes decisions](care-homes/Care_Homes_Decisions.md): consolidated owner requirements and remaining contract blockers.
-- [Care homes tasks](care-homes/Care_Homes_Tasks.md): the single implementation checklist, grouped by dependencies.
-- [UI evidence](care-homes/UI_Review.md): 29 reviewed screenshots.
-- [Execution handoff](care-homes/Execution_Handoff.md): prompt for the next mastermind, gated by plan approval.
+- [Care homes decisions](operations/care-homes/Care_Homes_Decisions.md): consolidated owner requirements and remaining contract blockers.
+- [Care homes tasks](operations/care-homes/Care_Homes_Tasks.md): the single implementation checklist, grouped by dependencies.
+- [UI evidence](operations/care-homes/UI_Review.md): 29 reviewed screenshots.
+- [Execution handoff](operations/care-homes/Execution_Handoff.md): current execution guidance for the active slice.
 - [Governance](governance/AGENTS.md) and [workflow](operations/codex-workflow.md): unchanged worker sequence and mandatory verification.
 
 ## Boundaries
@@ -23,6 +23,8 @@ All 24 consolidated intake questions have responses; do not reopen resolved requ
 
 Before any later slice is planned or developed, ask what the owner has in the application and agree its scope/tasks. Obtain explicit approval of the assembled plan before execution. Worker execution phases remain scout → implementer → test author → reviewer → documenter → mastermind verification/handoff.
 
+The requested repository guidance default for the mastermind and Sanad workers is `gpt-6-luna` at medium reasoning. Platform-pinned role tools may continue to report `gpt-5.6-luna` as fixed and non-overridable; repository guidance cannot change a running role runtime.
+
 ## Cleanup
 
-The former 103-file whole-project generated backlog is withdrawn. [Cleanup proposal](care-homes/Cleanup_Proposal.md) identifies unused generated drafts for separately confirmed deletion; retain historical migration evidence and all original source evidence until reconciled. No deletion or product implementation has occurred.
+The former 103-file whole-project generated backlog is withdrawn. [Cleanup proposal](operations/care-homes/Cleanup_Proposal.md) records the cleanup proposal and retained-reference mapping.

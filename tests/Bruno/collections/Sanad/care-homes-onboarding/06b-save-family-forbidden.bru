@@ -1,0 +1,27 @@
+meta {
+  name: 06b-save-family-forbidden
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/profile
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "expectedVersion": 1, "draft": {} }
+}
+
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

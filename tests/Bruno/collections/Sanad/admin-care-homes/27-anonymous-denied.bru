@@ -1,0 +1,14 @@
+meta {
+  name: 27-anonymous-denied
+  type: http
+  seq: 36
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes?page=1&pageSize=20
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

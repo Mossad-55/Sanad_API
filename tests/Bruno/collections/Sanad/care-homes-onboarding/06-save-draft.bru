@@ -1,0 +1,51 @@
+meta {
+  name: 06-save-draft
+  type: http
+  seq: 7
+}
+
+put {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/profile
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "expectedVersion": {{careHomeFacilityVersion}},
+    "draft": {
+      "arabicName": "دار الأمل",
+      "englishName": "Hope House",
+      "arabicDescription": "رعاية وإقامة آمنة",
+      "englishDescription": "Safe care and accommodation",
+      "contactName": "Test Contact",
+      "contactPhone": "+201000000011",
+      "contactEmail": "carehome.owner@test.sanad.local",
+      "governorate": "Cairo",
+      "city": "Nasr City",
+      "area": "District 1",
+      "address": "1 Example Street",
+      "arabicAdmissionConditions": "الشروط متاحة عند التواصل",
+      "englishAdmissionConditions": "Contact us for admission conditions",
+      "amenities": [],
+      "medicalServices": []
+    }
+  }
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.draft.englishName: eq Hope House
+}
+
+script:post-response {
+  bru.setVar("careHomeFacilityVersion", res.body.version);
+}

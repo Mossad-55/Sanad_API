@@ -1,0 +1,31 @@
+meta {
+  name: 10c-upload-civil-defense
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine/documents
+  body: multipart-form
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+body:multipart-form {
+  expectedVersion: {{careHomeFacilityVersion}}
+  type: 4
+  file: @file(service-icon-fixture.png) @contentType(image/png)
+}
+
+assert {
+  res.status: eq 200
+  res.body.type: eq 4
+  res.body.status: eq 1
+}
+
+script:post-response {
+  bru.setVar("careHomeFacilityVersion", Number(bru.getVar("careHomeFacilityVersion")) + 1);
+}

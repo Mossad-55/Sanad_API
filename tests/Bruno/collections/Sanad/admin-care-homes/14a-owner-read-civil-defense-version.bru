@@ -1,0 +1,23 @@
+meta {
+  name: 14a-owner-read-civil-defense-version
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected civil-defense replacement version readback.");
+  bru.setVar("adminCareHomeOwnerVersion", res.body.version);
+}

@@ -1,0 +1,25 @@
+meta {
+  name: 03-top-10
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/caregiver-ratings/top-10
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverRatingsFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!Array.isArray(res.body) || res.body.length > 10) throw new Error("Expected a list containing at most 10 caregivers.");
+  const ids = res.body.map(item => item.caregiverId ?? item.CaregiverId);
+  if (new Set(ids).size !== ids.length) throw new Error("Top-10 list contains duplicate caregivers.");
+}

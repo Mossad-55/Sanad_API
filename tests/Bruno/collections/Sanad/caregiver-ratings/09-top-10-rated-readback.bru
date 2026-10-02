@@ -1,0 +1,26 @@
+meta {
+  name: 09-top-10-rated-readback
+  type: http
+  seq: 9
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/caregiver-ratings/top-10
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverRatingsFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const ids = res.body.map(item => String(item.caregiverId ?? item.CaregiverId));
+  if (!ids.includes(bru.getVar("caregiverRatingsCaregiverId"))) throw new Error("Updated caregiver rating did not appear in the top-10 result.");
+  const rated = res.body.find(item => String(item.caregiverId ?? item.CaregiverId) === bru.getVar("caregiverRatingsCaregiverId"));
+  if (!rated || Number(rated.reviewsCount ?? rated.ReviewsCount) < 1) throw new Error("Top-10 readback did not include the persisted review count.");
+}

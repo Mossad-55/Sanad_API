@@ -1,0 +1,28 @@
+meta {
+  name: 04a-review-stale
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}/review
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+body:json {
+  {
+    "expectedVersion": 1,
+    "action": 3,
+    "reason": "stale review check"
+  }
+}
+
+assert {
+  res.status: eq 409
+  res.body.code: eq CareHomes.Admin.Conflict
+}

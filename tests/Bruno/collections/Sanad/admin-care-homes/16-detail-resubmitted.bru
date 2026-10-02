@@ -1,0 +1,31 @@
+meta {
+  name: 16-detail-resubmitted
+  type: http
+  seq: 23
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes/{{adminCareHomeId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 2
+  res.body.documents: isArray
+}
+
+script:post-response {
+  if (res.status !== 200 || !res.body) throw new Error("Expected Admin detail after owner resubmission.");
+  if (res.body.documents.length < 8) throw new Error("Expected replacement document history after correction.");
+  if (!res.body.submittedRevisionId) throw new Error("Expected a submitted revision after owner resubmission.");
+  const currentDocuments = res.body.documents.filter(document => document.profileRevisionId === res.body.submittedRevisionId);
+  const currentTypes = currentDocuments.map(document => document.type).sort((a, b) => a - b).join(",");
+  if (currentDocuments.length !== 4 || currentTypes !== "1,2,3,4") throw new Error("Expected exactly one current submitted document for each required type.");
+  for (const document of currentDocuments) bru.setVar("adminCareHomeDocument" + document.type, document.id);
+  bru.setVar("adminCareHomeVersion", res.body.version);
+}

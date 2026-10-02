@@ -1,0 +1,25 @@
+meta {
+  name: 04-create-facility
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/care-homes/facilities
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care homes onboarding mutations require the guarded local Development API.");
+}
+
+script:post-response {
+  const created = res.status === 201;
+  const alreadyExists = res.status === 409 && res.body.code === "CareHomes.Facility.AlreadyExists";
+  if (!created && !alreadyExists) throw new Error("Expected one facility creation or the repeat-safe owner conflict.");
+}

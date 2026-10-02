@@ -1,0 +1,23 @@
+meta {
+  name: 09a-owner-read-correction-version
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/facilities/mine
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{adminCareHomesOwnerJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body || typeof res.body.version !== "number") throw new Error("Expected owner facility version readback before correction.");
+  bru.setVar("adminCareHomeOwnerVersion", res.body.version);
+}

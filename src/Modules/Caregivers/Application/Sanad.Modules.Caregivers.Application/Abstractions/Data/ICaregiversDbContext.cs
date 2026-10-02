@@ -11,6 +11,7 @@ namespace Sanad.Modules.Caregivers.Application.Abstractions.Data;
 public interface ICaregiversDbContext
 {
     DbSet<Caregiver> Caregivers { get; }
+    DbSet<CaregiverRating> CaregiverRatings { get; }
     DbSet<Service> Services { get; }
     DbSet<Language> Languages { get; }
     DbSet<Governorate> Governorates { get; }
@@ -51,6 +52,9 @@ public interface ICaregiversDbContext
     // Dynamic User Header Method querying identity.users
     Task<CaregiverUserHeader?> GetCaregiverUserHeaderAsync(
         UserId userId,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(
         CancellationToken cancellationToken = default);
 
     Task<int> SaveChangesAsync(

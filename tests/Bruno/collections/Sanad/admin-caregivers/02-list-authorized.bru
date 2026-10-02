@@ -1,7 +1,7 @@
 meta {
   name: 02-list-authorized
   type: http
-  seq: 2
+  seq: 3
 }
 
 get {
@@ -10,7 +10,7 @@ get {
 }
 
 auth:bearer {
-  token: {{adminCaregiversContentJwt}}
+  token: {{adminCaregiversSuperJwt}}
 }
 
 assert {
