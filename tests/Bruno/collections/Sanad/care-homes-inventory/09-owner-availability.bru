@@ -1,0 +1,22 @@
+meta {
+  name: 09-owner-availability
+  type: http
+  seq: 16
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/availability
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"startDate":"2027-01-01","endDate":"2027-01-20"}
+}
+assert {
+  res.status: eq 200
+}

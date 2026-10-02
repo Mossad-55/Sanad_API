@@ -1,0 +1,25 @@
+meta {
+  name: 03-update-room-type
+  type: http
+  seq: 4
+}
+put {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"expectedVersion":{{inventoryVersion}},"arabicName":"غرفة اختبار محدثة","englishName":"Inventory Test Shared Updated {{inventoryRunSuffix}}","monthlyPriceEgp":11000,"allocationMode":1,"arabicDescription":null,"englishDescription":null}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("inventoryVersion", res.body.version);
+}

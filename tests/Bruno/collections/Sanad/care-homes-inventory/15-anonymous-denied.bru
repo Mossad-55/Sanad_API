@@ -1,0 +1,12 @@
+meta {
+  name: 15-anonymous-denied
+  type: http
+  seq: 22
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine
+  auth: none
+}
+assert {
+  res.status: eq 401
+}

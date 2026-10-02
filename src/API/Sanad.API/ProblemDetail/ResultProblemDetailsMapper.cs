@@ -64,6 +64,16 @@ public static class ResultProblemDetailsMapper
             ["CareHomes.Admin.Conflict"] = 409,
             ["CareHomes.Admin.InvalidOperation"] = 409,
 
+            ["CareHomes.Inventory.NotFound"] = 404,
+            ["CareHomes.Inventory.Conflict"] = 409,
+            ["CareHomes.Inventory.RoomNumberTaken"] = 409,
+            ["CareHomes.Inventory.LabelTaken"] = 409,
+            ["CareHomes.Inventory.ActiveOccupancy"] = 409,
+            ["CareHomes.Inventory.Overlap"] = 409,
+            ["CareHomes.Inventory.Invalid"] = 400,
+            ["CareHomes.Inventory.InvalidTarget"] = 400,
+            ["CareHomes.Inventory.InvalidRange"] = 400,
+
             ["Identity.Verification.ResendRequestNotFound"] = 404,
             ["Identity.Verification.ResendRequestNotPending"] = 400,
             ["Identity.Verification.RequestSuperseded"] = 409,

@@ -6,5 +6,6 @@ public sealed class NotificationsDbContext(DbContextOptions<NotificationsDbConte
 {
     public const string Schema = "notifications";
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<EmailOutboxMessage> EmailOutboxMessages => Set<EmailOutboxMessage>();
     protected override void OnModelCreating(ModelBuilder modelBuilder) { modelBuilder.HasDefaultSchema(Schema); modelBuilder.ApplyConfigurationsFromAssembly(typeof(NotificationsDbContext).Assembly); base.OnModelCreating(modelBuilder); }
 }

@@ -1,0 +1,22 @@
+meta {
+  name: 08a-invalid-maintenance-range-400
+  type: http
+  seq: 13
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/maintenance
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"expectedVersion":{{inventoryVersion}},"target":2,"targetId":"{{inventoryBedId}}","startDate":"2027-01-12","endDate":"2027-01-12","reason":"invalid"}
+}
+assert {
+  res.status: eq 400
+}

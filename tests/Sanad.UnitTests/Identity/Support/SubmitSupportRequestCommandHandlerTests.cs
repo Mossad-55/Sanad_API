@@ -248,6 +248,9 @@ public sealed class SubmitSupportRequestCommandHandlerTests
         internal List<SupportRequestMessage>
             SupportRequests { get; } = [];
 
+        public Task SendEmailAsync(string email, string subject, string body, string? correlationId, CancellationToken cancellationToken)
+            => Task.CompletedTask;
+
         public Task SendSupportRequestAsync(
             string senderName,
             string? senderEmail,

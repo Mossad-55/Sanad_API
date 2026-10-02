@@ -1,0 +1,15 @@
+meta {
+  name: 19-family-mine-denied
+  type: http
+  seq: 26
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryFamilyJwt}}
+}
+assert {
+  res.status: eq 403
+}

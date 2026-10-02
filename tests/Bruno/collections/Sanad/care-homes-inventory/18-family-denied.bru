@@ -1,0 +1,22 @@
+meta {
+  name: 18-family-denied
+  type: http
+  seq: 25
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"email":"family.viewer@test.sanad.local","password":"Test-1234!","deviceName":"bruno-care-homes-inventory-family","devicePlatform":3,"appVersion":"1.0.0"}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("inventoryFamilyJwt", res.body.accessToken);
+}

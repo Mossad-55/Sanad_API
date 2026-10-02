@@ -127,6 +127,42 @@ public sealed class ResultProblemDetailsMapperTests
         "Families.Medication.InvalidDateRange",
         StatusCodes.Status400BadRequest,
         "The request could not be completed.")]
+    [InlineData(
+        "CareHomes.Inventory.NotFound",
+        StatusCodes.Status404NotFound,
+        "The requested resource was not found.")]
+    [InlineData(
+        "CareHomes.Inventory.Conflict",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
+        "CareHomes.Inventory.RoomNumberTaken",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
+        "CareHomes.Inventory.LabelTaken",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
+        "CareHomes.Inventory.ActiveOccupancy",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
+        "CareHomes.Inventory.Overlap",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
+        "CareHomes.Inventory.Invalid",
+        StatusCodes.Status400BadRequest,
+        "The request could not be completed.")]
+    [InlineData(
+        "CareHomes.Inventory.InvalidTarget",
+        StatusCodes.Status400BadRequest,
+        "The request could not be completed.")]
+    [InlineData(
+        "CareHomes.Inventory.InvalidRange",
+        StatusCodes.Status400BadRequest,
+        "The request could not be completed.")]
     public void Create_ShouldMapStableErrorCode(
         string errorCode,
         int expectedStatusCode,

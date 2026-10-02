@@ -23,6 +23,45 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeBed", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("care_home_id");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("Label")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("RoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_id");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FacilityId");
+
+                    b.HasIndex("RoomId", "Label")
+                        .IsUnique()
+                        .HasDatabaseName("ux_care_homes_beds_room_label");
+
+                    b.ToTable("beds", "care_homes");
+                });
+
             modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeDocument", b =>
                 {
                     b.Property<Guid>("Id")
@@ -137,6 +176,45 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("facilities", "care_homes");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeMaintenanceBlock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date")
+                        .HasColumnName("end_date");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("care_home_id");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date")
+                        .HasColumnName("start_date");
+
+                    b.Property<int>("Target")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TargetId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FacilityId", "Target", "TargetId");
+
+                    b.ToTable("maintenance_blocks", "care_homes");
                 });
 
             modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeProfileRevision", b =>
@@ -312,11 +390,125 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.ToTable("review_history", "care_homes");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeRoom", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("care_home_id");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<string>("RoomNumber")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)");
+
+                    b.Property<Guid>("RoomTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_type_id");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomTypeId");
+
+                    b.HasIndex("FacilityId", "RoomNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_care_homes_rooms_facility_room_number");
+
+                    b.ToTable("rooms", "care_homes");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeRoomType", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AllocationMode")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ArabicDescription")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("ArabicName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EnglishDescription")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("EnglishName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("care_home_id");
+
+                    b.Property<bool>("IsArchived")
+                        .HasColumnType("boolean");
+
+                    b.Property<decimal>("MonthlyPriceEgp")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FacilityId", "EnglishName");
+
+                    b.ToTable("room_types", "care_homes");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeBed", b =>
+                {
+                    b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeFacility", null)
+                        .WithMany()
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeRoom", null)
+                        .WithMany()
+                        .HasForeignKey("RoomId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeDocument", b =>
                 {
                     b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeFacility", null)
                         .WithMany("Documents")
                         .HasForeignKey("care_home_id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeMaintenanceBlock", b =>
+                {
+                    b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeFacility", null)
+                        .WithMany()
+                        .HasForeignKey("FacilityId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });
@@ -335,6 +527,30 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeFacility", null)
                         .WithMany("ReviewHistory")
                         .HasForeignKey("care_home_id")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeRoom", b =>
+                {
+                    b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeFacility", null)
+                        .WithMany()
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeRoomType", null)
+                        .WithMany()
+                        .HasForeignKey("RoomTypeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeRoomType", b =>
+                {
+                    b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeFacility", null)
+                        .WithMany()
+                        .HasForeignKey("FacilityId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

@@ -1,0 +1,15 @@
+meta {
+  name: 11-admin-inspection
+  type: http
+  seq: 18
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/admin/{{inventoryFacilityId}}
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryAdminJwt}}
+}
+assert {
+  res.status: eq 200
+}

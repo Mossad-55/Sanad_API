@@ -35,6 +35,21 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
     public IReadOnlyCollection<CareHomeDocument> Documents => _documents.AsReadOnly();
     public IReadOnlyCollection<CareHomeReviewHistory> ReviewHistory => _reviewHistory.AsReadOnly();
 
+    public void EnsureInventoryAccess(UserId actorUserId, int expectedVersion)
+    {
+        EnsureOwner(actorUserId);
+        EnsureVersion(expectedVersion);
+        if (Status is CareHomeStatus.PendingReview or CareHomeStatus.Suspended)
+            throw new DomainException("Inventory cannot be changed while the facility is under review or suspended.");
+    }
+
+    public void RecordInventoryChange(DateTime utcNow)
+    {
+        EnsureUtc(utcNow);
+        UpdatedOnUtc = utcNow;
+        Version++;
+    }
+
     public static CareHomeFacility CreateDraft(UserId ownerUserId, DateTime utcNow)
     {
         if (ownerUserId == UserId.Empty)

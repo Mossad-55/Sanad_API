@@ -7,6 +7,12 @@ namespace Sanad.Modules.Identity.Infrastructure.Messaging;
 public sealed class DevelopmentEmailSender :
     IEmailSender
 {
+    public Task SendEmailAsync(string email, string subject, string body, string? correlationId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Console.WriteLine($"[DevEmail] Message to {email}: {subject}");
+        return Task.CompletedTask;
+    }
     public Task SendFamilyInvitationAsync(string email, string familyName, string inviteLink, CancellationToken cancellationToken)
     {
         Console.WriteLine(

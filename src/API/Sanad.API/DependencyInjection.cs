@@ -32,6 +32,7 @@ using Sanad.API.CaregiversIntegration;
 using Sanad.API.Seeding;
 using Sanad.API.Options;
 using Sanad.API.NotificationsIntegration;
+using Sanad.API.CareHomesIntegration;
 using Sanad.Modules.Notifications.Infrastructure;
 using Sanad.Modules.Notifications.Application.Abstractions.Recipients;
 using Sanad.Modules.Families.Application.Abstractions.Notifications;
@@ -93,6 +94,8 @@ public static class DependencyInjection
         services.AddCareHomesInfrastructure(configuration);
 
         services.AddNotificationsInfrastructure(configuration);
+        services.AddHostedService<CareHomeLicenseExpiryMonitor>();
+        services.AddHostedService<EmailOutboxProcessor>();
         services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
         services.AddScoped<ICaregiverBookingRatingEligibility, CaregiverBookingRatingEligibilityGateway>();
         services.AddScoped<IHelpRequestCatalogGateway, HelpRequestCatalogGateway>();

@@ -1,0 +1,25 @@
+meta {
+  name: 07-rename-bed
+  type: http
+  seq: 8
+}
+put {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/beds/{{inventoryBedId}}
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"expectedVersion":{{inventoryVersion}},"roomId":"{{inventoryRoomId}}","label":"BRUNO-A-RENAMED-{{inventoryRunSuffix}}"}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("inventoryVersion", res.body.version);
+}

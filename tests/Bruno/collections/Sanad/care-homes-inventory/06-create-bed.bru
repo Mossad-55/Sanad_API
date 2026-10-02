@@ -1,0 +1,28 @@
+meta {
+  name: 06-create-bed
+  type: http
+  seq: 7
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/beds
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"expectedVersion":{{inventoryVersion}},"roomId":"{{inventoryRoomId}}","label":"BRUNO-A-{{inventoryRunSuffix}}"}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const expectedLabel = `BRUNO-A-${bru.getVar("inventoryRunSuffix")}`;
+  const bed = res.body.beds.find(item => item.label === expectedLabel);
+  if (!bed) throw new Error("The newly-created unique inventory bed was not returned.");
+  bru.setVar("inventoryBedId", bed.id); bru.setVar("inventoryVersion", res.body.version);
+}

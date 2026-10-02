@@ -1,0 +1,22 @@
+meta {
+  name: 22-content-admin-availability-denied
+  type: http
+  seq: 29
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/admin/{{inventoryFacilityId}}/availability
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryContentJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"startDate":"2027-01-01","endDate":"2027-01-20"}
+}
+assert {
+  res.status: eq 403
+}

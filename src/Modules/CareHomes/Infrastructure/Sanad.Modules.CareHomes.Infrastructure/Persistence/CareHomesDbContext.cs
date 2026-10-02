@@ -10,6 +10,10 @@ public sealed class CareHomesDbContext(DbContextOptions<CareHomesDbContext> opti
     public const string Schema = "care_homes";
 
     public DbSet<CareHomeFacility> Facilities => Set<CareHomeFacility>();
+    public DbSet<CareHomeRoomType> RoomTypes => Set<CareHomeRoomType>();
+    public DbSet<CareHomeRoom> Rooms => Set<CareHomeRoom>();
+    public DbSet<CareHomeBed> Beds => Set<CareHomeBed>();
+    public DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => Set<CareHomeMaintenanceBlock>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

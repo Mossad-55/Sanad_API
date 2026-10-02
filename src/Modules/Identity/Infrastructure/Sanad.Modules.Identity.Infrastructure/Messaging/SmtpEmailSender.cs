@@ -2,6 +2,8 @@ using MailKit.Net.Smtp;
 using MailKit.Security;
 using Microsoft.Extensions.Options;
 using MimeKit;
+using System.Security.Cryptography;
+using System.Text;
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.Modules.Identity.Application.Authentication;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
@@ -17,6 +19,26 @@ public sealed class SmtpEmailSender : IEmailSender
         IOptions<EmailOptions> options)
     {
         _options = options.Value;
+    }
+
+    public async Task SendEmailAsync(string email, string subject, string body, string? correlationId, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var message = new MimeMessage();
+        message.From.Add(new MailboxAddress(string.IsNullOrWhiteSpace(_options.FromName) ? "Sanad Care" : _options.FromName, _options.FromAddress));
+        message.To.Add(MailboxAddress.Parse(email));
+        message.Subject = subject;
+        if (!string.IsNullOrWhiteSpace(correlationId))
+        {
+            string stableId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(correlationId)));
+            message.MessageId = $"<sanad-{stableId}@sanad-care>";
+        }
+        message.Body = new TextPart("plain") { Text = body };
+        using var client = new SmtpClient();
+        await client.ConnectAsync(_options.Host, _options.Port, _options.UseSsl ? SecureSocketOptions.Auto : SecureSocketOptions.None, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(_options.Username)) await client.AuthenticateAsync(_options.Username, _options.Password, cancellationToken);
+        await client.SendAsync(message, cancellationToken);
+        await client.DisconnectAsync(true, cancellationToken);
     }
 
     public async Task SendVerificationCodeAsync(

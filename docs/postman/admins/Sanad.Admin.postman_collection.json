@@ -2954,6 +2954,14 @@
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification aggregate contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }]
         }
       ]
+    },
+    {
+      "name": "20. Care homes inventory inspection",
+      "description": "SuperAdmin/SupportAdmin only under CareHomesOperationalAdmin. ContentAdmin, owners, Family accounts and anonymous callers are denied. Requests are authored from the current source contract; the additive migration awaits fresh exact-target authorization and no Bruno execution is claimed for this delta.",
+      "item": [
+        { "name": "Get care-home inventory", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/care-homes/inventory/admin/{{careHomeId}}" }, "description": "Returns room types, rooms, beds, maintenance and inventory version. Unknown facility returns 404 CareHomes.Inventory.NotFound." },
+        { "name": "Get care-home availability", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-01-20\"\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/inventory/admin/{{careHomeId}}/availability" }, "description": "Returns derived room-type availability. Dates are Egypt-local calendar dates; end must be after start. Archived assets, maintenance and supplied active occupancy are excluded. The current occupancy provider is empty until HC-TASK-032/034." }
+      ]
     }
   ]
 }

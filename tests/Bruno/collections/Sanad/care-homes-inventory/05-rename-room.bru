@@ -1,0 +1,25 @@
+meta {
+  name: 05-rename-room
+  type: http
+  seq: 6
+}
+put {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"expectedVersion":{{inventoryVersion}},"roomTypeId":"{{inventoryRoomTypeId}}","roomNumber":"BRUNO-020-RENAMED-{{inventoryRunSuffix}}"}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("inventoryVersion", res.body.version);
+}
