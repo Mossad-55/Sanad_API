@@ -6,10 +6,25 @@ HC-TASK-020 adds owner managed inventory for a facility. These routes are under
 the complete `CareHomeInventoryDto`: `facilityId`, the optimistic concurrency
 `version`, and arrays named `roomTypes`, `rooms`, `beds`, and `maintenance`.
 
-The additive Care Homes inventory migration has not been generated. It awaits
-fresh owner authorization for the exact target `localhost:5432/SanadBrunoTestDb`.
-The examples below are authored from the source contract and focused test
-coverage; no Bruno execution is claimed for this documentation delta.
+The additive Care Homes inventory migration and its disposable-fixture evidence
+are recorded in the task checklist. The examples below describe the source
+contract; this page does not claim execution of a test, build, or Bruno gate.
+
+## Calendar-month stay period
+
+`CareHomeCalendarPeriod.CalculateEndDate` calculates one calendar month from a
+start date. It returns the same day in the next calendar month when that day
+exists, and otherwise clamps the result to the final day of the next month:
+
+- January 31 returns February 28 in a non-leap year and February 29 in a leap
+  year; March 31 returns April 30.
+- A date that exists in the next month, such as October 15, returns the 15th of
+  the next month.
+- A December start crosses the year boundary while preserving the calendar day.
+
+This helper does not define booking interval inclusivity, booking or payment
+behavior, extensions, or renewal. Care Homes stays do not renew automatically;
+those lifecycle and payment contracts remain with their assigned tasks.
 
 ## Read and manage inventory
 
