@@ -42,6 +42,7 @@ using Sanad.API.MedicationIntegration;
 using Sanad.Modules.Families.Application.Abstractions.Medications;
 using Sanad.Modules.CareHomes.Infrastructure;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
+using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.Finance.Infrastructure;
 using Sanad.Modules.Finance.Application;
 
@@ -106,6 +107,7 @@ public static class DependencyInjection
         services.AddScoped<IHelpRequestNotificationGateway, HelpRequestNotificationGateway>();
         services.AddScoped<IMedicationLatenessSettingGateway, MedicationLatenessSettingGateway>();
         services.AddScoped<IMedicationLateAlertGateway, MedicationLateAlertGateway>();
+        services.AddScoped<IElderlyIntakeResolver, FamilyElderlyIntakeResolver>();
 
         services.AddOptions<LocalStorageOptions>()
             .Bind(

@@ -29,7 +29,7 @@ Status: Execution in progress. All unchecked items are Not started unless explic
 
 ## Family discovery, stays, payments, and refunds
 
-- [ ] HC-TASK-030 — Add authorized elderly dropdown contract accepting `elderlyId`, server-side Family ownership authorization, server-derived name/age, medical-data access controls, additional care notes, and responsible contact.
+- [x] HC-TASK-030 — Done: added the reviewed, in-process Care-Homes-owned intake resolver. Existing Family dependent GET routes remain the dropdown/read contract. Owner/Editor only; safe not-found for missing, cross-family, deleted-family, or inaccessible records; server-derived identity/name/age/medical projection; audited medical-profile query; submitting-member Identity name/phone defaults; validated overrides; no inferred relationship. HC-TASK-032 must re-resolve and persist the verified snapshot. No HTTP route, booking persistence/hold/payment/provider call, or migration changed. Build passed with 0 warnings/errors; focused Care Homes tests passed 43/43; full suite passed Architecture 1 and Unit 2,188, with 3 PostgreSQL-only skips. Bruno/Postman and stateful fixture startup were not applicable. See verification evidence below.
 - [ ] HC-TASK-031 — Add approved/licensed public facility discovery with lowest active room-type monthly “starting from” price, and Family home top-10 Care homes ranking by eligible Family star ratings.
 - [ ] HC-TASK-032 — Add one-month prepaid Paymob Card/Wallet stay booking, 15-minute checkout hold, verified-payment 24-hour facility decision hold, 24-hour earliest arrival, accept/reject/timeout lifecycle, and concurrency protection.
 - [x] HC-TASK-033 — Done for the bounded shared Finance consumer slice: implement the owner-approved shared Admin-configured percentage platform fee and tax (both on base price, no absent-config default) across existing caregiver and Family subscription consumers, with immutable snapshots and no retroactive repricing. Finance behavior, migrations, docs, unit tests, Finance Bruno, the positive subscription lifecycle, caregiver quote, and Family caregiver-checkout changed-endpoint Bruno gate are verified. Care Homes booking checkout is deferred to HC-TASK-032, which must create that consumer; facility payout fee/ledger remains HC-TASK-038. No downstream Care Homes booking, payout, or ledger behavior is claimed.
@@ -58,6 +58,15 @@ Status: Execution in progress. All unchecked items are Not started unless explic
 - [ ] HC-TASK-060 — Add in-app and email events for onboarding/review, corrections, approvals, suspension/reactivation, license alerts, booking decisions/expiry, payments, refunds, disputes, and relevant Admin actions; no SMS.
 - [ ] HC-TASK-061 — In progress: owner draft/upload/submission guide is at `docs/care-homes/owner-onboarding.md`, Admin operations are at `docs/admin/care-homes.md`, and requests are synchronized in the corresponding Postman collections. The implemented onboarding/Admin routes have disposable Bruno execution evidence; broader slice examples remain incomplete.
 - [ ] HC-TASK-062 — Document deferred items and unresolved blockers; update slice evidence and handoff without duplicating this checklist.
+
+### HC-TASK-030 verification evidence (2026-10-03)
+
+- Base revision: `3ea6a27bbfc8a841628c97c5849377ca25f60cb5`; only HC-TASK-030 resolver/DI/tests plus the requested HC-TASK-033 deployment correction and current handoff/task updates are in the worktree.
+- `dotnet build Sanad.slnx --no-restore -m:1 --nologo` — exit 0, 0 warnings/errors.
+- `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-build --no-restore --filter "FullyQualifiedName~CareHomes" --nologo` — exit 0, 43 passed, 0 failed/skipped.
+- `dotnet test Sanad.slnx --no-build --no-restore --nologo` — exit 0; Architecture 1 passed; Unit 2,188 passed, 3 skipped PostgreSQL-only tests; 0 failed.
+- `git diff --check` — exit 0 (Git emitted line-ending notices). Unit tests use an in-memory Families context and a stubbed MediatR sender. No API/service or disposable database was started; no migration/reset, provider call, or production action occurred.
+- No HTTP endpoint or public request/response contract changed, so Bruno and Postman coverage/updates are not applicable. Review was approved with no required corrections.
 
 ## Verification and closeout
 
