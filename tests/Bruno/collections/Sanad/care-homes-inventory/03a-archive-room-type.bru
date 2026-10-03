@@ -1,0 +1,18 @@
+meta {
+  name: 03a-archive-room-type
+  type: http
+  seq: 20
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/archive?expectedVersion={{inventoryVersion}}&restore=false
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("inventoryVersion", res.body.version);
+}

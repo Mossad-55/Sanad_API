@@ -1,0 +1,22 @@
+meta {
+  name: 02a-stale-version-409
+  type: http
+  seq: 14
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/room-types
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"expectedVersion":0,"arabicName":"stale","englishName":"stale","monthlyPriceEgp":1,"allocationMode":1}
+}
+assert {
+  res.status: eq 409
+}

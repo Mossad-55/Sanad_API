@@ -1,6 +1,6 @@
 # Admin Care Homes operations
 
-These routes are restricted to normal `SuperAdmin` and `SupportAdmin` accounts by `CareHomesOperationalAdmin`. `ContentAdmin` is denied (`403`) and has no access to operational review or private files. All routes are under `/api/v1/admin/care-homes`.
+The operational review and private-file routes in this guide are restricted to normal `SuperAdmin` and `SupportAdmin` accounts by `CareHomesOperationalAdmin`. `ContentAdmin` is denied (`403`) and has no access to operational review, private files, or inventory inspection. Review routes are under `/api/v1/admin/care-homes`; inventory inspection routes use `/api/v1/care-homes/inventory/admin` and are described below.
 
 ## List applications
 
@@ -50,6 +50,24 @@ Rejection requires a reason and returns the updated detail. Both document action
 
 ## Lifecycle and privacy
 
-Owners save versioned bilingual drafts, upload private documents, and submit a frozen revision. Admins inspect the submitted snapshot, review each document, then request correction, approve, reject, suspend, or reactivate according to the domain lifecycle. Replacement uploads remain pending review. Verified documents may have a nullable expiry only when the Admin explicitly confirms they are non-expiring. License expiry alerts and booking blocks are still pending checklist work. Notifications are in-app/email; SMS remains limited to verification OTP.
+Owners save versioned bilingual drafts, upload private documents, and submit a frozen revision. Admins inspect the submitted snapshot, review each document, then request correction, approve, reject, suspend, or reactivate according to the domain lifecycle. Replacement uploads remain pending review. Verified documents may have a nullable expiry only when the Admin explicitly confirms they are non-expiring. A hosted daily scan at UTC midnight checks the latest operating license on each approved facility. An expired license means a verified, dated license whose expiry date is before the scan date; Admin-verified non-expiring documents and unverified or rejected documents do not alert. Each active SuperAdmin and SupportAdmin with an email receives one in-app notification and one durable email-outbox message per UTC date, facility, and recipient. The in-app event is idempotent; SMTP Message-ID is a stable SHA-256 digest of the email idempotency key. Delivery is at least once, so a provider duplicate remains possible if SMTP accepts a message before the worker records it as sent. New-booking enforcement is deferred to the Care Homes discovery/booking work in HC-TASK-020/032; existing stays are unchanged. Migration `20261002134931_AddEmailOutbox` is already up to date on the authorized disposable database; no migration was applied during the latest verification. Notifications are in-app/email; SMS remains limited to verification OTP.
 
-The runnable Admin requests are in [`Sanad.Admin.postman_collection.json`](../postman/admins/Sanad.Admin.postman_collection.json) and [`tests/Bruno/collections/Sanad/admin-care-homes`](../../tests/Bruno/collections/Sanad/admin-care-homes). They are authored contract coverage; the current disposable fixture has not yet been successfully executed for this delta.
+The runnable Admin requests are in [`Sanad.Admin.postman_collection.json`](../postman/admins/Sanad.Admin.postman_collection.json) and [`tests/Bruno/collections/Sanad/admin-care-homes`](../../tests/Bruno/collections/Sanad/admin-care-homes). The expiry monitor has no HTTP route, so no Postman or Bruno request was added for HC-TASK-014. The additive outbox migration is already up to date on the authorized disposable database; no migration was applied during the latest verification.
+
+## Inspect Care Homes inventory and availability
+
+`GET /api/v1/care-homes/inventory/admin/{facilityId}` returns the facility's
+room types, rooms, beds, maintenance blocks, and current inventory version.
+`POST /api/v1/care-homes/inventory/admin/{facilityId}/availability` accepts
+`{ "startDate": "2027-01-01", "endDate": "2027-01-20" }` and returns derived
+availability by room type. These read routes require the
+`CareHomesOperationalAdmin` policy: normal `SuperAdmin` and `SupportAdmin` are
+allowed, while `ContentAdmin`, owners, Family accounts, and anonymous callers
+are denied. Availability uses Egypt-local half-open maintenance dates and
+excludes archived assets, maintenance, and supplied active occupancy.
+
+The current occupancy provider is intentionally empty until HC-TASK-032/034
+supply Care Homes holds and stays. Booking creation is not part of HC-TASK-020.
+The additive inventory migration has not been generated and awaits fresh
+owner authorization for the exact disposable target; no database execution is
+claimed here.

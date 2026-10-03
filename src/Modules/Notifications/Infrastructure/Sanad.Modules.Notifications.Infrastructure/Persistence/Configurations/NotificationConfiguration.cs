@@ -20,3 +20,27 @@ public sealed class NotificationConfiguration : IEntityTypeConfiguration<Notific
         b.HasIndex(x => x.IdempotencyKey).IsUnique();
     }
 }
+
+public sealed class EmailOutboxMessageConfiguration : IEntityTypeConfiguration<EmailOutboxMessage>
+{
+    public void Configure(EntityTypeBuilder<EmailOutboxMessage> b)
+    {
+        b.ToTable("email_outbox");
+        b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+        b.Property(x => x.RecipientEmail).HasColumnName("recipient_email").HasMaxLength(254).IsRequired();
+        b.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(500).IsRequired();
+        b.Property(x => x.Body).HasColumnName("body").HasMaxLength(10000).IsRequired();
+        b.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(300).IsRequired();
+        b.Property(x => x.Status).HasColumnName("status").HasConversion<int>().IsRequired();
+        b.Property(x => x.AttemptCount).HasColumnName("attempt_count").IsRequired();
+        b.Property(x => x.NextAttemptOnUtc).HasColumnName("next_attempt_on_utc").IsRequired();
+        b.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
+        b.Property(x => x.SentOnUtc).HasColumnName("sent_on_utc");
+        b.Property(x => x.LastAttemptOnUtc).HasColumnName("last_attempt_on_utc");
+        b.Property(x => x.LastError).HasColumnName("last_error").HasMaxLength(2000);
+        b.Property(x => x.ClaimToken).HasColumnName("claim_token");
+        b.HasIndex(x => x.IdempotencyKey).IsUnique();
+        b.HasIndex(x => new { x.Status, x.NextAttemptOnUtc });
+    }
+}

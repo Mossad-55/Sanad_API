@@ -1,0 +1,18 @@
+meta {
+  name: 23-restore-bed
+  type: http
+  seq: 30
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/beds/{{inventoryBedId}}/archive?expectedVersion={{inventoryVersion}}&restore=true
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("inventoryVersion", res.body.version);
+}

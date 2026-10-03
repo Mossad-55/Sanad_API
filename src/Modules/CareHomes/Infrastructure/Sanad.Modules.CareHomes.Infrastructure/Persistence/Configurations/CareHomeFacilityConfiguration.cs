@@ -137,3 +137,32 @@ public sealed class CareHomeReviewHistoryConfiguration : IEntityTypeConfiguratio
         builder.Property(x => x.OccurredOnUtc).HasColumnName("occurred_on_utc").IsRequired();
     }
 }
+
+internal static class CareHomeInventoryConfiguration
+{
+    internal static void ConfigureFacility<TEntity>(EntityTypeBuilder<TEntity> builder) where TEntity : class => builder.Property<CareHomeId>("FacilityId").HasConversion(x => x.Value, x => new CareHomeId(x)).HasColumnName("care_home_id").IsRequired();
+}
+
+public sealed class CareHomeRoomTypeConfiguration : IEntityTypeConfiguration<CareHomeRoomType>
+{
+    public void Configure(EntityTypeBuilder<CareHomeRoomType> b)
+    { b.ToTable("room_types"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever(); CareHomeInventoryConfiguration.ConfigureFacility(b); b.HasOne<CareHomeFacility>().WithMany().HasForeignKey(nameof(CareHomeRoomType.FacilityId)).OnDelete(DeleteBehavior.Cascade); b.Property(x => x.ArabicName).HasMaxLength(200).IsRequired(); b.Property(x => x.EnglishName).HasMaxLength(200).IsRequired(); b.Property(x => x.ArabicDescription).HasMaxLength(4000); b.Property(x => x.EnglishDescription).HasMaxLength(4000); b.Property(x => x.MonthlyPriceEgp).HasPrecision(18, 2).IsRequired(); b.Property(x => x.AllocationMode).HasConversion<int>().IsRequired(); b.Property(x => x.IsArchived).IsRequired(); b.Property(x => x.CreatedOnUtc).IsRequired(); b.Property(x => x.UpdatedOnUtc).IsRequired(); b.HasIndex(nameof(CareHomeRoomType.FacilityId), nameof(CareHomeRoomType.EnglishName)); }
+}
+
+public sealed class CareHomeRoomConfiguration : IEntityTypeConfiguration<CareHomeRoom>
+{
+    public void Configure(EntityTypeBuilder<CareHomeRoom> b)
+    { b.ToTable("rooms"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever(); CareHomeInventoryConfiguration.ConfigureFacility(b); b.HasOne<CareHomeFacility>().WithMany().HasForeignKey(nameof(CareHomeRoom.FacilityId)).OnDelete(DeleteBehavior.Cascade); b.HasOne<CareHomeRoomType>().WithMany().HasForeignKey(nameof(CareHomeRoom.RoomTypeId)).OnDelete(DeleteBehavior.Restrict); b.Property(x => x.RoomTypeId).HasColumnName("room_type_id").IsRequired(); b.Property(x => x.RoomNumber).HasMaxLength(64).IsRequired(); b.Property(x => x.IsArchived).IsRequired(); b.Property(x => x.CreatedOnUtc).IsRequired(); b.Property(x => x.UpdatedOnUtc).IsRequired(); b.HasIndex(nameof(CareHomeRoom.FacilityId), nameof(CareHomeRoom.RoomNumber)).IsUnique().HasDatabaseName("ux_care_homes_rooms_facility_room_number"); }
+}
+
+public sealed class CareHomeBedConfiguration : IEntityTypeConfiguration<CareHomeBed>
+{
+    public void Configure(EntityTypeBuilder<CareHomeBed> b)
+    { b.ToTable("beds"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever(); CareHomeInventoryConfiguration.ConfigureFacility(b); b.HasOne<CareHomeFacility>().WithMany().HasForeignKey(nameof(CareHomeBed.FacilityId)).OnDelete(DeleteBehavior.Cascade); b.HasOne<CareHomeRoom>().WithMany().HasForeignKey(nameof(CareHomeBed.RoomId)).OnDelete(DeleteBehavior.Cascade); b.Property(x => x.RoomId).HasColumnName("room_id").IsRequired(); b.Property(x => x.Label).HasMaxLength(64).IsRequired(); b.Property(x => x.IsArchived).IsRequired(); b.Property(x => x.CreatedOnUtc).IsRequired(); b.Property(x => x.UpdatedOnUtc).IsRequired(); b.HasIndex(x => new { x.RoomId, x.Label }).IsUnique().HasDatabaseName("ux_care_homes_beds_room_label"); }
+}
+
+public sealed class CareHomeMaintenanceBlockConfiguration : IEntityTypeConfiguration<CareHomeMaintenanceBlock>
+{
+    public void Configure(EntityTypeBuilder<CareHomeMaintenanceBlock> b)
+    { b.ToTable("maintenance_blocks"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever(); CareHomeInventoryConfiguration.ConfigureFacility(b); b.HasOne<CareHomeFacility>().WithMany().HasForeignKey(nameof(CareHomeMaintenanceBlock.FacilityId)).OnDelete(DeleteBehavior.Cascade); b.Property(x => x.Target).HasConversion<int>().IsRequired(); b.Property(x => x.TargetId).HasColumnName("target_id").IsRequired(); b.Property(x => x.StartDate).HasColumnName("start_date").IsRequired(); b.Property(x => x.EndDate).HasColumnName("end_date").IsRequired(); b.Property(x => x.Reason).HasMaxLength(1000); b.Property(x => x.CreatedOnUtc).IsRequired(); b.HasIndex(nameof(CareHomeMaintenanceBlock.FacilityId), nameof(CareHomeMaintenanceBlock.Target), nameof(CareHomeMaintenanceBlock.TargetId)); }
+}

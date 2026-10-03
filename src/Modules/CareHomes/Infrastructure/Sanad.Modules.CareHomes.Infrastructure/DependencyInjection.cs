@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
+using Sanad.Modules.CareHomes.Application.Inventory;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 
 namespace Sanad.Modules.CareHomes.Infrastructure;
@@ -22,6 +23,7 @@ public static class DependencyInjection
             connectionString,
             npgsql => npgsql.MigrationsHistoryTable("__EFMigrationsHistory", CareHomesDbContext.Schema)));
         services.AddScoped<ICareHomesDbContext>(provider => provider.GetRequiredService<CareHomesDbContext>());
+        services.AddScoped<ICareHomeOccupancyProvider, EmptyCareHomeOccupancyProvider>();
         return services;
     }
 }

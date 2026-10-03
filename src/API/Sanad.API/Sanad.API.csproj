@@ -6,6 +6,10 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+  <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\Application\Sanad.BuildingBlocks.Application\Sanad.BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Application\Sanad.Modules.Identity.Application\Sanad.Modules.Identity.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Infrastructure\Sanad.Modules.Identity.Infrastructure\Sanad.Modules.Identity.Infrastructure.csproj" />

@@ -1,0 +1,15 @@
+meta {
+  name: 17-content-admin-inspection-denied
+  type: http
+  seq: 24
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/admin/{{inventoryFacilityId}}
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryContentJwt}}
+}
+assert {
+  res.status: eq 403
+}

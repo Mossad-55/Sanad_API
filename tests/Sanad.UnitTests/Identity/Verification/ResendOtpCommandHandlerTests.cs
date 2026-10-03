@@ -507,6 +507,9 @@ public sealed class ResendOtpCommandHandlerTests
             get;
         } = [];
 
+        public Task SendEmailAsync(string email, string subject, string body, string? correlationId, CancellationToken cancellationToken)
+            => Task.CompletedTask;
+
         public Task SendSupportRequestAsync(
             string senderName,
             string? senderEmail,

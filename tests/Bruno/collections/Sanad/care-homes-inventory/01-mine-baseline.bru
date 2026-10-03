@@ -1,0 +1,18 @@
+meta {
+  name: 01-mine-baseline
+  type: http
+  seq: 2
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("inventoryFacilityId", res.body.facilityId); bru.setVar("inventoryVersion", res.body.version);
+}

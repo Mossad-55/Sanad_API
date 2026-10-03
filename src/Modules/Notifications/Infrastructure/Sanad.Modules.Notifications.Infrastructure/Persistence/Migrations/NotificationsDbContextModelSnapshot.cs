@@ -23,6 +23,79 @@ namespace Sanad.Modules.Notifications.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Sanad.Modules.Notifications.Domain.Notifications.EmailOutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(10000)
+                        .HasColumnType("character varying(10000)")
+                        .HasColumnName("body");
+
+                    b.Property<Guid?>("ClaimToken")
+                        .HasColumnType("uuid")
+                        .HasColumnName("claim_token");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<DateTime?>("LastAttemptOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_attempt_on_utc");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("last_error");
+
+                    b.Property<DateTime>("NextAttemptOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_on_utc");
+
+                    b.Property<string>("RecipientEmail")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("character varying(254)")
+                        .HasColumnName("recipient_email");
+
+                    b.Property<DateTime?>("SentOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("sent_on_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<string>("Subject")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("subject");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("IdempotencyKey")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "NextAttemptOnUtc");
+
+                    b.ToTable("email_outbox", "notifications");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Notifications.Domain.Notifications.Notification", b =>
                 {
                     b.Property<Guid>("Id")
