@@ -1,0 +1,37 @@
+meta {
+  name: 02-detail-approved-fixture
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryId}}
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:55819" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care Homes discovery coverage requires the guarded local Development API.");
+  if (!bru.getVar("careHomeDiscoveryId")) throw new Error("The preceding read-only list request did not derive an eligible Care Home ID.");
+}
+
+assert {
+  res.status: eq 200
+  res.body.summary.id: eq {{careHomeDiscoveryId}}
+  res.body.summary.arabicName: isString
+  res.body.summary.englishName: isString
+  res.body.address: isString
+  res.body.roomTypes: isArray
+}
+
+script:post-response {
+  const body = res.body;
+  const serialized = JSON.stringify(body);
+  for (const forbidden of ["contactName", "contactPhone", "contactEmail", "privateStorageKey", "documents", "ownerUserId", "reviewHistory", "ratings", "capacity"]) {
+    if (serialized.includes(forbidden)) throw new Error(`Public detail leaked ${forbidden}.`);
+  }
+  const expectedName = bru.getEnvVar("expectedCareHomeEnglishName");
+  if (expectedName && body.summary.englishName !== expectedName) throw new Error("Approved fixture name did not match the supplied expectation.");
+  const expectedPrice = bru.getEnvVar("expectedStartingFromMonthlyPriceEgp");
+  if (expectedPrice && String(body.summary.startingFromMonthlyPriceEgp) !== String(expectedPrice)) throw new Error("Approved fixture minimum price did not match the supplied expectation.");
+}

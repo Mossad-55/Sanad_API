@@ -1,7 +1,10 @@
 [CmdletBinding()]
 param(
     [ValidateRange(1, 65535)]
-    [int]$Port = 55819
+    [int]$Port = 55819,
+    [switch]$SkipTestUserSeed,
+    [switch]$SkipFinanceMigrations,
+    [switch]$ReuseServiceIconFixture
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,8 +50,11 @@ Assert-FixturePortAvailable $Port
 $fixtureRunId = [Guid]::NewGuid().ToString('N').Substring(0, 12)
 $fixtureHmacSecret = 'sanad-local-fixture-hmac-v1-never-live'
 
-Write-Host 'This starts the Development API and seeds only localhost:5432/SanadBrunoTestDb.'
-Write-Host 'The API guard validates every configured database before creating that database or applying migrations.'
+$testUserSeedEnabled = -not $SkipTestUserSeed
+$financeMigrationsEnabled = -not $SkipFinanceMigrations
+Write-Host 'This starts the Development API against the guarded local fixture database.'
+Write-Host "Test-user seeding: $testUserSeedEnabled; Finance migrations: $financeMigrationsEnabled."
+Write-Host 'The API guard validates the exact localhost:5432/SanadBrunoTestDb target before creating that database or applying migrations.'
 $uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
 $lowercase = 'abcdefghijkmnopqrstuvwxyz'
 $digits = '23456789'
@@ -74,13 +80,22 @@ for ($index = $passwordCharacters.Count - 1; $index -gt 0; $index--) {
 }
 $elderlyPassword = -join $passwordCharacters
 $random.Dispose()
-if (Test-Path -LiteralPath (Join-Path $repoRoot 'tests/Bruno/service-icon-fixture.png')) {
-    throw 'The reserved Bruno service-icon fixture path already exists; refusing to overwrite it.'
-}
 $serviceIconFile = Join-Path $repoRoot 'tests/Bruno/service-icon-fixture.png'
-[System.IO.File]::WriteAllBytes(
-    $serviceIconFile,
-    [Convert]::FromBase64String('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/F5sAAAAASUVORK5CYII='))
+$serviceIconBase64 = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/F5sAAAAASUVORK5CYII='
+$serviceIconCreated = $false
+if (Test-Path -LiteralPath $serviceIconFile) {
+    if (-not $ReuseServiceIconFixture) {
+        throw 'The reserved Bruno service-icon fixture path already exists; pass -ReuseServiceIconFixture only to reuse the exact generated disposable image.'
+    }
+    $existingServiceIconBase64 = [Convert]::ToBase64String([System.IO.File]::ReadAllBytes($serviceIconFile))
+    if ($existingServiceIconBase64 -cne $serviceIconBase64) {
+        throw 'The existing protected Bruno image is not the exact generated disposable fixture; refusing to use or overwrite it.'
+    }
+}
+else {
+    [System.IO.File]::WriteAllBytes($serviceIconFile, [Convert]::FromBase64String($serviceIconBase64))
+    $serviceIconCreated = $true
+}
 
 $localBrunoText = Get-Content -LiteralPath $localEnvironment -Raw
 $fixtureVariables = @"
@@ -160,7 +175,7 @@ try {
     [Environment]::SetEnvironmentVariable('DOTNET_ENVIRONMENT', 'Development', 'Process')
     [Environment]::SetEnvironmentVariable('ASPNETCORE_ENVIRONMENT', 'Development', 'Process')
     [Environment]::SetEnvironmentVariable('ASPNETCORE_URLS', "http://localhost:$Port", 'Process')
-    [Environment]::SetEnvironmentVariable('App__TestUserSeed__Enabled', 'true', 'Process')
+    [Environment]::SetEnvironmentVariable('App__TestUserSeed__Enabled', $testUserSeedEnabled.ToString().ToLowerInvariant(), 'Process')
     [Environment]::SetEnvironmentVariable('App__TestUserSeed__RunId', $fixtureRunId, 'Process')
     [Environment]::SetEnvironmentVariable('App__TestUserSeed__Password', 'Test-1234!', 'Process')
     [Environment]::SetEnvironmentVariable('Identity__AdminSeed__ArabicFullName', 'Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø§Ø®ØªØ¨Ø§Ø±', 'Process')
@@ -173,7 +188,7 @@ try {
     [Environment]::SetEnvironmentVariable('Identity__Sms__SmsMisr__Sender', '', 'Process')
     [Environment]::SetEnvironmentVariable('Paymob__HmacSecret', $fixtureHmacSecret, 'Process')
     [Environment]::SetEnvironmentVariable('Paymob__SecretKey', '', 'Process')
-    [Environment]::SetEnvironmentVariable('FinanceMigrations__ApplyOnStartup', 'true', 'Process')
+    [Environment]::SetEnvironmentVariable('FinanceMigrations__ApplyOnStartup', $financeMigrationsEnabled.ToString().ToLowerInvariant(), 'Process')
     [Environment]::SetEnvironmentVariable(
         'App__TestUserSeed__ElderlyPassword',
         $elderlyPassword,
@@ -194,7 +209,7 @@ finally {
     foreach ($name in $environmentNames) {
         [Environment]::SetEnvironmentVariable($name, $previousEnvironment[$name], 'Process')
     }
-    if (Test-Path -LiteralPath $serviceIconFile) {
+    if ($serviceIconCreated -and (Test-Path -LiteralPath $serviceIconFile)) {
         Remove-Item -LiteralPath $serviceIconFile -Force
     }
 }

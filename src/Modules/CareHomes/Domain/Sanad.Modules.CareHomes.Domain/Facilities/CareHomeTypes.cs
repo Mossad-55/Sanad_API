@@ -1,9 +1,13 @@
 namespace Sanad.Modules.CareHomes.Domain.Facilities;
 
-public readonly record struct CareHomeId(Guid Value)
+public readonly record struct CareHomeId(Guid Value) : IComparable<CareHomeId>, IComparable
 {
     public static CareHomeId New() => new(Guid.CreateVersion7());
     public static CareHomeId Empty => new(Guid.Empty);
+    public int CompareTo(CareHomeId other) => Value.CompareTo(other.Value);
+    int IComparable.CompareTo(object? obj) => obj is CareHomeId other
+        ? CompareTo(other)
+        : throw new ArgumentException($"Object must be of type {nameof(CareHomeId)}.", nameof(obj));
     public override string ToString() => Value.ToString();
 }
 

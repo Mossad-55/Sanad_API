@@ -15,7 +15,7 @@ auth:bearer {
 }
 
 script:pre-request {
-  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care homes onboarding mutations require the guarded local Development API.");
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:55819" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care homes onboarding mutations require the guarded main-worktree Development API.");
 }
 
 script:post-response {

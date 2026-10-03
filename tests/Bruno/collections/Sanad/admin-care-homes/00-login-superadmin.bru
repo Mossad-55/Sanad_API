@@ -15,7 +15,7 @@ headers {
 }
 
 script:pre-request {
-  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin care-home coverage requires the guarded local Development API.");
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:55819" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Admin care-home coverage requires the guarded main-worktree Development API.");
 }
 
 body:json {

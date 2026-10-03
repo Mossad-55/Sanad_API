@@ -73,6 +73,8 @@ public static class ResultProblemDetailsMapper
             ["CareHomes.Inventory.Invalid"] = 400,
             ["CareHomes.Inventory.InvalidTarget"] = 400,
             ["CareHomes.Inventory.InvalidRange"] = 400,
+            ["CareHomes.Discovery.NotFound"] = 404,
+            ["CareHomes.Discovery.InvalidQuery"] = 400,
 
             ["Identity.Verification.ResendRequestNotFound"] = 404,
             ["Identity.Verification.ResendRequestNotPending"] = 400,

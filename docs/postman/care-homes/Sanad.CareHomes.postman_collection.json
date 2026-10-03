@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a4fce7cf-2668-4d8e-9a3d-58ec5fd34573",
     "name": "Sanad Care Homes",
-    "description": "Care-home facility owner onboarding. Admin operational APIs belong to the Sanad Admin collection and docs/admin; Family discovery/stay APIs will be added here when implemented.",
+    "description": "Care-home facility owner onboarding plus anonymous public discovery/detail. Admin operational APIs belong to the Sanad Admin collection and docs/admin; Care Homes booking/stay APIs remain deferred to HC-TASK-032.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -14,11 +14,65 @@
     { "key": "careHomeOwnerJwt", "value": "" },
     { "key": "careHomeFamilyJwt", "value": "" },
     { "key": "careHomeFacilityVersion", "value": "1" },
+    { "key": "careHomeDiscoveryId", "value": "" },
+    { "key": "careHomeDiscoveryUnknownId", "value": "" },
+    { "key": "expectedCareHomeEnglishName", "value": "" },
+    { "key": "expectedStartingFromMonthlyPriceEgp", "value": "" },
     { "key": "inventoryRoomTypeId", "value": "" },
     { "key": "inventoryRoomId", "value": "" },
     { "key": "inventoryBedId", "value": "" }
   ],
   "item": [
+    {
+      "name": "00. Public discovery (anonymous)",
+      "description": "Read-only public discovery. Every request explicitly uses noauth despite the collection-level bearer auth. Use only an approved eligible disposable fixture; no setup or database reset is included. Eligibility requires the approved revision and the latest revision-scoped operating license, registration, health certificate, and civil defense document to be usable on the current Cairo date. Ratings/top-10 is deferred to HC-TASK-041.",
+      "item": [
+        {
+          "name": "List eligible Care Homes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery?page=1&pageSize=10",
+            "description": "Returns page, pageSize, totalCount, and ID-ascending summaries. page must be at least 1 and pageSize must be 1..50. Public fields omit contact details, private documents, owner/review data, ratings, availability/capacity, room instances/beds, and resident clinical data. startingFromMonthlyPriceEgp is the minimum non-archived room-type price, including zero; it is null when no active room type exists."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('anonymous discovery succeeds', () => pm.response.to.have.status(200));", "const body = pm.response.json(); pm.test('page shape is present', () => { pm.expect(body.page).to.eql(1); pm.expect(body.pageSize).to.eql(10); pm.expect(body.totalCount).to.be.a('number'); pm.expect(body.items).to.be.an('array'); });", "pm.test('public response omits private fields', () => { const raw = pm.response.text(); ['contactName','contactPhone','contactEmail','privateStorageKey','documents','ownerUserId','reviewHistory'].forEach(field => pm.expect(raw).not.to.include(field)); });"] } }]
+        },
+        {
+          "name": "List invalid pagination",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery?page=0&pageSize=51",
+            "description": "Invalid pagination returns 400 with code CareHomes.Discovery.InvalidQuery."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('invalid pagination is rejected', () => pm.response.to.have.status(400));", "pm.test('invalid-query code is returned', () => pm.expect(pm.response.json().code).to.eql('CareHomes.Discovery.InvalidQuery'));" ] } }]
+        },
+        {
+          "name": "Read eligible Care Home detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryId}}",
+            "description": "Use careHomeDiscoveryId from a guarded disposable fixture. Detail includes the approved address, admission conditions, amenities, medical services, and active room-type cards; it does not expose private or resident data. Optional expectedCareHomeEnglishName and expectedStartingFromMonthlyPriceEgp variables enable exact fixture assertions."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('eligible detail succeeds', () => pm.response.to.have.status(200));", "const body = pm.response.json(); pm.test('detail shape is present', () => { pm.expect(body.summary.id).to.eql(pm.variables.get('careHomeDiscoveryId')); pm.expect(body.summary.arabicName).to.be.a('string'); pm.expect(body.summary.englishName).to.be.a('string'); pm.expect(body.address).to.be.a('string'); pm.expect(body.roomTypes).to.be.an('array'); });", "const expectedName = pm.variables.get('expectedCareHomeEnglishName'); if (expectedName) pm.test('fixture name matches', () => pm.expect(body.summary.englishName).to.eql(expectedName));", "const expectedPrice = pm.variables.get('expectedStartingFromMonthlyPriceEgp'); if (expectedPrice) pm.test('fixture minimum price matches', () => pm.expect(String(body.summary.startingFromMonthlyPriceEgp)).to.eql(String(expectedPrice)));", "pm.test('detail omits private fields', () => { const raw = pm.response.text(); ['contactName','contactPhone','contactEmail','privateStorageKey','documents','ownerUserId','reviewHistory','ratings','capacity'].forEach(field => pm.expect(raw).not.to.include(field)); });"] } }]
+        },
+        {
+          "name": "Unknown or ineligible detail is 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": { "type": "noauth" },
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryUnknownId}}",
+            "description": "Use a GUID that is not an eligible facility. Unknown and ineligible IDs intentionally map to the same 404 code CareHomes.Discovery.NotFound."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('unknown or ineligible detail is hidden', () => pm.response.to.have.status(404));", "pm.test('not-found code is returned', () => pm.expect(pm.response.json().code).to.eql('CareHomes.Discovery.NotFound'));" ] } }]
+        }
+      ]
+    },
     {
       "name": "01. Facility owner onboarding",
       "description": "Owner-scoped draft lifecycle. Login requests use local test fixtures; replace credentials outside local development.",

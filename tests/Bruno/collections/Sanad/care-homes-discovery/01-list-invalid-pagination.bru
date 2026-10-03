@@ -1,0 +1,20 @@
+meta {
+  name: 01-list-invalid-pagination
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/discovery?page=0&pageSize=51
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:55819" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care Homes discovery coverage requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 400
+  res.body.code: eq CareHomes.Discovery.InvalidQuery
+}
