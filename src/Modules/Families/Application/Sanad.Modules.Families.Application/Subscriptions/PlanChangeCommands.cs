@@ -7,11 +7,12 @@ using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
+using Sanad.Modules.Finance.Application;
 
 namespace Sanad.Modules.Families.Application.Subscriptions;
 
 public sealed record PlanChangeQuoteResponse(Guid PlanVersionId, string PlanKey, int PlanVersion,
-    decimal TargetRemainingGross, decimal SettledCredit, decimal TaxRatePercentage, decimal TargetTaxAmount, decimal TotalPayable, string Currency);
+    decimal TargetRemainingGross, decimal SettledCredit, decimal TaxRatePercentage, decimal TargetTaxAmount, decimal PlatformFeeRatePercentage, decimal PlatformFeeAmount, int PlatformChargeRuleVersion, decimal TotalPayable, string Currency);
 public sealed record CreatePlanChangeQuoteCommand(UserId UserId, Guid PlanVersionId, DateTime UtcNow) : IQuery<PlanChangeQuoteResponse>;
 public sealed record CreatePlanChangePaymentIntentCommand(UserId UserId, Guid PlanVersionId, SubscriptionPaymentMethod Method,
     PaymobBillingData Billing, DateTime UtcNow) : ICommand<SubscriptionPaymentIntentResponse>;
@@ -31,18 +32,20 @@ public sealed class CreatePlanChangePaymentIntentCommandValidator : AbstractVali
 public sealed class CreatePlanChangeQuoteCommandHandler : IQueryHandler<CreatePlanChangeQuoteCommand, PlanChangeQuoteResponse>
 {
     private readonly IFamiliesDbContext _db;
-    public CreatePlanChangeQuoteCommandHandler(IFamiliesDbContext db) => _db = db;
+    private readonly IPlatformChargeRuleReader _chargeRules;
+    public CreatePlanChangeQuoteCommandHandler(IFamiliesDbContext db, IPlatformChargeRuleReader chargeRules) { _db = db; _chargeRules = chargeRules; }
     public async Task<Result<PlanChangeQuoteResponse>> Handle(CreatePlanChangeQuoteCommand request, CancellationToken ct)
     {
         var (subscription, plan, error) = await Resolve(request.UserId, request.PlanVersionId, request.UtcNow, ct);
         if (error is not null) return Result<PlanChangeQuoteResponse>.Failure(error);
-        var tax = await _db.SubscriptionTaxRules.AsNoTracking().SingleOrDefaultAsync(x => x.IsActive && x.EffectiveOnUtc <= request.UtcNow, ct);
-        if (tax is null) return Result<PlanChangeQuoteResponse>.Failure(new Error("Subscriptions.Quote.TaxNotConfigured", "Subscription tax configuration is not available."));
+        var charge = await _chargeRules.GetEffectiveAsync(request.UtcNow, ct);
+        if (charge is null) return Result<PlanChangeQuoteResponse>.Failure(new Error("Subscriptions.Quote.ChargesNotConfigured", "Shared platform fee and tax configuration is not available."));
         decimal fraction = RemainingFraction(subscription!, request.UtcNow);
-        decimal targetGross = Money((plan!.Price * (1m + tax.RatePercentage / 100m)) * fraction);
-        decimal targetTax = Money((plan.Price * tax.RatePercentage / 100m) * fraction);
+        decimal targetFee = Money((plan!.Price * charge.PlatformFeeRatePercentage / 100m) * fraction);
+        decimal targetTax = Money((plan.Price * charge.TaxRatePercentage / 100m) * fraction);
+        decimal targetGross = Money((plan.Price + plan.Price * charge.PlatformFeeRatePercentage / 100m + plan.Price * charge.TaxRatePercentage / 100m) * fraction);
         decimal credit = subscription!.CurrentPeriodGross is decimal gross ? Money(gross * fraction) : 0m;
-        return new PlanChangeQuoteResponse(plan.Id, plan.Key, plan.Version, targetGross, credit, Money(tax.RatePercentage), targetTax, Money(Math.Max(0m, targetGross - credit)), plan.Currency);
+        return new PlanChangeQuoteResponse(plan.Id, plan.Key, plan.Version, targetGross, credit, Money(charge.TaxRatePercentage), targetTax, Money(charge.PlatformFeeRatePercentage), targetFee, charge.Version, Money(Math.Max(0m, targetGross - credit)), plan.Currency);
     }
     internal async Task<(FamilySubscription? Subscription, SubscriptionPlanVersion? Plan, Error? Error)> Resolve(UserId userId, Guid planId, DateTime now, CancellationToken ct)
     {
@@ -67,13 +70,13 @@ public sealed class CreatePlanChangeQuoteCommandHandler : IQueryHandler<CreatePl
 
 public sealed class CreatePlanChangePaymentIntentCommandHandler : ICommandHandler<CreatePlanChangePaymentIntentCommand, SubscriptionPaymentIntentResponse>
 {
-    private readonly IFamiliesDbContext _db; private readonly IPaymobClient _paymob;
-    public CreatePlanChangePaymentIntentCommandHandler(IFamiliesDbContext db, IPaymobClient paymob) { _db = db; _paymob = paymob; }
+    private readonly IFamiliesDbContext _db; private readonly IPaymobClient _paymob; private readonly IPlatformChargeRuleReader _chargeRules;
+    public CreatePlanChangePaymentIntentCommandHandler(IFamiliesDbContext db, IPaymobClient paymob, IPlatformChargeRuleReader chargeRules) { _db = db; _paymob = paymob; _chargeRules = chargeRules; }
     public async Task<Result<SubscriptionPaymentIntentResponse>> Handle(CreatePlanChangePaymentIntentCommand request, CancellationToken ct)
     {
-        var quote = await new CreatePlanChangeQuoteCommandHandler(_db).Handle(new(request.UserId, request.PlanVersionId, request.UtcNow), ct);
+        var quote = await new CreatePlanChangeQuoteCommandHandler(_db, _chargeRules).Handle(new(request.UserId, request.PlanVersionId, request.UtcNow), ct);
         if (!quote.IsSuccess) return Result<SubscriptionPaymentIntentResponse>.Failure(quote.Error);
-        var resolved = await new CreatePlanChangeQuoteCommandHandler(_db).Resolve(request.UserId, request.PlanVersionId, request.UtcNow, ct);
+        var resolved = await new CreatePlanChangeQuoteCommandHandler(_db, _chargeRules).Resolve(request.UserId, request.PlanVersionId, request.UtcNow, ct);
         if (resolved.Error is not null) return Result<SubscriptionPaymentIntentResponse>.Failure(resolved.Error);
         if (resolved.Plan!.Price <= resolved.Subscription!.Price)
             return Result<SubscriptionPaymentIntentResponse>.Failure(new Error("Subscriptions.PlanChange.NotUpgrade", "Use the pending downgrade operation for a lower-priced plan."));
@@ -83,20 +86,25 @@ public sealed class CreatePlanChangePaymentIntentCommandHandler : ICommandHandle
             {
                 if (string.IsNullOrWhiteSpace(resolved.Subscription.PaymobSubscriptionId))
                     return Result<SubscriptionPaymentIntentResponse>.Failure(new Error("Paymob.SubscriptionNotFound", "No provider subscription is available to update."));
-                decimal futureGross = CreatePlanChangeQuoteCommandHandler.Money(resolved.Plan.Price * (1m + quote.Value.TaxRatePercentage / 100m));
+                decimal futureGross = CreatePlanChangeQuoteCommandHandler.Money(
+                    resolved.Plan.Price * (1m
+                        + quote.Value.PlatformFeeRatePercentage / 100m
+                        + quote.Value.TaxRatePercentage / 100m));
                 var update = await _paymob.UpdateSubscriptionAmountAsync(resolved.Subscription.PaymobSubscriptionId, futureGross, ct);
                 if (!update.IsSuccess) return Result<SubscriptionPaymentIntentResponse>.Failure(update.Error);
             }
             var zeroAttempt = SubscriptionPaymentAttempt.CreatePlanChange(resolved.Subscription, resolved.Plan, quote.Value.TargetRemainingGross,
                 resolved.Subscription.CurrentPeriodGross ?? 0m, quote.Value.SettledCredit, quote.Value.TaxRatePercentage, quote.Value.TargetTaxAmount, request.Method, request.UtcNow);
+            zeroAttempt.CapturePlatformCharge(quote.Value.PlatformFeeRatePercentage, quote.Value.PlatformFeeAmount, quote.Value.PlatformChargeRuleVersion);
             zeroAttempt.TryMarkSucceeded("no-charge", request.UtcNow);
-            resolved.Subscription.ApplyImmediatePlanChange(resolved.Plan, quote.Value.TargetRemainingGross, quote.Value.TaxRatePercentage);
+            resolved.Subscription.ApplyPaidPlanChange(resolved.Plan, zeroAttempt);
             _db.SubscriptionPaymentAttempts.Add(zeroAttempt);
             await _db.SaveChangesAsync(ct);
             return new SubscriptionPaymentIntentResponse(zeroAttempt.Id, zeroAttempt.MerchantReference, zeroAttempt.Method, 0m, zeroAttempt.Currency, string.Empty, string.Empty, false);
         }
         var attempt = SubscriptionPaymentAttempt.CreatePlanChange(resolved.Subscription!, resolved.Plan!, quote.Value.TargetRemainingGross,
             resolved.Subscription!.CurrentPeriodGross ?? 0m, quote.Value.SettledCredit, quote.Value.TaxRatePercentage, quote.Value.TargetTaxAmount, request.Method, request.UtcNow);
+        attempt.CapturePlatformCharge(quote.Value.PlatformFeeRatePercentage, quote.Value.PlatformFeeAmount, quote.Value.PlatformChargeRuleVersion);
         var intent = await _paymob.CreateSubscriptionPaymentIntentAsync(new(attempt.MerchantReference, request.Method, attempt.TotalPayable, attempt.Currency, request.Billing), ct);
         if (!intent.IsSuccess) return Result<SubscriptionPaymentIntentResponse>.Failure(intent.Error);
         attempt.RecordPaymobOrder(intent.Value.PaymobOrderId); _db.SubscriptionPaymentAttempts.Add(attempt); await _db.SaveChangesAsync(ct);
@@ -106,18 +114,18 @@ public sealed class CreatePlanChangePaymentIntentCommandHandler : ICommandHandle
 
 public sealed class ReplacePendingDowngradeCommandHandler : ICommandHandler<ReplacePendingDowngradeCommand>
 {
-    private readonly IFamiliesDbContext _db; private readonly IPaymobClient _paymob;
-    public ReplacePendingDowngradeCommandHandler(IFamiliesDbContext db, IPaymobClient paymob) { _db = db; _paymob = paymob; }
+    private readonly IFamiliesDbContext _db; private readonly IPaymobClient _paymob; private readonly IPlatformChargeRuleReader _chargeRules;
+    public ReplacePendingDowngradeCommandHandler(IFamiliesDbContext db, IPaymobClient paymob, IPlatformChargeRuleReader chargeRules) { _db = db; _paymob = paymob; _chargeRules = chargeRules; }
     public async Task<Result> Handle(ReplacePendingDowngradeCommand r, CancellationToken ct)
     {
-        var resolved = await new CreatePlanChangeQuoteCommandHandler(_db).Resolve(r.UserId, r.PlanVersionId, r.UtcNow, ct);
+        var resolved = await new CreatePlanChangeQuoteCommandHandler(_db, _chargeRules).Resolve(r.UserId, r.PlanVersionId, r.UtcNow, ct);
         if (resolved.Error is not null) return Result.Failure(resolved.Error);
         if (resolved.Plan!.Price >= resolved.Subscription!.Price) return Result.Failure(new Error("Subscriptions.PendingDowngrade.NotDowngrade", "The selected plan is not a downgrade."));
         if (resolved.Subscription.PaymobSubscriptionId is not null)
         {
-            var tax = await _db.SubscriptionTaxRules.AsNoTracking().SingleOrDefaultAsync(x => x.IsActive && x.EffectiveOnUtc <= r.UtcNow, ct);
-            if (tax is null) return Result.Failure(new Error("Subscriptions.Quote.TaxNotConfigured", "Subscription tax configuration is not available."));
-            var update = await _paymob.UpdateSubscriptionAmountAsync(resolved.Subscription.PaymobSubscriptionId, CreatePlanChangeQuoteCommandHandler.Money(resolved.Plan.Price * (1m + tax.RatePercentage / 100m)), ct);
+            var charge = await _chargeRules.GetEffectiveAsync(r.UtcNow, ct);
+            if (charge is null) return Result.Failure(new Error("Subscriptions.Quote.ChargesNotConfigured", "Shared platform fee and tax configuration is not available."));
+            var update = await _paymob.UpdateSubscriptionAmountAsync(resolved.Subscription.PaymobSubscriptionId, CreatePlanChangeQuoteCommandHandler.Money(resolved.Plan.Price * (1m + charge.PlatformFeeRatePercentage / 100m + charge.TaxRatePercentage / 100m)), ct);
             if (!update.IsSuccess) return Result.Failure(update.Error);
         }
         resolved.Subscription.ReplacePendingDowngrade(resolved.Plan); await _db.SaveChangesAsync(ct); return Result.Success();
@@ -125,8 +133,8 @@ public sealed class ReplacePendingDowngradeCommandHandler : ICommandHandler<Repl
 }
 public sealed class CancelPendingDowngradeCommandHandler : ICommandHandler<CancelPendingDowngradeCommand>
 {
-    private readonly IFamiliesDbContext _db; private readonly IPaymobClient _paymob;
-    public CancelPendingDowngradeCommandHandler(IFamiliesDbContext db, IPaymobClient paymob) { _db = db; _paymob = paymob; }
+    private readonly IFamiliesDbContext _db; private readonly IPaymobClient _paymob; private readonly IPlatformChargeRuleReader _chargeRules;
+    public CancelPendingDowngradeCommandHandler(IFamiliesDbContext db, IPaymobClient paymob, IPlatformChargeRuleReader chargeRules) { _db = db; _paymob = paymob; _chargeRules = chargeRules; }
     public async Task<Result> Handle(CancelPendingDowngradeCommand r, CancellationToken ct)
     {
         var family = await FamilyAccess.ResolveFamilyAsync(_db, r.UserId, ct);
@@ -137,9 +145,9 @@ public sealed class CancelPendingDowngradeCommandHandler : ICommandHandler<Cance
         if (subscription.IsWithinRenewalGrace(r.UtcNow)) return Result.Failure(new Error("Subscriptions.PlanChange.RenewalGrace", "Plan changes are unavailable during renewal grace."));
         if (subscription.PendingDowngrade is not null && subscription.PaymobSubscriptionId is not null)
         {
-            var tax = await _db.SubscriptionTaxRules.AsNoTracking().SingleOrDefaultAsync(x => x.IsActive && x.EffectiveOnUtc <= r.UtcNow, ct);
-            if (tax is null) return Result.Failure(new Error("Subscriptions.Quote.TaxNotConfigured", "Subscription tax configuration is not available."));
-            var update = await _paymob.UpdateSubscriptionAmountAsync(subscription.PaymobSubscriptionId, CreatePlanChangeQuoteCommandHandler.Money(subscription.Price * (1m + tax.RatePercentage / 100m)), ct);
+            var charge = await _chargeRules.GetEffectiveAsync(r.UtcNow, ct);
+            if (charge is null) return Result.Failure(new Error("Subscriptions.Quote.ChargesNotConfigured", "Shared platform fee and tax configuration is not available."));
+            var update = await _paymob.UpdateSubscriptionAmountAsync(subscription.PaymobSubscriptionId, CreatePlanChangeQuoteCommandHandler.Money(subscription.Price * (1m + charge.PlatformFeeRatePercentage / 100m + charge.TaxRatePercentage / 100m)), ct);
             if (!update.IsSuccess) return Result.Failure(update.Error);
         }
         subscription.CancelPendingDowngrade(); await _db.SaveChangesAsync(ct); return Result.Success();

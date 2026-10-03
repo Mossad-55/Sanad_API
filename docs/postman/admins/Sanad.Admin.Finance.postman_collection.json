@@ -1,0 +1,138 @@
+{
+  "info": {
+    "name": "Sanad Admin — Finance",
+    "description": "Shared platform fee/tax configuration. Use a normal SuperAdmin or SupportAdmin JWT for the Finance folder. The legacy subscription-tax adapter remains SuperAdmin-only. These requests are manual configuration examples; do not run against production or shared data without owner authorization.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5235"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "financeRuleVersion",
+      "value": "1"
+    },
+    {
+      "key": "effectiveOnUtc",
+      "value": "2026-10-01T00:00:00Z"
+    }
+  ],
+  "item": [
+    {
+      "name": "Shared Finance charge rules (SuperAdmin or SupportAdmin)",
+      "item": [
+        {
+          "name": "Create platform charge rule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platformFeeRatePercentage\": 15.00,\n  \"taxRatePercentage\": 14.00,\n  \"version\": {{financeRuleVersion}},\n  \"effectiveOnUtc\": \"{{effectiveOnUtc}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/finance/platform-charge-rules"
+          },
+          "description": "Returns 201 with the new rule UUID. Percentages are independent and apply to the payment base; no absent-config default exists. Version must exceed the latest stored Finance version. Manual/destructive configuration request; use only on an owner-authorized disposable target."
+        },
+        {
+          "name": "Get current platform charge rule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/finance/platform-charge-rules/current"
+          },
+          "description": "Returns 200 with the effective active rule, or JSON null when no effective rule exists. SuperAdmin and SupportAdmin only."
+        },
+        {
+          "name": "Get platform charge rule history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/finance/platform-charge-rules/history"
+          },
+          "description": "Returns 200 with all shared rules ordered by descending version. Historical rules and transaction snapshots are preserved. SuperAdmin and SupportAdmin only."
+        }
+      ]
+    },
+    {
+      "name": "Legacy subscription-tax adapter (SuperAdmin only)",
+      "description": "Compatibility routes under /api/v1/admin/subscriptions/tax-rules. They retain the existing SuperAdmin-only SubscriptionPlanAdmin policy. Use the shared Finance folder for new fee/tax configuration.",
+      "item": [
+        {
+          "name": "Legacy create subscription tax rule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"ratePercentage\": 14.00,\n  \"version\": {{financeRuleVersion}},\n  \"effectiveOnUtc\": \"{{effectiveOnUtc}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/tax-rules"
+          },
+          "description": "Compatibility adapter. Shared Finance configuration must already exist; the current platform-fee rate is carried forward. SuperAdmin only."
+        },
+        {
+          "name": "Legacy current subscription tax rule",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/tax-rules/current"
+          },
+          "description": "Compatibility read. SuperAdmin only; shared records include the effective platform-fee fields."
+        },
+        {
+          "name": "Legacy subscription tax rule history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/subscriptions/tax-rules/history"
+          },
+          "description": "Compatibility read. SuperAdmin only; shared history is returned alongside preserved legacy tax records."
+        }
+      ]
+    }
+  ]
+}

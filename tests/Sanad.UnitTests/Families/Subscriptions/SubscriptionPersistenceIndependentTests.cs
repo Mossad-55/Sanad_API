@@ -92,6 +92,28 @@ public sealed class SubscriptionPersistenceIndependentTests
     }
 
     [Fact]
+    public void Snapshot_from_a_tracked_plan_uses_independent_owned_benefit_instances()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+        using FamiliesDbContext context = CreateContext(databaseName);
+        context.Add(SubscriptionPlanVersion.Create(SubscriptionPlan.Premium));
+        context.SaveChanges();
+
+        SubscriptionPlanVersion trackedPlan = context.SubscriptionPlanVersions
+            .Include(x => x.Benefits)
+            .Single();
+        FamilySubscription snapshot = FamilySubscription.Create(FamilyId.New(), trackedPlan);
+
+        Assert.Equal(trackedPlan.Benefits.OrderBy(x => x.Key), snapshot.Benefits.OrderBy(x => x.Key));
+        Assert.DoesNotContain(snapshot.Benefits, benefit => trackedPlan.Benefits.Any(
+            trackedBenefit => ReferenceEquals(benefit, trackedBenefit)));
+
+        context.Add(snapshot);
+        context.SaveChanges();
+        Assert.Single(context.FamilySubscriptions);
+    }
+
+    [Fact]
     public void Retirement_is_the_only_catalog_change_allowed_after_persistence()
     {
         SubscriptionPlanVersion plan = SubscriptionPlanVersion.Create(SubscriptionPlan.Free);

@@ -1,0 +1,13 @@
+meta {
+  name: 08-current-unauthenticated
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/finance/platform-charge-rules/current
+}
+
+assert {
+  res.status: eq 401
+}

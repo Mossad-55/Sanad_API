@@ -1,0 +1,33 @@
+meta {
+  name: 00-unauthenticated-enrollment-payment-intent
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/payment-intent
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "planVersionId": "00000000-0000-0000-0000-000000000000",
+    "couponCode": null,
+    "method": 2,
+    "billing": {
+      "firstName": "Unauthenticated",
+      "lastName": "Enrollment",
+      "email": "unauthenticated@test.sanad.local",
+      "phoneNumber": "+201000000099"
+    }
+  }
+}
+
+assert {
+  res.status: eq 401
+}

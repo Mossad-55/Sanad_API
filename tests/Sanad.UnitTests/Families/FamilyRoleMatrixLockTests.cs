@@ -13,6 +13,7 @@ using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Xunit;
+using Sanad.UnitTests.Finance;
 
 namespace Sanad.UnitTests.Families;
 
@@ -145,7 +146,8 @@ public sealed class FamilyRoleMatrixLockTests
 
         var handler = new CreateBookingCheckoutCommandHandler(
             db,
-            new FakePricing(BookingCaregiverType.Medical, 500m));
+            new FakePricing(BookingCaregiverType.Medical, 500m),
+            new FixedPlatformChargeRules(15m, 0m));
 
         Result<BookingCheckoutResponse> result =
             await handler.Handle(
@@ -173,7 +175,8 @@ public sealed class FamilyRoleMatrixLockTests
 
         var handler = new CreateBookingCheckoutCommandHandler(
             db,
-            new FakePricing(BookingCaregiverType.Medical, 500m));
+            new FakePricing(BookingCaregiverType.Medical, 500m),
+            new FixedPlatformChargeRules(15m, 0m));
 
         Result<BookingCheckoutResponse> result =
             await handler.Handle(

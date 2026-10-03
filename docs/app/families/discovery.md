@@ -37,7 +37,7 @@ Only caregivers in **Active** status are returned. Every response field maps dir
 
 `GET /api/v1/caregivers/{caregiverId}/quote?shiftType=1&startTime=10:00&endTime=12:00`
 
-Returns the caregiver's base fee for the requested product plus the 15% platform fee and the total (`EGP`). Hourly bookings are priced from the exact time window; fixed products use the stored product price.
+Returns the caregiver's base fee for the requested product, independent platform-fee and tax rates/amounts, the shared charge-rule version, and the total (`EGP`). Hourly bookings are priced from the exact time window; fixed products use the stored product price. If no effective shared Finance rule exists, the quote is unavailable rather than defaulting to zero.
 
 ## Error Catalog
 

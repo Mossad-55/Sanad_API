@@ -1,0 +1,59 @@
+meta {
+  name: 06-plan-change-payment-intent-wallet
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plan-change/payment-intent
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{positivePlanChangeDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positivePlanChangeJwt}}
+}
+
+body:json {
+  {
+    "planVersionId": "{{positiveLifecycleUpgradePlanId}}",
+    "method": 2,
+    "billing": {
+      "firstName": "Plan",
+      "lastName": "Change",
+      "email": "{{planChangeEmail}}",
+      "phoneNumber": "{{planChangePhone}}"
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const body = res.body;
+  if (!body || !(body.paymentAttemptId ?? body.PaymentAttemptId) || Number(body.amount ?? body.Amount) <= 0 || (body.currency ?? body.Currency) !== "EGP") {
+    throw new Error("Paid plan-change intent must return a positive EGP payment attempt.");
+  }
+  const amountCents = Math.round(Number(body.amount ?? body.Amount) * 100);
+  const createdAt = "2026-01-01T00:00:02Z";
+  const fixtureRunId = String(bru.getEnvVar("fixtureRunId") ?? "");
+  const fixtureHmacSecret = String(bru.getEnvVar("paymobFixtureHmacSecret") ?? "");
+  if (!fixtureRunId || !fixtureHmacSecret) throw new Error("The guarded local HMAC fixture variables are required.");
+  const transactionId = String(930000 + (parseInt(fixtureRunId.slice(0, 6), 36) % 7000));
+  const orderId = String(830000 + (parseInt(fixtureRunId.slice(0, 6), 36) % 7000));
+  const hmacInput = [amountCents, createdAt, "EGP", "false", "false", transactionId, "1", "false", "false", "true", "false", "true", "false", orderId, "1", "false", "", "", "wallet", "true"].join("");
+  const CryptoJS = require("crypto-js");
+  bru.setVar("positivePlanChangeMerchantReference", body.merchantReference ?? body.MerchantReference);
+  bru.setVar("positivePlanChangeAmountCents", String(amountCents));
+  bru.setVar("positivePlanChangeCreatedAt", createdAt);
+  bru.setVar("positivePlanChangeTransactionId", transactionId);
+  bru.setVar("positivePlanChangeOrderId", orderId);
+  bru.setVar("positivePlanChangeHmac", CryptoJS.HmacSHA512(hmacInput, fixtureHmacSecret).toString(CryptoJS.enc.Hex));
+}

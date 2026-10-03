@@ -1,0 +1,32 @@
+meta {
+  name: 03-create-duplicate-version
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/finance/platform-charge-rules
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{financeAdminJwt}}
+}
+
+body:json {
+  {
+    "platformFeeRatePercentage": 13,
+    "taxRatePercentage": 8,
+    "version": {{financeChargeRuleVersion}},
+    "effectiveOnUtc": "2026-10-02T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 409
+}

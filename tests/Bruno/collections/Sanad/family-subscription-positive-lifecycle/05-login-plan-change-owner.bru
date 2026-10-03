@@ -1,0 +1,34 @@
+meta {
+  name: 05-login-plan-change-owner
+  type: http
+  seq: 16
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{planChangeEmail}}",
+    "password": "{{familyOwnerPassword}}",
+    "deviceName": "bruno-subscription-positive-plan-change",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("positivePlanChangeJwt", res.body.accessToken);
+  bru.setVar("positivePlanChangeDeviceSessionId", res.body.deviceSessionId.value);
+}

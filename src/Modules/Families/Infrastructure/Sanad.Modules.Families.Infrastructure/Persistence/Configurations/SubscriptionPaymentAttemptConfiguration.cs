@@ -23,6 +23,9 @@ public sealed class SubscriptionPaymentAttemptConfiguration : IEntityTypeConfigu
         builder.Property(x => x.TaxableAmount).HasColumnName("taxable_amount").HasPrecision(18, 2).IsRequired();
         builder.Property(x => x.TaxRatePercentage).HasColumnName("tax_rate_percentage").HasPrecision(5, 2).IsRequired();
         builder.Property(x => x.TaxAmount).HasColumnName("tax_amount").HasPrecision(18, 2).IsRequired();
+        builder.Property(x => x.PlatformFeeRatePercentage).HasColumnName("platform_fee_rate_percentage").HasPrecision(5, 2).IsRequired();
+        builder.Property(x => x.PlatformFeeAmount).HasColumnName("platform_fee_amount").HasPrecision(18, 2).IsRequired();
+        builder.Property(x => x.PlatformChargeRuleVersion).HasColumnName("platform_charge_rule_version");
         builder.Property(x => x.TotalPayable).HasColumnName("total_payable").HasPrecision(18, 2).IsRequired();
         builder.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
         builder.Property(x => x.Method).HasColumnName("method").HasConversion<int>().IsRequired();
@@ -36,6 +39,7 @@ public sealed class SubscriptionPaymentAttemptConfiguration : IEntityTypeConfigu
         builder.Property(x => x.SourcePeriodEndsOnUtc).HasColumnName("source_period_ends_on_utc");
         builder.Ignore(x => x.MerchantReference);
         builder.Property(x => x.PaymobOrderId).HasColumnName("paymob_order_id").HasMaxLength(100);
+        builder.Property(x => x.RenewalProviderEventId).HasColumnName("renewal_provider_event_id").HasMaxLength(200);
         builder.Property(x => x.PaymobTransactionId).HasColumnName("paymob_transaction_id").HasMaxLength(100);
         builder.Property(x => x.PaymobInitialTransactionId).HasColumnName("paymob_initial_transaction_id").HasMaxLength(100);
         builder.Property(x => x.PaymobSubscriptionId).HasColumnName("paymob_subscription_id").HasMaxLength(100);
@@ -44,6 +48,7 @@ public sealed class SubscriptionPaymentAttemptConfiguration : IEntityTypeConfigu
         builder.Property(x => x.SettledOnUtc).HasColumnName("settled_on_utc");
         builder.Property(x => x.FailedOnUtc).HasColumnName("failed_on_utc");
         builder.HasIndex(x => x.PaymobOrderId).IsUnique();
+        builder.HasIndex(x => x.RenewalProviderEventId).IsUnique().HasFilter("renewal_provider_event_id IS NOT NULL");
         builder.HasIndex(x => x.PaymobSubscriptionId)
             .HasFilter("paymob_subscription_id IS NOT NULL")
             .IsUnique()

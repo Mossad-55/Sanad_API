@@ -20,12 +20,15 @@ public sealed class BookingPricingTests
             BookingShiftType.HomeVisit,
             new TimeOnly(10, 0),
             new TimeOnly(12, 0),
-            15.00m);
+            15.00m,
+            5m,
+            1);
 
         Assert.Equal(200.00m, snapshot.BaseCaregiverFee);
         Assert.Equal(15.00m, snapshot.PlatformFeePercentage);
         Assert.Equal(30.00m, snapshot.PlatformFeeAmount);
-        Assert.Equal(230.00m, snapshot.TotalPayableAmount);
+        Assert.Equal(10.00m, snapshot.TaxAmount);
+        Assert.Equal(240.00m, snapshot.TotalPayableAmount);
         Assert.Equal("EGP", snapshot.Currency);
     }
 
@@ -41,7 +44,9 @@ public sealed class BookingPricingTests
             BookingShiftType.Hourly,
             new TimeOnly(10, 0),
             new TimeOnly(13, 0),
-            15.00m);
+            15.00m,
+            0m,
+            1);
 
         Assert.Equal(150.00m, snapshot.BaseCaregiverFee);
         Assert.Equal(15.00m, snapshot.PlatformFeePercentage);

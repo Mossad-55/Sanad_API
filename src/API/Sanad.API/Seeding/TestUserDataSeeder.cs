@@ -42,7 +42,10 @@ public sealed record TestUserSeedOptions
 // readiness flow), and a booking portfolio: Completed, Confirmed, PendingPayment,
 // CancelledByFamily, CancelledByCaregiver (refunded), DeclinedByCaregiver (refunded),
 // isolated paid caregiver-decision requests that never call Paymob, and a separate
-// manual Premium subscription for no-provider downgrade lifecycle coverage.
+// manual Premium subscription for no-provider downgrade lifecycle coverage. The
+// opt-in subscription fixtures also include a subscription-free family owner, a
+// due current subscription for renewal coverage, and a published higher-priced
+// test plan for plan-change payment-intent coverage.
 public sealed class TestUserDataSeeder
 {
     private static readonly SemaphoreSlim SubscriptionFixtureGate = new(1, 1);
@@ -61,6 +64,7 @@ public sealed class TestUserDataSeeder
     private readonly TestUserSeedOptions _options;
     private readonly IConfiguration _configuration;
     private readonly IHostEnvironment _hostEnvironment;
+    private readonly TestPlatformChargeRuleSeeder _platformChargeRuleSeeder;
 
     public TestUserDataSeeder(
         IdentityDbContext identityDbContext,
@@ -71,7 +75,8 @@ public sealed class TestUserDataSeeder
         IDateTimeProvider dateTimeProvider,
         IOptions<TestUserSeedOptions> options,
         IConfiguration configuration,
-        IHostEnvironment hostEnvironment)
+        IHostEnvironment hostEnvironment,
+        TestPlatformChargeRuleSeeder platformChargeRuleSeeder)
     {
         _identityDbContext = identityDbContext;
         _familiesDbContext = familiesDbContext;
@@ -82,6 +87,7 @@ public sealed class TestUserDataSeeder
         _options = options.Value;
         _configuration = configuration;
         _hostEnvironment = hostEnvironment;
+        _platformChargeRuleSeeder = platformChargeRuleSeeder;
     }
 
     public async Task SeedAsync(CancellationToken cancellationToken = default)
@@ -103,6 +109,8 @@ public sealed class TestUserDataSeeder
             throw new InvalidOperationException(
                 "App:TestUserSeed:ElderlyPassword must be supplied locally when fixture seeding is enabled.");
         }
+
+        string fixtureRunId = ReadFixtureRunId();
 
         string? paymobSecretKey =
             _configuration["Paymob:SecretKey"];
@@ -169,6 +177,33 @@ public sealed class TestUserDataSeeder
             englishFullName: "Test Manual Subscription Owner",
             email: "family.downgrade@test.sanad.local",
             phoneNumber: "+201000000010",
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        User subscriptionFreeOwner = await EnsureUserAsync(
+            arabicFullName: "Ù…Ø§Ù„Ùƒ Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ø®ØªØ¨Ø§Ø±ÙŠ Ø¨Ù„Ø§ Ø§Ø´ØªØ±Ø§Ùƒ",
+            englishFullName: "Test Subscription-Free Owner",
+            email: FixtureEmail("family.subscription-free", fixtureRunId),
+            phoneNumber: FixturePhoneNumber(fixtureRunId, 2),
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        User renewalOwner = await EnsureUserAsync(
+            arabicFullName: "Ù…Ø§Ù„Ùƒ ØªØ¬Ø¯ÙŠØ¯ Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ù„Ø§Ø®ØªØ¨Ø§Ø±ÙŠ",
+            englishFullName: "Test Subscription Renewal Owner",
+            email: FixtureEmail("family.renewal", fixtureRunId),
+            phoneNumber: FixturePhoneNumber(fixtureRunId, 3),
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        User planChangeOwner = await EnsureUserAsync(
+            arabicFullName: "Ù…Ø§Ù„Ùƒ ØªØºÙŠÙŠØ± Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ù„Ø§Ø®ØªØ¨Ø¨Ø§Ø±ÙŠ",
+            englishFullName: "Test Subscription Plan Change Owner",
+            email: FixtureEmail("family.plan-change", fixtureRunId),
+            phoneNumber: FixturePhoneNumber(fixtureRunId, 4),
             AccountType.Family,
             utcNow,
             cancellationToken);
@@ -448,6 +483,8 @@ public sealed class TestUserDataSeeder
 
         // ---------------- Subscriptions: published catalog + current snapshot ----------------
 
+        await _platformChargeRuleSeeder.SeedAsync(utcNow, cancellationToken);
+
         await SubscriptionFixtureGate.WaitAsync(cancellationToken);
         try
         {
@@ -456,6 +493,9 @@ public sealed class TestUserDataSeeder
                 manualSubscriptionOwner,
                 utcNow,
                 cancellationToken);
+            await EnsureSubscriptionFreeFixtureAsync(subscriptionFreeOwner, cancellationToken);
+            await EnsureRenewalSubscriptionFixtureAsync(renewalOwner, utcNow, cancellationToken);
+            await EnsurePlanChangeSubscriptionFixtureAsync(planChangeOwner, cancellationToken);
         }
         finally
         {
@@ -832,6 +872,39 @@ public sealed class TestUserDataSeeder
             ValidateSubscriptionPlanVersion(premiumPlus, SubscriptionPlan.PremiumPlus, false, true, "premium-plus");
         }
 
+        SubscriptionPlan upgradePlan = SubscriptionPlan.Create(
+            "test-upgrade",
+            1,
+            499m,
+            SubscriptionCycle.Monthly,
+            SubscriptionPlan.DefaultCurrency,
+            SubscriptionPlan.Premium.Benefits,
+            SubscriptionPlan.Premium.MemberLimit,
+            SubscriptionPlan.Premium.MonthlyBookingLimit,
+            SubscriptionPlan.Premium.Rollover);
+
+        SubscriptionPlanVersion? upgrade = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(
+                plan => plan.Key == upgradePlan.Key && plan.Version == upgradePlan.Version,
+                cancellationToken);
+
+        if (upgrade is null)
+        {
+            upgrade = SubscriptionPlanVersion.Create(
+                upgradePlan,
+                isPublished: true,
+                isAvailableForNewSales: true,
+                createdOnUtc: utcNow,
+                publishedOnUtc: utcNow);
+            _familiesDbContext.SubscriptionPlanVersions.Add(upgrade);
+        }
+        else
+        {
+            ValidateSubscriptionPlanVersion(upgrade, upgradePlan, true, true, "test-upgrade");
+        }
+
         FamilySubscription? current = await _familiesDbContext.FamilySubscriptions
             .Include(subscription => subscription.Benefits)
             .AsSplitQuery()
@@ -850,6 +923,91 @@ public sealed class TestUserDataSeeder
         }
 
         await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureSubscriptionFreeFixtureAsync(
+        User owner,
+        CancellationToken cancellationToken)
+    {
+        Family family = await EnsureFixtureFamilyAsync(owner, "Test Subscription-Free Family", cancellationToken);
+
+        bool hasCurrent = await _familiesDbContext.FamilySubscriptions
+            .AnyAsync(subscription => subscription.FamilyId == family.Id && subscription.IsCurrent, cancellationToken);
+
+        _ = hasCurrent;
+    }
+
+    private async Task EnsureRenewalSubscriptionFixtureAsync(
+        User owner,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        Family family = await EnsureFixtureFamilyAsync(owner, "Test Subscription Renewal Family", cancellationToken);
+        SubscriptionPlanVersion premium = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .AsSplitQuery()
+            .SingleAsync(
+                plan => plan.Key == SubscriptionPlan.PremiumKey && plan.Version == 1,
+                cancellationToken);
+
+        FamilySubscription? current = await _familiesDbContext.FamilySubscriptions
+            .Include(subscription => subscription.Benefits)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(
+                subscription => subscription.FamilyId == family.Id && subscription.IsCurrent,
+                cancellationToken);
+
+        if (current is null)
+        {
+            current = FamilySubscription.Create(
+                family.Id,
+                premium,
+                utcNow.AddMonths(-2),
+                utcNow.AddDays(-1));
+            _familiesDbContext.FamilySubscriptions.Add(current);
+        }
+        // A repeated launch may find a callback-mutated subscription. Preserve it;
+        // only the first launch needs the due-period precondition.
+
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsurePlanChangeSubscriptionFixtureAsync(
+        User owner,
+        CancellationToken cancellationToken)
+    {
+        Family family = await EnsureFixtureFamilyAsync(owner, "Test Subscription Plan Change Family", cancellationToken);
+        bool hasCurrent = await _familiesDbContext.FamilySubscriptions
+            .AnyAsync(subscription => subscription.FamilyId == family.Id && subscription.IsCurrent, cancellationToken);
+
+        if (!hasCurrent)
+        {
+            SubscriptionPlanVersion free = await _familiesDbContext.SubscriptionPlanVersions
+                .Include(plan => plan.Benefits)
+                .AsSplitQuery()
+                .SingleAsync(
+                    plan => plan.Key == SubscriptionPlan.FreeKey && plan.Version == 1,
+                    cancellationToken);
+            _familiesDbContext.FamilySubscriptions.Add(FamilySubscription.Create(family.Id, free));
+            await _familiesDbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private async Task<Family> EnsureFixtureFamilyAsync(
+        User owner,
+        string name,
+        CancellationToken cancellationToken)
+    {
+        Family? family = await _familiesDbContext.Families
+            .SingleOrDefaultAsync(item => item.OwnerUserId == owner.Id, cancellationToken);
+
+        if (family is not null)
+            return family;
+
+        family = Family.Create(owner.Id, name);
+        _familiesDbContext.Families.Add(family);
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+        return family;
     }
 
     private static void ValidateSubscriptionPlanVersion(
@@ -1094,6 +1252,41 @@ public sealed class TestUserDataSeeder
         await _identityDbContext.SaveChangesAsync(cancellationToken);
 
         return user;
+    }
+
+    private string ReadFixtureRunId()
+    {
+        string? runId = _configuration[$"{TestUserSeedOptions.SectionName}:RunId"];
+        if (string.IsNullOrWhiteSpace(runId))
+        {
+            throw new InvalidOperationException(
+                "App:TestUserSeed:RunId must be supplied for subscription lifecycle fixtures.");
+        }
+
+        string normalized = new(runId.Trim().Where(char.IsLetterOrDigit).ToArray());
+        if (normalized.Length is < 6 or > 32)
+        {
+            throw new InvalidOperationException(
+                "App:TestUserSeed:RunId must contain 6 to 32 letters or digits.");
+        }
+
+        return normalized.ToLowerInvariant();
+    }
+
+    private static string FixtureEmail(string prefix, string runId) =>
+        $"{prefix}.{runId}@test.sanad.local";
+
+    private static string FixturePhoneNumber(string runId, int suffix)
+    {
+        int hash = 17;
+        unchecked
+        {
+            foreach (char character in runId)
+                hash = (hash * 31) + character;
+        }
+
+        hash = Math.Abs(hash == int.MinValue ? 0 : hash);
+        return $"+201{hash % 100000000:00000000}{suffix % 10}";
     }
 
     private async Task<User> EnsureElderlyUserAsync(

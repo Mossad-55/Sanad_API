@@ -6,7 +6,7 @@ Family subscription reads require a normal Family JWT and the `FamilyAccess` pol
 
 `GET /api/v1/family/subscriptions/plans` returns every published plan version. Draft versions are excluded. Published versions retired from new sales remain visible, with `isAvailableForNewSales: false`.
 
-Each item includes its key, version, tax-exclusive price, currency, billing cycle, rollover policy, member and monthly-booking limits, publication/creation timestamps, availability, and all benefit keys with their included state. Interpret these numeric JSON enum values as follows: `cycle` is `1` Monthly or `2` Annual; a benefit's `key` is `1` Chatting, `2` Library, `3` CommunityForum, `4` FamilyActivityTimeline, `5` BasicSearch, `6` AdvancedSearchFilters, `7` MedicalSummaryExportAndSecureSharing, or `8` PremiumContent, and `isIncluded` is the boolean state for that benefit. Each limit has `kind` `1` Finite with a positive integer `value`, or `2` Unlimited with `value: null`. `rollover` is `1` None or `2` NotApplicable. The catalog read does not add VAT/tax to the returned price.
+Each item includes its key, version, tax-exclusive price, currency, billing cycle, rollover policy, member and monthly-booking limits, publication/creation timestamps, availability, and all benefit keys with their included state. Interpret these numeric JSON enum values as follows: `cycle` is `1` Monthly or `2` Annual; a benefit's `key` is `1` Chatting, `2` Library, `3` CommunityForum, `4` FamilyActivityTimeline, `5` BasicSearch, `6` AdvancedSearchFilters, `7` MedicalSummaryExportAndSecureSharing, or `8` PremiumContent, and `isIncluded` is the boolean state for that benefit. Each limit has `kind` `1` Finite with a positive integer `value`, or `2` Unlimited with `value: null`. `rollover` is `1` None or `2` NotApplicable. The catalog read does not add platform fee or tax to the returned price.
 
 ## Purchase quote
 
@@ -24,25 +24,28 @@ currency values.
 ```
 
 The response contains `basePrice`, `discountAmount`, `taxableAmount`,
-`taxRatePercentage`, `taxAmount`, `totalPayable`, `currency`, `cycle`, and the
-selected plan identity. Prices are tax-exclusive in the catalog; the quote
-applies the active tax rule only when its `effectiveOnUtc` is at or before the
-quote time, and rounds monetary values to two decimals using the server's
-banker's-rounding convention. Coupons must belong to the selected plan and be
+`taxRatePercentage`, `taxAmount`, `platformFeeRatePercentage`,
+`platformFeeAmount`, `platformChargeRuleVersion`, `totalPayable`, `currency`,
+`cycle`, and the selected plan identity. Prices are tax-exclusive in the catalog;
+the quote applies the effective shared Finance rule only when its
+`effectiveOnUtc` is at or before the quote time. Fee and tax are each calculated
+on the discounted taxable amount and rounded independently to two decimals using
+the server's banker's-rounding convention. Coupons must belong to the selected plan and be
 unexpired. The quote response's `recurringRenewalSupported` value is not a
 payment-method capability guarantee. This endpoint does not charge a payment method, activate a subscription, create
 an invoice, consume an allowance, or mutate data.
 
 Errors include `401` unauthenticated, `403` non-owner, `404`
 `Subscriptions.Quote.PlanNotFound`, `400` `Subscriptions.Quote.CouponInvalid`,
-and `409` `Subscriptions.Quote.TaxNotConfigured`.
+and `409` `Subscriptions.Quote.TaxNotConfigured` when no effective shared Finance rule exists.
 
 ## Initial payment intent and settlement
 
 `POST /api/v1/family/subscriptions/payment-intent` is Owner-only and starts the
 initial checkout boundary for a published, available plan. The server reruns the
-quote from the plan version, coupon, and effective tax rule; clients cannot
-provide or override the amount, tax, discount, currency, or renewal dates.
+quote from the plan version, coupon, and effective shared Finance rule; clients
+cannot provide or override the amount, fee, tax, discount, currency, or renewal
+dates.
 
 ```json
 {
@@ -199,8 +202,8 @@ Typical outcomes are `401` unauthenticated, `403`
 `409 Subscriptions.PlanChange.NotUpgrade` when an immediate-payment target is
 not higher priced, `409 Subscriptions.PendingDowngrade.NotDowngrade` when a
 scheduled target is not lower priced, and `409` for renewal grace, cancelled
-renewal, unavailable tax/provider state, or another invalid lifecycle
-transition. A missing active tax rule is `409
+renewal, unavailable shared Finance/provider state, or another invalid lifecycle
+transition. A missing effective shared Finance rule is `409
 Subscriptions.Quote.TaxNotConfigured`. Provider failures return `502`
 (`Paymob.GatewayError`) and missing
 provider configuration returns `503` (`Paymob.NotConfigured`). A failed Card

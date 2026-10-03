@@ -1,0 +1,33 @@
+meta {
+  name: 00-create-platform-charge-rule
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/finance/platform-charge-rules
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{financeAdminDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{financeAdminJwt}}
+}
+
+body:json {
+  {
+    "platformFeeRatePercentage": 12.5,
+    "taxRatePercentage": 7.25,
+    "version": {{financeChargeRuleVersion}},
+    "effectiveOnUtc": "2026-10-01T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 201
+}

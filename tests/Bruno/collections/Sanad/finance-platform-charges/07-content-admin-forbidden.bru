@@ -1,0 +1,18 @@
+meta {
+  name: 07-content-admin-forbidden
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/finance/platform-charge-rules/history
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{financeContentAdminJwt}}
+}
+
+assert {
+  res.status: eq 403
+}

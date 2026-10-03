@@ -35,6 +35,9 @@
     <ProjectReference Include="..\..\src\Modules\Families\Domain\Sanad.Modules.Families.Domain\Sanad.Modules.Families.Domain.csproj" />
     <ProjectReference Include="..\..\src\Modules\Families\Application\Sanad.Modules.Families.Application\Sanad.Modules.Families.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Families\Infrastructure\Sanad.Modules.Families.Infrastructure\Sanad.Modules.Families.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Finance\Domain\Sanad.Modules.Finance.Domain\Sanad.Modules.Finance.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Finance\Application\Sanad.Modules.Finance.Application\Sanad.Modules.Finance.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Finance\Infrastructure\Sanad.Modules.Finance.Infrastructure\Sanad.Modules.Finance.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Notifications\Application\Sanad.Modules.Notifications.Application\Sanad.Modules.Notifications.Application.csproj" />
     <ProjectReference Include="..\..\src\Modules\Notifications\Infrastructure\Sanad.Modules.Notifications.Infrastructure\Sanad.Modules.Notifications.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\Modules\Notifications\Domain\Sanad.Modules.Notifications.Domain\Sanad.Modules.Notifications.Domain.csproj" />

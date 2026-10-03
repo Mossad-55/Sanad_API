@@ -1,5 +1,8 @@
 [CmdletBinding()]
-param()
+param(
+    [ValidateRange(1, 65535)]
+    [int]$Port = 55819
+)
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
@@ -13,6 +16,36 @@ if (-not (Test-Path -LiteralPath $apiProject)) {
 if (-not (Test-Path -LiteralPath $localEnvironment)) {
     throw 'The Bruno local environment file was not found; fixture environment was not created.'
 }
+
+function Assert-FixturePortAvailable([int]$ListenPort) {
+    $listeners = @(
+        [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::Loopback, $ListenPort),
+        [System.Net.Sockets.TcpListener]::new([System.Net.IPAddress]::IPv6Loopback, $ListenPort)
+    )
+    try {
+        foreach ($listener in $listeners) {
+            try {
+                if ($listener.Server.AddressFamily -eq [System.Net.Sockets.AddressFamily]::InterNetworkV6) {
+                    $listener.Server.DualMode = $false
+                }
+                $listener.Start()
+            }
+            catch {
+                throw "Fixture API port $ListenPort is already listening or unavailable; select a different localhost port before starting the fixture API."
+            }
+        }
+    }
+    finally {
+        foreach ($listener in $listeners) {
+            $listener.Stop()
+        }
+    }
+}
+
+Assert-FixturePortAvailable $Port
+
+$fixtureRunId = [Guid]::NewGuid().ToString('N').Substring(0, 12)
+$fixtureHmacSecret = 'sanad-local-fixture-hmac-v1-never-live'
 
 Write-Host 'This starts the Development API and seeds only localhost:5432/SanadBrunoTestDb.'
 Write-Host 'The API guard validates every configured database before creating that database or applying migrations.'
@@ -61,6 +94,16 @@ $fixtureVariables = @"
   supportAdminPassword: Test-1234!
   adminEmail: content.admin@test.sanad.local
   adminPassword: Test-1234!
+  superAdminEmail: elderly.welcome.admin@test.sanad.local
+  superAdminPassword: Welcome-Admin-1234!
+  subscriptionFreeEmail: family.subscription-free.$fixtureRunId@test.sanad.local
+  renewalEmail: family.renewal.$fixtureRunId@test.sanad.local
+  planChangeEmail: family.plan-change.$fixtureRunId@test.sanad.local
+  subscriptionFreePhone: +201000000012
+  renewalPhone: +201000000013
+  planChangePhone: +201000000014
+  fixtureRunId: $fixtureRunId
+  paymobFixtureHmacSecret: $fixtureHmacSecret
 "@
 $fixtureText = [regex]::Replace(
     $localBrunoText,
@@ -70,7 +113,7 @@ $fixtureText = [regex]::Replace(
 $fixtureText = [regex]::Replace(
     $fixtureText,
     '(?m)^\s*baseUrl\s*:\s*.*$',
-    '  baseUrl: http://localhost:5235',
+    "  baseUrl: http://localhost:$Port",
     1)
 $fixtureText = [regex]::Replace(
     $fixtureText,
@@ -91,7 +134,9 @@ if ($fixtureText -eq $localBrunoText) {
 $environmentNames = @(
     'DOTNET_ENVIRONMENT',
     'ASPNETCORE_ENVIRONMENT',
+    'ASPNETCORE_URLS',
     'App__TestUserSeed__Enabled',
+    'App__TestUserSeed__RunId',
     'App__TestUserSeed__Password',
     'App__TestUserSeed__ElderlyPassword',
     'Identity__AdminSeed__ArabicFullName',
@@ -101,7 +146,10 @@ $environmentNames = @(
     'Identity__AdminSeed__Password',
     'Identity__Sms__SmsMisr__Username',
     'Identity__Sms__SmsMisr__Password',
-    'Identity__Sms__SmsMisr__Sender'
+    'Identity__Sms__SmsMisr__Sender',
+    'Paymob__HmacSecret',
+    'Paymob__SecretKey',
+    'FinanceMigrations__ApplyOnStartup'
 )
 $previousEnvironment = @{}
 foreach ($name in $environmentNames) {
@@ -111,7 +159,9 @@ foreach ($name in $environmentNames) {
 try {
     [Environment]::SetEnvironmentVariable('DOTNET_ENVIRONMENT', 'Development', 'Process')
     [Environment]::SetEnvironmentVariable('ASPNETCORE_ENVIRONMENT', 'Development', 'Process')
+    [Environment]::SetEnvironmentVariable('ASPNETCORE_URLS', "http://localhost:$Port", 'Process')
     [Environment]::SetEnvironmentVariable('App__TestUserSeed__Enabled', 'true', 'Process')
+    [Environment]::SetEnvironmentVariable('App__TestUserSeed__RunId', $fixtureRunId, 'Process')
     [Environment]::SetEnvironmentVariable('App__TestUserSeed__Password', 'Test-1234!', 'Process')
     [Environment]::SetEnvironmentVariable('Identity__AdminSeed__ArabicFullName', 'Ù…Ø³Ø¤ÙˆÙ„ Ø§Ù„Ø§Ø®ØªØ¨Ø§Ø±', 'Process')
     [Environment]::SetEnvironmentVariable('Identity__AdminSeed__EnglishFullName', 'Elderly Welcome Test Admin', 'Process')
@@ -121,6 +171,9 @@ try {
     [Environment]::SetEnvironmentVariable('Identity__Sms__SmsMisr__Username', '', 'Process')
     [Environment]::SetEnvironmentVariable('Identity__Sms__SmsMisr__Password', '', 'Process')
     [Environment]::SetEnvironmentVariable('Identity__Sms__SmsMisr__Sender', '', 'Process')
+    [Environment]::SetEnvironmentVariable('Paymob__HmacSecret', $fixtureHmacSecret, 'Process')
+    [Environment]::SetEnvironmentVariable('Paymob__SecretKey', '', 'Process')
+    [Environment]::SetEnvironmentVariable('FinanceMigrations__ApplyOnStartup', 'true', 'Process')
     [Environment]::SetEnvironmentVariable(
         'App__TestUserSeed__ElderlyPassword',
         $elderlyPassword,
@@ -128,7 +181,7 @@ try {
 
     Push-Location $repoRoot
     try {
-        dotnet run --no-build --launch-profile http --project $apiProject
+        dotnet run --no-build --no-launch-profile --project $apiProject
         if ($LASTEXITCODE -ne 0) {
             throw "The local fixture API exited with code $LASTEXITCODE."
         }

@@ -10,6 +10,7 @@ using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Families;
+using Sanad.Modules.Finance.Application;
 
 namespace Sanad.Modules.Families.Application.Bookings;
 
@@ -55,17 +56,19 @@ public sealed record CreateBookingCheckoutCommand(
 public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<CreateBookingCheckoutCommand, BookingCheckoutResponse>
 {
     private const int AcceptanceWindowHours = 24;
-    private const decimal PlatformCommissionPercentage = 15.00m;
 
     private readonly IFamiliesDbContext _dbContext;
     private readonly ICaregiverBookingPricing _caregiverBookingPricing;
+    private readonly IPlatformChargeRuleReader _chargeRules;
 
     public CreateBookingCheckoutCommandHandler(
         IFamiliesDbContext dbContext,
-        ICaregiverBookingPricing caregiverBookingPricing)
+        ICaregiverBookingPricing caregiverBookingPricing,
+        IPlatformChargeRuleReader chargeRules)
     {
         _dbContext = dbContext;
         _caregiverBookingPricing = caregiverBookingPricing;
+        _chargeRules = chargeRules;
     }
 
     public async Task<Result<BookingCheckoutResponse>> Handle(
@@ -141,9 +144,10 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
                     : bookingStartUtc;
 
             // 6. Immutable price snapshot (family pays base + platform fee)
-            BookingPriceSnapshot priceSnapshot = BookingPriceSnapshot.Calculate(
-                price.Value.BaseFee,
-                PlatformCommissionPercentage);
+            var charge = await _chargeRules.GetEffectiveAsync(request.UtcNow, cancellationToken);
+            if (charge is null)
+                return Result<BookingCheckoutResponse>.Failure(new Error("Bookings.ChargesNotConfigured", "Shared platform fee and tax configuration is not available."));
+            BookingPriceSnapshot priceSnapshot = BookingPriceSnapshot.Calculate(price.Value.BaseFee, charge.PlatformFeeRatePercentage, charge.TaxRatePercentage, charge.Version);
 
             // 7. Create Booking Aggregate
             Booking booking = Booking.Create(

@@ -31,7 +31,7 @@ assert {
 
 script:post-response {
   const quote = res.body;
-  if (!quote || Number(quote.taxRatePercentage) !== 15 || Number(quote.totalPayable) <= 0) {
-    throw new Error("Premium upgrade quote must apply the active 15% tax rule and produce a positive total.");
+  if (!quote || Number(quote.taxRatePercentage) !== 15 || Number(quote.platformFeeRatePercentage) < 0 || Number(quote.platformFeeAmount) < 0 || Number(quote.platformChargeRuleVersion) <= 0 || Number(quote.totalPayable) <= 0) {
+    throw new Error("Premium upgrade quote must include the active Finance fee/tax snapshot and a positive total.");
   }
 }

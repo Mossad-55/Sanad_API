@@ -32,7 +32,11 @@ public sealed class FamilySubscription : Entity<Guid>
         MonthlyBookingLimitKind = plan.MonthlyBookingLimitKind;
         MonthlyBookingLimitValue = plan.MonthlyBookingLimitValue;
         Rollover = plan.Rollover;
-        _benefits.AddRange(plan.Benefits);
+        // A tracked plan's benefits are EF-owned by that plan. Copy the values so
+        // the subscription snapshot has its own owned instances and can be added
+        // to the same DbContext without re-parenting tracked dependents.
+        _benefits.AddRange(plan.Benefits.Select(benefit =>
+            SubscriptionBenefit.Create(benefit.Key, benefit.IsIncluded)));
         IsCurrent = true;
         AutoRenewEnabled = true;
         CurrentPeriodEndsOnUtc = CalculatePeriodEnd(createdOnUtc, plan.Cycle);
@@ -61,6 +65,11 @@ public sealed class FamilySubscription : Entity<Guid>
     public DateTime? LastRenewalFailedOnUtc { get; private set; }
     public decimal? CurrentPeriodGross { get; private set; }
     public decimal? CurrentPeriodTaxRatePercentage { get; private set; }
+    public decimal? CurrentPeriodBaseAmount { get; private set; }
+    public decimal? CurrentPeriodPlatformFeeRatePercentage { get; private set; }
+    public decimal? CurrentPeriodPlatformFeeAmount { get; private set; }
+    public decimal? CurrentPeriodTaxAmount { get; private set; }
+    public int? CurrentPeriodPlatformChargeRuleVersion { get; private set; }
     public PendingSubscriptionDowngrade? PendingDowngrade { get; private set; }
     public string? PaymobSubscriptionId { get; private set; }
     public string? PaymobSubscriptionState { get; private set; }
@@ -222,12 +231,41 @@ public sealed class FamilySubscription : Entity<Guid>
         CurrentPeriodTaxRatePercentage = Money(taxRatePercentage);
     }
 
+    public void SetCurrentPeriodChargeSnapshot(SubscriptionPaymentAttempt attempt)
+    {
+        ArgumentNullException.ThrowIfNull(attempt);
+        CurrentPeriodGross = Money(attempt.TotalPayable);
+        CurrentPeriodTaxRatePercentage = Money(attempt.TaxRatePercentage);
+        CurrentPeriodBaseAmount = Money(attempt.BasePrice);
+        CurrentPeriodPlatformFeeRatePercentage = Money(attempt.PlatformFeeRatePercentage);
+        CurrentPeriodPlatformFeeAmount = Money(attempt.PlatformFeeAmount);
+        CurrentPeriodTaxAmount = Money(attempt.TaxAmount);
+        CurrentPeriodPlatformChargeRuleVersion = attempt.PlatformChargeRuleVersion;
+        LifecycleVersion = Guid.NewGuid();
+    }
+
     public void ApplyImmediatePlanChange(SubscriptionPlanVersion plan, decimal targetGross, decimal taxRatePercentage)
     {
         ArgumentNullException.ThrowIfNull(plan);
         ApplyPlan(PendingSubscriptionDowngrade.From(plan));
         PendingDowngrade = null;
         SetCurrentPeriodSettlement(targetGross, taxRatePercentage);
+        LifecycleVersion = Guid.NewGuid();
+    }
+
+    public void ApplyPaidPlanChange(SubscriptionPlanVersion plan, SubscriptionPaymentAttempt attempt)
+    {
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(attempt);
+        ApplyPlan(PendingSubscriptionDowngrade.From(plan));
+        PendingDowngrade = null;
+        CurrentPeriodGross = Money(attempt.BasePrice);
+        CurrentPeriodTaxRatePercentage = Money(attempt.TaxRatePercentage);
+        CurrentPeriodBaseAmount = Money(attempt.BasePrice);
+        CurrentPeriodPlatformFeeRatePercentage = Money(attempt.PlatformFeeRatePercentage);
+        CurrentPeriodPlatformFeeAmount = Money(attempt.PlatformFeeAmount);
+        CurrentPeriodTaxAmount = Money(attempt.TaxAmount);
+        CurrentPeriodPlatformChargeRuleVersion = attempt.PlatformChargeRuleVersion;
         LifecycleVersion = Guid.NewGuid();
     }
 

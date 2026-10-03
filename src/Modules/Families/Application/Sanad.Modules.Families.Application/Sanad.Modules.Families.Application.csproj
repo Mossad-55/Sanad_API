@@ -12,5 +12,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\..\..\BuildingBlocks\Application\Sanad.BuildingBlocks.Application\Sanad.BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\Domain\Sanad.Modules.Families.Domain\Sanad.Modules.Families.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Finance\Application\Sanad.Modules.Finance.Application\Sanad.Modules.Finance.Application.csproj" />
   </ItemGroup>
 </Project>

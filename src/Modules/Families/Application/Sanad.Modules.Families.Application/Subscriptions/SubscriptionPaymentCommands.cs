@@ -8,6 +8,7 @@ using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
+using Sanad.Modules.Finance.Application;
 
 namespace Sanad.Modules.Families.Application.Subscriptions;
 
@@ -60,11 +61,13 @@ public sealed class CreateSubscriptionPaymentIntentCommandHandler
 
     private readonly IFamiliesDbContext _db;
     private readonly IPaymobClient _paymobClient;
+    private readonly IPlatformChargeRuleReader _chargeRules;
 
-    public CreateSubscriptionPaymentIntentCommandHandler(IFamiliesDbContext db, IPaymobClient paymobClient)
+    public CreateSubscriptionPaymentIntentCommandHandler(IFamiliesDbContext db, IPaymobClient paymobClient, IPlatformChargeRuleReader chargeRules)
     {
         _db = db;
         _paymobClient = paymobClient;
+        _chargeRules = chargeRules;
     }
 
     public async Task<Result<SubscriptionPaymentIntentResponse>> Handle(
@@ -80,7 +83,7 @@ public sealed class CreateSubscriptionPaymentIntentCommandHandler
                 cancellationToken))
             return Result<SubscriptionPaymentIntentResponse>.Failure(CurrentExists);
 
-        var quote = await new CreateSubscriptionQuoteQueryHandler(_db).Handle(
+        var quote = await new CreateSubscriptionQuoteQueryHandler(_db, _chargeRules).Handle(
             new CreateSubscriptionQuoteCommand(request.UserId, request.PlanVersionId, request.CouponCode, request.UtcNow),
             cancellationToken);
         if (!quote.IsSuccess)
@@ -105,6 +108,7 @@ public sealed class CreateSubscriptionPaymentIntentCommandHandler
             quote.Value.CouponCode,
             request.Method,
             request.UtcNow);
+        attempt.CapturePlatformCharge(quote.Value.PlatformFeeRatePercentage, quote.Value.PlatformFeeAmount, quote.Value.PlatformChargeRuleVersion);
 
         Result<PaymobPaymentIntent> intent = await _paymobClient.CreateSubscriptionPaymentIntentAsync(
             new PaymobSubscriptionPaymentIntentInput(
@@ -146,13 +150,16 @@ public sealed class CreateSubscriptionRenewalPaymentIntentCommandHandler
 
     private readonly IFamiliesDbContext _db;
     private readonly IPaymobClient _paymobClient;
+    private readonly IPlatformChargeRuleReader _chargeRules;
 
     public CreateSubscriptionRenewalPaymentIntentCommandHandler(
         IFamiliesDbContext db,
-        IPaymobClient paymobClient)
+        IPaymobClient paymobClient,
+        IPlatformChargeRuleReader chargeRules)
     {
         _db = db;
         _paymobClient = paymobClient;
+        _chargeRules = chargeRules;
     }
 
     public async Task<Result<SubscriptionPaymentIntentResponse>> Handle(
@@ -187,9 +194,22 @@ public sealed class CreateSubscriptionRenewalPaymentIntentCommandHandler
             return Result<SubscriptionPaymentIntentResponse>.Failure(
                 new Error("Subscriptions.Renewal.PlanNotFound", "The subscription plan for renewal was not found."));
 
+        var chargeRule = await _chargeRules.GetEffectiveAsync(request.UtcNow, cancellationToken);
+        if (chargeRule is null)
+            return Result<SubscriptionPaymentIntentResponse>.Failure(new Error("Subscriptions.Renewal.ChargesNotConfigured", "Shared platform fee and tax configuration is not available."));
+        decimal feeAmount = decimal.Round(plan.Price * chargeRule.PlatformFeeRatePercentage / 100m, 2, MidpointRounding.ToEven);
+        decimal taxAmount = decimal.Round(plan.Price * chargeRule.TaxRatePercentage / 100m, 2, MidpointRounding.ToEven);
+        decimal totalPayable = decimal.Round(plan.Price + feeAmount + taxAmount, 2, MidpointRounding.ToEven);
+
         SubscriptionPaymentAttempt attempt = SubscriptionPaymentAttempt.CreateRenewal(
             subscription,
             plan,
+            chargeRule.PlatformFeeRatePercentage,
+            feeAmount,
+            chargeRule.TaxRatePercentage,
+            taxAmount,
+            totalPayable,
+            chargeRule.Version,
             request.Method,
             request.UtcNow);
 
@@ -297,11 +317,16 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
             {
                 if (string.IsNullOrWhiteSpace(currentSubscription.PaymobSubscriptionId))
                     return Result<ConfirmSubscriptionPaymentResponse>.Failure(new Error("Paymob.SubscriptionNotFound", "No provider subscription is available to update."));
-                decimal futureGross = decimal.Round(plan.Price * (1m + attempt.TaxRatePercentage / 100m), 2, MidpointRounding.ToEven);
+                decimal futureGross = decimal.Round(
+                    plan.Price * (1m
+                        + attempt.PlatformFeeRatePercentage / 100m
+                        + attempt.TaxRatePercentage / 100m),
+                    2,
+                    MidpointRounding.ToEven);
                 var update = await _paymobClient.UpdateSubscriptionAmountAsync(currentSubscription.PaymobSubscriptionId, futureGross, cancellationToken);
                 if (!update.IsSuccess) return Result<ConfirmSubscriptionPaymentResponse>.Failure(update.Error);
             }
-            currentSubscription.ApplyImmediatePlanChange(plan, attempt.BasePrice, attempt.TaxRatePercentage);
+            currentSubscription.ApplyPaidPlanChange(plan, attempt);
             attempt.TryMarkSucceeded(transactionId, request.UtcNow);
         }
         else if (attempt.IsRenewal)
@@ -315,7 +340,7 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
             try
             {
                 currentSubscription.ApplySuccessfulRenewal(request.UtcNow);
-                currentSubscription.SetCurrentPeriodSettlement(attempt.TotalPayable, attempt.TaxRatePercentage);
+                currentSubscription.SetCurrentPeriodChargeSnapshot(attempt);
                 attempt.TryMarkSucceeded(transactionId, request.UtcNow);
             }
             catch (DomainException exception)
@@ -333,7 +358,7 @@ public sealed class ConfirmSubscriptionPaymentCommandHandler
                     new Error("Subscriptions.Payment.CurrentExists", "A current subscription already exists for this family."));
 
             var createdSubscription = FamilySubscription.Create(attempt.FamilyId, plan, request.UtcNow);
-            createdSubscription.SetCurrentPeriodSettlement(attempt.TotalPayable, attempt.TaxRatePercentage);
+            createdSubscription.SetCurrentPeriodChargeSnapshot(attempt);
             attempt.LinkSubscription(createdSubscription.Id);
             if (!string.IsNullOrWhiteSpace(attempt.PaymobSubscriptionId))
             {
@@ -545,7 +570,7 @@ public sealed class HandlePaymobSubscriptionCallbackCommandHandler
             || currentSubscription.HasProcessedPaymobCallback(callbackKey))
             return new ConfirmSubscriptionPaymentResponse(currentSubscription.Id, "AlreadyProcessed");
 
-        long expectedCents = (long)decimal.Round(currentSubscription.Price * 100m, 0, MidpointRounding.ToEven);
+        long expectedCents = (long)decimal.Round((currentSubscription.CurrentPeriodGross ?? currentSubscription.Price) * 100m, 0, MidpointRounding.ToEven);
         if (expectedCents != request.AmountCents.Value)
             return Result<ConfirmSubscriptionPaymentResponse>.Failure(
                 new Error("Paymob.AmountMismatch", "Webhook amount does not match the recorded subscription."));
@@ -553,8 +578,15 @@ public sealed class HandlePaymobSubscriptionCallbackCommandHandler
         if (isSuccess)
         {
             DateTime previousPeriodEnd = currentSubscription.CurrentPeriodEndsOnUtc;
-            decimal renewalTotal = currentSubscription.Price;
-            decimal renewalTaxRate = currentSubscription.CurrentPeriodTaxRatePercentage ?? 0m;
+            if (currentSubscription.CurrentPeriodGross is null || currentSubscription.CurrentPeriodBaseAmount is null || currentSubscription.CurrentPeriodPlatformFeeRatePercentage is null || currentSubscription.CurrentPeriodPlatformFeeAmount is null || currentSubscription.CurrentPeriodTaxAmount is null || currentSubscription.CurrentPeriodPlatformChargeRuleVersion is null)
+                return Result<ConfirmSubscriptionPaymentResponse>.Failure(new Error("Subscriptions.Renewal.ChargeSnapshotMissing", "The stored subscription charge snapshot is incomplete."));
+            var existingRenewal = await _db.SubscriptionPaymentAttempts.SingleOrDefaultAsync(x => x.RenewalProviderEventId == request.PaymobRequestId, cancellationToken);
+            if (existingRenewal is not null)
+                return new ConfirmSubscriptionPaymentResponse(existingRenewal.Id, "AlreadyProcessed");
+            var renewalAttempt = SubscriptionPaymentAttempt.CreateRenewal(currentSubscription, await _db.SubscriptionPlanVersions.SingleAsync(x => x.Key == currentSubscription.PlanKey && x.Version == currentSubscription.PlanVersion, cancellationToken), currentSubscription.CurrentPeriodPlatformFeeRatePercentage.Value, currentSubscription.CurrentPeriodPlatformFeeAmount.Value, currentSubscription.CurrentPeriodTaxRatePercentage ?? 0m, currentSubscription.CurrentPeriodTaxAmount.Value, currentSubscription.CurrentPeriodGross.Value, currentSubscription.CurrentPeriodPlatformChargeRuleVersion.Value, SubscriptionPaymentMethod.Card, request.UtcNow, request.PaymobRequestId!);
+            renewalAttempt.TryMarkSucceeded(request.PaymobRequestId!, request.UtcNow);
+            _db.SubscriptionPaymentAttempts.Add(renewalAttempt);
+            await _db.SaveChangesAsync(cancellationToken);
             try
             {
                 currentSubscription.ApplySuccessfulRenewal(request.UtcNow);
@@ -583,7 +615,7 @@ public sealed class HandlePaymobSubscriptionCallbackCommandHandler
             }
             if (_invoices is not null)
             {
-                var invoice = await _invoices.CreateRenewalAsync(currentSubscription, renewalTotal, renewalTaxRate, previousPeriodEnd, currentSubscription.CurrentPeriodEndsOnUtc, request.PaymobRequestId!, cancellationToken);
+                var invoice = await _invoices.CreateRenewalAsync(renewalAttempt, currentSubscription, previousPeriodEnd, currentSubscription.CurrentPeriodEndsOnUtc, request.PaymobRequestId!, cancellationToken);
                 if (invoice.IsFailure) return Result<ConfirmSubscriptionPaymentResponse>.Failure(invoice.Error);
             }
         }

@@ -1,0 +1,33 @@
+meta {
+  name: 01a-list-plans
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/plans
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{positiveEnrollmentDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positiveEnrollmentJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const plans = Array.isArray(res.body) ? res.body : [];
+  const field = (plan, name) => plan?.[name] ?? plan?.[name[0].toUpperCase() + name.slice(1)];
+  const upgrade = plans.find((plan) => field(plan, "key") === "test-upgrade" && Number(field(plan, "version")) === 1);
+  if (!upgrade || Number(field(upgrade, "price")) !== 499 || field(upgrade, "isAvailableForNewSales") !== true) {
+    throw new Error("The lifecycle fixture must expose the published available test-upgrade v1 plan at EGP 499.");
+  }
+  bru.setVar("positiveLifecycleUpgradePlanId", field(upgrade, "id"));
+}

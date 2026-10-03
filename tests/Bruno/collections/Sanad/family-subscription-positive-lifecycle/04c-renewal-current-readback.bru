@@ -1,0 +1,30 @@
+meta {
+  name: 04c-renewal-current-readback
+  type: http
+  seq: 15
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/current
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{positiveRenewalDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positiveRenewalJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const current = res.body;
+  const snapshot = current?.currentSubscription ?? current?.CurrentSubscription;
+  const key = snapshot?.planKey ?? snapshot?.PlanKey;
+  if (key !== "premium" || !snapshot) throw new Error("Successful renewal must preserve the Premium current subscription.");
+}

@@ -1,0 +1,24 @@
+meta {
+  name: 02-get-history
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/admin/finance/platform-charge-rules/history
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{financeAdminJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const rules = Array.isArray(res.body) ? res.body : [];
+  const version = Number(bru.getVar("financeChargeRuleVersion"));
+  if (!rules.some((rule) => Number(rule.version ?? rule.Version) === version)) throw new Error("Finance history did not read back the created immutable rule.");
+}

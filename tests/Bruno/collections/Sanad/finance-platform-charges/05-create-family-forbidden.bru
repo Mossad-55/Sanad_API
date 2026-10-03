@@ -1,0 +1,32 @@
+meta {
+  name: 05-create-family-forbidden
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/finance/platform-charge-rules
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{financeFamilyJwt}}
+}
+
+body:json {
+  {
+    "platformFeeRatePercentage": 12,
+    "taxRatePercentage": 7,
+    "version": 998,
+    "effectiveOnUtc": "2026-10-03T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 403
+}

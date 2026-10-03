@@ -264,7 +264,12 @@ public sealed class FamiliesDbContext :
                                          or nameof(FamilySubscription.MonthlyBookingLimitValue)
                                          or nameof(FamilySubscription.Rollover)
                                          or nameof(FamilySubscription.CurrentPeriodGross)
-                                         or nameof(FamilySubscription.CurrentPeriodTaxRatePercentage)));
+                                         or nameof(FamilySubscription.CurrentPeriodTaxRatePercentage)
+                                         or nameof(FamilySubscription.CurrentPeriodBaseAmount)
+                                         or nameof(FamilySubscription.CurrentPeriodPlatformFeeRatePercentage)
+                                         or nameof(FamilySubscription.CurrentPeriodPlatformFeeAmount)
+                                         or nameof(FamilySubscription.CurrentPeriodTaxAmount)
+                                         or nameof(FamilySubscription.CurrentPeriodPlatformChargeRuleVersion)));
 
             if (entry.State == EntityState.Modified && entry.Properties.Any(property =>
                     property.IsModified &&
@@ -311,7 +316,12 @@ public sealed class FamiliesDbContext :
             or nameof(FamilySubscription.MonthlyBookingLimitValue)
             or nameof(FamilySubscription.Rollover)
             or nameof(FamilySubscription.CurrentPeriodGross)
-            or nameof(FamilySubscription.CurrentPeriodTaxRatePercentage);
+            or nameof(FamilySubscription.CurrentPeriodTaxRatePercentage)
+            or nameof(FamilySubscription.CurrentPeriodBaseAmount)
+            or nameof(FamilySubscription.CurrentPeriodPlatformFeeRatePercentage)
+            or nameof(FamilySubscription.CurrentPeriodPlatformFeeAmount)
+            or nameof(FamilySubscription.CurrentPeriodTaxAmount)
+            or nameof(FamilySubscription.CurrentPeriodPlatformChargeRuleVersion);
 
         foreach (var entry in ChangeTracker.Entries<SubscriptionBenefit>())
         {

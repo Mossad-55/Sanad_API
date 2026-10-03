@@ -74,6 +74,9 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
     public decimal TaxableAmount { get; private set; }
     public decimal TaxRatePercentage { get; private set; }
     public decimal TaxAmount { get; private set; }
+    public decimal PlatformFeeRatePercentage { get; private set; }
+    public decimal PlatformFeeAmount { get; private set; }
+    public int? PlatformChargeRuleVersion { get; private set; }
     public decimal TotalPayable { get; private set; }
     public string Currency { get; private set; } = string.Empty;
     public SubscriptionPaymentMethod Method { get; private set; }
@@ -86,6 +89,7 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
     public decimal? ProratedCredit { get; private set; }
     public DateTime? SourcePeriodEndsOnUtc { get; private set; }
     public string MerchantReference => $"sub_{Id:N}";
+    public string? RenewalProviderEventId { get; private set; }
     public string? PaymobOrderId { get; private set; }
     public string? PaymobTransactionId { get; private set; }
     public string? PaymobInitialTransactionId { get; private set; }
@@ -132,11 +136,27 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
             createdOnUtc);
     }
 
+    public void CapturePlatformCharge(decimal feeRatePercentage, decimal feeAmount, int ruleVersion)
+    {
+        if (feeRatePercentage is < 0 or > 100 || feeAmount < 0 || ruleVersion <= 0)
+            throw new DomainException("Platform charge snapshot is invalid.");
+        PlatformFeeRatePercentage = Money(feeRatePercentage);
+        PlatformFeeAmount = Money(feeAmount);
+        PlatformChargeRuleVersion = ruleVersion;
+    }
+
     public static SubscriptionPaymentAttempt CreateRenewal(
         FamilySubscription subscription,
         SubscriptionPlanVersion plan,
+        decimal platformFeeRatePercentage,
+        decimal platformFeeAmount,
+        decimal taxRatePercentage,
+        decimal taxAmount,
+        decimal totalPayable,
+        int platformChargeRuleVersion,
         SubscriptionPaymentMethod method,
-        DateTime createdOnUtc)
+        DateTime createdOnUtc,
+        string? providerEventId = null)
     {
         ArgumentNullException.ThrowIfNull(subscription);
 
@@ -153,9 +173,9 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
             0m,
             0m,
             plan.Price,
-            0m,
-            0m,
-            plan.Price,
+            taxRatePercentage,
+            taxAmount,
+            totalPayable,
             plan.Currency,
             method,
             null,
@@ -163,6 +183,8 @@ public sealed class SubscriptionPaymentAttempt : Entity<Guid>
             true,
             createdOnUtc);
 
+        attempt.CapturePlatformCharge(platformFeeRatePercentage, platformFeeAmount, platformChargeRuleVersion);
+        attempt.RenewalProviderEventId = string.IsNullOrWhiteSpace(providerEventId) ? null : providerEventId.Trim();
         return attempt;
     }
 

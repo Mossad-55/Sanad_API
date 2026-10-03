@@ -15,7 +15,10 @@ headers {
 }
 
 script:pre-request {
-  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Caregiver discovery coverage requires the guarded local Development API.");
+  const baseUrl = bru.getEnvVar("baseUrl");
+  const match = /^http:\/\/localhost:(\d+)\/?$/.exec(baseUrl || "");
+  const port = match ? Number(match[1]) : NaN;
+  if (!match || !Number.isInteger(port) || port < 1 || port > 65535 || port === 5235 || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Caregiver discovery coverage requires an explicit non-5235 localhost Development API port.");
 }
 
 body:json {

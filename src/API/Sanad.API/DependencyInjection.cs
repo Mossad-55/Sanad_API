@@ -42,6 +42,8 @@ using Sanad.API.MedicationIntegration;
 using Sanad.Modules.Families.Application.Abstractions.Medications;
 using Sanad.Modules.CareHomes.Infrastructure;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
+using Sanad.Modules.Finance.Infrastructure;
+using Sanad.Modules.Finance.Application;
 
 namespace Sanad.API;
 
@@ -63,6 +65,7 @@ public static class DependencyInjection
             .ValidateOnStart();
 
         services.AddScoped<TestUserDataSeeder>();
+        services.AddScoped<TestPlatformChargeRuleSeeder>();
 
         // Temporary: allow any client during mobile development.
         // Lock down to known origins before production launch.
@@ -94,6 +97,7 @@ public static class DependencyInjection
         services.AddCareHomesInfrastructure(configuration);
 
         services.AddNotificationsInfrastructure(configuration);
+        services.AddFinanceInfrastructure(configuration);
         services.AddHostedService<CareHomeLicenseExpiryMonitor>();
         services.AddHostedService<EmailOutboxProcessor>();
         services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
@@ -243,6 +247,13 @@ public static class DependencyInjection
                         AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
                 });
 
+            options.AddPolicy(AuthorizationPolicies.FinanceOperationalAdmin, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+            });
+
             options.AddPolicy(
                 AuthorizationPolicies.SubscriptionPlanAdmin,
                 policy =>
@@ -370,6 +381,9 @@ public static class DependencyInjection
 
             configuration.RegisterServicesFromAssembly(
                 typeof(ICareHomesDbContext).Assembly);
+
+            configuration.RegisterServicesFromAssembly(
+                typeof(CreatePlatformChargeRuleCommand).Assembly);
 
             configuration.RegisterServicesFromAssembly(
                 typeof(Sanad.Modules.Notifications.Application.Notifications.ListNotificationsQuery).Assembly);
