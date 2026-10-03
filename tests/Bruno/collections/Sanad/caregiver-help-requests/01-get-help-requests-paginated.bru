@@ -1,0 +1,18 @@
+meta {
+  name: 01-get-help-requests-paginated
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/help-requests?page=1&pageSize=20
+  auth: bearer
+}
+
+assert {
+  res.status: eq 200
+  res.json.items: is array
+  res.json.page: eq 1
+  res.json.pageSize: eq 20
+  res.json.totalCount: is number
+}

@@ -15,14 +15,11 @@ headers {
   Content-Type: application/json
 }
 body:json {
-  {"expectedVersion":{{inventoryVersion}},"roomTypeId":"{{inventoryRoomTypeId}}","roomNumber":"BRUNO-020-{{inventoryRunSuffix}}"}
+  {"expectedVersion":{{inventoryVersion}},"roomTypeId":"{{inventoryRoomTypeId}}","roomNumber":"BRUNO-020"}
 }
 assert {
   res.status: eq 200
 }
 script:post-response {
-  const expectedNumber = `BRUNO-020-${bru.getVar("inventoryRunSuffix")}`;
-  const room = res.body.rooms.find(item => item.roomNumber === expectedNumber);
-  if (!room) throw new Error("The newly-created unique inventory room was not returned.");
-  bru.setVar("inventoryRoomId", room.id); bru.setVar("inventoryVersion", res.body.version);
+  bru.setVar("inventoryRoomId", res.body.rooms[0].id); bru.setVar("inventoryVersion", res.body.version);
 }

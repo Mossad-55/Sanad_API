@@ -2,21 +2,16 @@ using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
-using Sanad.Modules.Caregivers.Application.Families;
+using Sanad.Modules.Caregivers.Application.HelpRequests;
+using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
+using Sanad.Modules.Families.Domain.Bookings;
+using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.HelpRequests;
+using Microsoft.EntityFrameworkCore;
 
 namespace Sanad.Modules.Caregivers.Application.HelpRequests;
-
-public sealed record CaregiverHelpRequestResponse(
-    Guid Id,
-    Guid ElderlyId,
-    string ActorKey,
-    string ActionKey,
-    string NeedKey,
-    string? QualifierKey,
-    string? CustomText,
-    DateTime CreatedOnUtc,
-    DateTime UpdatedOnUtc);
 
 public sealed record GetCaregiverHelpRequestQuery(
     UserId UserId,
@@ -37,7 +32,7 @@ public sealed class GetCaregiverHelpRequestQueryHandler(
         var caregiver = await dbContext.Caregivers
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                c => c.UserId == request.UserId,
+                c => c.Id == new CaregiverId(request.UserId.Value),
                 cancellationToken);
 
         if (caregiver is null)
@@ -47,7 +42,7 @@ public sealed class GetCaregiverHelpRequestQueryHandler(
         }
 
         // Get confirmed/in-progress bookings for this caregiver to determine which elderly people they can see help requests for
-        var bookings = await dbContext.Bookings
+        var bookingElderlyIds = await familiesDb.Bookings
             .AsNoTracking()
             .Where(b => b.CaregiverId == caregiver.Id &&
                         (b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.InProgress))
@@ -55,33 +50,51 @@ public sealed class GetCaregiverHelpRequestQueryHandler(
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        if (bookings.Count == 0)
+        if (bookingElderlyIds.Count == 0)
         {
             // No active bookings, caregiver cannot see any help requests
             return Result<CaregiverHelpRequestResponse>.Failure(
                 CaregiverErrors.NotFound);
         }
 
-        // Get the help request (only from last year for performance)
+        // Get the help request with elderly info (only from last year for performance)
         var cutoff = DateTime.UtcNow.AddYears(-1);
-        var helpRequest = await familiesDb.ElderlyHelpRequests
+        var helpRequestQuery = familiesDb.ElderlyHelpRequests
             .AsNoTracking()
-            .SingleOrDefaultAsync(
-                h => h.Id == request.RequestId &&
-                     bookings.Contains(h.ElderlyIdentityUserId) &&
-                     h.CreatedOnUtc >= cutoff,
-                cancellationToken);
+            .Join(
+                familiesDb.Elderlies.AsNoTracking(),
+                h => h.ElderlyIdentityUserId,
+                e => e.IdentityUserId,
+                (h, e) => new { HelpRequest = h, Elderly = e })
+            .Where(x =>
+                x.HelpRequest.Id == request.RequestId &&
+                bookingElderlyIds.Contains(x.Elderly.Id) &&
+                x.HelpRequest.CreatedOnUtc >= cutoff);
+
+        var helpRequest = await helpRequestQuery.Select(x => x.HelpRequest)
+            .FirstOrDefaultAsync(cancellationToken);
 
         if (helpRequest is null)
         {
             return Result<CaregiverHelpRequestResponse>.Failure(
-                HelpRequestErrors.NotFound);
+                new Error("Families.HelpRequest.NotFound", "The help request was not found."));
+        }
+
+        // Get the elderly entity for this help request
+        var elderly = await helpRequestQuery
+            .Select(x => x.Elderly)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (elderly is null)
+        {
+            return Result<CaregiverHelpRequestResponse>.Failure(
+                new Error("Families.HelpRequest.NotFound", "The help request was not found."));
         }
 
         return Result<CaregiverHelpRequestResponse>.Success(
             new CaregiverHelpRequestResponse(
                 helpRequest.Id,
-                helpRequest.ElderlyIdentityUserId.Value,
+                elderly.Id.Value,
                 helpRequest.ActorKey,
                 helpRequest.ActionKey,
                 helpRequest.NeedKey,

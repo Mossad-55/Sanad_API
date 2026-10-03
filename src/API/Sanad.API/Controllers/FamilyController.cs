@@ -13,6 +13,8 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Elderlies;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Application.Invitations;
+using Sanad.Modules.Families.Application.CheckIns;
+using Sanad.Modules.Families.Application.HelpRequests;
 
 namespace Sanad.API.Controllers;
 
@@ -527,7 +529,7 @@ public sealed class FamilyController :
     // -------------------------- Check-ins --------------------------
 
     [HttpGet("dependents/{dependentId:guid}/check-ins/today")]
-    [ProducesResponseType(typeof(IReadOnlyList<FamilyDependentCheckInResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<ElderlyCheckInResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDependentCheckInsToday(
         Guid dependentId,
         CancellationToken cancellationToken)
@@ -811,7 +813,7 @@ public sealed class FamilyController :
     }
 
     [HttpGet("dependents/{dependentId:guid}/help-requests/{requestId:guid}")]
-    [ProducesResponseType(typeof(FamilyDependentHelpRequestResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ElderlyHelpRequestResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDependentHelpRequest(
         Guid dependentId,
         Guid requestId,

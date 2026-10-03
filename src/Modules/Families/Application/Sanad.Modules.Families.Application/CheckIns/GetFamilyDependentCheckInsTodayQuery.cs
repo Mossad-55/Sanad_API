@@ -6,33 +6,26 @@ using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Elderlies.CheckIns;
 using Sanad.Modules.Families.Application.Families;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
+using Sanad.Modules.Families.Application.Elderlies;
 
 namespace Sanad.Modules.Families.Application.CheckIns;
 
-public sealed record FamilyDependentCheckInResponse(
-    Guid Id,
-    Guid ElderlyId,
-    bool Answer,
-    DateOnly LocalDate,
-    TimeOnly AnsweredAtLocalTime,
-    DateTime AnsweredOnUtc,
-    string TimeZoneId);
-
 public sealed record GetFamilyDependentCheckInsTodayQuery(
     UserId UserId,
-    ElderlyId DependentId) : IQuery<IReadOnlyList<FamilyDependentCheckInResponse>>;
+    ElderlyId DependentId) : IQuery<IReadOnlyList<ElderlyCheckInResponse>>;
 
 public sealed class GetFamilyDependentCheckInsTodayQueryHandler(
     IFamiliesDbContext dbContext,
     IFamilyIdentityGateway identityGateway) : IQueryHandler<
     GetFamilyDependentCheckInsTodayQuery,
-    IReadOnlyList<FamilyDependentCheckInResponse>>
+    IReadOnlyList<ElderlyCheckInResponse>>
 {
     private static readonly Error InvalidTimeZone = new(
         "Families.ElderlyCheckIn.InvalidTimeZone",
         "The elderly profile has an invalid time zone.");
 
-    public async Task<Result<IReadOnlyList<FamilyDependentCheckInResponse>>> Handle(
+    public async Task<Result<IReadOnlyList<ElderlyCheckInResponse>>> Handle(
         GetFamilyDependentCheckInsTodayQuery request,
         CancellationToken cancellationToken)
     {
@@ -44,7 +37,7 @@ public sealed class GetFamilyDependentCheckInsTodayQueryHandler(
 
         if (family is null)
         {
-            return Result<IReadOnlyList<FamilyDependentCheckInResponse>>.Failure(
+            return Result<IReadOnlyList<ElderlyCheckInResponse>>.Failure(
                 ElderlyErrors.FamilyNotFound);
         }
 
@@ -58,7 +51,7 @@ public sealed class GetFamilyDependentCheckInsTodayQueryHandler(
 
         if (elderly is null)
         {
-            return Result<IReadOnlyList<FamilyDependentCheckInResponse>>.Failure(
+            return Result<IReadOnlyList<ElderlyCheckInResponse>>.Failure(
                 ElderlyErrors.NotFound);
         }
 
@@ -71,7 +64,7 @@ public sealed class GetFamilyDependentCheckInsTodayQueryHandler(
         }
         catch (Exception ex) when (ex is TimeZoneNotFoundException or InvalidTimeZoneException)
         {
-            return Result<IReadOnlyList<FamilyDependentCheckInResponse>>.Failure(
+            return Result<IReadOnlyList<ElderlyCheckInResponse>>.Failure(
                 InvalidTimeZone);
         }
 
@@ -85,7 +78,7 @@ public sealed class GetFamilyDependentCheckInsTodayQueryHandler(
             .AsNoTracking()
             .Where(c => c.ElderlyId == elderly.Id && c.LocalDate == today)
             .OrderByDescending(c => c.AnsweredOnUtc)
-            .Select(c => new FamilyDependentCheckInResponse(
+            .Select(c => new ElderlyCheckInResponse(
                 c.Id,
                 c.ElderlyId.Value,
                 c.Answer,
@@ -95,6 +88,6 @@ public sealed class GetFamilyDependentCheckInsTodayQueryHandler(
                 elderly.TimeZoneId))
             .ToListAsync(cancellationToken);
 
-        return Result<IReadOnlyList<FamilyDependentCheckInResponse>>.Success(checkIns);
+        return Result<IReadOnlyList<ElderlyCheckInResponse>>.Success(checkIns);
     }
 }

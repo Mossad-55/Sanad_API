@@ -871,6 +871,39 @@
           "description": "204; revokes every non-revoked session of the account."
         }
       ]
+    },
+    {
+      "name": "09. Help Requests",
+      "item": [
+        {
+          "name": "Get caregiver help requests (paginated)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/help-requests?page=1&pageSize=20&status=null&elderlyId=null"
+          },
+          "description": "Returns paginated help requests for the caregiver with optional filtering by status and elderlyId. Requires CaregiverAccess policy. Page size is clamped between 1 and 100 (default 20)."
+        },
+        {
+          "name": "Get specific caregiver help request",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}"
+          },
+          "description": "Returns a specific help request for the caregiver. Requires CaregiverAccess policy."
+        }
+      ]
     }
   ]
 }

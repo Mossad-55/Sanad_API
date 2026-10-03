@@ -89,6 +89,7 @@ Retries are safe: the operation is idempotent, and a partially completed deletio
 | Certificate upload/replace/remove | `docs/app/caregivers/certificates.md` |
 | Submit for review / corrections | `docs/app/caregivers/submission.md` |
 | Booking actions on family requests | `docs/app/caregivers/bookings.md` |
+| Caregiver help requests | `docs/app/caregivers/bookings.md` |
 | Family rating and top-10 endpoints | `docs/app/caregivers/family-ratings.md` |
 | Postman (caregiver self-service) | `docs/postman/app/Sanad.App.Caregiver.postman_collection.json` |
 | Postman (Family endpoints in this feature) | `docs/postman/app/Sanad.App.Family.postman_collection.json` |

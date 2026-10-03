@@ -1,0 +1,5 @@
+GET http://localhost:5000/api/v1/caregiver/help-requests?page={{page}}&pageSize={{pageSize}}&status={{status}}&elderlyId={{elderlyId}}
+Authorization: Bearer {{accessToken}}
+
+### Get help requests for a caregiver with pagination and filtering
+### Returns paginated help requests for elderly people the caregiver has active bookings with

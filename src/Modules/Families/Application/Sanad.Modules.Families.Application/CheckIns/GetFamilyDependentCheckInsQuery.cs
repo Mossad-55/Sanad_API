@@ -6,20 +6,13 @@ using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Elderlies.CheckIns;
 using Sanad.Modules.Families.Application.Families;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
+using Sanad.Modules.Families.Application.Elderlies;
 
 namespace Sanad.Modules.Families.Application.CheckIns;
 
-public sealed record FamilyDependentCheckInResponse(
-    Guid Id,
-    Guid ElderlyId,
-    bool Answer,
-    DateOnly LocalDate,
-    TimeOnly AnsweredAtLocalTime,
-    DateTime AnsweredOnUtc,
-    string TimeZoneId);
-
 public sealed record PagedFamilyDependentCheckIns(
-    IReadOnlyList<FamilyDependentCheckInResponse> Items,
+    IReadOnlyList<ElderlyCheckInResponse> Items,
     int Page,
     int PageSize,
     int TotalCount);
@@ -122,7 +115,7 @@ public sealed class GetFamilyDependentCheckInsQueryHandler(
             .ThenByDescending(c => c.AnsweredOnUtc)
             .Skip((page - 1) * size)
             .Take(size)
-            .Select(c => new FamilyDependentCheckInResponse(
+            .Select(c => new ElderlyCheckInResponse(
                 c.Id,
                 c.ElderlyId.Value,
                 c.Answer,

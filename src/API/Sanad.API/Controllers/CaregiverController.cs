@@ -8,6 +8,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Application.Privacy;
+using Sanad.Modules.Caregivers.Application.HelpRequests;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 
 namespace Sanad.API.Controllers;

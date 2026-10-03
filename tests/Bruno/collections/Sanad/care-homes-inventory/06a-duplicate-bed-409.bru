@@ -1,7 +1,7 @@
 meta {
   name: 06a-duplicate-bed-409
   type: http
-  seq: 10
+  seq: 25
 }
 post {
   url: {{baseUrl}}/api/v1/care-homes/inventory/mine/beds
@@ -15,7 +15,7 @@ headers {
   Content-Type: application/json
 }
 body:json {
-  {"expectedVersion":{{inventoryVersion}},"roomId":"{{inventoryRoomId}}","label":" BRUNO-A-RENAMED-{{inventoryRunSuffix}} "}
+  {"expectedVersion":{{inventoryVersion}},"roomId":"{{inventoryRoomId}}","label":" BRUNO-A-RENAMED "}
 }
 assert {
   res.status: eq 409

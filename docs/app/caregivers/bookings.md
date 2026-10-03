@@ -99,3 +99,40 @@ Accepting after the deadline returns `409 Bookings.Domain.InvalidOperation` — 
 | `Bookings.Cancel.ReasonCategoryRequired` | 400 | Confirmed cancellation omitted the reason category. |
 | `Bookings.Cancel.ReasonCategoryInvalid` | 400 | Confirmed cancellation supplied an undefined category. |
 | `Bookings.Cancel.ReasonRequired` | 400 | Confirmed cancellation omitted a non-blank note. |
+
+## Help Requests
+
+Caregivers can view help requests submitted by elderly people they have active bookings with. These endpoints require policy `CaregiverAccess`.
+
+### Get caregiver help requests (paginated)
+
+Returns paginated help requests for the caregiver with optional filtering by status and elderly person. Results are ordered by request time descending (newest first).
+
+```http
+GET /api/v1/caregiver/help-requests?page=1&pageSize=20&status=null&elderlyId=null
+Authorization: Bearer {{caregiverToken}}
+```
+
+#### Query Parameters
+
+- `page` *(optional)*: Page number (defaults to `1`).
+- `pageSize` *(optional)*: Page size (defaults to `20`, clamped to `1–100`).
+- `status` *(optional)*: Filter by help request status (`Pending`, `Accepted`, `InProgress`, `Resolved`, `Rejected`, `Cancelled`, `Reopened`).
+- `elderlyId` *(optional)*: Filter by specific elderly person ID.
+
+- `200` — `PagedCaregiverHelpRequests` containing help request items and pagination metadata.
+- `403` — Access denied (non-caregiver account).
+- `404` — Caregiver profile not found.
+
+### Get specific caregiver help request
+
+Returns a specific help request for the caregiver. The caregiver can only access help requests for elderly people they have active bookings with.
+
+```http
+GET /api/v1/caregiver/help-requests/{requestId}
+Authorization: Bearer {{caregiverToken}}
+```
+
+- `200` — `CaregiverHelpRequestResponse` for the specified help request.
+- `403` — Access denied (non-caregiver account or no booking with the elderly person).
+- `404` — Caregiver profile not found or help request not found/accessible.

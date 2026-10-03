@@ -4,23 +4,14 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Families;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.Modules.Families.Domain.HelpRequests;
+using Sanad.Modules.Families.Application.Elderlies;
 
 namespace Sanad.Modules.Families.Application.HelpRequests;
 
-public sealed record FamilyDependentHelpRequestResponse(
-    Guid Id,
-    Guid ElderlyId,
-    string ActorKey,
-    string ActionKey,
-    string NeedKey,
-    string? QualifierKey,
-    string? CustomText,
-    DateTime CreatedOnUtc,
-    DateTime UpdatedOnUtc);
-
 public sealed record PagedFamilyDependentHelpRequests(
-    IReadOnlyList<FamilyDependentHelpRequestResponse> Items,
+    IReadOnlyList<ElderlyHelpRequestResponse> Items,
     int Page,
     int PageSize,
     int TotalCount);
@@ -119,9 +110,10 @@ public sealed class GetFamilyDependentHelpRequestsQueryHandler(
             .OrderByDescending(c => c.CreatedOnUtc)
             .Skip((page - 1) * size)
             .Take(size)
-            .Select(c => new FamilyDependentHelpRequestResponse(
+            .Select(c => new ElderlyHelpRequestResponse(
                 c.Id,
                 c.ElderlyIdentityUserId.Value,
+                c.Status,
                 c.ActorKey,
                 c.ActionKey,
                 c.NeedKey,

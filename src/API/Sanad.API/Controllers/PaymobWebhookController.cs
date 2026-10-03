@@ -79,6 +79,7 @@ public sealed class PaymobWebhookController : ControllerBase
 
         if (isRefundCallback
             || !obj.TryGetProperty("order", out JsonElement order)
+            || order.ValueKind != JsonValueKind.Object
             || !order.TryGetProperty("merchant_order_id", out JsonElement merchantOrder))
         {
             return Ok();

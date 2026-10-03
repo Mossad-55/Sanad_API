@@ -3,7 +3,11 @@ using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
-using Sanad.Modules.Caregivers.Application.Families;
+using Sanad.Modules.Caregivers.Application.HelpRequests;
+using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
+using Sanad.Modules.Families.Domain.Bookings;
+using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.HelpRequests;
 
 namespace Sanad.Modules.Caregivers.Application.HelpRequests;
@@ -51,7 +55,7 @@ public sealed class GetCaregiverHelpRequestsQueryHandler(
         var caregiver = await dbContext.Caregivers
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                c => c.UserId == request.UserId,
+                c => c.Id == new CaregiverId(request.UserId.Value),
                 cancellationToken);
 
         if (caregiver is null)
@@ -61,7 +65,7 @@ public sealed class GetCaregiverHelpRequestsQueryHandler(
         }
 
         // Get confirmed/in-progress bookings for this caregiver to determine which elderly people they can see help requests for
-        var bookings = await dbContext.Bookings
+        var bookingElderlyIds = await familiesDb.Bookings
             .AsNoTracking()
             .Where(b => b.CaregiverId == caregiver.Id &&
                         (b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.InProgress))
@@ -69,7 +73,7 @@ public sealed class GetCaregiverHelpRequestsQueryHandler(
             .Distinct()
             .ToListAsync(cancellationToken);
 
-        if (bookings.Count == 0)
+        if (bookingElderlyIds.Count == 0)
         {
             // No active bookings, return empty result
             return Result<PagedCaregiverHelpRequests>.Success(
@@ -79,31 +83,36 @@ public sealed class GetCaregiverHelpRequestsQueryHandler(
         // If specific elderly ID is requested, validate that the caregiver has a booking for them
         if (request.ElderlyId.HasValue)
         {
-            if (!bookings.Contains(request.ElderlyId.Value))
+            var hasBooking = bookingElderlyIds.Contains(new ElderlyId(request.ElderlyId.Value));
+            if (!hasBooking)
             {
                 return Result<PagedCaregiverHelpRequests>.Failure(
                     CaregiverErrors.NotFound);
             }
         }
-        else
-        {
-            // If no specific elderly ID, we'll filter by the bookings later
-        }
 
         // Build query for help requests from elderly people the caregiver has bookings with
+        var cutoff = DateTime.UtcNow.AddYears(-1);
         var query = familiesDb.ElderlyHelpRequests
             .AsNoTracking()
-            .Where(hreq => bookings.Contains(hreq.ElderlyIdentityUserId));
+            .Join(
+                familiesDb.Elderlies.AsNoTracking(),
+                h => h.ElderlyIdentityUserId,
+                e => e.IdentityUserId,
+                (h, e) => new { HelpRequest = h, Elderly = e })
+            .Where(x =>
+                x.HelpRequest.CreatedOnUtc >= cutoff &&
+                bookingElderlyIds.Contains(x.Elderly.Id));
 
         // Apply additional filters
         if (request.ElderlyId.HasValue)
         {
-            query = query.Where(hreq => hreq.ElderlyIdentityUserId == request.ElderlyId.Value);
+            query = query.Where(x => x.Elderly.Id == new ElderlyId(request.ElderlyId.Value));
         }
 
         if (request.Status.HasValue)
         {
-            query = query.Where(hreq => hreq.Status == request.Status.Value);
+            query = query.Where(x => x.HelpRequest.Status == request.Status.Value);
         }
 
         // Get total count
@@ -113,21 +122,25 @@ public sealed class GetCaregiverHelpRequestsQueryHandler(
         var page = Math.Max(1, request.Page);
         var size = Math.Clamp(request.PageSize, 1, 100);
 
-        var helpRequests = await query
-            .OrderByDescending(hreq => hreq.CreatedOnUtc)
+        // Get paginated results
+        var rows = await query
+            .OrderByDescending(x => x.HelpRequest.CreatedOnUtc)
             .Skip((page - 1) * size)
             .Take(size)
-            .Select(hreq => new CaregiverHelpRequestResponse(
-                hreq.Id,
-                hreq.ElderlyIdentityUserId.Value,
-                hreq.ActorKey,
-                hreq.ActionKey,
-                hreq.NeedKey,
-                hreq.QualifierKey,
-                hreq.CustomText,
-                hreq.CreatedOnUtc,
-                hreq.UpdatedOnUtc))
             .ToListAsync(cancellationToken);
+
+        // Map to response objects
+        var helpRequests = rows.Select(x => new CaregiverHelpRequestResponse(
+            x.HelpRequest.Id,
+            x.Elderly.Id.Value,
+            x.HelpRequest.ActorKey,
+            x.HelpRequest.ActionKey,
+            x.HelpRequest.NeedKey,
+            x.HelpRequest.QualifierKey,
+            x.HelpRequest.CustomText,
+            x.HelpRequest.CreatedOnUtc,
+            x.HelpRequest.UpdatedOnUtc))
+            .ToList();
 
         return Result<PagedCaregiverHelpRequests>.Success(
             new PagedCaregiverHelpRequests(helpRequests, page, size, totalCount));

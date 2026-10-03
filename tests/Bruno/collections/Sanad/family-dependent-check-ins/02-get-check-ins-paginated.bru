@@ -1,0 +1,18 @@
+meta {
+  name: 02-get-check-ins-paginated
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{dependentId}}/check-ins?page=1&pageSize=20
+  auth: bearer
+}
+
+assert {
+  res.status: eq 200
+  res.json.items: is array
+  res.json.page: eq 1
+  res.json.pageSize: eq 20
+  res.json.totalCount: is number
+}

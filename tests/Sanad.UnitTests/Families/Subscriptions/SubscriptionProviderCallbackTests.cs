@@ -131,6 +131,26 @@ public sealed class SubscriptionProviderCallbackTests
     }
 
     [Fact]
+    public async Task Transaction_callback_with_string_order_is_acknowledged_without_dispatch()
+    {
+        const string secret = "test-secret";
+        using JsonDocument unsigned = JsonDocument.Parse(
+            "{\"obj\":{\"id\":123456,\"amount_cents\":29900,\"order\":\"malformed-order\",\"success\":true}}");
+        JsonElement obj = unsigned.RootElement.GetProperty("obj");
+        string hmac = PaymobHmacCalculator.Calculate(obj, secret);
+        using JsonDocument document = JsonDocument.Parse(
+            $"{{\"obj\":{{\"id\":123456,\"amount_cents\":29900,\"order\":\"malformed-order\",\"success\":true}},\"hmac\":\"{hmac}\"}}");
+        var sender = new RecordingSender(Result<ConfirmSubscriptionPaymentResponse>.Success(
+            new ConfirmSubscriptionPaymentResponse(Guid.NewGuid(), "Ignored")));
+
+        IActionResult result = await CreateController(sender, secret)
+            .HandlePaymob(null, document.RootElement.Clone(), default);
+
+        Assert.IsType<OkResult>(result);
+        Assert.Null(sender.LastRequest);
+    }
+
+    [Fact]
     public async Task Created_callback_requires_provider_identity_and_initial_transaction_correlation()
     {
         await using FamiliesDbContext db = CreateDb(out FamilySubscription subscription, out SubscriptionPaymentAttempt attempt, succeededInitial: true);

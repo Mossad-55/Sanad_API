@@ -1,0 +1,16 @@
+meta {
+  name: 02-get-help-request-by-id
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{dependentId}}/help-requests/{{requestId}}
+  auth: bearer
+}
+
+assert {
+  res.status: eq 200
+  res.json.id: eq "{{requestId}}"
+  res.json.dependentId: eq "{{dependentId}}"
+}

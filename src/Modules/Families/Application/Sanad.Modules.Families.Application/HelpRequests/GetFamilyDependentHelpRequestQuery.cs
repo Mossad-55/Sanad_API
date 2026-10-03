@@ -3,33 +3,25 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Families;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.Modules.Families.Domain.HelpRequests;
+using Sanad.Modules.Families.Application.Elderlies;
+using Microsoft.EntityFrameworkCore;
 
 namespace Sanad.Modules.Families.Application.HelpRequests;
-
-public sealed record FamilyDependentHelpRequestResponse(
-    Guid Id,
-    Guid ElderlyId,
-    string ActorKey,
-    string ActionKey,
-    string NeedKey,
-    string? QualifierKey,
-    string? CustomText,
-    DateTime CreatedOnUtc,
-    DateTime UpdatedOnUtc);
 
 public sealed record GetFamilyDependentHelpRequestQuery(
     UserId UserId,
     ElderlyId DependentId,
-    Guid RequestId) : IQuery<FamilyDependentHelpRequestResponse>;
+    Guid RequestId) : IQuery<ElderlyHelpRequestResponse>;
 
 public sealed class GetFamilyDependentHelpRequestQueryHandler(
     IFamiliesDbContext dbContext,
     IFamilyIdentityGateway identityGateway) : IQueryHandler<
     GetFamilyDependentHelpRequestQuery,
-    FamilyDependentHelpRequestResponse>
+    ElderlyHelpRequestResponse>
 {
-    public async Task<Result<FamilyDependentHelpRequestResponse>> Handle(
+    public async Task<Result<ElderlyHelpRequestResponse>> Handle(
         GetFamilyDependentHelpRequestQuery request,
         CancellationToken cancellationToken)
     {
@@ -41,7 +33,7 @@ public sealed class GetFamilyDependentHelpRequestQueryHandler(
 
         if (family is null)
         {
-            return Result<FamilyDependentHelpRequestResponse>.Failure(
+            return Result<ElderlyHelpRequestResponse>.Failure(
                 ElderlyErrors.FamilyNotFound);
         }
 
@@ -55,7 +47,7 @@ public sealed class GetFamilyDependentHelpRequestQueryHandler(
 
         if (elderly is null)
         {
-            return Result<FamilyDependentHelpRequestResponse>.Failure(
+            return Result<ElderlyHelpRequestResponse>.Failure(
                 ElderlyErrors.NotFound);
         }
 
@@ -71,14 +63,15 @@ public sealed class GetFamilyDependentHelpRequestQueryHandler(
 
         if (helpRequest is null)
         {
-            return Result<FamilyDependentHelpRequestResponse>.Failure(
+            return Result<ElderlyHelpRequestResponse>.Failure(
                 HelpRequestErrors.NotFound);
         }
 
-        return Result<FamilyDependentHelpRequestResponse>.Success(
-            new FamilyDependentHelpRequestResponse(
+        return Result<ElderlyHelpRequestResponse>.Success(
+            new ElderlyHelpRequestResponse(
                 helpRequest.Id,
                 helpRequest.ElderlyIdentityUserId.Value,
+                helpRequest.Status,
                 helpRequest.ActorKey,
                 helpRequest.ActionKey,
                 helpRequest.NeedKey,

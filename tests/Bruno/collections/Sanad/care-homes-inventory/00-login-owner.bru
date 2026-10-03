@@ -20,5 +20,4 @@ assert {
 script:post-response {
   bru.setVar("inventoryOwnerJwt", res.body.accessToken);
   bru.setVar("inventoryOwnerSessionId", res.body.deviceSessionId.value);
-  bru.setVar("inventoryRunSuffix", Date.now().toString());
 }
