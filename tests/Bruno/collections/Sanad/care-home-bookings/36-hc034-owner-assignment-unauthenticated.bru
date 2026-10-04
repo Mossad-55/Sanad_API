@@ -1,0 +1,19 @@
+meta {
+  name: 36-hc034-owner-assignment-unauthenticated
+  type: http
+  seq: 41
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034SharedBookingId}}/assignment
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "roomId": "{{hc034SharedRoomId}}", "bedId": "{{hc034SharedBedId}}" }
+}
+assert {
+  res.status: eq 401
+}

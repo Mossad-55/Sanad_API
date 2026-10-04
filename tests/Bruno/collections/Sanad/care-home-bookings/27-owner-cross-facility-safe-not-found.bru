@@ -1,0 +1,22 @@
+meta {
+  name: 27-owner-cross-facility-safe-not-found
+  type: http
+  seq: 32
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeOtherFacilityBookingId}}/decision
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "accept": true, "reason": null }
+}
+assert {
+  res.status: eq 404
+}

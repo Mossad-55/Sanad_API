@@ -1,0 +1,19 @@
+meta {
+  name: 14-webhook-amount-mismatch
+  type: http
+  seq: 17
+}
+post {
+  url: {{baseUrl}}/api/v1/payments/webhooks/paymob
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "obj": { "id": {{careHomeTransactionId}}, "amount_cents": 1, "success": true, "pending": false, "currency": "EGP", "order": { "merchant_order_id": "{{careHomeMerchantReference}}" } }, "hmac": "{{careHomeMismatchHmac}}" }
+}
+assert {
+  res.status: eq 400
+}

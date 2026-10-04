@@ -1,0 +1,13 @@
+meta {
+  name: 15-family-unauthenticated
+  type: http
+  seq: 18
+}
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 401
+}

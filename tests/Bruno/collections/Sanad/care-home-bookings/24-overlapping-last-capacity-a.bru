@@ -1,0 +1,30 @@
+meta {
+  name: 24-overlapping-last-capacity-a
+  type: http
+  seq: 29
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/checkout
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+script:pre-request {
+  if (!bru.getVar("careHomeConcurrentElderlyA") || !bru.getVar("careHomeConcurrentElderlyB") || bru.getVar("careHomeConcurrentElderlyA") === bru.getVar("careHomeConcurrentElderlyB")) throw new Error("Concurrency requires two distinct eligible elderly identities.");
+  if (bru.getVar("careHomeConcurrentStartA") !== bru.getVar("careHomeConcurrentStartB")) throw new Error("Concurrent checkouts must use one common interval.");
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "elderlyId": "{{careHomeConcurrentElderlyA}}", "facilityId": "{{careHomeFacilityId}}", "roomTypeId": "{{careHomeConcurrentRoomTypeId}}", "requestedStartDate": "{{careHomeConcurrentStartA}}" }
+}
+assert {
+  res.status: isNumber
+}
+script:post-response {
+  if (![200, 409].includes(res.status)) throw new Error(`Expected concurrent checkout HTTP 200 or 409; received ${res.status}.`);
+  console.log("HC032 concurrency A result:", res.status);
+}

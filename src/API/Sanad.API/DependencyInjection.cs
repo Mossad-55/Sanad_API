@@ -43,6 +43,7 @@ using Sanad.Modules.Families.Application.Abstractions.Medications;
 using Sanad.Modules.CareHomes.Infrastructure;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Application.FamilyIntake;
+using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.Finance.Infrastructure;
 using Sanad.Modules.Finance.Application;
 
@@ -96,10 +97,12 @@ public static class DependencyInjection
             configuration);
 
         services.AddCareHomesInfrastructure(configuration);
+        services.AddSingleton(provider => ResolveCareHomeBookingTiming(configuration, provider.GetRequiredService<IHostEnvironment>()));
 
         services.AddNotificationsInfrastructure(configuration);
         services.AddFinanceInfrastructure(configuration);
         services.AddHostedService<CareHomeLicenseExpiryMonitor>();
+        services.AddHostedService<CareHomeBookingExpiryHostedService>();
         services.AddHostedService<EmailOutboxProcessor>();
         services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
         services.AddScoped<ICaregiverBookingRatingEligibility, CaregiverBookingRatingEligibilityGateway>();
@@ -432,5 +435,31 @@ public static class DependencyInjection
             ICaregiverBookingPricing, CaregiverBookingPricingGateway>();
 
         return services;
+    }
+
+    private static CareHomeBookingTiming ResolveCareHomeBookingTiming(IConfiguration configuration, IHostEnvironment environment)
+    {
+        const string prefix = "CareHomes:TestClock:";
+        string[] keys = ["CheckoutHoldDuration", "DecisionHoldDuration", "ExpirySweepInterval"];
+        bool enabled = configuration.GetValue<bool>($"{prefix}Enabled");
+        bool hasOverrides = keys.Any(key => configuration[$"{prefix}{key}"] is not null);
+        if (!enabled && hasOverrides)
+            throw new InvalidOperationException("CareHomes:TestClock duration overrides require CareHomes:TestClock:Enabled=true.");
+        if (!enabled)
+            return CareHomeBookingTiming.Default;
+        if (!environment.IsDevelopment())
+            throw new InvalidOperationException("CareHomes:TestClock is restricted to the Development environment.");
+
+        TimeSpan Read(string key, TimeSpan fallback)
+        {
+            TimeSpan value = configuration.GetValue($"{prefix}{key}", fallback);
+            if (value <= TimeSpan.Zero) throw new InvalidOperationException($"{prefix}{key} must be positive.");
+            return value;
+        }
+
+        return new CareHomeBookingTiming(
+            Read("CheckoutHoldDuration", CareHomeBookingTiming.Default.CheckoutHoldDuration),
+            Read("DecisionHoldDuration", CareHomeBookingTiming.Default.DecisionHoldDuration),
+            Read("ExpirySweepInterval", CareHomeBookingTiming.Default.ExpirySweepInterval));
     }
 }

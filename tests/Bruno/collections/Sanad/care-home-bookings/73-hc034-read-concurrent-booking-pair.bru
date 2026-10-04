@@ -1,0 +1,38 @@
+meta {
+  name: 73-hc034-read-concurrent-booking-pair
+  type: http
+  seq: 73
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body: isNotEmpty
+}
+script:post-response {
+  const items = Array.isArray(res.body) ? res.body : (res.body.items ?? res.body.data ?? []);
+  const targetDate = String(bru.getEnvVar("hc034ConcurrentStartDate") ?? "");
+  const targetRoomTypeId = String(bru.getEnvVar("hc034ConcurrentRoomTypeId") ?? "").toLowerCase();
+  const eligible = items.filter(x =>
+    String(x.startDate ?? x.StartDate ?? "").slice(0, 10) === targetDate &&
+    String(x.roomTypeId ?? x.RoomTypeId ?? "").toLowerCase() === targetRoomTypeId &&
+    Number(x.status ?? x.Status) === 3 &&
+    Number(x.paymentStatus ?? x.PaymentStatus) === 2 &&
+    (x.assignedRoomId ?? x.AssignedRoomId) == null);
+  const idOf = x => {
+    const raw = x && (x.id ?? x.Id);
+    return raw && typeof raw === "object" ? (raw.value ?? raw.Value) : raw;
+  };
+  if (eligible.length < 2 || String(idOf(eligible[0])) === String(idOf(eligible[1]))) {
+    throw new Error("Two distinct accepted/paid unassigned HC-034 bookings are required for the same-bed concurrency fixture.");
+  }
+  bru.setVar("hc034ConcurrentBookingB", idOf(eligible[0]));
+  bru.setVar("hc034ConcurrentBookingA", idOf(eligible[1]));
+  console.log("HC-034 concurrent booking fixture IDs:", idOf(eligible[1]), idOf(eligible[0]));
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 18a-owner-accept-readback
+  type: http
+  seq: 23
+}
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const status = res.body.status ?? res.body.Status;
+  const paymentStatus = res.body.paymentStatus ?? res.body.PaymentStatus;
+  const accepted = String(status).toLowerCase() === "accepted" || Number(status) === 3;
+  const paid = String(paymentStatus).toLowerCase() === "paid" || Number(paymentStatus) === 2;
+  if (!accepted || !paid) throw new Error(`Expected Accepted/Paid after owner decision; received ${status ?? "<missing>"}/${paymentStatus ?? "<missing>"}.`);
+}

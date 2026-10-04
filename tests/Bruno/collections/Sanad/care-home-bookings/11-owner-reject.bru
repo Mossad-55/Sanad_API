@@ -1,0 +1,25 @@
+meta {
+  name: 11-owner-reject
+  type: http
+  seq: 14
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/decision
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "accept": false,
+    "reason": "Fixture rejection for refund initiation"
+  }
+}
+assert {
+  res.status: eq 200
+}

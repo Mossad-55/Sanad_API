@@ -1,0 +1,32 @@
+meta {
+  name: 66-hc034-login-superadmin
+  type: http
+  seq: 66
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("HC-034 Admin login is restricted to the pinned local Development API.");
+}
+body:json {
+  {
+    "email": "{{superAdminEmail}}",
+    "password": "{{superAdminPassword}}",
+    "deviceName": "bruno-hc034-superadmin",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("adminCareHomesSuperJwt", res.body.accessToken);
+  bru.setVar("hc034SuperAdminDeviceSessionId", res.body.deviceSessionId.value);
+}

@@ -1,0 +1,21 @@
+meta {
+  name: 48-hc034-owner-operational-readback
+  type: http
+  seq: 53
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034SharedBookingId}}/operational
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.assignedRoomId: eq {{hc034SharedRoomId}}
+  res.body.assignedBedId: eq {{hc034SharedBedId}}
+  res.body.actualCheckInRecordedBy: isNotEmpty
+  res.body.actualCheckOutRecordedBy: isNotEmpty
+  res.body.familyCheckInConfirmedBy: isNotEmpty
+}

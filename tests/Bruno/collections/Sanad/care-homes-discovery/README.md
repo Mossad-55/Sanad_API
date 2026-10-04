@@ -1,5 +1,24 @@
 # Care Homes public discovery
 
+Follow [Bruno recovery](../../../../../docs/operations/bruno-failure-first.md). An empty result or HTTP mismatch requires checking the existing approved fixture and API error first; do not restart onboarding or reset the database to debug these read-only requests.
+
+From the worktree root, run the offline preflight (this only prints the proposed manifest/command):
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -Command {
+  $ErrorActionPreference = "Stop"
+  & ./docs/tools/Invoke-BrunoPreflight.ps1 -ExpectedWorktreeRoot (Get-Location).Path -RequestPaths @(
+    "tests/Bruno/collections/Sanad/care-homes-discovery/00-list-default.bru",
+    "tests/Bruno/collections/Sanad/care-homes-discovery/01-list-invalid-pagination.bru",
+    "tests/Bruno/collections/Sanad/care-homes-discovery/02-detail-approved-fixture.bru",
+    "tests/Bruno/collections/Sanad/care-homes-discovery/03-detail-unknown-is-404.bru"
+  )
+}
+```
+
+Verify runtime ownership and existing target authorization before executing the returned command. Pass request paths relative to the repository root; the emitted command uses the correct `tests/Bruno` working directory.
+The execution-policy override applies only to this child PowerShell process; it does not change machine or user policy.
+
 Read-only Bruno coverage for the anonymous Care Homes discovery and detail
 routes. Run only with the guarded local `Development` API at
 `http://localhost:55819`, backed by the disposable `SanadBrunoTestDb` and the

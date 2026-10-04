@@ -1,0 +1,26 @@
+meta {
+  name: 77-hc034-family-check-in-dispute-repeat
+  type: http
+  seq: 78
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034FamilyDisputeBookingId}}/check-in-dispute
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{hc034DisputeFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "reason": "A different reason must not replace the open case." }
+}
+assert {
+  res.status: eq 200
+  res.body.id: eq {{hc034FamilyDisputeCaseId}}
+  res.body.status: eq 1
+  res.body.familyReason: eq Facility recorded the check-in at the wrong time.
+}

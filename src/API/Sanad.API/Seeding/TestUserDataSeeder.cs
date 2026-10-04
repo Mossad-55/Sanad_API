@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
+using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
@@ -163,12 +164,17 @@ public sealed class TestUserDataSeeder
             utcNow,
             cancellationToken);
 
-        _ = await EnsureUserAsync(
+        User careHomeOwner = await EnsureUserAsync(
             arabicFullName: "ØµØ§Ø­Ø¨ Ø¯Ø§Ø± Ø§Ù„Ø±Ø¹Ø§ÙŠØ© Ø§Ù„ØªØ¬Ø±ÙŠØ¨ÙŠ",
             englishFullName: "Test Care Home Owner",
             email: "carehome.owner@test.sanad.local",
             phoneNumber: "+201000000011",
             AccountType.CareHomeOwner,
+            utcNow,
+            cancellationToken);
+
+        await EnsureFixtureLoginCapacityAsync(
+            [owner.Id, viewer.Id, careHomeOwner.Id],
             utcNow,
             cancellationToken);
 
@@ -1275,6 +1281,35 @@ public sealed class TestUserDataSeeder
 
     private static string FixtureEmail(string prefix, string runId) =>
         $"{prefix}.{runId}@test.sanad.local";
+
+    private async Task EnsureFixtureLoginCapacityAsync(
+        IReadOnlyCollection<UserId> fixtureUserIds,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        List<DeviceSession> activeSessions =
+            await _identityDbContext.DeviceSessions
+                .Where(session =>
+                    fixtureUserIds.Contains(session.UserId)
+                    && !session.RevokedOnUtc.HasValue
+                    && session.ExpiresOnUtc > utcNow)
+                .OrderBy(session => session.CreatedOnUtc)
+                .ToListAsync(cancellationToken);
+
+        int sessionsToRevoke = Math.Max(
+            0,
+            activeSessions.Count - (DeviceSessionPolicy.MaximumActiveSessions - 1));
+
+        foreach (DeviceSession session in activeSessions.Take(sessionsToRevoke))
+        {
+            session.Revoke("Disposable fixture login capacity", utcNow);
+        }
+
+        if (sessionsToRevoke > 0)
+        {
+            await _identityDbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
 
     private static string FixturePhoneNumber(string runId, int suffix)
     {

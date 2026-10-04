@@ -25,4 +25,5 @@ script:post-response {
   const roomType = res.body.roomTypes.find(item => item.englishName === expectedName);
   if (!roomType) throw new Error("The newly-created unique inventory room type was not returned.");
   bru.setVar("inventoryRoomTypeId", roomType.id); bru.setVar("inventoryVersion", res.body.version);
+  bru.setVar("careHomeExpectedRoomTypeId", roomType.id);
 }

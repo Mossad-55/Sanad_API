@@ -1,0 +1,25 @@
+meta {
+  name: 17a-payment-failure-readback
+  type: http
+  seq: 21
+}
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const status = res.body.status ?? res.body.Status;
+  const paymentStatus = res.body.paymentStatus ?? res.body.PaymentStatus;
+  const cancelled = String(status).toLowerCase() === "cancelled" || Number(status) === 6;
+  const failed = String(paymentStatus).toLowerCase() === "failed" || Number(paymentStatus) === 3;
+  if (!cancelled || !failed) {
+    throw new Error(`Expected failed callback readback to be Cancelled/Failed; received ${status ?? "<missing>"}/${paymentStatus ?? "<missing>"}.`);
+  }
+}

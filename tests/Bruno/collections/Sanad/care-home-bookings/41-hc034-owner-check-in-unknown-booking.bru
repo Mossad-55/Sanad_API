@@ -1,0 +1,16 @@
+meta {
+  name: 41-hc034-owner-check-in-unknown-booking
+  type: http
+  seq: 46
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034UnknownBookingId}}/check-in
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+assert {
+  res.status: eq 404
+}

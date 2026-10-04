@@ -1,0 +1,34 @@
+meta {
+  name: 02c-read-discovery-room-type
+  type: http
+  seq: 5
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryId}}
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 200
+  res.body.roomTypes: isNotEmpty
+}
+script:post-response {
+  const rooms = res.body.roomTypes ?? [];
+  const expected = bru.getVar("careHomeExpectedRoomTypeId") ?? bru.getEnvVar("careHomeExpectedRoomTypeId");
+  const room = expected ? rooms.find(x => String(x.id).toLowerCase() === String(expected).toLowerCase()) : rooms[0];
+  if (!room) throw new Error("Expected active room type was not returned by discovery detail.");
+  bru.setVar("careHomeRoomTypeId", room.id);
+  bru.setVar("careHomeConcurrentRoomTypeId", room.id);
+  const concurrentStart = bru.getEnvVar("careHomeConcurrentStartDate") ?? "2027-07-01";
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(concurrentStart) || Number.isNaN(new Date(`${concurrentStart}T00:00:00Z`).getTime())) {
+    throw new Error("Configured concurrent checkout start date must be a valid ISO date.");
+  }
+  bru.setVar("careHomeConcurrentStartA", concurrentStart);
+  bru.setVar("careHomeConcurrentStartB", concurrentStart);
+  console.log("HC032 fixture room type ID:", room.id);
+  const configuredStart = bru.getEnvVar("careHomeStartDate");
+  const start = configuredStart ? new Date(`${configuredStart}T00:00:00Z`) : new Date();
+  if (!configuredStart) start.setUTCDate(start.getUTCDate() + 60);
+  if (Number.isNaN(start.getTime())) throw new Error("Configured Care-home start date must be a valid ISO date.");
+  bru.setVar("careHomeStartDate", start.toISOString().slice(0, 10));
+}

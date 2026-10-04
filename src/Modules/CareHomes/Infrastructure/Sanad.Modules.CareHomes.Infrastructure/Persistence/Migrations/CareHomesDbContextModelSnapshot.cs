@@ -23,6 +23,246 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeBooking", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime?>("ActualCheckInOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("actual_check_in_on_utc");
+
+                    b.Property<Guid?>("ActualCheckInRecordedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actual_check_in_recorded_by");
+
+                    b.Property<DateTime?>("ActualCheckOutOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("actual_check_out_on_utc");
+
+                    b.Property<Guid?>("ActualCheckOutRecordedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actual_check_out_recorded_by");
+
+                    b.Property<Guid?>("AssignedBedId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assigned_bed_id");
+
+                    b.Property<Guid?>("AssignedRoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("assigned_room_id");
+
+                    b.Property<decimal>("BaseAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("CareNeedsNotes")
+                        .HasColumnType("text");
+
+                    b.Property<int>("ChargeRuleVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("CheckoutHoldUntilUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DecidedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("DecisionHoldUntilUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("DecisionReason")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("EarliestArrivalUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("earliest_arrival_utc");
+
+                    b.Property<int>("ElderlyAge")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("ElderlyArabicName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ElderlyEnglishName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("ElderlyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("EndDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid?>("FamilyCheckInConfirmedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_check_in_confirmed_by");
+
+                    b.Property<DateTime?>("FamilyCheckInConfirmedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("family_check_in_confirmed_on_utc");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FamilyUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("IntentionOrderId")
+                        .HasColumnType("text")
+                        .HasColumnName("intention_order_id");
+
+                    b.Property<string>("MedicalSnapshotJson")
+                        .HasColumnType("jsonb");
+
+                    b.Property<string>("MerchantReference")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("character varying(80)");
+
+                    b.Property<string>("PaymentClientSecret")
+                        .HasColumnType("text")
+                        .HasColumnName("payment_client_secret");
+
+                    b.Property<DateTime?>("PaymentIntentClaimedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("payment_intent_claimed_on_utc");
+
+                    b.Property<int?>("PaymentIntentMethod")
+                        .HasColumnType("integer")
+                        .HasColumnName("payment_intent_method");
+
+                    b.Property<string>("PaymentPublicKey")
+                        .HasColumnType("text")
+                        .HasColumnName("payment_public_key");
+
+                    b.Property<int>("PaymentStatus")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("PaymobOrderId")
+                        .HasColumnType("text")
+                        .HasColumnName("paymob_order_id");
+
+                    b.Property<long?>("PaymobTransactionId")
+                        .HasColumnType("bigint");
+
+                    b.Property<decimal>("PlatformFeeAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime?>("RefundClaimedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refund_claimed_on_utc");
+
+                    b.Property<string>("RefundReference")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResponsibleContactName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResponsibleContactPhone")
+                        .HasColumnType("text");
+
+                    b.Property<string>("ResponsibleContactRelationship")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("RoomTypeId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateOnly>("StartDate")
+                        .HasColumnType("date");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<decimal>("TaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MerchantReference")
+                        .IsUnique();
+
+                    b.HasIndex("FacilityId", "Status", "StartDate", "EndDate");
+
+                    b.ToTable("bookings", "care_homes");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeCheckInDispute", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("CheckoutOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("EffectiveCheckInOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Evidence")
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)");
+
+                    b.Property<string>("FamilyReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OpenedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("OpenedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid?>("ResolvedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ResolvedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId", "Status")
+                        .IsUnique()
+                        .HasFilter("\"Status\" = 1");
+
+                    b.ToTable("check_in_disputes", "care_homes");
+                });
+
             modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeBed", b =>
                 {
                     b.Property<Guid>("Id")
@@ -478,6 +718,15 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.HasIndex("FacilityId", "EnglishName");
 
                     b.ToTable("room_types", "care_homes");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeBooking", b =>
+                {
+                    b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeFacility", null)
+                        .WithMany()
+                        .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeBed", b =>

@@ -1,0 +1,23 @@
+meta {
+  name: 44-hc034-admin-dispute-resolve-repeated
+  type: http
+  seq: 49
+}
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/check-in-disputes/{{hc034CaseId}}/resolve
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "effectiveCheckInOnUtc": "{{hc034EffectiveCheckInOnUtc}}", "evidence": "Second resolution", "reason": "Repeated resolution must be rejected" }
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq CareHomes.CheckInDispute.InvalidState
+}

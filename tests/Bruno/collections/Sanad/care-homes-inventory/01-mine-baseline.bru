@@ -15,4 +15,6 @@ assert {
 }
 script:post-response {
   bru.setVar("inventoryFacilityId", res.body.facilityId); bru.setVar("inventoryVersion", res.body.version);
+  bru.setVar("careHomeOtherFacilityId", res.body.facilityId);
+  bru.setVar("careHomeExpectedFacilityId", res.body.facilityId);
 }

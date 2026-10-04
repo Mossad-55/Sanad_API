@@ -1,0 +1,23 @@
+meta {
+  name: 02b-read-discovery-fixture
+  type: http
+  seq: 4
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/discovery?page=1&pageSize=10
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 200
+  res.body.items: isNotEmpty
+}
+script:post-response {
+  const items = res.body.items ?? [];
+  const expected = bru.getVar("careHomeExpectedFacilityId") ?? bru.getEnvVar("careHomeExpectedFacilityId");
+  const facility = expected ? items.find(x => String(x.id).toLowerCase() === String(expected).toLowerCase()) : items[0];
+  if (!facility) throw new Error("Expected approved discovery facility was not found in the disposable fixture.");
+  bru.setVar("careHomeFacilityId", facility.id);
+  bru.setVar("careHomeDiscoveryId", facility.id);
+  console.log("HC032 fixture facility ID:", facility.id);
+}

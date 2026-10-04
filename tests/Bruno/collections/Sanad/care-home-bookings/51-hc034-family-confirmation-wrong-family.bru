@@ -1,0 +1,17 @@
+meta {
+  name: 51-hc034-family-confirmation-wrong-family
+  type: http
+  seq: 56
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034SharedBookingId}}/check-in-confirmation
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{hc034OtherFamilyJwt}}
+}
+assert {
+  res.status: eq 404
+  res.body.code: eq CareHomes.Bookings.NotFound
+}

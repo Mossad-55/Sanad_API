@@ -1,0 +1,17 @@
+meta {
+  name: 31-hc034-family-confirmation
+  type: http
+  seq: 36
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034SharedBookingId}}/check-in-confirmation
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.familyCheckInConfirmedOnUtc: isNotEmpty
+}

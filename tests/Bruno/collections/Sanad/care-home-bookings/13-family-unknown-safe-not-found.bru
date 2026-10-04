@@ -1,0 +1,16 @@
+meta {
+  name: 13-family-unknown-safe-not-found
+  type: http
+  seq: 16
+}
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/00000000-0000-0000-0000-000000000000
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 404
+}

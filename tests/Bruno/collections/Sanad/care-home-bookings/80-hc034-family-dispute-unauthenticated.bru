@@ -1,0 +1,20 @@
+meta {
+  name: 80-hc034-family-dispute-unauthenticated
+  type: http
+  seq: 80
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034FamilyDisputeBookingId}}/check-in-dispute
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "reason": "Unauthenticated callers must be rejected." }
+}
+assert {
+  res.status: eq 401
+}

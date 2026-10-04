@@ -1,0 +1,26 @@
+meta {
+  name: 23-maintenance-overlap
+  type: http
+  seq: 28
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/checkout
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+script:pre-request {
+  bru.setVar("careHomeMaintenanceRoomTypeId", bru.getVar("careHomeRoomTypeId"));
+  bru.setVar("careHomeMaintenanceStartDate", "2027-01-10");
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "elderlyId": "{{careHomeElderlyId}}", "facilityId": "{{careHomeFacilityId}}", "roomTypeId": "{{careHomeMaintenanceRoomTypeId}}", "requestedStartDate": "{{careHomeMaintenanceStartDate}}" }
+}
+assert {
+  res.status: eq 409
+}

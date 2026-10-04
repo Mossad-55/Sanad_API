@@ -1,0 +1,23 @@
+meta {
+  name: 53-hc034-owner-assignment-private-with-bed
+  type: http
+  seq: 58
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034PrivateBookingId}}/assignment
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "roomId": "{{hc034PrivateRoomId}}", "bedId": "{{hc034PrivateBedId}}" }
+}
+assert {
+  res.status: eq 400
+  res.body.code: eq CareHomes.Bookings.InvalidAssignment
+}

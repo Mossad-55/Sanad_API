@@ -1,0 +1,33 @@
+meta {
+  name: 72-hc034-read-private-booking
+  type: http
+  seq: 72
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body: isNotEmpty
+}
+script:post-response {
+  const items = Array.isArray(res.body) ? res.body : (res.body.items ?? res.body.data ?? []);
+  const targetDate = String(bru.getEnvVar("hc034PrivateStartDate") ?? "");
+  const targetRoomTypeId = String(bru.getEnvVar("hc034PrivateRoomTypeId") ?? "").toLowerCase();
+  const booking = items.find(x =>
+    String(x.startDate ?? x.StartDate ?? "").slice(0, 10) === targetDate &&
+    String(x.roomTypeId ?? x.RoomTypeId ?? "").toLowerCase() === targetRoomTypeId &&
+    Number(x.status ?? x.Status) === 3 &&
+    Number(x.paymentStatus ?? x.PaymentStatus) === 2 &&
+    (x.assignedRoomId ?? x.AssignedRoomId) == null);
+  const rawId = booking && (booking.id ?? booking.Id);
+  const id = rawId && typeof rawId === "object" ? (rawId.value ?? rawId.Value) : rawId;
+  if (!id) throw new Error("No accepted/paid unassigned HC-034 Private/Suite booking exists on the configured stay date.");
+  bru.setVar("hc034PrivateBookingId", id);
+  console.log("HC-034 private booking fixture ID:", id);
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 57-hc034-owner-assignment-cross-facility-resource
+  type: http
+  seq: 62
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034SharedBookingId}}/assignment
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "roomId": "{{hc034OtherFacilityRoomId}}", "bedId": "{{hc034OtherFacilityBedId}}" }
+}
+assert {
+  res.status: eq 404
+  res.body.code: eq CareHomes.Bookings.NotFound
+}

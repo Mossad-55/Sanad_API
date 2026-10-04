@@ -1,0 +1,40 @@
+meta {
+  name: 03-checkout-success
+  type: http
+  seq: 6
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/checkout
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "elderlyId": "{{careHomeElderlyId}}", "facilityId": "{{careHomeFacilityId}}", "roomTypeId": "{{careHomeRoomTypeId}}", "requestedStartDate": "{{careHomeStartDate}}", "careNeedsNotes": "Disposable booking coverage", "responsibleContactName": "Fixture contact", "responsibleContactPhone": "+201000000000", "responsibleContactRelationship": "Daughter" }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  if (res.status !== 200) {
+    const body = res.body ?? {};
+    console.log("Care-home checkout diagnostic:", res.status, body.code ?? body.errorCode ?? body.title ?? "<no response code>");
+    return;
+  }
+  bru.setVar("careHomeBookingId", res.body.id);
+  bru.setVar("careHomeOtherFamilyBookingId", res.body.id);
+  bru.setVar("careHomeOtherFacilityBookingId", res.body.id);
+  bru.setVar("careHomeExpiredCheckoutBookingId", res.body.id);
+  bru.setVar("careHomeDecisionTimeoutBookingId", res.body.id);
+  console.log("HC032 created family booking ID/status/payment:", res.body.id, res.body.status, res.body.paymentStatus);
+  if (res.body.status !== 1 || res.body.paymentStatus !== 1) throw new Error("Checkout did not create a pending payment hold.");
+  const totalAmount = Number(res.body.totalAmount ?? res.body.TotalAmount);
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0) throw new Error("Checkout did not return a positive total amount for the payment callback fixture.");
+  bru.setVar("careHomeAmountCents", String(Math.round(totalAmount * 100)));
+  bru.setVar("careHomeTransactionId", String(Date.now()));
+}

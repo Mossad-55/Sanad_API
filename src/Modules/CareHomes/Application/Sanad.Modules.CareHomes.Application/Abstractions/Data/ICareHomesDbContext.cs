@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.CareHomes.Domain.Facilities;
+using Sanad.Modules.CareHomes.Domain.Bookings;
 
 namespace Sanad.Modules.CareHomes.Application.Abstractions.Data;
 
@@ -10,6 +11,8 @@ public interface ICareHomesDbContext
     DbSet<CareHomeRoom> Rooms { get; }
     DbSet<CareHomeBed> Beds { get; }
     DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks { get; }
+    DbSet<CareHomeBooking> Bookings { get; }
+    DbSet<CareHomeCheckInDispute> CheckInDisputes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

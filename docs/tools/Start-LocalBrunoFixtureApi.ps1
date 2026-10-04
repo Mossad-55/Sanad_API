@@ -34,7 +34,7 @@ function Assert-FixturePortAvailable([int]$ListenPort) {
                 $listener.Start()
             }
             catch {
-                throw "Fixture API port $ListenPort is already listening or unavailable; select a different localhost port before starting the fixture API."
+                throw "Fixture API port $ListenPort is occupied or unavailable. Inspect the owning process and worktree first; reuse it only when it is a verified matching instance. Never kill an unrelated process or switch to a random port. An intentional port change requires matching guard, environment, and owner authorization."
             }
         }
     }
@@ -54,6 +54,9 @@ $testUserSeedEnabled = -not $SkipTestUserSeed
 $financeMigrationsEnabled = -not $SkipFinanceMigrations
 Write-Host 'This starts the Development API against the guarded local fixture database.'
 Write-Host "Test-user seeding: $testUserSeedEnabled; Finance migrations: $financeMigrationsEnabled."
+if ($testUserSeedEnabled) {
+    Write-Host 'Opt-in fixture seeding may revoke only the oldest excess active sessions for the seeded Family/Care Home owner accounts, leaving one login slot; it does not delete users or other fixture rows.'
+}
 Write-Host 'The API guard validates the exact localhost:5432/SanadBrunoTestDb target before creating that database or applying migrations.'
 $uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ'
 $lowercase = 'abcdefghijkmnopqrstuvwxyz'
@@ -119,6 +122,9 @@ $fixtureVariables = @"
   planChangePhone: +201000000014
   fixtureRunId: $fixtureRunId
   paymobFixtureHmacSecret: $fixtureHmacSecret
+  fixtureHmacSecret: $fixtureHmacSecret
+  careHomeOwnerEmail: carehome.owner@test.sanad.local
+  careHomeOwnerPassword: Test-1234!
 "@
 $fixtureText = [regex]::Replace(
     $localBrunoText,

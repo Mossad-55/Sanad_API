@@ -1,0 +1,23 @@
+meta {
+  name: 52-hc034-owner-assignment-shared-missing-bed
+  type: http
+  seq: 57
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034UnassignedBookingId}}/assignment
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "roomId": "{{hc034SharedRoomId}}", "bedId": null }
+}
+assert {
+  res.status: eq 400
+  res.body.code: eq CareHomes.Bookings.InvalidAssignment
+}

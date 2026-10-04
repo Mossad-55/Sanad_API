@@ -1,0 +1,13 @@
+meta {
+  name: 39-hc034-admin-dispute-unauthenticated
+  type: http
+  seq: 44
+}
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes/check-in-disputes
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 401
+}

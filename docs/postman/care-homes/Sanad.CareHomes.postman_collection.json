@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a4fce7cf-2668-4d8e-9a3d-58ec5fd34573",
     "name": "Sanad Care Homes",
-    "description": "Care-home facility owner onboarding plus anonymous public discovery/detail. Admin operational APIs belong to the Sanad Admin collection and docs/admin; Care Homes booking/stay APIs remain deferred to HC-TASK-032.",
+    "description": "Care-home facility owner onboarding, anonymous public discovery/detail, inventory/availability, HC-TASK-032 booking lifecycle, and authored HC-034 stay operations. Admin operational APIs belong to the Sanad Admin collection and docs/admin. Examples require the disposable Development fixture; they are not runtime-verified in this collection.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -13,6 +13,7 @@
     { "key": "baseUrl", "value": "http://localhost:5235" },
     { "key": "careHomeOwnerJwt", "value": "" },
     { "key": "careHomeFamilyJwt", "value": "" },
+    { "key": "careHomeAdminJwt", "value": "" },
     { "key": "careHomeFacilityVersion", "value": "1" },
     { "key": "careHomeDiscoveryId", "value": "" },
     { "key": "careHomeDiscoveryUnknownId", "value": "" },
@@ -20,7 +21,21 @@
     { "key": "expectedStartingFromMonthlyPriceEgp", "value": "" },
     { "key": "inventoryRoomTypeId", "value": "" },
     { "key": "inventoryRoomId", "value": "" },
-    { "key": "inventoryBedId", "value": "" }
+    { "key": "inventoryBedId", "value": "" },
+    { "key": "careHomeBookingId", "value": "" },
+    { "key": "careHomeRoomTypeId", "value": "" },
+    { "key": "careHomeFacilityId", "value": "" },
+    { "key": "careHomeElderlyId", "value": "" },
+    { "key": "careHomeStartDate", "value": "2026-11-10" },
+    { "key": "careHomeMerchantReference", "value": "" },
+    { "key": "careHomeAmountCents", "value": "" },
+    { "key": "careHomeTransactionId", "value": "" },
+    { "key": "careHomeWebhookHmac", "value": "" },
+    { "key": "careHomeAssignedRoomId", "value": "" },
+    { "key": "careHomeAssignedBedId", "value": "" },
+    { "key": "careHomeCheckInDisputeId", "value": "" },
+    { "key": "careHomeFamilyDisputeBookingId", "value": "" },
+    { "key": "careHomeFamilyDisputeReason", "value": "The recorded arrival does not match our evidence." }
   ],
   "item": [
     {
@@ -176,6 +191,93 @@
         { "name": "Archive bed", "request": { "method": "POST", "header": [], "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/beds/{{inventoryBedId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false" }, "description": "Archives while retaining the stable ID; set restore=true to restore." },
         { "name": "Create maintenance block", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"target\": 2,\n  \"targetId\": \"{{inventoryBedId}}\",\n  \"startDate\": \"2027-01-10\",\n  \"endDate\": \"2027-01-12\",\n  \"reason\": \"Planned repair\"\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/maintenance" }, "description": "Egypt-local half-open dates; target Room=1 or Bed=2. Overlaps with active holds/stays or conflicting blocks are rejected." },
         { "name": "Read my availability", "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-01-20\"\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/availability" }, "description": "Derived by room type. The current occupancy provider is empty until later booking work supplies holds and stays." }
+      ]
+    },
+    {
+      "name": "05. Care-home bookings (HC-032, authored)",
+      "description": "Source-authored HC-TASK-032 booking lifecycle examples. Requires the disposable Development fixture variables below and an effective Finance rule. These requests have not been runtime-verified; do not point them at production or reset a database to make them runnable.",
+      "item": [
+        {
+          "name": "List family Care-home bookings",
+          "request": { "method": "GET", "header": [], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeFamilyJwt}}", "type": "string" }] }, "url": "{{baseUrl}}/api/v1/family/care-home-bookings", "description": "FamilyAccess. Lists the caller family's bookings newest first." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('family booking list contract', () => pm.expect([200, 401, 404]).to.include(pm.response.code));"] } }]
+        },
+        {
+          "name": "Checkout Care-home booking",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeFamilyJwt}}", "type": "string" }] }, "body": { "mode": "raw", "raw": "{\n  \"elderlyId\": \"{{careHomeElderlyId}}\",\n  \"facilityId\": \"{{careHomeFacilityId}}\",\n  \"roomTypeId\": \"{{careHomeRoomTypeId}}\",\n  \"requestedStartDate\": \"{{careHomeStartDate}}\",\n  \"careNeedsNotes\": \"Authored booking example\",\n  \"responsibleContactName\": \"Fixture contact\",\n  \"responsibleContactPhone\": \"+201000000000\",\n  \"responsibleContactRelationship\": \"Daughter\"\n}" }, "url": "{{baseUrl}}/api/v1/family/care-home-bookings/checkout", "description": "Creates one calendar month with a 15-minute unpaid hold. Start date must be at least 24 hours from checkout in Cairo time. Success is 200; validation/arrival/capacity/configuration errors are mapped by the API." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('checkout authored response', () => pm.expect([200, 400, 401, 404, 409, 503]).to.include(pm.response.code));", "if (pm.response.code === 200) pm.collectionVariables.set('careHomeBookingId', pm.response.json().id);"] } }]
+        },
+        {
+          "name": "Read family Care-home booking",
+          "request": { "method": "GET", "header": [], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeFamilyJwt}}", "type": "string" }] }, "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}", "description": "Family scoped detail. Cross-family and unknown IDs return 404 CareHomes.Bookings.NotFound." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('family booking detail contract', () => pm.expect([200, 401, 404, 409]).to.include(pm.response.code));"] } }]
+        },
+        {
+          "name": "Create Care-home payment intent",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeFamilyJwt}}", "type": "string" }] }, "body": { "mode": "raw", "raw": "{\n  \"method\": 1,\n  \"billing\": { \"firstName\": \"Fixture\", \"lastName\": \"Family\", \"email\": \"family@example.test\", \"phoneNumber\": \"+201000000000\" }\n}" }, "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}/payments/intent", "description": "Card/Wallet Paymob intent. Repeating an existing intent returns the same intent; expired/non-payable bookings return 409 CareHomes.Bookings.InvalidState." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('payment intent authored response', () => pm.expect([200, 401, 404, 409, 503]).to.include(pm.response.code));", "if (pm.response.code === 200) pm.collectionVariables.set('careHomeMerchantReference', pm.response.json().merchantReference);"] } }]
+        },
+        {
+          "name": "List owner booking requests",
+          "request": { "method": "GET", "header": [], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine", "description": "CareHomeOwnerAccess. Lists paid requests for the owner's facility only." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('owner booking list contract', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));"] } }]
+        },
+        {
+          "name": "Decide owner booking request",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "body": { "mode": "raw", "raw": "{\n  \"accept\": false,\n  \"reason\": \"Capacity unavailable\"\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/decision", "description": "CareHomeOwnerAccess. Accept moves PaidAwaitingDecision to Accepted. Reject requires a reason, moves to RefundPending, and initiates a full refund when a transaction exists." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('owner decision authored response', () => pm.expect([200, 400, 401, 403, 404, 409, 500]).to.include(pm.response.code));"] } }]
+        },
+        {
+          "name": "Paymob Care-home success callback",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "auth": { "type": "noauth" }, "body": { "mode": "raw", "raw": "{\n  \"obj\": { \"id\": {{careHomeTransactionId}}, \"amount_cents\": {{careHomeAmountCents}}, \"success\": true, \"pending\": false, \"currency\": \"EGP\", \"order\": { \"merchant_order_id\": \"{{careHomeMerchantReference}}\" } },\n  \"hmac\": \"{{careHomeWebhookHmac}}\"\n}" }, "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob", "description": "Anonymous HTTP endpoint with valid Paymob HMAC. A chb_ merchant reference dispatches to the Care-home aggregate; duplicate same-transaction callbacks are idempotent." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Paymob callback authored response', () => pm.expect([200, 400, 401, 409, 500, 503]).to.include(pm.response.code));"] } }]
+        }
+      ]
+    },
+    {
+      "name": "06. Stay operations (HC-034, authored)",
+      "description": "Source-authored HC-034 room/bed assignment, actual facility check-in/out, Family confirmation, Family-submitted dispute, owner operational readback, and Admin dispute resolution. Requires an accepted booking and disposable fixture IDs. Check-out without Family confirmation opens a case immediately; a Family dispute requires a booking owned by that Family with facility check-in recorded. These examples are authored, not runtime evidence.",
+      "item": [
+        {
+          "name": "Assign physical room and bed",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "body": { "mode": "raw", "raw": "{\n  \"roomId\": \"{{inventoryRoomId}}\",\n  \"bedId\": \"{{inventoryBedId}}\"\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/assignment", "description": "CareHomeOwnerAccess. Shared stays require a bed; Private/Suite stays must send bedId as null and reserve the whole room. The room must match the booking facility and room type. Invalid allocation returns 400 CareHomes.Bookings.InvalidAssignment; an occupied resource returns 409 CareHomes.Bookings.AssignmentConflict." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('assignment authored response', () => pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code));", "if (pm.response.code === 200) { pm.collectionVariables.set('careHomeAssignedRoomId', pm.response.json().assignedRoomId); pm.collectionVariables.set('careHomeAssignedBedId', pm.response.json().assignedBedId || ''); }"] } }]
+        },
+        {
+          "name": "Record facility check-in",
+          "request": { "method": "POST", "header": [], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/check-in", "description": "CareHomeOwnerAccess. Records the server UTC actual check-in for an accepted, assigned booking. Repeated or invalid lifecycle transitions return 409 CareHomes.Bookings.InvalidState." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('facility check-in authored response', () => pm.expect([200, 401, 403, 404, 409]).to.include(pm.response.code));"] } }]
+        },
+        {
+          "name": "Family confirm check-in",
+          "request": { "method": "POST", "header": [], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeFamilyJwt}}", "type": "string" }] }, "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}/check-in-confirmation", "description": "FamilyAccess. The booking must belong to the caller's Family and have an active facility check-in. Cross-family/unknown IDs return 404 CareHomes.Bookings.NotFound; before-check-in or repeated confirmation returns 409 CareHomes.Bookings.InvalidState." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Family confirmation authored response', () => pm.expect([200, 401, 404, 409]).to.include(pm.response.code));"] } }]
+        },
+        {
+          "name": "Family submit check-in dispute",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeFamilyJwt}}", "type": "string" }] }, "body": { "mode": "raw", "raw": "{\n  \"reason\": \"{{careHomeFamilyDisputeReason}}\"\n}" }, "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeFamilyDisputeBookingId}}/check-in-dispute", "description": "FamilyAccess. The booking must belong to the caller's Family and have a facility-recorded check-in. The reason is trimmed and must contain 1-2000 characters. A valid first submission returns one Open Admin case with familyReason; a repeat returns the same open case without replacing the reason. Facility actualCheckInOnUtc and actualCheckOutOnUtc remain unchanged. Anonymous is 401, wrong-family/unknown is 404 CareHomes.CheckInDispute.NotFound, missing check-in is 409 CareHomes.CheckInDispute.InvalidState, and invalid reason is 400 CareHomes.CheckInDispute.InvalidReason. This request is authored only and requires an eligible disposable booking." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('Family dispute authored response', () => pm.expect([200, 400, 401, 404, 409]).to.include(pm.response.code));", "if (pm.response.code === 200) pm.collectionVariables.set('careHomeCheckInDisputeId', pm.response.json().id);"] } }]
+        },
+        {
+          "name": "Read owner operational state",
+          "request": { "method": "GET", "header": [], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/operational", "description": "CareHomeOwnerAccess. Returns assigned room/bed, actual facility timestamps and actors, and Family confirmation timestamp/actor." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('operational readback authored response', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));"] } }]
+        },
+        {
+          "name": "Record facility check-out",
+          "request": { "method": "POST", "header": [], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/check-out", "description": "CareHomeOwnerAccess. Records server UTC actual check-out. If Family confirmation is missing, opens one Open Admin case immediately; no timeout is used. Repeated/invalid transitions return 409 CareHomes.Bookings.InvalidState." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('facility check-out authored response', () => pm.expect([200, 401, 403, 404, 409]).to.include(pm.response.code));"] } }]
+        },
+        {
+          "name": "List check-in dispute cases",
+          "request": { "method": "GET", "header": [], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeAdminJwt}}", "type": "string" }] }, "url": "{{baseUrl}}/api/v1/admin/care-homes/check-in-disputes", "description": "CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin is denied). Lists cases newest first. Provide an authorized admin token before running." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('dispute list authored response', () => pm.expect([200, 401, 403]).to.include(pm.response.code));", "if (pm.response.code === 200 && pm.response.json().length) pm.collectionVariables.set('careHomeCheckInDisputeId', pm.response.json()[0].id);"] } }]
+        },
+        {
+          "name": "Resolve check-in dispute case",
+          "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeAdminJwt}}", "type": "string" }] }, "body": { "mode": "raw", "raw": "{\n  \"effectiveCheckInOnUtc\": \"2026-11-10T12:00:00Z\",\n  \"evidence\": \"Signed arrival log\",\n  \"reason\": \"Facility record reconciled\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/care-homes/check-in-disputes/{{careHomeCheckInDisputeId}}/resolve", "description": "CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin is denied). Evidence, reason and a UTC effective check-in are required. Missing case is 404 CareHomes.CheckInDispute.NotFound; repeated/invalid resolution is 409 CareHomes.CheckInDispute.InvalidState. Supply an authorized admin token before running." },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('dispute resolution authored response', () => pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code));"] } }]
+        }
       ]
     }
   ]

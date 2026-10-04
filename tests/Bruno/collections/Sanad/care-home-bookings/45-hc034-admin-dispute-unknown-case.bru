@@ -1,0 +1,23 @@
+meta {
+  name: 45-hc034-admin-dispute-unknown-case
+  type: http
+  seq: 50
+}
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/check-in-disputes/{{hc034UnknownCaseId}}/resolve
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "effectiveCheckInOnUtc": "{{hc034EffectiveCheckInOnUtc}}", "evidence": "Unknown case evidence", "reason": "Unknown case must be private" }
+}
+assert {
+  res.status: eq 404
+  res.body.code: eq CareHomes.CheckInDispute.NotFound
+}

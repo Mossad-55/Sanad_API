@@ -1,0 +1,24 @@
+meta {
+  name: 83-hc034-family-dispute-wrong-family
+  type: http
+  seq: 83
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034SharedBookingId}}/check-in-dispute
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{hc034OtherFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "reason": "Wrong family must not learn booking state." }
+}
+assert {
+  res.status: eq 404
+  res.body.code: eq CareHomes.CheckInDispute.NotFound
+}

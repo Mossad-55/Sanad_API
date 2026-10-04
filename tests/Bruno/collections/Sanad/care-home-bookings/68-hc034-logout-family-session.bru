@@ -1,0 +1,19 @@
+meta {
+  name: 68-hc034-logout-family-session
+  type: http
+  seq: 68
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+headers {
+  X-Device-Session-Id: {{careHomeFamilyDeviceSessionId}}
+}
+assert {
+  res.status: eq 204
+}

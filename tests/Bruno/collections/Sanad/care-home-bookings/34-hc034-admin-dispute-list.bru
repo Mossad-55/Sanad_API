@@ -1,0 +1,24 @@
+meta {
+  name: 34-hc034-admin-dispute-list
+  type: http
+  seq: 39
+}
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes/check-in-disputes
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body: isNotEmpty
+}
+script:post-response {
+  const items = Array.isArray(res.body) ? res.body : (res.body.items ?? res.body.data ?? []);
+  const expectedBookingId = bru.getVar("hc034UnconfirmedBookingId") ?? bru.getEnvVar("hc034UnconfirmedBookingId");
+  const item = items.find(x => String(x.bookingId ?? x.BookingId) === String(expectedBookingId));
+  if (!item) throw new Error("HC-034 checkout without Family confirmation did not produce a visible dispute case.");
+  bru.setVar("hc034CaseId", item.id ?? item.Id);
+}

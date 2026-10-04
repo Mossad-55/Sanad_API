@@ -1,0 +1,29 @@
+meta {
+  name: 01-list-family
+  type: http
+  seq: 1
+}
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const items = Array.isArray(res.body) ? res.body : (res.body.items ?? res.body.data ?? []);
+  const first = items[0];
+  const rawId = first && (first.id ?? first.Id);
+  const id = rawId && typeof rawId === "object" ? (rawId.value ?? rawId.Value) : rawId;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? ""))) {
+    throw new Error("Family booking list did not return a newest booking GUID.");
+  }
+  bru.setVar("careHomeBookingId", id);
+  for (const item of items.slice(0, 5)) {
+    console.log("HC032 recent family booking ID/status/payment:", item.id ?? item.Id, item.status ?? item.Status, item.paymentStatus ?? item.PaymentStatus);
+  }
+}

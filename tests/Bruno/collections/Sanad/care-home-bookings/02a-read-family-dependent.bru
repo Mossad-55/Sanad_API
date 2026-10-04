@@ -1,0 +1,44 @@
+meta {
+  name: 02a-read-family-dependent
+  type: http
+  seq: 3
+}
+get {
+  url: {{baseUrl}}/api/v1/family/dependents
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body: isArray
+}
+script:post-response {
+  const items = Array.isArray(res.body) ? res.body : (res.body.items ?? res.body.data ?? []);
+  const expectedId = bru.getVar("photoDependentId");
+  const dependent = expectedId
+    ? items.find(item => {
+        const value = item && (item.id ?? item.elderlyId ?? item.dependentId);
+        const id = value && typeof value === "object" ? (value.value ?? value.Value) : value;
+        return String(id ?? "").toLowerCase() === String(expectedId).toLowerCase();
+      })
+    : items[0];
+  const rawId = dependent && (dependent.id ?? dependent.elderlyId ?? dependent.dependentId);
+  const id = rawId && typeof rawId === "object" ? (rawId.value ?? rawId.Value) : rawId;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id ?? ""))) {
+    throw new Error("No eligible Family dependent GUID was returned; check the disposable fixture and dependent ID response shape.");
+  }
+  bru.setVar("careHomeElderlyId", id);
+  bru.setVar("careHomeConcurrentElderlyA", id);
+  const second = items.find(item => {
+    const value = item && (item.id ?? item.elderlyId ?? item.dependentId);
+    const secondId = value && typeof value === "object" ? (value.value ?? value.Value) : value;
+    return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(secondId ?? "")) && String(secondId).toLowerCase() !== String(id).toLowerCase();
+  });
+  if (second) {
+    const value = second.id ?? second.elderlyId ?? second.dependentId;
+    bru.setVar("careHomeConcurrentElderlyB", typeof value === "object" ? (value.value ?? value.Value) : value);
+  }
+}
