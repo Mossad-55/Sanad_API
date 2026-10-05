@@ -1,0 +1,19 @@
+meta {
+  name: 65-hc034-owner-logout-current-session
+  type: http
+  seq: 65
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  X-Device-Session-Id: {{careHomeOwnerDeviceSessionId}}
+}
+assert {
+  res.status: eq 204
+}

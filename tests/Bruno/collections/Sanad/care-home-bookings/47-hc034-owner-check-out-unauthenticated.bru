@@ -1,0 +1,13 @@
+meta {
+  name: 47-hc034-owner-check-out-unauthenticated
+  type: http
+  seq: 52
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034SharedBookingId}}/check-out
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 401
+}

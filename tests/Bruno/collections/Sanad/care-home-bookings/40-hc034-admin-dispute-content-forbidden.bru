@@ -1,0 +1,16 @@
+meta {
+  name: 40-hc034-admin-dispute-content-forbidden
+  type: http
+  seq: 45
+}
+get {
+  url: {{baseUrl}}/api/v1/admin/care-homes/check-in-disputes
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{adminCareHomesContentJwt}}
+}
+assert {
+  res.status: eq 403
+}

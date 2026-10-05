@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Payments;
+using Sanad.Modules.CareHomes.Application.Bookings;
 
 namespace Sanad.API.Controllers;
 
@@ -95,6 +96,16 @@ public sealed class PaymobWebhookController : ControllerBase
         string currency = obj.TryGetProperty("currency", out JsonElement currencyElement)
             ? currencyElement.GetString() ?? string.Empty
             : string.Empty;
+
+        if (merchantReference.StartsWith("chb_", StringComparison.Ordinal))
+        {
+            var careHomeResult = await _sender.Send(
+                new ConfirmCareHomePaymentCommand(merchantReference, transactionId, amountCents, success, pending, DateTime.UtcNow),
+                cancellationToken);
+            if (!careHomeResult.IsSuccess && careHomeResult.Error.Code is not "CareHomes.Bookings.NotFound")
+                return careHomeResult.Error.Code == "Paymob.AmountMismatch" ? BadRequest() : careHomeResult.Error.Code == "CareHomes.Bookings.PaymentConflict" ? Conflict() : StatusCode(StatusCodes.Status500InternalServerError);
+            return Ok();
+        }
 
         if (merchantReference.StartsWith("sub_", StringComparison.Ordinal))
         {

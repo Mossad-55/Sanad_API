@@ -1,0 +1,29 @@
+meta {
+  name: 04-detail-family
+  type: http
+  seq: 7
+}
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const totalAmount = Number(res.body.totalAmount ?? res.body.TotalAmount);
+  if (!Number.isFinite(totalAmount) || totalAmount <= 0) throw new Error("Booking detail did not return a positive total amount.");
+  if (!bru.getVar("careHomeTransactionId")) bru.setVar("careHomeTransactionId", String(Date.now()));
+  bru.setVar("careHomeAmountCents", String(Math.round(totalAmount * 100)));
+  const start = new Date(res.body.startDate + "T00:00:00Z");
+  const end = new Date(res.body.endDate + "T00:00:00Z");
+  const expected = new Date(start); expected.setUTCMonth(expected.getUTCMonth() + 1);
+  if (end.getTime() !== expected.getTime()) throw new Error("Care-home booking is not one calendar month.");
+  if (res.body.totalAmount <= res.body.baseAmount) throw new Error("Fee/tax price snapshot missing.");
+  if (!res.body.holdUntilUtc) throw new Error("Checkout hold missing.");
+  console.log("HC032 unpaid hold booking/deadline:", bru.getVar("careHomeBookingId"), res.body.holdUntilUtc);
+}

@@ -4,6 +4,7 @@ using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.UnitTests.Finance;
 
 namespace Sanad.UnitTests.Families.Subscriptions;
 
@@ -26,7 +27,7 @@ public sealed class SubscriptionQuoteTests
         await db.SaveChangesAsync();
         int beforeSubscriptions = await db.FamilySubscriptions.CountAsync();
 
-        var result = await new CreateSubscriptionQuoteQueryHandler(db).Handle(
+        var result = await new CreateSubscriptionQuoteQueryHandler(db, new FixedPlatformChargeRules(0m, 15m)).Handle(
             new CreateSubscriptionQuoteCommand(owner, plan.Id, " save10 ", now), default);
 
         Assert.True(result.IsSuccess);
@@ -56,7 +57,7 @@ public sealed class SubscriptionQuoteTests
         db.SubscriptionTaxRules.Add(SubscriptionTaxRule.Create(0m, 1, now, now));
         await db.SaveChangesAsync();
 
-        var result = await new CreateSubscriptionQuoteQueryHandler(db).Handle(
+        var result = await new CreateSubscriptionQuoteQueryHandler(db, new MissingPlatformChargeRules()).Handle(
             new CreateSubscriptionQuoteCommand(otherUser, plan.Id, null, now), default);
 
         Assert.False(result.IsSuccess);
@@ -76,9 +77,9 @@ public sealed class SubscriptionQuoteTests
         db.SubscriptionTaxRules.Add(SubscriptionTaxRule.Create(0m, 1, now, now));
         await db.SaveChangesAsync();
 
-        var unavailableResult = await new CreateSubscriptionQuoteQueryHandler(db).Handle(
+        var unavailableResult = await new CreateSubscriptionQuoteQueryHandler(db, new FixedPlatformChargeRules(0m, 0m)).Handle(
             new CreateSubscriptionQuoteCommand(owner, unavailable.Id, null, now), default);
-        var missingCouponResult = await new CreateSubscriptionQuoteQueryHandler(db).Handle(
+        var missingCouponResult = await new CreateSubscriptionQuoteQueryHandler(db, new FixedPlatformChargeRules(0m, 0m)).Handle(
             new CreateSubscriptionQuoteCommand(owner, unavailable.Id, "MISSING", now), default);
 
         Assert.False(unavailableResult.IsSuccess);
@@ -104,7 +105,7 @@ public sealed class SubscriptionQuoteTests
         db.SubscriptionTaxRules.Add(SubscriptionTaxRule.Create(0m, 1, now.AddDays(-1), now.AddDays(-1)));
         await db.SaveChangesAsync();
 
-        var result = await new CreateSubscriptionQuoteQueryHandler(db).Handle(
+        var result = await new CreateSubscriptionQuoteQueryHandler(db, new FixedPlatformChargeRules(0m, 0m)).Handle(
             new CreateSubscriptionQuoteCommand(owner, plan.Id, "EXPIRED", now), default);
 
         Assert.False(result.IsSuccess);
@@ -125,7 +126,7 @@ public sealed class SubscriptionQuoteTests
             15m, 1, now.AddHours(1), now.AddHours(-1)));
         await db.SaveChangesAsync();
 
-        var result = await new CreateSubscriptionQuoteQueryHandler(db).Handle(
+        var result = await new CreateSubscriptionQuoteQueryHandler(db, new MissingPlatformChargeRules()).Handle(
             new CreateSubscriptionQuoteCommand(owner, plan.Id, null, now), default);
 
         Assert.False(result.IsSuccess);

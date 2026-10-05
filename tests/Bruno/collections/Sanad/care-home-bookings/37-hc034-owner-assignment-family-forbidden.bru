@@ -1,0 +1,22 @@
+meta {
+  name: 37-hc034-owner-assignment-family-forbidden
+  type: http
+  seq: 42
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034SharedBookingId}}/assignment
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "roomId": "{{hc034SharedRoomId}}", "bedId": "{{hc034SharedBedId}}" }
+}
+assert {
+  res.status: eq 403
+}

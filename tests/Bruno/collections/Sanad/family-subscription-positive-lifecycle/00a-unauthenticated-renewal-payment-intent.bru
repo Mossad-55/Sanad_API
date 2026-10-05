@@ -1,0 +1,31 @@
+meta {
+  name: 00a-unauthenticated-renewal-payment-intent
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/renewal/payment-intent
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "method": 2,
+    "billing": {
+      "firstName": "Unauthenticated",
+      "lastName": "Renewal",
+      "email": "unauthenticated@test.sanad.local",
+      "phoneNumber": "+201000000099"
+    }
+  }
+}
+
+assert {
+  res.status: eq 401
+}

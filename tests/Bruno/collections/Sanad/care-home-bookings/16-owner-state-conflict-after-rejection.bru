@@ -1,0 +1,23 @@
+meta {
+  name: 16-owner-state-conflict-after-rejection
+  type: http
+  seq: 19
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/decision
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "accept": true, "reason": null }
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq "CareHomes.Bookings.InvalidState"
+}

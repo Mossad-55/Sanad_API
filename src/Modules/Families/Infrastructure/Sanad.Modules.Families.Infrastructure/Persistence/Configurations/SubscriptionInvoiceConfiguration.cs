@@ -21,7 +21,10 @@ public sealed class SubscriptionInvoiceConfiguration : IEntityTypeConfiguration<
         builder.Property(x => x.PlanVersion).HasColumnName("plan_version").IsRequired();
         builder.Property(x => x.BasePrice).HasColumnName("base_price").HasPrecision(18, 2).IsRequired();
         builder.Property(x => x.DiscountAmount).HasColumnName("discount_amount").HasPrecision(18, 2).IsRequired();
+        builder.Property(x => x.PlatformFeeRatePercentage).HasColumnName("platform_fee_rate_percentage").HasPrecision(5, 2);
+        builder.Property(x => x.PlatformFeeAmount).HasColumnName("platform_fee_amount").HasPrecision(18, 2);
         builder.Property(x => x.TaxAmount).HasColumnName("tax_amount").HasPrecision(18, 2).IsRequired();
+        builder.Property(x => x.PlatformChargeRuleVersion).HasColumnName("platform_charge_rule_version");
         builder.Property(x => x.TotalPayable).HasColumnName("total_payable").HasPrecision(18, 2).IsRequired();
         builder.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
         builder.Property(x => x.PeriodStartsOnUtc).HasColumnName("period_starts_on_utc").IsRequired();

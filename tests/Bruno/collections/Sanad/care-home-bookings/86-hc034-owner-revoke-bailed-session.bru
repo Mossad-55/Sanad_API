@@ -1,0 +1,18 @@
+meta {
+  name: 86-hc034-owner-revoke-bailed-session
+  type: http
+  seq: 86
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/auth/sessions/{{hc034OwnerBailedSessionId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

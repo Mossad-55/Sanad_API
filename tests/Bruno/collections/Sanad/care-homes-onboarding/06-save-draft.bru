@@ -10,6 +10,10 @@ put {
   auth: bearer
 }
 
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:55819" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care homes onboarding mutations require the guarded main-worktree Development API.");
+}
+
 headers {
   Content-Type: application/json
 }

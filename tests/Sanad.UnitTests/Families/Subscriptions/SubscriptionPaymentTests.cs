@@ -11,6 +11,7 @@ using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Payments;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.UnitTests.Finance;
 
 namespace Sanad.UnitTests.Families.Subscriptions;
 
@@ -23,7 +24,7 @@ public sealed class SubscriptionPaymentTests
         var paymob = new FakePaymobClient();
         var now = DateTime.UtcNow;
 
-        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
+        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId,
                 plan.Id,
@@ -35,11 +36,11 @@ public sealed class SubscriptionPaymentTests
 
         Assert.True(result.IsSuccess);
         Assert.StartsWith("sub_", result.Value.MerchantReference);
-        Assert.Equal(299m, result.Value.Amount);
+        Assert.Equal(343.85m, result.Value.Amount);
         Assert.Equal("EGP", result.Value.Currency);
         Assert.False(result.Value.RecurringRenewalSupported);
         Assert.Equal(SubscriptionPaymentMethod.Card, paymob.LastInput!.Method);
-        Assert.Equal(299m, paymob.LastInput.Amount);
+        Assert.Equal(343.85m, paymob.LastInput.Amount);
         Assert.Equal("EGP", paymob.LastInput.Currency);
         Assert.Equal(result.Value.MerchantReference, paymob.LastInput.MerchantReference);
 
@@ -54,7 +55,7 @@ public sealed class SubscriptionPaymentTests
     {
         await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
         var paymob = new FakePaymobClient();
-        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
+        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Wallet, Billing(), DateTime.UtcNow),
             default);
@@ -65,7 +66,7 @@ public sealed class SubscriptionPaymentTests
 
         db.FamilySubscriptions.Add(FamilySubscription.Create(family.Id, plan));
         await db.SaveChangesAsync();
-        result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
+        result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
             default);
@@ -80,7 +81,7 @@ public sealed class SubscriptionPaymentTests
         await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
         var paymob = new FakePaymobClient();
 
-        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
+        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 UserId.New(), plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
             default);
@@ -148,7 +149,7 @@ public sealed class SubscriptionPaymentTests
         await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
         var paymob = new FakePaymobClient();
 
-        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
+        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId,
                 plan.Id,
@@ -231,29 +232,31 @@ public sealed class SubscriptionPaymentTests
     {
         await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
         var paymob = new FakePaymobClient();
-        var intent = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
+        var intent = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
             default);
         string reference = intent.Value.MerchantReference;
+        long expectedAmountCents = (long)(intent.Value.Amount * 100m);
 
         var pending = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
-            new ConfirmSubscriptionPaymentCommand(reference, 10, 29900, "EGP", false, true, DateTime.UtcNow), default);
+            new ConfirmSubscriptionPaymentCommand(reference, 10, expectedAmountCents, "EGP", false, true, DateTime.UtcNow), default);
         Assert.Equal("Pending", pending.Value.Outcome);
         Assert.Empty(db.FamilySubscriptions);
 
         var failed = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
-            new ConfirmSubscriptionPaymentCommand(reference, 11, 29900, "EGP", false, false, DateTime.UtcNow), default);
+            new ConfirmSubscriptionPaymentCommand(reference, 11, expectedAmountCents, "EGP", false, false, DateTime.UtcNow), default);
         Assert.Equal("Failed", failed.Value.Outcome);
         Assert.Empty(db.FamilySubscriptions);
 
-        var secondIntent = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
+        var secondIntent = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow), default);
+        long secondExpectedAmountCents = (long)(secondIntent.Value.Amount * 100m);
         var paid = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
-            new ConfirmSubscriptionPaymentCommand(secondIntent.Value.MerchantReference, 12, 29900, "EGP", true, false, DateTime.UtcNow), default);
+            new ConfirmSubscriptionPaymentCommand(secondIntent.Value.MerchantReference, 12, secondExpectedAmountCents, "EGP", true, false, DateTime.UtcNow), default);
         var duplicate = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
-            new ConfirmSubscriptionPaymentCommand(secondIntent.Value.MerchantReference, 13, 29900, "EGP", true, false, DateTime.UtcNow), default);
+            new ConfirmSubscriptionPaymentCommand(secondIntent.Value.MerchantReference, 13, secondExpectedAmountCents, "EGP", true, false, DateTime.UtcNow), default);
 
         Assert.Equal("Paid", paid.Value.Outcome);
         Assert.Equal("AlreadyProcessed", duplicate.Value.Outcome);
@@ -266,7 +269,7 @@ public sealed class SubscriptionPaymentTests
     {
         await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
         var paymob = new FakePaymobClient();
-        var intent = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob).Handle(
+        var intent = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow), default);
 
@@ -292,13 +295,13 @@ public sealed class SubscriptionPaymentTests
         await db.SaveChangesAsync();
         var paymob = new FakePaymobClient();
 
-        var early = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob).Handle(
+        var early = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionRenewalPaymentIntentCommand(
                 family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), created.AddDays(15)), default);
         Assert.False(early.IsSuccess);
         Assert.Equal("Subscriptions.Renewal.NotDue", early.Error.Code);
 
-        var result = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob).Handle(
+        var result = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionRenewalPaymentIntentCommand(
                 family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), created.AddMonths(1)), default);
 
@@ -321,20 +324,21 @@ public sealed class SubscriptionPaymentTests
         var paymob = new FakePaymobClient();
         DateTime failureTime = periodEnd.AddMinutes(1);
 
-        var first = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob).Handle(
+        var first = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionRenewalPaymentIntentCommand(
                 family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), failureTime), default);
         var failed = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
-            new ConfirmSubscriptionPaymentCommand(first.Value.MerchantReference, 31, 29900, "EGP", false, false, failureTime), default);
+            new ConfirmSubscriptionPaymentCommand(first.Value.MerchantReference, 31, (long)(first.Value.Amount * 100m), "EGP", false, false, failureTime), default);
 
         Assert.Equal("Failed", failed.Value.Outcome);
         Assert.True(subscription.IsWithinRenewalGrace(periodEnd.AddDays(3)));
 
-        var retry = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob).Handle(
+        var retry = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreateSubscriptionRenewalPaymentIntentCommand(
                 family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), periodEnd.AddDays(3)), default);
+        long retryAmountCents = (long)(retry.Value.Amount * 100m);
         var paid = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
-            new ConfirmSubscriptionPaymentCommand(retry.Value.MerchantReference, 32, 29900, "EGP", true, false, periodEnd.AddDays(3)), default);
+            new ConfirmSubscriptionPaymentCommand(retry.Value.MerchantReference, 32, retryAmountCents, "EGP", true, false, periodEnd.AddDays(3)), default);
 
         Assert.Equal("Paid", paid.Value.Outcome);
         Assert.Equal(periodEnd.AddMonths(1), subscription.CurrentPeriodEndsOnUtc);

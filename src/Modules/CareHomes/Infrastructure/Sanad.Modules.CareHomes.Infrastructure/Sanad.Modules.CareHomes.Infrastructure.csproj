@@ -18,5 +18,6 @@
     <ProjectReference Include="..\..\..\..\BuildingBlocks\Domain\Sanad.BuildingBlocks.Domain\Sanad.BuildingBlocks.Domain.csproj" />
     <ProjectReference Include="..\..\Application\Sanad.Modules.CareHomes.Application\Sanad.Modules.CareHomes.Application.csproj" />
     <ProjectReference Include="..\..\Domain\Sanad.Modules.CareHomes.Domain\Sanad.Modules.CareHomes.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Families\Application\Sanad.Modules.Families.Application\Sanad.Modules.Families.Application.csproj" />
   </ItemGroup>
 </Project>

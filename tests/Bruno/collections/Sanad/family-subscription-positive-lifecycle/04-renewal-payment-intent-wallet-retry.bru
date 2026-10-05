@@ -1,0 +1,58 @@
+meta {
+  name: 04-renewal-payment-intent-wallet-retry
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/renewal/payment-intent
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{positiveRenewalDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positiveRenewalJwt}}
+}
+
+body:json {
+  {
+    "method": 2,
+    "billing": {
+      "firstName": "Subscription",
+      "lastName": "Renewal Retry",
+      "email": "{{renewalEmail}}",
+      "phoneNumber": "{{renewalPhone}}"
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const body = res.body;
+  if (!body || !(body.paymentAttemptId ?? body.PaymentAttemptId) || !(body.merchantReference ?? body.MerchantReference) || Number(body.amount ?? body.Amount) <= 299 || (body.currency ?? body.Currency) !== "EGP") {
+    throw new Error("A renewal in grace must allow a distinct retry payment intent.");
+  }
+  const amountCents = Math.round(Number(body.amount ?? body.Amount) * 100);
+  const createdAt = "2026-01-01T00:00:02Z";
+  const fixtureRunId = String(bru.getEnvVar("fixtureRunId") ?? "");
+  const fixtureHmacSecret = String(bru.getEnvVar("paymobFixtureHmacSecret") ?? "");
+  if (!fixtureRunId || !fixtureHmacSecret) throw new Error("The guarded local HMAC fixture variables are required.");
+  const transactionId = String(925000 + (parseInt(fixtureRunId.slice(0, 6), 36) % 7000));
+  const orderId = String(825000 + (parseInt(fixtureRunId.slice(0, 6), 36) % 7000));
+  const hmacInput = [amountCents, createdAt, "EGP", "false", "false", transactionId, "1", "false", "false", "true", "false", "true", "false", orderId, "1", "false", "", "", "wallet", "true"].join("");
+  const CryptoJS = require("crypto-js");
+  bru.setVar("positiveRenewalMerchantReference", body.merchantReference ?? body.MerchantReference);
+  bru.setVar("positiveRenewalAmountCents", String(amountCents));
+  bru.setVar("positiveRenewalCreatedAt", createdAt);
+  bru.setVar("positiveRenewalTransactionId", transactionId);
+  bru.setVar("positiveRenewalOrderId", orderId);
+  bru.setVar("positiveRenewalHmac", CryptoJS.HmacSHA512(hmacInput, fixtureHmacSecret).toString(CryptoJS.enc.Hex));
+}

@@ -122,12 +122,13 @@ Subscriptions.Coupon.NotFound` for an unknown coupon.
 Each coupon is one-time and globally non-stackable; redemption and consumption are a later slice.
 Coupons are configuration records, so deleting one does not rewrite existing transactions.
 
-## VAT / tax-rule configuration
+## Legacy VAT / tax-rule adapter
 
-Subscription plan prices are stored and exposed as tax-exclusive EGP amounts. VAT/tax
-configuration is now available as a Super Admin-only configuration surface. These routes
-require a normal JWT with the `SubscriptionPlanAdmin` policy; Content Admin, Support Admin,
-family, and caregiver tokens receive `403`, while unauthenticated requests receive `401`.
+Subscription plan prices are stored and exposed as tax-exclusive EGP amounts. Shared
+platform-fee and tax configuration now lives in the Finance surface documented in
+[`docs/admin/finance-platform-charges.md`](finance-platform-charges.md). The routes below
+remain a compatibility adapter and retain the existing SuperAdmin-only
+`SubscriptionPlanAdmin` policy; SupportAdmin and ContentAdmin remain denied.
 
 ```text
 POST /api/v1/admin/subscriptions/tax-rules
@@ -145,20 +146,20 @@ Create body:
 }
 ```
 
-The create response is `201` with the new rule UUID. `ratePercentage` is inclusive from
+The create response is `201` with the shared rule UUID. `ratePercentage` is inclusive from
 `0` through `100` and is rounded to two decimals; `version` must be positive and
-`effectiveOnUtc` must be UTC. A version is unique (`409
-Subscriptions.Tax.DuplicateVersion`). Creating a new rule deactivates the prior active
-rule while retaining it in history. A concurrent active-rule change returns `409
-Subscriptions.Tax.ActiveConflict`; invalid values return `400 Subscriptions.Tax.Invalid`.
+`effectiveOnUtc` must be UTC. Shared Finance configuration must already exist; the adapter
+preserves its current platform-fee percentage and updates the shared tax percentage. Use the
+Finance route for new configuration and version management.
 
-The current route returns `200` with the active rule, or JSON `null` when no rule exists.
-The history route returns `200` with all rules ordered by descending `version`. Rule
-objects contain `id`, `ratePercentage`, `version`, `effectiveOnUtc`, `createdOnUtc`, and
-`isActive`.
+The current route returns `200` with the effective shared rule, or JSON `null` when no rule
+exists. The history route returns `200` with shared history plus preserved legacy rows,
+ordered by descending `version`. Shared rule objects include the platform-fee fields and are
+marked `isShared: true`; old tax records remain historical data.
 
-Tax-rule configuration is consumed by the family-owner subscription quote and
-initial payment-intent routes when a rule is active and effective. The payment
+The shared rule is consumed by the family-owner subscription quote and
+initial payment-intent routes when a rule is active and effective, and by the caregiver
+pricing/booking consumers. The payment
 intent reruns the quote server-side and returns a provider client secret; the
 Paymob callback settles the subscription-specific `sub_` reference and
 activates the plan only after a matching successful payment. Subscription

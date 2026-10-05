@@ -1,0 +1,16 @@
+meta {
+  name: 12-owner-list-unauthorized
+  type: http
+  seq: 15
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 403
+}

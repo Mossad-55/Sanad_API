@@ -1,0 +1,60 @@
+meta {
+  name: 02-enrollment-payment-intent-wallet
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/subscriptions/payment-intent
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+  X-Device-Session-Id: {{positiveEnrollmentDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positiveEnrollmentJwt}}
+}
+
+body:json {
+  {
+    "planVersionId": "{{positiveLifecycleUpgradePlanId}}",
+    "couponCode": null,
+    "method": 2,
+    "billing": {
+      "firstName": "Subscription",
+      "lastName": "Free",
+      "email": "{{subscriptionFreeEmail}}",
+      "phoneNumber": "{{subscriptionFreePhone}}"
+    }
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const body = res.body;
+  if (!body || !(body.paymentAttemptId ?? body.PaymentAttemptId) || !(body.merchantReference ?? body.MerchantReference) || Number(body.amount ?? body.Amount) <= 499 || (body.currency ?? body.Currency) !== "EGP" || !(body.clientSecret ?? body.ClientSecret)) {
+    throw new Error("Enrollment intent must persist a positive EGP total above the EGP 499 base price, including the active shared-charge snapshot.");
+  }
+  bru.setVar("positiveEnrollmentMerchantReference", body.merchantReference ?? body.MerchantReference);
+  const amountCents = Math.round(Number(body.amount ?? body.Amount) * 100);
+  const createdAt = "2026-01-01T00:00:00Z";
+  const fixtureRunId = String(bru.getEnvVar("fixtureRunId") ?? "");
+  const fixtureHmacSecret = String(bru.getEnvVar("paymobFixtureHmacSecret") ?? "");
+  if (!fixtureRunId || !fixtureHmacSecret) throw new Error("The guarded local HMAC fixture variables are required.");
+  const transactionId = String(910000 + (parseInt(fixtureRunId.slice(0, 6), 36) % 7000));
+  const orderId = String(810000 + (parseInt(fixtureRunId.slice(0, 6), 36) % 7000));
+  const hmacInput = [amountCents, createdAt, "EGP", "false", "false", transactionId, "1", "false", "false", "true", "false", "true", "false", orderId, "1", "false", "", "", "wallet", "true"].join("");
+  const CryptoJS = require("crypto-js");
+  bru.setVar("positiveEnrollmentAmountCents", String(amountCents));
+  bru.setVar("positiveEnrollmentCreatedAt", createdAt);
+  bru.setVar("positiveEnrollmentTransactionId", transactionId);
+  bru.setVar("positiveEnrollmentOrderId", orderId);
+  bru.setVar("positiveEnrollmentHmac", CryptoJS.HmacSHA512(hmacInput, fixtureHmacSecret).toString(CryptoJS.enc.Hex));
+}

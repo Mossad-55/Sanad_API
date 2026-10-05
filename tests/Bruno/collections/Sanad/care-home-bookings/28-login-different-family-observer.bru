@@ -1,0 +1,22 @@
+meta {
+  name: 28-login-different-family-observer
+  type: http
+  seq: 33
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"email":"{{renewalEmail}}","password":"{{familyOwnerPassword}}","deviceName":"hc032-cross-family-observer","devicePlatform":3,"appVersion":"1.0.0"}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("careHomeFamilyJwt", res.body.accessToken);
+}

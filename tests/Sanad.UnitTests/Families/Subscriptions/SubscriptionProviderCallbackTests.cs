@@ -408,6 +408,33 @@ public sealed class SubscriptionProviderCallbackTests
     }
 
     [Fact]
+    public async Task Renewal_callback_uses_stored_period_gross_and_creates_attempt_from_that_snapshot()
+    {
+        await using FamiliesDbContext db = CreateDb(out FamilySubscription subscription, out _, succeededInitial: false);
+        DateTime periodEnd = subscription.CurrentPeriodEndsOnUtc;
+        subscription.AssociatePaymobSubscription("provider-sub-stored-gross", "active", null);
+        subscription.SetCurrentPeriodSettlement(350m, 10m);
+        await db.SaveChangesAsync();
+
+        var handler = new HandlePaymobSubscriptionCallbackCommandHandler(db);
+        var baseAmount = await handler.Handle(new HandlePaymobSubscriptionCallbackCommand(
+            "Successful Transaction", "provider-sub-stored-gross", null, 29900, "active", null,
+            periodEnd.AddHours(1), "stored-gross-mismatch"), default);
+        Assert.False(baseAmount.IsSuccess);
+        Assert.Equal("Paymob.AmountMismatch", baseAmount.Error.Code);
+
+        var result = await handler.Handle(new HandlePaymobSubscriptionCallbackCommand(
+            "Successful Transaction", "provider-sub-stored-gross", null, 35000, "active", null,
+            periodEnd.AddHours(1), "stored-gross-success"), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Paid", result.Value.Outcome);
+        var renewal = Assert.Single(db.SubscriptionPaymentAttempts.Where(x => x.IsRenewal));
+        Assert.Equal(350m, renewal.TotalPayable);
+        Assert.Equal(350m, subscription.CurrentPeriodGross);
+    }
+
+    [Fact]
     public async Task Older_valid_callback_after_newer_callback_does_not_mutate_subscription_state()
     {
         await using FamiliesDbContext db = CreateDb(out FamilySubscription subscription, out _, succeededInitial: false);
@@ -701,9 +728,11 @@ public sealed class SubscriptionProviderCallbackTests
         attempt = SubscriptionPaymentAttempt.Create(
             family.Id, plan, plan.Price, 0m, 0m, plan.Price, 0m, 0m, plan.Price,
             null, SubscriptionPaymentMethod.Card, created);
+        attempt.CapturePlatformCharge(0m, 0m, 1);
         if (succeededInitial)
             attempt.TryMarkSucceeded("initial-transaction", created.AddMinutes(1));
         attempt.LinkSubscription(subscription.Id);
+        subscription.SetCurrentPeriodChargeSnapshot(attempt);
         db.Families.Add(family);
         db.SubscriptionPlanVersions.Add(plan);
         db.FamilySubscriptions.Add(subscription);

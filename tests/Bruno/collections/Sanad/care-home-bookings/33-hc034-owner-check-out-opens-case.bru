@@ -1,0 +1,17 @@
+meta {
+  name: 33-hc034-owner-check-out-opens-case
+  type: http
+  seq: 38
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034UnconfirmedBookingId}}/check-out
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.actualCheckOutOnUtc: isNotEmpty
+}

@@ -10,6 +10,7 @@ using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.UnitTests.Finance;
 using Xunit;
 
 namespace Sanad.UnitTests.Families;
@@ -92,7 +93,8 @@ public sealed class BookingPaymentIntentTests
     {
         var checkout = new CreateBookingCheckoutCommandHandler(
             dbContext,
-            new FakePricing(BookingCaregiverType.Medical, 500m));
+            new FakePricing(BookingCaregiverType.Medical, 500m),
+            new FixedPlatformChargeRules(15m, 0m));
 
         var checkoutResult = await checkout.Handle(
             new CreateBookingCheckoutCommand(

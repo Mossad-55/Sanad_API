@@ -7,6 +7,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.Modules.Finance.Application;
 
 namespace Sanad.Modules.Caregivers.Application.Discovery;
 
@@ -17,6 +18,9 @@ public sealed record BookingQuoteResponse(
     decimal BaseCaregiverFee,
     decimal PlatformFeePercentage,
     decimal PlatformFeeAmount,
+    decimal TaxRatePercentage,
+    decimal TaxAmount,
+    int PlatformChargeRuleVersion,
     decimal TotalPayableAmount,
     string Currency);
 
@@ -38,10 +42,12 @@ public sealed class CalculateBookingQuoteQueryValidator : AbstractValidator<Calc
 public sealed class CalculateBookingQuoteQueryHandler : IQueryHandler<CalculateBookingQuoteQuery, BookingQuoteResponse>
 {
     private readonly ICaregiversDbContext _dbContext;
+    private readonly IPlatformChargeRuleReader _chargeRules;
 
-    public CalculateBookingQuoteQueryHandler(ICaregiversDbContext dbContext)
+    public CalculateBookingQuoteQueryHandler(ICaregiversDbContext dbContext, IPlatformChargeRuleReader chargeRules)
     {
         _dbContext = dbContext;
+        _chargeRules = chargeRules;
     }
 
     public async Task<Result<BookingQuoteResponse>> Handle(
@@ -62,11 +68,16 @@ public sealed class CalculateBookingQuoteQueryHandler : IQueryHandler<CalculateB
 
         try
         {
+            var charge = await _chargeRules.GetEffectiveAsync(DateTime.UtcNow, cancellationToken);
+            if (charge is null) throw new InvalidOperationException("Shared platform fee and tax configuration is not available.");
             BookingPriceSnapshot snapshot = BookingPricingService.CalculatePrice(
                 caregiver,
                 request.ShiftType,
                 request.StartTime,
-                request.EndTime);
+                request.EndTime,
+                charge.PlatformFeeRatePercentage,
+                charge.TaxRatePercentage,
+                charge.Version);
 
             var response = new BookingQuoteResponse(
                 caregiver.Id.Value,
@@ -75,6 +86,9 @@ public sealed class CalculateBookingQuoteQueryHandler : IQueryHandler<CalculateB
                 snapshot.BaseCaregiverFee,
                 snapshot.PlatformFeePercentage,
                 snapshot.PlatformFeeAmount,
+                snapshot.TaxRatePercentage,
+                snapshot.TaxAmount,
+                snapshot.PlatformChargeRuleVersion!.Value,
                 snapshot.TotalPayableAmount,
                 snapshot.Currency);
 

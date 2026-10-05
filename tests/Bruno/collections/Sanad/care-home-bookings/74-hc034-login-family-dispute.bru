@@ -1,0 +1,33 @@
+meta {
+  name: 74-hc034-login-family-dispute
+  type: http
+  seq: 74
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "email": "{{hc034OtherFamilyEmail}}",
+    "password": "{{hc034OtherFamilyPassword}}",
+    "deviceName": "hc034-family-dispute",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+assert {
+  res.status: eq 200
+  res.body.accessToken: isNotEmpty
+  res.body.deviceSessionId.value: isNotEmpty
+}
+script:post-response {
+  bru.setVar("hc034DisputeFamilyJwt", res.body.accessToken);
+  bru.setVar("hc034DisputeFamilySessionId", res.body.deviceSessionId.value);
+  bru.setVar("hc034OtherFamilyJwt", res.body.accessToken);
+}

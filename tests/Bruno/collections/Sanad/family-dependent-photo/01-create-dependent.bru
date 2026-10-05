@@ -6,7 +6,7 @@ meta {
 
 post {
   url: {{baseUrl}}/api/v1/family/dependents
-  body: multipart-form
+  body: multipartForm
   auth: bearer
 }
 
@@ -31,7 +31,8 @@ assert {
 }
 
 script:pre-request {
-  const phone = "+201" + String(Date.now()).slice(-9);
+  const configuredPhone = bru.getEnvVar("photoFixturePhone");
+  const phone = configuredPhone || ("+201" + String(Date.now()).slice(-9));
   bru.setVar("photoFixturePhone", phone);
 }
 
@@ -39,4 +40,5 @@ script:post-response {
   const id = res.body.id && (res.body.id.value || res.body.id);
   if (!id) throw new Error("Dependent response did not contain an ID");
   bru.setVar("photoDependentId", id);
+  bru.setVar("careHomeElderlyId", id);
 }

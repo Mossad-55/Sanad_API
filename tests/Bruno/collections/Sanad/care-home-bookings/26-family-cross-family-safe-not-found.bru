@@ -1,0 +1,16 @@
+meta {
+  name: 26-family-cross-family-safe-not-found
+  type: http
+  seq: 31
+}
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeOtherFamilyBookingId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 404
+}

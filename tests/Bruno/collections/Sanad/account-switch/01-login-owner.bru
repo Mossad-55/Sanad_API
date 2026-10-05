@@ -29,6 +29,13 @@ assert {
 }
 
 script:post-response {
+  if (res.status !== 200) {
+    const body = res.body ?? {};
+    console.log("Account-switch login diagnostic:", res.status, body.code ?? body.errorCode ?? body.title ?? body.detail ?? "<no response code>");
+    return;
+  }
   bru.setVar("jwt", res.body.accessToken);
-  bru.setVar("accountSwitchDeviceSessionId", res.body.deviceSessionId.value);
+  const rawSessionId = res.body.deviceSessionId && (res.body.deviceSessionId.value ?? res.body.deviceSessionId);
+  if (!rawSessionId) throw new Error("Login response did not contain the device-session ID.");
+  bru.setVar("accountSwitchDeviceSessionId", rawSessionId);
 }

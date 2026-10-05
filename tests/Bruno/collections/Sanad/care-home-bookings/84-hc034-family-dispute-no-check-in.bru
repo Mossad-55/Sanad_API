@@ -1,0 +1,24 @@
+meta {
+  name: 84-hc034-family-dispute-no-check-in
+  type: http
+  seq: 84
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034FamilyDisputeUnassignedBookingId}}/check-in-dispute
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{hc034DisputeFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "reason": "The facility has not recorded a check-in yet." }
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq CareHomes.CheckInDispute.InvalidState
+}

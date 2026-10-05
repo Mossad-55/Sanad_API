@@ -1,0 +1,31 @@
+meta {
+  name: 07a-invoice-detail
+  type: http
+  seq: 22
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/invoices/{{positiveEnrollmentInvoiceId}}
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{positiveEnrollmentDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positiveEnrollmentJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const invoice = res.body;
+  const expectedInvoiceId = bru.getVar("positiveEnrollmentInvoiceId");
+  if (!invoice || !expectedInvoiceId || (invoice.id ?? invoice.Id) !== expectedInvoiceId || !(invoice.invoiceNumber ?? invoice.InvoiceNumber) || Number(invoice.amount ?? invoice.Amount) <= 0 || Number(invoice.platformFeeAmount ?? invoice.PlatformFeeAmount) < 0 || Number(invoice.platformChargeRuleVersion ?? invoice.PlatformChargeRuleVersion) <= 0) {
+    throw new Error("Invoice detail must match the listed invoice and expose the immutable platform-charge snapshot.");
+  }
+}

@@ -1,0 +1,26 @@
+meta {
+  name: 60-hc034-concurrent-same-bed-b
+  type: http
+  seq: 64
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034ConcurrentBookingB}}/assignment
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "roomId": "{{hc034ConcurrentRoomId}}", "bedId": "{{hc034ConcurrentBedId}}" }
+}
+assert {
+  res.status: isNumber
+}
+script:post-response {
+  if (![200, 409].includes(res.status)) throw new Error(`Expected concurrent assignment HTTP 200 or 409; received ${res.status}.`);
+  console.log("HC-034 concurrent same-bed B result:", res.status);
+}

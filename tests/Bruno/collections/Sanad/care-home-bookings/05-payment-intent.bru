@@ -1,0 +1,51 @@
+meta {
+  name: 05-payment-intent
+  type: http
+  seq: 8
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}/payments/intent
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "method": 1,
+    "billing": {
+      "firstName": "Fixture",
+      "lastName": "Family",
+      "email": "{{familyOwnerEmail}}",
+      "phoneNumber": "+201000000000"
+    }
+  }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const merchantReference = res.body.merchantReference ?? res.body.MerchantReference;
+  const amountCents = String(bru.getVar("careHomeAmountCents") ?? "");
+  const transactionId = String(bru.getVar("careHomeTransactionId") ?? "");
+  const fixtureHmacSecret = String(bru.getEnvVar("fixtureHmacSecret") ?? "");
+  if (!merchantReference || !amountCents || !transactionId || !fixtureHmacSecret) {
+    throw new Error("Checkout amount, transaction ID, merchant reference, and fixture HMAC secret are required for signed callbacks.");
+  }
+  const CryptoJS = require("crypto-js");
+  const hmacFor = (amount, success, pending) => {
+    const hmacInput = [amount, "", "EGP", "", "", transactionId, "", "", "", "", "", "", "", "", "", String(pending), "", "", "", String(success)].join("");
+    return CryptoJS.HmacSHA512(hmacInput, fixtureHmacSecret).toString(CryptoJS.enc.Hex);
+  };
+  bru.setVar("careHomeMerchantReference", merchantReference);
+  bru.setVar("careHomeWebhookHmac", hmacFor(amountCents, true, false));
+  bru.setVar("careHomeMismatchHmac", hmacFor("1", true, false));
+  bru.setVar("careHomeFailureTransactionId", transactionId);
+  bru.setVar("careHomeFailureAmountCents", amountCents);
+  bru.setVar("careHomeFailureMerchantReference", merchantReference);
+  bru.setVar("careHomeFailureWebhookHmac", hmacFor(amountCents, false, false));
+}

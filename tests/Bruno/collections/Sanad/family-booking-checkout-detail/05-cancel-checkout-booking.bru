@@ -1,0 +1,30 @@
+meta {
+  name: 05-cancel-checkout-booking
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/{{familyCheckoutBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{familyBookingDeviceSessionId}}
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{familyBookingJwt}}
+}
+
+body:json {
+  {
+    "reason": "Bruno lifecycle gate"
+  }
+}
+
+assert {
+  res.status: eq 204
+}

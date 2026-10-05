@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
+using Sanad.Modules.Finance.Application;
 
 namespace Sanad.Modules.Families.Application.Subscriptions;
 
@@ -27,6 +28,9 @@ public sealed record SubscriptionQuoteResponse(
     decimal TaxableAmount,
     decimal TaxRatePercentage,
     decimal TaxAmount,
+    decimal PlatformFeeRatePercentage,
+    decimal PlatformFeeAmount,
+    int PlatformChargeRuleVersion,
     decimal TotalPayable,
     bool RecurringRenewalSupported);
 
@@ -44,7 +48,13 @@ public sealed class CreateSubscriptionQuoteQueryHandler
 
     private readonly IFamiliesDbContext _db;
 
-    public CreateSubscriptionQuoteQueryHandler(IFamiliesDbContext db) => _db = db;
+    private readonly IPlatformChargeRuleReader _chargeRules;
+
+    public CreateSubscriptionQuoteQueryHandler(IFamiliesDbContext db, IPlatformChargeRuleReader chargeRules)
+    {
+        _db = db;
+        _chargeRules = chargeRules;
+    }
 
     public async Task<Result<SubscriptionQuoteResponse>> Handle(
         CreateSubscriptionQuoteCommand request,
@@ -83,20 +93,16 @@ public sealed class CreateSubscriptionQuoteQueryHandler
             discountPercentage = coupon.DiscountPercentage;
         }
 
-        var taxRule = await _db.SubscriptionTaxRules
-            .AsNoTracking()
-            .SingleOrDefaultAsync(
-                item => item.IsActive && item.EffectiveOnUtc <= request.UtcNow,
-                cancellationToken);
-
-        if (taxRule is null)
+        var chargeRule = await _chargeRules.GetEffectiveAsync(request.UtcNow, cancellationToken);
+        if (chargeRule is null)
             return Result<SubscriptionQuoteResponse>.Failure(TaxNotConfigured);
 
         decimal basePrice = Money(plan.Price);
         decimal discountAmount = Money(basePrice * discountPercentage / 100m);
         decimal taxableAmount = Money(basePrice - discountAmount);
-        decimal taxAmount = Money(taxableAmount * taxRule.RatePercentage / 100m);
-        decimal totalPayable = Money(taxableAmount + taxAmount);
+        decimal platformFeeAmount = Money(taxableAmount * chargeRule.PlatformFeeRatePercentage / 100m);
+        decimal taxAmount = Money(taxableAmount * chargeRule.TaxRatePercentage / 100m);
+        decimal totalPayable = Money(taxableAmount + platformFeeAmount + taxAmount);
 
         return new SubscriptionQuoteResponse(
             plan.Id,
@@ -109,8 +115,11 @@ public sealed class CreateSubscriptionQuoteQueryHandler
             discountPercentage,
             discountAmount,
             taxableAmount,
-            Money(taxRule.RatePercentage),
+            Money(chargeRule.TaxRatePercentage),
             taxAmount,
+            Money(chargeRule.PlatformFeeRatePercentage),
+            platformFeeAmount,
+            chargeRule.Version,
             totalPayable,
             RecurringRenewalSupported: false);
     }

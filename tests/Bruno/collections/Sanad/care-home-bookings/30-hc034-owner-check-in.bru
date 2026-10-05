@@ -1,0 +1,17 @@
+meta {
+  name: 30-hc034-owner-check-in
+  type: http
+  seq: 35
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034SharedBookingId}}/check-in
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.actualCheckInOnUtc: isNotEmpty
+}

@@ -1,0 +1,28 @@
+meta {
+  name: 06c-switch-carehome-owner
+  type: http
+  seq: 9
+}
+post {
+  url: {{baseUrl}}/api/v1/account/switch
+  body: json
+  auth: bearer
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"accountType":8}
+}
+auth:bearer {
+  token: {{jwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.accountType: eq 8
+}
+script:post-response {
+  bru.setVar("careHomeOwnerJwt", bru.getVar("jwt"));
+  bru.setVar("inventoryOwnerJwt", bru.getVar("jwt"));
+  bru.setVar("inventoryRunSuffix", Date.now().toString());
+}

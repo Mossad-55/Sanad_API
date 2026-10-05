@@ -1,0 +1,27 @@
+meta {
+  name: 25-create-booking-suite-room
+  type: http
+  seq: 25
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/rooms
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"expectedVersion":{{inventoryVersion}},"roomTypeId":"{{inventoryPrivateRoomTypeId}}","roomNumber":"HC032-SUITE-{{inventoryRunSuffix}}"}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("inventoryVersion", res.body.version);
+  bru.setVar("careHomePrivateCapacityStartDate", "2027-06-01");
+  bru.setVar("careHomeCapacityStartDate", "2027-06-01");
+}

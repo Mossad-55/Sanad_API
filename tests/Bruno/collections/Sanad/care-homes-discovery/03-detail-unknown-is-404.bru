@@ -1,0 +1,20 @@
+meta {
+  name: 03-detail-unknown-is-404
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/discovery/00000000-0000-0000-0000-000000000000
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:55819" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care Homes discovery coverage requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 404
+  res.body.code: eq CareHomes.Discovery.NotFound
+}

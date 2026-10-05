@@ -1,0 +1,45 @@
+meta {
+  name: 04-renewal-payment-intent-wallet-failed-callback
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/payments/webhooks/paymob
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "obj": {
+      "amount_cents": {{positiveRenewalAmountCents}},
+      "created_at": "{{positiveRenewalCreatedAt}}",
+      "currency": "EGP",
+      "error_occured": true,
+      "has_parent_transaction": false,
+      "id": {{positiveRenewalTransactionId}},
+      "integration_id": 1,
+      "is_3d_secure": false,
+      "is_auth": false,
+      "is_capture": false,
+      "is_refunded": false,
+      "is_standalone_payment": true,
+      "is_voided": false,
+      "order": { "id": {{positiveRenewalOrderId}}, "merchant_order_id": "{{positiveRenewalMerchantReference}}" },
+      "owner": 1,
+      "pending": false,
+      "source_data": { "pan": "", "sub_type": "", "type": "wallet" },
+      "success": false
+    },
+    "hmac": "{{positiveRenewalFailedHmac}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+}

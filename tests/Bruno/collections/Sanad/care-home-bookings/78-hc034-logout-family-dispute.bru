@@ -1,0 +1,20 @@
+meta {
+  name: 78-hc034-logout-family-dispute
+  type: http
+  seq: 79
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{hc034DisputeFamilyJwt}}
+}
+headers {
+  X-Device-Session-Id: {{hc034DisputeFamilySessionId}}
+}
+assert {
+  res.status: eq 204
+}

@@ -1,0 +1,22 @@
+meta {
+  name: 22-private-suite-capacity
+  type: http
+  seq: 27
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/checkout
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "elderlyId": "{{careHomeElderlyId}}", "facilityId": "{{careHomeFacilityId}}", "roomTypeId": "{{careHomePrivateOrSuiteRoomTypeId}}", "requestedStartDate": "{{careHomeCapacityStartDate}}" }
+}
+assert {
+  res.status: eq 200
+}

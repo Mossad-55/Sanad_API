@@ -2,8 +2,8 @@ using Sanad.Modules.CareHomes.Domain.Facilities;
 
 namespace Sanad.Modules.CareHomes.Application.Inventory;
 
-public enum CareHomeResourceKind { Room = 1, Bed = 2 }
-public sealed record CareHomeOccupancyInterval(Guid ResourceId, CareHomeResourceKind ResourceKind, DateOnly StartDate, DateOnly EndDate)
+public enum CareHomeResourceKind { Room = 1, Bed = 2, RoomType = 3 }
+public sealed record CareHomeOccupancyInterval(Guid ResourceId, CareHomeResourceKind ResourceKind, DateOnly StartDate, DateOnly EndDate, int Quantity = 1)
 {
     public bool Overlaps(DateOnly start, DateOnly end) => StartDate < end && EndDate > start;
 }
@@ -40,17 +40,21 @@ public static class CareHomeAvailabilityCalculator
         var blockedBeds = maintenance.Where(x => x.Target == CareHomeMaintenanceTarget.Bed && x.Overlaps(startDate, endDate)).Select(x => x.TargetId).ToHashSet();
         var occupiedRooms = occupied.Where(x => x.ResourceKind == CareHomeResourceKind.Room).Select(x => x.ResourceId).ToHashSet();
         var occupiedBeds = occupied.Where(x => x.ResourceKind == CareHomeResourceKind.Bed).Select(x => x.ResourceId).ToHashSet();
+        var occupiedTypes = occupied.Where(x => x.ResourceKind == CareHomeResourceKind.RoomType)
+            .GroupBy(x => x.ResourceId).ToDictionary(x => x.Key, x => x.Sum(item => item.Quantity));
         var roomList = rooms.Where(x => !x.IsArchived && !blockedRooms.Contains(x.Id) && !occupiedRooms.Contains(x.Id)).ToArray();
         var bedList = beds.Where(x => !x.IsArchived && !blockedBeds.Contains(x.Id) && !occupiedBeds.Contains(x.Id) && roomList.Any(r => r.Id == x.RoomId)).ToArray();
         return roomTypes.Where(x => !x.IsArchived).Select(type =>
         {
             var typeRooms = rooms.Where(x => x.RoomTypeId == type.Id && !x.IsArchived).ToArray();
-            var freeRooms = roomList.Count(x => x.RoomTypeId == type.Id);
+            int typeHeld = occupiedTypes.GetValueOrDefault(type.Id);
+            var freeRooms = Math.Max(0, roomList.Count(x => x.RoomTypeId == type.Id) -
+                (type.AllocationMode is CareHomeAllocationMode.Private or CareHomeAllocationMode.Suite ? typeHeld : 0));
             var freeBeds = type.AllocationMode == CareHomeAllocationMode.Shared
-                ? bedList.Count(x => typeRooms.Any(room => room.Id == x.RoomId))
+                ? Math.Max(0, bedList.Count(x => typeRooms.Any(room => room.Id == x.RoomId)) - typeHeld)
                 : 0;
             if (type.AllocationMode is CareHomeAllocationMode.Private or CareHomeAllocationMode.Suite)
-                freeBeds = bedList.Count(x => typeRooms.Any(room => room.Id == x.RoomId));
+                freeBeds = Math.Max(0, bedList.Count(x => typeRooms.Any(room => room.Id == x.RoomId)) - typeHeld);
             return new CareHomeAvailability(type.Id, freeRooms, freeBeds, typeRooms.Length, beds.Count(x => typeRooms.Any(room => room.Id == x.RoomId) && !x.IsArchived));
         }).ToArray();
     }

@@ -1,0 +1,19 @@
+meta {
+  name: 67-hc034-logout-superadmin-session
+  type: http
+  seq: 67
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+headers {
+  X-Device-Session-Id: {{hc034SuperAdminDeviceSessionId}}
+}
+assert {
+  res.status: eq 204
+}

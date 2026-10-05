@@ -1,0 +1,34 @@
+meta {
+  name: 00-list-default
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/care-homes/discovery?page=1&pageSize=10
+  body: none
+  auth: none
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:55819" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care Homes discovery coverage requires the guarded local Development API.");
+}
+
+assert {
+  res.status: eq 200
+  res.body.page: eq 1
+  res.body.pageSize: eq 10
+  res.body.totalCount: isNumber
+  res.body.items: isArray
+  res.body.items: isNotEmpty
+}
+
+script:post-response {
+  const body = res.body;
+  const firstEligibleItem = Array.isArray(body.items) && body.items.length > 0 ? body.items[0] : null;
+  bru.setVar("careHomeDiscoveryId", firstEligibleItem ? firstEligibleItem.id : "");
+  const serialized = JSON.stringify(body);
+  for (const forbidden of ["contactName", "contactPhone", "contactEmail", "privateStorageKey", "documents", "ownerUserId", "reviewHistory"]) {
+    if (serialized.includes(forbidden)) throw new Error(`Public discovery leaked ${forbidden}.`);
+  }
+}

@@ -1,0 +1,19 @@
+meta {
+  name: 06-webhook-success
+  type: http
+  seq: 9
+}
+post {
+  url: {{baseUrl}}/api/v1/payments/webhooks/paymob
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "obj": { "id": {{careHomeTransactionId}}, "amount_cents": {{careHomeAmountCents}}, "success": true, "pending": false, "currency": "EGP", "order": { "merchant_order_id": "{{careHomeMerchantReference}}" } }, "hmac": "{{careHomeWebhookHmac}}" }
+}
+assert {
+  res.status: eq 200
+}

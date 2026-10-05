@@ -1415,6 +1415,11 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(3)")
                         .HasColumnName("currency");
 
+                    b.Property<decimal?>("CurrentPeriodBaseAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("current_period_base_amount");
+
                     b.Property<int>("CurrentPeriodBookingCount")
                         .HasColumnType("integer")
                         .HasColumnName("current_period_booking_count");
@@ -1428,6 +1433,25 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("current_period_gross");
+
+                    b.Property<int?>("CurrentPeriodPlatformChargeRuleVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("current_period_platform_charge_rule_version");
+
+                    b.Property<decimal?>("CurrentPeriodPlatformFeeAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("current_period_platform_fee_amount");
+
+                    b.Property<decimal?>("CurrentPeriodPlatformFeeRatePercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("current_period_platform_fee_rate_percentage");
+
+                    b.Property<decimal?>("CurrentPeriodTaxAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("current_period_tax_amount");
 
                     b.Property<decimal?>("CurrentPeriodTaxRatePercentage")
                         .HasPrecision(5, 2)
@@ -1717,6 +1741,20 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("plan_version");
 
+                    b.Property<int?>("PlatformChargeRuleVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("platform_charge_rule_version");
+
+                    b.Property<decimal?>("PlatformFeeAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("platform_fee_amount");
+
+                    b.Property<decimal?>("PlatformFeeRatePercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("platform_fee_rate_percentage");
+
                     b.Property<string>("ProviderEventId")
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
@@ -1844,10 +1882,29 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("plan_version_id");
 
+                    b.Property<int?>("PlatformChargeRuleVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("platform_charge_rule_version");
+
+                    b.Property<decimal>("PlatformFeeAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("platform_fee_amount");
+
+                    b.Property<decimal>("PlatformFeeRatePercentage")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("platform_fee_rate_percentage");
+
                     b.Property<decimal?>("ProratedCredit")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("prorated_credit");
+
+                    b.Property<string>("RenewalProviderEventId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("renewal_provider_event_id");
 
                     b.Property<DateTime?>("SettledOnUtc")
                         .HasColumnType("timestamp with time zone")
@@ -1906,6 +1963,10 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasFilter("paymob_subscription_id IS NOT NULL");
 
                     b.HasIndex("PlanVersionId");
+
+                    b.HasIndex("RenewalProviderEventId")
+                        .IsUnique()
+                        .HasFilter("renewal_provider_event_id IS NOT NULL");
 
                     b.HasIndex("FamilyId", "Status");
 
@@ -2192,6 +2253,10 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                                 .HasColumnType("character varying(10)")
                                 .HasColumnName("price_currency");
 
+                            b1.Property<int?>("PlatformChargeRuleVersion")
+                                .HasColumnType("integer")
+                                .HasColumnName("price_platform_charge_rule_version");
+
                             b1.Property<decimal>("PlatformFeeAmount")
                                 .HasPrecision(12, 2)
                                 .HasColumnType("numeric(12,2)")
@@ -2201,6 +2266,16 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                                 .HasPrecision(5, 2)
                                 .HasColumnType("numeric(5,2)")
                                 .HasColumnName("price_platform_fee_percentage");
+
+                            b1.Property<decimal>("TaxAmount")
+                                .HasPrecision(12, 2)
+                                .HasColumnType("numeric(12,2)")
+                                .HasColumnName("price_tax_amount");
+
+                            b1.Property<decimal>("TaxRatePercentage")
+                                .HasPrecision(5, 2)
+                                .HasColumnType("numeric(5,2)")
+                                .HasColumnName("price_tax_rate_percentage");
 
                             b1.Property<decimal>("TotalPayableAmount")
                                 .HasPrecision(12, 2)

@@ -28,6 +28,11 @@ For implementation: sanad_scout → sanad_implementer → sanad_test_author → 
 
 ## Mastermind verification
 
+- Bruno recovery MUST follow [the Bruno runbook](../operations/bruno-failure-first.md). Pin one worktree/API build/port/database/fixture identity. Use the offline preflight with explicit request paths before the first run or changed selection/tooling/target; reuse its result while inputs remain valid.
+- At the first unexpected Bruno failure, capture expected/actual status, approved contract, response error and matching API exception/request encoding. Fix the evidenced request, assertion or code directly, then rerun the failed request with only required prerequisites. Never reset a database, rotate ports, replay all onboarding or restart worker phases merely for an HTTP/status/assertion failure.
+- After two unchanged attempts or ten minutes without new diagnostic evidence, stop blind reruns and report the precise failure, next hypothesis and blocker while continuing useful authorized diagnosis. This checkpoint never waives required Bruno coverage. Once corrected, run the full affected endpoint manifest. Test author supplies ordered dependencies, replay rules and cleanup with the tests.
+- Existing owner authorization remains valid within its exact scope. Do not repeatedly request it for the same authorized run. A reset or new startup side effect still needs its own applicable authority and evidence; different worktree ports do not isolate a shared database.
+
 - Mastermind owns scope, decisions, sequential worker spawning, integration, project build, focused slice tests, full suite, slice Bruno execution, final evidence, and handoff.
 - For EVERY implementation slice: build the project, run focused slice tests, then run the full test suite. Execute the slice's Bruno success/failure/auth scenarios against disposable local/test fixtures before closeout or commit.
 - Documentation/script-only changes use relevant documentation/script validation. Do not launch the API or full .NET suite merely for documentation relocation.

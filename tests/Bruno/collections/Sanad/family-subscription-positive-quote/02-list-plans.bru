@@ -24,7 +24,16 @@ assert {
 
 script:post-response {
   const plans = Array.isArray(res.body) ? res.body : [];
-  const premium = plans.find((plan) => (plan.key ?? plan.Key) === "premium" && (plan.version ?? plan.Version) === 2);
-  if (!premium) throw new Error("The published disposable Premium version-2 plan was not returned.");
+  const planKey = (plan) => plan.key ?? plan.Key;
+  const planVersion = (plan) => plan.version ?? plan.Version;
+  const premium = plans.find((plan) => planKey(plan) === "premium" && planVersion(plan) === 1);
+  const upgrade = plans.find((plan) => planKey(plan) === "test-upgrade" && planVersion(plan) === 1);
+  if (!premium || Number(premium.price ?? premium.Price) !== 299 || (premium.isAvailableForNewSales ?? premium.IsAvailableForNewSales) !== false) {
+    throw new Error("The seeded Premium version-1 plan must remain published and unavailable for new sales.");
+  }
+  if (!upgrade || Number(upgrade.price ?? upgrade.Price) !== 499 || (upgrade.isAvailableForNewSales ?? upgrade.IsAvailableForNewSales) !== true) {
+    throw new Error("The published disposable test-upgrade version-1 plan must be available at EGP 499.");
+  }
   bru.setVar("positiveQuotePremiumPlanId", premium.id ?? premium.Id);
+  bru.setVar("positiveQuoteUpgradePlanId", upgrade.id ?? upgrade.Id);
 }

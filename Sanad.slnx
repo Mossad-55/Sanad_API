@@ -73,6 +73,16 @@
   <Folder Name="/src/Modules/Families/Presentation/">
     <Project Path="src/Modules/Families/Presentation/Sanad.Modules.Families.Presentation/Sanad.Modules.Families.Presentation.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Finance/" />
+  <Folder Name="/src/Modules/Finance/Application/">
+    <Project Path="src/Modules/Finance/Application/Sanad.Modules.Finance.Application/Sanad.Modules.Finance.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Finance/Domain/">
+    <Project Path="src/Modules/Finance/Domain/Sanad.Modules.Finance.Domain/Sanad.Modules.Finance.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Finance/Infrastructure/">
+    <Project Path="src/Modules/Finance/Infrastructure/Sanad.Modules.Finance.Infrastructure/Sanad.Modules.Finance.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Identity/" />
   <Folder Name="/src/Modules/Notifications/" />
   <Folder Name="/src/Modules/Notifications/Application/">

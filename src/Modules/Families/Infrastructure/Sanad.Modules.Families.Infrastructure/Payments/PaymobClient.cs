@@ -53,7 +53,9 @@ public sealed class PaymobClient : IPaymobClient
 
             // special_reference is returned in transaction callbacks as merchant_order_id,
             // so it MUST be the booking id — that is the key the webhook confirms with.
-            string specialReference = input.BookingId.Value.ToString();
+            string specialReference = string.IsNullOrWhiteSpace(input.MerchantReference)
+                ? input.BookingId.Value.ToString()
+                : input.MerchantReference;
 
             var payload = new
             {

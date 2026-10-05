@@ -1,0 +1,34 @@
+meta {
+  name: 03-login-renewal-owner
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{renewalEmail}}",
+    "password": "{{familyOwnerPassword}}",
+    "deviceName": "bruno-subscription-positive-renewal",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("positiveRenewalJwt", res.body.accessToken);
+  bru.setVar("positiveRenewalDeviceSessionId", res.body.deviceSessionId.value);
+}

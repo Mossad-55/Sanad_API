@@ -169,6 +169,9 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
                 .HasColumnName("price_platform_fee_amount")
                 .HasPrecision(12, 2)
                 .IsRequired();
+            snapshot.Property(p => p.TaxRatePercentage).HasColumnName("price_tax_rate_percentage").HasPrecision(5, 2).IsRequired();
+            snapshot.Property(p => p.TaxAmount).HasColumnName("price_tax_amount").HasPrecision(12, 2).IsRequired();
+            snapshot.Property(p => p.PlatformChargeRuleVersion).HasColumnName("price_platform_charge_rule_version");
             snapshot.Property(p => p.TotalPayableAmount)
                 .HasColumnName("price_total_payable_amount")
                 .HasPrecision(12, 2)

@@ -1,0 +1,17 @@
+meta {
+  name: 32-hc034-owner-check-out-confirmed
+  type: http
+  seq: 37
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034SharedBookingId}}/check-out
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.actualCheckOutOnUtc: isNotEmpty
+}

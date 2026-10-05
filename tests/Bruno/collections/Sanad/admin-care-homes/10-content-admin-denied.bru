@@ -30,4 +30,5 @@ assert {
 
 script:post-response {
   bru.setVar("adminCareHomesContentJwt", res.body.accessToken);
+  bru.setVar("hc034ContentAdminDeviceSessionId", res.body.deviceSessionId.value);
 }

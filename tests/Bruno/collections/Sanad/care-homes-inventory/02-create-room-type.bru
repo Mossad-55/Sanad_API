@@ -15,11 +15,15 @@ headers {
   Content-Type: application/json
 }
 body:json {
-  {"expectedVersion":{{inventoryVersion}},"arabicName":"غرفة اختبار","englishName":"Inventory Test Shared","monthlyPriceEgp":10000,"allocationMode":1,"arabicDescription":"اختبار","englishDescription":"test"}
+  {"expectedVersion":{{inventoryVersion}},"arabicName":"غرفة اختبار","englishName":"Inventory Test Shared {{inventoryRunSuffix}}","monthlyPriceEgp":10000,"allocationMode":1,"arabicDescription":"اختبار","englishDescription":"test"}
 }
 assert {
   res.status: eq 200
 }
 script:post-response {
-  bru.setVar("inventoryRoomTypeId", res.body.roomTypes[0].id); bru.setVar("inventoryVersion", res.body.version);
+  const expectedName = `Inventory Test Shared ${bru.getVar("inventoryRunSuffix")}`;
+  const roomType = res.body.roomTypes.find(item => item.englishName === expectedName);
+  if (!roomType) throw new Error("The newly-created unique inventory room type was not returned.");
+  bru.setVar("inventoryRoomTypeId", roomType.id); bru.setVar("inventoryVersion", res.body.version);
+  bru.setVar("careHomeExpectedRoomTypeId", roomType.id);
 }

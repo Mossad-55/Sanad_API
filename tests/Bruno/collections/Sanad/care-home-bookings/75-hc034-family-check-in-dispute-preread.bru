@@ -1,0 +1,23 @@
+meta {
+  name: 75-hc034-family-check-in-dispute-preread
+  type: http
+  seq: 75
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034FamilyDisputeBookingId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{hc034OtherFamilyJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.id: eq {{hc034FamilyDisputeBookingId}}
+  res.body.actualCheckInOnUtc: isNotEmpty
+}
+script:post-response {
+  bru.setVar("hc034FamilyDisputeCheckInBefore", String(res.body.actualCheckInOnUtc ?? res.body.ActualCheckInOnUtc ?? ""));
+  bru.setVar("hc034FamilyDisputeCheckOutBefore", String(res.body.actualCheckOutOnUtc ?? res.body.ActualCheckOutOnUtc ?? ""));
+}

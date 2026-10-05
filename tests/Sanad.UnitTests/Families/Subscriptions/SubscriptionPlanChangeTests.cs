@@ -6,6 +6,7 @@ using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.UnitTests.Finance;
 
 namespace Sanad.UnitTests.Families.Subscriptions;
 
@@ -19,7 +20,7 @@ public sealed class SubscriptionPlanChangeTests
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, start, end, SubscriptionPlan.PremiumPlus, currentGross: 299m, currentTaxRate: 15m);
 
-        var result = await new CreatePlanChangeQuoteCommandHandler(db).Handle(
+        var result = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, target.Id, now), default);
 
         Assert.True(result.IsSuccess);
@@ -27,7 +28,7 @@ public sealed class SubscriptionPlanChangeTests
         Assert.Equal(decimal.Round(2499m * 1.15m * fraction, 2, MidpointRounding.ToEven), result.Value.TargetRemainingGross);
         Assert.Equal(decimal.Round(299m * fraction, 2, MidpointRounding.ToEven), result.Value.SettledCredit);
         Assert.Equal(decimal.Round(Math.Max(0m, result.Value.TargetRemainingGross - result.Value.SettledCredit), 2), result.Value.TotalPayable);
-        Assert.Equal(15m, result.Value.TaxRatePercentage);
+        Assert.Equal(5m, result.Value.TaxRatePercentage);
     }
 
     [Fact]
@@ -41,9 +42,9 @@ public sealed class SubscriptionPlanChangeTests
         source.BeginRenewalGrace(end.AddMinutes(1));
         await db.SaveChangesAsync();
 
-        var nonOwner = await new CreatePlanChangeQuoteCommandHandler(db).Handle(
+        var nonOwner = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(UserId.New(), target.Id, now), default);
-        var grace = await new CreatePlanChangeQuoteCommandHandler(db).Handle(
+        var grace = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, target.Id, now), default);
 
         Assert.False(nonOwner.IsSuccess);
@@ -61,7 +62,7 @@ public sealed class SubscriptionPlanChangeTests
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, start, end, SubscriptionPlan.PremiumPlus);
 
-        var result = await new CreatePlanChangeQuoteCommandHandler(db).Handle(
+        var result = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, target.Id, now), default);
 
         Assert.True(result.IsSuccess);
@@ -76,7 +77,7 @@ public sealed class SubscriptionPlanChangeTests
             now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub");
         var paymob = new FakePaymobClient();
 
-        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob).Handle(
+        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Wallet, Billing(), now), default);
         Assert.True(intent.IsSuccess);
         Assert.Null(paymob.LastUpdatedAmount);
@@ -99,9 +100,9 @@ public sealed class SubscriptionPlanChangeTests
         var paymob = new FakePaymobClient();
         UserId nonOwner = UserId.New();
 
-        var replace = await new ReplacePendingDowngradeCommandHandler(db, paymob).Handle(
+        var replace = await new ReplacePendingDowngradeCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new ReplacePendingDowngradeCommand(nonOwner, target.Id, now), default);
-        var cancel = await new CancelPendingDowngradeCommandHandler(db, paymob).Handle(
+        var cancel = await new CancelPendingDowngradeCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CancelPendingDowngradeCommand(nonOwner, now), default);
 
         Assert.False(replace.IsSuccess);
@@ -138,7 +139,7 @@ public sealed class SubscriptionPlanChangeTests
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", 1000m, 0m);
         var paymob = new FakePaymobClient();
-        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob).Handle(
+        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
 
         Assert.True(intent.IsSuccess);
@@ -159,7 +160,7 @@ public sealed class SubscriptionPlanChangeTests
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
         await using var db = Seed(out Family family, out SubscriptionPlanVersion source, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub");
         var paymob = new FakePaymobClient { UpdateFailure = true };
-        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob).Handle(
+        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
         var before = db.FamilySubscriptions.Single().PlanKey;
 
@@ -180,7 +181,7 @@ public sealed class SubscriptionPlanChangeTests
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", 10000m, 0m);
         var paymob = new FakePaymobClient();
 
-        var result = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob).Handle(
+        var result = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
 
         Assert.True(result.IsSuccess);
@@ -199,15 +200,15 @@ public sealed class SubscriptionPlanChangeTests
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target,
             start, end, SubscriptionPlan.PremiumPlus, "provider-sub", 1000m, 0m);
         SubscriptionPlanVersion followup = AddPlan(db, "ultra", 7000m, start);
-        var initialQuote = await new CreatePlanChangeQuoteCommandHandler(db).Handle(
+        var initialQuote = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, target.Id, now), default);
         var paymob = new FakePaymobClient();
 
-        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob).Handle(
+        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
         var paid = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
             new ConfirmSubscriptionPaymentCommand(intent.Value.MerchantReference, 104, (long)(intent.Value.Amount * 100m), "EGP", true, false, now), default);
-        var nextQuote = await new CreatePlanChangeQuoteCommandHandler(db).Handle(
+        var nextQuote = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, followup.Id, now), default);
 
         Assert.True(initialQuote.IsSuccess);
@@ -228,13 +229,13 @@ public sealed class SubscriptionPlanChangeTests
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target,
             start, end, SubscriptionPlan.PremiumPlus, "provider-sub", 10000m, 0m);
         SubscriptionPlanVersion followup = AddPlan(db, "ultra", 7000m, start);
-        var initialQuote = await new CreatePlanChangeQuoteCommandHandler(db).Handle(
+        var initialQuote = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, target.Id, now), default);
         var paymob = new FakePaymobClient();
 
-        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob).Handle(
+        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
-        var nextQuote = await new CreatePlanChangeQuoteCommandHandler(db).Handle(
+        var nextQuote = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, followup.Id, now), default);
 
         Assert.True(initialQuote.IsSuccess);
@@ -253,13 +254,13 @@ public sealed class SubscriptionPlanChangeTests
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.Premium, "provider-sub", sourcePlan: SubscriptionPlan.PremiumPlus);
         var paymob = new FakePaymobClient();
 
-        var replace = await new ReplacePendingDowngradeCommandHandler(db, paymob).Handle(
+        var replace = await new ReplacePendingDowngradeCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new ReplacePendingDowngradeCommand(family.OwnerUserId, target.Id, now), default);
         Assert.True(replace.IsSuccess);
         Assert.Equal(299m * 1.15m, paymob.LastUpdatedAmount);
         Assert.NotNull(db.FamilySubscriptions.Single().PendingDowngrade);
 
-        var cancel = await new CancelPendingDowngradeCommandHandler(db, paymob).Handle(
+        var cancel = await new CancelPendingDowngradeCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CancelPendingDowngradeCommand(family.OwnerUserId, now), default);
         Assert.True(cancel.IsSuccess);
         Assert.Equal(2499m * 1.15m, paymob.LastUpdatedAmount);
@@ -272,11 +273,11 @@ public sealed class SubscriptionPlanChangeTests
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.Premium, "provider-sub", sourcePlan: SubscriptionPlan.PremiumPlus);
         var paymob = new FakePaymobClient();
-        await new ReplacePendingDowngradeCommandHandler(db, paymob).Handle(new(family.OwnerUserId, target.Id, now), default);
+        await new ReplacePendingDowngradeCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(new(family.OwnerUserId, target.Id, now), default);
         var existing = db.FamilySubscriptions.Single().PendingDowngrade;
         paymob.UpdateFailure = true;
 
-        var result = await new CancelPendingDowngradeCommandHandler(db, paymob).Handle(new(family.OwnerUserId, now), default);
+        var result = await new CancelPendingDowngradeCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(new(family.OwnerUserId, now), default);
 
         Assert.False(result.IsSuccess);
         Assert.Equal("Paymob.GatewayError", result.Error.Code);

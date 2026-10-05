@@ -24,4 +24,6 @@ assert {
 
 script:post-response {
   bru.setVar("photoOwnerJwt", res.body.accessToken);
+  bru.setVar("careHomeFamilyJwt", res.body.accessToken);
+  bru.setVar("careHomeFamilyDeviceSessionId", res.body.deviceSessionId.value);
 }

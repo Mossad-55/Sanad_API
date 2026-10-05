@@ -1,0 +1,36 @@
+meta {
+  name: 00-login-superadmin
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "email": "{{superAdminEmail}}",
+    "password": "{{superAdminPassword}}",
+    "deviceName": "bruno-finance-platform-charges",
+    "devicePlatform": 3,
+    "appVersion": "1.0.0"
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  bru.setVar("financeAdminJwt", res.body.accessToken);
+  bru.setVar("financeAdminDeviceSessionId", res.body.deviceSessionId.value);
+  bru.setVar("financeChargeRuleVersion", Math.floor(Date.now() / 1000));
+  bru.setVar("financeInvalidRateVersion", Number(bru.getVar("financeChargeRuleVersion")) + 1);
+}

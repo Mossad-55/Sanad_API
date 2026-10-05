@@ -1,0 +1,32 @@
+meta {
+  name: 09-create-invalid-rate
+  type: http
+  seq: 13
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/finance/platform-charge-rules
+  body: json
+  auth: bearer
+}
+
+headers {
+  Content-Type: application/json
+}
+
+auth:bearer {
+  token: {{financeAdminJwt}}
+}
+
+body:json {
+  {
+    "platformFeeRatePercentage": 101,
+    "taxRatePercentage": 7,
+    "version": {{financeInvalidRateVersion}},
+    "effectiveOnUtc": "2026-10-03T00:00:00Z"
+  }
+}
+
+assert {
+  res.status: eq 400
+}

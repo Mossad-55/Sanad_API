@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Subscriptions;
+using Sanad.Modules.Finance.Application;
 
 namespace Sanad.Modules.Families.Application.Subscriptions;
 
@@ -24,7 +25,10 @@ public sealed record SubscriptionTaxRuleResponse(
     int Version,
     DateTime EffectiveOnUtc,
     DateTime CreatedOnUtc,
-    bool IsActive);
+    bool IsActive,
+    decimal? PlatformFeeRatePercentage = null,
+    int? SharedRuleVersion = null,
+    bool IsShared = false);
 
 public sealed class CreateSubscriptionTaxRuleCommandHandler
     : ICommandHandler<CreateSubscriptionTaxRuleCommand, Guid>
@@ -40,32 +44,30 @@ public sealed class CreateSubscriptionTaxRuleCommandHandler
         "The active subscription tax rule changed concurrently.");
 
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IPlatformChargeRuleReader _chargeReader;
+    private readonly IPlatformChargeRuleWriter _chargeWriter;
 
-    public CreateSubscriptionTaxRuleCommandHandler(IFamiliesDbContext dbContext) => _dbContext = dbContext;
+    public CreateSubscriptionTaxRuleCommandHandler(IFamiliesDbContext dbContext, IPlatformChargeRuleReader chargeReader, IPlatformChargeRuleWriter chargeWriter)
+    {
+        _dbContext = dbContext;
+        _chargeReader = chargeReader;
+        _chargeWriter = chargeWriter;
+    }
 
     public async Task<Result<Guid>> Handle(
         CreateSubscriptionTaxRuleCommand request,
         CancellationToken cancellationToken)
     {
-        if (await _dbContext.SubscriptionTaxRules.AnyAsync(
-                item => item.Version == request.Version,
-                cancellationToken))
-            return Result<Guid>.Failure(DuplicateVersion);
-
-        var activeRule = await _dbContext.SubscriptionTaxRules
-            .SingleOrDefaultAsync(item => item.IsActive, cancellationToken);
+        var sharedRule = await _chargeReader.GetEffectiveAsync(DateTime.UtcNow, cancellationToken);
+        if (sharedRule is null)
+            return Result<Guid>.Failure(new Error("Subscriptions.Tax.SharedConfigurationRequired", "Initialize both platform fee and tax through Finance before using the legacy tax route."));
 
         try
         {
-            var taxRule = SubscriptionTaxRule.Create(
-                request.RatePercentage,
-                request.Version,
-                request.EffectiveOnUtc);
-
-            activeRule?.Deactivate();
-            _dbContext.SubscriptionTaxRules.Add(taxRule);
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            return Result<Guid>.Success(taxRule.Id);
+            var shared = await _chargeWriter.CreateAsync(sharedRule.PlatformFeeRatePercentage, request.RatePercentage, request.Version, request.EffectiveOnUtc, cancellationToken);
+            if (shared.IsFailure)
+                return Result<Guid>.Failure(new Error("Subscriptions.Tax.SharedConfigurationConflict", shared.Error.Message));
+            return Result<Guid>.Success(shared.Value);
         }
         catch (DbUpdateConcurrencyException)
         {
@@ -92,36 +94,38 @@ public sealed class GetCurrentSubscriptionTaxRuleQueryHandler
     : IQueryHandler<GetCurrentSubscriptionTaxRuleQuery, SubscriptionTaxRuleResponse?>
 {
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IPlatformChargeRuleReader _chargeReader;
 
-    public GetCurrentSubscriptionTaxRuleQueryHandler(IFamiliesDbContext dbContext) => _dbContext = dbContext;
+    public GetCurrentSubscriptionTaxRuleQueryHandler(IFamiliesDbContext dbContext, IPlatformChargeRuleReader chargeReader) { _dbContext = dbContext; _chargeReader = chargeReader; }
 
     public async Task<Result<SubscriptionTaxRuleResponse?>> Handle(
         GetCurrentSubscriptionTaxRuleQuery request,
         CancellationToken cancellationToken)
     {
-        var taxRule = await _dbContext.SubscriptionTaxRules
-            .AsNoTracking()
-            .SingleOrDefaultAsync(item => item.IsActive, cancellationToken);
-
-        return Map(taxRule);
+        var shared = await _chargeReader.GetEffectiveAsync(DateTime.UtcNow, cancellationToken);
+        return shared is null ? null : new SubscriptionTaxRuleResponse(Guid.Empty, shared.TaxRatePercentage, shared.Version, DateTime.UtcNow, DateTime.UtcNow, true, shared.PlatformFeeRatePercentage, shared.Version, true);
     }
 
-    private static SubscriptionTaxRuleResponse? Map(SubscriptionTaxRule? taxRule) =>
+    private static SubscriptionTaxRuleResponse? Map(SubscriptionTaxRule? taxRule, PlatformChargeRuleRates? shared) =>
         taxRule is null ? null : new(
             taxRule.Id,
             taxRule.RatePercentage,
             taxRule.Version,
             taxRule.EffectiveOnUtc,
             taxRule.CreatedOnUtc,
-            taxRule.IsActive);
+            taxRule.IsActive,
+            null,
+            null,
+            false);
 }
 
 public sealed class GetSubscriptionTaxRuleHistoryQueryHandler
     : IQueryHandler<GetSubscriptionTaxRuleHistoryQuery, IReadOnlyList<SubscriptionTaxRuleResponse>>
 {
     private readonly IFamiliesDbContext _dbContext;
+    private readonly IPlatformChargeRuleReader _chargeReader;
 
-    public GetSubscriptionTaxRuleHistoryQueryHandler(IFamiliesDbContext dbContext) => _dbContext = dbContext;
+    public GetSubscriptionTaxRuleHistoryQueryHandler(IFamiliesDbContext dbContext, IPlatformChargeRuleReader chargeReader) { _dbContext = dbContext; _chargeReader = chargeReader; }
 
     public async Task<Result<IReadOnlyList<SubscriptionTaxRuleResponse>>> Handle(
         GetSubscriptionTaxRuleHistoryQuery request,
@@ -132,14 +136,20 @@ public sealed class GetSubscriptionTaxRuleHistoryQueryHandler
             .OrderByDescending(item => item.Version)
             .ToListAsync(cancellationToken);
 
-        return taxRules
-            .Select(item => new SubscriptionTaxRuleResponse(
+        var sharedHistory = await _chargeReader.GetHistoryAsync(cancellationToken);
+        var authoritative = sharedHistory.Select(item => new SubscriptionTaxRuleResponse(item.Id, item.TaxRatePercentage, item.Version, item.EffectiveOnUtc, item.CreatedOnUtc, item.IsActive, item.PlatformFeeRatePercentage, item.Version, true));
+        var legacy = taxRules.Select(item => new SubscriptionTaxRuleResponse(
                 item.Id,
                 item.RatePercentage,
                 item.Version,
                 item.EffectiveOnUtc,
                 item.CreatedOnUtc,
-                item.IsActive))
+                item.IsActive,
+                null,
+                null,
+                false));
+        return authoritative.Concat(legacy)
+            .OrderByDescending(item => item.Version)
             .ToList();
     }
 }

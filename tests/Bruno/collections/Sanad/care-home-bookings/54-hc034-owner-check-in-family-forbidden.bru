@@ -1,0 +1,16 @@
+meta {
+  name: 54-hc034-owner-check-in-family-forbidden
+  type: http
+  seq: 59
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034SharedBookingId}}/check-in
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 403
+}

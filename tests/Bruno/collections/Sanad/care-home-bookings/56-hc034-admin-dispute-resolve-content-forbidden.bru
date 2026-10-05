@@ -1,0 +1,22 @@
+meta {
+  name: 56-hc034-admin-dispute-resolve-content-forbidden
+  type: http
+  seq: 61
+}
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/check-in-disputes/{{hc034CaseId}}/resolve
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{adminCareHomesContentJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "effectiveCheckInOnUtc": "{{hc034EffectiveCheckInOnUtc}}", "evidence": "ContentAdmin must not resolve", "reason": "Role authorization regression" }
+}
+assert {
+  res.status: eq 403
+}

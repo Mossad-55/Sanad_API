@@ -6,12 +6,19 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
+using Sanad.Modules.Finance.Application;
 
 namespace Sanad.Modules.Caregivers.Application.Discovery;
 
 public sealed record CaregiverBookingPriceResult(
     int CaregiverType,
-    decimal BaseFee);
+    decimal BaseFee,
+    decimal PlatformFeeRatePercentage,
+    decimal PlatformFeeAmount,
+    decimal TaxRatePercentage,
+    decimal TaxAmount,
+    int PlatformChargeRuleVersion,
+    decimal TotalPayable);
 
 public sealed record GetCaregiverBookingPriceQuery(
     CaregiverId CaregiverId,
@@ -23,10 +30,12 @@ public sealed class GetCaregiverBookingPriceQueryHandler
     : IQueryHandler<GetCaregiverBookingPriceQuery, CaregiverBookingPriceResult>
 {
     private readonly ICaregiversDbContext _dbContext;
+    private readonly IPlatformChargeRuleReader _chargeRules;
 
-    public GetCaregiverBookingPriceQueryHandler(ICaregiversDbContext dbContext)
+    public GetCaregiverBookingPriceQueryHandler(ICaregiversDbContext dbContext, IPlatformChargeRuleReader chargeRules)
     {
         _dbContext = dbContext;
+        _chargeRules = chargeRules;
     }
 
     public async Task<Result<CaregiverBookingPriceResult>> Handle(
@@ -45,16 +54,23 @@ public sealed class GetCaregiverBookingPriceQueryHandler
 
         try
         {
+            var charge = await _chargeRules.GetEffectiveAsync(DateTime.UtcNow, cancellationToken);
+            if (charge is null) throw new DomainException("Shared platform fee and tax configuration is not available.");
             BookingPriceSnapshot snapshot = BookingPricingService.CalculatePrice(
                 caregiver,
                 request.ShiftType,
                 request.StartTime,
-                request.EndTime);
+                request.EndTime,
+                charge.PlatformFeeRatePercentage,
+                charge.TaxRatePercentage,
+                charge.Version);
 
             return Result<CaregiverBookingPriceResult>.Success(
                 new CaregiverBookingPriceResult(
                     (int)caregiver.Type,
-                    snapshot.BaseCaregiverFee));
+                    snapshot.BaseCaregiverFee, snapshot.PlatformFeePercentage, snapshot.PlatformFeeAmount,
+                    snapshot.TaxRatePercentage, snapshot.TaxAmount, snapshot.PlatformChargeRuleVersion!.Value,
+                    snapshot.TotalPayableAmount));
         }
         catch (DomainException exception)
         {

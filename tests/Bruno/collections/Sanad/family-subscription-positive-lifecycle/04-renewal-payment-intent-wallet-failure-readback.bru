@@ -1,0 +1,30 @@
+meta {
+  name: 04-renewal-payment-intent-wallet-failure-readback
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/current
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{positiveRenewalDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positiveRenewalJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const current = res.body && (res.body.currentSubscription ?? res.body.CurrentSubscription);
+  const graceEnds = current && (current.renewalGraceEndsOnUtc ?? current.RenewalGraceEndsOnUtc);
+  const failedOn = current && (current.lastRenewalFailedOnUtc ?? current.LastRenewalFailedOnUtc);
+  if (!current || !graceEnds || !failedOn) throw new Error("A valid failed renewal callback must put the current subscription into renewal grace.");
+}

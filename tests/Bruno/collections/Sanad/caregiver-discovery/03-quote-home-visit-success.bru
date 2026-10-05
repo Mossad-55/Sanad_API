@@ -14,10 +14,20 @@ auth:bearer {
   token: {{caregiverDiscoveryJwt}}
 }
 
+script:post-response {
+  const returnedCaregiverId = res.body && (res.body.caregiverId ?? res.body.CaregiverId);
+  if (returnedCaregiverId !== bru.getVar("caregiverDiscoveryTargetId")) throw new Error("The caregiver quote returned a different caregiver than the requested fixture.");
+}
+
 assert {
   res.status: eq 200
   res.body.caregiverId: isNotEmpty
   res.body.baseCaregiverFee: gt 0
+  res.body.platformFeePercentage: eq 1
+  res.body.platformFeeAmount: gt 0
+  res.body.taxRatePercentage: eq 0
+  res.body.taxAmount: eq 0
+  res.body.platformChargeRuleVersion: gt 0
   res.body.totalPayableAmount: gt 0
   res.body.currency: eq EGP
 }

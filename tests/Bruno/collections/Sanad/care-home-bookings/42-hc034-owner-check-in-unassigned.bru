@@ -1,0 +1,17 @@
+meta {
+  name: 42-hc034-owner-check-in-unassigned
+  type: http
+  seq: 47
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc034UnassignedBookingId}}/check-in
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq CareHomes.Bookings.InvalidState
+}

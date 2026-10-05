@@ -1,0 +1,27 @@
+meta {
+  name: 82-hc034-family-dispute-overlimit-reason
+  type: http
+  seq: 82
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034FamilyDisputeBookingId}}/check-in-dispute
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{hc034DisputeFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "reason": "{{hc034OverlimitReason}}" }
+}
+script:pre-request {
+  bru.setVar("hc034OverlimitReason", "x".repeat(2001));
+}
+assert {
+  res.status: eq 400
+  res.body.code: eq CareHomes.CheckInDispute.InvalidReason
+}

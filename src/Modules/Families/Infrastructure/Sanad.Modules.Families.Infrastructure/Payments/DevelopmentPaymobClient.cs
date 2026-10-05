@@ -11,7 +11,7 @@ public sealed class DevelopmentPaymobClient : IPaymobClient
     {
         return Task.FromResult(Result<PaymobPaymentIntent>.Success(
             new PaymobPaymentIntent(
-                input.BookingId.Value.ToString(),
+                input.MerchantReference ?? input.BookingId.Value.ToString(),
                 $"dev-intention-{Guid.NewGuid():N}",
                 $"dev-secret-{Guid.NewGuid():N}",
                 "pk_dev")));

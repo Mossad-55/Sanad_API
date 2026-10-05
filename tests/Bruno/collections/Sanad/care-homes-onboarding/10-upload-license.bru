@@ -6,7 +6,7 @@ meta {
 
 post {
   url: {{baseUrl}}/api/v1/care-homes/facilities/mine/documents
-  body: multipart-form
+  body: multipartForm
   auth: bearer
 }
 
@@ -15,7 +15,7 @@ auth:bearer {
 }
 
 script:pre-request {
-  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care homes document uploads require the guarded local Development API.");
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:55819" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Care homes document uploads require the guarded main-worktree Development API.");
 }
 
 body:multipart-form {

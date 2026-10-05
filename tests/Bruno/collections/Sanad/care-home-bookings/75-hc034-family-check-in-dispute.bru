@@ -1,0 +1,29 @@
+meta {
+  name: 75-hc034-family-check-in-dispute
+  type: http
+  seq: 76
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034FamilyDisputeBookingId}}/check-in-dispute
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{hc034DisputeFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "reason": "  Facility recorded the check-in at the wrong time.  " }
+}
+assert {
+  res.status: eq 200
+  res.body.bookingId: eq {{hc034FamilyDisputeBookingId}}
+  res.body.status: eq 1
+  res.body.familyReason: eq Facility recorded the check-in at the wrong time.
+}
+script:post-response {
+  bru.setVar("hc034FamilyDisputeCaseId", res.body.id);
+}

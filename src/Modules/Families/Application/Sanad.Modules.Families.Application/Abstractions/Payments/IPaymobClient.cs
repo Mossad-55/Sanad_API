@@ -16,7 +16,8 @@ public sealed record PaymobPaymentIntentInput(
     PaymentMethod Method,
     decimal Amount,
     string Currency,
-    PaymobBillingData Billing);
+    PaymobBillingData Billing,
+    string? MerchantReference = null);
 
 public sealed record PaymobSubscriptionPaymentIntentInput(
     string MerchantReference,

@@ -1,0 +1,13 @@
+meta {
+  name: 38-hc034-family-confirmation-unauthenticated
+  type: http
+  seq: 43
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034SharedBookingId}}/check-in-confirmation
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 401
+}

@@ -1,0 +1,26 @@
+meta {
+  name: 76-hc034-family-check-in-dispute-readback
+  type: http
+  seq: 77
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc034FamilyDisputeBookingId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{hc034DisputeFamilyJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.id: eq {{hc034FamilyDisputeBookingId}}
+}
+script:post-response {
+  const beforeIn = bru.getVar("hc034FamilyDisputeCheckInBefore");
+  const beforeOut = bru.getVar("hc034FamilyDisputeCheckOutBefore");
+  const actualIn = res.body.actualCheckInOnUtc ?? res.body.ActualCheckInOnUtc ?? "";
+  const actualOut = res.body.actualCheckOutOnUtc ?? res.body.ActualCheckOutOnUtc ?? "";
+  if (beforeIn && String(actualIn) !== String(beforeIn)) throw new Error("Family dispute changed the booking check-in timestamp.");
+  if (beforeOut && String(actualOut) !== String(beforeOut)) throw new Error("Family dispute changed the booking check-out timestamp.");
+}

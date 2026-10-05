@@ -1,0 +1,19 @@
+meta {
+  name: 49-hc034-admin-dispute-resolve-unauthenticated
+  type: http
+  seq: 54
+}
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/check-in-disputes/{{hc034CaseId}}/resolve
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "effectiveCheckInOnUtc": "{{hc034EffectiveCheckInOnUtc}}", "evidence": "Signed facility log", "reason": "Family confirmation missing at facility check-out" }
+}
+assert {
+  res.status: eq 401
+}

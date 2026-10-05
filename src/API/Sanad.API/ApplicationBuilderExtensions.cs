@@ -13,6 +13,7 @@ using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence.Seeding;
 using Sanad.Modules.Notifications.Infrastructure.Persistence;
 using Sanad.Modules.Community.Infrastructure.Persistence;
+using Sanad.Modules.Finance.Infrastructure;
 
 public static class ApplicationBuilderExtensions
 {
@@ -65,12 +66,20 @@ public static class ApplicationBuilderExtensions
             ApplyCareHomesMigrations(app);
             ApplyNotificationsMigrations(app);
             ApplyCommunityMigrations(app);
+            if (app.Configuration.GetValue<bool>($"{FinanceMigrationOptions.SectionName}:ApplyOnStartup"))
+                ApplyFinanceMigrations(app);
 
             SeedSuperAdmin(app);
             SeedTestUsers(app);
         }
 
         return app;
+    }
+
+    private static void ApplyFinanceMigrations(WebApplication app)
+    {
+        using IServiceScope scope = app.Services.CreateScope();
+        scope.ServiceProvider.GetRequiredService<FinanceDbContext>().Database.Migrate();
     }
 
     private static void ApplyIdentityMigrations(

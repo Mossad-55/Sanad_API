@@ -1,0 +1,30 @@
+meta {
+  name: 06c-plan-change-current-readback
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/current
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{positivePlanChangeDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positivePlanChangeJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const current = res.body;
+  const snapshot = current?.currentSubscription ?? current?.CurrentSubscription;
+  const key = snapshot?.planKey ?? snapshot?.PlanKey;
+  if (key !== "test-upgrade" || !snapshot) throw new Error("Successful paid plan change must persist the test-upgrade current subscription.");
+}

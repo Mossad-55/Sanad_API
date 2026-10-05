@@ -1,0 +1,32 @@
+meta {
+  name: 07-invoices-require-callback
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/subscriptions/invoices
+  body: none
+  auth: bearer
+}
+
+headers {
+  X-Device-Session-Id: {{positiveEnrollmentDeviceSessionId}}
+}
+
+auth:bearer {
+  token: {{positiveEnrollmentJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const invoices = Array.isArray(res.body) ? res.body : [];
+  if (invoices.length < 1) throw new Error("A successful local payment callback must create an invoice.");
+  const invoice = invoices[0];
+  const invoiceId = invoice.id ?? invoice.Id;
+  if (!invoiceId || !(invoice.invoiceNumber ?? invoice.InvoiceNumber)) throw new Error("Invoice list must expose a stable invoice id and invoice number.");
+  bru.setVar("positiveEnrollmentInvoiceId", invoiceId);
+}

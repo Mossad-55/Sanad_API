@@ -1,0 +1,21 @@
+meta {
+  name: 19-checkout-hold-expiry-readback
+  type: http
+  seq: 24
+}
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+script:pre-request {
+  const waitMs = Number(bru.getEnvVar("careHomeCheckoutExpiryWaitMs") ?? 0);
+  if (Number.isFinite(waitMs) && waitMs > 0) await bru.sleep(waitMs);
+}
+assert {
+  res.status: eq 200
+  res.body.status: eq 5
+}

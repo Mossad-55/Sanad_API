@@ -3,7 +3,7 @@
 Completed visits can have one immutable caregiver visit report. See [Family reports](reports.md) for
 the caregiver submission route, family feed, fields, and report-specific error codes.
 
-Routes for creating a care booking (checkout), paying it through Paymob, browsing requests by tab, reading booking details, and cancelling. The family pays the caregiver's price plus a platform fee; the caregiver then accepts or declines.
+Routes for creating a care booking (checkout), paying it through Paymob, browsing requests by tab, reading booking details, and cancelling. The family pays the caregiver's base price plus the independently calculated shared platform fee and tax; the caregiver then accepts or declines.
 
 All routes live under `/api/v1/family/bookings...`.
 
@@ -36,7 +36,7 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
                                             └─ expire ─▶ Expired
 ```
 
-- **Server-side pricing (contract as of `9ae68cc`):** the checkout body carries **no price fields and no caregiver type**. The server loads the caregiver's real pricing (the same engine behind the discovery quote endpoint), rejects an inactive caregiver or an unconfigured product, and stores an immutable snapshot: `totalPayableAmount = caregiver base fee + 15% platform fee`. The caregiver receives the full base fee.
+- **Server-side pricing:** the checkout body carries **no price fields and no caregiver type**. The server loads the caregiver's real pricing (the same engine behind the discovery quote endpoint), rejects an inactive caregiver or an absent shared Finance rule, and stores an immutable snapshot of the base fee, independent platform fee/tax rates and amounts, charge-rule version, total, and currency. The caregiver receives the full base fee.
 - **Acceptance window:** the caregiver must respond within `min(now + 24h, booking start)`; acceptance after the deadline is rejected. A payment whose success webhook arrives after the deadline is **not** honoured as a booking — the booking expires and the payment is refunded automatically (see refunds below).
 - **Slot reservation:** a booking in `PendingPayment` or `PendingCaregiverApproval` already blocks the same caregiver/date/overlapping-time slot (`409 Bookings.ScheduleConflict`).
 - **Snapshot immutability:** later caregiver price edits never change an existing booking.
@@ -100,7 +100,7 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
 }
 ```
 
-`totalPayableAmount = caregiver base fee + 15% platform fee` (e.g. base `2,500.00` → total `2,875.00`). Payment starts with the intent endpoint below.
+`totalPayableAmount = base fee + platform fee amount + tax amount`; both percentages are calculated from the base fee and rounded independently. The exact rates and rule version are server-selected and preserved in the booking snapshot. Payment starts with the intent endpoint below.
 
 ### 2. Tab list
 
@@ -108,7 +108,7 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
 
 ### 3. Booking detail
 
-`GET /api/v1/family/bookings/{bookingId}` → full price breakdown (`baseCaregiverFee`, `platformFeePercentage`, `platformFeeAmount`, `totalPayableAmount`, `currency`), the elderly summary (fields are `null` when the dependent record is absent — the API never fabricates values), lifecycle timestamps (`paidOnUtc`, `confirmedOnUtc`, `startedOnUtc`, `completedOnUtc`, `cancelledOnUtc`, `refundedOnUtc`), `refundState` (`1` NotApplicable, `2` Failed Paymob refund, `3` Succeeded, `4` NoRefundDue), `cancellationReason`, and `caregiverNotes`.
+`GET /api/v1/family/bookings/{bookingId}` → the exposed price fields (`baseCaregiverFee`, `platformFeePercentage`, `platformFeeAmount`, `totalPayableAmount`, `currency`), the elderly summary (fields are `null` when the dependent record is absent — the API never fabricates values), lifecycle timestamps (`paidOnUtc`, `confirmedOnUtc`, `startedOnUtc`, `completedOnUtc`, `cancelledOnUtc`, `refundedOnUtc`), `refundState` (`1` NotApplicable, `2` Failed Paymob refund, `3` Succeeded, `4` NoRefundDue`), `cancellationReason`, and `caregiverNotes`. The persisted booking snapshot also contains the tax rate/amount and charge-rule version, but those fields are not currently exposed by this response contract.
 
 ### 4. Cancel
 
@@ -159,7 +159,7 @@ Only a booking in `PendingPayment` can start a payment; the amount and currency 
 | Field | Notes |
 |---|---|
 | `paymobOrderId` | Equals the `bookingId` — Paymob echoes it back on the webhook as `merchant_order_id`. |
-| `amount` / `currency` | From the price snapshot (`500` base + `15%` → `575.00 EGP`). |
+| `amount` / `currency` | From the immutable price snapshot: base fee plus the independently calculated platform fee and tax. |
 | `clientSecret` + `publicKey` | Pass both to the Paymob mobile SDK to present the embedded checkout (card form or wallet PIN screen). The SDK result is **UI-only**. |
 
 **How the app completes a payment**
@@ -196,7 +196,8 @@ If the refund call fails at the gateway, the booking still transitions and the c
 | `Bookings.AllowanceConcurrency` | 409 | Another completion changed the allowance concurrently; retry the completion request. |
 | `Bookings.PriceUnavailable` | 409 | Reserved for pricing unavailability. |
 | `Caregivers.Discovery.CaregiverNotFound` | 404 | Checkout/quote against an unknown caregiver. |
-| `Caregivers.Discovery.QuoteNotAvailable` | 409 | Caregiver pricing missing for the requested product, or product/caregiver-type mismatch. |
+| `Caregivers.Discovery.QuoteNotAvailable` | 409 | Caregiver pricing or the shared Finance charge rule is unavailable for the requested product. |
+| `Bookings.ChargesNotConfigured` | 409 | No effective shared platform-fee/tax rule is configured; no booking is created. |
 | `Paymob.NotConfigured` | 503 | Payment gateway keys are absent from server configuration. |
 | `Paymob.MethodNotAvailable` | 409 | Method not enabled (e.g. Apple Pay before Paymob enablement). |
 | `Paymob.GatewayError` | 502 | Paymob returned an unexpected response. |

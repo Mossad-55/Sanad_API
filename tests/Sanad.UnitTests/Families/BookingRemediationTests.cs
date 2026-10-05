@@ -11,6 +11,7 @@ using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.UnitTests.Finance;
 using Xunit;
 
 namespace Sanad.UnitTests.Families;
@@ -172,7 +173,8 @@ public sealed class BookingRemediationTests
         var (dbContext, family, elderly) = SeedFamily();
         var handler = new CreateBookingCheckoutCommandHandler(
             dbContext,
-            new FakePricing(BookingCaregiverType.Medical, 2500m));
+            new FakePricing(BookingCaregiverType.Medical, 2500m),
+            new FixedPlatformChargeRules(15m, 0m));
 
         var result = await handler.Handle(
             CheckoutCommand(family, elderly, DateTime.UtcNow),
@@ -194,7 +196,8 @@ public sealed class BookingRemediationTests
         var (dbContext, family, elderly) = SeedFamily();
         var handler = new CreateBookingCheckoutCommandHandler(
             dbContext,
-            new FakePricing(BookingCaregiverType.Companion, -1m));
+            new FakePricing(BookingCaregiverType.Companion, -1m),
+            new FixedPlatformChargeRules(15m, 0m));
 
         var result = await handler.Handle(
             CheckoutCommand(family, elderly, DateTime.UtcNow),
@@ -216,7 +219,8 @@ public sealed class BookingRemediationTests
 
         var checkout = new CreateBookingCheckoutCommandHandler(
             dbContext,
-            new FakePricing(BookingCaregiverType.Medical, 500m));
+            new FakePricing(BookingCaregiverType.Medical, 500m),
+            new FixedPlatformChargeRules(15m, 0m));
 
         var checkoutResult = await checkout.Handle(
             CheckoutCommand(family, elderly, DateTime.UtcNow),
@@ -248,7 +252,8 @@ public sealed class BookingRemediationTests
         var (dbContext, family, elderly) = SeedFamily();
         var checkout = new CreateBookingCheckoutCommandHandler(
             dbContext,
-            new FakePricing(BookingCaregiverType.Medical, 500m));
+            new FakePricing(BookingCaregiverType.Medical, 500m),
+            new FixedPlatformChargeRules(15m, 0m));
         var command = CheckoutCommand(family, elderly, DateTime.UtcNow);
 
         var first = await checkout.Handle(command, CancellationToken.None);

@@ -1,0 +1,52 @@
+meta {
+  name: 02a-successful-initial-callback
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/payments/webhooks/paymob
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "obj": {
+      "amount_cents": {{positiveEnrollmentAmountCents}},
+      "created_at": "{{positiveEnrollmentCreatedAt}}",
+      "currency": "EGP",
+      "error_occured": false,
+      "has_parent_transaction": false,
+      "id": {{positiveEnrollmentTransactionId}},
+      "integration_id": 1,
+      "is_3d_secure": false,
+      "is_auth": false,
+      "is_capture": true,
+      "is_refunded": false,
+      "is_standalone_payment": true,
+      "is_voided": false,
+      "order": {
+        "id": {{positiveEnrollmentOrderId}},
+        "merchant_order_id": "{{positiveEnrollmentMerchantReference}}"
+      },
+      "owner": 1,
+      "pending": false,
+      "source_data": {
+        "pan": "",
+        "sub_type": "",
+        "type": "wallet"
+      },
+      "success": true
+    },
+    "hmac": "{{positiveEnrollmentHmac}}"
+  }
+}
+
+assert {
+  res.status: eq 200
+}

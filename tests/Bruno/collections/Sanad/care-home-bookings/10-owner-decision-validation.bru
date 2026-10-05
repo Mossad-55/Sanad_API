@@ -1,0 +1,26 @@
+meta {
+  name: 10-owner-decision-validation
+  type: http
+  seq: 13
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/decision
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "accept": false,
+    "reason": ""
+  }
+}
+assert {
+  res.status: eq 409
+  res.body.code: eq "CareHomes.Bookings.InvalidState"
+}

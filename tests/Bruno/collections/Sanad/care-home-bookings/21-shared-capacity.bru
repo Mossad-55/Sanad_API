@@ -1,0 +1,26 @@
+meta {
+  name: 21-shared-capacity
+  type: http
+  seq: 26
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/checkout
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+script:pre-request {
+  bru.setVar("careHomeSharedRoomTypeId", bru.getVar("careHomeRoomTypeId"));
+  bru.setVar("careHomeCapacityStartDate", "2027-04-01");
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "elderlyId": "{{careHomeElderlyId}}", "facilityId": "{{careHomeFacilityId}}", "roomTypeId": "{{careHomeSharedRoomTypeId}}", "requestedStartDate": "{{careHomeCapacityStartDate}}" }
+}
+assert {
+  res.status: eq 200
+}

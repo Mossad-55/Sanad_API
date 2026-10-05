@@ -7,14 +7,14 @@ namespace Sanad.Modules.Caregivers.Application.Discovery;
 
 public static class BookingPricingService
 {
-    public const decimal DefaultPlatformCommissionPercentage = 15.00m;
-
     public static BookingPriceSnapshot CalculatePrice(
         Caregiver caregiver,
         BookingShiftType shiftType,
         TimeOnly startTime,
         TimeOnly endTime,
-        decimal commissionPercentage = DefaultPlatformCommissionPercentage)
+        decimal commissionPercentage,
+        decimal taxPercentage,
+        int chargeRuleVersion)
     {
         decimal baseRate = 0m;
 
@@ -50,7 +50,7 @@ public static class BookingPricingService
             };
         }
 
-        return BookingPriceSnapshot.Calculate(baseRate, commissionPercentage);
+        return BookingPriceSnapshot.Calculate(baseRate, commissionPercentage, taxPercentage, chargeRuleVersion);
     }
 
     private static decimal CalculateHourlyTotal(decimal hourlyPrice, TimeOnly startTime, TimeOnly endTime)

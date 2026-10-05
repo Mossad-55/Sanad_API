@@ -1,0 +1,19 @@
+meta {
+  name: 17-webhook-payment-failure
+  type: http
+  seq: 20
+}
+post {
+  url: {{baseUrl}}/api/v1/payments/webhooks/paymob
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "obj": { "id": {{careHomeFailureTransactionId}}, "amount_cents": {{careHomeFailureAmountCents}}, "success": false, "pending": false, "currency": "EGP", "order": { "merchant_order_id": "{{careHomeFailureMerchantReference}}" } }, "hmac": "{{careHomeFailureWebhookHmac}}" }
+}
+assert {
+  res.status: eq 200
+}

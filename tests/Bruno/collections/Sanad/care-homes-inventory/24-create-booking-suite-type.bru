@@ -1,0 +1,30 @@
+meta {
+  name: 24-create-booking-suite-type
+  type: http
+  seq: 24
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/room-types
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{inventoryOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {"expectedVersion":{{inventoryVersion}},"arabicName":"جناح اختبار الحجز","englishName":"HC032 Booking Suite {{inventoryRunSuffix}}","monthlyPriceEgp":12000,"allocationMode":3,"arabicDescription":"اختبار","englishDescription":"Disposable booking suite fixture"}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const expected = `HC032 Booking Suite ${bru.getVar("inventoryRunSuffix")}`;
+  const roomType = res.body.roomTypes.find(item => item.englishName === expected);
+  if (!roomType) throw new Error("New booking suite type was not returned.");
+  bru.setVar("careHomePrivateOrSuiteRoomTypeId", roomType.id);
+  bru.setVar("inventoryPrivateRoomTypeId", roomType.id);
+  bru.setVar("inventoryVersion", res.body.version);
+}

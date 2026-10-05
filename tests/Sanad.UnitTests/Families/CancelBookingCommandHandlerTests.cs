@@ -20,6 +20,7 @@ using Sanad.Modules.Families.Domain.Reports;
 using Sanad.Modules.Families.Infrastructure.Data;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Xunit;
+using Sanad.UnitTests.Finance;
 
 namespace Sanad.UnitTests.Families;
 
@@ -852,7 +853,8 @@ public sealed class CancelBookingCommandHandlerTests
     {
         var handler = new CreateBookingCheckoutCommandHandler(
             dbContext,
-            new FixedPricing(CaregiverBaseFee));
+            new FixedPricing(CaregiverBaseFee),
+            new FixedPlatformChargeRules(15m, 0m));
 
         TimeOnly startTime = TimeOnly.FromDateTime(scheduledStartUtc);
 

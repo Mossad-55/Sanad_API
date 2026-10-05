@@ -12,6 +12,8 @@ Every brief specifies the revision/worktree delta, objective, owned files, accep
 
 ## Required gates
 
+Bruno uses the mandatory [failure-first runbook](bruno-failure-first.md) within the same worker sequence. Pin the worktree/runtime/fixture, run the offline preflight for the explicit request manifest, diagnose the first failure, fix the responsible code/request, and rerun its minimal prerequisites. After that passes, run the affected slice gate. HTTP failures do not justify database resets or random ports. Reuse existing in-scope authorization and valid evidence; apply the two-unchanged-attempt/ten-minute diagnostic checkpoint instead of repeating commands.
+
 For every implementation slice, the mastermind builds the project, runs focused slice tests, then the full suite, and executes slice Bruno coverage against disposable local/test fixtures. Build/test gates require successful exit and zero warnings. No endpoint commit without successful required Bruno coverage. Setup, readback, cleanup, and untestable cases must be explicit. Documentation/script-only changes receive relevant static/script validation.
 
 Reuse successful gates unless later changes invalidate them. Record commands, scope, results, warnings/skips, cleanup, and limitations in the owning slice. Static request mapping is not an executed test. Owner-confirmed historical results remain labelled separately.

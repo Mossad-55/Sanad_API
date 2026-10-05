@@ -33,6 +33,11 @@ public sealed class FamilySubscriptionConfiguration : IEntityTypeConfiguration<F
         builder.Property(x => x.LastRenewalFailedOnUtc).HasColumnName("last_renewal_failed_on_utc");
         builder.Property(x => x.CurrentPeriodGross).HasColumnName("current_period_gross").HasPrecision(18, 2);
         builder.Property(x => x.CurrentPeriodTaxRatePercentage).HasColumnName("current_period_tax_rate_percentage").HasPrecision(5, 2);
+        builder.Property(x => x.CurrentPeriodBaseAmount).HasColumnName("current_period_base_amount").HasPrecision(18, 2);
+        builder.Property(x => x.CurrentPeriodPlatformFeeRatePercentage).HasColumnName("current_period_platform_fee_rate_percentage").HasPrecision(5, 2);
+        builder.Property(x => x.CurrentPeriodPlatformFeeAmount).HasColumnName("current_period_platform_fee_amount").HasPrecision(18, 2);
+        builder.Property(x => x.CurrentPeriodTaxAmount).HasColumnName("current_period_tax_amount").HasPrecision(18, 2);
+        builder.Property(x => x.CurrentPeriodPlatformChargeRuleVersion).HasColumnName("current_period_platform_charge_rule_version");
         builder.Property(x => x.PaymobSubscriptionId).HasColumnName("paymob_subscription_id").HasMaxLength(100);
         builder.Property(x => x.PaymobSubscriptionState).HasColumnName("paymob_subscription_state").HasMaxLength(100);
         builder.Property(x => x.PaymobNextBillingOnUtc).HasColumnName("paymob_next_billing_on_utc");

@@ -1,0 +1,22 @@
+meta {
+  name: 20-decision-timeout-refund-readback
+  type: http
+  seq: 25
+}
+get {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeDecisionTimeoutBookingId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+script:pre-request {
+  const waitMs = Number(bru.getEnvVar("careHomeDecisionExpiryWaitMs") ?? 0);
+  if (Number.isFinite(waitMs) && waitMs > 0) await bru.sleep(waitMs);
+}
+assert {
+  res.status: eq 200
+  res.body.status: eq 8
+  res.body.paymentStatus: eq 4
+}

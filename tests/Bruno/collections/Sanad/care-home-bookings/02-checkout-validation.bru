@@ -1,0 +1,27 @@
+meta {
+  name: 02-checkout-validation
+  type: http
+  seq: 2
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/checkout
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "elderlyId": "00000000-0000-0000-0000-000000000000",
+    "facilityId": "00000000-0000-0000-0000-000000000000",
+    "roomTypeId": "00000000-0000-0000-0000-000000000000",
+    "requestedStartDate": ""
+  }
+}
+assert {
+  res.status: eq 400
+}
