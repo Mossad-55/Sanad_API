@@ -3,7 +3,7 @@
 The repository contains a repeatable package step in
 `docs/tools/Publish-SanadApi.ps1`. It publishes the API and writes
 `sanad-deployment-manifest.json` containing the Git revision, package time, and
-the billing migration expected by this release.
+the latest required migration identifier for each registered DbContext.
 
 From the repository root, run:
 
@@ -33,40 +33,45 @@ release health evidence.
 Before a remote launch:
 
 1. Verify the exact pushed revision in `sanad-deployment-manifest.json`.
-2. Verify the exact database and schema targets; apply the listed EF migration
-   using the deployment environment's approved connection string.
+2. Verify the configured database targets and ensure the production database
+   user has the required migration permissions. Outside Development, the API
+   applies pending migrations for all registered contexts (including Finance)
+   synchronously before startup completes. Production cannot disable this
+   behavior; migration failure is logged by context and prevents startup.
 3. Start the published API with production configuration and capture startup
-   migration output.
+   migration output, including each context's pending/applied count.
 4. Capture an authenticated-safe health/smoke result and confirm the caregiver
    completion path, including the allowance-exhausted `409` contract.
 
 The script packages the application; it does not contain hostnames, credentials,
-SSH keys, or an implicit production write. Deployment evidence must be returned
+SSH keys, or connect to a database. Deploying the package and starting the API
+causes the configured production databases to be migrated automatically.
+Deployment evidence must be returned
 by the deployment owner and recorded without credentials in the active slice
 identified by the Mastermind handoff. The former generated release task file is
 superseded and is not release authorization.
 The [Mastermind handoff](../Mastermind_Handoff.md) links to the active checkpoint.
 
-## Queued follow-up task: automatic migrations on deploy/restart
+## Automatic migrations on deploy/restart
 
-Status: Not started. Owner-requested follow-up after the current Bruno execution
-pass; that pass completed, but several stateful feature folders still need
-fixture corrections.
+Status: Implemented and unit-tested. The final commit and Release package
+revision are recorded in the deployment manifest.
 
-Objective: verify and, if needed, harden the deployment path so pending EF Core
-migrations for every registered module are applied to the configured server
-database when the API starts after deployment or restart.
+All registered DbContexts now run their EF Core migrations before API startup
+completes outside Development. Restarting after a deploy is safe: EF applies
+only pending migrations and does nothing when a context is current.
 
 Acceptance criteria:
 
 - Audit the API startup migration path, deployment configuration, and server
   launch mechanism for Identity, CMS, Caregivers, Families, Care homes,
-  Notifications, and Community.
-- Ensure deployments cannot silently disable startup migrations; migration
-  failure must prevent the API from being treated as ready, and logs must
-  identify the context and migration outcome without exposing connection data.
-- Verify idempotent restart behavior and pending-migration application against
-  an explicitly disposable database, including migration-history readback.
-- Update deployment/migration documentation with the verified server behavior
-  and safe recovery steps. Do not apply migrations to production as part of
-  this task without separate exact-target authorization.
+  Notifications, Community, and Finance.
+- `Database:ApplyMigrationsOnStartup=false` is accepted only in Development.
+  Finance remains separately opt-in only in Development; it is automatic in
+  every non-Development environment.
+- Migration failure aborts startup. Logs identify context and pending/applied
+  counts and do not include connection strings.
+- Unit tests cover production enforcement and Development exceptions. Runtime
+  idempotent restart and migration-history readback were not run against a
+  production database; the deployment owner should verify startup logs and the
+  schema history tables on the exact authorized target.

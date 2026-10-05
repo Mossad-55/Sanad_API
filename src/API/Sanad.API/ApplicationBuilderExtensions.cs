@@ -52,22 +52,23 @@ public static class ApplicationBuilderExtensions
             });
         }
 
-        // API host tests exercise middleware and route behavior without owning
-        // database lifecycle. Schema changes are applied explicitly by the
-        // deployment/migration workflow, not by a test host.
-        if (app.Configuration.GetValue(
-                "Database:ApplyMigrationsOnStartup",
-                defaultValue: true))
+        if (StartupMigrationPolicy.ShouldApplyModuleMigrations(
+                app.Configuration,
+                app.Environment))
         {
-            ApplyIdentityMigrations(app);
-            ApplyCmsMigrations(app);
-            ApplyCaregiversMigrations(app);
-            ApplyFamiliesMigrations(app);
-            ApplyCareHomesMigrations(app);
-            ApplyNotificationsMigrations(app);
-            ApplyCommunityMigrations(app);
-            if (app.Configuration.GetValue<bool>($"{FinanceMigrationOptions.SectionName}:ApplyOnStartup"))
-                ApplyFinanceMigrations(app);
+            ApplyMigrations<IdentityDbContext>(app);
+            ApplyMigrations<CmsDbContext>(app);
+            ApplyMigrations<CaregiversDbContext>(app);
+            ApplyMigrations<FamiliesDbContext>(app);
+            ApplyMigrations<CareHomesDbContext>(app);
+            ApplyMigrations<NotificationsDbContext>(app);
+            ApplyMigrations<CommunityDbContext>(app);
+            if (StartupMigrationPolicy.ShouldApplyFinanceMigrations(
+                    app.Configuration,
+                    app.Environment))
+            {
+                ApplyMigrations<FinanceDbContext>(app);
+            }
 
             SeedSuperAdmin(app);
             SeedTestUsers(app);
@@ -76,23 +77,38 @@ public static class ApplicationBuilderExtensions
         return app;
     }
 
-    private static void ApplyFinanceMigrations(WebApplication app)
+    private static void ApplyMigrations<TContext>(WebApplication app)
+        where TContext : DbContext
     {
-        using IServiceScope scope = app.Services.CreateScope();
-        scope.ServiceProvider.GetRequiredService<FinanceDbContext>().Database.Migrate();
-    }
+        string contextName = typeof(TContext).Name;
+        ILogger logger = app.Services
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Sanad.DatabaseMigrations");
 
-    private static void ApplyIdentityMigrations(
-        WebApplication app)
-    {
-        using IServiceScope scope =
-            app.Services.CreateScope();
+        try
+        {
+            using IServiceScope scope = app.Services.CreateScope();
+            TContext dbContext = scope.ServiceProvider.GetRequiredService<TContext>();
+            string[] pending = dbContext.Database.GetPendingMigrations().ToArray();
+            logger.LogInformation(
+                "Database migration check started for {DbContext}; {PendingCount} pending migration(s).",
+                contextName,
+                pending.Length);
 
-        IdentityDbContext dbContext =
-            scope.ServiceProvider.GetRequiredService<
-                IdentityDbContext>();
+            dbContext.Database.Migrate();
 
-        dbContext.Database.Migrate();
+            logger.LogInformation(
+                "Database migration check completed for {DbContext}; {AppliedCount} migration(s) applied.",
+                contextName,
+                pending.Length);
+        }
+        catch
+        {
+            logger.LogError(
+                "Database migration failed for {DbContext}; API startup will stop.",
+                contextName);
+            throw;
+        }
     }
 
     private static void SeedSuperAdmin(
@@ -129,66 +145,6 @@ public static class ApplicationBuilderExtensions
         seeder.SeedAsync()
             .GetAwaiter()
             .GetResult();
-    }
-
-    private static void ApplyCmsMigrations(
-        WebApplication app)
-    {
-        using IServiceScope scope =
-            app.Services.CreateScope();
-
-        CmsDbContext dbContext =
-            scope.ServiceProvider.GetRequiredService<
-                CmsDbContext>();
-
-        dbContext.Database.Migrate();
-    }
-
-    private static void ApplyCaregiversMigrations(
-        WebApplication app)
-    {
-        using IServiceScope scope =
-            app.Services.CreateScope();
-
-        CaregiversDbContext dbContext =
-            scope.ServiceProvider.GetRequiredService<
-                CaregiversDbContext>();
-
-        dbContext.Database.Migrate();
-    }
-
-    private static void ApplyFamiliesMigrations(
-        WebApplication app)
-    {
-        using IServiceScope scope =
-            app.Services.CreateScope();
-
-        FamiliesDbContext dbContext =
-            scope.ServiceProvider.GetRequiredService<
-            FamiliesDbContext>();
-
-        dbContext.Database.Migrate();
-    }
-
-    private static void ApplyNotificationsMigrations(WebApplication app)
-    {
-        using IServiceScope scope = app.Services.CreateScope();
-        NotificationsDbContext dbContext = scope.ServiceProvider.GetRequiredService<NotificationsDbContext>();
-        dbContext.Database.Migrate();
-    }
-
-    private static void ApplyCareHomesMigrations(WebApplication app)
-    {
-        using IServiceScope scope = app.Services.CreateScope();
-        CareHomesDbContext dbContext = scope.ServiceProvider.GetRequiredService<CareHomesDbContext>();
-        dbContext.Database.Migrate();
-    }
-
-    private static void ApplyCommunityMigrations(WebApplication app)
-    {
-        using IServiceScope scope = app.Services.CreateScope();
-        CommunityDbContext dbContext = scope.ServiceProvider.GetRequiredService<CommunityDbContext>();
-        dbContext.Database.Migrate();
     }
 
     private static void UseLocalFiles(
