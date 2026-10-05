@@ -41,6 +41,11 @@ if ($LASTEXITCODE -ne 0) {
     throw "dotnet publish failed with exit code $LASTEXITCODE."
 }
 
+$developmentSettingsPath = Join-Path $resolvedOutputPath 'appsettings.Development.json'
+if (Test-Path -LiteralPath $developmentSettingsPath -PathType Leaf) {
+    throw 'Development settings were found in the publish output; refusing to create a deployment manifest.'
+}
+
 $manifest = [ordered]@{
     application = 'Sanad.API'
     revision = $revision
