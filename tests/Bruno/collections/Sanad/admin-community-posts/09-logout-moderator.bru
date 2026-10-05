@@ -1,0 +1,19 @@
+meta {
+  name: 09-logout-moderator
+  type: http
+  seq: 9
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+headers {
+  X-Device-Session-Id: {{moderatorSessionId}}
+}
+auth:bearer {
+  token: {{moderatorJwt}}
+}
+assert {
+  res.status: eq 204
+}

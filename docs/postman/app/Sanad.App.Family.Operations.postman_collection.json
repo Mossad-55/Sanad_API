@@ -1,0 +1,31 @@
+{
+  "info": {
+    "_postman_id": "b3f1c2a4-0001-4a10-family-ops-000000000001",
+    "name": "Sanad App — Family reviews and medical access",
+    "description": "Family booking reviews, dependent help acknowledgement, and named medical-caregiver grants. Use disposable fixtures; no credentials are included.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7296" },
+    { "key": "familyToken", "value": "" },
+    { "key": "bookingId", "value": "" },
+    { "key": "dependentId", "value": "" },
+    { "key": "requestId", "value": "" },
+    { "key": "grantId", "value": "" },
+    { "key": "medicalCaregiverUserId", "value": "" }
+  ],
+  "item": [
+    { "name": "01. Booking review", "item": [
+      { "name": "Review completed booking", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"rating\": 5,\n  \"comment\": \"Excellent care\",\n  \"isAnonymous\": false\n}" }, "url": "{{baseUrl}}/api/v1/family/bookings/{{bookingId}}/review" }, "description": "Family owner/editor only, after Completed. One immutable review per booking; success is 201." }
+    ] },
+    { "name": "02. Dependent help requests", "item": [
+      { "name": "Acknowledge dependent help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }], "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/help-requests/{{requestId}}/acknowledge" }, "description": "FamilyAccess; dependent must belong to the caller’s family and the request must be pending." }
+    ] },
+    { "name": "03. Medical-access grants", "item": [
+      { "name": "Create named caregiver grant", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"granteeUserId\": \"{{medicalCaregiverUserId}}\",\n  \"grantType\": \"Limited\",\n  \"canViewRecords\": true,\n  \"canEditRecords\": false,\n  \"canShareWithOthers\": false,\n  \"expiresOnUtc\": \"2026-12-31T23:59:59Z\",\n  \"notes\": \"Assigned medical follow-up\"\n}" }, "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-access-grants" }, "description": "Owner/editor only. Grantee must be an active Medical caregiver; multiple named recipients are supported. Duplicate active dependent/grantee grants are rejected." },
+      { "name": "List dependent grants", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }], "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-access-grants" } },
+      { "name": "Get one dependent grant", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }], "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-access-grants/{{grantId}}" } },
+      { "name": "Revoke dependent grant", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }], "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-access-grants/{{grantId}}" }, "description": "Revokes the grant and preserves revocation actor/time; success is 204." }
+    ] }
+  ]
+}

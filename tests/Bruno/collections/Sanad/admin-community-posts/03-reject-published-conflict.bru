@@ -1,0 +1,23 @@
+meta {
+  name: 03-reject-published-conflict
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/community/posts/{{publishedPostId}}/reject
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{moderatorJwt}}
+}
+
+assert {
+  res.status: in [400, 409]
+}
+
+docs {
+  Requires a disposable already-published post; moderation state transition must be rejected.
+}

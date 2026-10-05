@@ -1,0 +1,25 @@
+meta {
+  name: 01-load-dependent
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyCheckInsJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const match = res.body.find(item => item.phoneNumber === bru.getEnvVar("elderlyPhone"));
+  const id = match && typeof match.id === "object" ? match.id.value : match?.id;
+  if (!id) throw new Error("Could not resolve the seeded Elderly dependent.");
+  bru.setVar("familyCheckInsDependentId", id);
+}

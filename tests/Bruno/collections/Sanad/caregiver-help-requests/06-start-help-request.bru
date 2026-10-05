@@ -1,0 +1,20 @@
+meta {
+  name: 06-start-help-request
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/help-requests/{{caregiverHelpRequestId}}/start
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestsCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 3
+}

@@ -1,0 +1,19 @@
+meta {
+  name: 18-help-request-catalog-authenticated
+  type: http
+  seq: 21
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/help-request-catalog
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}

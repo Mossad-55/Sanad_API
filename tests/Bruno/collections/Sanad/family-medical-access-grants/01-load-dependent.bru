@@ -1,0 +1,19 @@
+meta {
+  name: 01-load-dependent
+  type: http
+  seq: 1
+}
+get {
+  url: {{baseUrl}}/api/v1/family/dependents
+  auth: bearer
+}
+auth:bearer {
+  token: {{familyJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  if (!Array.isArray(res.body) || res.body.length === 0) throw new Error("Family fixture has no dependent.");
+  bru.setVar("dependentId", res.body[0].id.value);
+}

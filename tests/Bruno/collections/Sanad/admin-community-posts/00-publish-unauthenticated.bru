@@ -1,0 +1,15 @@
+meta {
+  name: 00-publish-unauthenticated
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/community/posts/00000000-0000-4000-8000-000000000001/publish
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

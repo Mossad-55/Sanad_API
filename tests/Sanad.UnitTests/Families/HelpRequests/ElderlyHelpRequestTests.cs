@@ -3,6 +3,8 @@ using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Application.Abstractions.HelpRequests;
+using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.Modules.Families.Application.HelpRequests;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
@@ -166,5 +168,138 @@ public sealed class ElderlyHelpRequestTests
     private sealed class CatalogGateway(IReadOnlyList<HelpRequestCatalogItem> items) : IHelpRequestCatalogGateway
     { public Task<IReadOnlyList<HelpRequestCatalogItem>> GetActiveAsync(IEnumerable<string> keys, CancellationToken cancellationToken = default) => Task.FromResult<IReadOnlyList<HelpRequestCatalogItem>>(items.Where(x => keys.Contains(x.Key)).ToArray()); }
     private sealed class RecordingNotifications : IHelpRequestNotificationGateway
-    { public List<Guid> RequestIds { get; } = []; public Task NotifyCreatedAsync(UserId elderlyIdentityUserId, Guid elderlyId, Guid helpRequestId, CancellationToken cancellationToken = default) { RequestIds.Add(helpRequestId); return Task.CompletedTask; } }
+    { public List<Guid> RequestIds { get; } = []; public Task NotifyCreatedAsync(UserId elderlyIdentityUserId, Guid elderlyId, Guid helpRequestId, CancellationToken cancellationToken = default) { RequestIds.Add(helpRequestId); return Task.CompletedTask; }
+    }
+
+    [Fact]
+    public async Task AcknowledgeFamilyDependentHelpRequest_Success()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var elderlyIdentity = UserId.New();
+        var family = Family.Create(owner, "family");
+        var elderly = Elderly.Create(owner, elderlyIdentity, family.Id, FamilyRelationshipType.Father,
+            FullName.Create("عمر"), FullName.Create("Omar"), Gender.Male, new DateOnly(1950, 1, 1), new DateOnly(2020, 1, 1));
+        var request = CreateRequest(elderlyIdentity);
+        db.Families.Add(family);
+        db.Elderlies.Add(elderly);
+        db.ElderlyHelpRequests.Add(request);
+        await db.SaveChangesAsync();
+
+        var handler = new AcknowledgeFamilyDependentHelpRequestCommandHandler(db);
+
+        var command = new AcknowledgeFamilyDependentHelpRequestCommand(owner, elderly.Id, request.Id);
+        var result = await handler.Handle(command, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(ElderlyHelpRequestStatus.Acknowledged, result.Value.Status);
+        Assert.Equal(request.Id, result.Value.Id);
+        Assert.Equal(elderly.Id.Value, result.Value.ElderlyId);
+        Assert.Equal(2, db.ElderlyHelpRequestHistories.Count());
+        Assert.Equal(ElderlyHelpRequestHistoryAction.Acknowledged, db.ElderlyHelpRequestHistories.Last().Action);
+        Assert.Equal(ElderlyHelpRequestStatus.Acknowledged, db.ElderlyHelpRequestHistories.Last().Status);
+    }
+
+    [Fact]
+    public async Task AcknowledgeFamilyDependentHelpRequest_FailsWhenNotFamilyMember()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var elderlyIdentity = UserId.New();
+        var family = Family.Create(owner, "family");
+        var elderly = Elderly.Create(owner, elderlyIdentity, family.Id, FamilyRelationshipType.Father,
+            FullName.Create("عمر"), FullName.Create("Omar"), Gender.Male, new DateOnly(1950, 1, 1), new DateOnly(2020, 1, 1));
+        var request = CreateRequest(elderlyIdentity);
+        var nonFamilyMember = UserId.New();
+        db.Families.Add(family);
+        db.Elderlies.Add(elderly);
+        db.ElderlyHelpRequests.Add(request);
+        await db.SaveChangesAsync();
+
+        var handler = new AcknowledgeFamilyDependentHelpRequestCommandHandler(db);
+
+        var command = new AcknowledgeFamilyDependentHelpRequestCommand(nonFamilyMember, elderly.Id, request.Id);
+        var result = await handler.Handle(command, default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Families.Elderly.FamilyNotFound", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task AcknowledgeFamilyDependentHelpRequest_FailsWhenDependentNotInFamily()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var elderlyIdentity = UserId.New();
+        var family = Family.Create(owner, "family");
+        var elderly = Elderly.Create(owner, elderlyIdentity, family.Id, FamilyRelationshipType.Father,
+            FullName.Create("عمر"), FullName.Create("Omar"), Gender.Male, new DateOnly(1950, 1, 1), new DateOnly(2020, 1, 1));
+        var request = CreateRequest(elderlyIdentity);
+        var otherFamily = Family.Create(UserId.New(), "other family");
+        var otherElderly = Elderly.Create(UserId.New(), UserId.New(), otherFamily.Id, FamilyRelationshipType.Father,
+            FullName.Create("أحمد"), FullName.Create("Ahmed"), Gender.Male, new DateOnly(1960, 1, 1), new DateOnly(2021, 1, 1));
+        db.Families.AddRange(family, otherFamily);
+        db.Elderlies.AddRange(elderly, otherElderly);
+        db.ElderlyHelpRequests.Add(request);
+        await db.SaveChangesAsync();
+
+        var handler = new AcknowledgeFamilyDependentHelpRequestCommandHandler(db);
+
+        var command = new AcknowledgeFamilyDependentHelpRequestCommand(owner, otherElderly.Id, request.Id);
+        var result = await handler.Handle(command, default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Families.Elderly.NotFound", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task AcknowledgeFamilyDependentHelpRequest_FailsWhenHelpRequestNotFound()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var elderlyIdentity = UserId.New();
+        var family = Family.Create(owner, "family");
+        var elderly = Elderly.Create(owner, elderlyIdentity, family.Id, FamilyRelationshipType.Father,
+            FullName.Create("عمر"), FullName.Create("Omar"), Gender.Male, new DateOnly(1950, 1, 1), new DateOnly(2020, 1, 1));
+        var request = CreateRequest(elderlyIdentity);
+        db.Families.Add(family);
+        db.Elderlies.Add(elderly);
+        db.ElderlyHelpRequests.Add(request);
+        await db.SaveChangesAsync();
+
+        var handler = new AcknowledgeFamilyDependentHelpRequestCommandHandler(db);
+
+        var command = new AcknowledgeFamilyDependentHelpRequestCommand(owner, elderly.Id, Guid.NewGuid());
+        var result = await handler.Handle(command, default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Families.HelpRequest.NotFound", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task AcknowledgeFamilyDependentHelpRequest_FailsWhenHelpRequestNotPending()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var elderlyIdentity = UserId.New();
+        var family = Family.Create(owner, "family");
+        var elderly = Elderly.Create(owner, elderlyIdentity, family.Id, FamilyRelationshipType.Father,
+            FullName.Create("عمر"), FullName.Create("Omar"), Gender.Male, new DateOnly(1950, 1, 1), new DateOnly(2020, 1, 1));
+        var request = CreateRequest(elderlyIdentity);
+        // Accept the request first
+        request.Transition(ElderlyHelpRequestHistoryAction.Accepted, null, elderlyIdentity);
+        db.Families.Add(family);
+        db.Elderlies.Add(elderly);
+        db.ElderlyHelpRequests.Add(request);
+        await db.SaveChangesAsync();
+
+        var handler = new AcknowledgeFamilyDependentHelpRequestCommandHandler(db);
+
+        var command = new AcknowledgeFamilyDependentHelpRequestCommand(owner, elderly.Id, request.Id);
+        var result = await handler.Handle(command, default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("Families.HelpRequest.InvalidOperation", result.Error.Code);
+    }
+
 }

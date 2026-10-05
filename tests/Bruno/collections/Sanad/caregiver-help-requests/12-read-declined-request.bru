@@ -1,0 +1,19 @@
+meta {
+  name: 12-read-declined-request
+  type: http
+  seq: 12
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/help-requests/{{caregiverHelpRequestDeclineId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestsCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 5
+}

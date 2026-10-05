@@ -529,7 +529,7 @@ public sealed class FamilyController :
     // -------------------------- Check-ins --------------------------
 
     [HttpGet("dependents/{dependentId:guid}/check-ins/today")]
-    [ProducesResponseType(typeof(IReadOnlyList<ElderlyCheckInResponse>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(IReadOnlyList<FamilyDependentCheckInResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDependentCheckInsToday(
         Guid dependentId,
         CancellationToken cancellationToken)
@@ -813,7 +813,7 @@ public sealed class FamilyController :
     }
 
     [HttpGet("dependents/{dependentId:guid}/help-requests/{requestId:guid}")]
-    [ProducesResponseType(typeof(ElderlyHelpRequestResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FamilyDependentHelpRequestResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetDependentHelpRequest(
         Guid dependentId,
         Guid requestId,
@@ -826,6 +826,26 @@ public sealed class FamilyController :
 
         return ToActionResult(await _sender.Send(
             new GetFamilyDependentHelpRequestQuery(
+                userId,
+                new ElderlyId(dependentId),
+                requestId),
+            cancellationToken));
+    }
+
+    [HttpPost("dependents/{dependentId:guid}/help-requests/{requestId:guid}/acknowledge")]
+    [ProducesResponseType(typeof(FamilyDependentHelpRequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> AcknowledgeDependentHelpRequest(
+        Guid dependentId,
+        Guid requestId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new AcknowledgeFamilyDependentHelpRequestCommand(
                 userId,
                 new ElderlyId(dependentId),
                 requestId),

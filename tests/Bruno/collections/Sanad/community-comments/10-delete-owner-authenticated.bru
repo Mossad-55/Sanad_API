@@ -1,0 +1,23 @@
+meta {
+  name: 10-delete-owner-authenticated
+  type: http
+  seq: 14
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/community/comments/{{commentId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 409
+}
+
+docs {
+  Verifies an authenticated owner cannot delete a comment after replies have been added.
+}

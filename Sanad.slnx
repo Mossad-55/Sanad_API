@@ -40,6 +40,16 @@
   <Folder Name="/src/Modules/Caregivers/Presentation/">
     <Project Path="src/Modules/Caregivers/Presentation/Sanad.Modules.Caregivers.Presentation/Sanad.Modules.Caregivers.Presentation.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Community/" />
+  <Folder Name="/src/Modules/Community/Application/">
+    <Project Path="src/Modules/Community/Application/Sanad.Modules.Community.Application/Sanad.Modules.Community.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Community/Domain/">
+    <Project Path="src/Modules/Community/Domain/Sanad.Modules.Community.Domain/Sanad.Modules.Community.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Community/Infrastructure/">
+    <Project Path="src/Modules/Community/Infrastructure/Sanad.Modules.Community.Infrastructure/Sanad.Modules.Community.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/src/Modules/Cms/" />
   <Folder Name="/src/Modules/Cms/Application/">
     <Project Path="src/Modules/Cms/Application/Sanad.Modules.Cms.Application/Sanad.Modules.Cms.Application.csproj" />

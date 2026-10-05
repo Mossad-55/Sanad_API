@@ -1,0 +1,28 @@
+meta {
+  name: 09-skip-task
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregivers/{{caregiverMedicationCaregiverId}}/medication-tasks/{{caregiverMedicationSkipTaskId}}/skip
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverMedicationCaregiverJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "reason": "Skipped by caregiver in disposable Bruno scenario" }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 3
+}

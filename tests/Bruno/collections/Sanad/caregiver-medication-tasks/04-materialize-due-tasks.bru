@@ -1,0 +1,26 @@
+meta {
+  name: 04-materialize-due-tasks
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/elderly/medications/late
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverMedicationElderlyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const doses = res.body.missedDoses || [];
+  const matches = doses.filter(dose => dose.medicationId === bru.getVar("caregiverMedicationId"));
+  if (matches.length !== 2 || matches.some(dose => !dose.doseLogId)) throw new Error("Could not materialize two overdue disposable doses; verify local lateness threshold and profile time zone.");
+  bru.setVar("caregiverMedicationAdministerTaskId", matches[0].doseLogId);
+  bru.setVar("caregiverMedicationSkipTaskId", matches[1].doseLogId);
+}

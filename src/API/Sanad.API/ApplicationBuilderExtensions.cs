@@ -12,6 +12,7 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence.Seeding;
 using Sanad.Modules.Notifications.Infrastructure.Persistence;
+using Sanad.Modules.Community.Infrastructure.Persistence;
 
 public static class ApplicationBuilderExtensions
 {
@@ -50,15 +51,24 @@ public static class ApplicationBuilderExtensions
             });
         }
 
-        ApplyIdentityMigrations(app);
-        ApplyCmsMigrations(app);
-        ApplyCaregiversMigrations(app);
-        ApplyFamiliesMigrations(app);
-        ApplyCareHomesMigrations(app);
-        ApplyNotificationsMigrations(app);
+        // API host tests exercise middleware and route behavior without owning
+        // database lifecycle. Schema changes are applied explicitly by the
+        // deployment/migration workflow, not by a test host.
+        if (app.Configuration.GetValue(
+                "Database:ApplyMigrationsOnStartup",
+                defaultValue: true))
+        {
+            ApplyIdentityMigrations(app);
+            ApplyCmsMigrations(app);
+            ApplyCaregiversMigrations(app);
+            ApplyFamiliesMigrations(app);
+            ApplyCareHomesMigrations(app);
+            ApplyNotificationsMigrations(app);
+            ApplyCommunityMigrations(app);
 
-        SeedSuperAdmin(app);
-        SeedTestUsers(app);
+            SeedSuperAdmin(app);
+            SeedTestUsers(app);
+        }
 
         return app;
     }
@@ -162,6 +172,13 @@ public static class ApplicationBuilderExtensions
     {
         using IServiceScope scope = app.Services.CreateScope();
         CareHomesDbContext dbContext = scope.ServiceProvider.GetRequiredService<CareHomesDbContext>();
+        dbContext.Database.Migrate();
+    }
+
+    private static void ApplyCommunityMigrations(WebApplication app)
+    {
+        using IServiceScope scope = app.Services.CreateScope();
+        CommunityDbContext dbContext = scope.ServiceProvider.GetRequiredService<CommunityDbContext>();
         dbContext.Database.Migrate();
     }
 

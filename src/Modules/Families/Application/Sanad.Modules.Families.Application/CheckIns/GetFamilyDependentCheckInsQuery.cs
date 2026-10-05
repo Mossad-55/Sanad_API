@@ -12,7 +12,7 @@ using Sanad.Modules.Families.Application.Elderlies;
 namespace Sanad.Modules.Families.Application.CheckIns;
 
 public sealed record PagedFamilyDependentCheckIns(
-    IReadOnlyList<ElderlyCheckInResponse> Items,
+    IReadOnlyList<FamilyDependentCheckInResponse> Items,
     int Page,
     int PageSize,
     int TotalCount);
@@ -25,6 +25,15 @@ public sealed record GetFamilyDependentCheckInsQuery(
     DateOnly? StartDate = null,
     DateOnly? EndDate = null,
     bool? Answer = null) : IQuery<PagedFamilyDependentCheckIns>;
+
+public sealed record FamilyDependentCheckInResponse(
+    Guid Id,
+    string ElderlyName,
+    string Answer,
+    DateOnly LocalDate,
+    DateTime? AnsweredAtLocalTime,
+    DateTime AnsweredOnUtc,
+    string TimeZoneId);
 
 public sealed class GetFamilyDependentCheckInsQueryHandler(
     IFamiliesDbContext dbContext,
@@ -43,6 +52,7 @@ public sealed class GetFamilyDependentCheckInsQueryHandler(
         GetFamilyDependentCheckInsQuery request,
         CancellationToken cancellationToken)
     {
+        _ = identityGateway;
         // Validate date range if provided
         if (request.StartDate.HasValue && request.EndDate.HasValue &&
             request.EndDate.Value.DayNumber - request.StartDate.Value.DayNumber >= 31)
@@ -115,12 +125,12 @@ public sealed class GetFamilyDependentCheckInsQueryHandler(
             .ThenByDescending(c => c.AnsweredOnUtc)
             .Skip((page - 1) * size)
             .Take(size)
-            .Select(c => new ElderlyCheckInResponse(
+            .Select(c => new FamilyDependentCheckInResponse(
                 c.Id,
-                c.ElderlyId.Value,
-                c.Answer,
+                c.ElderlyId.Value.ToString(),
+                c.Answer.ToString(),
                 c.LocalDate,
-                c.AnsweredAtLocalTime,
+                c.LocalDate.ToDateTime(c.AnsweredAtLocalTime),
                 c.AnsweredOnUtc,
                 elderly.TimeZoneId))
             .ToListAsync(cancellationToken);

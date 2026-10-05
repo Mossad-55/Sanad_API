@@ -1,0 +1,19 @@
+meta {
+  name: 24-logout-caregiver-final
+  type: http
+  seq: 24
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+headers {
+  X-Device-Session-Id: {{communityPostsFinalSessionId}}
+}
+auth:bearer {
+  token: {{communityPostsFinalJwt}}
+}
+assert {
+  res.status: eq 204
+}

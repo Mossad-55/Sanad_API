@@ -1,0 +1,28 @@
+meta {
+  name: 03-login-elderly
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "identifier": "{{elderlyPhone}}", "password": "{{elderlyPassword}}", "deviceName": "bruno-caregiver-medication-dose-setup", "devicePlatform": 3, "appVersion": "1.0.0" }
+}
+
+script:post-response {
+  if (!res.body.accessToken) throw new Error("Elderly login did not return an access token.");
+  bru.setVar("caregiverMedicationElderlyJwt", res.body.accessToken);
+}
+
+assert {
+  res.status: eq 200
+}

@@ -13,18 +13,31 @@ namespace Sanad.Modules.Families.Application.HelpRequests;
 public sealed record GetFamilyDependentHelpRequestQuery(
     UserId UserId,
     ElderlyId DependentId,
-    Guid RequestId) : IQuery<ElderlyHelpRequestResponse>;
+    Guid RequestId) : IQuery<FamilyDependentHelpRequestResponse>;
+
+public sealed record FamilyDependentHelpRequestResponse(
+    Guid Id,
+    string ElderlyName,
+    string Status,
+    string ActorKey,
+    string ActionKey,
+    string NeedKey,
+    string? QualifierKey,
+    string? CustomText,
+    DateTime CreatedOnUtc,
+    DateTime UpdatedOnUtc);
 
 public sealed class GetFamilyDependentHelpRequestQueryHandler(
     IFamiliesDbContext dbContext,
     IFamilyIdentityGateway identityGateway) : IQueryHandler<
     GetFamilyDependentHelpRequestQuery,
-    ElderlyHelpRequestResponse>
+    FamilyDependentHelpRequestResponse>
 {
-    public async Task<Result<ElderlyHelpRequestResponse>> Handle(
+    public async Task<Result<FamilyDependentHelpRequestResponse>> Handle(
         GetFamilyDependentHelpRequestQuery request,
         CancellationToken cancellationToken)
     {
+        _ = identityGateway;
         // Resolve the family for the user
         var family = await FamilyAccess.ResolveFamilyAsync(
             dbContext,
@@ -33,7 +46,7 @@ public sealed class GetFamilyDependentHelpRequestQueryHandler(
 
         if (family is null)
         {
-            return Result<ElderlyHelpRequestResponse>.Failure(
+            return Result<FamilyDependentHelpRequestResponse>.Failure(
                 ElderlyErrors.FamilyNotFound);
         }
 
@@ -47,7 +60,7 @@ public sealed class GetFamilyDependentHelpRequestQueryHandler(
 
         if (elderly is null)
         {
-            return Result<ElderlyHelpRequestResponse>.Failure(
+            return Result<FamilyDependentHelpRequestResponse>.Failure(
                 ElderlyErrors.NotFound);
         }
 
@@ -63,15 +76,15 @@ public sealed class GetFamilyDependentHelpRequestQueryHandler(
 
         if (helpRequest is null)
         {
-            return Result<ElderlyHelpRequestResponse>.Failure(
+            return Result<FamilyDependentHelpRequestResponse>.Failure(
                 HelpRequestErrors.NotFound);
         }
 
-        return Result<ElderlyHelpRequestResponse>.Success(
-            new ElderlyHelpRequestResponse(
+        return Result<FamilyDependentHelpRequestResponse>.Success(
+            new FamilyDependentHelpRequestResponse(
                 helpRequest.Id,
-                helpRequest.ElderlyIdentityUserId.Value,
-                helpRequest.Status,
+ elderly.IdentityUserId.Value.ToString(),
+                helpRequest.Status.ToString(),
                 helpRequest.ActorKey,
                 helpRequest.ActionKey,
                 helpRequest.NeedKey,

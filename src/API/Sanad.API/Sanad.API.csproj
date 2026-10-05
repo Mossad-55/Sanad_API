@@ -16,6 +16,8 @@
     <ProjectReference Include="..\..\Modules\CareHomes\Application\Sanad.Modules.CareHomes.Application\Sanad.Modules.CareHomes.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Notifications\Application\Sanad.Modules.Notifications.Application\Sanad.Modules.Notifications.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Notifications\Infrastructure\Sanad.Modules.Notifications.Infrastructure\Sanad.Modules.Notifications.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Community\Application\Sanad.Modules.Community.Application\Sanad.Modules.Community.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\Community\Infrastructure\Sanad.Modules.Community.Infrastructure\Sanad.Modules.Community.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

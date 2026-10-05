@@ -1,0 +1,24 @@
+meta {
+  name: 07-list-tasks
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregivers/{{caregiverMedicationCaregiverId}}/medication-tasks
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverMedicationCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body: isArray
+}
+
+script:post-response {
+  const ids = res.body.map(task => task.taskId);
+  if (!ids.includes(bru.getVar("caregiverMedicationAdministerTaskId")) || !ids.includes(bru.getVar("caregiverMedicationSkipTaskId"))) throw new Error("Caregiver task list omitted one or both assigned Elderly doses.");
+}

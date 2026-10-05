@@ -243,6 +243,24 @@ public static class ResultProblemDetailsMapper
             ["Families.HelpRequest.NotFound"] = 404,
             ["Families.HelpRequest.IdempotencyConflict"] = 409,
             ["Families.HelpRequest.InvalidOperation"] = 409
+            , ["Bookings.NotFound"] = 404
+            , ["Bookings.AccessDenied"] = 403
+            , ["Bookings.ReviewNotAllowed"] = 409
+            , ["Bookings.ReviewExists"] = 409
+            , ["Bookings.InvalidReview"] = 400
+            , ["Caregivers.NotFound"] = 404
+            , ["Caregivers.AccessDenied"] = 403
+            , ["Caregivers.HelpRequest.NotFound"] = 404
+            , ["Caregivers.HelpRequest.InvalidOperation"] = 409
+            , ["Caregivers.HelpRequest.InvalidReason"] = 400
+            , ["Caregivers.HelpRequest.InvalidDateRange"] = 400
+            , ["Caregivers.MedicationTask.NotFound"] = 404
+            , ["Caregivers.MedicationTask.InvalidOperation"] = 409
+            , ["Caregivers.MedicationTask.InvalidReason"] = 400
+            , ["MedicalAccess.GrantNotFound"] = 404
+            , ["MedicalAccess.GrantExists"] = 409
+            , ["MedicalAccess.InvalidGrant"] = 400
+            , ["Families.AccessDenied"] = 403
             , ["Families.AdminMedication.NotFound"] = 404
             , ["Families.Sos.NotFound"] = 404
             , ["Families.Sos.IdempotencyConflict"] = 409
@@ -254,6 +272,10 @@ public static class ResultProblemDetailsMapper
             , ["Cms.ElderlyWelcome.AlreadyExists"] = 409
             , ["Cms.ElderlyWelcome.InvalidState"] = 409
             , ["Cms.ElderlyWelcome.Invalid"] = 400
+            , ["Feedback.InvalidRating"] = 400
+            , ["Community.PostNotFound"] = 404
+            , ["Community.InvalidModerationOperation"] = 409
+            , ["Community.CheckIn.Invalid"] = 400
         };
 
     public static ProblemDetails Create(

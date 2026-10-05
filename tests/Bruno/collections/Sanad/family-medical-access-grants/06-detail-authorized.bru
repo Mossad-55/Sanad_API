@@ -1,0 +1,16 @@
+meta {
+  name: 06-detail-authorized
+  type: http
+  seq: 6
+}
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-access-grants/{{grantId}}
+  auth: bearer
+}
+auth:bearer {
+  token: {{familyJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.granteeUserId: eq {{medicalCaregiverUserId}}
+}

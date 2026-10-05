@@ -1,0 +1,17 @@
+meta {
+  name: 06-readback-published-post
+  type: http
+  seq: 6
+}
+get {
+  url: {{baseUrl}}/api/v1/community/posts/{{publishedPostId}}
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{moderatorJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.status: eq Published
+}

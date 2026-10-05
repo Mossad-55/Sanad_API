@@ -5,7 +5,6 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Caregivers.Application.HelpRequests;
 using Sanad.Modules.Families.Application.Abstractions.Data;
-using Sanad.Modules.Families.Application.Abstractions.Identity;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.HelpRequests;
@@ -15,6 +14,7 @@ namespace Sanad.Modules.Caregivers.Application.HelpRequests;
 public sealed record CaregiverHelpRequestResponse(
     Guid Id,
     Guid ElderlyId,
+    ElderlyHelpRequestStatus Status,
     string ActorKey,
     string ActionKey,
     string NeedKey,
@@ -38,8 +38,7 @@ public sealed record GetCaregiverHelpRequestsQuery(
 
 public sealed class GetCaregiverHelpRequestsQueryHandler(
     ICaregiversDbContext dbContext,
-    IFamiliesDbContext familiesDb,
-    IFamilyIdentityGateway familiesGateway) : IQueryHandler<
+    IFamiliesDbContext familiesDb) : IQueryHandler<
     GetCaregiverHelpRequestsQuery,
     PagedCaregiverHelpRequests>
 {
@@ -55,7 +54,7 @@ public sealed class GetCaregiverHelpRequestsQueryHandler(
         var caregiver = await dbContext.Caregivers
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                c => c.Id == new CaregiverId(request.UserId.Value),
+                c => c.UserId == request.UserId,
                 cancellationToken);
 
         if (caregiver is null)
@@ -133,6 +132,7 @@ public sealed class GetCaregiverHelpRequestsQueryHandler(
         var helpRequests = rows.Select(x => new CaregiverHelpRequestResponse(
             x.HelpRequest.Id,
             x.Elderly.Id.Value,
+            x.HelpRequest.Status,
             x.HelpRequest.ActorKey,
             x.HelpRequest.ActionKey,
             x.HelpRequest.NeedKey,

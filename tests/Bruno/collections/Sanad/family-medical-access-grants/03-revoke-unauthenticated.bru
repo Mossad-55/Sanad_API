@@ -1,0 +1,14 @@
+meta {
+  name: 03-revoke-unauthenticated
+  type: http
+  seq: 3
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/family/dependents/00000000-0000-4000-8000-000000000001/medical-access-grants/00000000-0000-4000-8000-000000000002
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

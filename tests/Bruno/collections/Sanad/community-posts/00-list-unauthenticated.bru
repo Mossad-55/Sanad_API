@@ -1,0 +1,15 @@
+meta {
+  name: 00-list-unauthenticated
+  type: http
+  seq: 0
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/posts
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

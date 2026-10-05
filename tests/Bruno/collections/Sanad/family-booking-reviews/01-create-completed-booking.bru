@@ -1,0 +1,32 @@
+meta {
+  name: 01-create-completed-booking
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/bookings/{{completedBookingId}}/review
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "rating": 5, "comment": "Fixture completed-booking review", "isAnonymous": false }
+}
+
+assert {
+  res.status: in [201, 409]
+}
+
+docs {
+  Requires a disposable completed booking fixture owned by the authenticated family.
+  Replaying the same request should return 409 because one review is allowed per booking.
+}

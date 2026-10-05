@@ -29,6 +29,11 @@ public sealed record CancelBookingRequest(
     string? Reason,
     int? ReasonCategory);
 
+public sealed record AddBookingReviewRequest(
+    int Rating,
+    string? Comment,
+    bool IsAnonymous);
+
 [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
 [Route("api/v1/family/bookings")]
 public sealed class FamilyBookingsController : ApiControllerBase
@@ -78,6 +83,26 @@ public sealed class FamilyBookingsController : ApiControllerBase
         var query = new GetFamilyBookingDetailQuery(userId, new BookingId(bookingId));
         var result = await _sender.Send(query, cancellationToken);
         return ToActionResult(result);
+    }
+
+    [HttpPost("{bookingId:guid}/review")]
+    [ProducesResponseType(typeof(BookingReviewResponse), StatusCodes.Status201Created)]
+    public async Task<IActionResult> AddBookingReview(
+        Guid bookingId,
+        [FromBody] AddBookingReviewRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var command = new AddBookingReviewCommand(
+            bookingId, userId.Value, request.Rating, request.Comment, request.IsAnonymous);
+        var result = await _sender.Send(command, cancellationToken);
+        if (result.IsFailure) return ToActionResult(result);
+
+        return CreatedAtAction(nameof(GetBookingDetail), new { bookingId }, result.Value);
     }
 
     [HttpPost("checkout")]

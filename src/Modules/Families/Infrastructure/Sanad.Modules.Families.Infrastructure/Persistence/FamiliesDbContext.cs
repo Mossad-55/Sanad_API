@@ -58,6 +58,9 @@ public sealed class FamiliesDbContext :
     public DbSet<ElderlySos> ElderlySos => Set<ElderlySos>();
     public DbSet<ElderlySosHistory> ElderlySosHistories => Set<ElderlySosHistory>();
 
+    public DbSet<BookingReview> BookingReviews => Set<BookingReview>();
+    public DbSet<MedicalAccessGrant> MedicalAccessGrants => Set<MedicalAccessGrant>();
+
     public void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
         PaymobSubscriptionIdentities.Add(identity);
 

@@ -1,0 +1,15 @@
+meta {
+  name: 06-replies-unauthenticated
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/comments/00000000-0000-4000-8000-000000000001/replies
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

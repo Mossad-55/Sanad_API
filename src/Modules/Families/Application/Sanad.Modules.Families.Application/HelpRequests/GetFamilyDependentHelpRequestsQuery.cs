@@ -11,7 +11,7 @@ using Sanad.Modules.Families.Application.Elderlies;
 namespace Sanad.Modules.Families.Application.HelpRequests;
 
 public sealed record PagedFamilyDependentHelpRequests(
-    IReadOnlyList<ElderlyHelpRequestResponse> Items,
+    IReadOnlyList<FamilyDependentHelpRequestResponse> Items,
     int Page,
     int PageSize,
     int TotalCount);
@@ -42,6 +42,7 @@ public sealed class GetFamilyDependentHelpRequestsQueryHandler(
         GetFamilyDependentHelpRequestsQuery request,
         CancellationToken cancellationToken)
     {
+        _ = identityGateway;
         // Validate date range if provided
         if (request.StartDate.HasValue && request.EndDate.HasValue &&
             request.EndDate.Value.DayNumber - request.StartDate.Value.DayNumber >= 31)
@@ -110,10 +111,10 @@ public sealed class GetFamilyDependentHelpRequestsQueryHandler(
             .OrderByDescending(c => c.CreatedOnUtc)
             .Skip((page - 1) * size)
             .Take(size)
-            .Select(c => new ElderlyHelpRequestResponse(
+            .Select(c => new FamilyDependentHelpRequestResponse(
                 c.Id,
-                c.ElderlyIdentityUserId.Value,
-                c.Status,
+                c.ElderlyIdentityUserId.Value.ToString(),
+                c.Status.ToString(),
                 c.ActorKey,
                 c.ActionKey,
                 c.NeedKey,

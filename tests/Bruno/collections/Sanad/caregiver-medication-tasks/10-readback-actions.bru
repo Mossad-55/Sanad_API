@@ -1,0 +1,25 @@
+meta {
+  name: 10-readback-actions
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregivers/{{caregiverMedicationCaregiverId}}/medication-tasks
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverMedicationCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const administered = res.body.find(task => task.taskId === bru.getVar("caregiverMedicationAdministerTaskId"));
+  const skipped = res.body.find(task => task.taskId === bru.getVar("caregiverMedicationSkipTaskId"));
+  if (!administered || administered.status !== 2 || !administered.isAdministered) throw new Error("Administered dose was not persisted as completed.");
+  if (!skipped || skipped.status !== 3 || !skipped.isSkipped) throw new Error("Skipped dose was not persisted as skipped.");
+}

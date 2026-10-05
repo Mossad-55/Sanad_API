@@ -1,0 +1,14 @@
+meta {
+  name: 11-unauthenticated-list
+  type: http
+  seq: 11
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregivers/{{caregiverMedicationCaregiverId}}/medication-tasks
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

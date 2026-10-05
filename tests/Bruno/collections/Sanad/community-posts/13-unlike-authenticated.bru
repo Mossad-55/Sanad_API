@@ -1,0 +1,23 @@
+meta {
+  name: 13-unlike-authenticated
+  type: http
+  seq: 16
+}
+
+delete {
+  url: {{baseUrl}}/api/v1/community/posts/{{postId}}/like
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+docs {
+  Requires a published post already liked by this user; capture a like with 12-like-authenticated first. Verify the count decreases on readback.
+}

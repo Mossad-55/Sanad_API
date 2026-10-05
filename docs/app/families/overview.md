@@ -68,6 +68,9 @@ Removing a dependent **hard-deletes** the Families row and the photo file. The E
 | Invitations by email, deep link, accept/decline/revoke | `docs/app/families/invitations.md` |
 | Caregiver discovery: search, public profile, price quote | `docs/app/families/discovery.md` |
 | Bookings: checkout, tabs, detail, cancel | `docs/app/families/bookings.md` |
+| Booking reviews | `docs/app/families/bookings.md` |
+| Dependent medical-access grants | `docs/app/families/medical-access.md` |
+| Postman (reviews and medical access) | `docs/postman/app/Sanad.App.Family.Operations.postman_collection.json` |
 | Subscription plan catalog and current snapshot (Owner read-only) | `docs/app/families/subscriptions.md` |
 | Postman | `docs/postman/app/Sanad.App.Family.postman_collection.json` |
 

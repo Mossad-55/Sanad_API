@@ -1,0 +1,23 @@
+meta {
+  name: 08-read-resolved-request
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/help-requests/{{caregiverHelpRequestId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestsCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 4
+}
+
+script:post-response {
+  bru.setVar("resolvedHelpRequestReadBack", "true");
+}

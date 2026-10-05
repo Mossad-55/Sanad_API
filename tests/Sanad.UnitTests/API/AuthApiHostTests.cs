@@ -373,6 +373,11 @@ public sealed class AuthApiHostTests :
                                 [
                                     "App:TestUserSeed:Enabled"
                                 ] =
+                                    "false",
+
+                                [
+                                    "Database:ApplyMigrationsOnStartup"
+                                ] =
                                     "false"
                             });
                 });

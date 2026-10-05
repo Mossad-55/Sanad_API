@@ -1,0 +1,26 @@
+meta {
+  name: 03-get-help-requests-paginated
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/help-requests?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestsCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isArray
+  res.body.page: eq 1
+  res.body.pageSize: eq 20
+  res.body.totalCount: isNumber
+}
+
+script:post-response {
+  if (!res.body.items.some(item => item.id === bru.getVar("caregiverHelpRequestId"))) throw new Error("Assigned caregiver help request is missing from the caregiver list.");
+}

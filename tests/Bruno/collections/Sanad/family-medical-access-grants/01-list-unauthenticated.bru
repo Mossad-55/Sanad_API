@@ -1,0 +1,14 @@
+meta {
+  name: 01-list-unauthenticated
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/00000000-0000-4000-8000-000000000001/medical-access-grants
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

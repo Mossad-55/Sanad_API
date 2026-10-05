@@ -437,6 +437,41 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.ToTable("booking_cancellation_facts", "families");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.Bookings.BookingReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Comment")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<Guid>("CreatedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<bool>("IsAnonymous")
+                        .HasColumnType("boolean");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime?>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId")
+                        .IsUnique();
+
+                    b.ToTable("BookingReviews", "families");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Elderlies.CheckIns.ElderlyCheckIn", b =>
                 {
                     b.Property<Guid>("Id")
@@ -575,6 +610,55 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.HasIndex("OwnerUserId");
 
                     b.ToTable("elderlies", "families");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.Elderlies.MedicalAccessGrant", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("CanEditRecords")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanShareWithOthers")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("CanViewRecords")
+                        .HasColumnType("boolean");
+
+                    b.Property<Guid>("DependentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ExpiresOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("GrantType")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("GrantedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("GrantedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("GranteeUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)");
+
+                    b.Property<Guid?>("RevokedByUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("RevokedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DependentId", "GranteeUserId");
+
+                    b.ToTable("MedicalAccessGrants", "families");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Families.Family", b =>
@@ -1267,6 +1351,7 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedOnUtc")
+                        .IsConcurrencyToken()
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");

@@ -8,6 +8,8 @@ public static class AuthorizationPolicies
     public const string CmsContent =
         "CmsContent";
 
+    public const string CommunityModeration = "CommunityModeration";
+
     public const string CaregiversAdmin =
         "CaregiversAdmin";
 

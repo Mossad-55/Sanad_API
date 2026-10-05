@@ -1,0 +1,23 @@
+meta {
+  name: 06-rate-unauthenticated
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/community/posts/00000000-0000-4000-8000-000000000001/rating
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "ratingValue": "5" }
+}
+
+assert {
+  res.status: eq 401
+}

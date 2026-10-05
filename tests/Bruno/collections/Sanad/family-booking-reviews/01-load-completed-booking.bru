@@ -1,0 +1,21 @@
+meta {
+  name: 01-load-completed-booking
+  type: http
+  seq: 1
+}
+get {
+  url: {{baseUrl}}/api/v1/family/bookings?tab=Past
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{familyJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const completed = res.body.find(booking => booking.status === 5 || booking.status === "Completed");
+  if (!completed) throw new Error("Family fixture has no completed booking for the review scenario.");
+  bru.setVar("completedBookingId", completed.id);
+}

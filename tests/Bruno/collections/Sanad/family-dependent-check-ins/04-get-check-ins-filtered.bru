@@ -1,0 +1,26 @@
+meta {
+  name: 04-get-check-ins-filtered
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyCheckInsDependentId}}/check-ins?page=1&pageSize=10&startDate=2026-09-01&endDate=2026-09-30&answer=true
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyCheckInsJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isArray
+  res.body.page: eq 1
+  res.body.pageSize: eq 10
+  res.body.totalCount: isNumber
+}
+
+script:post-response {
+  if (res.body.items.some(item => item.answer !== true)) throw new Error("Filtered check-in result contains a negative answer.");
+}

@@ -189,23 +189,9 @@ public sealed class SubscriptionTaxRuleTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
 
-    private sealed class FailingSaveContext(FamiliesDbContext inner, Exception failure) : IFamiliesDbContext
+    private sealed class FailingSaveContext(FamiliesDbContext inner, Exception failure)
+        : Sanad.UnitTests.Support.FamiliesDbContextAdapter(inner)
     {
-        public Microsoft.EntityFrameworkCore.DbSet<Family> Families => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<Elderly> Elderlies => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<FamilyInvitation> Invitations => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<Booking> Bookings => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<BookingCancellationFact> BookingCancellationFacts => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<AssessmentQuestion> AssessmentQuestions => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<AssessmentTier> AssessmentTiers => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<CareAssessment> CareAssessments => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<Medication> Medications => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<MedicationDoseLog> MedicationDoseLogs => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<ElderlyNote> ElderlyNotes => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<ElderlyActivityLog> ElderlyActivityLogs => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<VisitReport> VisitReports => throw new NotSupportedException();
-        public Microsoft.EntityFrameworkCore.DbSet<SubscriptionTaxRule> SubscriptionTaxRules => inner.SubscriptionTaxRules;
-
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Task.FromException<int>(failure);
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Task.FromException<int>(failure);
     }
 }

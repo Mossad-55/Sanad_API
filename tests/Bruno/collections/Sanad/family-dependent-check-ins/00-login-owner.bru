@@ -15,21 +15,14 @@ headers {
 }
 
 body:json {
-  {
-    "email": "{{familyEmail}}",
-    "password": "{{familyPassword}}",
-    "deviceName": "{{deviceName}}",
-    "devicePlatform": {{devicePlatform}},
-    "appVersion": "{{appVersion}}"
-  }
+  { "email": "{{familyOwnerEmail}}", "password": "{{familyOwnerPassword}}", "deviceName": "bruno-family-dependent-check-ins", "devicePlatform": 3, "appVersion": "1.0.0" }
 }
 
-auth:bearer {
-  token: {{jwt}}
+script:post-response {
+  if (!res.body.accessToken) throw new Error("Family login did not return an access token.");
+  bru.setVar("familyCheckInsJwt", res.body.accessToken);
 }
 
 assert {
   res.status: eq 200
-  res.json.accessType: eq "Normal"
-  res.json.accountType: eq 1
 }

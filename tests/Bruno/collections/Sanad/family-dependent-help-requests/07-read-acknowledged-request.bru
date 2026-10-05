@@ -1,0 +1,19 @@
+meta {
+  name: 07-read-acknowledged-request
+  type: http
+  seq: 7
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyHelpDependentId}}/help-requests/{{familyHelpRequestId}}
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyHelpJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq Acknowledged
+}

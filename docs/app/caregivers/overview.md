@@ -90,8 +90,10 @@ Retries are safe: the operation is idempotent, and a partially completed deletio
 | Submit for review / corrections | `docs/app/caregivers/submission.md` |
 | Booking actions on family requests | `docs/app/caregivers/bookings.md` |
 | Caregiver help requests | `docs/app/caregivers/bookings.md` |
+| Availability read, earnings, medication tasks and help-request transitions | `docs/app/caregivers/earnings-and-medication-tasks.md` |
 | Family rating and top-10 endpoints | `docs/app/caregivers/family-ratings.md` |
 | Postman (caregiver self-service) | `docs/postman/app/Sanad.App.Caregiver.postman_collection.json` |
+| Postman (caregiver operations) | `docs/postman/app/Sanad.App.Caregiver.Operations.postman_collection.json` |
 | Postman (Family endpoints in this feature) | `docs/postman/app/Sanad.App.Family.postman_collection.json` |
 
 Public app surfaces (splash screens, active lookups) that the wizard reads from are documented in `docs/app/public/` and collected in `docs/postman/app/Sanad.App.Public.postman_collection.json`.

@@ -1,0 +1,23 @@
+meta {
+  name: 13-list-replies-authenticated
+  type: http
+  seq: 13
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/comments/{{commentId}}/replies?page=1&pageSize=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Requires an existing comment. Run after 12-create-reply-authenticated to verify the new reply is visible.
+}

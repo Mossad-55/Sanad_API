@@ -1,0 +1,23 @@
+meta {
+  name: 14-favorite-authenticated
+  type: http
+  seq: 17
+}
+
+post {
+  url: {{baseUrl}}/api/v1/community/posts/{{postId}}/favorite
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Requires a published post. The route toggles this user's favorite state; read back the post to verify the count.
+}

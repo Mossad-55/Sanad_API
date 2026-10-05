@@ -1,0 +1,28 @@
+meta {
+  name: 07-resolve-help-request
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/help-requests/{{caregiverHelpRequestId}}/resolve
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestsCaregiverJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "reason": "Completed the disposable Bruno assistance request" }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 4
+}

@@ -1,0 +1,19 @@
+meta {
+  name: 15-logout-caregiver
+  type: http
+  seq: 15
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout
+  body: none
+  auth: bearer
+}
+headers {
+  X-Device-Session-Id: {{communityCommentsSessionId}}
+}
+auth:bearer {
+  token: {{communityCommentsJwt}}
+}
+assert {
+  res.status: eq 204
+}

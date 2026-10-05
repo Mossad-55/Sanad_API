@@ -1,0 +1,38 @@
+meta {
+  name: 01-create-help-request
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/help-requests
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyHelpElderlyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+  Idempotency-Key: {{familyHelpRequestKey}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Help-request writes require the guarded local Development API.");
+  bru.setVar("familyHelpRequestKey", `bruno-family-help-request-${Date.now()}`);
+}
+
+body:json {
+  { "actorKey": "self", "actionKey": "need", "needKey": "water", "qualifierKey": "now", "customText": null }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body.id) throw new Error("Expected newly created help-request ID.");
+  bru.setVar("familyHelpRequestId", res.body.id);
+}

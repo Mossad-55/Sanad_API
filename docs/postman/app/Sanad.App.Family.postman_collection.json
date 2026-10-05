@@ -789,7 +789,7 @@
                   }
                 ],
                 "cookie": [],
-                "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/family/leave\",\n  \"code\": \"Families.Family.AccessDenied\",\n  "traceId": "00-00000000000000000000000000000000-0000000000000000-00"
+                "body": "{\n  \"type\": \"https://httpstatuses.com/403\",\n  \"title\": \"Forbidden\",\n  \"status\": 403,\n  \"detail\": \"The requested operation is not allowed.\",\n  \"instance\": \"/api/v1/family/leave\",\n  \"code\": \"Families.Family.AccessDenied\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
               }
             ],
             "description": "Owner transfer flow. Replace <member-guid> with an existing family member. Documented outcomes: 204 success; 403 Families.Family.AccessDenied; 404 Families.Family.MemberNotFound; 409 Families.Family.OwnerProtected. This request is intentionally documented only; do not run it against acceptance fixtures."
@@ -845,7 +845,7 @@
                   }
                 ],
                 "cookie": [],
-                "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/family\",\n  "code": "Families.Family.AcknowledgementRequired", "traceId": "00-00000000000000000000000000000000-0000000000000000-00"
+                "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/family\",\n  \"code\": \"Families.Family.AcknowledgementRequired\", \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
               }
             ],
             "description": "Safe negative path: acknowledgement=false returns 400 Families.Family.AcknowledgementRequired. SET-8c behavior: acknowledgement=true anonymizes member and dependent accounts and retains the rows. NEVER run the acknowledgement=true / 204 path against fixtures."
@@ -1261,9 +1261,8 @@
                   }
                 ],
                 "url": "{{baseUrl}}/api/v1/family/invitations/{{invitationId}}"
-              }
-            },
-            "description": "Owner only. Run before accept/decline to test revocation (revoked tokens then return 409 NotPending)."
+              },
+              "description": "Owner only. Run before accept/decline to test revocation (revoked tokens then return 409 NotPending)."
           }
         ],
         "description": "Invitations are by email to existing Family users. Token arrives via deep link sanad://family/invite?token=... (development: the development mail sink prints it to the API log)."
@@ -1301,29 +1300,9 @@
               "url": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-profile",
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"bloodType\": 1,\n  \"heightCm": 170,
-                "weightKg": 75.5,
-                "chronicConditions": [
-                  "Diabetes Type 2",
-                  "Hypertension"
-                ],
-                "allergies": [
-                  {
-                    "category": 1,
-                    "allergen": "Penicillin",
-                    "reaction": "Severe skin rash"
-                  }
-                ],
-                "medicalHistory": [
-                  {
-                    "year": 2018,
-                    "procedureDate": "2018-06-14",
-                    "title": "Knee Arthroscopy",
-                    "description": "Left knee procedure"
-                  }
-                ]
-              }
+                "raw": "{\n  \"bloodType\": 1,\n  \"heightCm\": 170,\n  \"weightKg\": 75.5,\n  \"chronicConditions\": [\n    \"Diabetes Type 2\",\n    \"Hypertension\"\n  ],\n  \"allergies\": [\n    {\n      \"category\": 1,\n      \"allergen\": \"Penicillin\",\n      \"reaction\": \"Severe skin rash\"\n    }\n  ],\n  \"medicalHistory\": [\n    {\n      \"year\": 2018,\n      \"procedureDate\": \"2018-06-14\",\n      \"title\": \"Knee Arthroscopy\",\n      \"description\": \"Left knee procedure\"\n    }\n  ]\n}"
             }
+          }
           }
         ]
       },
@@ -1370,9 +1349,7 @@
               ],
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"name\": \"أوميجا 3 (Omega 3)\",\n  \"dosage\": \"1000 ملغ\",\n  \"doseUnit\": \"كبسولة\",\n  \"doseQuantity\": 1,\n  \"doseTimes\": [\n    \"08:00\",\n    \"20:00\"\n  ],\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-12-31\",\n  \"instructions\": \"كبسولة بعد الأكل مع كوب ماء\",\n  \"stockQuantity": 60,
-                "lowStockThreshold": 10
-              }
+                "raw": "{\n  \"name\": \"أوميجا 3 (Omega 3)\",\n  \"dosage\": \"1000 ملغ\",\n  \"doseUnit\": \"كبسولة\",\n  \"doseQuantity\": 1,\n  \"doseTimes\": [\"08:00\", \"20:00\"],\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-12-31\",\n  \"instructions\": \"كبسولة بعد الأكل مع كوب ماء\",\n  \"stockQuantity\": 60,\n  \"lowStockThreshold\": 10\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications",
@@ -1387,6 +1364,7 @@
                 "{{dependentId}}",
                 "medications"
               ]
+            }
             }
           },
           {
@@ -1491,9 +1469,7 @@
               ],
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"name\": \"أوميجا 3 بلس\",\n  \"dosage\": \"1000 ملغ\",\n  \"doseUnit\": \"كبسولة\",\n  \"doseQuantity\": 1,\n  \"doseTimes\": [\n    \"09:00\",\n    \"21:00\"\n  ],\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-12-31\",\n  \"instructions\": \"بعد الإفطار والعشاء\",\n  \"stock\": {\n    \"stockQuantity": 90,
-                "lowStockThreshold": 15
-              }
+                "raw": "{\n  \"name\": \"أوميجا 3 بلس\",\n  \"dosage\": \"1000 ملغ\",\n  \"doseUnit\": \"كبسولة\",\n  \"doseQuantity\": 1,\n  \"doseTimes\": [\"09:00\", \"21:00\"],\n  \"startDate\": \"2026-09-01\",\n  \"endDate\": \"2026-12-31\",\n  \"instructions\": \"بعد الإفطار والعشاء\",\n  \"stock\": {\n    \"stockQuantity\": 90,\n    \"lowStockThreshold\": 15\n  }\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}",
@@ -1509,6 +1485,7 @@
                 "medications",
                 "{{medicationId}}"
               ]
+            }
             }
           },
           {
@@ -1533,9 +1510,7 @@
               ],
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"stockQuantity": 90,
-                "lowStockThreshold": 15
-              }
+                "raw": "{\n  \"stockQuantity\": 90,\n  \"lowStockThreshold\": 15\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medications/{{medicationId}}/stock",
@@ -1552,6 +1527,7 @@
                 "{{medicationId}}",
                 "stock"
               ]
+            }
             }
           },
           {
@@ -2125,7 +2101,7 @@
                     "host": ["{{baseUrl}}"],
                     "path": ["api", "v1", "family", "dependents", "{{dependentId}}", "activities"],
                     "query": [{"key": "limit", "value": "50"}]
-                  ]
+                  }
                 },
                 "status": "OK",
                 "code": 200,
@@ -2136,6 +2112,7 @@
             }
           ]
         }
+        ]
       },
       {
         "name": "12. Discovery",
@@ -2426,7 +2403,7 @@
                     "}"
                   ]
                 }
-              ]
+              }
             ]
           },
           {
@@ -2524,7 +2501,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 },
                 {
                   "key": "Content-Type",
@@ -2546,7 +2523,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 },
                 {
                   "key": "Content-Type",
@@ -2568,7 +2545,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 }
               ],
               "url": "{{baseUrl}}/api/v1/family/subscriptions/current"
@@ -2582,7 +2559,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 },
                 {
                   "key": "Content-Type",
@@ -2604,7 +2581,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 },
                 {
                   "key": "Content-Type",
@@ -2613,7 +2590,7 @@
               ],
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"planVersionId\": \"{{subscriptionUpgradePlanVersionId}}\",\n  \"method": 1,\n  \"billing\": {\n    \"firstName\": \"Ahmed\",\n    \"lastName\": \"Ali\",\n    \"email\": \"ahmed@example.com\",\n    \"phoneNumber\": \"+201012345678\"\n  }\n}"
+                "raw": "{\n  \"planVersionId\": \"{{subscriptionUpgradePlanVersionId}}\",\n  \"method\": 1,\n  \"billing\": {\n    \"firstName\": \"Ahmed\",\n    \"lastName\": \"Ali\",\n    \"email\": \"ahmed@example.com\",\n    \"phoneNumber\": \"+201012345678\"\n  }\n}"
               },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/plan-change/payment-intent"
             },
@@ -2626,7 +2603,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 },
                 {
                   "key": "Content-Type",
@@ -2648,7 +2625,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 },
                 {
                   "key": "Content-Type",
@@ -2666,7 +2643,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 }
               ],
               "url": "{{baseUrl}}/api/v1/family/subscriptions/cancel-renewal"
@@ -2680,7 +2657,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 }
               ],
               "url": "{{baseUrl}}/api/v1/family/subscriptions/reenable-auto-renew"
@@ -2694,7 +2671,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 },
                 {
                   "key": "Content-Type",
@@ -2716,7 +2693,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 }
               ],
               "url": "{{baseUrl}}/api/v1/family/subscriptions/invoices"
@@ -2730,7 +2707,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 }
               ],
               "url": "{{baseUrl}}/api/v1/family/subscriptions/invoices/{{subscriptionInvoiceId}}"
@@ -2744,7 +2721,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 }
               ],
               "url": "{{baseUrl}}/api/v1/family/subscriptions/invoices/{{subscriptionInvoiceId}}/pdf"
@@ -2773,7 +2750,7 @@
               "header": [
                 {
                   "key": "Authorization",
-                  "value": "Bearer {{ familyToken }}",
+                  "value": "Bearer {{ familyToken }}"
                 },
                 {
                   "key": "Content-Type",
@@ -2868,4 +2845,3 @@
       }
     ]
   }
-}

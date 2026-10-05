@@ -136,3 +136,21 @@ Authorization: Bearer {{caregiverToken}}
 - `200` — `CaregiverHelpRequestResponse` for the specified help request.
 - `403` — Access denied (non-caregiver account or no booking with the elderly person).
 - `404` — Caregiver profile not found or help request not found/accessible.
+
+### Caregiver help-request actions
+
+`POST /api/v1/caregiver/help-requests/{requestId}/accept` and
+`POST /api/v1/caregiver/help-requests/{requestId}/start` do not require a body.
+Decline and resolve require `{ "reason": "..." }`; the reason is trimmed and must
+contain 1–500 characters. Missing or invalid reasons return
+`400 Caregivers.HelpRequest.InvalidReason`. The request must belong to an elderly
+person with a `Confirmed` or `InProgress` booking for the authenticated caregiver.
+Transitions and their history rows are persisted by the Families module in the
+same Families unit of work. Unknown, expired, foreign, or unbooked requests return
+`404 Caregivers.HelpRequest.NotFound`.
+
+### Medication tasks and earnings
+
+See [caregiver earnings and medication tasks](earnings-and-medication-tasks.md).
+These endpoints are caregiver-self-only and verify the route caregiver ID
+against the authenticated caregiver profile.

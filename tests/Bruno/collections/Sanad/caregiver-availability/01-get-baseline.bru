@@ -18,5 +18,6 @@ assert {
   res.body.availability: eq 1
 }
 script:post-response {
+  bru.setVar("caregiverId", res.body.id.value);
   bru.setVar("caregiverAvailabilityBaseline", JSON.stringify({status:res.body.status,availability:res.body.availability}));
 }

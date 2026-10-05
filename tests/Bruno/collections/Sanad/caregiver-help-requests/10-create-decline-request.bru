@@ -1,0 +1,44 @@
+meta {
+  name: 10-create-decline-request
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/help-requests
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestsElderlyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+  Idempotency-Key: {{helpRequestDeclineKey}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Help-request writes require the guarded local Development API.");
+  bru.setVar("helpRequestDeclineKey", `bruno-caregiver-help-decline-${Date.now()}`);
+}
+
+body:json {
+  {
+    "actorKey": "self",
+    "actionKey": "need",
+    "needKey": "water",
+    "qualifierKey": "now",
+    "customText": null
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body.id) throw new Error("Expected new decline test request ID.");
+  bru.setVar("caregiverHelpRequestDeclineId", res.body.id);
+}
