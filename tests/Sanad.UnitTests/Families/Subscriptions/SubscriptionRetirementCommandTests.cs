@@ -112,28 +112,10 @@ public sealed class SubscriptionRetirementCommandTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options);
 
-    private class ForwardingContext(FamiliesDbContext inner) : IFamiliesDbContext, IAsyncDisposable
+    private class ForwardingContext(FamiliesDbContext inner)
+        : Sanad.UnitTests.Support.FamiliesDbContextAdapter(inner), IAsyncDisposable
     {
-        protected FamiliesDbContext Inner { get; } = inner;
-        public DbSet<Family> Families => Inner.Families;
-        public DbSet<Elderly> Elderlies => Inner.Elderlies;
-        public DbSet<FamilyInvitation> Invitations => Inner.Invitations;
-        public DbSet<Booking> Bookings => Inner.Bookings;
-        public DbSet<BookingCancellationFact> BookingCancellationFacts => Inner.BookingCancellationFacts;
-        public DbSet<AssessmentQuestion> AssessmentQuestions => Inner.AssessmentQuestions;
-        public DbSet<AssessmentTier> AssessmentTiers => Inner.AssessmentTiers;
-        public DbSet<CareAssessment> CareAssessments => Inner.CareAssessments;
-        public DbSet<Medication> Medications => Inner.Medications;
-        public DbSet<MedicationDoseLog> MedicationDoseLogs => Inner.MedicationDoseLogs;
-        public DbSet<ElderlyNote> ElderlyNotes => Inner.ElderlyNotes;
-        public DbSet<ElderlyActivityLog> ElderlyActivityLogs => Inner.ElderlyActivityLogs;
-        public DbSet<VisitReport> VisitReports => Inner.VisitReports;
-        public DbSet<MedicalReport> MedicalReports => Inner.MedicalReports;
-        public DbSet<SubscriptionPlanVersion> SubscriptionPlanVersions => Inner.SubscriptionPlanVersions;
-        public DbSet<FamilySubscription> FamilySubscriptions => Inner.FamilySubscriptions;
-        public DbSet<SubscriptionPlanRetirementAudit> SubscriptionPlanRetirementAudits => Inner.SubscriptionPlanRetirementAudits;
-        public virtual Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Inner.SaveChangesAsync(cancellationToken);
-        public ValueTask DisposeAsync() => Inner.DisposeAsync();
+        public ValueTask DisposeAsync() => inner.DisposeAsync();
     }
 
     private sealed class ThrowingSaveContext(FamiliesDbContext inner) : ForwardingContext(inner)

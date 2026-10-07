@@ -1,0 +1,36 @@
+{
+  "info": {
+    "_postman_id": "b3f1c2a4-0001-4a10-care-ops-000000000001",
+    "name": "Sanad App — Caregiver operations",
+    "description": "Availability read, caregiver-owned earnings, medication tasks, and help-request lifecycle. State-changing requests require disposable fixtures.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7296" },
+    { "key": "caregiverToken", "value": "" },
+    { "key": "familyToken", "value": "" },
+    { "key": "caregiverId", "value": "" },
+    { "key": "requestId", "value": "" },
+    { "key": "taskId", "value": "" }
+  ],
+  "item": [
+    { "name": "01. Family availability read", "item": [
+      { "name": "Get caregiver availability", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/availability" }, "description": "FamilyAccess. Schedule windows are caregiver-local and include availability status." }
+    ] },
+    { "name": "02. Earnings", "item": [
+      { "name": "Get earnings summary", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/earnings/summary" }, "description": "CaregiverAccess and self-only. Totals use completed bookings’ BaseCaregiverFee, not a payout ledger." },
+      { "name": "Get earnings transactions", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/earnings/transactions?page=1&pageSize=20" }, "description": "CaregiverAccess and self-only. Page size is bounded by the API." }
+    ] },
+    { "name": "03. Medication tasks", "item": [
+      { "name": "List medication tasks", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/medication-tasks?status=&startDate=&endDate=" }, "description": "CaregiverAccess; only tasks for an elderly person linked by Confirmed or InProgress booking are returned." },
+      { "name": "Administer medication task", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/medication-tasks/{{taskId}}/administer" }, "description": "State-changing disposable-fixture request; no body." },
+      { "name": "Skip medication task", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Elderly declined the dose\"\n}" }, "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/medication-tasks/{{taskId}}/skip" }, "description": "Reason is required and must contain 1–500 non-whitespace characters." }
+    ] },
+    { "name": "04. Help-request lifecycle", "item": [
+      { "name": "Accept help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/accept" } },
+      { "name": "Decline help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Outside current care scope\"\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/decline" } },
+      { "name": "Start help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/start" } },
+      { "name": "Resolve help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Request completed\"\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/resolve" } }
+    ] }
+  ]
+}

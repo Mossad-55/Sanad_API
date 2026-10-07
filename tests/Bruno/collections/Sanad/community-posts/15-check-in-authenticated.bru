@@ -1,0 +1,31 @@
+meta {
+  name: 15-check-in-authenticated
+  type: http
+  seq: 18
+}
+
+post {
+  url: {{baseUrl}}/api/v1/community/posts/{{postId}}/check-in
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "answer": true, "timeZoneId": "Africa/Cairo", "localDate": "{{communityLocalDate}}", "answeredAtLocalTime": "12:00:00" }
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Requires a published post and an authenticated user. The API stamps post/user IDs from the route and token; read back the user's check-in for the local date.
+}

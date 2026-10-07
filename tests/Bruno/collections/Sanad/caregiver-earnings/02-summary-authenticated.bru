@@ -1,0 +1,18 @@
+meta {
+  name: 02-summary-authenticated
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregivers/{{caregiverId}}/earnings/summary
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}

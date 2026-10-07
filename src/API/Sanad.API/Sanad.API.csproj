@@ -6,10 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\BuildingBlocks\Application\Sanad.BuildingBlocks.Application\Sanad.BuildingBlocks.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Application\Sanad.Modules.Identity.Application\Sanad.Modules.Identity.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Identity\Infrastructure\Sanad.Modules.Identity.Infrastructure\Sanad.Modules.Identity.Infrastructure.csproj" />
@@ -20,7 +16,13 @@
     <ProjectReference Include="..\..\Modules\CareHomes\Application\Sanad.Modules.CareHomes.Application\Sanad.Modules.CareHomes.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Notifications\Application\Sanad.Modules.Notifications.Application\Sanad.Modules.Notifications.Application.csproj" />
     <ProjectReference Include="..\..\Modules\Notifications\Infrastructure\Sanad.Modules.Notifications.Infrastructure\Sanad.Modules.Notifications.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\Modules\Community\Application\Sanad.Modules.Community.Application\Sanad.Modules.Community.Application.csproj" />
+    <ProjectReference Include="..\..\Modules\Community\Infrastructure\Sanad.Modules.Community.Infrastructure\Sanad.Modules.Community.Infrastructure.csproj" />
     <ProjectReference Include="..\..\Modules\Finance\Infrastructure\Sanad.Modules.Finance.Infrastructure\Sanad.Modules.Finance.Infrastructure.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
   </ItemGroup>
 
   <ItemGroup>

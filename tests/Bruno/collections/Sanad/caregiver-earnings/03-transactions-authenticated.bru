@@ -1,0 +1,18 @@
+meta {
+  name: 03-transactions-authenticated
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregivers/{{caregiverId}}/earnings/transactions?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}

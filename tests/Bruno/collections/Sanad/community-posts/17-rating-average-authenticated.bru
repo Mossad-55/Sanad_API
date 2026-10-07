@@ -1,0 +1,23 @@
+meta {
+  name: 17-rating-average-authenticated
+  type: http
+  seq: 20
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/posts/{{postId}}/rating/average
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Requires a published post. Verify the average after submitting a rating with 16-rate-authenticated.
+}

@@ -1,0 +1,22 @@
+meta {
+  name: 01-load-caregiver-profile
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+script:post-response {
+  bru.setVar("caregiverId", res.body.id.value);
+}
+
+assert {
+  res.status: eq 200
+}

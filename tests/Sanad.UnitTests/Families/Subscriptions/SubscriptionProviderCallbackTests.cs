@@ -131,6 +131,26 @@ public sealed class SubscriptionProviderCallbackTests
     }
 
     [Fact]
+    public async Task Transaction_callback_with_string_order_is_acknowledged_without_dispatch()
+    {
+        const string secret = "test-secret";
+        using JsonDocument unsigned = JsonDocument.Parse(
+            "{\"obj\":{\"id\":123456,\"amount_cents\":29900,\"order\":\"malformed-order\",\"success\":true}}");
+        JsonElement obj = unsigned.RootElement.GetProperty("obj");
+        string hmac = PaymobHmacCalculator.Calculate(obj, secret);
+        using JsonDocument document = JsonDocument.Parse(
+            $"{{\"obj\":{{\"id\":123456,\"amount_cents\":29900,\"order\":\"malformed-order\",\"success\":true}},\"hmac\":\"{hmac}\"}}");
+        var sender = new RecordingSender(Result<ConfirmSubscriptionPaymentResponse>.Success(
+            new ConfirmSubscriptionPaymentResponse(Guid.NewGuid(), "Ignored")));
+
+        IActionResult result = await CreateController(sender, secret)
+            .HandlePaymob(null, document.RootElement.Clone(), default);
+
+        Assert.IsType<OkResult>(result);
+        Assert.Null(sender.LastRequest);
+    }
+
+    [Fact]
     public async Task Created_callback_requires_provider_identity_and_initial_transaction_correlation()
     {
         await using FamiliesDbContext db = CreateDb(out FamilySubscription subscription, out SubscriptionPaymentAttempt attempt, succeededInitial: true);
@@ -740,32 +760,10 @@ public sealed class SubscriptionProviderCallbackTests
     private static DateTime Utc(int year, int month, int day, int hour) =>
         new(year, month, day, hour, 0, 0, DateTimeKind.Utc);
 
-    private sealed class FailingSaveContext(FamiliesDbContext inner, Exception failure) : IFamiliesDbContext
+    private sealed class FailingSaveContext(FamiliesDbContext inner, Exception failure)
+        : Sanad.UnitTests.Support.FamiliesDbContextAdapter(inner)
     {
-        public DbSet<Family> Families => throw new NotSupportedException();
-        public DbSet<Elderly> Elderlies => throw new NotSupportedException();
-        public DbSet<FamilyInvitation> Invitations => throw new NotSupportedException();
-        public DbSet<Booking> Bookings => throw new NotSupportedException();
-        public DbSet<BookingCancellationFact> BookingCancellationFacts => throw new NotSupportedException();
-        public DbSet<AssessmentQuestion> AssessmentQuestions => throw new NotSupportedException();
-        public DbSet<AssessmentTier> AssessmentTiers => throw new NotSupportedException();
-        public DbSet<CareAssessment> CareAssessments => throw new NotSupportedException();
-        public DbSet<Medication> Medications => throw new NotSupportedException();
-        public DbSet<MedicationDoseLog> MedicationDoseLogs => throw new NotSupportedException();
-        public DbSet<ElderlyNote> ElderlyNotes => throw new NotSupportedException();
-        public DbSet<ElderlyActivityLog> ElderlyActivityLogs => throw new NotSupportedException();
-        public DbSet<VisitReport> VisitReports => throw new NotSupportedException();
-        public DbSet<MedicalReport> MedicalReports => throw new NotSupportedException();
-        public DbSet<SubscriptionPlanVersion> SubscriptionPlanVersions => inner.SubscriptionPlanVersions;
-        public DbSet<FamilySubscription> FamilySubscriptions => inner.FamilySubscriptions;
-        public DbSet<SubscriptionPlanRetirementAudit> SubscriptionPlanRetirementAudits => throw new NotSupportedException();
-        public DbSet<SubscriptionCoupon> SubscriptionCoupons => throw new NotSupportedException();
-        public DbSet<SubscriptionTaxRule> SubscriptionTaxRules => throw new NotSupportedException();
-        public DbSet<SubscriptionPaymentAttempt> SubscriptionPaymentAttempts => inner.SubscriptionPaymentAttempts;
-        public DbSet<PaymobSubscriptionCallback> PaymobSubscriptionCallbacks => inner.PaymobSubscriptionCallbacks;
-        public DbSet<PaymobSubscriptionIdentity> PaymobSubscriptionIdentities => inner.PaymobSubscriptionIdentities;
-
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
             Task.FromException<int>(failure);
     }
 

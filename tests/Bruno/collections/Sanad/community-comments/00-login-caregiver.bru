@@ -1,0 +1,24 @@
+meta {
+  name: 00-login-caregiver
+  type: http
+  seq: -1
+}
+post {
+  url: {{baseUrl}}/api/v1/auth/login
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "email": "{{companionCaregiverEmail}}", "password": "{{companionCaregiverPassword}}", "deviceName": "bruno-community-comments", "devicePlatform": 3, "appVersion": "1.0.0" }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  bru.setVar("jwt", res.body.accessToken);
+  bru.setVar("communityCommentsJwt", res.body.accessToken);
+  bru.setVar("communityCommentsSessionId", res.body.deviceSessionId.value);
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 09-list-authenticated
+  type: http
+  seq: 10
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/posts/{{postId}}/comments?page=1&pageSize=20
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Requires a published post. Supports bounded paging; read back the comment ID created by 07-create-authenticated.
+}

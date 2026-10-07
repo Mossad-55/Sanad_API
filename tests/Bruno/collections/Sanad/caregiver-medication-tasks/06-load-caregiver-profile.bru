@@ -1,0 +1,24 @@
+meta {
+  name: 06-load-caregiver-profile
+  type: http
+  seq: 6
+}
+
+get {
+  url: {{baseUrl}}/api/v1/caregiver/profile
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverMedicationCaregiverJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const id = typeof res.body.id === "object" ? res.body.id.value : res.body.id;
+  if (!id) throw new Error("Expected active medical caregiver profile ID.");
+  bru.setVar("caregiverMedicationCaregiverId", id);
+}

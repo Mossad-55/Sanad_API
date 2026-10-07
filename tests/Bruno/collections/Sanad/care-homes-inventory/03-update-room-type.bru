@@ -15,7 +15,7 @@ headers {
   Content-Type: application/json
 }
 body:json {
-  {"expectedVersion":{{inventoryVersion}},"arabicName":"غرفة اختبار محدثة","englishName":"Inventory Test Shared Updated {{inventoryRunSuffix}}","monthlyPriceEgp":11000,"allocationMode":1,"arabicDescription":null,"englishDescription":null}
+  {"expectedVersion":{{inventoryVersion}},"arabicName":"غرفة اختبار محدثة","englishName":"Inventory Test Shared Updated","monthlyPriceEgp":11000,"allocationMode":1,"arabicDescription":null,"englishDescription":null}
 }
 assert {
   res.status: eq 200

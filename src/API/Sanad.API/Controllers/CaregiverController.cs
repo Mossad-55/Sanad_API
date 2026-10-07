@@ -8,7 +8,9 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Application.Privacy;
+using Sanad.Modules.Caregivers.Application.HelpRequests;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.Modules.Families.Domain.HelpRequests;
 
 namespace Sanad.API.Controllers;
 
@@ -540,6 +542,126 @@ public sealed class CaregiverController :
         }
 
         return NoContent();
+    }
+
+    // -------------------------- Help Requests --------------------------
+
+    [HttpGet("help-requests")]
+    [ProducesResponseType(typeof(PagedCaregiverHelpRequests), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetHelpRequests(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] ElderlyHelpRequestStatus? status = null,
+        [FromQuery] Guid? elderlyId = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new GetCaregiverHelpRequestsQuery(
+                userId,
+                page,
+                pageSize,
+                status,
+                elderlyId),
+            cancellationToken));
+    }
+
+    [HttpGet("help-requests/{requestId:guid}")]
+    [ProducesResponseType(typeof(CaregiverHelpRequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetHelpRequest(
+        Guid requestId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new GetCaregiverHelpRequestQuery(
+                userId,
+                requestId),
+            cancellationToken));
+    }
+
+    [HttpPost("help-requests/{requestId:guid}/accept")]
+    [ProducesResponseType(typeof(CaregiverHelpRequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> AcceptHelpRequest(
+        Guid requestId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new AcceptCaregiverHelpRequestCommand(
+                userId,
+                requestId),
+            cancellationToken));
+    }
+
+    [HttpPost("help-requests/{requestId:guid}/decline")]
+    [ProducesResponseType(typeof(CaregiverHelpRequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> DeclineHelpRequest(
+        Guid requestId,
+        [FromBody] CaregiverHelpRequestReasonRequest? body,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new DeclineCaregiverHelpRequestCommand(
+                userId,
+                requestId,
+                body?.Reason ?? string.Empty),
+            cancellationToken));
+    }
+
+    [HttpPost("help-requests/{requestId:guid}/start")]
+    [ProducesResponseType(typeof(CaregiverHelpRequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> StartHelpRequest(
+        Guid requestId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new StartCaregiverHelpRequestCommand(
+                userId,
+                requestId),
+            cancellationToken));
+    }
+
+    [HttpPost("help-requests/{requestId:guid}/resolve")]
+    [ProducesResponseType(typeof(CaregiverHelpRequestResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> ResolveHelpRequest(
+        Guid requestId,
+        [FromBody] CaregiverHelpRequestReasonRequest? body,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        return ToActionResult(await _sender.Send(
+            new ResolveCaregiverHelpRequestCommand(
+                userId,
+                requestId,
+                body?.Reason ?? string.Empty),
+            cancellationToken));
     }
 
     private async Task<Result<StoredFile>>

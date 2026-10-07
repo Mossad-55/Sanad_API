@@ -1,0 +1,23 @@
+meta {
+  name: 02-publish-pending-post
+  type: http
+  seq: 5
+}
+
+post {
+  url: {{baseUrl}}/api/v1/admin/community/posts/{{pendingPostId}}/publish
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{moderatorJwt}}
+}
+
+assert {
+  res.status: eq 204
+}
+
+docs {
+  Requires a disposable pending-review post and a CommunityModeration account. Read back the post to verify Published status.
+}

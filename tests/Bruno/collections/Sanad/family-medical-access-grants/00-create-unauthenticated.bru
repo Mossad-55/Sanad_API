@@ -1,0 +1,23 @@
+meta {
+  name: 00-create-unauthenticated
+  type: http
+  seq: 0
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/00000000-0000-4000-8000-000000000001/medical-access-grants
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "grantType": "Limited", "canViewRecords": true, "canEditRecords": false, "canShareWithOthers": false, "granteeUserId": "{{medicalCaregiverUserId}}" }
+}
+
+assert {
+  res.status: eq 401
+}

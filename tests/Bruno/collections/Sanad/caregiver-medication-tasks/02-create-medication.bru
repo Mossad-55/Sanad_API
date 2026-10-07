@@ -1,0 +1,49 @@
+meta {
+  name: 02-create-medication
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{caregiverMedicationDependentId}}/medications
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverMedicationFamilyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Medication fixtures require the guarded local Development API.");
+  bru.setVar("caregiverMedicationName", `Bruno Caregiver Medication ${Date.now()}`);
+}
+
+body:json {
+  {
+    "name": "{{caregiverMedicationName}}",
+    "dosage": "5 mg",
+    "doseUnit": "tablet",
+    "doseQuantity": 1,
+    "doseTimes": ["00:00", "00:01"],
+    "startDate": "{{caregiverMedicationDate}}",
+    "endDate": null,
+    "instructions": "Disposable caregiver-task test fixture",
+    "stockQuantity": 10,
+    "lowStockThreshold": 1
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  const id = typeof res.body.id === "object" ? res.body.id.value : res.body.id;
+  if (!id) throw new Error("Expected medication ID.");
+  bru.setVar("caregiverMedicationId", id);
+}

@@ -1,0 +1,23 @@
+meta {
+  name: 12-like-authenticated
+  type: http
+  seq: 15
+}
+
+post {
+  url: {{baseUrl}}/api/v1/community/posts/{{postId}}/like
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Requires a published post. Repeated likes are idempotent for this user; read back the post to verify the count.
+}

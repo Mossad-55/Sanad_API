@@ -1,7 +1,7 @@
 meta {
   name: 04a-duplicate-room-409
   type: http
-  seq: 9
+  seq: 24
 }
 post {
   url: {{baseUrl}}/api/v1/care-homes/inventory/mine/rooms
@@ -15,7 +15,7 @@ headers {
   Content-Type: application/json
 }
 body:json {
-  {"expectedVersion":{{inventoryVersion}},"roomTypeId":"{{inventoryRoomTypeId}}","roomNumber":" BRUNO-020-RENAMED-{{inventoryRunSuffix}} "}
+  {"expectedVersion":{{inventoryVersion}},"roomTypeId":"{{inventoryRoomTypeId}}","roomNumber":" BRUNO-020-RENAMED "}
 }
 assert {
   res.status: eq 409

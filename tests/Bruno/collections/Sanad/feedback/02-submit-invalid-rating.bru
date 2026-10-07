@@ -1,0 +1,27 @@
+meta {
+  name: 02-submit-invalid-rating
+  type: http
+  seq: 3
+}
+
+post {
+  url: {{baseUrl}}/api/v1/feedback/app-rating
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "rating": 6, "comment": "Invalid fixture rating" }
+}
+
+assert {
+  res.status: in [400, 422]
+}

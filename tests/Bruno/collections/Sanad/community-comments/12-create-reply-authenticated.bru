@@ -1,0 +1,31 @@
+meta {
+  name: 12-create-reply-authenticated
+  type: http
+  seq: 12
+}
+
+post {
+  url: {{baseUrl}}/api/v1/community/comments/{{commentId}}/replies
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "contentArabic": "\u0631\u062F \u062A\u062C\u0631\u064A\u0628\u064A", "contentEnglish": "Fixture reply" }
+}
+
+assert {
+  res.status: eq 201
+}
+
+docs {
+  Requires an existing comment. Capture the response ID as replyId before running the ownership and readback scenarios.
+}

@@ -60,10 +60,15 @@ public sealed class MedicationDoseLog : Entity<MedicationDoseLogId>
 
     public void MarkAsTaken(UserId loggedByUserId, DateTime takenAtUtc, string? notes = null)
     {
-        if (Status == DoseStatus.Taken)
+        if (Status is DoseStatus.Taken or DoseStatus.Skipped)
         {
-            throw new DomainException("This dose has already been marked as taken.");
+            throw new DomainException("This dose has already been recorded as taken or skipped.");
         }
+
+        if (loggedByUserId == UserId.Empty)
+            throw new DomainException("The user recording the dose is required.");
+        if (takenAtUtc.Kind != DateTimeKind.Utc)
+            throw new DomainException("Taken time must be UTC.");
 
         Status = DoseStatus.Taken;
         TakenAtUtc = takenAtUtc;
@@ -75,6 +80,13 @@ public sealed class MedicationDoseLog : Entity<MedicationDoseLogId>
 
     public void MarkAsSkipped(UserId loggedByUserId, DateTime skippedAtUtc, string? reason = null)
     {
+        if (Status is DoseStatus.Taken or DoseStatus.Skipped)
+            throw new DomainException("This dose has already been recorded as taken or skipped.");
+        if (loggedByUserId == UserId.Empty)
+            throw new DomainException("The user recording the dose is required.");
+        if (skippedAtUtc.Kind != DateTimeKind.Utc)
+            throw new DomainException("Skipped time must be UTC.");
+
         Status = DoseStatus.Skipped;
         SkippedAtUtc = skippedAtUtc;
         TakenAtUtc = null;

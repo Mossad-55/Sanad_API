@@ -1,0 +1,35 @@
+meta {
+  name: 07-create-authenticated
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/v1/community/posts/{{postId}}/comments
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "contentArabic": "\u062A\u0639\u0644\u064A\u0642 \u062A\u062C\u0631\u064A\u0628\u064A", "contentEnglish": "Disposable fixture comment" }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("commentId", res.body.id);
+}
+
+docs {
+  Requires a published disposable post. Capture the returned comment ID as commentId for ownership flows.
+}

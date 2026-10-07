@@ -1,0 +1,41 @@
+meta {
+  name: 10-create-authenticated
+  type: http
+  seq: 10
+}
+
+post {
+  url: {{baseUrl}}/api/v1/community/posts
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "titleArabic": "\u0645\u0646\u0634\u0648\u0631 \u062a\u062c\u0631\u064a\u0628\u064a",
+    "titleEnglish": "Fixture community post",
+    "contentArabic": "\u0645\u062d\u062a\u0648\u0649 \u062a\u062c\u0631\u064a\u0628\u064a \u0644\u0644\u0645\u062c\u062a\u0645\u0639",
+    "contentEnglish": "Disposable fixture post for authenticated contract coverage",
+    "isAnonymous": false
+  }
+}
+
+assert {
+  res.status: eq 201
+}
+
+script:post-response {
+  bru.setVar("postId", res.body.id);
+}
+
+docs {
+  Requires a disposable authenticated account. Capture the returned post ID as postId before running interaction requests.
+}

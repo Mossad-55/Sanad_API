@@ -7,6 +7,7 @@ using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 using Sanad.Modules.Identity.Domain.Support;
 using Sanad.Modules.Identity.Domain.Users;
+using FeedbackEntity = Sanad.Modules.Identity.Domain.Feedback;
 
 namespace Sanad.UnitTests.Identity.Registration;
 
@@ -34,6 +35,8 @@ internal sealed class IdentityTestDbContext :
     public DbSet<SupportTicket> SupportTickets =>
         Set<SupportTicket>();
 
+    public DbSet<Sanad.Modules.Identity.Domain.Feedback> Feedbacks => Set<Sanad.Modules.Identity.Domain.Feedback>();
+
     internal int SaveChangesCalls { get; private set; }
 
     public override async Task<int> SaveChangesAsync(
@@ -57,6 +60,10 @@ internal sealed class IdentityTestDbContext :
         ConfigureVerificationRequest(modelBuilder);
         ConfigureDeviceSession(modelBuilder);
         ConfigureSupportTicket(modelBuilder);
+        var feedback = modelBuilder.Entity<FeedbackEntity>();
+        feedback.HasKey(value => value.Id);
+        feedback.Property(value => value.UserId)
+            .HasConversion(id => id.Value, value => new UserId(value));
     }
 
     private static void ConfigureUser(

@@ -254,6 +254,52 @@ this contact. There is currently no clear/delete operation. This API only
 stores the contact: it does not send SMS, create SOS events, open a device
 dialer, or expose the number to Admin operational endpoints.
 
+## Check-ins
+
+Family members can view check-in submissions made by the dependent's Elderly
+account. These endpoints require policy `FamilyAccess`.
+
+### Get today's check-in
+
+Returns the check-in for today for the specified dependent. Only one check-in
+is allowed per dependent per local date.
+
+```http
+GET /api/v1/family/dependents/{dependentId:guid}/check-ins/today
+Authorization: Bearer {{familyToken}}
+```
+
+- `200` — array of `FamilyDependentCheckInResponse` (empty if no check-in
+  exists for today).
+- `403 Families.Elderly.AccessDenied` — Viewer attempts a manage action.
+- `404 Families.Elderly.NotFound` — dependent not in caller's family.
+- `404 Families.Elderly.FamilyNotFound` — family not bootstrapped.
+
+### Get check-ins (paginated)
+
+Returns paginated check-ins for the specified dependent with optional filtering
+by date range and whether an answer was provided. Results are ordered by
+check-in time descending (newest first).
+
+```http
+GET /api/v1/family/dependents/{dependentId:guid}/check-ins?page=1&pageSize=20&startDate=2026-09-01&endDate=2026-09-30&answer=true
+Authorization: Bearer {{familyToken}}
+```
+
+#### Query Parameters
+
+- `page` *(optional)*: Page number (defaults to `1`).
+- `pageSize` *(optional)*: Page size (defaults to `20`, clamped to `1–100`).
+- `startDate` *(optional)*: Inclusive start date filter (YYYY-MM-DD).
+- `endDate` *(optional)*: Inclusive end date filter (YYYY-MM-DD).
+- `answer` *(optional)*: Filter by answer value (`true` or `false`).
+
+- `200` — `PagedFamilyDependentCheckIns` containing check-in items and
+  pagination metadata.
+- `403 Families.Elderly.AccessDenied` — Viewer attempts a manage action.
+- `404 Families.Elderly.NotFound` — dependent not in caller's family.
+- `404 Families.Elderly.FamilyNotFound` — family not bootstrapped.
+
 ## Error catalog (this surface)
 
 | HTTP | code | When |

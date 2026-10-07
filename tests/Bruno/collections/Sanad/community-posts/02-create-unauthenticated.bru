@@ -1,0 +1,28 @@
+meta {
+  name: 02-create-unauthenticated
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/v1/community/posts
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  {
+    "titleArabic": "منشور تجريبي",
+    "titleEnglish": "Fixture-only",
+    "contentArabic": "طلب غير مصرح به للاختبار",
+    "contentEnglish": "Fixture-only unauthenticated request"
+  }
+}
+
+assert {
+  res.status: eq 401
+}

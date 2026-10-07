@@ -1,0 +1,33 @@
+{
+  "info": {
+    "_postman_id": "b3f1c2a4-0001-4a10-community-admin-000000001",
+    "name": "Sanad Admin — Community moderation",
+    "description": "Content moderation for Community posts. Requires a normal JWT with ContentAdmin or SuperAdmin role. Run only against disposable fixtures.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7296" },
+    { "key": "accessToken", "value": "" },
+    { "key": "postId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Publish pending post",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}/publish"
+      },
+      "description": "ContentAdmin or SuperAdmin only. Returns 204 and makes the post visible to authenticated Community reads. Unknown or invalid-state posts return the standard problem response."
+    },
+    {
+      "name": "Reject pending post",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}/reject"
+      },
+      "description": "ContentAdmin or SuperAdmin only. Returns 204; rejected posts remain hidden from public Community reads."
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+GET http://localhost:5000/api/v1/caregiver/help-requests/{{requestId}}
+Authorization: Bearer {{accessToken}}
+
+### Get a specific help request for a caregiver by ID
+### Returns details of a specific help request for elderly people the caregiver has active bookings with

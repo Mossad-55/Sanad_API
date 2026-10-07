@@ -1,0 +1,23 @@
+meta {
+  name: 11-like-authenticated
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/community/comments/{{commentId}}/like
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Requires an existing comment. Verify the comment's likesCount increases when read back.
+}

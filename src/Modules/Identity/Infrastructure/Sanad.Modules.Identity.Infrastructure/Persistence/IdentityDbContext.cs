@@ -3,6 +3,7 @@ using Npgsql;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
+using FeedbackEntity = Sanad.Modules.Identity.Domain.Feedback;
 using Sanad.Modules.Identity.Domain.Support;
 using Sanad.Modules.Identity.Domain.Users;
 
@@ -34,6 +35,10 @@ public sealed class IdentityDbContext :
     public DbSet<SupportTicket>
         SupportTickets =>
             Set<SupportTicket>();
+
+    public DbSet<FeedbackEntity>
+        Feedbacks =>
+            Set<FeedbackEntity>();
 
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)

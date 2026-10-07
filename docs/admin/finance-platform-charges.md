@@ -94,10 +94,13 @@ The related Family snapshot migration is:
 20261002210659_AddPlatformChargeSnapshotMetadata
 ```
 
-Finance startup migration is explicitly opt-in:
-`FinanceMigrations:ApplyOnStartup` defaults to `false`. Do not enable automatic
-Finance migration in production; apply and verify migrations through the
-approved release procedure against the exact target.
+In Development, Finance migration startup remains opt-in through
+`FinanceMigrations:ApplyOnStartup` (default `false`) so local host tests can
+avoid database lifecycle work. In every non-Development environment, Finance
+migrations run automatically with the other registered DbContexts before API
+startup completes. Production cannot disable the shared startup migration
+policy; ensure the configured database role has migration permissions and
+review the deployment manifest's migration identifiers before rollout.
 
 The current implementation was authorized for disposable local migration and
 test work only. Provider-backed payment success and production deployment are

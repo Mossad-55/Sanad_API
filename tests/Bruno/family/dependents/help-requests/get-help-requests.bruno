@@ -1,0 +1,5 @@
+GET http://localhost:5000/api/v1/family/dependents/{{dependentId}}/help-requests?page={{page}}&pageSize={{pageSize}}&actorKey={{actorKey}}&actionKey={{actionKey}}&needKey={{needKey}}&qualifierKey={{qualifierKey}}&startDate={{startDate}}&endDate={{endDate}}
+Authorization: Bearer {{accessToken}}
+
+### Get help requests for a dependent with pagination and filtering
+### Returns paginated help requests with optional filtering by various parameters

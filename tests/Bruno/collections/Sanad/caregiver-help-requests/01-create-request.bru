@@ -1,0 +1,44 @@
+meta {
+  name: 01-create-request
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/v1/elderly/help-requests
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestsElderlyJwt}}
+}
+
+headers {
+  Content-Type: application/json
+  Idempotency-Key: {{helpRequestAcceptKey}}
+}
+
+script:pre-request {
+  if (bru.getEnvVar("baseUrl") !== "http://localhost:5235" || bru.getEnvVar("appEnvironment") !== "Development") throw new Error("Help-request writes require the guarded local Development API.");
+  bru.setVar("helpRequestAcceptKey", `bruno-caregiver-help-accept-${Date.now()}`);
+}
+
+body:json {
+  {
+    "actorKey": "self",
+    "actionKey": "need",
+    "needKey": "water",
+    "qualifierKey": "now",
+    "customText": null
+  }
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  if (!res.body.id) throw new Error("Expected new help request ID.");
+  bru.setVar("caregiverHelpRequestId", res.body.id);
+}

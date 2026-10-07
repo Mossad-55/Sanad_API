@@ -61,12 +61,16 @@ Removing a dependent **hard-deletes** the Families row and the photo file. The E
 | Bootstrap, get family, rename | `docs/app/families/family.md` |
 | Care-needs assessment quiz (Step 1) | `docs/app/families/assessment.md` |
 | Add/list/get/update/remove dependents, photos | `docs/app/families/dependents.md` |
+| Dependent check-ins | `docs/app/families/dependents.md` |
 | Dependent medical profile (chronic, allergies, history) | `docs/app/families/medical-profile.md` |
 | Elderly medications, stock inventory & daily dose schedule | `docs/app/families/medications.md` |
 | Care notes, observations & activity access timeline | `docs/app/families/notes-and-activities.md` |
 | Invitations by email, deep link, accept/decline/revoke | `docs/app/families/invitations.md` |
 | Caregiver discovery: search, public profile, price quote | `docs/app/families/discovery.md` |
 | Bookings: checkout, tabs, detail, cancel | `docs/app/families/bookings.md` |
+| Booking reviews | `docs/app/families/bookings.md` |
+| Dependent medical-access grants | `docs/app/families/medical-access.md` |
+| Postman (reviews and medical access) | `docs/postman/app/Sanad.App.Family.Operations.postman_collection.json` |
 | Subscription plan catalog and current snapshot (Owner read-only) | `docs/app/families/subscriptions.md` |
 | Postman | `docs/postman/app/Sanad.App.Family.postman_collection.json` |
 

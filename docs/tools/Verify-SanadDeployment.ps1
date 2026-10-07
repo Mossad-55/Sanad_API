@@ -38,5 +38,8 @@ finally {
 }
 
 Write-Output "Manifest revision: $($manifest.revision)"
-Write-Output "Required Families migration: $($manifest.requiredFamiliesMigration)"
+Write-Output 'Required latest migrations:'
+foreach ($context in $manifest.requiredMigrations.PSObject.Properties) {
+    Write-Output ("  {0}: {1}" -f $context.Name, $context.Value)
+}
 Write-Output "Smoke endpoint: $smokeUri (HTTP $([int]$response.StatusCode))"

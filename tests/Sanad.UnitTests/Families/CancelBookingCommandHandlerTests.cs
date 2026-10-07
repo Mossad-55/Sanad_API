@@ -1149,35 +1149,10 @@ public sealed class CancelBookingCommandHandlerTests
     /// intercepted at the interface the handler actually consumes; reads are served by the real context,
     /// which is also the context the production recorder tracks the fact on.
     /// </summary>
-    private sealed class SaveThrowingContext(FamiliesDbContext inner, Exception failure) : IFamiliesDbContext
+    private sealed class SaveThrowingContext(FamiliesDbContext inner, Exception failure)
+        : Sanad.UnitTests.Support.FamiliesDbContextAdapter(inner)
     {
-        public DbSet<Family> Families => inner.Families;
-
-        public DbSet<Elderly> Elderlies => inner.Elderlies;
-
-        public DbSet<FamilyInvitation> Invitations => inner.Invitations;
-
-        public DbSet<Booking> Bookings => inner.Bookings;
-
-        public DbSet<AssessmentQuestion> AssessmentQuestions => inner.AssessmentQuestions;
-
-        public DbSet<AssessmentTier> AssessmentTiers => inner.AssessmentTiers;
-
-        public DbSet<CareAssessment> CareAssessments => inner.CareAssessments;
-
-        public DbSet<Medication> Medications => inner.Medications;
-
-        public DbSet<MedicationDoseLog> MedicationDoseLogs => inner.MedicationDoseLogs;
-
-        public DbSet<ElderlyNote> ElderlyNotes => inner.ElderlyNotes;
-
-        public DbSet<ElderlyActivityLog> ElderlyActivityLogs => inner.ElderlyActivityLogs;
-
-        public DbSet<VisitReport> VisitReports => inner.VisitReports;
-
-        public DbSet<BookingCancellationFact> BookingCancellationFacts => inner.BookingCancellationFacts;
-
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
             Task.FromException<int>(failure);
     }
 }

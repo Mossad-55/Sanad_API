@@ -1,0 +1,15 @@
+meta {
+  name: 08-catalog-unauthenticated
+  type: http
+  seq: 8
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/help-request-catalog
+  body: none
+  auth: none
+}
+
+assert {
+  res.status: eq 401
+}

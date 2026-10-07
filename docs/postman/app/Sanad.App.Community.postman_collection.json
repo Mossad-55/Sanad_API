@@ -1,0 +1,49 @@
+{
+  "info": {
+    "_postman_id": "b3f1c2a4-0001-4a10-community-000000000001",
+    "name": "Sanad App — Community and feedback",
+    "description": "Authenticated Community reads/writes, check-ins, ratings, and app feedback. Posts are moderated before publication. Use Sanad.local.postman_environment.json and supply a disposable access token.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7296" },
+    { "key": "accessToken", "value": "" },
+    { "key": "postId", "value": "" },
+    { "key": "commentId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01. Posts and interactions",
+      "item": [
+        { "name": "List published posts", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/posts?page=1&pageSize=20" }, "description": "Authenticated read. Only Published posts are returned." },
+        { "name": "Get published post", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}" }, "description": "Unknown or pending/rejected posts return 404." },
+        { "name": "Create post (pending review)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"titleArabic\": \"نصيحة يومية\",\n  \"titleEnglish\": \"Daily care tip\",\n  \"contentArabic\": \"تذكّر شرب الماء.\",\n  \"contentEnglish\": \"Remember to drink water.\",\n  \"imageUrl\": null,\n  \"isAnonymous\": false\n}" }, "url": "{{baseUrl}}/api/v1/community/posts" }, "description": "The author comes from the JWT. Success creates PendingReview; capture the returned id for moderation." },
+        { "name": "Like post", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/like" } },
+        { "name": "Unlike post", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/like" } },
+        { "name": "Toggle favorite", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/favorite" } },
+        { "name": "Add or update rating", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"ratingValue\": \"5\"\n}" }, "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/rating" } },
+        { "name": "Get rating average", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/rating/average" } },
+        { "name": "Submit local-day check-in", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"answer\": true,\n  \"timeZoneId\": \"Africa/Cairo\",\n  \"localDate\": \"2026-10-05\",\n  \"answeredAtLocalTime\": \"14:30:00\"\n}" }, "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/check-in" }, "description": "One row per user/post/local date. Invalid time zones return Community.CheckIn.Invalid." },
+        { "name": "Get help-request catalog", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/help-request-catalog" } }
+      ]
+    },
+    {
+      "name": "02. Comments and replies",
+      "item": [
+        { "name": "Create comment", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"contentArabic\": \"تعليق مفيد\",\n  \"contentEnglish\": \"Helpful comment\"\n}" }, "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/comments" } },
+        { "name": "List comments", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/comments?page=1&pageSize=20" } },
+        { "name": "Update own comment", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"contentArabic\": \"تعليق محدث\",\n  \"contentEnglish\": \"Updated comment\"\n}" }, "url": "{{baseUrl}}/api/v1/community/comments/{{commentId}}" } },
+        { "name": "Delete own comment", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/comments/{{commentId}}" }, "description": "Deletion is blocked when the comment has replies." },
+        { "name": "Like comment", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/comments/{{commentId}}/like" } },
+        { "name": "Create reply", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"contentArabic\": \"رد مفيد\",\n  \"contentEnglish\": \"Helpful reply\"\n}" }, "url": "{{baseUrl}}/api/v1/community/comments/{{commentId}}/replies" } },
+        { "name": "List replies", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/comments/{{commentId}}/replies?page=1&pageSize=20" } }
+      ]
+    },
+    {
+      "name": "03. App feedback",
+      "item": [
+        { "name": "Submit app rating", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"rating\": 5,\n  \"comment\": \"The medication reminders are clear.\",\n  \"deviceInfo\": \"Android\",\n  \"appVersion\": \"1.0.0\"\n}" }, "url": "{{baseUrl}}/api/v1/feedback/app-rating" }, "description": "Authenticated identity is assigned by the server; rating must be 1–5." }
+      ]
+    }
+  ]
+}

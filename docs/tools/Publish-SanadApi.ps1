@@ -42,8 +42,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 $developmentSettingsPath = Join-Path $resolvedOutputPath 'appsettings.Development.json'
-if (Test-Path -LiteralPath $developmentSettingsPath) {
-    throw "Development settings were included in the publish output: $developmentSettingsPath"
+if (Test-Path -LiteralPath $developmentSettingsPath -PathType Leaf) {
+    throw 'Development settings were found in the publish output; refusing to create a deployment manifest.'
 }
 
 $manifest = [ordered]@{
@@ -51,8 +51,17 @@ $manifest = [ordered]@{
     revision = $revision
     configuration = $Configuration
     publishedOnUtc = [DateTime]::UtcNow.ToString('O')
-    requiredFamiliesMigration = '20260924141816_AddSubscriptionBookingAllowance'
-    startupMigrationPolicy = 'API applies module migrations at startup; verify the exact target before launch.'
+    requiredMigrations = [ordered]@{
+        Identity = '20261005101531_AddFeedback'
+        Cms = '20260928052717_AddElderlyWelcome'
+        Caregivers = '20261002003508_AddCaregiverRatings'
+        Families = '20261005111105_AddMedicalAccessGrantGrantee'
+        CareHomes = '20261004150000_AddFamilyCheckInDisputeReason'
+        Notifications = '20261002134931_AddEmailOutbox'
+        Community = '20261005101553_InitialCommunity'
+        Finance = '20261002210606_AddPlatformChargeRulesEfMetadata'
+    }
+    startupMigrationPolicy = 'All registered module migrations run before API startup outside Development; production cannot disable them.'
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $resolvedOutputPath 'sanad-deployment-manifest.json') -Encoding utf8
 

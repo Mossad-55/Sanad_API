@@ -1,0 +1,26 @@
+meta {
+  name: 03-create-pending-post
+  type: http
+  seq: 3
+}
+post {
+  url: {{baseUrl}}/api/v1/community/posts
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{authorJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "titleArabic": "منشور مراجعة", "titleEnglish": "Moderation fixture post", "contentArabic": "محتوى للمراجعة", "contentEnglish": "Disposable moderation post", "isAnonymous": false }
+}
+assert {
+  res.status: eq 201
+}
+script:post-response {
+  bru.setVar("pendingPostId", res.body.id);
+  bru.setVar("publishedPostId", res.body.id);
+}

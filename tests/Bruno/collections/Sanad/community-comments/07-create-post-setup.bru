@@ -1,0 +1,25 @@
+meta {
+  name: 07-create-post-setup
+  type: http
+  seq: 7
+}
+post {
+  url: {{baseUrl}}/api/v1/community/posts
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{jwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "titleArabic": "منشور تجريبي", "titleEnglish": "Comments fixture post", "contentArabic": "محتوى تجريبي", "contentEnglish": "Disposable comment test post", "isAnonymous": false }
+}
+assert {
+  res.status: eq 201
+}
+script:post-response {
+  bru.setVar("postId", res.body.id);
+}

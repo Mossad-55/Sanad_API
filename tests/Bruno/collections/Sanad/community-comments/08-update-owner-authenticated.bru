@@ -1,0 +1,31 @@
+meta {
+  name: 08-update-owner-authenticated
+  type: http
+  seq: 9
+}
+
+put {
+  url: {{baseUrl}}/api/v1/community/comments/{{commentId}}
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "contentArabic": "\u062A\u0639\u0644\u064A\u0642 \u062A\u062C\u0631\u064A\u0628\u064A \u0645\u062D\u062F\u062B", "contentEnglish": "Updated disposable fixture comment" }
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Requires commentId created by the authenticated account.
+}

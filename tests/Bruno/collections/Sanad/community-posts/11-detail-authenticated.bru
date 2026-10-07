@@ -1,0 +1,23 @@
+meta {
+  name: 11-detail-authenticated
+  type: http
+  seq: 14
+}
+
+get {
+  url: {{baseUrl}}/api/v1/community/posts/{{postId}}
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{jwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+docs {
+  Requires a published post; use the returned post ID from 10-create-authenticated or a published fixture.
+}

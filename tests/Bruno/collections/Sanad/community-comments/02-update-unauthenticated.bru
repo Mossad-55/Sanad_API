@@ -1,0 +1,23 @@
+meta {
+  name: 02-update-unauthenticated
+  type: http
+  seq: 2
+}
+
+put {
+  url: {{baseUrl}}/api/v1/community/comments/00000000-0000-4000-8000-000000000001
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "contentArabic": "\u062A\u0639\u0644\u064A\u0642 \u0645\u062D\u062F\u062B", "contentEnglish": "Fixture-only unauthenticated request" }
+}
+
+assert {
+  res.status: eq 401
+}

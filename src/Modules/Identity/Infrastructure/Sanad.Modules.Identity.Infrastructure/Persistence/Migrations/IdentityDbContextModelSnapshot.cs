@@ -164,6 +164,39 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("verification_requests", "identity");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Identity.Domain.Feedback", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("AppVersion")
+                        .HasColumnType("text");
+
+                    b.Property<string>("Comment")
+                        .HasColumnType("text");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<string>("DeviceInfo")
+                        .HasColumnType("text");
+
+                    b.Property<int>("Rating")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("Feedbacks", "identity");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Identity.Domain.Support.SupportTicket", b =>
                 {
                     b.Property<Guid>("Id")
@@ -274,7 +307,6 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("integer")
                         .HasDefaultValue(1)
-                        .HasSentinel(1)
                         .HasColumnName("ui_language");
 
                     b.Property<DateTime>("UpdatedOnUtc")

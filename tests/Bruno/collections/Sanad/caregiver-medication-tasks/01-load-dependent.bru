@@ -1,0 +1,29 @@
+meta {
+  name: 01-load-dependent
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverMedicationFamilyJwt}}
+}
+
+assert {
+  res.status: eq 200
+}
+
+script:post-response {
+  const items = Array.isArray(res.body) ? res.body : (res.body.items || []);
+  const item = items.find(candidate => candidate.phoneNumber === bru.getEnvVar("elderlyPhone"));
+  const id = item && typeof item.id === "object" ? item.id.value : item?.id;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(id))) throw new Error("Could not resolve the seeded dependent linked to the Elderly test login.");
+  bru.setVar("caregiverMedicationDependentId", id);
+  const d = new Date();
+  const p = value => String(value).padStart(2, "0");
+  bru.setVar("caregiverMedicationDate", `${d.getFullYear()}-${p(d.getMonth()+1)}-${p(d.getDate())}`);
+}

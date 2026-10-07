@@ -99,3 +99,58 @@ Accepting after the deadline returns `409 Bookings.Domain.InvalidOperation` — 
 | `Bookings.Cancel.ReasonCategoryRequired` | 400 | Confirmed cancellation omitted the reason category. |
 | `Bookings.Cancel.ReasonCategoryInvalid` | 400 | Confirmed cancellation supplied an undefined category. |
 | `Bookings.Cancel.ReasonRequired` | 400 | Confirmed cancellation omitted a non-blank note. |
+
+## Help Requests
+
+Caregivers can view help requests submitted by elderly people they have active bookings with. These endpoints require policy `CaregiverAccess`.
+
+### Get caregiver help requests (paginated)
+
+Returns paginated help requests for the caregiver with optional filtering by status and elderly person. Results are ordered by request time descending (newest first).
+
+```http
+GET /api/v1/caregiver/help-requests?page=1&pageSize=20&status=null&elderlyId=null
+Authorization: Bearer {{caregiverToken}}
+```
+
+#### Query Parameters
+
+- `page` *(optional)*: Page number (defaults to `1`).
+- `pageSize` *(optional)*: Page size (defaults to `20`, clamped to `1–100`).
+- `status` *(optional)*: Filter by help request status (`Pending`, `Accepted`, `InProgress`, `Resolved`, `Rejected`, `Cancelled`, `Reopened`).
+- `elderlyId` *(optional)*: Filter by specific elderly person ID.
+
+- `200` — `PagedCaregiverHelpRequests` containing help request items and pagination metadata.
+- `403` — Access denied (non-caregiver account).
+- `404` — Caregiver profile not found.
+
+### Get specific caregiver help request
+
+Returns a specific help request for the caregiver. The caregiver can only access help requests for elderly people they have active bookings with.
+
+```http
+GET /api/v1/caregiver/help-requests/{requestId}
+Authorization: Bearer {{caregiverToken}}
+```
+
+- `200` — `CaregiverHelpRequestResponse` for the specified help request.
+- `403` — Access denied (non-caregiver account or no booking with the elderly person).
+- `404` — Caregiver profile not found or help request not found/accessible.
+
+### Caregiver help-request actions
+
+`POST /api/v1/caregiver/help-requests/{requestId}/accept` and
+`POST /api/v1/caregiver/help-requests/{requestId}/start` do not require a body.
+Decline and resolve require `{ "reason": "..." }`; the reason is trimmed and must
+contain 1–500 characters. Missing or invalid reasons return
+`400 Caregivers.HelpRequest.InvalidReason`. The request must belong to an elderly
+person with a `Confirmed` or `InProgress` booking for the authenticated caregiver.
+Transitions and their history rows are persisted by the Families module in the
+same Families unit of work. Unknown, expired, foreign, or unbooked requests return
+`404 Caregivers.HelpRequest.NotFound`.
+
+### Medication tasks and earnings
+
+See [caregiver earnings and medication tasks](earnings-and-medication-tasks.md).
+These endpoints are caregiver-self-only and verify the route caregiver ID
+against the authenticated caregiver profile.

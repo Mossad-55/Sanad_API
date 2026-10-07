@@ -1,0 +1,20 @@
+meta {
+  name: 06-acknowledge-help-request
+  type: http
+  seq: 6
+}
+
+post {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyHelpDependentId}}/help-requests/{{familyHelpRequestId}}/acknowledge
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyHelpJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 8
+}

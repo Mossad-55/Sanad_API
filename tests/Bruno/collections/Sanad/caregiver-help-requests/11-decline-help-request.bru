@@ -1,0 +1,28 @@
+meta {
+  name: 11-decline-help-request
+  type: http
+  seq: 11
+}
+
+post {
+  url: {{baseUrl}}/api/v1/caregiver/help-requests/{{caregiverHelpRequestDeclineId}}/decline
+  body: json
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{helpRequestsCaregiverJwt}}
+}
+
+headers {
+  Content-Type: application/json
+}
+
+body:json {
+  { "reason": "Caregiver unavailable for this disposable request" }
+}
+
+assert {
+  res.status: eq 200
+  res.body.status: eq 5
+}

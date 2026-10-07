@@ -15,7 +15,7 @@ headers {
   Content-Type: application/json
 }
 body:json {
-  {"expectedVersion":{{inventoryVersion}},"roomId":"{{inventoryRoomId}}","label":"BRUNO-A-RENAMED-{{inventoryRunSuffix}}"}
+  {"expectedVersion":{{inventoryVersion}},"roomId":"{{inventoryRoomId}}","label":"BRUNO-A-RENAMED"}
 }
 assert {
   res.status: eq 200

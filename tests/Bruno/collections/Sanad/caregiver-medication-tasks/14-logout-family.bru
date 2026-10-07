@@ -1,0 +1,19 @@
+meta {
+  name: 14-logout-family
+  type: http
+  seq: 14
+}
+
+post {
+  url: {{baseUrl}}/api/v1/auth/sessions/logout-all
+  body: none
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{caregiverMedicationFamilyJwt}}
+}
+
+assert {
+  res.status: eq 204
+}

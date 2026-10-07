@@ -272,6 +272,7 @@ public sealed class AccountChoicesTests
         public DbSet<VerificationRequest> VerificationRequests => inner.VerificationRequests;
         public DbSet<DeviceSession> DeviceSessions => inner.DeviceSessions;
         public DbSet<SupportTicket> SupportTickets => inner.SupportTickets;
+        public DbSet<Sanad.Modules.Identity.Domain.Feedback> Feedbacks => inner.Feedbacks;
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => Task.FromException<int>(failure);
     }
 

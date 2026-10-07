@@ -1,0 +1,15 @@
+meta {
+  name: 07-revoke-authorized
+  type: http
+  seq: 7
+}
+delete {
+  url: {{baseUrl}}/api/v1/family/dependents/{{dependentId}}/medical-access-grants/{{grantId}}
+  auth: bearer
+}
+auth:bearer {
+  token: {{familyJwt}}
+}
+assert {
+  res.status: eq 204
+}

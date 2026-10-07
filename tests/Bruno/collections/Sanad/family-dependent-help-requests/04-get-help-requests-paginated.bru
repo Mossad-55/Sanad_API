@@ -1,0 +1,26 @@
+meta {
+  name: 04-get-help-requests-paginated
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/v1/family/dependents/{{familyHelpDependentId}}/help-requests?page=1&pageSize=20
+  auth: bearer
+}
+
+auth:bearer {
+  token: {{familyHelpJwt}}
+}
+
+assert {
+  res.status: eq 200
+  res.body.items: isArray
+  res.body.page: eq 1
+  res.body.pageSize: eq 20
+  res.body.totalCount: isNumber
+}
+
+script:post-response {
+  if (!res.body.items.some(item => item.id === bru.getVar("familyHelpRequestId"))) throw new Error("Created request is missing from the owning Family help-request list.");
+}

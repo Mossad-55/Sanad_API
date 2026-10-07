@@ -1,0 +1,5 @@
+GET http://localhost:5000/api/v1/family/dependents/{{dependentId}}/check-ins?page={{page}}&pageSize={{pageSize}}&startDate={{startDate}}&endDate={{endDate}}&answer={{answer}}
+Authorization: Bearer {{accessToken}}
+
+### Get check-ins for a dependent with pagination and filtering
+### Returns paginated check-ins with optional filtering by date range and answer

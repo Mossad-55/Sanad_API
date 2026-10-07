@@ -135,26 +135,10 @@ public sealed class SubscriptionCancellationCommandTests
         Assert.Equal("Subscriptions.CancelRenewal.AlreadyRequested", result.Error.Code);
     }
 
-    private sealed class ConcurrencyContext(FamiliesDbContext inner) : IFamiliesDbContext, IAsyncDisposable
+    private sealed class ConcurrencyContext(FamiliesDbContext inner)
+        : Sanad.UnitTests.Support.FamiliesDbContextAdapter(inner), IAsyncDisposable
     {
-        public DbSet<Family> Families => inner.Families;
-        public DbSet<Elderly> Elderlies => inner.Elderlies;
-        public DbSet<FamilyInvitation> Invitations => inner.Invitations;
-        public DbSet<Booking> Bookings => inner.Bookings;
-        public DbSet<BookingCancellationFact> BookingCancellationFacts => inner.BookingCancellationFacts;
-        public DbSet<AssessmentQuestion> AssessmentQuestions => inner.AssessmentQuestions;
-        public DbSet<AssessmentTier> AssessmentTiers => inner.AssessmentTiers;
-        public DbSet<CareAssessment> CareAssessments => inner.CareAssessments;
-        public DbSet<Medication> Medications => inner.Medications;
-        public DbSet<MedicationDoseLog> MedicationDoseLogs => inner.MedicationDoseLogs;
-        public DbSet<ElderlyNote> ElderlyNotes => inner.ElderlyNotes;
-        public DbSet<ElderlyActivityLog> ElderlyActivityLogs => inner.ElderlyActivityLogs;
-        public DbSet<VisitReport> VisitReports => inner.VisitReports;
-        public DbSet<MedicalReport> MedicalReports => inner.MedicalReports;
-        public DbSet<FamilySubscription> FamilySubscriptions => inner.FamilySubscriptions;
-        public DbSet<SubscriptionPlanVersion> SubscriptionPlanVersions => inner.SubscriptionPlanVersions;
-        public DbSet<SubscriptionPlanRetirementAudit> SubscriptionPlanRetirementAudits => inner.SubscriptionPlanRetirementAudits;
-        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => throw new DbUpdateConcurrencyException();
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => throw new DbUpdateConcurrencyException();
         public ValueTask DisposeAsync() => inner.DisposeAsync();
     }
 

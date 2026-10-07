@@ -7,6 +7,18 @@ Routes for creating a care booking (checkout), paying it through Paymob, browsin
 
 All routes live under `/api/v1/family/bookings...`.
 
+## Booking review
+
+`POST /api/v1/family/bookings/{bookingId}/review` accepts
+`{ "rating": 1, "comment": "...", "isAnonymous": false }`. Only a family
+owner/editor may submit, and only after the booking status is `Completed`. A
+booking accepts one review; it is not editable. Rating is 1–5, comment is
+optional and limited to 2,000 characters. Success returns `201`; not completed
+returns `409 Bookings.ReviewNotAllowed`, a duplicate returns
+`409 Bookings.ReviewExists`, an invalid review returns `400
+Bookings.InvalidReview`; a foreign booking returns `403 Bookings.AccessDenied`,
+and an unknown booking returns `404 Bookings.NotFound`.
+
 ## Access
 
 - **Normal JWT** for a **Family** account (`access_type = Normal`, `account_type = Family`). Policy: `FamilyAccess`.
