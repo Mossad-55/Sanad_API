@@ -1,6 +1,6 @@
 # Care Homes — Authoritative Decisions
 
-Status: Owner answers consolidated, including final clarifications; execution in progress. Backend-only scope. Updated 2026-10-02. The bounded caregiver review permission correction, Family caregiver rating/top-10 behavior, and the initial Care-home owner draft endpoints are implemented; remaining Care homes behavior is still in progress.
+Status: Owner answers consolidated, including final clarifications. Backend-only scope. Contract decisions remain authoritative; implementation progress is tracked in [Care_Homes_Tasks.md](Care_Homes_Tasks.md). HC-035 cancellation/refund behavior is implemented and merged. Remaining Care Homes scope is listed in that checklist; this document records requirements and does not itself mark those features complete.
 
 This document consolidates owner-confirmed Care homes behavior from the operator and Family UI intake, including all 24 batch answers. It is authoritative for resolved requirements; unresolved contracts are explicitly listed below and must not override confirmed rules. Screenshots are evidence of user experience, not an authority for unapproved rules.
 

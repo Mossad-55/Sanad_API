@@ -1,12 +1,16 @@
 # Care homes — execution mastermind handoff
 
-## HC-TASK-035 implementation checkpoint — 2026-10-07
+## Current handoff — 2026-10-07
+
+HC-035 and the accumulated Care Homes changes are merged and pushed. Local `main`, `origin/main`, and the retained Care Homes worktree are at `f8c17e3`; feature commit `7588688` contains HC-035. No implementation slice is active. **Next action:** agree the simplified workflow with the owner before starting another slice. Historical checkpoints below preserve their original results and should not be treated as current next-action instructions. The current task state is in [Care_Homes_Tasks.md](Care_Homes_Tasks.md).
+
+### HC-TASK-035 completion evidence — 2026-10-07
 
 The HC-035 implementation and automated gates are complete locally, preserving existing HC-023/HC-032 edits. Policy: full refund before recorded check-in, 50% of total charged after check-in for Family cancellation, and full refund for Owner cancellation. Admin retry requires a confirmed failed refund; external completion requires a reason and reference. Release build passed with 0 warnings/errors, focused tests passed 40/40, and full suite passed 2,294 (3 skipped, 0 failed). Postman JSON and `git diff --check` passed.
 
 **Runtime verified on `localhost:5236` / `localhost:5432/SanadBrunoTestDb`:** a preflight first checked booking state and room type. The small fixture plan reused the paid/pre-check-in booking, assigned a paid accepted booking to a matching private room before recording check-in, and created one additional future paid booking for Owner cancellation. Bruno verified full Family refund and manual completion (amount 15150), 50% Family refund after check-in (7575), Owner full refund (15150), unauthenticated 401, Family forbidden 403 on Owner route, duplicate cancellation 409, and ContentAdmin forbidden 403. The fresh accepted booking was created through the existing checkout/payment callback requests; assignment and check-in succeeded before cancellation. No live Paymob call occurred. The three HC-035 bookings and refund records remain in the disposable database. Admin retry request 115 remains intentionally unrun because the Development stub succeeds and no confirmed failed-refund fixture exists; do not fabricate provider failure.
 
-**Next:** commit the completed Care Homes work accumulated in this worktree, including earlier slices and HC-035. Exclude temporary runners and scratch fixtures. Do not reset/drop the DB, call live Paymob, or merge with `main` until asked. Keep future fixture setup minimal and record the exact states before Bruno. See `tests/Bruno/collections/Sanad/care-home-bookings/HC-035-README.md`.
+**Closeout:** committed as `7588688`, merged with `origin/main` as `f8c17e3`, and pushed. No DB reset/drop or live Paymob call occurred. Keep fixture setup minimal; request 115 remains unrun because the Development stub cannot produce a confirmed failed-refund state. See `tests/Bruno/collections/Sanad/care-home-bookings/HC-035-README.md`.
 
 ## HC-TASK-023 latest continuation — 2026-10-07 (supersedes the checkpoint below)
 

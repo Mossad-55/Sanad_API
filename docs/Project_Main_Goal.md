@@ -6,6 +6,8 @@ Sanad is an Arabic/English elderly-care platform. Current agreed scope is the Ca
 
 Only this slice is planned. Future direction is Care homes → Chat → Notifications → full application UI reconciliation, not a prewritten task backlog. Family/Elderly inputs are supplied; broader caregiver requirements will be discussed separately.
 
+Current Care Homes checkpoint (2026-10-07): HC-035 and accumulated Care Homes changes are merged and pushed. Local `main` matches `origin/main` at `f8c17e3`. No implementation slice is active; agree the simplified workflow and next scope with the owner first. The checklist is authoritative for remaining Care Homes tasks.
+
 ## Canonical files
 
 - [Mastermind handoff](Mastermind_Handoff.md): current state and next action.

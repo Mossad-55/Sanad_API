@@ -1,10 +1,12 @@
 # Mastermind handoff
 
-## HC-TASK-035 current continuation — 2026-10-07
+## Current state — 2026-10-07
 
-HC-035 implementation and automated gates are complete locally. Release build passed with 0 warnings/errors; focused tests passed 40/40; full suite passed 2,294 with 3 skipped and 0 failed. Runtime checks on the authorized `SanadBrunoTestDb` passed: pre-check-in full refund and manual completion (15150), post-check-in Family refund (7575), Owner cancellation full refund (15150), Family 401/403 authorization checks, repeated-cancellation 409, and ContentAdmin 403. One future Owner-cancellation booking was created from the existing Bruno flow, assigned to a matching available private room, then canceled; the three fresh test bookings remain in the disposable DB. No live Paymob call was made. Admin retry remains unrun because the Development stub cannot create a confirmed failed-refund state. See [Care Homes tasks](operations/care-homes/Care_Homes_Tasks.md) and [execution handoff](operations/care-homes/Execution_Handoff.md).
+HC-035 and the accumulated Care Homes changes are merged and pushed to `main`. Local `main`, `origin/main`, and the retained Care Homes worktree point to `f8c17e3` (`Merge remote-tracking branch 'origin/main'`); the feature commit is `7588688` (`feat(care-homes): complete booking lifecycle and refunds`). Release build passed with 0 warnings/errors; HC-035 focused tests passed 40/40; full suite passed 2,294 with 3 skipped and 0 failed. The authorized disposable Bruno run verified pre-check-in full refund/manual completion, post-check-in 50% refund, Owner full refund, and expected authorization/state conflicts. Admin retry runtime remains unverified because the Development stub cannot create a confirmed failed-refund fixture. No live Paymob call or production action occurred. See the [Care Homes checklist](operations/care-homes/Care_Homes_Tasks.md) and [execution handoff](operations/care-homes/Execution_Handoff.md) for evidence and remaining scope.
 
-**Next action:** commit the completed Care Homes work accumulated in this worktree, including earlier slices and HC-035. Exclude temporary runners/scratch fixtures. Do not fabricate a failed Paymob refund, reset/drop the disposable DB, or merge with `main` until asked.
+**Next action:** agree the simplified working workflow with the owner before starting another Care Homes slice. There is no active implementation task until that scope is agreed.
+
+The detailed HC-023, HC-034, and earlier checkpoints below are retained as historical evidence. Their old blockers and next-action lines were accurate at the time but are superseded by this current-state section and the checklist closeout.
 
 ## How to continue
 

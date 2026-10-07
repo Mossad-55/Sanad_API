@@ -1,10 +1,14 @@
 # Care Homes — Backend Task Checklist
 
-### HC-TASK-035 implementation checkpoint — 2026-10-07
+## Current repository state — 2026-10-07
+
+HC-035 and the accumulated Care Homes changes have been committed and pushed to `main`. Local `main` and `origin/main` both point to `f8c17e3`; HC-035 is `7588688`. No implementation slice is active. The owner will agree the new workflow before the next slice starts. Historical execution notes below remain evidence; their old next-action statements do not supersede this current state.
+
+### HC-TASK-035 completion checkpoint — 2026-10-07
 
 HC-035 code, automated gates, and feasible runtime checks are complete. Family/Owner cancellation, shared Paymob refund handling, Admin retry/manual completion, persisted refund state, signed callback handling, and additive migration are in place. Release build passed with 0 warnings/errors; focused booking/controller tests passed 40/40; full suite passed 2,294 with 3 skipped and 0 failed. Postman JSON and `git diff --check` passed. On the authorized disposable `SanadBrunoTestDb`, Bruno verified Family full refund/manual completion (15150), post-check-in Family refund (7575), Owner full refund (15150), and expected 401/403/409 authorization and state conflicts. Fixture setup first read booking state and inventory, then used one matching private-room assignment and one additional future paid booking; no existing HC-023 booking was changed. Three HC-035 bookings/refund records remain in the disposable DB. Request 115 is intentionally skipped because no confirmed failed-refund fixture exists and the Development Paymob stub succeeds. No live Paymob call or DB reset occurred.
 
-**Next action:** commit the completed Care Homes changes accumulated in this worktree, including HC-023/HC-032/HC-034 and HC-035. Exclude temporary runners and scratch fixtures. Keep the fixture setup documented as a short read-first checklist; do not fabricate a failed Paymob refund or merge with `main` until requested.
+**Closeout:** HC-035 and the accumulated Care Homes work were committed (`7588688`), merged with the newer `origin/main` history (`f8c17e3`), and pushed. Local `main` now matches `origin/main`. The failed-refund retry remains covered by focused tests but lacks a runtime Bruno case because the Development stub cannot produce a confirmed failure; do not fabricate one.
 
 ### HC-TASK-023 contract checkpoint — 2026-10-06
 

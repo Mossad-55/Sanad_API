@@ -6,10 +6,11 @@ HC-TASK-020 adds owner managed inventory for a facility. These routes are under
 the complete `CareHomeInventoryDto`: `facilityId`, the optimistic concurrency
 `version`, and arrays named `roomTypes`, `rooms`, `beds`, and `maintenance`.
 
-The additive Care Homes inventory migration has not been generated. It awaits
-fresh owner authorization for the exact target `localhost:5432/SanadBrunoTestDb`.
-The examples below are authored from the source contract and focused test
-coverage; no Bruno execution is claimed for this documentation delta.
+The inventory, assignment, maintenance, and availability implementation is
+committed on `main`. The checklist records the completed focused/full test and
+disposable Bruno evidence. Fresh-database migration application was not part of
+the HC-023 closeout and remains explicitly unverified; it is not a current
+blocker. This guide describes the API contract and is not itself runtime evidence.
 
 ## Read and manage inventory
 
