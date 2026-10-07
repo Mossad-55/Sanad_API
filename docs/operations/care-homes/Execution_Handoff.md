@@ -2,7 +2,7 @@
 
 ## Current handoff — 2026-10-07
 
-HC-035 and the accumulated Care Homes changes are merged and pushed. Local `main`, `origin/main`, and the retained Care Homes worktree are at `f8c17e3`; feature commit `7588688` contains HC-035. No implementation slice is active. **Next action:** agree the simplified workflow with the owner before starting another slice. Historical checkpoints below preserve their original results and should not be treated as current next-action instructions. The current task state is in [Care_Homes_Tasks.md](Care_Homes_Tasks.md).
+HC-035 and the accumulated Care Homes changes are merged and pushed (`7588688` feature commit; `f8c17e3` merge commit; `df3598c` documentation sync). The dedicated Care Homes worktree was removed after verifying its private runtime/publish artifacts against the primary checkout. 33 untracked local HC-023 Bruno scratch requests were reviewed and removed as redundant/ad hoc helpers; the checked-in Bruno collection remains unchanged. Work directly on `main`; other pre-existing worktrees are unrelated and were not changed. No implementation slice is active. **Next action:** agree the simplified workflow with the owner before starting another slice. Historical checkpoints below preserve their original results and should not be treated as current next-action instructions. The current task state is in [Care_Homes_Tasks.md](Care_Homes_Tasks.md).
 
 ### HC-TASK-035 completion evidence — 2026-10-07
 

@@ -6,7 +6,7 @@ Sanad is an Arabic/English elderly-care platform. Current agreed scope is the Ca
 
 Only this slice is planned. Future direction is Care homes → Chat → Notifications → full application UI reconciliation, not a prewritten task backlog. Family/Elderly inputs are supplied; broader caregiver requirements will be discussed separately.
 
-Current Care Homes checkpoint (2026-10-07): HC-035 and accumulated Care Homes changes are merged and pushed. Local `main` matches `origin/main` at `f8c17e3`. No implementation slice is active; agree the simplified workflow and next scope with the owner first. The checklist is authoritative for remaining Care Homes tasks.
+Current Care Homes checkpoint (2026-10-07): HC-035 and accumulated Care Homes changes are merged and pushed. Work in the primary checkout on `main`; the dedicated Care Homes worktree has been removed after preserving its needed local files. No implementation slice is active; agree the simplified workflow and next scope with the owner first. The checklist is authoritative for remaining Care Homes tasks.
 
 ## Canonical files
 
@@ -15,7 +15,7 @@ Current Care Homes checkpoint (2026-10-07): HC-035 and accumulated Care Homes ch
 - [Care homes tasks](operations/care-homes/Care_Homes_Tasks.md): the single implementation checklist, grouped by dependencies.
 - [UI evidence](operations/care-homes/UI_Review.md): 29 reviewed screenshots.
 - [Execution handoff](operations/care-homes/Execution_Handoff.md): current execution guidance for the active slice.
-- [Governance](governance/AGENTS.md) and [workflow](operations/codex-workflow.md): unchanged worker sequence and mandatory verification.
+- [Governance](governance/AGENTS.md) and [workflow](operations/codex-workflow.md): flexible worker roles, focused risk-based verification, optional Bruno, and fixture-first preparation.
 
 ## Boundaries
 
