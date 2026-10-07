@@ -39,6 +39,10 @@ public sealed class FamilyCareHomeBookingsController(ISender sender, IFamiliesDb
     public async Task<IActionResult> ConfirmCheckIn(Guid bookingId, CancellationToken ct)
     { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); return ToActionResult(await sender.Send(new ConfirmCareHomeCheckInCommand(actor, family.Id, bookingId, clock.UtcNow), ct)); }
 
+    [HttpPost("{bookingId:guid}/cancel")]
+    public async Task<IActionResult> Cancel(Guid bookingId, CancellationToken ct)
+    { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); return ToActionResult(await sender.Send(new CancelFamilyCareHomeBookingCommand(actor, family.Id, bookingId, clock.UtcNow), ct)); }
+
     [HttpPost("{bookingId:guid}/check-in-dispute")]
     public async Task<IActionResult> DisputeCheckIn(Guid bookingId, SubmitCareHomeCheckInDisputeRequest request, CancellationToken ct)
     { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); return ToActionResult(await sender.Send(new SubmitCareHomeCheckInDisputeCommand(actor, family.Id, bookingId, request.Reason, clock.UtcNow), ct)); }

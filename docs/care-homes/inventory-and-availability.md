@@ -95,6 +95,20 @@ the start date. A block is rejected when it overlaps an active hold or stay,
 or an existing block on the same room/bed relationship. A room block also
 conflicts with a block on one of its beds, and vice versa.
 
+Owners may amend a block with `PUT /mine/maintenance/{maintenanceId}` using
+`{ "expectedVersion": n, "startDate": "YYYY-MM-DD", "endDate": "YYYY-MM-DD", "reason": "..." }`,
+or cancel it with `POST /mine/maintenance/{maintenanceId}/cancel` and
+`{ "expectedVersion": n }`. Only blocks whose existing start date is strictly
+after the current Cairo-local date may be amended/cancelled, and an amended
+start date must also remain in the future. Blocks starting today or earlier are
+immutable. Both operations recheck the facility version, active occupancy and
+room/bed maintenance overlaps. Cancellation is retained in inventory readback
+with `isCancelled`, `cancelledOnUtc`, and `cancelledBy`; it is not a hard delete.
+Cancelled blocks no longer reduce availability. Invalid date ranges return
+`400 CareHomes.Inventory.InvalidRange`; a block that is no longer eligible
+returns `409 CareHomes.Inventory.InvalidState`; occupancy and maintenance
+overlaps return stable `409` inventory conflict codes.
+
 Query the owner's availability with `POST /mine/availability` or an Admin
 operator's availability with `POST /admin/{facilityId}/availability`:
 
@@ -105,10 +119,19 @@ operator's availability with `POST /admin/{facilityId}/availability`:
 Each result contains `roomTypeId`, `availableRooms`, `availableBeds`,
 `totalRooms`, and `totalBeds`. Archived assets, maintenance blocks, and
 overlapping occupancy are excluded. Shared allocation consumes beds; Private
-and Suite allocation consume whole rooms. The source exposes
-`ICareHomeOccupancyProvider`; its current implementation is empty until the
-later booking slices supply active hold/stay intervals. Booking creation and
-facility room/bed assignment remain HC-TASK-032/034.
+and Suite allocation consume whole rooms. The registered
+`CareHomeBookingOccupancyProvider` supplies active checkout holds, paid
+decision holds, and accepted stays from Care Homes bookings. Before physical
+assignment, occupancy is counted against the room type; after assignment,
+Shared stays occupy their bed and Private/Suite stays occupy their room. An
+actual check-out shortens occupancy to its Egypt-local calendar date when
+applicable. The inventory API consumes these intervals for owner/Admin
+availability and maintenance-conflict checks. HC-023 transfers append
+date-effective assignment history; the provider emits occupancy segments on
+both sides of each Cairo effective date rather than treating a future move as
+already current. Transfer destination conflicts are serialized by the existing
+facility/room-type reservation guard. Booking creation remains owned by
+HC-TASK-032.
 
 Authentication failures are `401`; accounts outside the owner policy receive
 `403`. Unknown facilities or assets return the relevant inventory not-found

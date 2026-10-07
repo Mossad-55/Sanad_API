@@ -1,0 +1,24 @@
+meta {
+  name: 118-hc035-owner-cancel-family-forbidden
+  type: http
+  seq: 118
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc035OwnerBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "reason": "Forbidden request"
+  }
+}
+assert {
+  res.status: eq 403
+}

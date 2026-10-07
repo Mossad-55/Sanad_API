@@ -13,7 +13,8 @@ public enum CareHomeBookingStatus
     Expired = 5,
     Cancelled = 6,
     RefundPending = 7,
-    RefundInitiated = 8
+    RefundInitiated = 8,
+    Refunded = 9
 }
 
 public enum CareHomeBookingPaymentStatus
@@ -23,6 +24,16 @@ public enum CareHomeBookingPaymentStatus
     Failed = 3,
     RefundInitiated = 4,
     Refunded = 5
+}
+
+public enum CareHomeRefundStatus
+{
+    None = 0,
+    Pending = 1,
+    Initiated = 2,
+    Failed = 3,
+    Completed = 4,
+    ManuallyCompleted = 5
 }
 
 public enum CareHomeCheckInDisputeStatus { Open = 1, Resolved = 2 }
@@ -111,6 +122,11 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
     public long? PaymobTransactionId { get; private set; }
     public string? RefundReference { get; private set; }
     public DateTime? RefundClaimedOnUtc { get; private set; }
+    public CareHomeRefundStatus RefundStatus { get; private set; }
+    public decimal? RefundAmount { get; private set; }
+    public string? RefundFailureReason { get; private set; }
+    public DateTime? RefundCompletedOnUtc { get; private set; }
+    public UserId? RefundCompletedBy { get; private set; }
     public DateTime? PaymentIntentClaimedOnUtc { get; private set; }
     public int? PaymentIntentMethod { get; private set; }
     public string? PaymobOrderId { get; private set; }
@@ -169,9 +185,7 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
         {
             PaymentStatus = CareHomeBookingPaymentStatus.Paid;
             PaymobTransactionId = transactionId;
-            Status = CareHomeBookingStatus.RefundPending;
-            DecisionReason = "Payment succeeded after the checkout hold expired.";
-            Touch(utcNow);
+            BeginRefund("Payment succeeded after the checkout hold expired.", TotalAmount, utcNow);
             return;
         }
         PaymentStatus = CareHomeBookingPaymentStatus.Paid;
@@ -203,19 +217,75 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
         ExpireIfNeeded(utcNow);
         if (Status != CareHomeBookingStatus.PaidAwaitingDecision) throw new InvalidOperationException("Booking is not awaiting a facility decision.");
         if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("A rejection reason is required.");
-        Status = CareHomeBookingStatus.RefundPending; DecisionReason = reason.Trim(); DecidedOnUtc = utcNow; Touch(utcNow);
+        BeginRefund(reason, TotalAmount, utcNow);
+    }
+
+    public decimal CancelByFamily(DateTime utcNow)
+    {
+        if (Status == CareHomeBookingStatus.PendingPayment && PaymentStatus == CareHomeBookingPaymentStatus.Pending)
+        {
+            Status = CareHomeBookingStatus.Cancelled;
+            Touch(utcNow);
+            return 0m;
+        }
+
+        if (Status is not (CareHomeBookingStatus.PaidAwaitingDecision or CareHomeBookingStatus.Accepted)
+            || ActualCheckOutOnUtc is not null
+            || PaymentStatus != CareHomeBookingPaymentStatus.Paid)
+            throw new InvalidOperationException("CareHomes.Bookings.InvalidState");
+
+        decimal amount = ActualCheckInOnUtc is null ? TotalAmount : decimal.Round(TotalAmount / 2m, 2, MidpointRounding.AwayFromZero);
+        BeginRefund("Cancelled by Family.", amount, utcNow);
+        return amount;
+    }
+
+    public decimal CancelByFacility(string reason, DateTime utcNow)
+    {
+        if (Status != CareHomeBookingStatus.Accepted || ActualCheckOutOnUtc is not null
+            || PaymentStatus != CareHomeBookingPaymentStatus.Paid)
+            throw new InvalidOperationException("CareHomes.Bookings.InvalidState");
+        if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("A cancellation reason is required.");
+        BeginRefund(reason, TotalAmount, utcNow);
+        return TotalAmount;
+    }
+
+    private void BeginRefund(string reason, decimal amount, DateTime utcNow)
+    {
+        if (amount <= 0m || amount > TotalAmount) throw new ArgumentOutOfRangeException(nameof(amount));
+        Status = CareHomeBookingStatus.RefundPending;
+        PaymentStatus = CareHomeBookingPaymentStatus.Paid;
+        RefundStatus = CareHomeRefundStatus.Pending;
+        RefundAmount = amount;
+        RefundFailureReason = null;
+        DecisionReason = reason.Trim();
+        DecidedOnUtc ??= utcNow;
+        Touch(utcNow);
     }
 
     public void ExpireIfNeeded(DateTime utcNow)
     {
         if (Status == CareHomeBookingStatus.PendingPayment && CheckoutHoldUntilUtc <= utcNow) { Status = CareHomeBookingStatus.Expired; Touch(utcNow); }
-        else if (Status == CareHomeBookingStatus.PaidAwaitingDecision && DecisionHoldUntilUtc <= utcNow) { Status = CareHomeBookingStatus.RefundPending; DecisionReason = "Facility decision window expired."; Touch(utcNow); }
+        else if (Status == CareHomeBookingStatus.PaidAwaitingDecision && DecisionHoldUntilUtc <= utcNow) { BeginRefund("Facility decision window expired.", TotalAmount, utcNow); }
     }
 
     public bool TryClaimRefund(DateTime utcNow)
     {
-        if (Status != CareHomeBookingStatus.RefundPending || RefundClaimedOnUtc is not null) return false;
+        if (Status != CareHomeBookingStatus.RefundPending
+            || RefundStatus is not (CareHomeRefundStatus.Pending or CareHomeRefundStatus.Failed)
+            || RefundAmount is null
+            || RefundClaimedOnUtc is not null) return false;
+        RefundFailureReason = null;
         RefundClaimedOnUtc = utcNow; Touch(utcNow); return true;
+    }
+
+    public void MarkRefundFailed(string reason, DateTime utcNow)
+    {
+        if (Status != CareHomeBookingStatus.RefundPending || RefundClaimedOnUtc is null)
+            throw new InvalidOperationException("CareHomes.Bookings.InvalidState");
+        RefundStatus = CareHomeRefundStatus.Failed;
+        RefundFailureReason = string.IsNullOrWhiteSpace(reason) ? "Paymob refund failed." : reason.Trim();
+        RefundClaimedOnUtc = null;
+        Touch(utcNow);
     }
 
     public bool TryClaimPaymentIntent(DateTime utcNow)
@@ -231,7 +301,66 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
     { PaymentIntentClaimedOnUtc = null; Touch(utcNow); }
 
     public void MarkRefundInitiated(string? refundReference, DateTime utcNow)
-    { RefundReference = refundReference; PaymentStatus = CareHomeBookingPaymentStatus.RefundInitiated; Status = CareHomeBookingStatus.RefundInitiated; Touch(utcNow); }
+    {
+        if (Status != CareHomeBookingStatus.RefundPending || RefundClaimedOnUtc is null)
+            throw new InvalidOperationException("CareHomes.Bookings.InvalidState");
+        RefundReference = refundReference;
+        RefundStatus = CareHomeRefundStatus.Initiated;
+        RefundClaimedOnUtc = null;
+        PaymentStatus = CareHomeBookingPaymentStatus.RefundInitiated;
+        Status = CareHomeBookingStatus.RefundInitiated;
+        Touch(utcNow);
+    }
+
+    public bool MarkRefundCompleted(string? refundReference, DateTime utcNow)
+    {
+        if (RefundStatus is CareHomeRefundStatus.Completed or CareHomeRefundStatus.ManuallyCompleted) return false;
+        if (RefundStatus != CareHomeRefundStatus.Initiated
+            || string.IsNullOrWhiteSpace(RefundReference)
+            || !string.Equals(RefundReference, refundReference, StringComparison.Ordinal)) return false;
+        CompleteRefund(utcNow);
+        return true;
+    }
+
+    public bool MarkRefundCompletedFromProviderCallback(string? refundReference, long? parentTransactionId, DateTime utcNow)
+    {
+        if (RefundStatus is CareHomeRefundStatus.Completed or CareHomeRefundStatus.ManuallyCompleted
+            || RefundStatus != CareHomeRefundStatus.Initiated
+            || string.IsNullOrWhiteSpace(RefundReference)) return false;
+        bool matchesRefund = string.Equals(RefundReference, refundReference, StringComparison.Ordinal);
+        bool matchesPayment = PaymobTransactionId.HasValue && PaymobTransactionId.Value == parentTransactionId;
+        if (!matchesRefund && !matchesPayment) return false;
+        CompleteRefund(utcNow);
+        return true;
+    }
+
+    private void CompleteRefund(DateTime utcNow)
+    {
+        RefundStatus = CareHomeRefundStatus.Completed;
+        PaymentStatus = CareHomeBookingPaymentStatus.Refunded;
+        Status = CareHomeBookingStatus.Refunded;
+        RefundCompletedOnUtc = utcNow;
+        Touch(utcNow);
+    }
+
+    public void MarkRefundManuallyCompleted(string reference, string reason, UserId actor, DateTime utcNow)
+    {
+        if (RefundStatus is not (CareHomeRefundStatus.Pending or CareHomeRefundStatus.Failed or CareHomeRefundStatus.Initiated)
+            || RefundClaimedOnUtc is not null)
+            throw new InvalidOperationException("CareHomes.Bookings.InvalidState");
+        if (string.IsNullOrWhiteSpace(reference) || string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("Refund reference and reason are required.");
+        RefundReference = reference.Trim();
+        RefundFailureReason = null;
+        RefundStatus = CareHomeRefundStatus.ManuallyCompleted;
+        PaymentStatus = CareHomeBookingPaymentStatus.Refunded;
+        Status = CareHomeBookingStatus.Refunded;
+        RefundCompletedOnUtc = utcNow;
+        RefundCompletedBy = actor;
+        RefundClaimedOnUtc = null;
+        DecisionReason = reason.Trim();
+        Touch(utcNow);
+    }
 
     private void Touch(DateTime utcNow) { UpdatedOnUtc = utcNow; Version++; }
 
@@ -248,6 +377,18 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
         if (roomId == Guid.Empty || (bedId is Guid b && b == Guid.Empty)) throw new ArgumentException("A physical room is required.");
         if (utcNow.Kind != DateTimeKind.Utc) throw new ArgumentException("Timestamp must be UTC.");
         AssignedRoomId = roomId; AssignedBedId = bedId; Touch(utcNow);
+    }
+
+    public void TransferPhysicalResource(Guid roomId, Guid? bedId, DateTime utcNow)
+    {
+        if (Status != CareHomeBookingStatus.Accepted || AssignedRoomId is null || ActualCheckOutOnUtc is not null)
+            throw new InvalidOperationException("CareHomes.Bookings.InvalidState");
+        if (roomId == Guid.Empty || (bedId is Guid b && b == Guid.Empty))
+            throw new ArgumentException("A physical room is required.");
+        if (utcNow.Kind != DateTimeKind.Utc) throw new ArgumentException("Timestamp must be UTC.");
+        AssignedRoomId = roomId;
+        AssignedBedId = bedId;
+        Touch(utcNow);
     }
 
     public void RecordCheckIn(UserId actor, DateTime utcNow)

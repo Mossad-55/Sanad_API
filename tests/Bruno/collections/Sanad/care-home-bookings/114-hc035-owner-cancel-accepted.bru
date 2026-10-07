@@ -1,0 +1,28 @@
+meta {
+  name: 114-hc035-owner-cancel-accepted
+  type: http
+  seq: 114
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc035OwnerBookingId}}/cancel
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "reason": "Facility cancellation for local verification"
+  }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const body = res.body;
+  if (Number(body.refundStatus) !== 2 || Math.abs(Number(body.refundAmount) - Number(body.totalAmount)) > 0.01) throw new Error("Facility cancellation must initiate a full refund.");
+}

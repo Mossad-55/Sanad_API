@@ -1,0 +1,20 @@
+meta {
+  name: 113-hc035-family-cancel-after-checkin
+  type: http
+  seq: 113
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc035FamilyCheckedInBookingId}}/cancel
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const body = res.body;
+  if (Number(body.refundStatus) !== 2 || Math.abs(Number(body.refundAmount) - Number(body.totalAmount) / 2) > 0.01) throw new Error("Post-check-in cancellation must initiate a 50% refund.");
+}

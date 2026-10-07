@@ -1,0 +1,20 @@
+meta {
+  name: 112-hc035-family-cancel-before-checkin
+  type: http
+  seq: 112
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc035FamilyPreCheckInBookingId}}/cancel
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeFamilyJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  const body = res.body;
+  if (Number(body.refundStatus) !== 2 || Math.abs(Number(body.refundAmount) - Number(body.totalAmount)) > 0.01) throw new Error("Pre-check-in cancellation must initiate the full refund.");
+}

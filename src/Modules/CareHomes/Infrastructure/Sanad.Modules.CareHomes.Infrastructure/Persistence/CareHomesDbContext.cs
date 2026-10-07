@@ -16,6 +16,8 @@ public sealed class CareHomesDbContext(DbContextOptions<CareHomesDbContext> opti
     public DbSet<CareHomeBed> Beds => Set<CareHomeBed>();
     public DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => Set<CareHomeMaintenanceBlock>();
     public DbSet<CareHomeBooking> Bookings => Set<CareHomeBooking>();
+    public DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => Set<CareHomeBookingAssignmentHistory>();
+    public DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => Set<CareHomeTransferNotificationOutbox>();
     public DbSet<CareHomeCheckInDispute> CheckInDisputes => Set<CareHomeCheckInDispute>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

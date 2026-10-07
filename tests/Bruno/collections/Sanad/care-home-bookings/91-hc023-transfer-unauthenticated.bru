@@ -1,0 +1,22 @@
+meta {
+  name: 91-hc023-transfer-unauthenticated
+  type: http
+  seq: 91
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc023PrivateBookingId}}/assignment/transfer
+  body: json
+  auth: none
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "roomId": "{{hc023PrivateDestinationRoomId}}", "bedId": null, "effectiveDate": "{{hc023PrivateTransferDate}}" }
+}
+assert {
+  res.status: eq 401
+}
+script:post-response {
+  const hc023ExpectedStatus = 401;   const hc023ExpectedCode = null;   const hc023Body = res.body && typeof res.body === "object" ? res.body : {};   const hc023ActualCode = typeof hc023Body.code === "string" ? hc023Body.code : "";   const hc023TraceId = typeof hc023Body.traceId === "string" ? hc023Body.traceId : "";   const hc023Safe = (value) => value.replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 120);   if (res.status !== hc023ExpectedStatus || (hc023ExpectedCode !== null && hc023ActualCode !== hc023ExpectedCode)) {     console.log(`[HC-023 DIAG] 91-hc023-transfer-unauthenticated expectedStatus=${hc023ExpectedStatus} actualStatus=${res.status} expectedCode=${hc023ExpectedCode ?? "<not-asserted>"} actualCode=${hc023Safe(hc023ActualCode) || "<none>"} traceId=${hc023Safe(hc023TraceId) || "<none>"}`);   }
+}

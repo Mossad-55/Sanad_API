@@ -78,8 +78,30 @@ public sealed class PaymobWebhookController : ControllerBase
             || obj.TryGetProperty("has_parent_transaction", out JsonElement hasParent)
                 && hasParent.ValueKind is JsonValueKind.True;
 
-        if (isRefundCallback
-            || !obj.TryGetProperty("order", out JsonElement order)
+        if (isRefundCallback)
+        {
+            if (!obj.TryGetProperty("id", out JsonElement refundTransaction)
+                || !refundTransaction.TryGetInt64(out long refundTransactionId))
+                return Ok();
+            long? parentTransactionId = obj.TryGetProperty("parent_transaction", out JsonElement parentTransaction)
+                && parentTransaction.TryGetInt64(out long parentId)
+                    ? parentId
+                    : obj.TryGetProperty("is_refunded", out JsonElement refunded)
+                        && refunded.ValueKind is JsonValueKind.True
+                            ? refundTransactionId
+                            : null;
+            var refundResult = await _sender.Send(
+                new CompleteCareHomeRefundCallbackCommand(
+                    refundTransactionId,
+                    parentTransactionId,
+                    obj.TryGetProperty("is_refunded", out JsonElement isRefundedFlag)
+                        && isRefundedFlag.ValueKind is JsonValueKind.True,
+                    DateTime.UtcNow),
+                cancellationToken);
+            return refundResult.IsSuccess ? Ok() : StatusCode(StatusCodes.Status500InternalServerError);
+        }
+
+        if (!obj.TryGetProperty("order", out JsonElement order)
             || !order.TryGetProperty("merchant_order_id", out JsonElement merchantOrder))
         {
             return Ok();

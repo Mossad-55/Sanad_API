@@ -10,11 +10,17 @@ Scout → implementer → test author → reviewer → documenter → mastermind
 
 Every brief specifies the revision/worktree delta, objective, owned files, acceptance criteria, dependencies, and required output. Scout identifies every affected endpoint and test prerequisite. Test author supplies unit and Bruno coverage for each new or behaviorally changed endpoint. Documenter keeps feature guides separate and organizes matching Postman requests into clear feature folders or appropriate separate collections.
 
+## Keep owner asks and verification simple
+
+When blocked, tell the owner in plain language what is missing, why it prevents the next step, and the one decision or input needed to continue. Name the exact fixture/scenario only when that is the blocker. Do not turn a simple ask into a long authorization checklist; include only the target and side effects that matter for the specific operation.
+
+Keep tests proportional to the behavior being changed. Add focused unit coverage for the key rule and concise Bruno coverage for the endpoint's main success path and the directly relevant failure/access case. Reuse existing fixtures, setup, requests, and passing evidence where valid. Create only the minimum fixture state needed for one meaningful scenario, read back the result, and clean up only when supported and authorized. Avoid duplicate cases, broad matrices, large manifests, speculative edge cases, and elaborate fixture systems unless the contract or a demonstrated defect requires them. Report any meaningful coverage gap plainly; do not inflate test counts to appear thorough.
+
 ## Required gates
 
 Bruno uses the mandatory [failure-first runbook](bruno-failure-first.md) within the same worker sequence. Pin the worktree/runtime/fixture, run the offline preflight for the explicit request manifest, diagnose the first failure, fix the responsible code/request, and rerun its minimal prerequisites. After that passes, run the affected slice gate. HTTP failures do not justify database resets or random ports. Reuse existing in-scope authorization and valid evidence; apply the two-unchanged-attempt/ten-minute diagnostic checkpoint instead of repeating commands.
 
-For every implementation slice, the mastermind builds the project, runs focused slice tests, then the full suite, and executes slice Bruno coverage against disposable local/test fixtures. Build/test gates require successful exit and zero warnings. No endpoint commit without successful required Bruno coverage. Setup, readback, cleanup, and untestable cases must be explicit. Documentation/script-only changes receive relevant static/script validation.
+For every implementation slice, the mastermind builds the project, runs focused slice tests, then the full suite, and executes the minimum relevant Bruno coverage against disposable local/test fixtures. Keep the focused tests and Bruno scenarios on point; do not add redundant cases or overbuild fixtures. Build/test gates require successful exit and zero warnings. No endpoint commit without successful required Bruno coverage. State only the setup, readback, cleanup, and limitations needed to understand the evidence. Documentation/script-only changes receive relevant static/script validation.
 
 Reuse successful gates unless later changes invalidate them. Record commands, scope, results, warnings/skips, cleanup, and limitations in the owning slice. Static request mapping is not an executed test. Owner-confirmed historical results remain labelled separately.
 

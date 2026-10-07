@@ -1,4 +1,5 @@
 using Sanad.BuildingBlocks.Domain.Abstractions;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
 namespace Sanad.Modules.CareHomes.Domain.Facilities;
 
@@ -70,7 +71,7 @@ public enum CareHomeMaintenanceTarget { Room = 1, Bed = 2 }
 public sealed class CareHomeMaintenanceBlock : Entity<Guid>
 {
     private CareHomeMaintenanceBlock() { }
-    private CareHomeMaintenanceBlock(Guid id, CareHomeId facilityId, CareHomeMaintenanceTarget target, Guid targetId, DateOnly start, DateOnly end, string? reason, DateTime created) : base(id) { FacilityId = facilityId; Target = target; TargetId = targetId; StartDate = start; EndDate = end; Reason = reason; CreatedOnUtc = created; }
+    private CareHomeMaintenanceBlock(Guid id, CareHomeId facilityId, CareHomeMaintenanceTarget target, Guid targetId, DateOnly start, DateOnly end, string? reason, DateTime created) : base(id) { FacilityId = facilityId; Target = target; TargetId = targetId; StartDate = start; EndDate = end; Reason = reason; CreatedOnUtc = created; UpdatedOnUtc = created; }
     public CareHomeId FacilityId { get; private set; }
     public CareHomeMaintenanceTarget Target { get; private set; }
     public Guid TargetId { get; private set; }
@@ -78,7 +79,15 @@ public sealed class CareHomeMaintenanceBlock : Entity<Guid>
     public DateOnly EndDate { get; private set; }
     public string? Reason { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
+    public DateTime UpdatedOnUtc { get; private set; }
+    public DateTime? CancelledOnUtc { get; private set; }
+    public Guid? CancelledBy { get; private set; }
     public static CareHomeMaintenanceBlock Create(CareHomeId facilityId, CareHomeMaintenanceTarget target, Guid targetId, DateOnly start, DateOnly end, string? reason, DateTime utcNow)
     { if (facilityId == CareHomeId.Empty || targetId == Guid.Empty || end <= start) throw new ArgumentException("A maintenance block requires a valid target and a non-empty date range."); if (!Enum.IsDefined(target)) throw new ArgumentOutOfRangeException(nameof(target)); if (utcNow.Kind != DateTimeKind.Utc) throw new ArgumentException("Timestamp must be UTC."); return new(Guid.CreateVersion7(), facilityId, target, targetId, start, end, string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(), utcNow); }
-    public bool Overlaps(DateOnly start, DateOnly end) => start < EndDate && end > StartDate;
+    public bool IsCancelled => CancelledOnUtc is not null;
+    public bool Overlaps(DateOnly start, DateOnly end) => !IsCancelled && start < EndDate && end > StartDate;
+    public void Amend(DateOnly start, DateOnly end, string? reason, DateTime utcNow)
+    { if (end <= start) throw new ArgumentException("A maintenance block requires a valid date range."); if (utcNow.Kind != DateTimeKind.Utc) throw new ArgumentException("Timestamp must be UTC."); StartDate = start; EndDate = end; Reason = string.IsNullOrWhiteSpace(reason) ? null : reason.Trim(); UpdatedOnUtc = utcNow; }
+    public void Cancel(UserId actor, DateTime utcNow)
+    { if (actor == UserId.Empty || utcNow.Kind != DateTimeKind.Utc) throw new ArgumentException("A valid cancellation actor and timestamp are required."); CancelledBy = actor.Value; CancelledOnUtc = utcNow; UpdatedOnUtc = utcNow; }
 }

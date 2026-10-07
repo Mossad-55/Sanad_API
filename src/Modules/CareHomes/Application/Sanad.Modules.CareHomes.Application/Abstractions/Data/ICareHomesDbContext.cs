@@ -12,6 +12,8 @@ public interface ICareHomesDbContext
     DbSet<CareHomeBed> Beds { get; }
     DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks { get; }
     DbSet<CareHomeBooking> Bookings { get; }
+    DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory { get; }
+    DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox { get; }
     DbSet<CareHomeCheckInDispute> CheckInDisputes { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);

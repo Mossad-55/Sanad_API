@@ -1,0 +1,19 @@
+meta {
+  name: 115-hc035-admin-retry-refund
+  type: http
+  seq: 115
+}
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035FailedRefundBookingId}}/refund/retry
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  if (Number(res.body.refundStatus) !== 2) throw new Error("Admin retry must move the failed refund to initiated.");
+}

@@ -103,6 +103,7 @@ public static class DependencyInjection
         services.AddFinanceInfrastructure(configuration);
         services.AddHostedService<CareHomeLicenseExpiryMonitor>();
         services.AddHostedService<CareHomeBookingExpiryHostedService>();
+        services.AddHostedService<CareHomeTransferNotificationProcessor>();
         services.AddHostedService<EmailOutboxProcessor>();
         services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
         services.AddScoped<ICaregiverBookingRatingEligibility, CaregiverBookingRatingEligibilityGateway>();

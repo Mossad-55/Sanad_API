@@ -280,8 +280,14 @@ public sealed class PaymobClient : IPaymobClient
 
             if (!response.IsSuccessStatusCode)
             {
+                // A 4xx response is an explicit rejection. A 5xx response can
+                // follow a successful refund whose response was lost, so keep
+                // that outcome distinct and do not make it retryable.
+                string errorCode = (int)response.StatusCode is >= 400 and < 500
+                    ? "Paymob.RefundRejected"
+                    : "Paymob.RefundOutcomeUnknown";
                 return Result<string?>.Failure(
-                    new Error("Paymob.GatewayError",
+                    new Error(errorCode,
                         $"Paymob refund request failed with status {(int)response.StatusCode}."));
             }
 
@@ -296,7 +302,7 @@ public sealed class PaymobClient : IPaymobClient
         catch (Exception exception) when (exception is JsonException or HttpRequestException)
         {
             return Result<string?>.Failure(
-                new Error("Paymob.GatewayError", "Unexpected payment gateway response."));
+                new Error("Paymob.RefundOutcomeUnknown", "The refund outcome could not be confirmed."));
         }
     }
 

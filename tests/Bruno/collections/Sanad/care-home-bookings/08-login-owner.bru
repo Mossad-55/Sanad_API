@@ -24,6 +24,18 @@ assert {
   res.status: eq 200
 }
 script:post-response {
+  if (res.status !== 200) {
+    const body = res.body && typeof res.body === "object" ? res.body : {};
+    const code = typeof body.code === "string" ? body.code.replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 120) : "";
+    const traceId = typeof body.traceId === "string" ? body.traceId.replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 120) : "";
+    console.log(`[Care homes auth DIAG] owner-login expectedStatus=200 actualStatus=${res.status} code=${code || "<none>"} traceId=${traceId || "<none>"}`);
+    bru.setVar("careHomeOwnerJwt", "");
+    bru.setVar("careHomeOwnerDeviceSessionId", "");
+    return;
+  }
+  if (!res.body?.accessToken || !res.body?.deviceSessionId?.value) {
+    throw new Error("Owner login returned HTTP 200 without the expected session fields.");
+  }
   bru.setVar("careHomeOwnerJwt", res.body.accessToken);
   bru.setVar("careHomeOwnerDeviceSessionId", res.body.deviceSessionId.value);
 }

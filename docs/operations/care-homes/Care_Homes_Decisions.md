@@ -46,8 +46,12 @@ This document consolidates owner-confirmed Care homes behavior from the operator
 - Hold capacity for a 15-minute checkout/payment window. After verified payment, hold the selected capacity during the facility’s 24-hour decision window. The earliest arrival is 24 hours after booking.
 - The facility accepts or rejects the paid request. Rejection or decision timeout automatically cancels and fully refunds the booking.
 - The facility records actual check-in and check-out. The Family confirms check-in. Missing or disputed confirmation creates an Admin review case and does not automatically settle the refund transition.
+- An authorized facility may transfer an accepted stay to another physical room/bed both before and after check-in, but the destination must remain in the booking's original room type. The Cairo-local effective date must be within the stay's start-inclusive/end-exclusive interval, cannot be backdated, and is limited to one transfer per booking per local date. Validate facility ownership, active inventory, capacity, maintenance, and overlapping holds/stays for the applicable period. Preserve the old/new assignment, effective date, and actor in the operational history; notify the Family in-app and by email with durable retry. A same-type physical transfer does not change the booking's room type or price/payment snapshot and does not require Family approval. The physical transfer remains effective if notification delivery is delayed; delivery is retried independently.
+- Changing the room type is a separate accommodation-change workflow, not a room transfer, and is outside HC-023. Do not change the booking unless the Family has reviewed and accepted the proposed accommodation and its separately specified price/payment consequences. Do not infer an automatic charge, refund, or repricing rule.
+- Facility owners may amend or cancel future maintenance blocks. “Future” means the block's start date is strictly after the current Cairo-local date; blocks starting today or earlier cannot be amended/cancelled. Recheck active occupancy and overlapping maintenance constraints, and make availability reflect the change immediately. This scope does not add an advanced maintenance/fault-management workflow.
 - SuperAdmin/SupportAdmin may resolve disputed check-in using evidence and record the effective check-in time; preserve original timestamps, evidence and reason in the audit history.
 - Family cancellation before check-in receives a full refund. Family cancellation after check-in receives 50% of the full monthly payment, not 50% of unused days. Facility cancellation or rejection receives a full refund.
+- HC-035 clarification (2026-10-07): the refund boundary is the recorded facility check-in, not facility approval. A paid cancellation after approval but before check-in remains a full refund. The post-check-in 50% applies to the total amount charged, including fee and tax. Family and owner cancellation of accepted bookings are in scope; failed Paymob refunds can be retried by operational Admins, and externally completed refunds can be recorded with a reason and reference.
 - Refund state must distinguish initiated, completed, failed/retrying, and manually completed; prevent duplicate refunds and retain an audit trail.
 - Include room transfers and maintenance blocks. Defer walk-in bookings and automatic no-show cancellation. Advanced fault-management workflows are deferred.
 
@@ -68,6 +72,12 @@ This document consolidates owner-confirmed Care homes behavior from the operator
 - Notifications are in-app and email only. No SMS notification channel is in scope. Include booking, review, license, payment, refund, and relevant Admin events through existing supported infrastructure.
 
 ## Execution contract details — inspect existing conventions first
+
+### HC-TASK-023 implementation boundary
+
+- Owner confirmed Cairo-local effective-date precision and bounds for transfers, matching the current `DateOnly` availability/maintenance intervals; one transfer per booking per local date avoids same-day ordering ambiguity.
+- Owner confirmed amend/cancel support for future maintenance blocks, with the future-only boundary, conflict checks, and immediate availability updates. The current owner API only creates blocks.
+- Owner confirmed Family notification in-app and by email with durable retries; delayed delivery does not reverse or delay the physical transfer.
 
 The final owner answers resolved fee type/refund applicability, percentage fee and tax basis, payout mechanism and eligibility, nullable expiry, SMS OTP and dispute authority. Do not ask those questions again. Existing verification/recovery provider and exact check-in/out time contracts remain to be mapped; reuse compatible established behavior. No automatic confirmation timeout is approved. Extensions already begin at the paid-through date.
 

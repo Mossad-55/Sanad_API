@@ -1,0 +1,13 @@
+meta {
+  name: 117-hc035-family-cancel-unauthenticated
+  type: http
+  seq: 117
+}
+post {
+  url: {{baseUrl}}/api/v1/family/care-home-bookings/{{hc035FamilyPreCheckInBookingId}}/cancel
+  body: none
+  auth: none
+}
+assert {
+  res.status: eq 401
+}

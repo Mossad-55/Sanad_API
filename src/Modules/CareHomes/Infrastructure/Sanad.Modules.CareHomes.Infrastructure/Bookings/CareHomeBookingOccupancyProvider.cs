@@ -12,6 +12,7 @@ public sealed class CareHomeBookingOccupancyProvider(CareHomesDbContext db) : IC
     {
         var now = DateTime.UtcNow;
         var rows = await db.Bookings.AsNoTracking().Where(x => x.FacilityId == facilityId && ((x.Status == CareHomeBookingStatus.PendingPayment && x.CheckoutHoldUntilUtc > now) || (x.Status == CareHomeBookingStatus.PaidAwaitingDecision && x.DecisionHoldUntilUtc > now) || x.Status == CareHomeBookingStatus.Accepted)).Join(db.RoomTypes.AsNoTracking(), booking => booking.RoomTypeId, type => type.Id, (booking, type) => new { booking, type.AllocationMode }).ToListAsync(cancellationToken);
+        var history = await db.BookingAssignmentHistory.AsNoTracking().Where(x => rows.Select(r => r.booking.Id).Contains(x.BookingId)).OrderBy(x => x.EffectiveDate).ThenBy(x => x.OccurredOnUtc).ToListAsync(cancellationToken);
         var result = new List<CareHomeOccupancyInterval>(rows.Count * 2);
         foreach (var row in rows)
         {
@@ -26,12 +27,35 @@ public sealed class CareHomeBookingOccupancyProvider(CareHomesDbContext db) : IC
                 if (endDate > booking.EndDate) endDate = booking.EndDate;
             }
             if (endDate <= booking.StartDate) continue;
-            if (booking.AssignedRoomId is Guid roomId)
+            var segments = history.Where(x => x.BookingId == booking.Id).ToList();
+            if (segments.Count > 0)
+            {
+                if (segments[0].EffectiveDate > booking.StartDate && segments[0].FromRoomId is Guid priorRoomId)
+                {
+                    DateOnly priorEnd = segments[0].EffectiveDate < endDate ? segments[0].EffectiveDate : endDate;
+                    if (booking.StartDate < priorEnd)
+                    {
+                        if (row.AllocationMode == CareHomeAllocationMode.Shared && segments[0].FromBedId is Guid priorBedId)
+                            result.Add(new CareHomeOccupancyInterval(priorBedId, CareHomeResourceKind.Bed, booking.StartDate, priorEnd));
+                        else result.Add(new CareHomeOccupancyInterval(priorRoomId, CareHomeResourceKind.Room, booking.StartDate, priorEnd));
+                    }
+                }
+                for (int i = 0; i < segments.Count; i++)
+                {
+                    DateOnly from = segments[i].EffectiveDate < booking.StartDate ? booking.StartDate : segments[i].EffectiveDate;
+                    DateOnly to = i + 1 < segments.Count ? segments[i + 1].EffectiveDate : endDate;
+                    if (from >= to) continue;
+                    if (row.AllocationMode == CareHomeAllocationMode.Shared && segments[i].ToBedId is Guid bedId)
+                        result.Add(new CareHomeOccupancyInterval(bedId, CareHomeResourceKind.Bed, from, to));
+                    else
+                        result.Add(new CareHomeOccupancyInterval(segments[i].ToRoomId, CareHomeResourceKind.Room, from, to));
+                }
+            }
+            else if (booking.AssignedRoomId is Guid roomId)
             {
                 if (row.AllocationMode == CareHomeAllocationMode.Shared && booking.AssignedBedId is Guid bedId)
                     result.Add(new CareHomeOccupancyInterval(bedId, CareHomeResourceKind.Bed, booking.StartDate, endDate));
-                else
-                    result.Add(new CareHomeOccupancyInterval(roomId, CareHomeResourceKind.Room, booking.StartDate, endDate));
+                else result.Add(new CareHomeOccupancyInterval(roomId, CareHomeResourceKind.Room, booking.StartDate, endDate));
             }
             else
             {

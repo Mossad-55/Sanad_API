@@ -12,13 +12,14 @@ namespace Sanad.Modules.CareHomes.Application.Bookings;
 public sealed record AssignCareHomeBookingCommand(UserId Actor, Guid BookingId, Guid RoomId, Guid? BedId, DateTime UtcNow) : ICommand<CareHomeBookingResponse>;
 public sealed record RecordCareHomeCheckInCommand(UserId Actor, Guid BookingId, DateTime UtcNow) : ICommand<CareHomeBookingResponse>;
 public sealed record RecordCareHomeCheckOutCommand(UserId Actor, Guid BookingId, DateTime UtcNow) : ICommand<CareHomeBookingResponse>;
-public sealed record GetOwnerCareHomeBookingOperationalQuery(UserId Actor, Guid BookingId) : IQuery<CareHomeOwnerBookingOperationalResponse>;
+public sealed record GetOwnerCareHomeBookingOperationalQuery(UserId Actor, Guid BookingId, DateTime UtcNow) : IQuery<CareHomeOwnerBookingOperationalResponse>;
 public sealed record ConfirmCareHomeCheckInCommand(UserId Actor, FamilyId FamilyId, Guid BookingId, DateTime UtcNow) : ICommand<CareHomeBookingResponse>;
 public sealed record ListCareHomeCheckInDisputesQuery() : IQuery<IReadOnlyList<CareHomeCheckInDisputeResponse>>;
 public sealed record ResolveCareHomeCheckInDisputeCommand(UserId Actor, Guid CaseId, DateTime EffectiveCheckInOnUtc, string Evidence, string Reason, DateTime UtcNow) : ICommand<CareHomeCheckInDisputeResponse>;
 public sealed record SubmitCareHomeCheckInDisputeCommand(UserId Actor, FamilyId FamilyId, Guid BookingId, string Reason, DateTime UtcNow) : ICommand<CareHomeCheckInDisputeResponse>;
 public sealed record CareHomeCheckInDisputeResponse(Guid Id, Guid BookingId, Guid FacilityId, DateTime? CheckoutOnUtc, CareHomeCheckInDisputeStatus Status, DateTime OpenedOnUtc, Guid OpenedBy, DateTime? EffectiveCheckInOnUtc, string? Evidence, string? Reason, string? FamilyReason, DateTime? ResolvedOnUtc, Guid? ResolvedBy);
-public sealed record CareHomeOwnerBookingOperationalResponse(Guid Id, Guid FacilityId, Guid RoomTypeId, Guid? AssignedRoomId, Guid? AssignedBedId, DateTime? ActualCheckInOnUtc, Guid? ActualCheckInRecordedBy, DateTime? ActualCheckOutOnUtc, Guid? ActualCheckOutRecordedBy, DateTime? FamilyCheckInConfirmedOnUtc, Guid? FamilyCheckInConfirmedBy);
+public sealed record CareHomeBookingAssignmentHistoryItem(Guid? FromRoomId, Guid? FromBedId, Guid ToRoomId, Guid? ToBedId, DateOnly EffectiveDate, Guid ActorUserId, DateTime OccurredOnUtc);
+public sealed record CareHomeOwnerBookingOperationalResponse(Guid Id, Guid FacilityId, Guid RoomTypeId, Guid? AssignedRoomId, Guid? AssignedBedId, DateTime? ActualCheckInOnUtc, Guid? ActualCheckInRecordedBy, DateTime? ActualCheckOutOnUtc, Guid? ActualCheckOutRecordedBy, DateTime? FamilyCheckInConfirmedOnUtc, Guid? FamilyCheckInConfirmedBy, IReadOnlyList<CareHomeBookingAssignmentHistoryItem>? AssignmentHistory = null);
 
 public sealed class AssignCareHomeBookingHandler(ICareHomesDbContext db, ICareHomeBookingReservationGuard reservationGuard) : ICommandHandler<AssignCareHomeBookingCommand, CareHomeBookingResponse>
 {
@@ -52,7 +53,7 @@ public sealed class AssignCareHomeBookingHandler(ICareHomesDbContext db, ICareHo
                         : x.AssignedRoomId == r.RoomId;
                 });
                 if (conflicts) return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.AssignmentConflict", "The selected physical resource is occupied for this stay."));
-                try { booking.AssignPhysicalResource(r.RoomId, r.BedId, r.UtcNow); await db.SaveChangesAsync(ct); return CheckoutHandler.Map(booking); }
+                try { booking.AssignPhysicalResource(r.RoomId, r.BedId, r.UtcNow); db.BookingAssignmentHistory.Add(CareHomeBookingAssignmentHistory.CreateInitial(booking.Id, r.RoomId, r.BedId, booking.StartDate, r.Actor, r.UtcNow)); await db.SaveChangesAsync(ct); return CheckoutHandler.Map(booking); }
                 catch (InvalidOperationException ex) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.InvalidState", ex.Message)); }
             }, ct);
         }
@@ -86,7 +87,10 @@ public sealed class OwnerCareHomeBookingOperationalHandler(ICareHomesDbContext d
         var facility = await db.Facilities.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == r.Actor, ct);
         var booking = facility is null ? null : await db.Bookings.AsNoTracking().SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FacilityId == facility.Id, ct);
         if (booking is null) return Result<CareHomeOwnerBookingOperationalResponse>.Failure(new("CareHomes.Bookings.NotFound", "Booking was not found."));
-        return new CareHomeOwnerBookingOperationalResponse(booking.Id, booking.FacilityId.Value, booking.RoomTypeId, booking.AssignedRoomId, booking.AssignedBedId, booking.ActualCheckInOnUtc, booking.ActualCheckInRecordedBy?.Value, booking.ActualCheckOutOnUtc, booking.ActualCheckOutRecordedBy?.Value, booking.FamilyCheckInConfirmedOnUtc, booking.FamilyCheckInConfirmedBy?.Value);
+        var entries = await db.BookingAssignmentHistory.AsNoTracking().Where(x => x.BookingId == booking.Id).OrderBy(x => x.EffectiveDate).ThenBy(x => x.OccurredOnUtc).ToListAsync(ct);
+        var assignment = CareHomeAssignmentHistoryProjection.Resolve(booking, entries, CareHomeAssignmentHistoryProjection.CairoToday(r.UtcNow));
+        var history = entries.Select(x => new CareHomeBookingAssignmentHistoryItem(x.FromRoomId, x.FromBedId, x.ToRoomId, x.ToBedId, x.EffectiveDate, x.Actor.Value, x.OccurredOnUtc)).ToArray();
+        return new CareHomeOwnerBookingOperationalResponse(booking.Id, booking.FacilityId.Value, booking.RoomTypeId, assignment.RoomId, assignment.BedId, booking.ActualCheckInOnUtc, booking.ActualCheckInRecordedBy?.Value, booking.ActualCheckOutOnUtc, booking.ActualCheckOutRecordedBy?.Value, booking.FamilyCheckInConfirmedOnUtc, booking.FamilyCheckInConfirmedBy?.Value, history);
     }
 }
 

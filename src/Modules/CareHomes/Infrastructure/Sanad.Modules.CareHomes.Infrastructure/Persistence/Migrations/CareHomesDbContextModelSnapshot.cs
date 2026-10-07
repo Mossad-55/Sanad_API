@@ -158,12 +158,34 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal?>("RefundAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("refund_amount");
+
                     b.Property<DateTime?>("RefundClaimedOnUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("refund_claimed_on_utc");
 
+                    b.Property<Guid?>("RefundCompletedBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_completed_by");
+
+                    b.Property<DateTime?>("RefundCompletedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refund_completed_on_utc");
+
+                    b.Property<string>("RefundFailureReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("refund_failure_reason");
+
                     b.Property<string>("RefundReference")
                         .HasColumnType("text");
+
+                    b.Property<int>("RefundStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("refund_status");
 
                     b.Property<string>("ResponsibleContactName")
                         .IsRequired()
@@ -209,6 +231,53 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.ToTable("bookings", "care_homes");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeBookingAssignmentHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("Actor")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<DateOnly>("EffectiveDate")
+                        .HasColumnType("date")
+                        .HasColumnName("effective_date");
+
+                    b.Property<Guid?>("FromBedId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_bed_id");
+
+                    b.Property<Guid?>("FromRoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("from_room_id");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_on_utc");
+
+                    b.Property<Guid?>("ToBedId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_bed_id");
+
+                    b.Property<Guid>("ToRoomId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_room_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BookingId", "EffectiveDate")
+                        .IsUnique()
+                        .HasFilter("\"from_room_id\" IS NOT NULL");
+
+                    b.ToTable("booking_assignment_history", "care_homes");
+                });
+
             modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeCheckInDispute", b =>
                 {
                     b.Property<Guid>("Id")
@@ -228,12 +297,12 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
 
+                    b.Property<Guid>("FacilityId")
+                        .HasColumnType("uuid");
+
                     b.Property<string>("FamilyReason")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)");
-
-                    b.Property<Guid>("FacilityId")
-                        .HasColumnType("uuid");
 
                     b.Property<Guid>("OpenedBy")
                         .HasColumnType("uuid");
@@ -261,6 +330,57 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasFilter("\"Status\" = 1");
 
                     b.ToTable("check_in_disputes", "care_homes");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeTransferNotificationOutbox", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempt_count");
+
+                    b.Property<Guid>("BookingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_id");
+
+                    b.Property<Guid?>("ClaimToken")
+                        .HasColumnType("uuid")
+                        .HasColumnName("claim_token");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<DateTime?>("LastAttemptOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("last_attempt_on_utc");
+
+                    b.Property<string>("LastError")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)");
+
+                    b.Property<DateTime>("NextAttemptOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("next_attempt_on_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TransferId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("transfer_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TransferId")
+                        .IsUnique();
+
+                    b.HasIndex("Status", "NextAttemptOnUtc");
+
+                    b.ToTable("transfer_notification_outbox", "care_homes");
                 });
 
             modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeBed", b =>
@@ -424,6 +544,14 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<Guid?>("CancelledBy")
+                        .HasColumnType("uuid")
+                        .HasColumnName("cancelled_by");
+
+                    b.Property<DateTime?>("CancelledOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_on_utc");
+
                     b.Property<DateTime>("CreatedOnUtc")
                         .HasColumnType("timestamp with time zone");
 
@@ -449,6 +577,9 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("TargetId")
                         .HasColumnType("uuid")
                         .HasColumnName("target_id");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
 

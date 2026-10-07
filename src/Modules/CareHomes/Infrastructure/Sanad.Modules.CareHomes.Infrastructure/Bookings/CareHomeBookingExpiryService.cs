@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
@@ -14,10 +15,8 @@ public static class CareHomeBookingExpiryService
         foreach (var booking in pending)
         {
             booking.ExpireIfNeeded(now); await db.SaveChangesAsync(stoppingToken);
-            if (booking.Status != CareHomeBookingStatus.RefundPending || booking.PaymobTransactionId is null || !booking.TryClaimRefund(now)) continue;
-            await db.SaveChangesAsync(stoppingToken);
-            var refund = await paymob.RefundPaymentAsync(booking.PaymobTransactionId.Value.ToString(), booking.TotalAmount, stoppingToken);
-            if (refund.IsSuccess) { booking.MarkRefundInitiated(refund.Value, now); await db.SaveChangesAsync(stoppingToken); }
+            if (booking.Status != CareHomeBookingStatus.RefundPending || booking.PaymobTransactionId is null) continue;
+            await CareHomeRefundProcessor.InitiateAsync(db, paymob, booking, now, stoppingToken);
         }
     }
 }

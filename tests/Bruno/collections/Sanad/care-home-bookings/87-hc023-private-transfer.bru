@@ -1,0 +1,34 @@
+meta {
+  name: 87-hc023-private-transfer
+  type: http
+  seq: 87
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc023PrivateBookingId}}/assignment/transfer
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "roomId": "{{hc023PrivateDestinationRoomId}}", "bedId": null, "effectiveDate": "{{hc023PrivateTransferDate}}" }
+}
+assert {
+  res.status: eq 200
+  res.body.roomTypeId: eq {{hc023PrivateRoomTypeId}}
+}
+script:post-response {
+  
+  const hc023ExpectedStatus = 200;   const hc023ExpectedCode = null;   const hc023Body = res.body && typeof res.body === "object" ? res.body : {};   const hc023ActualCode = typeof hc023Body.code === "string" ? hc023Body.code : "";   const hc023TraceId = typeof hc023Body.traceId === "string" ? hc023Body.traceId : "";   const hc023Safe = (value) => value.replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 120);   if (res.status !== hc023ExpectedStatus || (hc023ExpectedCode !== null && hc023ActualCode !== hc023ExpectedCode)) {     console.log(`[HC-023 DIAG] 87-hc023-private-transfer expectedStatus=${hc023ExpectedStatus} actualStatus=${res.status} expectedCode=${hc023ExpectedCode ?? "<not-asserted>"} actualCode=${hc023Safe(hc023ActualCode) || "<none>"} traceId=${hc023Safe(hc023TraceId) || "<none>"}`);   }
+if (res.body.assignedBedId !== null) throw new Error("Private room transfer unexpectedly assigned a bed.");
+if (res.status === 200) {
+const hc023CairoToday = String(bru.getVar("hc023CairoToday") ?? bru.getEnvVar("hc023CairoToday"));
+const hc023Variable = (name) => String(bru.getVar(name) ?? bru.getEnvVar(name));
+const hc023EffectiveDate = hc023Variable("hc023PrivateTransferDate");
+const hc023ExpectedCurrentRoom = hc023EffectiveDate <= hc023CairoToday ? hc023Variable("hc023PrivateDestinationRoomId") : hc023Variable("hc023PrivateSourceRoomId");
+if (String(res.body.assignedRoomId).toLowerCase() !== hc023ExpectedCurrentRoom.toLowerCase()) throw new Error(`Expected current room ${hc023ExpectedCurrentRoom} for effective date ${hc023EffectiveDate} and Cairo date ${hc023CairoToday}.`); }
+}

@@ -1,0 +1,26 @@
+meta {
+  name: 88-hc023-transfer-history-readback
+  type: http
+  seq: 88
+}
+get {
+  url: {{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc023PrivateBookingId}}/operational
+  body: none
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+assert {
+  res.status: eq 200
+  res.body.assignmentHistory: isNotEmpty
+}
+script:post-response {
+  
+  const hc023ExpectedStatus = 200;   const hc023ExpectedCode = null;   const hc023Body = res.body && typeof res.body === "object" ? res.body : {};   const hc023ActualCode = typeof hc023Body.code === "string" ? hc023Body.code : "";   const hc023TraceId = typeof hc023Body.traceId === "string" ? hc023Body.traceId : "";   const hc023Safe = (value) => value.replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 120);   if (res.status !== hc023ExpectedStatus || (hc023ExpectedCode !== null && hc023ActualCode !== hc023ExpectedCode)) {     console.log(`[HC-023 DIAG] 88-hc023-transfer-history-readback expectedStatus=${hc023ExpectedStatus} actualStatus=${res.status} expectedCode=${hc023ExpectedCode ?? "<not-asserted>"} actualCode=${hc023Safe(hc023ActualCode) || "<none>"} traceId=${hc023Safe(hc023TraceId) || "<none>"}`);   }
+const history = res.body.assignmentHistory ?? [];
+  const destination = String(bru.getVar("hc023PrivateDestinationRoomId") ?? bru.getEnvVar("hc023PrivateDestinationRoomId"));
+  const date = String(bru.getVar("hc023PrivateTransferDate") ?? bru.getEnvVar("hc023PrivateTransferDate"));
+  const transfer = history.find(x => String(x.toRoomId) === destination && String(x.effectiveDate) === date);
+  if (!transfer || !transfer.actorUserId || !transfer.fromRoomId) throw new Error("HC-023 transfer history did not read back the old/new room, effective date, and actor.");
+}

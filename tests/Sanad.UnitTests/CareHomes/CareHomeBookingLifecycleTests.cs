@@ -209,6 +209,93 @@ public sealed class CareHomeBookingLifecycleTests
     }
 
     [Fact]
+    public void HC035_family_refund_uses_recorded_check_in_not_facility_approval()
+    {
+        var awaitingDecision = Create(new DateOnly(2026, 10, 5));
+        awaitingDecision.MarkPaid(7101, Now);
+        Assert.Equal(awaitingDecision.TotalAmount, awaitingDecision.CancelByFamily(Now.AddMinutes(1)));
+
+        var approved = Create(new DateOnly(2026, 10, 5));
+        approved.MarkPaid(7102, Now);
+        approved.Accept(Now.AddMinutes(1));
+        Assert.Equal(approved.TotalAmount, approved.CancelByFamily(Now.AddMinutes(2)));
+
+        var checkedIn = Create(new DateOnly(2026, 10, 5));
+        checkedIn.MarkPaid(7103, Now);
+        checkedIn.Accept(Now.AddMinutes(1));
+        checkedIn.AssignPhysicalResource(Guid.NewGuid(), null, Now.AddMinutes(2));
+        checkedIn.RecordCheckIn(UserId.New(), Now.AddMinutes(3));
+        Assert.Equal(checkedIn.TotalAmount / 2m, checkedIn.CancelByFamily(Now.AddMinutes(4)));
+        checkedIn.RecordCheckOut(UserId.New(), Now.AddMinutes(5));
+        Assert.Throws<InvalidOperationException>(() => checkedIn.CancelByFamily(Now.AddMinutes(6)));
+    }
+
+    [Fact]
+    public void HC035_unpaid_cancellation_releases_booking_without_refund_and_facility_cancellation_is_full()
+    {
+        var unpaid = Create(new DateOnly(2026, 10, 5));
+        Assert.Equal(0m, unpaid.CancelByFamily(Now.AddMinutes(1)));
+        Assert.Equal(CareHomeBookingStatus.Cancelled, unpaid.Status);
+        Assert.Equal(CareHomeRefundStatus.None, unpaid.RefundStatus);
+
+        var facilityCancelled = Create(new DateOnly(2026, 10, 5));
+        facilityCancelled.MarkPaid(7104, Now);
+        facilityCancelled.Accept(Now.AddMinutes(1));
+        facilityCancelled.AssignPhysicalResource(Guid.NewGuid(), null, Now.AddMinutes(2));
+        facilityCancelled.RecordCheckIn(UserId.New(), Now.AddMinutes(3));
+        Assert.Equal(facilityCancelled.TotalAmount, facilityCancelled.CancelByFacility("Facility reason", Now.AddMinutes(4)));
+        Assert.Equal(CareHomeRefundStatus.Pending, facilityCancelled.RefundStatus);
+    }
+
+    [Fact]
+    public void HC035_refund_failure_can_be_retried_and_completion_is_idempotent()
+    {
+        var booking = Create(new DateOnly(2026, 10, 5));
+        booking.MarkPaid(7105, Now);
+        booking.Reject("No capacity", Now.AddMinutes(1));
+        Assert.True(booking.TryClaimRefund(Now.AddMinutes(2)));
+        booking.MarkRefundFailed("Paymob.RefundRejected", Now.AddMinutes(3));
+        Assert.Equal(CareHomeRefundStatus.Failed, booking.RefundStatus);
+
+        Assert.True(booking.TryClaimRefund(Now.AddMinutes(4)));
+        booking.MarkRefundInitiated("refund-7105", Now.AddMinutes(5));
+        Assert.False(booking.MarkRefundCompletedFromProviderCallback("wrong", 7106, Now.AddMinutes(6)));
+        Assert.True(booking.MarkRefundCompletedFromProviderCallback("refund-7105", 7105, Now.AddMinutes(6)));
+        Assert.False(booking.MarkRefundCompletedFromProviderCallback("refund-7105", 7105, Now.AddMinutes(7)));
+        Assert.Equal(CareHomeRefundStatus.Completed, booking.RefundStatus);
+        Assert.Equal(CareHomeBookingPaymentStatus.Refunded, booking.PaymentStatus);
+    }
+
+    [Fact]
+    public async Task HC035_failed_family_refund_is_retryable_once_through_admin_flow()
+    {
+        await using var db = CreateBookingDb();
+        var booking = Create(new DateOnly(2026, 10, 5));
+        booking.MarkPaid(7110, Now);
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync();
+        var paymob = new FakePaymob { FailRefund = true };
+        var cancel = await new CancelFamilyCareHomeBookingHandler(db, paymob)
+            .Handle(new CancelFamilyCareHomeBookingCommand(booking.FamilyUserId, booking.FamilyId, booking.Id, Now.AddMinutes(1)), default);
+
+        Assert.False(cancel.IsSuccess);
+        Assert.Equal(CareHomeRefundStatus.Failed, booking.RefundStatus);
+        Assert.Equal(booking.TotalAmount, booking.RefundAmount);
+        paymob.FailRefund = false;
+
+        var retry = await new RetryCareHomeRefundHandler(db, paymob)
+            .Handle(new RetryCareHomeRefundCommand(UserId.New(), booking.Id, Now.AddMinutes(2)), default);
+        Assert.True(retry.IsSuccess);
+        Assert.Equal(CareHomeRefundStatus.Initiated, retry.Value.RefundStatus);
+        Assert.Equal(2, paymob.RefundCalls);
+        Assert.Equal(booking.TotalAmount, paymob.LastRefundAmount);
+
+        await new CompleteCareHomeRefundCallbackHandler(db)
+            .Handle(new CompleteCareHomeRefundCallbackCommand(9001, 7110, true, Now.AddMinutes(3)), default);
+        Assert.Equal(CareHomeRefundStatus.Completed, booking.RefundStatus);
+    }
+
+    [Fact]
     public void Reject_requires_a_reason_and_paid_booking_cannot_be_accepted_after_timeout()
     {
         var rejected = Create(new DateOnly(2026, 10, 5));
@@ -325,7 +412,10 @@ public sealed class CareHomeBookingLifecycleTests
     private sealed class FakePaymob : IPaymobClient
     {
         public bool FailIntent { get; set; }
+        public bool FailRefund { get; set; }
         public int IntentCalls { get; private set; }
+        public int RefundCalls { get; private set; }
+        public decimal LastRefundAmount { get; private set; }
 
         public Task<Result<PaymobPaymentIntent>> CreatePaymentIntentAsync(PaymobPaymentIntentInput input, CancellationToken cancellationToken = default)
         {
@@ -335,7 +425,13 @@ public sealed class CareHomeBookingLifecycleTests
                 : Result<PaymobPaymentIntent>.Success(new PaymobPaymentIntent("order", "intent", "secret", "public")));
         }
 
-        public Task<Result<string?>> RefundPaymentAsync(string paymobTransactionId, decimal amount, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Result<string?>.Success("refund"));
+        public Task<Result<string?>> RefundPaymentAsync(string paymobTransactionId, decimal amount, CancellationToken cancellationToken = default)
+        {
+            RefundCalls++;
+            LastRefundAmount = amount;
+            return Task.FromResult(FailRefund
+                ? Result<string?>.Failure(new Error("Paymob.RefundRejected", "temporary"))
+                : Result<string?>.Success("refund"));
+        }
     }
 }

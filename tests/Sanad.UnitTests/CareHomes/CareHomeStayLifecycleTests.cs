@@ -24,17 +24,263 @@ public sealed class CareHomeStayLifecycleTests
         var sharedBooking = AddAcceptedBooking(db, facility.Id, shared.Type.Id, FamilyId.New());
         var privateInventory = AddInventory(db, facility.Id, CareHomeAllocationMode.Private, 1);
         var privateBooking = AddAcceptedBooking(db, facility.Id, privateInventory.Type.Id, FamilyId.New());
+        var suiteInventory = AddInventory(db, facility.Id, CareHomeAllocationMode.Suite, 1);
+        var suiteBooking = AddAcceptedBooking(db, facility.Id, suiteInventory.Type.Id, FamilyId.New());
         await db.SaveChangesAsync();
 
         var sharedMissingBed = await new AssignCareHomeBookingHandler(db, new InlineReservationGuard()).Handle(
             new(owner, sharedBooking.Id, shared.Room.Id, null, Now), default);
         var privateWithBed = await new AssignCareHomeBookingHandler(db, new InlineReservationGuard()).Handle(
             new(owner, privateBooking.Id, privateInventory.Room.Id, privateInventory.Beds[0].Id, Now), default);
+        var suiteWithBed = await new AssignCareHomeBookingHandler(db, new InlineReservationGuard()).Handle(
+            new(owner, suiteBooking.Id, suiteInventory.Room.Id, suiteInventory.Beds[0].Id, Now), default);
 
         Assert.False(sharedMissingBed.IsSuccess);
         Assert.Equal("CareHomes.Bookings.InvalidAssignment", sharedMissingBed.Error.Code);
         Assert.False(privateWithBed.IsSuccess);
         Assert.Equal("CareHomes.Bookings.InvalidAssignment", privateWithBed.Error.Code);
+        Assert.False(suiteWithBed.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.InvalidAssignment", suiteWithBed.Error.Code);
+    }
+
+    [Theory]
+    [InlineData(CareHomeAllocationMode.Private)]
+    [InlineData(CareHomeAllocationMode.Suite)]
+    public async Task Private_and_suite_assignment_without_bed_reads_back_and_removes_room_availability(CareHomeAllocationMode mode)
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var facility = AddFacility(db, owner);
+        var inventory = AddInventory(db, facility.Id, mode, 2);
+        var booking = AddAcceptedBooking(db, facility.Id, inventory.Type.Id, FamilyId.New());
+        await db.SaveChangesAsync();
+
+        var assignment = await new AssignCareHomeBookingHandler(db, new InlineReservationGuard()).Handle(
+            new(owner, booking.Id, inventory.Room.Id, null, Now), default);
+
+        Assert.True(assignment.IsSuccess);
+        Assert.Equal(inventory.Room.Id, assignment.Value.AssignedRoomId);
+        Assert.Null(assignment.Value.AssignedBedId);
+
+        var operational = await new OwnerCareHomeBookingOperationalHandler(db).Handle(
+            new GetOwnerCareHomeBookingOperationalQuery(owner, booking.Id, Now), default);
+        Assert.True(operational.IsSuccess);
+        Assert.Equal(inventory.Room.Id, operational.Value.AssignedRoomId);
+        Assert.Null(operational.Value.AssignedBedId);
+
+        var active = await new CareHomeBookingOccupancyProvider(db).GetActiveAsync(facility.Id, default);
+        var availability = CareHomeAvailabilityCalculator.Calculate(
+            new[] { inventory.Type }, new[] { inventory.Room }, inventory.Beds, [], active, [],
+            booking.StartDate, booking.EndDate).Single();
+
+        Assert.Contains(active, x => x.ResourceKind == CareHomeResourceKind.Room && x.ResourceId == inventory.Room.Id);
+        Assert.Equal(0, availability.AvailableRooms);
+        Assert.Equal(1, availability.TotalRooms);
+    }
+
+    [Theory]
+    [InlineData(CareHomeAllocationMode.Private)]
+    [InlineData(CareHomeAllocationMode.Suite)]
+    public async Task Private_and_suite_overlapping_accepted_stay_cannot_assign_the_same_room(CareHomeAllocationMode mode)
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var facility = AddFacility(db, owner);
+        var inventory = AddInventory(db, facility.Id, mode, 1);
+        var first = AddAcceptedBooking(db, facility.Id, inventory.Type.Id, FamilyId.New());
+        var second = AddAcceptedBooking(db, facility.Id, inventory.Type.Id, FamilyId.New());
+        await db.SaveChangesAsync();
+        var handler = new AssignCareHomeBookingHandler(db, new InlineReservationGuard());
+
+        var assigned = await handler.Handle(new(owner, first.Id, inventory.Room.Id, null, Now), default);
+        var conflict = await handler.Handle(new(owner, second.Id, inventory.Room.Id, null, Now), default);
+
+        Assert.True(assigned.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.AssignmentConflict", conflict.Error.Code);
+        Assert.Null(second.AssignedRoomId);
+        Assert.Null(second.AssignedBedId);
+    }
+
+    [Theory]
+    [InlineData(CareHomeAllocationMode.Shared, false, 6)]
+    [InlineData(CareHomeAllocationMode.Private, false, 6)]
+    [InlineData(CareHomeAllocationMode.Suite, true, 7)]
+    public async Task Same_type_transfer_preserves_history_and_splits_occupancy(CareHomeAllocationMode mode, bool checkInFirst, int effectiveDay)
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var facility = AddFacility(db, owner);
+        var inventory = AddInventory(db, facility.Id, mode, 2);
+        CareHomeRoom destinationRoom = inventory.Room;
+        if (mode != CareHomeAllocationMode.Shared)
+        {
+            destinationRoom = CareHomeRoom.Create(facility.Id, inventory.Type.Id, "102", Now);
+            db.Rooms.Add(destinationRoom);
+        }
+        var booking = AddAcceptedBooking(db, facility.Id, inventory.Type.Id, FamilyId.New());
+        await db.SaveChangesAsync();
+
+        Guid? sourceBed = mode == CareHomeAllocationMode.Shared ? inventory.Beds[0].Id : null;
+        Guid? destinationBed = mode == CareHomeAllocationMode.Shared ? inventory.Beds[1].Id : null;
+        var assignment = await new AssignCareHomeBookingHandler(db, new InlineReservationGuard())
+            .Handle(new(owner, booking.Id, inventory.Room.Id, sourceBed, Now), default);
+        Assert.True(assignment.IsSuccess);
+        if (checkInFirst)
+            Assert.True((await new RecordCareHomeCheckInHandler(db).Handle(new(owner, booking.Id, Now.AddHours(1)), default)).IsSuccess);
+
+        var effective = new DateOnly(2026, 10, effectiveDay);
+        var transferNow = new DateTime(2026, 10, 6, 6, 0, 0, DateTimeKind.Utc);
+        var moved = await new TransferCareHomeBookingHandler(db, new InlineReservationGuard())
+            .Handle(new(owner, booking.Id, destinationRoom.Id, destinationBed, effective, transferNow), default);
+
+        Assert.True(moved.IsSuccess);
+        Assert.Equal(effectiveDay == 6 ? destinationRoom.Id : inventory.Room.Id, moved.Value.AssignedRoomId);
+        Assert.Equal(effectiveDay == 6 ? destinationBed : sourceBed, moved.Value.AssignedBedId);
+        Assert.Equal(booking.RoomTypeId, moved.Value.RoomTypeId);
+        Assert.Equal(booking.TotalAmount, moved.Value.TotalAmount);
+        Assert.Equal(booking.BaseAmount, moved.Value.BaseAmount);
+        Assert.Equal(booking.PlatformFeeAmount, moved.Value.PlatformFeeAmount);
+        Assert.Equal(booking.TaxAmount, moved.Value.TaxAmount);
+        Assert.Equal(1, booking.ChargeRuleVersion);
+        Assert.Single(db.TransferNotificationOutbox);
+
+        var operational = await new OwnerCareHomeBookingOperationalHandler(db)
+            .Handle(new GetOwnerCareHomeBookingOperationalQuery(owner, booking.Id, transferNow), default);
+        Assert.True(operational.IsSuccess);
+        Assert.Equal(effectiveDay == 6 ? destinationRoom.Id : inventory.Room.Id, operational.Value.AssignedRoomId);
+        Assert.Equal(effectiveDay == 6 ? destinationBed : sourceBed, operational.Value.AssignedBedId);
+        Assert.Equal(2, operational.Value.AssignmentHistory!.Count);
+        Assert.Equal(inventory.Room.Id, operational.Value.AssignmentHistory[1].FromRoomId);
+        Assert.Equal(sourceBed, operational.Value.AssignmentHistory[1].FromBedId);
+        Assert.Equal(destinationRoom.Id, operational.Value.AssignmentHistory[1].ToRoomId);
+        Assert.Equal(destinationBed, operational.Value.AssignmentHistory[1].ToBedId);
+        Assert.Equal(effective, operational.Value.AssignmentHistory[1].EffectiveDate);
+        Assert.Equal(owner.Value, operational.Value.AssignmentHistory[1].ActorUserId);
+
+        var active = await new CareHomeBookingOccupancyProvider(db).GetActiveAsync(facility.Id, default);
+        var resourceKind = mode == CareHomeAllocationMode.Shared ? CareHomeResourceKind.Bed : CareHomeResourceKind.Room;
+        var sourceId = mode == CareHomeAllocationMode.Shared ? sourceBed!.Value : inventory.Room.Id;
+        var destinationId = mode == CareHomeAllocationMode.Shared ? destinationBed!.Value : destinationRoom.Id;
+        Assert.Contains(active, x => x.ResourceId == sourceId && x.ResourceKind == resourceKind && x.StartDate == booking.StartDate && x.EndDate == effective);
+        Assert.Contains(active, x => x.ResourceId == destinationId && x.ResourceKind == resourceKind && x.StartDate == effective && x.EndDate == booking.EndDate);
+    }
+
+    [Fact]
+    public async Task Transfer_rejects_destination_already_assigned_to_overlapping_accepted_booking()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var facility = AddFacility(db, owner);
+        var inventory = AddInventory(db, facility.Id, CareHomeAllocationMode.Private, 0);
+        var destination = CareHomeRoom.Create(facility.Id, inventory.Type.Id, "102", Now);
+        db.Rooms.Add(destination);
+        var first = AddAcceptedBooking(db, facility.Id, inventory.Type.Id, FamilyId.New());
+        var second = AddAcceptedBooking(db, facility.Id, inventory.Type.Id, FamilyId.New());
+        await db.SaveChangesAsync();
+        var assignments = new AssignCareHomeBookingHandler(db, new InlineReservationGuard());
+        Assert.True((await assignments.Handle(new(owner, first.Id, inventory.Room.Id, null, Now), default)).IsSuccess);
+        Assert.True((await assignments.Handle(new(owner, second.Id, destination.Id, null, Now), default)).IsSuccess);
+
+        var transfer = await new TransferCareHomeBookingHandler(db, new InlineReservationGuard())
+            .Handle(new(owner, first.Id, destination.Id, null, new DateOnly(2026, 10, 6), Now.AddHours(2)), default);
+
+        Assert.False(transfer.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.AssignmentConflict", transfer.Error.Code);
+        Assert.Equal(inventory.Room.Id, first.AssignedRoomId);
+        Assert.Empty(db.TransferNotificationOutbox);
+    }
+
+    [Fact]
+    public async Task Legacy_assignment_without_history_keeps_its_pre_transfer_occupancy_segment()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var facility = AddFacility(db, owner);
+        var inventory = AddInventory(db, facility.Id, CareHomeAllocationMode.Private, 0);
+        var destination = CareHomeRoom.Create(facility.Id, inventory.Type.Id, "102", Now);
+        db.Rooms.Add(destination);
+        var booking = AddAcceptedBooking(db, facility.Id, inventory.Type.Id, FamilyId.New());
+        booking.AssignPhysicalResource(inventory.Room.Id, null, Now);
+        await db.SaveChangesAsync();
+
+        var effective = new DateOnly(2026, 10, 6);
+        var moved = await new TransferCareHomeBookingHandler(db, new InlineReservationGuard())
+            .Handle(new(owner, booking.Id, destination.Id, null, effective, new DateTime(2026, 10, 6, 6, 0, 0, DateTimeKind.Utc)), default);
+
+        Assert.True(moved.IsSuccess);
+        var history = await db.BookingAssignmentHistory.SingleAsync();
+        Assert.Equal(inventory.Room.Id, history.FromRoomId);
+        Assert.Equal(destination.Id, history.ToRoomId);
+        var active = await new CareHomeBookingOccupancyProvider(db).GetActiveAsync(facility.Id, default);
+        Assert.Contains(active, x => x.ResourceId == inventory.Room.Id && x.StartDate == booking.StartDate && x.EndDate == effective);
+        Assert.Contains(active, x => x.ResourceId == destination.Id && x.StartDate == effective && x.EndDate == booking.EndDate);
+    }
+
+    [Fact]
+    public async Task Transfer_rejects_backdated_out_of_stay_cross_type_and_private_bed_then_duplicate_date()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var facility = AddFacility(db, owner);
+        var inventory = AddInventory(db, facility.Id, CareHomeAllocationMode.Private, 0);
+        var destination = CareHomeRoom.Create(facility.Id, inventory.Type.Id, "102", Now);
+        var alternative = CareHomeRoom.Create(facility.Id, inventory.Type.Id, "103", Now);
+        var invalidBed = CareHomeBed.Create(facility.Id, destination.Id, "A", Now);
+        var otherType = AddInventory(db, facility.Id, CareHomeAllocationMode.Private, 0);
+        var booking = AddAcceptedBooking(db, facility.Id, inventory.Type.Id, FamilyId.New());
+        booking.AssignPhysicalResource(inventory.Room.Id, null, Now);
+        db.Rooms.AddRange(destination, alternative);
+        db.Beds.Add(invalidBed);
+        await db.SaveChangesAsync();
+        var handler = new TransferCareHomeBookingHandler(db, new InlineReservationGuard());
+        var today = new DateTime(2026, 10, 6, 6, 0, 0, DateTimeKind.Utc);
+
+        var backdated = await handler.Handle(new(owner, booking.Id, destination.Id, null, new DateOnly(2026, 10, 5), today), default);
+        var outOfStay = await handler.Handle(new(owner, booking.Id, destination.Id, null, booking.EndDate, today), default);
+        var wrongType = await handler.Handle(new(owner, booking.Id, otherType.Room.Id, null, new DateOnly(2026, 10, 6), today), default);
+        var privateBed = await handler.Handle(new(owner, booking.Id, destination.Id, invalidBed.Id, new DateOnly(2026, 10, 6), today), default);
+        Assert.Equal("CareHomes.Bookings.InvalidTransferDate", backdated.Error.Code);
+        Assert.Equal("CareHomes.Bookings.InvalidTransferDate", outOfStay.Error.Code);
+        Assert.Equal("CareHomes.Bookings.InvalidAssignment", wrongType.Error.Code);
+        Assert.Equal("CareHomes.Bookings.InvalidAssignment", privateBed.Error.Code);
+
+        var firstMove = await handler.Handle(new(owner, booking.Id, destination.Id, null, new DateOnly(2026, 10, 6), today), default);
+        var repeatedDate = await handler.Handle(new(owner, booking.Id, alternative.Id, null, new DateOnly(2026, 10, 6), today), default);
+        Assert.True(firstMove.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.TransferConflict", repeatedDate.Error.Code);
+        Assert.Equal(1, await db.BookingAssignmentHistory.CountAsync(x => x.FromRoomId != null));
+    }
+
+    [Theory]
+    [InlineData(CareHomeAllocationMode.Shared)]
+    [InlineData(CareHomeAllocationMode.Private)]
+    [InlineData(CareHomeAllocationMode.Suite)]
+    public async Task Availability_readbacks_count_an_unassigned_active_booking_once(CareHomeAllocationMode mode)
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var facility = AddFacility(db, owner);
+        var inventory = AddInventory(db, facility.Id, mode, 2);
+        if (mode != CareHomeAllocationMode.Shared)
+            db.Rooms.Add(CareHomeRoom.Create(facility.Id, inventory.Type.Id, "102", Now));
+        var booking = AddAcceptedBooking(db, facility.Id, inventory.Type.Id, FamilyId.New());
+        await db.SaveChangesAsync();
+        var occupancy = new CareHomeBookingOccupancyProvider(db);
+
+        var ownerResult = await new GetMyAvailabilityQueryHandler(db, occupancy).Handle(
+            new(owner, booking.StartDate, booking.EndDate), default);
+        var adminResult = await new GetAvailabilityQueryHandler(db, occupancy).Handle(
+            new(facility.Id.Value, booking.StartDate, booking.EndDate), default);
+
+        Assert.True(ownerResult.IsSuccess);
+        Assert.True(adminResult.IsSuccess);
+        foreach (var availability in new[] { ownerResult.Value.Single(), adminResult.Value.Single() })
+        {
+            if (mode == CareHomeAllocationMode.Shared)
+                Assert.Equal(1, availability.AvailableBeds);
+            else
+                Assert.Equal(1, availability.AvailableRooms);
+        }
     }
 
     [Fact]
@@ -492,8 +738,8 @@ public sealed class CareHomeStayLifecycleTests
         Assert.True((await new RecordCareHomeCheckInHandler(db).Handle(new(owner, booking.Id, Now.AddHours(1)), default)).IsSuccess);
 
         var handler = new OwnerCareHomeBookingOperationalHandler(db);
-        var visible = await handler.Handle(new GetOwnerCareHomeBookingOperationalQuery(owner, booking.Id), default);
-        var hidden = await handler.Handle(new GetOwnerCareHomeBookingOperationalQuery(owner, otherBooking.Id), default);
+        var visible = await handler.Handle(new GetOwnerCareHomeBookingOperationalQuery(owner, booking.Id, Now), default);
+        var hidden = await handler.Handle(new GetOwnerCareHomeBookingOperationalQuery(owner, otherBooking.Id, Now), default);
 
         Assert.True(visible.IsSuccess);
         Assert.Equal(inventory.Room.Id, visible.Value.AssignedRoomId);
@@ -544,6 +790,8 @@ public sealed class CareHomeStayLifecycleTests
         public DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => inner.MaintenanceBlocks;
         public DbSet<CareHomeBooking> Bookings => inner.Bookings;
         public DbSet<CareHomeCheckInDispute> CheckInDisputes => inner.CheckInDisputes;
+        public DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => inner.BookingAssignmentHistory;
+        public DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => inner.TransferNotificationOutbox;
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -568,6 +816,8 @@ public sealed class CareHomeStayLifecycleTests
         public DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => inner.MaintenanceBlocks;
         public DbSet<CareHomeBooking> Bookings => inner.Bookings;
         public DbSet<CareHomeCheckInDispute> CheckInDisputes => inner.CheckInDisputes;
+        public DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => inner.BookingAssignmentHistory;
+        public DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => inner.TransferNotificationOutbox;
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

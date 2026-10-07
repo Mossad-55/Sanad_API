@@ -21,6 +21,11 @@ public sealed class CareHomeBookingConfiguration : IEntityTypeConfiguration<Care
         b.HasIndex(x => x.MerchantReference).IsUnique(); b.HasIndex(x => new { x.FacilityId, x.Status, x.StartDate, x.EndDate });
         b.Property(x => x.Version).IsConcurrencyToken();
         b.Property(x => x.RefundClaimedOnUtc).HasColumnName("refund_claimed_on_utc");
+        b.Property(x => x.RefundStatus).HasConversion<int>().HasColumnName("refund_status").IsRequired();
+        b.Property(x => x.RefundAmount).HasColumnName("refund_amount").HasPrecision(18, 2);
+        b.Property(x => x.RefundFailureReason).HasColumnName("refund_failure_reason").HasMaxLength(2000);
+        b.Property(x => x.RefundCompletedOnUtc).HasColumnName("refund_completed_on_utc");
+        b.Property(x => x.RefundCompletedBy).HasConversion(x => x.HasValue ? x.Value.Value : (Guid?)null, x => x.HasValue ? new UserId(x.Value) : (UserId?)null).HasColumnName("refund_completed_by");
         b.Property(x => x.EarliestArrivalUtc).HasColumnName("earliest_arrival_utc");
         b.Property(x => x.PaymentIntentClaimedOnUtc).HasColumnName("payment_intent_claimed_on_utc");
         b.Property(x => x.PaymentIntentMethod).HasColumnName("payment_intent_method");
@@ -37,5 +42,29 @@ public sealed class CareHomeBookingConfiguration : IEntityTypeConfiguration<Care
         b.Property(x => x.ActualCheckOutRecordedBy).HasConversion(x => x.HasValue ? x.Value.Value : (Guid?)null, x => x.HasValue ? new UserId(x.Value) : (UserId?)null).HasColumnName("actual_check_out_recorded_by");
         b.Property(x => x.FamilyCheckInConfirmedBy).HasConversion(x => x.HasValue ? x.Value.Value : (Guid?)null, x => x.HasValue ? new UserId(x.Value) : (UserId?)null).HasColumnName("family_check_in_confirmed_by");
         b.Property(x => x.FamilyCheckInConfirmedOnUtc).HasColumnName("family_check_in_confirmed_on_utc");
+    }
+}
+
+public sealed class CareHomeBookingAssignmentHistoryConfiguration : IEntityTypeConfiguration<CareHomeBookingAssignmentHistory>
+{
+    public void Configure(EntityTypeBuilder<CareHomeBookingAssignmentHistory> b)
+    {
+        b.ToTable("booking_assignment_history"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+        b.Property(x => x.BookingId).HasColumnName("booking_id").IsRequired(); b.Property(x => x.FromRoomId).HasColumnName("from_room_id"); b.Property(x => x.FromBedId).HasColumnName("from_bed_id");
+        b.Property(x => x.ToRoomId).HasColumnName("to_room_id").IsRequired(); b.Property(x => x.ToBedId).HasColumnName("to_bed_id"); b.Property(x => x.EffectiveDate).HasColumnName("effective_date").IsRequired();
+        b.Property(x => x.Actor).HasConversion(x => x.Value, x => new UserId(x)).HasColumnName("actor_user_id").IsRequired(); b.Property(x => x.OccurredOnUtc).HasColumnName("occurred_on_utc").IsRequired();
+        b.HasIndex(x => new { x.BookingId, x.EffectiveDate }).IsUnique().HasFilter("\"from_room_id\" IS NOT NULL");
+    }
+}
+
+public sealed class CareHomeTransferNotificationOutboxConfiguration : IEntityTypeConfiguration<CareHomeTransferNotificationOutbox>
+{
+    public void Configure(EntityTypeBuilder<CareHomeTransferNotificationOutbox> b)
+    {
+        b.ToTable("transfer_notification_outbox"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+        b.Property(x => x.BookingId).HasColumnName("booking_id").IsRequired(); b.Property(x => x.TransferId).HasColumnName("transfer_id").IsRequired(); b.Property(x => x.Status).HasConversion<int>().IsRequired();
+        b.Property(x => x.AttemptCount).HasColumnName("attempt_count").IsRequired(); b.Property(x => x.NextAttemptOnUtc).HasColumnName("next_attempt_on_utc").IsRequired(); b.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
+        b.Property(x => x.LastAttemptOnUtc).HasColumnName("last_attempt_on_utc"); b.Property(x => x.LastError).HasMaxLength(2000); b.Property(x => x.ClaimToken).HasColumnName("claim_token");
+        b.HasIndex(x => x.TransferId).IsUnique(); b.HasIndex(x => new { x.Status, x.NextAttemptOnUtc });
     }
 }

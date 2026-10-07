@@ -1,0 +1,25 @@
+meta {
+  name: 119-hc035-admin-refund-content-forbidden
+  type: http
+  seq: 119
+}
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035ManualRefundBookingId}}/refund/record-completed
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{adminCareHomesContentJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "reference": "forbidden",
+    "reason": "Forbidden request"
+  }
+}
+assert {
+  res.status: eq 403
+}

@@ -21,6 +21,7 @@ public sealed class CareHomeBookingControllerTests
         Assert.NotNull(controller.GetMethod(nameof(FamilyCareHomeBookingsController.Detail)));
         Assert.Equal("checkout", controller.GetMethod(nameof(FamilyCareHomeBookingsController.Checkout))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
         Assert.Equal("{bookingId:guid}/payments/intent", controller.GetMethod(nameof(FamilyCareHomeBookingsController.Payment))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
+        Assert.Equal("{bookingId:guid}/cancel", controller.GetMethod(nameof(FamilyCareHomeBookingsController.Cancel))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
     }
 
     [Fact]
@@ -35,6 +36,23 @@ public sealed class CareHomeBookingControllerTests
         Assert.Equal("{bookingId:guid}/check-in", controller.GetMethod(nameof(CareHomeBookingRequestsController.CheckIn))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
         Assert.Equal("{bookingId:guid}/check-out", controller.GetMethod(nameof(CareHomeBookingRequestsController.CheckOut))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
         Assert.Equal("{bookingId:guid}/operational", controller.GetMethod(nameof(CareHomeBookingRequestsController.Operational))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Equal("{bookingId:guid}/assignment/transfer", controller.GetMethod(nameof(CareHomeBookingRequestsController.Transfer))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
+        Assert.Equal("{bookingId:guid}/cancel", controller.GetMethod(nameof(CareHomeBookingRequestsController.Cancel))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
+    }
+
+    [Fact]
+    public void HC023_maintenance_mutations_require_owner_access_and_keep_routes_stable()
+    {
+        var controller = typeof(CareHomeInventoryController);
+        Assert.Equal("api/v1/care-homes/inventory", Assert.Single(controller.GetCustomAttributes<RouteAttribute>()).Template);
+
+        var amend = controller.GetMethod(nameof(CareHomeInventoryController.AmendMaintenance))!;
+        Assert.Equal("mine/maintenance/{id:guid}", amend.GetCustomAttribute<HttpPutAttribute>()!.Template);
+        Assert.Equal(AuthorizationPolicies.CareHomeOwnerAccess, Assert.Single(amend.GetCustomAttributes<AuthorizeAttribute>()).Policy);
+
+        var cancel = controller.GetMethod(nameof(CareHomeInventoryController.CancelMaintenance))!;
+        Assert.Equal("mine/maintenance/{id:guid}/cancel", cancel.GetCustomAttribute<HttpPostAttribute>()!.Template);
+        Assert.Equal(AuthorizationPolicies.CareHomeOwnerAccess, Assert.Single(cancel.GetCustomAttributes<AuthorizeAttribute>()).Policy);
     }
 
     [Fact]
@@ -64,6 +82,16 @@ public sealed class CareHomeBookingControllerTests
     }
 
     [Fact]
+    public void Admin_refund_routes_require_operational_admin()
+    {
+        var controller = typeof(AdminCareHomeRefundsController);
+        Assert.Equal(AuthorizationPolicies.CareHomesOperationalAdmin, Assert.Single(controller.GetCustomAttributes<AuthorizeAttribute>()).Policy);
+        Assert.Equal("api/v1/admin/care-homes/bookings/{bookingId:guid}/refund", Assert.Single(controller.GetCustomAttributes<RouteAttribute>()).Template);
+        Assert.Equal("retry", controller.GetMethod(nameof(AdminCareHomeRefundsController.Retry))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
+        Assert.Equal("record-completed", controller.GetMethod(nameof(AdminCareHomeRefundsController.RecordCompleted))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
+    }
+
+    [Fact]
     public void Webhook_controller_is_anonymous_and_keeps_paymob_route_stable()
     {
         var controller = typeof(PaymobWebhookController);
@@ -78,6 +106,11 @@ public sealed class CareHomeBookingControllerTests
     [InlineData("CareHomes.Bookings.CapacityConflict", 409)]
     [InlineData("CareHomes.Bookings.PaymentConflict", 409)]
     [InlineData("CareHomes.Bookings.ChargesNotConfigured", 503)]
+    [InlineData("CareHomes.Bookings.InvalidTransferDate", 400)]
+    [InlineData("CareHomes.Bookings.TransferConflict", 409)]
+    [InlineData("CareHomes.Bookings.RefundNotRetryable", 409)]
+    [InlineData("CareHomes.Bookings.AssignmentConflict", 409)]
+    [InlineData("CareHomes.Inventory.InvalidState", 409)]
     [InlineData("CareHomes.CheckInDispute.NotFound", 404)]
     [InlineData("CareHomes.CheckInDispute.InvalidState", 409)]
     [InlineData("CareHomes.CheckInDispute.InvalidReason", 400)]

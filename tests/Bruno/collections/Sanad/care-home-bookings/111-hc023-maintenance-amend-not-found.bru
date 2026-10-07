@@ -1,0 +1,26 @@
+meta {
+  name: 111-hc023-maintenance-amend-not-found
+  type: http
+  seq: 111
+}
+put {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/maintenance/{{hc023UnknownMaintenanceId}}
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "expectedVersion": {{hc023InventoryVersion}}, "startDate": "{{hc023MaintenanceNewStartDate}}", "endDate": "{{hc023MaintenanceNewEndDate}}", "reason": "Unknown block" }
+}
+assert {
+  res.status: eq 404
+  res.body.code: eq "CareHomes.Inventory.NotFound"
+}
+script:post-response {
+  const hc023ExpectedStatus = 404;   const hc023ExpectedCode = "CareHomes.Inventory.NotFound";   const hc023Body = res.body && typeof res.body === "object" ? res.body : {};   const hc023ActualCode = typeof hc023Body.code === "string" ? hc023Body.code : "";   const hc023TraceId = typeof hc023Body.traceId === "string" ? hc023Body.traceId : "";   const hc023Safe = (value) => value.replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 120);   if (res.status !== hc023ExpectedStatus || (hc023ExpectedCode !== null && hc023ActualCode !== hc023ExpectedCode)) {     console.log(`[HC-023 DIAG] 111-hc023-maintenance-amend-not-found expectedStatus=${hc023ExpectedStatus} actualStatus=${res.status} expectedCode=${hc023ExpectedCode ?? "<not-asserted>"} actualCode=${hc023Safe(hc023ActualCode) || "<none>"} traceId=${hc023Safe(hc023TraceId) || "<none>"}`);   }
+}

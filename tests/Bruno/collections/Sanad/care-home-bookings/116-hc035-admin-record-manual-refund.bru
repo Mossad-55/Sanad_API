@@ -1,0 +1,31 @@
+meta {
+  name: 116-hc035-admin-record-manual-refund
+  type: http
+  seq: 116
+}
+post {
+  url: {{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035ManualRefundBookingId}}/refund/record-completed
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{adminCareHomesSuperJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  {
+    "reference": "{{hc035ExternalRefundReference}}",
+    "reason": "Verified external refund completion"
+  }
+}
+assert {
+  res.status: eq 200
+}
+script:post-response {
+  if (Number(res.body.refundStatus) !== 5 || Number(res.body.paymentStatus) !== 5) throw new Error("Manual completion must be visible on readback.");
+  const amount = Number(res.body.refundAmount);
+  if (!Number.isFinite(amount) || amount <= 0) throw new Error("Manual completion readback must include a positive refund amount.");
+  console.log(`[HC035 manual refund readback] status=${res.body.refundStatus} amount=${amount}`);
+}

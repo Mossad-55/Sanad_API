@@ -1,0 +1,32 @@
+meta {
+  name: 100-hc023-maintenance-cancel
+  type: http
+  seq: 100
+}
+post {
+  url: {{baseUrl}}/api/v1/care-homes/inventory/mine/maintenance/{{hc023MaintenanceId}}/cancel
+  body: json
+  auth: bearer
+}
+auth:bearer {
+  token: {{careHomeOwnerJwt}}
+}
+headers {
+  Content-Type: application/json
+}
+body:json {
+  { "expectedVersion": {{hc023InventoryVersion}} }
+}
+assert {
+  res.status: eq 200
+  res.body.maintenance: isNotEmpty
+}
+script:post-response {
+  
+  const hc023ExpectedStatus = 200;   const hc023ExpectedCode = null;   const hc023Body = res.body && typeof res.body === "object" ? res.body : {};   const hc023ActualCode = typeof hc023Body.code === "string" ? hc023Body.code : "";   const hc023TraceId = typeof hc023Body.traceId === "string" ? hc023Body.traceId : "";   const hc023Safe = (value) => value.replace(/[^A-Za-z0-9._:-]/g, "").slice(0, 120);   if (res.status !== hc023ExpectedStatus || (hc023ExpectedCode !== null && hc023ActualCode !== hc023ExpectedCode)) {     console.log(`[HC-023 DIAG] 100-hc023-maintenance-cancel expectedStatus=${hc023ExpectedStatus} actualStatus=${res.status} expectedCode=${hc023ExpectedCode ?? "<not-asserted>"} actualCode=${hc023Safe(hc023ActualCode) || "<none>"} traceId=${hc023Safe(hc023TraceId) || "<none>"}`);   }
+const blocks = res.body.maintenance ?? [];
+  const id = String(bru.getVar("hc023MaintenanceId") ?? bru.getEnvVar("hc023MaintenanceId"));
+  const block = blocks.find(x => String(x.id) === id);
+  if (!block || block.isCancelled !== true || !block.cancelledBy || !block.cancelledOnUtc) throw new Error("Cancelled HC-023 maintenance block was not retained with actor/time readback.");
+  bru.setVar("hc023InventoryVersion", res.body.version);
+}

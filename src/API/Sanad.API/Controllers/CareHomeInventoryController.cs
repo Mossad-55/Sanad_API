@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using Sanad.API.Authorization;
+using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Inventory;
 using Sanad.Modules.CareHomes.Domain.Facilities;
@@ -13,11 +14,13 @@ public sealed record RoomTypeRequest(int ExpectedVersion, string ArabicName, str
 public sealed record RoomRequest(int ExpectedVersion, Guid RoomTypeId, string RoomNumber);
 public sealed record BedRequest(int ExpectedVersion, Guid RoomId, string Label);
 public sealed record MaintenanceRequest(int ExpectedVersion, CareHomeMaintenanceTarget Target, Guid TargetId, DateOnly StartDate, DateOnly EndDate, string? Reason);
+public sealed record MaintenanceAmendRequest(int ExpectedVersion, DateOnly StartDate, DateOnly EndDate, string? Reason);
+public sealed record MaintenanceCancelRequest(int ExpectedVersion);
 public sealed record AvailabilityRequest(DateOnly StartDate, DateOnly EndDate);
 
 [ApiController]
 [Route("api/v1/care-homes/inventory")]
-public sealed class CareHomeInventoryController(ISender sender) : ApiControllerBase
+public sealed class CareHomeInventoryController(ISender sender, IDateTimeProvider clock) : ApiControllerBase
 {
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpGet("mine")]
@@ -52,6 +55,12 @@ public sealed class CareHomeInventoryController(ISender sender) : ApiControllerB
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpPost("mine/maintenance")]
     public Task<IActionResult> Maintenance(MaintenanceRequest r, CancellationToken ct) => Send(new CreateMaintenanceBlockCommand(Actor(), r.ExpectedVersion, r.Target, r.TargetId, r.StartDate, r.EndDate, r.Reason), ct);
+    [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
+    [HttpPut("mine/maintenance/{id:guid}")]
+    public Task<IActionResult> AmendMaintenance(Guid id, MaintenanceAmendRequest r, CancellationToken ct) => Send(new AmendMaintenanceBlockCommand(Actor(), r.ExpectedVersion, id, r.StartDate, r.EndDate, r.Reason, clock.UtcNow), ct);
+    [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
+    [HttpPost("mine/maintenance/{id:guid}/cancel")]
+    public Task<IActionResult> CancelMaintenance(Guid id, MaintenanceCancelRequest r, CancellationToken ct) => Send(new CancelMaintenanceBlockCommand(Actor(), r.ExpectedVersion, id, clock.UtcNow), ct);
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpPost("mine/availability")]
     public Task<IActionResult> MyAvailability(AvailabilityRequest r, CancellationToken ct) => Send(new GetMyAvailabilityQuery(Actor(), r.StartDate, r.EndDate), ct);
