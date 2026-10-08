@@ -55,6 +55,10 @@
     {
       "key": "careHomeProfileMediaId",
       "value": ""
+    },
+    {
+      "key": "careHomeLicenseThroughDate",
+      "value": "2026-12-31"
     }
   ],
   "item": [
@@ -425,6 +429,33 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('payout reversal contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06. License expiry view",
+      "description": "Read-only, paginated operational Admin view. No fixture or database state changes are required.",
+      "item": [
+        {
+          "name": "List expiring operating licenses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/license-expirations?through={{careHomeLicenseThroughDate}}&page=1&pageSize=20",
+            "description": "CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin, owners, Family and anonymous callers are denied). through is a required inclusive Cairo-local YYYY-MM-DD cutoff. Includes expired and upcoming licenses through that date, sorted by expiry then facility ID. Only latest verified finite-expiry operating license on approved revision qualifies. Invalid date/paging returns 400 CareHomes.Admin.InvalidQuery."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('license expiry view contract', () => pm.expect([200, 400, 401, 403]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('throughDate'); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('items').that.is.an('array'); pm.expect(JSON.stringify(body)).not.to.include('storageKey'); }"
                 ]
               }
             }

@@ -58,6 +58,13 @@ Owners save versioned bilingual drafts, upload private documents/media, and subm
 
 The runnable Admin requests are in [`Sanad.Admin.CareHomes.postman_collection.json`](../postman/admins/Sanad.Admin.CareHomes.postman_collection.json) and [`tests/Bruno/collections/Sanad/admin-care-homes`](../../tests/Bruno/collections/Sanad/admin-care-homes). The expiry monitor has no HTTP route, so no Postman or Bruno request was added for HC-TASK-014. The additive outbox migration is already up to date on the authorized disposable database; no migration was applied during the latest verification.
 
+## Expiring operating licenses
+
+`GET /api/v1/admin/care-homes/license-expirations?through=2026-12-31&page=1&pageSize=20`
+
+This read-only route requires `CareHomesOperationalAdmin` (SuperAdmin or SupportAdmin); ContentAdmin, owners, Family accounts, and anonymous callers are denied. `through` is a required ISO `YYYY-MM-DD` Cairo-local calendar date and is inclusive. It must be supplied by the caller so the view does not impose an undocumented “soon” horizon. `page` defaults to 1; `pageSize` defaults to 20 and is limited to 1–100. Invalid date or paging returns `400 CareHomes.Admin.InvalidQuery`.
+
+The result contains `throughDate`, `page`, `pageSize`, `totalCount`, and `items`. Each item contains facility ID/status and bilingual names, license document ID, expiry date, days until expiry relative to the current Cairo date, `isExpired` (expiry strictly before today), and verification timestamp. Results include already-expired licenses and future expiries up to `through`, sorted by expiry date then facility ID. Only approved facilities and the latest operating-license document on their approved revision qualify; the document must be verified, dated, and not Admin-confirmed non-expiring. A replacement on a draft revision does not change the approved license shown until that revision is approved. No private storage key or file content is returned. The route does not mutate data or send notifications.
 ## Inspect Care Homes inventory and availability
 
 `GET /api/v1/care-homes/inventory/admin/{facilityId}` returns the facility's

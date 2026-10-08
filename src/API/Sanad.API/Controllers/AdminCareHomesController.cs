@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
+using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Facilities;
 using Sanad.Modules.CareHomes.Domain.Facilities;
@@ -15,8 +16,18 @@ public sealed record ReviewCareHomeRequest(int ExpectedVersion, CareHomeReviewAc
 
 [Authorize(Policy = AuthorizationPolicies.CareHomesOperationalAdmin)]
 [Route("api/v1/admin/care-homes")]
-public sealed class AdminCareHomesController(ISender sender) : ApiControllerBase
+public sealed class AdminCareHomesController(ISender sender, IDateTimeProvider clock) : ApiControllerBase
 {
+    [HttpGet("license-expirations")]
+    [ProducesResponseType(typeof(CareHomeLicenseExpiryPage), StatusCodes.Status200OK)]
+    public async Task<IActionResult> LicenseExpirations(
+        [FromQuery] DateOnly through,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default) =>
+        ToActionResult(await sender.Send(new GetAdminCareHomeLicenseExpiriesQuery(
+            through, page, pageSize, clock.UtcNow), cancellationToken));
+
     [HttpGet]
     [ProducesResponseType(typeof(CareHomeAdminApplicationsPage), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(
