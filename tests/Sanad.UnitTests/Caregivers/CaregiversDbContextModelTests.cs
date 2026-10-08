@@ -82,6 +82,22 @@ public sealed class CaregiversDbContextModelTests
     }
 
     [Fact]
+    public void Model_ShouldMapPayoutsWithPartialUniquePaidBooking()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(CaregiverPayout));
+
+        Assert.NotNull(entityType);
+        Assert.Equal("caregiver_payouts", entityType!.GetTableName());
+        Assert.Contains(entityType!.GetIndexes(),
+            index => index.IsUnique && index.Properties.Count == 1
+                && index.Properties[0].Name == "BookingId"
+                && index.GetDatabaseName() == "ux_caregiver_payouts_booking_paid");
+    }
+
+    [Fact]
     public void Model_ShouldMapCityGovernorateForeignKey()
     {
         using CaregiversDbContext dbContext = CreateDbContext();

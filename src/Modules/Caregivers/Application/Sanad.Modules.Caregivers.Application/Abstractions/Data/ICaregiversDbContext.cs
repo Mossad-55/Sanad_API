@@ -16,6 +16,7 @@ public interface ICaregiversDbContext
     DbSet<Language> Languages { get; }
     DbSet<Bank> Banks { get; }
     DbSet<CaregiverPayoutAccount> PayoutAccounts { get; }
+    DbSet<CaregiverPayout> Payouts { get; }
     DbSet<Governorate> Governorates { get; }
     DbSet<City> Cities { get; }
     DbSet<Area> Areas { get; }

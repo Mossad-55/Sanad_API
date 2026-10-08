@@ -189,6 +189,98 @@
           "description": "Compatibility read. SuperAdmin only; shared history is returned alongside preserved legacy tax records."
         }
       ]
+    },
+    {
+      "name": "Caregiver payouts (SuperAdmin or FinanceAdmin)",
+      "description": "Caregiver payout records and manual transfer recording under /api/v1/admin/caregiver-payouts. Requires the PayoutOperationalAdmin policy (SuperAdmin or FinanceAdmin). Recording validates Completed+Paid eligibility, effective policy timing, saved payout account, and duplicate payment. Manual fixture only; never replay a record against shared data.",
+      "item": [
+        {
+          "name": "List caregiver payouts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payouts?page=1&pageSize=20"
+          },
+          "description": "Returns 200 with paid and failed payouts ordered by recording time descending. SuperAdmin and FinanceAdmin only."
+        },
+        {
+          "name": "Get caregiver payout",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payouts/{{payoutId}}"
+          },
+          "description": "Returns 200 with one payout including masked bank details, or 404 Caregivers.Payouts.NotFound."
+        },
+        {
+          "name": "Record caregiver payout transfer",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.payoutId) { pm.environment.set('payoutId', body.payoutId); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"bookingId\": \"{{bookingId}}\",\n  \"transferReference\": \"BANK-2026-000123\",\n  \"evidence\": \"Transfer advice 000123\",\n  \"reason\": \"Weekly payout\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payouts/record"
+          },
+          "description": "Returns 201 with the paid payout. Requires an eligible Completed+Paid booking, effective payout policy, saved payout account, and no existing paid payout. Manual fixture only."
+        },
+        {
+          "name": "Mark caregiver payout failed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Bank rejected the transfer\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payouts/{{payoutId}}/mark-failed"
+          },
+          "description": "Moves a paid payout to Failed with actor and time. Only paid payouts can be marked; otherwise 409."
+        }
+      ]
     }
   ]
 }

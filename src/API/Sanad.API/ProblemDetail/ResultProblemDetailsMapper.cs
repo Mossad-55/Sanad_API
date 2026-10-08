@@ -47,6 +47,11 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Rating.CaregiverNotFound"] = 404,
             ["Caregivers.Rating.Conflict"] = 409,
 
+            ["Caregivers.Payouts.NotFound"] = 404,
+            ["Caregivers.Payouts.Ineligible"] = 409,
+            ["Caregivers.Payouts.Conflict"] = 409,
+            ["Caregivers.Payouts.InvalidState"] = 409,
+
             ["CareHomes.Rating.BookingNotEligible"] = 404,
             ["CareHomes.Rating.Conflict"] = 409,
 
