@@ -86,6 +86,8 @@ is recorded below:
 - Families: `20261005111105_AddMedicalAccessGrantGrantee`
 - Identity: `20261005101531_AddFeedback`
 - Community: `20261005101553_InitialCommunity`
+- Care Homes: `20261008041054_AddCareHomeProfileMedia`
+- Care Homes: `20261008052316_AddCareHomePayoutLedger`
 
 To inspect SQL without changing a database, use the module Infrastructure
 project and the API startup project:

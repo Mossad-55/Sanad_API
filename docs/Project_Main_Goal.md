@@ -6,7 +6,7 @@ Sanad is an Arabic/English elderly-care platform. Current agreed scope is the Ca
 
 Only this slice is planned. Future direction is Care homes → Chat → Notifications → full application UI reconciliation, not a prewritten task backlog. Family/Elderly inputs are supplied; broader caregiver requirements will be discussed separately.
 
-Current Care Homes checkpoint (2026-10-08): onboarding closeout and HC-TASK-038 payout-ledger implementation are complete; evidence and runtime limitations are in the task checklist. Remaining Care Homes tasks are listed there; agree the next task's scope with the owner before starting. Work directly on `main`; preserve the unrelated pre-existing `.codex/config.toml` change. The checklist owns statuses and acceptance evidence.
+Current Care Homes checkpoint (2026-10-08): onboarding closeout and HC-TASK-038 payout-ledger implementation and focused runtime verification are complete. Evidence and runtime limits are in the task checklist. Both feature migrations are applied only to authorized disposable `SanadBrunoTestDb`; live payout/reversal mutation remains unverified because no completed stay was eligible. Remaining Care Homes tasks are listed there; agree the next task's scope with the owner before starting. Work directly on `main`; preserve the unrelated pre-existing `.codex/config.toml` change. The checklist owns statuses and acceptance evidence.
 
 ## Canonical files
 
