@@ -38,3 +38,44 @@ return `MedicalAccess.GrantNotFound`; a non-caregiver or non-medical/inactive
 grantee returns `MedicalAccess.InvalidGrant`. These endpoints do not themselves
 expose medical records; downstream record access must check the named grantee,
 grant permissions, expiry, and revocation state.
+
+## Recipient picker
+
+`GET /api/v1/family/dependents/{dependentId}/medical-access-recipients?search=&page=1&pageSize=20`
+lists the caregivers the family may grant to, for the existing grant creation
+endpoint. Any family member may read it (grant creation itself still requires
+owner/editor permission); unknown/foreign dependents return
+`Families.AccessDenied`.
+
+Eligibility reuses the grant rule exactly: active Medical caregivers only
+(`Type == Medical`, `Status == Active`, matched by user id). No other users
+are listed, and no medical-record content is returned. Each item carries the
+`userId` required by the grant creation endpoint:
+
+```json
+{
+  "items": [
+    {
+      "caregiverId": "0198e2c2-3333-7777-8888-000000000001",
+      "userId": "0198e2c2-2222-7777-8888-000000000002",
+      "arabicFullName": "…",
+      "englishFullName": "…",
+      "avatarUrl": null,
+      "caregiverType": "Medical",
+      "specializationId": "…",
+      "specializationArabicName": "…",
+      "specializationEnglishName": "…",
+      "hasActiveGrant": false
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "totalCount": 1,
+  "totalPages": 1
+}
+```
+
+`hasActiveGrant` is true when a non-revoked, non-expired grant already exists
+for this dependent and grantee. `search` matches Arabic/English names
+(case-insensitive, trimmed, optional); `page` is at least 1 and `pageSize` is
+clamped to 1–100.

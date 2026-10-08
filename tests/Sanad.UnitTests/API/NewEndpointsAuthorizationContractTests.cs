@@ -24,6 +24,7 @@ public sealed class NewEndpointsAuthorizationContractTests
     [InlineData(typeof(CommentsController), "UpdateComment", "api/v1/community", "comments/{commentId:guid}")]
     [InlineData(typeof(DependentMedicalAccessGrantsController), "CreateMedicalAccessGrant", "api/v1/family/dependents", "{dependentId:guid}/medical-access-grants")]
     [InlineData(typeof(DependentMedicalAccessGrantsController), "DeleteMedicalAccessGrant", "api/v1/family/dependents", "{dependentId:guid}/medical-access-grants/{grantId:guid}")]
+    [InlineData(typeof(DependentMedicalAccessGrantsController), "GetMedicalAccessRecipients", "api/v1/family/dependents", "{dependentId:guid}/medical-access-recipients")]
     public void NewEndpoint_IsAuthenticatedAndHasExpectedRoute(
         Type controllerType,
         string methodName,

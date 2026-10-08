@@ -371,6 +371,88 @@ public sealed class CaregiversDbContext :
         return (items, totalCount);
     }
 
+    public async Task<(IReadOnlyList<MedicalCaregiverRecipientItem> Items, int TotalCount)> SearchActiveMedicalCaregiversAsync(
+        string? search,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        const string baseSql =
+            """
+            FROM caregivers.caregivers c
+            INNER JOIN identity.users u ON u.id = c.user_id
+            LEFT JOIN caregivers.specializations s
+                ON s.id = COALESCE(c.medical_specialization_id, c.companion_specialization_id)
+            WHERE c.type = 1 -- CaregiverType.Medical
+              AND c.status = 4 -- CaregiverStatus.Active
+              AND (@search IS NULL OR u.arabic_full_name ILIKE '%' || @search || '%' OR u.english_full_name ILIKE '%' || @search || '%')
+            """;
+
+        string countSql = $"SELECT COUNT(*) {baseSql}";
+        string selectSql =
+            $"""
+            SELECT
+                c.id                 AS "CaregiverId",
+                c.user_id            AS "UserId",
+                u.arabic_full_name   AS "ArabicFullName",
+                u.english_full_name  AS "EnglishFullName",
+                u.avatar_url         AS "AvatarUrl",
+                s.id                 AS "SpecializationId",
+                s.arabic_name        AS "SpecializationAr",
+                s.english_name       AS "SpecializationEn"
+            {baseSql}
+            ORDER BY u.arabic_full_name, u.english_full_name, c.id
+            LIMIT @take OFFSET @skip
+            """;
+
+        List<MedicalCaregiverRecipientItem> items = [];
+        int totalCount = 0;
+
+        await Database.OpenConnectionAsync(cancellationToken);
+
+        try
+        {
+            using (DbCommand countCommand = Database.GetDbConnection().CreateCommand())
+            {
+                countCommand.CommandText = countSql;
+                countCommand.Parameters.Add(CreateParameter(countCommand, "search", (object?)search ?? DBNull.Value, DbType.String));
+                object? countResult = await countCommand.ExecuteScalarAsync(cancellationToken);
+                totalCount = Convert.ToInt32(countResult);
+            }
+
+            using (DbCommand selectCommand = Database.GetDbConnection().CreateCommand())
+            {
+                selectCommand.CommandText = selectSql;
+                selectCommand.Parameters.Add(CreateParameter(selectCommand, "search", (object?)search ?? DBNull.Value, DbType.String));
+                selectCommand.Parameters.Add(CreateParameter(selectCommand, "take", pageSize, DbType.Int32));
+                selectCommand.Parameters.Add(CreateParameter(selectCommand, "skip", (page - 1) * pageSize, DbType.Int32));
+
+                await using DbDataReader reader = await selectCommand.ExecuteReaderAsync(cancellationToken);
+
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    int specializationOrdinal = reader.GetOrdinal("SpecializationId");
+
+                    items.Add(new MedicalCaregiverRecipientItem(
+                        new CaregiverId(reader.GetGuid(reader.GetOrdinal("CaregiverId"))),
+                        new UserId(reader.GetGuid(reader.GetOrdinal("UserId"))),
+                        reader.GetString(reader.GetOrdinal("ArabicFullName")),
+                        reader.GetString(reader.GetOrdinal("EnglishFullName")),
+                        GetNullableString(reader, "AvatarUrl"),
+                        reader.IsDBNull(specializationOrdinal) ? null : reader.GetGuid(specializationOrdinal),
+                        GetNullableString(reader, "SpecializationAr"),
+                        GetNullableString(reader, "SpecializationEn")));
+                }
+            }
+        }
+        finally
+        {
+            await Database.CloseConnectionAsync();
+        }
+
+        return (items, totalCount);
+    }
+
     private static void AddSearchParameters(
         DbCommand command,
         string? search,

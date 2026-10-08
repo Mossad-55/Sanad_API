@@ -81,6 +81,27 @@ public sealed class DependentMedicalAccessGrantsController : ApiControllerBase
         return ToActionResult(result);
     }
 
+    [HttpGet("{dependentId:guid}/medical-access-recipients")]
+    [ProducesResponseType(
+        typeof(MedicalAccessRecipientsResult),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetMedicalAccessRecipients(
+        Guid dependentId,
+        [FromQuery] string? search = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var query = new GetMedicalAccessRecipientsQuery(dependentId, userId, search, page, pageSize);
+        var result = await _sender.Send(query, cancellationToken);
+        return ToActionResult(result);
+    }
+
     [HttpGet("{dependentId:guid}/medical-access-grants/{grantId:guid}")]
     [ProducesResponseType(
         typeof(MedicalAccessGrantResponse),
