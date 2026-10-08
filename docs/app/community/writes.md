@@ -73,3 +73,39 @@ PostgreSQL-compatible `timestamp with time zone`, `date`, `time`, `text`, and
 
 Community interactions are not financial or medically authoritative records.
 Run state-changing checks only against disposable fixtures.
+
+## Image uploads
+
+`POST /api/v1/community/uploads/images` accepts one image as `multipart/form-data`
+with a `file` field. Any authenticated account may upload. The response carries
+the stable image id and the public URL to attach when creating a post:
+
+```json
+{
+  "imageId": "0198e2c2-4444-7777-8888-000000000001",
+  "imageUrl": "/files/community/0198e2c2444477778888000000000001.jpg",
+  "contentType": "image/jpeg",
+  "sizeBytes": 184320
+}
+```
+
+Validation: `image/jpeg`, `image/png`, or `image/webp` only; the declared
+content type must match the file's magic bytes (the submitted filename and
+content type alone are not trusted); size is bounded by the public storage
+limit (`Storage:Local:MaxBytes`, default 2 MB, mirrored by the request cap).
+Empty, oversized, unsupported, or signature-mismatched files return `400`
+(`Storage.File.*` or `Community.Image.Invalid`); unauthenticated callers
+receive `401`.
+
+Storage behavior: files are saved with a generated safe key under the public
+`community` folder and served through the static `/files` host, so published
+posts can display them. Each upload is recorded (`community.CommunityImages`)
+with uploader and time. Uploading never creates or publishes a post, and the
+existing moderation still applies in full when a post is created: the post
+starts `PendingReview` and its image becomes visible only after a moderator
+publishes it. Moderators open the `imageUrl` at review time.
+
+Orphan retention: uploaded images that are never attached to a post are
+retained; no cleanup subsystem exists. The upload table makes orphans
+queryable (stored keys never referenced by a post) for a future admin
+cleanup, if ever needed.

@@ -5,6 +5,7 @@ using Sanad.Modules.Community.Domain.Posts;
 using Sanad.Modules.Community.Domain.CheckIns;
 using Sanad.Modules.Community.Domain.Ratings;
 using Sanad.Modules.Community.Domain.Interactions;
+using Sanad.Modules.Community.Domain.Uploads;
 
 namespace Sanad.Modules.Community.Infrastructure.Persistence;
 
@@ -23,6 +24,7 @@ public class CommunityDbContext : DbContext, ICommunityDbContext
     public DbSet<CheckIn> CheckIns { get; set; } = null!;
     public DbSet<Rating> Ratings { get; set; } = null!;
     public DbSet<CommunityInteraction> Interactions { get; set; } = null!;
+    public DbSet<CommunityImage> CommunityImages { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
