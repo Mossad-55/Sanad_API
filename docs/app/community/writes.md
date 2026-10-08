@@ -71,5 +71,25 @@ date. Interactions are persisted in the `community` schema. The SQL mappings use
 PostgreSQL-compatible `timestamp with time zone`, `date`, `time`, `text`, and
 `CURRENT_TIMESTAMP` types/defaults.
 
+## Recommendations
+
+`GET /api/v1/community/recommendations?page=1&pageSize=10` returns published
+posts only, using the same post shape as the posts feed. Ranking is
+personalized from the caller's own existing signals — posts they liked,
+favorited, commented on, rated, or checked in to determine affinity authors;
+no new tracking, profiles, or ML are involved:
+
+1. Published posts by affinity authors that the caller has not interacted
+   with, newest first (the caller's own posts never count as affinity).
+2. All other published posts the caller has not interacted with, newest
+   first; engagement counts break recency ties and post id breaks the rest,
+   so pages are deterministic.
+
+Posts the caller already interacted with are excluded. With no interactions,
+the affinity set is empty and the result equals the newest-first published
+feed. Like the posts feed, the response is a bare list with `page` (minimum
+1) and `pageSize` (1–100); no `totalCount` is returned. Anonymous posts are
+included with their anonymity preserved.
+
 Community interactions are not financial or medically authoritative records.
 Run state-changing checks only against disposable fixtures.

@@ -48,6 +48,27 @@ public sealed class CommunityPostsController : ApiControllerBase
             : ToActionResult(result);
     }
 
+    [HttpGet("recommendations")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<CommunityPostResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetRecommendations(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 10,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var query = new GetCommunityRecommendationsQuery(userId.Value, page, pageSize);
+        var result = await _sender.Send(query, cancellationToken);
+        return result.IsSuccess
+            ? Ok(result.Value.Select(ToResponse))
+            : ToActionResult(result);
+    }
+
     [HttpGet("posts/{postId:guid}")]
     [ProducesResponseType(
         typeof(CommunityPostResponse),
