@@ -7,6 +7,8 @@ using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.CareHomes.Infrastructure.Bookings;
+using Sanad.Modules.Families.Application.Abstractions.Payments;
+using Sanad.BuildingBlocks.Application.Results;
 
 namespace Sanad.UnitTests.CareHomes;
 
@@ -41,6 +43,31 @@ public sealed class CareHomeStayLifecycleTests
         Assert.Equal("CareHomes.Bookings.InvalidAssignment", privateWithBed.Error.Code);
         Assert.False(suiteWithBed.IsSuccess);
         Assert.Equal("CareHomes.Bookings.InvalidAssignment", suiteWithBed.Error.Code);
+    }
+
+    [Fact]
+    public async Task Early_check_out_fully_refunds_a_paid_extension_that_has_not_started()
+    {
+        await using var db = CreateDb();
+        UserId owner = UserId.New();
+        var facility = AddFacility(db, owner);
+        Inventory inventory = AddInventory(db, facility.Id, CareHomeAllocationMode.Shared, 2);
+        var original = AddAcceptedBooking(db, facility.Id, inventory.Type.Id, FamilyId.New());
+        original.AssignPhysicalResource(inventory.Room.Id, inventory.Beds[0].Id, Now.AddMinutes(3));
+        original.RecordCheckIn(owner, Now.AddHours(1));
+        var extension = CareHomeBooking.CreateExtension(original, UserId.New(), 1000m, 50m, 50m, 1, Now.AddHours(2));
+        extension.MarkPaid(8401, Now.AddHours(2).AddMinutes(1));
+        extension.Accept(Now.AddHours(2).AddMinutes(2));
+        db.Bookings.Add(extension);
+        await db.SaveChangesAsync();
+
+        var result = await new RecordCareHomeCheckOutHandler(db, new NoopPaymob())
+            .Handle(new RecordCareHomeCheckOutCommand(owner, original.Id, Now.AddHours(3)), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(CareHomeBookingStatus.RefundInitiated, extension.Status);
+        Assert.Equal(CareHomeRefundStatus.Initiated, extension.RefundStatus);
+        Assert.Equal(extension.TotalAmount, extension.RefundAmount);
     }
 
     [Theory]
@@ -327,8 +354,8 @@ public sealed class CareHomeStayLifecycleTests
         Assert.True(assignment.IsSuccess);
 
         var checkIn = await new RecordCareHomeCheckInHandler(db).Handle(new(owner, booking.Id, Now.AddHours(1)), default);
-        var checkOut = await new RecordCareHomeCheckOutHandler(db).Handle(new(owner, booking.Id, Now.AddHours(9)), default);
-        var duplicate = await new RecordCareHomeCheckOutHandler(db).Handle(new(owner, booking.Id, Now.AddHours(10)), default);
+        var checkOut = await new RecordCareHomeCheckOutHandler(db, new NoopPaymob()).Handle(new(owner, booking.Id, Now.AddHours(9)), default);
+        var duplicate = await new RecordCareHomeCheckOutHandler(db, new NoopPaymob()).Handle(new(owner, booking.Id, Now.AddHours(10)), default);
         var dispute = await db.CheckInDisputes.SingleAsync();
 
         Assert.True(checkIn.IsSuccess);
@@ -340,7 +367,7 @@ public sealed class CareHomeStayLifecycleTests
         Assert.Equal(owner, dispute.OpenedBy);
         Assert.Equal(Now.AddHours(9), dispute.CheckoutOnUtc);
 
-        var secondRead = await new RecordCareHomeCheckOutHandler(db).Handle(new(owner, booking.Id, Now.AddHours(11)), default);
+        var secondRead = await new RecordCareHomeCheckOutHandler(db, new NoopPaymob()).Handle(new(owner, booking.Id, Now.AddHours(11)), default);
         Assert.Equal("CareHomes.Bookings.InvalidState", secondRead.Error.Code);
         Assert.Single(db.CheckInDisputes);
     }
@@ -362,7 +389,7 @@ public sealed class CareHomeStayLifecycleTests
         var wrongFamily = await new ConfirmCareHomeCheckInHandler(db).Handle(new(familyUser, FamilyId.New(), booking.Id, Now.AddHours(2)), default);
         var confirmed = await new ConfirmCareHomeCheckInHandler(db).Handle(new(familyUser, family, booking.Id, Now.AddHours(2)), default);
         var repeated = await new ConfirmCareHomeCheckInHandler(db).Handle(new(familyUser, family, booking.Id, Now.AddHours(3)), default);
-        var checkout = await new RecordCareHomeCheckOutHandler(db).Handle(new(owner, booking.Id, Now.AddHours(9)), default);
+        var checkout = await new RecordCareHomeCheckOutHandler(db, new NoopPaymob()).Handle(new(owner, booking.Id, Now.AddHours(9)), default);
 
         Assert.Equal("CareHomes.Bookings.NotFound", wrongFamily.Error.Code);
         Assert.True(confirmed.IsSuccess);
@@ -402,7 +429,7 @@ public sealed class CareHomeStayLifecycleTests
         await db.SaveChangesAsync();
         Assert.True((await new AssignCareHomeBookingHandler(db, new InlineReservationGuard()).Handle(new(owner, booking.Id, inventory.Room.Id, null, Now), default)).IsSuccess);
         Assert.True((await new RecordCareHomeCheckInHandler(db).Handle(new(owner, booking.Id, Now.AddHours(1)), default)).IsSuccess);
-        Assert.True((await new RecordCareHomeCheckOutHandler(db).Handle(new(owner, booking.Id, Now.AddHours(9)), default)).IsSuccess);
+        Assert.True((await new RecordCareHomeCheckOutHandler(db, new NoopPaymob()).Handle(new(owner, booking.Id, Now.AddHours(9)), default)).IsSuccess);
         var dispute = await db.CheckInDisputes.SingleAsync();
         var handlers = new CheckInDisputeHandlers(db);
 
@@ -510,7 +537,7 @@ public sealed class CareHomeStayLifecycleTests
         await db.SaveChangesAsync();
         Assert.True((await new AssignCareHomeBookingHandler(db, new InlineReservationGuard()).Handle(new(owner, booking.Id, inventory.Room.Id, null, Now), default)).IsSuccess);
         Assert.True((await new RecordCareHomeCheckInHandler(db).Handle(new(owner, booking.Id, Now.AddHours(1)), default)).IsSuccess);
-        Assert.True((await new RecordCareHomeCheckOutHandler(db).Handle(new(owner, booking.Id, Now.AddHours(9)), default)).IsSuccess);
+        Assert.True((await new RecordCareHomeCheckOutHandler(db, new NoopPaymob()).Handle(new(owner, booking.Id, Now.AddHours(9)), default)).IsSuccess);
 
         var ownerCase = await db.CheckInDisputes.SingleAsync();
         Assert.Null(ownerCase.FamilyReason);
@@ -571,7 +598,7 @@ public sealed class CareHomeStayLifecycleTests
         Assert.True((await new AssignCareHomeBookingHandler(db, new InlineReservationGuard()).Handle(new(owner, booking.Id, inventory.Room.Id, null, Now), default)).IsSuccess);
         Assert.True((await new RecordCareHomeCheckInHandler(db).Handle(new(owner, booking.Id, Now.AddHours(1)), default)).IsSuccess);
 
-        var result = await new RecordCareHomeCheckOutHandler(new FailOnceCareHomesDbContext(db)).Handle(
+        var result = await new RecordCareHomeCheckOutHandler(new FailOnceCareHomesDbContext(db), new NoopPaymob()).Handle(
             new RecordCareHomeCheckOutCommand(owner, booking.Id, Now.AddHours(9)), default);
 
         Assert.False(result.IsSuccess);
@@ -590,7 +617,7 @@ public sealed class CareHomeStayLifecycleTests
         await db.SaveChangesAsync();
         Assert.True((await new AssignCareHomeBookingHandler(db, new InlineReservationGuard()).Handle(new(owner, booking.Id, inventory.Room.Id, null, Now), default)).IsSuccess);
         Assert.True((await new RecordCareHomeCheckInHandler(db).Handle(new(owner, booking.Id, Now.AddHours(1)), default)).IsSuccess);
-        Assert.True((await new RecordCareHomeCheckOutHandler(db).Handle(new(owner, booking.Id, Now.AddHours(9)), default)).IsSuccess);
+        Assert.True((await new RecordCareHomeCheckOutHandler(db, new NoopPaymob()).Handle(new(owner, booking.Id, Now.AddHours(9)), default)).IsSuccess);
 
         var result = await new CheckInDisputeHandlers(db).Handle(new SubmitCareHomeCheckInDisputeCommand(UserId.New(), family, booking.Id, "The recorded check-in is disputed.", Now.AddHours(10)), default);
 
@@ -611,8 +638,8 @@ public sealed class CareHomeStayLifecycleTests
         Assert.True((await new AssignCareHomeBookingHandler(db, new InlineReservationGuard()).Handle(new(owner, booking.Id, inventory.Room.Id, null, Now), default)).IsSuccess);
         Assert.True((await new RecordCareHomeCheckInHandler(db).Handle(new(owner, booking.Id, Now.AddHours(1)), default)).IsSuccess);
 
-        var first = await new RecordCareHomeCheckOutHandler(db).Handle(new(owner, booking.Id, Now.AddHours(9)), default);
-        var second = await new RecordCareHomeCheckOutHandler(db).Handle(new(owner, booking.Id, Now.AddHours(10)), default);
+        var first = await new RecordCareHomeCheckOutHandler(db, new NoopPaymob()).Handle(new(owner, booking.Id, Now.AddHours(9)), default);
+        var second = await new RecordCareHomeCheckOutHandler(db, new NoopPaymob()).Handle(new(owner, booking.Id, Now.AddHours(10)), default);
 
         Assert.True(first.IsSuccess);
         Assert.Equal("CareHomes.Bookings.InvalidState", second.Error.Code);
@@ -778,6 +805,15 @@ public sealed class CareHomeStayLifecycleTests
     }
 
     private sealed record Inventory(CareHomeRoomType Type, CareHomeRoom Room, CareHomeBed[] Beds);
+
+    private sealed class NoopPaymob : IPaymobClient
+    {
+        public Task<Result<PaymobPaymentIntent>> CreatePaymentIntentAsync(PaymobPaymentIntentInput input, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<PaymobPaymentIntent>.Failure(new("NotUsed", "Payment intent is not expected in this test.")));
+
+        public Task<Result<string?>> RefundPaymentAsync(string paymobTransactionId, decimal amount, CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<string?>.Success("test-refund"));
+    }
 
     private sealed class FailOnceCareHomesDbContext(CareHomesDbContext inner) : ICareHomesDbContext
     {

@@ -143,6 +143,8 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
     public DateTime EarliestArrivalUtc { get; private set; }
     public Guid? AssignedRoomId { get; private set; }
     public Guid? AssignedBedId { get; private set; }
+    public Guid? ExtensionOfBookingId { get; private set; }
+    public Guid? ExtensionRootBookingId { get; private set; }
     public DateTime? ActualCheckInOnUtc { get; private set; }
     public DateTime? ActualCheckOutOnUtc { get; private set; }
     public UserId? ActualCheckInRecordedBy { get; private set; }
@@ -169,6 +171,38 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
             ruleVersion, arabicName, englishName, age, medicalJson, contactName, contactPhone,
             relationship, careNotes, utcNow, checkoutHold)
         { MerchantReference = $"chb_{Guid.CreateVersion7():N}" };
+    }
+
+    public static CareHomeBooking CreateExtension(
+        CareHomeBooking currentSegment,
+        UserId familyUserId,
+        decimal baseAmount,
+        decimal feeAmount,
+        decimal taxAmount,
+        int ruleVersion,
+        DateTime utcNow,
+        TimeSpan? checkoutHoldDuration = null)
+    {
+        if (currentSegment.Status != CareHomeBookingStatus.Accepted
+            || currentSegment.PaymentStatus != CareHomeBookingPaymentStatus.Paid
+            || currentSegment.ActualCheckOutOnUtc is not null)
+            throw new InvalidOperationException("CareHomes.Bookings.InvalidExtensionState");
+
+        TimeSpan checkoutHold = checkoutHoldDuration ?? TimeSpan.FromMinutes(15);
+        if (checkoutHold <= TimeSpan.Zero) throw new ArgumentOutOfRangeException(nameof(checkoutHoldDuration));
+        var extension = new CareHomeBooking(Guid.CreateVersion7(), currentSegment.FacilityId, familyUserId,
+            currentSegment.FamilyId, currentSegment.ElderlyId, currentSegment.RoomTypeId,
+            currentSegment.EndDate, currentSegment.EndDate.AddMonths(1), baseAmount, feeAmount, taxAmount, ruleVersion,
+            currentSegment.ElderlyArabicName, currentSegment.ElderlyEnglishName, currentSegment.ElderlyAge,
+            currentSegment.MedicalSnapshotJson, currentSegment.ResponsibleContactName,
+            currentSegment.ResponsibleContactPhone, currentSegment.ResponsibleContactRelationship,
+            currentSegment.CareNeedsNotes, utcNow, checkoutHold)
+        {
+            MerchantReference = $"chb_{Guid.CreateVersion7():N}",
+            ExtensionOfBookingId = currentSegment.Id,
+            ExtensionRootBookingId = currentSegment.ExtensionRootBookingId ?? currentSegment.Id
+        };
+        return extension;
     }
 
     public bool IsCapacityActive(DateTime utcNow) =>
@@ -247,6 +281,22 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
         if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("A cancellation reason is required.");
         BeginRefund(reason, TotalAmount, utcNow);
         return TotalAmount;
+    }
+
+    public void CancelUnusedExtension(DateOnly stayEndedOn, DateTime utcNow)
+    {
+        if (ExtensionRootBookingId is null || StartDate <= stayEndedOn || ActualCheckInOnUtc is not null)
+            throw new InvalidOperationException("CareHomes.Bookings.InvalidExtensionState");
+        if (Status is not (CareHomeBookingStatus.PendingPayment or CareHomeBookingStatus.PaidAwaitingDecision or CareHomeBookingStatus.Accepted))
+            return;
+
+        if (PaymentStatus == CareHomeBookingPaymentStatus.Paid)
+            BeginRefund("The existing stay ended before this extension period began.", TotalAmount, utcNow);
+        else
+        {
+            Status = CareHomeBookingStatus.Cancelled;
+            Touch(utcNow);
+        }
     }
 
     private void BeginRefund(string reason, decimal amount, DateTime utcNow)

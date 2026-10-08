@@ -35,6 +35,10 @@ public sealed class FamilyCareHomeBookingsController(ISender sender, IFamiliesDb
     [HttpPost("{bookingId:guid}/payments/intent")]
     public async Task<IActionResult> Payment(Guid bookingId, CreatePaymentIntentRequest request, CancellationToken ct)
     { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); return ToActionResult(await sender.Send(new CreateCareHomePaymentIntentCommand(actor, family.Id, bookingId, request.Method, request.Billing, clock.UtcNow), ct)); }
+
+    [HttpPost("{bookingId:guid}/extensions")]
+    public async Task<IActionResult> Extend(Guid bookingId, CancellationToken ct)
+    { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); return ToActionResult(await sender.Send(new CreateCareHomeBookingExtensionCommand(actor, family.Id, bookingId, clock.UtcNow), ct)); }
     [HttpPost("{bookingId:guid}/check-in-confirmation")]
     public async Task<IActionResult> ConfirmCheckIn(Guid bookingId, CancellationToken ct)
     { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); return ToActionResult(await sender.Send(new ConfirmCareHomeCheckInCommand(actor, family.Id, bookingId, clock.UtcNow), ct)); }

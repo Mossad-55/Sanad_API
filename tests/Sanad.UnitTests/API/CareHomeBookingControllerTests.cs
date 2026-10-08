@@ -12,7 +12,7 @@ namespace Sanad.UnitTests.API;
 public sealed class CareHomeBookingControllerTests
 {
     [Fact]
-    public void Family_routes_require_family_access_and_expose_checkout_read_and_intent()
+    public void Family_routes_require_family_access_and_expose_checkout_read_extension_and_intent()
     {
         var controller = typeof(FamilyCareHomeBookingsController);
         Assert.Equal(AuthorizationPolicies.FamilyAccess, Assert.Single(controller.GetCustomAttributes<AuthorizeAttribute>()).Policy);
@@ -21,6 +21,7 @@ public sealed class CareHomeBookingControllerTests
         Assert.NotNull(controller.GetMethod(nameof(FamilyCareHomeBookingsController.Detail)));
         Assert.Equal("checkout", controller.GetMethod(nameof(FamilyCareHomeBookingsController.Checkout))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
         Assert.Equal("{bookingId:guid}/payments/intent", controller.GetMethod(nameof(FamilyCareHomeBookingsController.Payment))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
+        Assert.Equal("{bookingId:guid}/extensions", controller.GetMethod(nameof(FamilyCareHomeBookingsController.Extend))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
         Assert.Equal("{bookingId:guid}/cancel", controller.GetMethod(nameof(FamilyCareHomeBookingsController.Cancel))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
     }
 

@@ -20,6 +20,9 @@ public sealed class CareHomeBookingConfiguration : IEntityTypeConfiguration<Care
         b.Property(x => x.MedicalSnapshotJson).HasColumnType("jsonb"); b.Property(x => x.MerchantReference).HasMaxLength(80).IsRequired();
         b.HasIndex(x => x.MerchantReference).IsUnique(); b.HasIndex(x => new { x.FacilityId, x.Status, x.StartDate, x.EndDate });
         b.Property(x => x.Version).IsConcurrencyToken();
+        b.Property(x => x.ExtensionOfBookingId).HasColumnName("extension_of_booking_id");
+        b.Property(x => x.ExtensionRootBookingId).HasColumnName("extension_root_booking_id");
+        b.HasIndex(x => new { x.ExtensionRootBookingId, x.StartDate });
         b.Property(x => x.RefundClaimedOnUtc).HasColumnName("refund_claimed_on_utc");
         b.Property(x => x.RefundStatus).HasConversion<int>().HasColumnName("refund_status").IsRequired();
         b.Property(x => x.RefundAmount).HasColumnName("refund_amount").HasPrecision(18, 2);
@@ -34,6 +37,8 @@ public sealed class CareHomeBookingConfiguration : IEntityTypeConfiguration<Care
         b.Property(x => x.PaymentClientSecret).HasColumnName("payment_client_secret");
         b.Property(x => x.PaymentPublicKey).HasColumnName("payment_public_key");
         b.HasOne<CareHomeFacility>().WithMany().HasForeignKey(x => x.FacilityId).OnDelete(DeleteBehavior.Cascade);
+        b.HasOne<CareHomeBooking>().WithMany().HasForeignKey(x => x.ExtensionOfBookingId).OnDelete(DeleteBehavior.Restrict);
+        b.HasOne<CareHomeBooking>().WithMany().HasForeignKey(x => x.ExtensionRootBookingId).OnDelete(DeleteBehavior.Restrict);
         b.Property(x => x.AssignedRoomId).HasColumnName("assigned_room_id");
         b.Property(x => x.AssignedBedId).HasColumnName("assigned_bed_id");
         b.Property(x => x.ActualCheckInOnUtc).HasColumnName("actual_check_in_on_utc");

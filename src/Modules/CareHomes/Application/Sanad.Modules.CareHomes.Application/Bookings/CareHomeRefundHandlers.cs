@@ -67,11 +67,14 @@ public sealed class CancelFamilyCareHomeBookingHandler(ICareHomesDbContext db, I
         {
             decimal refundAmount = booking.CancelByFamily(request.UtcNow);
             await db.SaveChangesAsync(ct);
+            Result futureExtensions = await CareHomeFutureExtensionRefunds.ProcessAsync(
+                db, paymob, booking, CareHomeFutureExtensionRefunds.CairoDate(request.UtcNow), request.UtcNow, ct);
             if (refundAmount > 0m)
             {
                 Result initiated = await CareHomeRefundProcessor.InitiateAsync(db, paymob, booking, request.UtcNow, ct);
                 if (initiated.IsFailure) return Result<CareHomeBookingResponse>.Failure(initiated.Error);
             }
+            if (futureExtensions.IsFailure) return Result<CareHomeBookingResponse>.Failure(futureExtensions.Error);
             return CheckoutHandler.Map(booking);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
@@ -102,8 +105,11 @@ public sealed class CancelOwnerCareHomeBookingHandler(ICareHomesDbContext db, IP
         {
             booking.CancelByFacility(request.Reason, request.UtcNow);
             await db.SaveChangesAsync(ct);
+            Result futureExtensions = await CareHomeFutureExtensionRefunds.ProcessAsync(
+                db, paymob, booking, CareHomeFutureExtensionRefunds.CairoDate(request.UtcNow), request.UtcNow, ct);
             Result initiated = await CareHomeRefundProcessor.InitiateAsync(db, paymob, booking, request.UtcNow, ct);
             if (initiated.IsFailure) return Result<CareHomeBookingResponse>.Failure(initiated.Error);
+            if (futureExtensions.IsFailure) return Result<CareHomeBookingResponse>.Failure(futureExtensions.Error);
             return CheckoutHandler.Map(booking);
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)

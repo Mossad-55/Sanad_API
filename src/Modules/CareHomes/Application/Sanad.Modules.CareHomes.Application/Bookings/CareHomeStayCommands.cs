@@ -6,6 +6,7 @@ using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Abstractions.Payments;
 
 namespace Sanad.Modules.CareHomes.Application.Bookings;
 
@@ -94,14 +95,25 @@ public sealed class OwnerCareHomeBookingOperationalHandler(ICareHomesDbContext d
     }
 }
 
-public sealed class RecordCareHomeCheckOutHandler(ICareHomesDbContext db) : ICommandHandler<RecordCareHomeCheckOutCommand, CareHomeBookingResponse>
+public sealed class RecordCareHomeCheckOutHandler(ICareHomesDbContext db, IPaymobClient paymob) : ICommandHandler<RecordCareHomeCheckOutCommand, CareHomeBookingResponse>
 {
     public async Task<Result<CareHomeBookingResponse>> Handle(RecordCareHomeCheckOutCommand r, CancellationToken ct)
     {
         var b = await RecordCareHomeCheckInHandler.Owned(db, r.Actor, r.BookingId, ct); if (b is null) return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.NotFound", "Booking was not found."));
-        try { b.RecordCheckOut(r.Actor, r.UtcNow); if (b.FamilyCheckInConfirmedOnUtc is null && !await db.CheckInDisputes.AnyAsync(x => x.BookingId == b.Id && x.Status == CareHomeCheckInDisputeStatus.Open, ct)) db.CheckInDisputes.Add(CareHomeCheckInDispute.Open(b.Id, b.FacilityId, r.UtcNow, r.Actor, r.UtcNow)); await db.SaveChangesAsync(ct); return CheckoutHandler.Map(b); }
+        try
+        {
+            b.RecordCheckOut(r.Actor, r.UtcNow);
+            if (b.FamilyCheckInConfirmedOnUtc is null && !await db.CheckInDisputes.AnyAsync(x => x.BookingId == b.Id && x.Status == CareHomeCheckInDisputeStatus.Open, ct))
+                db.CheckInDisputes.Add(CareHomeCheckInDispute.Open(b.Id, b.FacilityId, r.UtcNow, r.Actor, r.UtcNow));
+            await db.SaveChangesAsync(ct);
+        }
         catch (DbUpdateException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.CheckInDispute.OpenConflict", "A check-in dispute was opened concurrently for this booking.")); }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.InvalidState", ex.Message)); }
+
+        Result futureExtensions = await CareHomeFutureExtensionRefunds.ProcessAsync(
+            db, paymob, b, CareHomeFutureExtensionRefunds.CairoDate(r.UtcNow), r.UtcNow, ct);
+        if (futureExtensions.IsFailure) return Result<CareHomeBookingResponse>.Failure(futureExtensions.Error);
+        return CheckoutHandler.Map(b);
     }
 }
 

@@ -29,7 +29,8 @@ All routes require `FamilyAccess` and resolve the caller to a family owner or me
 | GET | `/api/v1/family/care-home-bookings` | Lists the caller family's bookings, newest first. |
 | GET | `/api/v1/family/care-home-bookings/{bookingId}` | Returns one booking only when it belongs to the caller's family. Unknown or cross-family IDs return `404 CareHomes.Bookings.NotFound`. |
 | POST | `/api/v1/family/care-home-bookings/checkout` | Creates a pending payment booking and a 15-minute capacity hold. |
-| POST | `/api/v1/family/care-home-bookings/{bookingId}/payments/intent` | Creates or replays the Paymob Card/Wallet intent for a pending booking. |
+| POST | `/api/v1/family/care-home-bookings/{bookingId}/extensions` | Creates one explicitly requested, pending-payment extension for the current paid-through date. |
+| POST | `/api/v1/family/care-home-bookings/{bookingId}/payments/intent` | Creates or replays the Paymob Card/Wallet intent for a pending booking or extension. |
 
 Checkout JSON:
 
@@ -65,6 +66,16 @@ Payment-intent JSON follows the existing Family payment shape:
 ```
 
 The response contains `bookingId`, the `chb_` merchant reference, Paymob order/intention IDs, client secret, and public key. Repeating the request after an intent exists returns the same intent. An expired or otherwise non-payable booking returns `409 CareHomes.Bookings.InvalidState`.
+
+## Paid stay extensions (HC-036)
+
+`POST /api/v1/family/care-home-bookings/{bookingId}/extensions` requires `FamilyAccess`; the source booking must belong to the caller's Family. The source must be the current accepted/paid segment and must not have checked out. The endpoint creates a separate linked booking segment for one calendar month beginning exactly at the source `endDate`; month-end dates use the existing `DateOnly.AddMonths` clamp. The paid-through date cannot already be in the past. `extensionOfBookingId` identifies the segment being extended. The original booking remains unchanged.
+
+The extension uses the selected room type from the existing stay and checks the full added interval under the facility/room-type reservation guard. Shared stays require an available bed; Private/Suite stays require an available room. A facility may assign the extension to another available physical room/bed of the same room type using the normal assignment route. The extension snapshots the room type's current monthly price and effective Finance fee/tax rules at request time. It starts as `PendingPayment` with the normal 15-minute capacity hold. The Family then calls the standard `/payments/intent` route with the returned extension `id`; no automatic charge or renewal occurs.
+
+Successful payment changes only the extension segment to `PaidAwaitingDecision`; facility acceptance is still required. Facility rejection fully refunds the extension's `totalAmount` and leaves the previous accepted stay intact. A paid-through boundary with an active extension request cannot be requested twice concurrently. Once an extension is accepted, the next extension is requested against that new segment.
+
+If the existing stay is cancelled or checked out before a future extension segment's start date, that future segment is cancelled and fully refunded when paid. An unpaid extension is cancelled; if a provider success arrives late, the existing callback path records it and starts the full refund. The same-type capacity and assignment rules still apply. No automatic renewal or cross-room-type change is added.
 
 ## Facility-owner routes
 

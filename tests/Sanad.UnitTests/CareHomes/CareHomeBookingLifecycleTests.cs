@@ -250,6 +250,147 @@ public sealed class CareHomeBookingLifecycleTests
     }
 
     [Fact]
+    public async Task Extension_starts_at_paid_through_month_end_and_uses_remaining_same_type_capacity()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db);
+        CareHomeRoomType type = CareHomeRoomType.Create(facility.Id, "Shared", "Shared", 12000m, CareHomeAllocationMode.Shared, Now);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "201", Now);
+        CareHomeBed[] beds = [CareHomeBed.Create(facility.Id, room.Id, "A", Now), CareHomeBed.Create(facility.Id, room.Id, "B", Now)];
+        db.RoomTypes.Add(type);
+        db.Rooms.Add(room);
+        db.Beds.AddRange(beds);
+        FamilyId family = FamilyId.New();
+        var original = CareHomeBooking.Create(facility.Id, UserId.New(), family, ElderlyId.New(), type.Id,
+            new DateOnly(2026, 10, 31), 12000m, 0m, 0m, 1, "ع", "Elderly", 75, null,
+            "Contact", null, null, null, Now);
+        original.MarkPaid(8300, Now.AddMinutes(1));
+        original.Accept(Now.AddMinutes(2));
+        db.Bookings.Add(original);
+        await db.SaveChangesAsync();
+        var provider = new FixedOccupancyProvider([
+            new CareHomeOccupancyInterval(beds[0].Id, CareHomeResourceKind.Bed, original.EndDate, original.EndDate.AddMonths(1))]);
+
+        var handler = new CreateCareHomeBookingExtensionHandler(db, new EffectiveCharges(), provider, new InlineReservationGuard());
+        var crossFamily = await handler.Handle(new CreateCareHomeBookingExtensionCommand(UserId.New(), FamilyId.New(), original.Id, Now), default);
+        Assert.False(crossFamily.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.NotFound", crossFamily.Error.Code);
+        var result = await handler.Handle(new CreateCareHomeBookingExtensionCommand(UserId.New(), family, original.Id, Now), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(new DateOnly(2026, 11, 30), result.Value.StartDate);
+        Assert.Equal(new DateOnly(2026, 12, 30), result.Value.EndDate);
+        Assert.Equal(original.Id, result.Value.ExtensionOfBookingId);
+        Assert.Equal(CareHomeBookingStatus.Accepted, original.Status);
+        Assert.Equal(12000m, result.Value.BaseAmount);
+        Assert.Equal(120m, result.Value.PlatformFeeAmount);
+        Assert.Equal(240m, result.Value.TaxAmount);
+        var listed = await new FamilyListHandler(db).Handle(new ListFamilyCareHomeBookingsQuery(UserId.New(), family), default);
+        Assert.Contains(listed.Value, x => x.Id == result.Value.Id && x.ExtensionOfBookingId == original.Id);
+
+        var duplicate = await handler.Handle(new CreateCareHomeBookingExtensionCommand(UserId.New(), family, original.Id, Now), default);
+        Assert.False(duplicate.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.InvalidState", duplicate.Error.Code);
+    }
+
+    [Fact]
+    public async Task Rejected_extension_is_fully_refunded_without_changing_the_current_stay()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db);
+        CareHomeRoomType type = CareHomeRoomType.Create(facility.Id, "Private", "Private", 12000m, CareHomeAllocationMode.Private, Now);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "301", Now);
+        db.RoomTypes.Add(type);
+        db.Rooms.Add(room);
+        FamilyId family = FamilyId.New();
+        var original = CareHomeBooking.Create(facility.Id, UserId.New(), family, ElderlyId.New(), type.Id,
+            new DateOnly(2026, 10, 5), 12000m, 0m, 0m, 1, "ع", "Elderly", 75, null,
+            "Contact", null, null, null, Now);
+        original.MarkPaid(8301, Now.AddMinutes(1));
+        original.Accept(Now.AddMinutes(2));
+        db.Bookings.Add(original);
+        await db.SaveChangesAsync();
+        var paymob = new FakePaymob();
+        var created = await new CreateCareHomeBookingExtensionHandler(db, new EffectiveCharges(),
+            new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard())
+            .Handle(new CreateCareHomeBookingExtensionCommand(UserId.New(), family, original.Id, Now), default);
+        Assert.True(created.IsSuccess);
+        var extension = await db.Bookings.SingleAsync(x => x.Id == created.Value.Id);
+        await new ConfirmPaymentHandler(db, paymob).Handle(new ConfirmCareHomePaymentCommand(
+            extension.MerchantReference, 8302, decimal.ToInt64(extension.TotalAmount * 100m), true, false, Now.AddMinutes(1)), default);
+
+        var rejected = await new DecideHandler(db, paymob).Handle(
+            new DecideCareHomeBookingCommand(facility.OwnerUserId, extension.Id, false, "No capacity", Now.AddMinutes(2)), default);
+
+        Assert.True(rejected.IsSuccess);
+        Assert.Equal(CareHomeBookingStatus.Accepted, original.Status);
+        Assert.Equal(CareHomeBookingStatus.RefundInitiated, extension.Status);
+        Assert.Equal(extension.TotalAmount, extension.RefundAmount);
+        Assert.Equal(1, paymob.RefundCalls);
+    }
+
+    [Fact]
+    public async Task Extension_is_rejected_when_the_original_room_type_has_no_capacity_for_the_added_month()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db);
+        CareHomeRoomType type = CareHomeRoomType.Create(facility.Id, "Suite", "Suite", 15000m, CareHomeAllocationMode.Suite, Now);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "501", Now);
+        db.RoomTypes.Add(type);
+        db.Rooms.Add(room);
+        FamilyId family = FamilyId.New();
+        var original = CareHomeBooking.Create(facility.Id, UserId.New(), family, ElderlyId.New(), type.Id,
+            new DateOnly(2026, 10, 5), 15000m, 0m, 0m, 1, "ع", "Elderly", 75, null,
+            "Contact", null, null, null, Now);
+        original.MarkPaid(8305, Now.AddMinutes(1));
+        original.Accept(Now.AddMinutes(2));
+        db.Bookings.Add(original);
+        await db.SaveChangesAsync();
+        var provider = new FixedOccupancyProvider([
+            new CareHomeOccupancyInterval(room.Id, CareHomeResourceKind.Room, original.EndDate, original.EndDate.AddMonths(1))]);
+
+        var result = await new CreateCareHomeBookingExtensionHandler(db, new EffectiveCharges(), provider, new InlineReservationGuard())
+            .Handle(new CreateCareHomeBookingExtensionCommand(UserId.New(), family, original.Id, Now), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.CapacityConflict", result.Error.Code);
+        Assert.Single(db.Bookings);
+    }
+
+    [Fact]
+    public async Task Family_cancellation_refunds_future_extension_and_the_current_paid_stay()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db);
+        CareHomeRoomType type = CareHomeRoomType.Create(facility.Id, "Private", "Private", 12000m, CareHomeAllocationMode.Private, Now);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "401", Now);
+        db.RoomTypes.Add(type);
+        db.Rooms.Add(room);
+        FamilyId family = FamilyId.New();
+        var original = CareHomeBooking.Create(facility.Id, UserId.New(), family, ElderlyId.New(), type.Id,
+            new DateOnly(2026, 10, 5), 12000m, 0m, 0m, 1, "ع", "Elderly", 75, null,
+            "Contact", null, null, null, Now);
+        original.MarkPaid(8303, Now.AddMinutes(1));
+        original.Accept(Now.AddMinutes(2));
+        var extension = CareHomeBooking.CreateExtension(original, UserId.New(), 12000m, 120m, 240m, 1, Now.AddMinutes(3));
+        extension.MarkPaid(8304, Now.AddMinutes(4));
+        extension.Accept(Now.AddMinutes(5));
+        db.Bookings.AddRange(original, extension);
+        await db.SaveChangesAsync();
+        var paymob = new FakePaymob();
+
+        var cancelled = await new CancelFamilyCareHomeBookingHandler(db, paymob).Handle(
+            new CancelFamilyCareHomeBookingCommand(UserId.New(), family, original.Id, Now.AddHours(1)), default);
+
+        Assert.True(cancelled.IsSuccess);
+        Assert.Equal(CareHomeBookingStatus.RefundInitiated, original.Status);
+        Assert.Equal(CareHomeBookingStatus.RefundInitiated, extension.Status);
+        Assert.Equal(original.TotalAmount, original.RefundAmount);
+        Assert.Equal(extension.TotalAmount, extension.RefundAmount);
+        Assert.Equal(2, paymob.RefundCalls);
+    }
+
+    [Fact]
     public void Create_rejects_arrival_before_the_next_Cairo_calendar_date()
     {
         Assert.Throws<ArgumentException>(() => Create(new DateOnly(2026, 10, 3)));
@@ -594,6 +735,11 @@ public sealed class CareHomeBookingLifecycleTests
     {
         public Task<PlatformChargeRuleRates?> GetEffectiveAsync(DateTime utcNow, CancellationToken cancellationToken) => Task.FromResult<PlatformChargeRuleRates?>(new(1m, 2m, 1));
         public Task<IReadOnlyList<PlatformChargeRuleHistoryItem>> GetHistoryAsync(CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<PlatformChargeRuleHistoryItem>>([]);
+    }
+
+    private sealed class FixedOccupancyProvider(IReadOnlyList<CareHomeOccupancyInterval> intervals) : ICareHomeOccupancyProvider
+    {
+        public Task<IReadOnlyList<CareHomeOccupancyInterval>> GetActiveAsync(CareHomeId facilityId, CancellationToken cancellationToken) => Task.FromResult(intervals);
     }
 
     private sealed class FakePaymob : IPaymobClient
