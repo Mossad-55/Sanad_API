@@ -136,4 +136,15 @@ public sealed class LookupsController :
 
         return ToActionResult(result);
     }
+
+    [AllowAnonymous]
+    [HttpGet("lookups/banks")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<BankPublicItem>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetActiveBanks(
+        CancellationToken cancellationToken) =>
+            ToActionResult(await _sender.Send(
+                new GetActiveBanksQuery(),
+                cancellationToken));
 }

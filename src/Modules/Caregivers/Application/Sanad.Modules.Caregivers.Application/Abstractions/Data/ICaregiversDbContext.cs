@@ -14,6 +14,7 @@ public interface ICaregiversDbContext
     DbSet<CaregiverRating> CaregiverRatings { get; }
     DbSet<Service> Services { get; }
     DbSet<Language> Languages { get; }
+    DbSet<Bank> Banks { get; }
     DbSet<Governorate> Governorates { get; }
     DbSet<City> Cities { get; }
     DbSet<Area> Areas { get; }

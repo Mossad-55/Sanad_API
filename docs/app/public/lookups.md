@@ -74,12 +74,21 @@ Caregivers select **Area** ids only (never city or governorate).
 ]
 ```
 
+## Banks
+`GET /api/v1/lookups/banks` — active banks for caregiver payout-account setup, ordered by `code`.
+```json
+[
+  { "id": { "value": "…" }, "code": "NBE", "arabicName": "البنك الأهلي المصري", "englishName": "National Bank of Egypt" }
+]
+```
+
 Inactive records never appear here. Admin management (including inactive records) lives under `/api/v1/admin/lookups/...`:
 
 - Services: `docs/admin/service-lookups.md`
 - Languages & governorates: `docs/admin/lookups-languages-governorates.md`
 - Cities & areas: `docs/admin/lookups-cities-areas.md`
 - Specializations, titles & degrees: `docs/admin/lookups-specializations-titles-degrees.md`
+- Banks: `docs/admin/lookups-banks.md`
 
 ## Note categories and priorities
 

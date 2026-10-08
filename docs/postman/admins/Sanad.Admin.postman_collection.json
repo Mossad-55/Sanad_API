@@ -1171,6 +1171,106 @@
       ]
     },
     {
+      "name": "09. Lookups — Banks",
+      "item": [
+        {
+          "name": "List all banks (admin)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/banks"
+          }
+        },
+        {
+          "name": "Create bank",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id && body.id.value) { pm.environment.set('bankId', body.id.value); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"NBE\",\n  \"arabicName\": \"البنك الأهلي المصري\",\n  \"englishName\": \"National Bank of Egypt\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/banks"
+          }
+        },
+        {
+          "name": "Rename bank",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arabicName\": \"البنك الأهلي\",\n  \"englishName\": \"National Bank of Egypt\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/lookups/banks/{{bankId}}"
+          }
+        },
+        {
+          "name": "Deactivate bank",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/banks/{{bankId}}/deactivate"
+          }
+        },
+        {
+          "name": "Activate bank",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/lookups/banks/{{bankId}}/activate"
+          }
+        }
+      ]
+    },
+    {
       "name": "03. Caregiver Review & Verification",
       "item": [
         {

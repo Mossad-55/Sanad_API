@@ -24,6 +24,11 @@ public static class LookupsErrors
             "Caregivers.Lookups.LanguageCodeInUse",
             "A language with this code already exists.");
 
+    public static readonly Error BankCodeInUse =
+        new(
+            "Caregivers.Lookups.BankCodeInUse",
+            "A bank with this code already exists.");
+
     public static readonly Error ParentNotActive =
     new(
         "Caregivers.Lookups.ParentNotActive",
