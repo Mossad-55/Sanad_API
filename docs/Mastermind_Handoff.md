@@ -2,9 +2,13 @@
 
 ## Current state — 2026-10-09
 
-HC-TASK-060 is committed and pushed: `fd90975` is included in `b693ff9`; `main` matched `origin/main` at `b693ff9` before this documentation closeout. HC-TASK-061 and HC-TASK-062 documentation work is committed locally: the route/audience audit identified and filled the missing Family/Owner visit Postman examples, aligned guides, and reconciled status/deferred evidence. New Postman examples were statically checked, not executed. No API, database, fixture, provider, production, reset, or deployment operation was performed. HC-040 and HC-060 migrations remain generated and unapplied; see the checklist for runtime and migration limits.
+HC-TASK-060 is committed and pushed: `fd90975` is included in `b693ff9`. HC-TASK-061/062 guide, Postman, and evidence synchronization is complete in `f6c4648`, with the handoff closeout in `8353352`. Local `main` and `origin/main` were verified synchronized. New Postman examples were statically checked, not executed. No API, database, fixture, provider, production, reset, or deployment operation was performed. HC-040 and HC-060 migrations remain generated and unapplied; see the checklist for runtime and migration limits.
 
-The documentation closeout commit `f6c4648` is pushed, and local `main` matched `origin/main` with a clean working tree at verification. The active Care Homes slice is complete. Hand off to the owner to select and scope any further Care Homes work; do not start another slice.
+The Care Homes slice is complete and the working tree is clean. **Next priority:** Chat. It is not planned yet; first review what exists in the owner's application, agree scope/tasks, and obtain explicit plan approval. Do not begin implementation before that intake and approval.
+
+## Historical handoff checkpoints
+
+The dated execution notes below preserve historical evidence. Their past “In Progress,” blocker, and next-action statements may have been superseded; current slice status is in the checklist and the summary above. Do not treat the historical next actions as current instructions.
 
 
 **HC-023 latest continuation (2026-10-07):** official Shared request 93 now passes on the pinned worktree API. Final selected run passed Owner login, transfer (200), operational history readback with source/destination/date/actor, and Bruno logout-all (204): 4 requests, 5/5 assertions, one unrelated malformed Wellness Tips parser skip. Two earlier 200 responses failed only in the post-response script because of a wrong source override and then a stale variable reference. The date-aware assertion was restored and the correct source fixture was used. The data from all four future-dated attempts remains in `SanadBrunoTestDb`. Owner sessions were cleared via Bruno logout-all. API stopped; port 5236 is closed; port 5235 was untouched.
