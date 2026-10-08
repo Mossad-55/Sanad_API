@@ -35,10 +35,33 @@ conditions, amenities, medical services, and active room-type cards (bilingual
 names/descriptions, allocation mode, and monthly EGP price).
 
 The public contract excludes contact details, owner identity, private
-documents/storage keys, review history, ratings, availability/capacity,
-room instances/beds, and resident clinical data. The top-10 rated Care Homes
-ranking is not stubbed here; it remains blocked on HC-TASK-041's rating model,
-eligibility, and aggregation.
+documents/storage keys, review history, availability/capacity, room
+instances/beds, and resident clinical data.
+
+## Family ratings
+
+`GET /api/v1/family/care-home-ratings/top-10` requires a Family account. It
+returns up to ten rated Care homes that also meet the public discovery
+eligibility rules. Unrated and currently ineligible facilities are omitted.
+Ordering uses the unrounded average descending, review count descending, then
+Care-home ID ascending. The returned `averageRating` is rounded to two decimal
+places; each item contains `careHomeId`, bilingual names, `averageRating`, and
+`reviewsCount`.
+
+`PUT /api/v1/family/care-home-ratings/bookings/{bookingId}` accepts
+`{ "stars": 1..5, "reviewText": "optional, at most 2000 characters" }`.
+The caller must own or belong to the Family on the booking, and the Family
+must have confirmed check-in. Review text is trimmed; blank text becomes null.
+Repeating the request edits the existing booking rating and preserves its
+review count. Validation errors return 400; missing, foreign, or unconfirmed
+bookings return the same ineligible response. No moderation workflow is
+included.
+
+The Postman requests are in the Care Homes collection under
+`09. Family ratings (HC-TASK-041)`. Examples require the disposable Development
+fixture and are not runtime-verified. Bruno was not selected because focused
+automated tests provide sufficient evidence for this bounded behavior; no
+stateful HTTP evidence is claimed.
 
 ## Verification and fixtures
 

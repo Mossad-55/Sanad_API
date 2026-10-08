@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "a4fce7cf-2668-4d8e-9a3d-58ec5fd34573",
     "name": "Sanad Care Homes",
-    "description": "Care-home facility owner onboarding, anonymous public discovery/detail, inventory/availability, HC-TASK-032 booking lifecycle, authored HC-034 stay operations, and authored HC-023 room transfers and future-maintenance amendments. Admin operational APIs belong to the Sanad Admin collection and docs/admin. Examples require the disposable Development fixture; they are not runtime-verified in this collection.",
+    "description": "Care-home facility owner onboarding, anonymous public discovery/detail, inventory/availability, HC-TASK-032 booking lifecycle, Family ratings/ranking, authored HC-034 stay operations, and authored HC-023 room transfers and future-maintenance amendments. Admin operational APIs belong to the Sanad Admin collection and docs/admin. Examples require the disposable Development fixture; they are not runtime-verified in this collection.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "auth": {
@@ -393,6 +393,20 @@
         {
           "name": "Admin records externally completed refund",
           "request": { "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{adminCareHomesSuperJwt}}", "type": "string" }] }, "body": { "mode": "raw", "raw": "{\n  \"reference\": \"{{hc035ExternalRefundReference}}\",\n  \"reason\": \"Verified external refund completion\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035ManualRefundBookingId}}/refund/record-completed", "description": "Records completion only; this endpoint does not call Paymob. SuperAdmin/SupportAdmin only." }
+        }
+      ]
+    },
+    {
+      "name": "09. Family ratings (HC-TASK-041)",
+      "description": "FamilyAccess only. Rating requires an owned Family booking with Family-confirmed check-in. Repeating the PUT edits the existing one-per-booking rating. Top 10 excludes unrated and publicly ineligible homes. Bruno was not selected because focused automated tests cover this bounded behavior; no stateful HTTP evidence is claimed.",
+      "item": [
+        {
+          "name": "Family top-10 rated Care homes",
+          "request": { "method": "GET", "header": [], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeFamilyJwt}}", "type": "string" }] }, "url": "{{baseUrl}}/api/v1/family/care-home-ratings/top-10", "description": "Returns up to ten eligible rated homes, ordered by unrounded average, review count, then ID." }
+        },
+        {
+          "name": "Rate or edit a checked-in booking",
+          "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeFamilyJwt}}", "type": "string" }] }, "body": { "mode": "raw", "raw": "{\n  \"stars\": 5,\n  \"reviewText\": \"Care was attentive\"\n}" }, "url": "{{baseUrl}}/api/v1/family/care-home-ratings/bookings/{{careHomeBookingId}}", "description": "Use a disposable booking with FamilyCheckInConfirmedOnUtc set. Repeated calls update its rating without increasing review count. Source-authored; not runtime-verified." }
         }
       ]
     }
