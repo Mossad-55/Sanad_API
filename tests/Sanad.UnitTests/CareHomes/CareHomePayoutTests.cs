@@ -109,10 +109,10 @@ public sealed class CareHomePayoutTests
     }
 
     [Fact]
-    public void Payout_routes_require_care_homes_operational_admin()
+    public void Payout_routes_require_payout_operational_admin()
     {
         var controller = typeof(AdminCareHomePayoutsController);
-        Assert.Equal(AuthorizationPolicies.CareHomesOperationalAdmin,
+        Assert.Equal(AuthorizationPolicies.PayoutOperationalAdmin,
             Assert.Single(controller.GetCustomAttributes<AuthorizeAttribute>()).Policy);
         Assert.Equal("ledger", controller.GetMethod(nameof(AdminCareHomePayoutsController.Ledger))!
             .GetCustomAttribute<HttpGetAttribute>()!.Template);

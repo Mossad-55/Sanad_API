@@ -11,7 +11,7 @@ namespace Sanad.API.Controllers;
 public sealed record RecordCareHomePayoutRequest(string TransferReference, string Evidence, string Reason);
 public sealed record RecordCareHomePayoutReversalRequest(decimal CustomerRefundAmount, string Reference, string Reason);
 
-[Authorize(Policy = AuthorizationPolicies.CareHomesOperationalAdmin)]
+[Authorize(Policy = AuthorizationPolicies.PayoutOperationalAdmin)]
 [Route("api/v1/admin/care-homes/payouts")]
 public sealed class AdminCareHomePayoutsController(ISender sender, IDateTimeProvider clock) : ApiControllerBase
 {

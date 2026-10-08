@@ -4,7 +4,7 @@ HC-TASK-038 adds a record-only Admin workflow. A bank transfer must be performed
 
 ## Access
 
-All endpoints require `CareHomesOperationalAdmin` (SuperAdmin or SupportAdmin). Owners and ContentAdmins cannot view or record settlements.
+All endpoints require `PayoutOperationalAdmin` (SuperAdmin or FinanceAdmin). SupportAdmin, Owners, and ContentAdmins cannot view or record settlements.
 
 ## Read ledger
 
