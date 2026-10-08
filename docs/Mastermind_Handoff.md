@@ -2,7 +2,7 @@
 
 ## Current state — 2026-10-08
 
-HC-TASK-040 visits are implemented and verified under the owner-approved scope. Current evidence and limits are recorded in the [Care Homes checklist](operations/care-homes/Care_Homes_Tasks.md) and [execution handoff](operations/care-homes/Execution_Handoff.md). Focused tests passed 5/5; final Release solution build passed with 0 warnings/errors; docs and Postman are synchronized; the additive migration is generated and unapplied. Final worktree review and commit/push remain. No migration application, Bruno runtime, production change, or deployment occurred.
+HC-TASK-040 visits are implemented and verified under the owner-approved scope, committed as `ec040e6`, and pushed to `origin/main`. Current evidence and limits are recorded in the [Care Homes checklist](operations/care-homes/Care_Homes_Tasks.md) and [execution handoff](operations/care-homes/Execution_Handoff.md). Focused tests passed 5/5; final Release solution build passed with 0 warnings/errors; docs and Postman are synchronized; the additive migration is generated and unapplied. No migration application, Bruno runtime, production change, or deployment occurred. The unrelated `.codex/config.toml` edit remains untouched and uncommitted.
 
 The checkout-eligibility follow-up `f9fdc35`, onboarding media/notifications `283a564`, documentation/Postman sync `e856a99`, and verification follow-up `f364268` are pushed to `main`. Work remains directly on `D:/Sanad_API` `main`; preserve the unrelated pre-existing `.codex/config.toml` change. No production change or deployment is authorized by this handoff.
 
