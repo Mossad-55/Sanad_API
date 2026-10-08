@@ -165,6 +165,7 @@ public static class ResultProblemDetailsMapper
 
             ["Caregivers.Lookups.NameAlreadyInUse"] = 409,
             ["Caregivers.Lookups.LanguageCodeInUse"] = 409,
+            ["Caregivers.Lookups.BankCodeInUse"] = 409,
             ["Caregivers.Lookups.NotFound"] = 404,
             ["Caregivers.Lookups.ParentNotFound"] = 404,
             ["Caregivers.Lookups.ParentNotActive"] = 409,

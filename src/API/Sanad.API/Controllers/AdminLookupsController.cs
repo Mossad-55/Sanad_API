@@ -252,6 +252,95 @@ public sealed class AdminLookupsController :
         return ToActionResult(result);
     }
 
+    [HttpGet("lookups/banks")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<BankResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllBanks(
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new GetAllBanksQuery(),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("lookups/banks")]
+    [Consumes("application/json")]
+    [ProducesResponseType(
+        typeof(BankResponse),
+        StatusCodes.Status201Created)]
+    public async Task<IActionResult> CreateBank(
+        [FromBody] CreateBankRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new CreateBankCommand(
+                    request.Code,
+                    request.ArabicName,
+                    request.EnglishName),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            result.Value);
+    }
+
+    [HttpPut("lookups/banks/{id:guid}")]
+    public async Task<IActionResult> RenameBank(
+        Guid id,
+        [FromBody] RenameBankRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new RenameBankCommand(
+                    new BankId(id),
+                    request.ArabicName,
+                    request.EnglishName),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("lookups/banks/{id:guid}/activate")]
+    public async Task<IActionResult> ActivateBank(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new SetBankActiveCommand(
+                    new BankId(id),
+                    true),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpPost("lookups/banks/{id:guid}/deactivate")]
+    public async Task<IActionResult> DeactivateBank(
+        Guid id,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new SetBankActiveCommand(
+                    new BankId(id),
+                    false),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
     [HttpPost("lookups/governorates")]
     [Consumes("application/json")]
     [ProducesResponseType(

@@ -22,7 +22,8 @@ public sealed class CaregiversDbContextModelTests
         using CaregiversDbContext dbContext = CreateDbContext();
 
         string[] expected = ["services", "languages", "governorates",
-            "cities", "areas", "specializations", "professional_titles", "academic_degrees"];
+            "cities", "areas", "specializations", "professional_titles", "academic_degrees",
+            "banks"];
 
         string[] mapped = dbContext.Model.GetEntityTypes()
             .Select(t => t.GetTableName())
@@ -45,6 +46,21 @@ public sealed class CaregiversDbContextModelTests
             typeof(Language));
 
         Assert.NotNull(entityType);
+        Assert.Contains(entityType!.GetIndexes(),
+            index => index.IsUnique && index.Properties.Count == 1
+                && index.Properties[0].Name == "Code");
+    }
+
+    [Fact]
+    public void Model_ShouldMapUniqueBankCode()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(Bank));
+
+        Assert.NotNull(entityType);
+        Assert.Equal("banks", entityType!.GetTableName());
         Assert.Contains(entityType!.GetIndexes(),
             index => index.IsUnique && index.Properties.Count == 1
                 && index.Properties[0].Name == "Code");

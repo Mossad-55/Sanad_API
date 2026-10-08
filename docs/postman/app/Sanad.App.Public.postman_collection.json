@@ -106,6 +106,15 @@
           }
         },
         {
+          "name": "Get active banks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/banks",
+            "description": "Anonymous. Active banks only, ordered by code. Choices for caregiver payout-account setup."
+          }
+        },
+        {
           "name": "Get active governorates",
           "request": {
             "method": "GET",
