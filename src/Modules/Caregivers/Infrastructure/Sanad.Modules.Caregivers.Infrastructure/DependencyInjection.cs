@@ -1,8 +1,11 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
+using Sanad.Modules.Caregivers.Application.Abstractions.Security;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
+using Sanad.Modules.Caregivers.Infrastructure.Security;
 
 namespace Sanad.Modules.Caregivers.Infrastructure;
 
@@ -38,6 +41,20 @@ public static class DependencyInjection
             serviceProvider =>
                 serviceProvider.GetRequiredService<
                     CaregiversDbContext>());
+
+        // Payout IBAN protection keys come only from host configuration
+        // (environment). Absent configuration is valid at startup so other
+        // features keep running; payout-account writes fail closed at use.
+        services.AddOptions<PayoutIbanProtectionOptions>()
+            .Bind(
+                configuration.GetSection(
+                    PayoutIbanProtectionOptions.SectionName));
+
+        services.AddSingleton<
+            IValidateOptions<PayoutIbanProtectionOptions>,
+            PayoutIbanProtectionOptionsValidator>();
+
+        services.AddSingleton<IIbanProtector, AesGcmIbanProtector>();
 
         return services;
     }

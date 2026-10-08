@@ -29,9 +29,13 @@ public sealed class CaregiverPayoutAccountConfiguration :
             .HasColumnName("bank_code")
             .HasMaxLength(CaregiverPayoutAccount.MaximumBankCodeLength)
             .IsRequired();
-        builder.Property(account => account.Iban)
-            .HasColumnName("iban")
-            .HasMaxLength(CaregiverPayoutAccount.MaximumIbanLength)
+        builder.Property(account => account.IbanCiphertext)
+            .HasColumnName("iban_ciphertext")
+            .HasColumnType("text")
+            .IsRequired();
+        builder.Property(account => account.IbanLast4)
+            .HasColumnName("iban_last4")
+            .HasMaxLength(CaregiverPayoutAccount.IbanLast4Length)
             .IsRequired();
         builder.Property(account => account.Status)
             .HasColumnName("status")

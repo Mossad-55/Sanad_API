@@ -1,5 +1,7 @@
+using System.Text;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Caregivers.Application.Abstractions.Security;
 using Sanad.Modules.Caregivers.Application.PayoutAccounts;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
@@ -17,7 +19,10 @@ public sealed class PayoutAccountHandlerTests
         Caregiver caregiver = await AddCaregiverAsync(dbContext);
         await AddBankAsync(dbContext, "NBE", true);
 
-        var handler = new UpdateCaregiverPayoutAccountCommandHandler(dbContext);
+        var handler =
+            new UpdateCaregiverPayoutAccountCommandHandler(
+                dbContext,
+                new FakeIbanProtector());
 
         var result =
             await handler.Handle(
@@ -35,9 +40,13 @@ public sealed class PayoutAccountHandlerTests
         Assert.Equal("****6819", result.Value.MaskedIban);
         Assert.Equal("Pending", result.Value.Status);
 
-        Assert.Equal(
-            1,
-            await dbContext.PayoutAccounts.CountAsync());
+        CaregiverPayoutAccount stored =
+            await dbContext.PayoutAccounts.SingleAsync();
+
+        Assert.NotEqual(
+            "GB29NWBK60161331926819",
+            stored.IbanCiphertext);
+        Assert.Equal("6819", stored.IbanLast4);
     }
 
     [Fact]
@@ -49,7 +58,10 @@ public sealed class PayoutAccountHandlerTests
         await AddBankAsync(dbContext, "NBE", true);
         await AddBankAsync(dbContext, "CIB", true);
 
-        var handler = new UpdateCaregiverPayoutAccountCommandHandler(dbContext);
+        var handler =
+            new UpdateCaregiverPayoutAccountCommandHandler(
+                dbContext,
+                new FakeIbanProtector());
 
         await handler.Handle(
             new UpdateCaregiverPayoutAccountCommand(
@@ -88,7 +100,10 @@ public sealed class PayoutAccountHandlerTests
         Caregiver caregiver = await AddCaregiverAsync(dbContext);
         await AddBankAsync(dbContext, "NBE", true);
 
-        var handler = new UpdateCaregiverPayoutAccountCommandHandler(dbContext);
+        var handler =
+            new UpdateCaregiverPayoutAccountCommandHandler(
+                dbContext,
+                new FakeIbanProtector());
 
         var result =
             await handler.Handle(
@@ -112,7 +127,10 @@ public sealed class PayoutAccountHandlerTests
         Caregiver caregiver = await AddCaregiverAsync(dbContext);
         await AddBankAsync(dbContext, "NBE", false);
 
-        var handler = new UpdateCaregiverPayoutAccountCommandHandler(dbContext);
+        var handler =
+            new UpdateCaregiverPayoutAccountCommandHandler(
+                dbContext,
+                new FakeIbanProtector());
 
         var result =
             await handler.Handle(
@@ -136,7 +154,10 @@ public sealed class PayoutAccountHandlerTests
         Caregiver caregiver = await AddCaregiverAsync(dbContext);
         await AddBankAsync(dbContext, "NBE", true);
 
-        var handler = new UpdateCaregiverPayoutAccountCommandHandler(dbContext);
+        var handler =
+            new UpdateCaregiverPayoutAccountCommandHandler(
+                dbContext,
+                new FakeIbanProtector());
 
         var result =
             await handler.Handle(
@@ -153,6 +174,37 @@ public sealed class PayoutAccountHandlerTests
     }
 
     [Fact]
+    public async Task Update_ShouldFailClosed_WhenProtectionIsUnavailable()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        Caregiver caregiver = await AddCaregiverAsync(dbContext);
+        await AddBankAsync(dbContext, "NBE", true);
+
+        var handler =
+            new UpdateCaregiverPayoutAccountCommandHandler(
+                dbContext,
+                new UnavailableIbanProtector());
+
+        var result =
+            await handler.Handle(
+                new UpdateCaregiverPayoutAccountCommand(
+                    caregiver.Id.Value,
+                    caregiver.UserId,
+                    "Mohamed Ahmed",
+                    "NBE",
+                    "GB29NWBK60161331926819"),
+                default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(PayoutAccountErrors.ProtectionUnavailable, result.Error);
+
+        Assert.Equal(
+            0,
+            await dbContext.PayoutAccounts.CountAsync());
+    }
+
+    [Fact]
     public async Task Update_ShouldRejectWrongActor()
     {
         using CaregiversDbContext dbContext = CreateDbContext();
@@ -160,7 +212,10 @@ public sealed class PayoutAccountHandlerTests
         Caregiver caregiver = await AddCaregiverAsync(dbContext);
         await AddBankAsync(dbContext, "NBE", true);
 
-        var handler = new UpdateCaregiverPayoutAccountCommandHandler(dbContext);
+        var handler =
+            new UpdateCaregiverPayoutAccountCommandHandler(
+                dbContext,
+                new FakeIbanProtector());
 
         var result =
             await handler.Handle(
@@ -184,14 +239,17 @@ public sealed class PayoutAccountHandlerTests
         Caregiver caregiver = await AddCaregiverAsync(dbContext);
         await AddBankAsync(dbContext, "NBE", true);
 
-        await new UpdateCaregiverPayoutAccountCommandHandler(dbContext).Handle(
-            new UpdateCaregiverPayoutAccountCommand(
-                caregiver.Id.Value,
-                caregiver.UserId,
-                "Mohamed Ahmed",
-                "NBE",
-                "GB29NWBK60161331926819"),
-            default);
+        await new UpdateCaregiverPayoutAccountCommandHandler(
+                dbContext,
+                new FakeIbanProtector())
+            .Handle(
+                new UpdateCaregiverPayoutAccountCommand(
+                    caregiver.Id.Value,
+                    caregiver.UserId,
+                    "Mohamed Ahmed",
+                    "NBE",
+                    "GB29NWBK60161331926819"),
+                default);
 
         var result =
             await new GetCaregiverPayoutAccountQueryHandler(dbContext).Handle(
@@ -280,5 +338,39 @@ public sealed class PayoutAccountHandlerTests
                 .Options;
 
         return new CaregiversDbContext(options);
+    }
+
+    private sealed class FakeIbanProtector : IIbanProtector
+    {
+        public string Protect(
+            string plaintextIban)
+        {
+            return "v1.test." +
+                Convert.ToBase64String(
+                    Encoding.UTF8.GetBytes(plaintextIban));
+        }
+
+        public string Unprotect(
+            string envelope)
+        {
+            return Encoding.UTF8.GetString(
+                Convert.FromBase64String(
+                    envelope.Split('.')[2]));
+        }
+    }
+
+    private sealed class UnavailableIbanProtector : IIbanProtector
+    {
+        public string Protect(
+            string plaintextIban)
+        {
+            throw new IbanProtectionException();
+        }
+
+        public string Unprotect(
+            string envelope)
+        {
+            throw new IbanProtectionException();
+        }
     }
 }

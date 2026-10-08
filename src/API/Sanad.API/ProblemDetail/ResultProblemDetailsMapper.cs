@@ -174,6 +174,7 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.PayoutAccount.InvalidIban"] = 400,
             ["Caregivers.PayoutAccount.UnknownBank"] = 400,
             ["Caregivers.PayoutAccount.InactiveBank"] = 409,
+            ["Caregivers.PayoutAccount.ProtectionUnavailable"] = 503,
 
             ["Caregivers.Onboarding.AlreadyExists"] = 409,
             ["Caregivers.Onboarding.NotFound"] = 404,

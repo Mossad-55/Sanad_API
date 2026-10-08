@@ -10,6 +10,7 @@ public sealed class CaregiverPayoutAccount :
     public const int MaximumHolderNameLength = 100;
     public const int MaximumBankCodeLength = 11;
     public const int MaximumIbanLength = 34;
+    public const int IbanLast4Length = 4;
 
     private CaregiverPayoutAccount()
     {
@@ -20,14 +21,16 @@ public sealed class CaregiverPayoutAccount :
         CaregiverId caregiverId,
         string accountHolderName,
         string bankCode,
-        string iban,
+        string ibanCiphertext,
+        string ibanLast4,
         DateTime createdOnUtc)
         : base(id)
     {
         CaregiverId = caregiverId;
         AccountHolderName = accountHolderName;
         BankCode = bankCode;
-        Iban = iban;
+        IbanCiphertext = ibanCiphertext;
+        IbanLast4 = ibanLast4;
 
         Status =
             PayoutAccountStatus.Pending;
@@ -42,7 +45,9 @@ public sealed class CaregiverPayoutAccount :
 
     public string BankCode { get; private set; } = string.Empty;
 
-    public string Iban { get; private set; } = string.Empty;
+    public string IbanCiphertext { get; private set; } = string.Empty;
+
+    public string IbanLast4 { get; private set; } = string.Empty;
 
     public PayoutAccountStatus Status
     {
@@ -60,7 +65,8 @@ public sealed class CaregiverPayoutAccount :
         CaregiverId caregiverId,
         string accountHolderName,
         string bankCode,
-        string iban)
+        string ibanCiphertext,
+        string ibanLast4)
     {
         if (caregiverId == CaregiverId.Empty)
         {
@@ -74,8 +80,11 @@ public sealed class CaregiverPayoutAccount :
         string normalizedBankCode =
             NormalizeBankCode(bankCode);
 
-        string normalizedIban =
-            NormalizeIban(iban);
+        string normalizedCiphertext =
+            NormalizeCiphertext(ibanCiphertext);
+
+        string normalizedLast4 =
+            NormalizeLast4(ibanLast4);
 
         DateTime createdOnUtc = DateTime.UtcNow;
 
@@ -84,14 +93,16 @@ public sealed class CaregiverPayoutAccount :
             caregiverId,
             normalizedHolderName,
             normalizedBankCode,
-            normalizedIban,
+            normalizedCiphertext,
+            normalizedLast4,
             createdOnUtc);
     }
 
     public void UpdateDetails(
         string accountHolderName,
         string bankCode,
-        string iban)
+        string ibanCiphertext,
+        string ibanLast4)
     {
         AccountHolderName =
             NormalizeHolderName(accountHolderName);
@@ -99,8 +110,11 @@ public sealed class CaregiverPayoutAccount :
         BankCode =
             NormalizeBankCode(bankCode);
 
-        Iban =
-            NormalizeIban(iban);
+        IbanCiphertext =
+            NormalizeCiphertext(ibanCiphertext);
+
+        IbanLast4 =
+            NormalizeLast4(ibanLast4);
 
         Status =
             PayoutAccountStatus.Pending;
@@ -113,7 +127,7 @@ public sealed class CaregiverPayoutAccount :
     {
         return string.Concat(
             "****",
-            Iban[^4..]);
+            IbanLast4);
     }
 
     private static string NormalizeHolderName(
@@ -160,90 +174,28 @@ public sealed class CaregiverPayoutAccount :
         return normalizedBankCode;
     }
 
-    private static string NormalizeIban(
-        string iban)
+    private static string NormalizeCiphertext(
+        string ibanCiphertext)
     {
-        if (string.IsNullOrWhiteSpace(iban))
+        if (string.IsNullOrWhiteSpace(ibanCiphertext))
         {
             throw new DomainException(
-                "IBAN is required.");
+                "Protected IBAN payload is required.");
         }
 
-        string normalizedIban =
-            iban.Replace(" ", string.Empty)
-                .Replace("-", string.Empty)
-                .ToUpperInvariant();
+        return ibanCiphertext.Trim();
+    }
 
-        if (normalizedIban.Length > MaximumIbanLength ||
-            !IsIbanStructureValid(normalizedIban) ||
-            !PassesMod97Check(normalizedIban))
+    private static string NormalizeLast4(
+        string ibanLast4)
+    {
+        if (ibanLast4?.Length != IbanLast4Length)
         {
             throw new DomainException(
-                "IBAN is invalid.");
+                "IBAN display suffix is invalid.");
         }
 
-        return normalizedIban;
-    }
-
-    private static bool IsIbanStructureValid(
-        string iban)
-    {
-        if (iban.Length < 15)
-        {
-            return false;
-        }
-
-        for (int index = 0; index < iban.Length; index++)
-        {
-            char character = iban[index];
-
-            if (index < 2)
-            {
-                if (character is < 'A' or > 'Z')
-                {
-                    return false;
-                }
-            }
-            else if (index < 4)
-            {
-                if (character is < '0' or > '9')
-                {
-                    return false;
-                }
-            }
-            else if (character is (< 'A' or > 'Z') and (< '0' or > '9'))
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    private static bool PassesMod97Check(
-        string iban)
-    {
-        string rearranged =
-            string.Concat(
-                iban.AsSpan(4),
-                iban.AsSpan(0, 4));
-
-        int remainder = 0;
-
-        foreach (char character in rearranged)
-        {
-            int value =
-                char.IsDigit(character)
-                    ? character - '0'
-                    : character - 'A' + 10;
-
-            remainder =
-                character is (>= 'A' and <= 'Z')
-                    ? (remainder * 100 + value) % 97
-                    : (remainder * 10 + value) % 97;
-        }
-
-        return remainder == 1;
+        return ibanLast4;
     }
 }
 

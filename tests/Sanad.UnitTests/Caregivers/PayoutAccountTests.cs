@@ -7,18 +7,20 @@ namespace Sanad.UnitTests.Caregivers;
 public sealed class PayoutAccountTests
 {
     [Fact]
-    public void Create_ShouldNormalizeDetailsAndStartPending()
+    public void Create_ShouldStoreCiphertextAndExposeOnlyLastFour()
     {
         CaregiverPayoutAccount account =
             CaregiverPayoutAccount.Create(
                 new CaregiverId(Guid.CreateVersion7()),
                 "  Mohamed Ahmed  ",
                 "nbe",
-                "gb29 nwbk 6016 1331 9268 19");
+                "v1.k1.ciphertext",
+                "6819");
 
         Assert.Equal("Mohamed Ahmed", account.AccountHolderName);
         Assert.Equal("NBE", account.BankCode);
-        Assert.Equal("GB29NWBK60161331926819", account.Iban);
+        Assert.Equal("v1.k1.ciphertext", account.IbanCiphertext);
+        Assert.Equal("6819", account.IbanLast4);
         Assert.Equal(PayoutAccountStatus.Pending, account.Status);
         Assert.Null(account.RejectionReason);
     }
@@ -31,28 +33,10 @@ public sealed class PayoutAccountTests
                 new CaregiverId(Guid.CreateVersion7()),
                 "Mohamed Ahmed",
                 "NBE",
-                "DE89370400440532013000");
+                "v1.k1.ciphertext",
+                "3000");
 
         Assert.Equal("****3000", account.MaskedIban());
-        Assert.DoesNotContain("DE89", account.MaskedIban());
-    }
-
-    [Theory]
-    [InlineData("GB29NWBK60161331926818")]
-    [InlineData("NBE123")]
-    [InlineData("123456789012345")]
-    [InlineData("")]
-    [InlineData("   ")]
-    [InlineData("GB29NWBK6016133192681912345678901234567890")]
-    public void Create_ShouldRejectInvalidIban(
-        string? iban)
-    {
-        Assert.Throws<DomainException>(
-            () => CaregiverPayoutAccount.Create(
-                new CaregiverId(Guid.CreateVersion7()),
-                "Mohamed Ahmed",
-                "NBE",
-                iban!));
     }
 
     [Theory]
@@ -67,7 +51,8 @@ public sealed class PayoutAccountTests
                 new CaregiverId(Guid.CreateVersion7()),
                 accountHolderName!,
                 "NBE",
-                "GB29NWBK60161331926819"));
+                "v1.k1.ciphertext",
+                "6819"));
     }
 
     [Theory]
@@ -82,27 +67,64 @@ public sealed class PayoutAccountTests
                 new CaregiverId(Guid.CreateVersion7()),
                 "Mohamed Ahmed",
                 bankCode!,
-                "GB29NWBK60161331926819"));
+                "v1.k1.ciphertext",
+                "6819"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Create_ShouldRejectMissingCiphertext(
+        string? ibanCiphertext)
+    {
+        Assert.Throws<DomainException>(
+            () => CaregiverPayoutAccount.Create(
+                new CaregiverId(Guid.CreateVersion7()),
+                "Mohamed Ahmed",
+                "NBE",
+                ibanCiphertext!,
+                "6819"));
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("681")]
+    [InlineData("68190")]
+    public void Create_ShouldRejectInvalidDisplaySuffix(
+        string? ibanLast4)
+    {
+        Assert.Throws<DomainException>(
+            () => CaregiverPayoutAccount.Create(
+                new CaregiverId(Guid.CreateVersion7()),
+                "Mohamed Ahmed",
+                "NBE",
+                "v1.k1.ciphertext",
+                ibanLast4!));
     }
 
     [Fact]
-    public void UpdateDetails_ShouldReturnAccountToPending()
+    public void UpdateDetails_ShouldReplaceCiphertextAndReturnToPending()
     {
         CaregiverPayoutAccount account =
             CaregiverPayoutAccount.Create(
                 new CaregiverId(Guid.CreateVersion7()),
                 "Mohamed Ahmed",
                 "NBE",
-                "GB29NWBK60161331926819");
+                "v1.k1.old",
+                "6819");
 
         account.UpdateDetails(
             "Mohamed A. Hassan",
             "cib",
-            "DE89370400440532013000");
+            "v1.k1.new",
+            "3000");
 
         Assert.Equal("Mohamed A. Hassan", account.AccountHolderName);
         Assert.Equal("CIB", account.BankCode);
-        Assert.Equal("DE89370400440532013000", account.Iban);
+        Assert.Equal("v1.k1.new", account.IbanCiphertext);
+        Assert.Equal("****3000", account.MaskedIban());
         Assert.Equal(PayoutAccountStatus.Pending, account.Status);
         Assert.Null(account.RejectionReason);
     }

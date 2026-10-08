@@ -11,6 +11,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="IbanNet" />
+  </ItemGroup>
+
+  <ItemGroup>
     <InternalsVisibleTo Include="Sanad.UnitTests" />
   </ItemGroup>
   

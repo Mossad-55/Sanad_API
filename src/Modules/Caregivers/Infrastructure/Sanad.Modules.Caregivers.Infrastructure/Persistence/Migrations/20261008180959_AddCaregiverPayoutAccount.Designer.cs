@@ -12,7 +12,7 @@ using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CaregiversDbContext))]
-    [Migration("20261008165929_AddCaregiverPayoutAccount")]
+    [Migration("20261008180959_AddCaregiverPayoutAccount")]
     partial class AddCaregiverPayoutAccount
     {
         /// <inheritdoc />
@@ -108,11 +108,16 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on_utc");
 
-                    b.Property<string>("Iban")
+                    b.Property<string>("IbanCiphertext")
                         .IsRequired()
-                        .HasMaxLength(34)
-                        .HasColumnType("character varying(34)")
-                        .HasColumnName("iban");
+                        .HasColumnType("text")
+                        .HasColumnName("iban_ciphertext");
+
+                    b.Property<string>("IbanLast4")
+                        .IsRequired()
+                        .HasMaxLength(4)
+                        .HasColumnType("character varying(4)")
+                        .HasColumnName("iban_last4");
 
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(500)

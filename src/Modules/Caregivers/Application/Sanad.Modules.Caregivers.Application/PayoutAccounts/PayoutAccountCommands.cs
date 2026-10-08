@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
+using Sanad.Modules.Caregivers.Application.Abstractions.Security;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 
 namespace Sanad.Modules.Caregivers.Application.PayoutAccounts;
@@ -34,6 +35,11 @@ public static class PayoutAccountErrors
         new(
             "Caregivers.PayoutAccount.InactiveBank",
             "The bank is not active.");
+
+    public static readonly Error ProtectionUnavailable =
+        new(
+            "Caregivers.PayoutAccount.ProtectionUnavailable",
+            "Payout account protection is temporarily unavailable.");
 }
 
 public sealed record CaregiverPayoutAccountResponse(
@@ -134,11 +140,14 @@ public sealed class UpdateCaregiverPayoutAccountCommandHandler :
         CaregiverPayoutAccountResponse>
 {
     private readonly ICaregiversDbContext _dbContext;
+    private readonly IIbanProtector _ibanProtector;
 
     public UpdateCaregiverPayoutAccountCommandHandler(
-        ICaregiversDbContext dbContext)
+        ICaregiversDbContext dbContext,
+        IIbanProtector ibanProtector)
     {
         _dbContext = dbContext;
+        _ibanProtector = ibanProtector;
     }
 
     public async Task<Result<CaregiverPayoutAccountResponse>> Handle(
@@ -183,32 +192,46 @@ public sealed class UpdateCaregiverPayoutAccountCommandHandler :
                 a => a.CaregiverId == caregiver.Id,
                 cancellationToken);
 
-        try
+        if (!IbanValidation.TryNormalizeIban(
+                request.Iban,
+                out string normalizedIban,
+                out _))
         {
-            if (account is null)
-            {
-                account = CaregiverPayoutAccount.Create(
-                    caregiver.Id,
-                    request.AccountHolderName,
-                    request.BankCode,
-                    request.Iban);
-
-                _dbContext.PayoutAccounts.Add(account);
-            }
-            else
-            {
-                account.UpdateDetails(
-                    request.AccountHolderName,
-                    request.BankCode,
-                    request.Iban);
-            }
-        }
-        catch (Sanad.BuildingBlocks.Domain.Exceptions.DomainException)
-        {
-            // Holder name and bank code already passed validation;
-            // a domain failure here means an invalid IBAN.
             return Result<CaregiverPayoutAccountResponse>.Failure(
                 PayoutAccountErrors.InvalidIban);
+        }
+
+        string envelope;
+        try
+        {
+            envelope = _ibanProtector.Protect(normalizedIban);
+        }
+        catch (IbanProtectionException)
+        {
+            return Result<CaregiverPayoutAccountResponse>.Failure(
+                PayoutAccountErrors.ProtectionUnavailable);
+        }
+
+        string ibanLast4 = normalizedIban[^4..];
+
+        if (account is null)
+        {
+            account = CaregiverPayoutAccount.Create(
+                caregiver.Id,
+                request.AccountHolderName,
+                request.BankCode,
+                envelope,
+                ibanLast4);
+
+            _dbContext.PayoutAccounts.Add(account);
+        }
+        else
+        {
+            account.UpdateDetails(
+                request.AccountHolderName,
+                request.BankCode,
+                envelope,
+                ibanLast4);
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
