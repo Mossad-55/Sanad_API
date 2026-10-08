@@ -2,7 +2,7 @@
   "info": {
     "_postman_id": "b3f1c2a4-0001-4a10-care-ops-000000000001",
     "name": "Sanad App — Caregiver operations",
-    "description": "Availability read, caregiver-owned earnings, medication tasks, and help-request lifecycle. State-changing requests require disposable fixtures.",
+    "description": "Availability read, caregiver-owned earnings, medication tasks, help-request lifecycle, and payout account. State-changing requests require disposable fixtures.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -31,6 +31,10 @@
       { "name": "Decline help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Outside current care scope\"\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/decline" } },
       { "name": "Start help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/start" } },
       { "name": "Resolve help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Request completed\"\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/resolve" } }
+    ] },
+    { "name": "05. Payout account", "item": [
+      { "name": "Get payout account", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/payout-account" }, "description": "CaregiverAccess and self-only. Returns the masked IBAN; 404 when no account was saved." },
+      { "name": "Update payout account", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"accountHolderName\": \"Mohamed Ahmed\",\n  \"bankCode\": \"NBE\",\n  \"iban\": \"EG380019000500000000263180002\"\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/payout-account" }, "description": "CaregiverAccess and self-only. Upserts and returns Pending with a masked IBAN. Bank code must be active; IBAN must pass checksum validation. State-changing: disposable fixture only." }
     ] }
   ]
 }

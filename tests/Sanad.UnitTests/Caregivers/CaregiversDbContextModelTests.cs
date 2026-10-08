@@ -67,6 +67,21 @@ public sealed class CaregiversDbContextModelTests
     }
 
     [Fact]
+    public void Model_ShouldMapPayoutAccountWithUniqueCaregiver()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(CaregiverPayoutAccount));
+
+        Assert.NotNull(entityType);
+        Assert.Equal("caregiver_payout_accounts", entityType!.GetTableName());
+        Assert.Contains(entityType!.GetIndexes(),
+            index => index.IsUnique && index.Properties.Count == 1
+                && index.Properties[0].Name == "CaregiverId");
+    }
+
+    [Fact]
     public void Model_ShouldMapCityGovernorateForeignKey()
     {
         using CaregiversDbContext dbContext = CreateDbContext();
