@@ -2,7 +2,7 @@
 
 ## Current repository state — 2026-10-08
 
-HC-035 and the accumulated Care Homes changes have been committed and pushed to `main` (feature commit `7588688`, merge commit `f8c17e3`; later documentation sync `df3598c`). The dedicated Care Homes worktree was removed after verifying its private runtime/publish artifacts against the primary checkout. 33 untracked local HC-023 Bruno scratch requests were reviewed and removed as redundant/ad hoc helpers; the checked-in Bruno collection remains unchanged. Work directly on `main`; other pre-existing worktrees are unrelated and were not changed. No implementation slice is active. The owner is defining the new workflow before the next slice starts. Historical execution notes below remain evidence; their old next-action statements do not supersede this current state.
+HC-035 and the accumulated Care Homes changes are committed and pushed to `main` (feature commit `7588688`, merge commit `f8c17e3`; documentation sync `df3598c`). The 2026-10-08 license-eligibility follow-up is committed and pushed as `f9fdc35`. The dedicated Care Homes worktree was removed after verifying its private runtime/publish artifacts against the primary checkout. 33 untracked local HC-023 Bruno scratch requests were reviewed as redundant/ad hoc helpers; the checked-in Bruno collection remains unchanged. Work directly on `main`; other pre-existing worktrees are unrelated and were not changed. No implementation slice is active. The next action is to agree a bounded scope for remaining facility/gallery media and review lifecycle notifications. Historical execution notes below remain evidence; their old next-action statements do not supersede this current state.
 
 ### License eligibility follow-up — 2026-10-08
 
