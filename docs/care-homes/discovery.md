@@ -22,6 +22,11 @@ an expired, rejected, or otherwise unusable replacement therefore cannot be
 bypassed by an older document. Newer drafts and unapproved revisions are not
 public.
 
+Family checkout rechecks this same approved-revision and current-Cairo-date
+eligibility before creating a booking or capacity hold. A direct checkout for an
+expired or otherwise ineligible facility returns the same not-found result used
+for an unknown facility; existing stays remain readable and are not cancelled.
+
 Summaries expose the ID, bilingual name and description, governorate, city,
 area, and the minimum monthly EGP price among non-archived room types. Zero is
 a valid price; a facility with no active room types remains listed with a null

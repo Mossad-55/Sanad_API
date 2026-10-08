@@ -54,8 +54,6 @@ internal static class CareHomeDiscoveryErrors
 
 internal sealed class CareHomeDiscoveryReader(ICareHomesDbContext db, IDateTimeProvider clock)
 {
-    private static readonly TimeZoneInfo CairoTimeZone = ResolveCairoTimeZone();
-
     internal IQueryable<CareHomeFacility> EligibleQuery(DateOnly today)
     {
         IQueryable<CareHomeFacility> query = db.Facilities.AsNoTracking()
@@ -120,24 +118,13 @@ internal sealed class CareHomeDiscoveryReader(ICareHomesDbContext db, IDateTimeP
         return facilities.Select(facility => TryCreate(facility, roomTypes.Where(x => x.FacilityId == facility.Id), today)!).ToList();
     }
 
-    private DateOnly CurrentCairoDate() => DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(clock.UtcNow, CairoTimeZone));
+    private DateOnly CurrentCairoDate() => CareHomePublicEligibility.CairoDate(clock.UtcNow);
 
     private static CareHomePublicRecord? TryCreate(CareHomeFacility facility, IEnumerable<CareHomeRoomType> roomTypes, DateOnly today)
     {
-        CareHomeProfileRevision? revision = facility.Revisions.SingleOrDefault(x => x.Id == facility.ApprovedRevisionId && x.ApprovedOnUtc != null);
-        if (revision is null)
+        if (!CareHomePublicEligibility.IsEligible(facility, today))
             return null;
-
-        foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
-        {
-            CareHomeDocument? latest = facility.Documents
-                .Where(x => x.ProfileRevisionId == revision.Id && x.Type == type)
-                .OrderByDescending(x => x.CreatedOnUtc)
-                .ThenByDescending(x => x.Id)
-                .FirstOrDefault();
-            if (latest is null || !latest.IsUsableOn(today))
-                return null;
-        }
+        CareHomeProfileRevision revision = facility.Revisions.Single(x => x.Id == facility.ApprovedRevisionId && x.ApprovedOnUtc != null);
 
         var activeRoomTypes = roomTypes.Where(x => !x.IsArchived).ToArray();
         CareHomeDiscoverySummary summary = new(
@@ -146,6 +133,34 @@ internal sealed class CareHomeDiscoveryReader(ICareHomesDbContext db, IDateTimeP
             revision.Governorate, revision.City, revision.Area,
             activeRoomTypes.Length == 0 ? null : activeRoomTypes.Min(x => x.MonthlyPriceEgp));
         return new CareHomePublicRecord(facility.Id.Value, summary, revision, activeRoomTypes);
+    }
+
+}
+
+internal static class CareHomePublicEligibility
+{
+    private static readonly TimeZoneInfo CairoTimeZone = ResolveCairoTimeZone();
+
+    internal static DateOnly CairoDate(DateTime utcNow) =>
+        DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(utcNow, CairoTimeZone));
+
+    internal static bool IsEligible(CareHomeFacility facility, DateOnly today)
+    {
+        if (facility.Status != CareHomeStatus.Approved || facility.ApprovedRevisionId is not Guid approvedRevisionId ||
+            !facility.Revisions.Any(revision => revision.Id == approvedRevisionId && revision.ApprovedOnUtc is not null))
+            return false;
+
+        foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
+        {
+            CareHomeDocument? latest = facility.Documents
+                .Where(document => document.ProfileRevisionId == approvedRevisionId && document.Type == type)
+                .OrderByDescending(document => document.CreatedOnUtc)
+                .ThenByDescending(document => document.Id)
+                .FirstOrDefault();
+            if (latest is null || !latest.IsUsableOn(today))
+                return false;
+        }
+        return true;
     }
 
     private static TimeZoneInfo ResolveCairoTimeZone()

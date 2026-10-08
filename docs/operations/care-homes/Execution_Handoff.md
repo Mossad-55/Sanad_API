@@ -1,8 +1,8 @@
 # Care homes — execution mastermind handoff
 
-## Current handoff — 2026-10-07
+## Current handoff — 2026-10-08
 
-HC-035 and the accumulated Care Homes changes are merged and pushed (`7588688` feature commit; `f8c17e3` merge commit; `df3598c` documentation sync). The dedicated Care Homes worktree was removed after verifying its private runtime/publish artifacts against the primary checkout. 33 untracked local HC-023 Bruno scratch requests were reviewed and removed as redundant/ad hoc helpers; the checked-in Bruno collection remains unchanged. Work directly on `main`; other pre-existing worktrees are unrelated and were not changed. No implementation slice is active. **Next action:** agree the simplified workflow with the owner before starting another slice. Historical checkpoints below preserve their original results and should not be treated as current next-action instructions. The current task state is in [Care_Homes_Tasks.md](Care_Homes_Tasks.md).
+HC-035 and accumulated Care Homes changes are pushed (`7588688` feature commit; `f8c17e3` merge commit; `df3598c` documentation sync). On 2026-10-08, checkout was updated to enforce the same approved-revision, latest-required-document, Cairo-date eligibility as discovery. Focused booking lifecycle tests passed 21/21 and the solution build passed with 0 warnings/errors. No Bruno, API, database, fixture, provider, or production activity occurred. Work remains directly on `main`; an unrelated pre-existing `.codex/config.toml` modification was preserved. HC-010/012/014 are marked Done; HC-011 remains open for facility/gallery media/field-limit closeout, and HC-013 remains open for review lifecycle notifications. **Next action:** agree and approve a bounded scope for the remaining media and review-notification work before starting another implementation slice. Historical checkpoints below preserve their original results and should not be treated as current next-action instructions. The current task state is in [Care_Homes_Tasks.md](Care_Homes_Tasks.md).
 
 ### HC-TASK-035 completion evidence — 2026-10-07
 

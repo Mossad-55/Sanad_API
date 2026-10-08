@@ -61,6 +61,40 @@ public sealed class CareHomeBookingLifecycleTests
     }
 
     [Fact]
+    public async Task Checkout_rejects_facility_with_expired_latest_operating_license_without_creating_booking()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db, new DateOnly(2026, 10, 2));
+        CareHomeRoomType type = await AddBookableRoomType(db, facility);
+
+        var result = await CreateCheckoutHandler(db).Handle(new CheckoutCareHomeBookingCommand(
+            UserId.New(), FamilyId.New(), Intake(), facility.Id.Value, type.Id,
+            new DateOnly(2026, 10, 5), Now), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.NotFound", result.Error.Code);
+        Assert.Empty(db.Bookings);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("2026-10-03")]
+    public async Task Checkout_accepts_current_or_verified_non_expiring_operating_license(string? expiryText)
+    {
+        await using var db = CreateBookingDb();
+        DateOnly? expiry = expiryText is null ? null : DateOnly.Parse(expiryText);
+        CareHomeFacility facility = AddApprovedFacility(db, expiry);
+        CareHomeRoomType type = await AddBookableRoomType(db, facility);
+
+        var result = await CreateCheckoutHandler(db).Handle(new CheckoutCareHomeBookingCommand(
+            UserId.New(), FamilyId.New(), Intake(), facility.Id.Value, type.Id,
+            new DateOnly(2026, 10, 5), Now), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Single(db.Bookings);
+    }
+
+    [Fact]
     public async Task Confirm_payment_handler_uses_shortened_development_decision_hold()
     {
         await using var db = CreateBookingDb();
@@ -363,6 +397,9 @@ public sealed class CareHomeBookingLifecycleTests
     private static CareHomesDbContext CreateBookingDb() =>
         new(new DbContextOptionsBuilder<CareHomesDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
+    private static CheckoutHandler CreateCheckoutHandler(CareHomesDbContext db) =>
+        new(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard());
+
     private static PaymobBillingData Billing() => new("Fixture", "Family", "family@test.local", "+201000000000");
 
     private static ElderlyIntakeResolution Intake() => new(
@@ -370,18 +407,36 @@ public sealed class CareHomeBookingLifecycleTests
         new ElderlyIntakeMedicalProjection("Unknown", null, null, [], [], [], null),
         new ElderlyIntakeResponsibleContact("Contact", "+201000000000", null), null);
 
-    private static CareHomeFacility AddApprovedFacility(CareHomesDbContext db)
+    private static async Task<CareHomeRoomType> AddBookableRoomType(CareHomesDbContext db, CareHomeFacility facility)
+    {
+        CareHomeRoomType type = CareHomeRoomType.Create(facility.Id, "Room", "Room", 12000m, CareHomeAllocationMode.Private, Now);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "101", Now);
+        CareHomeBed.Create(facility.Id, room.Id, "A", Now);
+        db.RoomTypes.Add(type);
+        db.Rooms.Add(room);
+        await db.SaveChangesAsync();
+        return type;
+    }
+
+    private static CareHomeFacility AddApprovedFacility(CareHomesDbContext db, DateOnly? licenseExpiry = null)
     {
         UserId owner = UserId.New();
         UserId admin = UserId.New();
         var facility = CareHomeFacility.CreateDraft(owner, Now);
         facility.SaveDraft(owner, facility.Version, CareHomeFacilityTests.Draft(), Now);
         foreach (CareHomeDocumentType documentType in Enum.GetValues<CareHomeDocumentType>())
-            facility.UploadDocument(owner, documentType, $"private/{documentType}.pdf", "application/pdf", 10, null, Now);
+            facility.UploadDocument(owner, documentType, $"private/{documentType}.pdf", "application/pdf", 10,
+                documentType == CareHomeDocumentType.OperatingLicense ? licenseExpiry : null, Now);
         facility.Submit(owner, facility.Version, Now);
         foreach (CareHomeDocument document in facility.Documents.ToArray())
-            facility.VerifyDocument(admin, facility.Version, document.Id, null, true, Now);
-        facility.Review(admin, facility.Version, CareHomeReviewAction.Approved, null, Now, new DateOnly(2026, 10, 3));
+        {
+            DateOnly? expiryDate = document.Type == CareHomeDocumentType.OperatingLicense ? licenseExpiry : null;
+            facility.VerifyDocument(admin, facility.Version, document.Id, expiryDate, expiryDate is null, Now);
+        }
+        DateOnly approvalDate = licenseExpiry is { } expiry && expiry < new DateOnly(2026, 10, 3)
+            ? expiry.AddDays(-1)
+            : new DateOnly(2026, 10, 3);
+        facility.Review(admin, facility.Version, CareHomeReviewAction.Approved, null, Now, approvalDate);
         db.Facilities.Add(facility);
         return facility;
     }

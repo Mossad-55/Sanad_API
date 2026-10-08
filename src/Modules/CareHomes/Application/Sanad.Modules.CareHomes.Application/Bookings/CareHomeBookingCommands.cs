@@ -7,6 +7,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Application.FamilyIntake;
+using Sanad.Modules.CareHomes.Application.Discovery;
 using Sanad.Modules.CareHomes.Application.Inventory;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
@@ -43,9 +44,12 @@ public sealed class CheckoutHandler(ICareHomesDbContext db, IPlatformChargeRuleR
     private readonly CareHomeBookingTiming _timing = timing ?? CareHomeBookingTiming.Default;
     public async Task<Result<CareHomeBookingResponse>> Handle(CheckoutCareHomeBookingCommand r, CancellationToken ct)
     {
-        var facility = await db.Facilities.AsNoTracking().SingleOrDefaultAsync(x => x.Id == new CareHomeId(r.FacilityId) && x.Status == CareHomeStatus.Approved, ct);
+        var facility = await db.Facilities.AsNoTracking()
+            .Include(x => x.Revisions).Include(x => x.Documents)
+            .SingleOrDefaultAsync(x => x.Id == new CareHomeId(r.FacilityId) && x.Status == CareHomeStatus.Approved, ct);
         var type = await db.RoomTypes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == r.RoomTypeId && x.FacilityId == new CareHomeId(r.FacilityId) && !x.IsArchived, ct);
-        if (facility is null || type is null) return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.NotFound", "The selected care home or room type was not found."));
+        if (facility is null || type is null || !CareHomePublicEligibility.IsEligible(facility, CareHomePublicEligibility.CairoDate(r.UtcNow)))
+            return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.NotFound", "The selected care home or room type was not found."));
         DateOnly end = r.StartDate.AddMonths(1);
         try { return await reservationGuard.ExecuteAsync(facility.Id, type.Id, r.StartDate, async () =>
         {
