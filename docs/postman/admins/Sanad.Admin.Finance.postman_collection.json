@@ -79,6 +79,62 @@
       ]
     },
     {
+      "name": "Caregiver payout policy (SuperAdmin or FinanceAdmin)",
+      "description": "Caregiver payout timing policy under /api/v1/admin/finance/caregiver-payout-policies. Requires the PayoutOperationalAdmin policy (SuperAdmin or FinanceAdmin); SupportAdmin and ContentAdmin are denied. No payout fee is configured here: entitlement is always the booking snapshot BaseCaregiverFee.",
+      "item": [
+        {
+          "name": "Create caregiver payout policy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payoutDelayHours\": 72,\n  \"version\": 1,\n  \"effectiveOnUtc\": \"2026-10-08T00:00:00Z\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/finance/caregiver-payout-policies"
+          },
+          "description": "Returns 201 with the new policy UUID. payoutDelayHours must be zero or more; version must exceed the latest stored payout policy version. Manual/destructive configuration request; use only on an owner-authorized disposable target."
+        },
+        {
+          "name": "Get current caregiver payout policy",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/finance/caregiver-payout-policies/current"
+          },
+          "description": "Returns 200 with the effective payout policy, or JSON null when no effective policy exists. SuperAdmin and FinanceAdmin only."
+        },
+        {
+          "name": "Get caregiver payout policy history",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/finance/caregiver-payout-policies/history"
+          },
+          "description": "Returns 200 with all payout policies ordered by descending version. SuperAdmin and FinanceAdmin only."
+        }
+      ]
+    },
+    {
       "name": "Legacy subscription-tax adapter (SuperAdmin only)",
       "description": "Compatibility routes under /api/v1/admin/subscriptions/tax-rules. They retain the existing SuperAdmin-only SubscriptionPlanAdmin policy. Use the shared Finance folder for new fee/tax configuration.",
       "item": [

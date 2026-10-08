@@ -23,6 +23,9 @@ public static class DependencyInjection
         services.AddScoped<PlatformChargeRuleReader>();
         services.AddScoped<IPlatformChargeRuleReader>(sp => sp.GetRequiredService<PlatformChargeRuleReader>());
         services.AddScoped<IPlatformChargeRuleWriter>(sp => sp.GetRequiredService<PlatformChargeRuleReader>());
+        services.AddScoped<CaregiverPayoutPolicyStore>();
+        services.AddScoped<ICaregiverPayoutPolicyReader>(sp => sp.GetRequiredService<CaregiverPayoutPolicyStore>());
+        services.AddScoped<ICaregiverPayoutPolicyWriter>(sp => sp.GetRequiredService<CaregiverPayoutPolicyStore>());
         return services;
     }
 }
