@@ -788,6 +788,8 @@ public sealed class CareHomeBookingLifecycleTests
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => inner.TransferNotificationOutbox;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeCheckInDispute> CheckInDisputes => inner.CheckInDisputes;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeProfileMedia> ProfileMedia => inner.ProfileMedia;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeVisitSettings> VisitSettings => inner.VisitSettings;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeVisit> Visits => inner.Visits;
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

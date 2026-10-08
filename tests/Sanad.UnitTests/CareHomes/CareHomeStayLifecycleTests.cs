@@ -833,6 +833,8 @@ public sealed class CareHomeStayLifecycleTests
         public DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => inner.BookingAssignmentHistory;
         public DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => inner.TransferNotificationOutbox;
         public DbSet<CareHomeProfileMedia> ProfileMedia => inner.ProfileMedia;
+        public DbSet<CareHomeVisitSettings> VisitSettings => inner.VisitSettings;
+        public DbSet<CareHomeVisit> Visits => inner.Visits;
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -864,6 +866,8 @@ public sealed class CareHomeStayLifecycleTests
         public DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => inner.BookingAssignmentHistory;
         public DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => inner.TransferNotificationOutbox;
         public DbSet<CareHomeProfileMedia> ProfileMedia => inner.ProfileMedia;
+        public DbSet<CareHomeVisitSettings> VisitSettings => inner.VisitSettings;
+        public DbSet<CareHomeVisit> Visits => inner.Visits;
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

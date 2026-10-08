@@ -111,6 +111,14 @@
     {
       "key": "inventoryRoomTypeId",
       "value": ""
+    },
+    {
+      "key": "careHomeVisitId",
+      "value": ""
+    },
+    {
+      "key": "careHomeVisitSettingsVersion",
+      "value": "0"
     }
   ],
   "item": [
@@ -1187,6 +1195,46 @@
             },
             "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc035OwnerBookingId}}/cancel",
             "description": "Accepted stay cancellation returns a full refund and records the reason."
+          }
+        }
+      ]
+    },
+    {
+      "name": "09. Care-home visits",
+      "description": "CareHomeOwnerAccess only. Schedule edits are versioned and rejected if they invalidate already reserved visits. Authored examples only; no runtime/fixture evidence claimed.",
+      "item": [
+        {
+          "name": "Read my visit settings",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/visit-settings",
+            "description": "Reads visitor capacity, operating hours, visiting windows and closure dates."
+          }
+        },
+        {
+          "name": "List my facility visits",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/care-homes/visits/mine",
+            "description": "Lists visits scoped to the authenticated facility owner."
+          }
+        },
+        {
+          "name": "Approve pending visit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approve\": true,\n  \"reason\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/visits/mine/{{careHomeVisitId}}/decision",
+            "description": "Approve a still-pending visit. Set approve false and provide a reason to reject."
           }
         }
       ]

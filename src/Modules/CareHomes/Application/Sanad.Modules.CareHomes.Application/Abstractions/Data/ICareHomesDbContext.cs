@@ -20,6 +20,8 @@ public interface ICareHomesDbContext
     DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox { get; }
     DbSet<CareHomeCheckInDispute> CheckInDisputes { get; }
     DbSet<CareHomeProfileMedia> ProfileMedia { get; }
+    DbSet<CareHomeVisitSettings> VisitSettings { get; }
+    DbSet<CareHomeVisit> Visits { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

@@ -79,6 +79,18 @@
     {
       "key": "careHomeProfileMediaId",
       "value": ""
+    },
+    {
+      "key": "careHomeVisitDate",
+      "value": ""
+    },
+    {
+      "key": "careHomeVisitStart",
+      "value": ""
+    },
+    {
+      "key": "careHomeVisitId",
+      "value": ""
     }
   ],
   "item": [
@@ -594,6 +606,41 @@
             },
             "url": "{{baseUrl}}/api/v1/family/care-home-ratings/bookings/{{careHomeBookingId}}",
             "description": "Use a disposable booking with FamilyCheckInConfirmedOnUtc set. Repeated calls update its rating without increasing review count. Source-authored; not runtime-verified."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Care-home visits",
+      "description": "Visit availability is public; requests require FamilyAccess. Use an approved facility and future Cairo-local slot with at least 24 hours notice. Authored examples only; no runtime/fixture evidence claimed.",
+      "item": [
+        {
+          "name": "Read public visit availability",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/{{careHomeFacilityId}}/visit-availability?date={{careHomeVisitDate}}&visitorCount=2",
+            "description": "Returns Cairo-local one-hour availability and remaining visitor capacity."
+          }
+        },
+        {
+          "name": "Request a prospective visit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"facilityId\": \"{{careHomeFacilityId}}\",\n  \"kind\": \"Prospective\",\n  \"elderlyId\": null,\n  \"visitorName\": \"Family contact\",\n  \"visitorPhone\": \"+201000000000\",\n  \"visitorCount\": 2,\n  \"startsAt\": \"{{careHomeVisitStart}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-visits",
+            "description": "Creates a pending request for the active Family. For resident visits use kind Resident and a Family-owned elderly ID with an active accepted and paid stay."
           }
         }
       ]

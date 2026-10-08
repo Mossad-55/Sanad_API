@@ -1,5 +1,6 @@
 using Sanad.Modules.CareHomes.Infrastructure.Bookings;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
+using Sanad.Modules.CareHomes.Infrastructure.Visits;
 using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 
@@ -12,7 +13,13 @@ public sealed class CareHomeBookingExpiryHostedService(IServiceScopeFactory scop
         using var timer = new PeriodicTimer(timing.ExpirySweepInterval);
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            try { using IServiceScope scope = scopes.CreateScope(); await CareHomeBookingExpiryService.SweepAsync(scope.ServiceProvider.GetRequiredService<CareHomesDbContext>(), scope.ServiceProvider.GetRequiredService<IPaymobClient>(), stoppingToken); }
+            try
+            {
+                using IServiceScope scope = scopes.CreateScope();
+                CareHomesDbContext db = scope.ServiceProvider.GetRequiredService<CareHomesDbContext>();
+                await CareHomeBookingExpiryService.SweepAsync(db, scope.ServiceProvider.GetRequiredService<IPaymobClient>(), stoppingToken);
+                await CareHomeVisitExpiryService.SweepAsync(db, DateTime.UtcNow, stoppingToken);
+            }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { }
             catch (Exception ex) { logger.LogError(ex, "Care-home booking expiry sweep failed."); }
         }

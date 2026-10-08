@@ -4,8 +4,10 @@ using Microsoft.Extensions.DependencyInjection;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Application.Inventory;
 using Sanad.Modules.CareHomes.Application.Bookings;
+using Sanad.Modules.CareHomes.Application.Visits;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.CareHomes.Infrastructure.Bookings;
+using Sanad.Modules.CareHomes.Infrastructure.Visits;
 
 namespace Sanad.Modules.CareHomes.Infrastructure;
 
@@ -27,6 +29,7 @@ public static class DependencyInjection
         services.AddScoped<ICareHomesDbContext>(provider => provider.GetRequiredService<CareHomesDbContext>());
         services.AddScoped<ICareHomeOccupancyProvider, CareHomeBookingOccupancyProvider>();
         services.AddScoped<ICareHomeBookingReservationGuard, CareHomeBookingReservationGuard>();
+        services.AddScoped<ICareHomeVisitReservationGuard, CareHomeVisitReservationGuard>();
         return services;
     }
 }
