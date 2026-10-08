@@ -9,5 +9,6 @@ public enum AccountType
     SuperAdmin = 5,
     ContentAdmin = 6,
     SupportAdmin = 7,
-    CareHomeOwner = 8
+    CareHomeOwner = 8,
+    FinanceAdmin = 9
 }

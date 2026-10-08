@@ -42,4 +42,5 @@ public static class AuthorizationPolicies
     public const string ElderlySosOperational = "ElderlySosOperational";
     public const string AdminNotificationOperationalRead = "AdminNotificationOperationalRead";
     public const string FinanceOperationalAdmin = "FinanceOperationalAdmin";
+    public const string PayoutOperationalAdmin = "PayoutOperationalAdmin";
 }

@@ -67,6 +67,10 @@ Requires an authenticated user with `access_type` = `Normal` and `account_type` 
 
 Requires an authenticated user with `access_type` = `Normal` and `account_type` = `SuperAdmin` or `SupportAdmin`. Applied to caregiver review routes (`/api/v1/admin/caregivers/...`): paged list, detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, and certificate file download. ContentAdmin remains limited to CMS and caregiver lookup responsibilities and receives `403` for these operational review routes.
 
+## Policy `PayoutOperationalAdmin`
+
+Requires an authenticated user with `access_type` = `Normal` and `account_type` = `SuperAdmin` or `FinanceAdmin`. Reserved for caregiver payout operations: payout-policy administration, payout-account verification, and manual payout transfer recording. `SupportAdmin` and `ContentAdmin` receive `403` on these routes; existing policies and endpoint behavior are unchanged.
+
 ## Policy `CaregiverAccess`
 
 Requires an authenticated user with:
@@ -110,8 +114,9 @@ is for account verification only, not login.
 | `6` | ContentAdmin |
 | `7` | SupportAdmin |
 | `8` | CareHomeOwner |
+| `9` | FinanceAdmin |
 
-Elderly cannot self-register and cannot share an identity with another account type.
+Elderly cannot self-register and cannot share an identity with another account type. FinanceAdmin cannot self-register; the account is provisioned by the configuration-gated `FinanceAdminSeed` seeder. Like other administrative accounts, FinanceAdmin cannot be combined with another account type on the same identity.
 
 ## Restricted versus Normal
 

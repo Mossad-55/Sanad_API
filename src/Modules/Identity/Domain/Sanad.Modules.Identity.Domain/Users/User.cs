@@ -987,7 +987,8 @@ public sealed class User : AggregateRoot<UserId>
         return accountType is
             AccountType.SuperAdmin or
             AccountType.ContentAdmin or
-            AccountType.SupportAdmin;
+            AccountType.SupportAdmin or
+            AccountType.FinanceAdmin;
     }
 
     public void AnonymizeAndDeactivate(DateTime utcNow)

@@ -63,6 +63,13 @@ public static class DependencyInjection
 
         services.AddScoped<SuperAdminSeeder>();
 
+        services.AddOptions<FinanceAdminSeedOptions>()
+            .Bind(
+                configuration.GetSection(
+                    FinanceAdminSeedOptions.SectionName));
+
+        services.AddScoped<FinanceAdminSeeder>();
+
         services.AddSingleton<
             IValidateOptions<JwtOptions>,
             JwtOptionsValidator>();
