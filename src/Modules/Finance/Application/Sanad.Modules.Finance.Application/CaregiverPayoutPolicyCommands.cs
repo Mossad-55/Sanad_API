@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.Modules.Finance.Domain;
@@ -11,7 +12,7 @@ public sealed record CaregiverPayoutPolicyHistoryItem(Guid Id, int PayoutDelayHo
 public interface ICaregiverPayoutPolicyReader
 {
     Task<CaregiverPayoutPolicyRates?> GetEffectiveAsync(DateTime utcNow, CancellationToken cancellationToken);
-    Task<IReadOnlyList<CaregiverPayoutPolicyHistoryItem>> GetHistoryAsync(CancellationToken cancellationToken);
+    Task<IReadOnlyList<CaregiverPayoutPolicyHistoryItem>> GetHistoryAsync(DateTime utcNow, CancellationToken cancellationToken);
 }
 
 public interface ICaregiverPayoutPolicyWriter
@@ -50,23 +51,24 @@ public sealed class CreateCaregiverPayoutPolicyHandler(ICaregiverPayoutPolicyWri
     }
 }
 
-public sealed class GetCurrentCaregiverPayoutPolicyHandler(IFinanceDbContext db) : IQueryHandler<GetCurrentCaregiverPayoutPolicyQuery, CaregiverPayoutPolicyResponse?>
+public sealed class GetCurrentCaregiverPayoutPolicyHandler(IFinanceDbContext db, IDateTimeProvider clock) : IQueryHandler<GetCurrentCaregiverPayoutPolicyQuery, CaregiverPayoutPolicyResponse?>
 {
     public async Task<Result<CaregiverPayoutPolicyResponse?>> Handle(GetCurrentCaregiverPayoutPolicyQuery request, CancellationToken ct)
     {
         var current = await db.CaregiverPayoutPolicies.AsNoTracking()
-            .Where(x => x.EffectiveOnUtc <= DateTime.UtcNow)
-            .OrderByDescending(x => x.Version)
+            .Where(x => x.EffectiveOnUtc <= clock.UtcNow)
+            .OrderByDescending(x => x.EffectiveOnUtc)
+            .ThenByDescending(x => x.Version)
             .FirstOrDefaultAsync(ct);
         return Result<CaregiverPayoutPolicyResponse?>.Success(
             current is null ? null : CaregiverPayoutPolicyErrors.Map(current, true));
     }
 }
 
-public sealed class GetCaregiverPayoutPolicyHistoryHandler(ICaregiverPayoutPolicyReader reader) : IQueryHandler<GetCaregiverPayoutPolicyHistoryQuery, IReadOnlyList<CaregiverPayoutPolicyResponse>>
+public sealed class GetCaregiverPayoutPolicyHistoryHandler(ICaregiverPayoutPolicyReader reader, IDateTimeProvider clock) : IQueryHandler<GetCaregiverPayoutPolicyHistoryQuery, IReadOnlyList<CaregiverPayoutPolicyResponse>>
 {
     public async Task<Result<IReadOnlyList<CaregiverPayoutPolicyResponse>>> Handle(GetCaregiverPayoutPolicyHistoryQuery request, CancellationToken ct)
-        => (await reader.GetHistoryAsync(ct))
+        => (await reader.GetHistoryAsync(clock.UtcNow, ct))
             .Select(x => new CaregiverPayoutPolicyResponse(x.Id, x.PayoutDelayHours, x.Version, x.EffectiveOnUtc, x.CreatedOnUtc, x.IsActive))
             .ToList();
 }

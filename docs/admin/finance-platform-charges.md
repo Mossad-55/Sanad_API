@@ -116,12 +116,12 @@ becomes effective automatically once reached; no transition job or stored
 flag flip runs.
 
 Active status is computed, not stored: at any moment the effective policy is
-the highest-versioned policy whose `effectiveOnUtc` has arrived (equal
-effective times resolve to the highest version). History marks exactly that
-policy active, so current and history always agree. Version numbers must keep
-increasing, which keeps this precedence total: a later-scheduled policy takes
-effect on arrival regardless of creation order. The `isActive` response field
-reports this computed status.
+the policy with the latest `effectiveOnUtc` that has arrived; equal effective
+times resolve to the highest version. History marks exactly that policy
+active, so current and history always agree. Version numbers must keep
+increasing when policies are created, while effective-time precedence allows
+a later-scheduled policy to take over when its scheduled time arrives. The
+`isActive` response field reports this computed status.
 
 Table `finance.caregiver_payout_policies` (`id`, `payout_delay_hours`,
 `version` unique, `effective_on_utc`, `created_on_utc`). Migration `AddCaregiverPayoutPolicy` is

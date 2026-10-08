@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.Modules.Finance.Application;
 using Sanad.Modules.Finance.Domain;
 using Sanad.Modules.Finance.Infrastructure;
@@ -69,8 +70,8 @@ public sealed class CaregiverPayoutPolicyTests
         await handler.Handle(new(48, 2, Utc(2)), default);
 
         var history = await new GetCaregiverPayoutPolicyHistoryHandler(
-            new CaregiverPayoutPolicyStore(db)).Handle(new(), default);
-        var current = await new GetCurrentCaregiverPayoutPolicyHandler(db).Handle(new(), default);
+            new CaregiverPayoutPolicyStore(db), new FixedClock(Utc(3))).Handle(new(), default);
+        var current = await new GetCurrentCaregiverPayoutPolicyHandler(db, new FixedClock(Utc(3))).Handle(new(), default);
 
         Assert.Equal([2, 1], history.Value.Select(x => x.Version));
         Assert.Equal([true, false], history.Value.Select(x => x.IsActive));
@@ -91,7 +92,7 @@ public sealed class CaregiverPayoutPolicyTests
         await new CreateCaregiverPayoutPolicyHandler(store).Handle(new(48, 2, FarFuture()), default);
 
         var before = await store.GetEffectiveAsync(Utc(2), default);
-        var history = await new GetCaregiverPayoutPolicyHistoryHandler(store).Handle(new(), default);
+        var history = await new GetCaregiverPayoutPolicyHistoryHandler(store, new FixedClock(Utc(2))).Handle(new(), default);
 
         Assert.NotNull(before);
         Assert.Equal(1, before!.Version);
@@ -116,7 +117,7 @@ public sealed class CaregiverPayoutPolicyTests
     }
 
     [Fact]
-    public async Task Later_scheduled_policy_takes_effect_regardless_of_version_order()
+    public async Task Latest_effective_time_takes_precedence_over_version_after_its_boundary()
     {
         await using var db = CreateContext();
         var store = new CaregiverPayoutPolicyStore(db);
@@ -126,8 +127,17 @@ public sealed class CaregiverPayoutPolicyTests
 
         // v2 is effective earlier despite the later-scheduled v1 existing.
         Assert.Equal(2, (await store.GetEffectiveAsync(Utc(4), default))!.Version);
-        // Once both are effective, the highest version wins deterministically.
-        Assert.Equal(2, (await store.GetEffectiveAsync(Utc(6), default))!.Version);
+        // At the later scheduled policy's boundary, it becomes current even though its version is lower.
+        Assert.Equal(1, (await store.GetEffectiveAsync(Utc(5), default))!.Version);
+        Assert.Equal(1, (await store.GetEffectiveAsync(Utc(6), default))!.Version);
+
+        var historyBefore = await new GetCaregiverPayoutPolicyHistoryHandler(store, new FixedClock(Utc(4))).Handle(new(), default);
+        var historyAfter = await new GetCaregiverPayoutPolicyHistoryHandler(store, new FixedClock(Utc(5))).Handle(new(), default);
+        var currentAfter = await new GetCurrentCaregiverPayoutPolicyHandler(db, new FixedClock(Utc(5))).Handle(new(), default);
+        Assert.Equal(2, historyBefore.Value.Single(x => x.IsActive).Version);
+        Assert.Equal(1, historyAfter.Value.Single(x => x.IsActive).Version);
+        Assert.Equal(1, currentAfter.Value!.Version);
+        Assert.Equal(historyAfter.Value.Single(x => x.IsActive).Id, currentAfter.Value.Id);
     }
 
     [Fact]
@@ -139,7 +149,7 @@ public sealed class CaregiverPayoutPolicyTests
         db.CaregiverPayoutPolicies.Add(CaregiverPayoutPolicy.Create(48, 2, Utc(5), Utc(1)));
         await db.SaveChangesAsync();
 
-        var history = await new GetCaregiverPayoutPolicyHistoryHandler(store).Handle(new(), default);
+        var history = await new GetCaregiverPayoutPolicyHistoryHandler(store, new FixedClock(Utc(5))).Handle(new(), default);
 
         Assert.Equal(2, (await store.GetEffectiveAsync(Utc(5), default))!.Version);
         Assert.Equal([true, false], history.Value.Select(x => x.IsActive));
@@ -173,7 +183,7 @@ public sealed class CaregiverPayoutPolicyTests
     {
         await using var db = CreateContext();
 
-        var result = await new GetCurrentCaregiverPayoutPolicyHandler(db).Handle(new(), default);
+        var result = await new GetCurrentCaregiverPayoutPolicyHandler(db, new FixedClock(Utc(2))).Handle(new(), default);
 
         Assert.True(result.IsSuccess);
         Assert.Null(result.Value);
@@ -201,4 +211,9 @@ public sealed class CaregiverPayoutPolicyTests
     private static DateTime Utc(int day) => new(2026, 10, day, 0, 0, 0, DateTimeKind.Utc);
 
     private static DateTime FarFuture() => new(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+
+    private sealed class FixedClock(DateTime utcNow) : IDateTimeProvider
+    {
+        public DateTime UtcNow { get; } = utcNow;
+    }
 }

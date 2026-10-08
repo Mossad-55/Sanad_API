@@ -9,20 +9,21 @@ public sealed class CaregiverPayoutPolicyStore(FinanceDbContext dbContext) : ICa
     {
         var policy = await dbContext.CaregiverPayoutPolicies.AsNoTracking()
             .Where(x => x.EffectiveOnUtc <= utcNow)
-            .OrderByDescending(x => x.Version)
+            .OrderByDescending(x => x.EffectiveOnUtc)
+            .ThenByDescending(x => x.Version)
             .FirstOrDefaultAsync(cancellationToken);
         return policy is null ? null : new(policy.PayoutDelayHours, policy.Version);
     }
 
-    public async Task<IReadOnlyList<CaregiverPayoutPolicyHistoryItem>> GetHistoryAsync(CancellationToken cancellationToken)
+    public async Task<IReadOnlyList<CaregiverPayoutPolicyHistoryItem>> GetHistoryAsync(DateTime utcNow, CancellationToken cancellationToken)
     {
-        var utcNow = DateTime.UtcNow;
         var policies = await dbContext.CaregiverPayoutPolicies.AsNoTracking()
             .OrderByDescending(x => x.Version)
             .ToListAsync(cancellationToken);
         Guid? currentId = policies
             .Where(x => x.EffectiveOnUtc <= utcNow)
-            .OrderByDescending(x => x.Version)
+            .OrderByDescending(x => x.EffectiveOnUtc)
+            .ThenByDescending(x => x.Version)
             .Select(x => (Guid?)x.Id)
             .FirstOrDefault();
         return policies
