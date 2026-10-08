@@ -6,7 +6,7 @@ Sanad is an Arabic/English elderly-care platform. Current agreed scope is the Ca
 
 Only this slice is planned. Future direction is Care homes → Chat → Notifications → full application UI reconciliation, not a prewritten task backlog. Family/Elderly inputs are supplied; broader caregiver requirements will be discussed separately.
 
-Current Care Homes checkpoint (2026-10-08): onboarding closeout is complete; current evidence and remaining runtime limitations are in the task checklist. The next planned implementation slice is HC-TASK-038 (facility payable ledger and manual Admin-recorded payouts). Work directly on `main`; preserve the unrelated pre-existing `.codex/config.toml` change. The checklist owns statuses and acceptance evidence.
+Current Care Homes checkpoint (2026-10-08): onboarding closeout and HC-TASK-038 payout-ledger implementation are complete; evidence and runtime limitations are in the task checklist. Remaining Care Homes tasks are listed there; agree the next task's scope with the owner before starting. Work directly on `main`; preserve the unrelated pre-existing `.codex/config.toml` change. The checklist owns statuses and acceptance evidence.
 
 ## Canonical files
 
@@ -21,7 +21,7 @@ Current Care Homes checkpoint (2026-10-08): onboarding closeout is complete; cur
 
 Backend only; no frontend changes. Include the bounded caregiver review permission fix (SuperAdmin/SupportAdmin, ContentAdmin CMS-only) and Family caregiver ratings/top-10. Do not expand caregiver bookings or other future slices.
 
-All 24 consolidated intake questions have responses; do not reopen resolved requirements. HC-TASK-038 payout eligibility/timing is resolved: manual transfer recorded by SuperAdmin/SupportAdmin only after completed stay; later post-payout refunds/reversals become facility balance owed. Map the Finance rate/configuration and existing refund records during implementation discovery; do not infer an unrecorded fee basis or initiate transfers.
+All 24 consolidated intake questions have responses; do not reopen resolved requirements. HC-TASK-038 payout eligibility/timing is implemented: manual transfer recorded by SuperAdmin/SupportAdmin only after completed stay; later post-payout refunds/reversals become facility balance owed. The owner confirmed that the payout fee after a pre-payout refund uses the remaining payable, and post-payout debt is proportional to the facility net payout for the refunded share. The migration is additive source only and remains unapplied; no provider transfer was initiated.
 
 Before any later slice is planned or developed, ask what the owner has in the application and agree its scope/tasks. Obtain explicit approval of the assembled plan before execution. Worker execution phases remain scout → implementer → test author → reviewer → documenter → mastermind verification/handoff.
 

@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Sanad Admin",
-    "description": "Admin CMS, caregiver lookups and operational caregiver review. Login as the seeded Super Admin first. Splash writes use CmsContent and lookups use CaregiversAdmin (Normal SuperAdmin or ContentAdmin). Caregiver review uses CaregiverReviewAdmin (Normal SuperAdmin or SupportAdmin); ContentAdmin is denied.",
+    "description": "Admin CMS, caregiver lookups and operational caregiver review. Includes the HC-TASK-038 Care Homes payout ledger contract (record-only manual settlement; no transfer is initiated). Login as the seeded Super Admin first. Splash writes use CmsContent and lookups use CaregiversAdmin (Normal SuperAdmin or ContentAdmin). Caregiver review and payout recording use operational Admin policies (Normal SuperAdmin or SupportAdmin); ContentAdmin is denied.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
@@ -2961,6 +2961,44 @@
       "item": [
         { "name": "Get care-home inventory", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/care-homes/inventory/admin/{{careHomeId}}" }, "description": "Returns room types, rooms, beds, maintenance and inventory version. Unknown facility returns 404 CareHomes.Inventory.NotFound." },
         { "name": "Get care-home availability", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-01-20\"\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/inventory/admin/{{careHomeId}}/availability" }, "description": "Returns derived room-type availability. Dates are Egypt-local calendar dates; end must be after start. Archived assets, maintenance and supplied active occupancy are excluded. The current occupancy provider is empty until HC-TASK-032/034." }
+      ]
+    },
+    {
+      "name": "21. Care Homes payout ledger (manual record only)",
+      "description": "HC-TASK-038. CareHomesOperationalAdmin (SuperAdmin/SupportAdmin) only. A bank transfer must already have been performed outside Sanad; these requests only record/read ledger state and never initiate provider transfers. Use only an authorized disposable fixture. The migration source is generated but not applied and no Bruno run is claimed.",
+      "item": [
+        {
+          "name": "Read payout ledger",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/payouts/ledger?facilityId={{careHomeId}}",
+            "description": "Returns checked-out paid/refunded bookings, remaining payable, effective Finance payout-fee rate, net amount, recorded transfer metadata, and outstanding facility debt. An eligible payable requires an effective Finance rule; absent configuration fails closed."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('payout ledger contract', function () { pm.expect([200, 401, 403, 404, 500]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Record completed external bank transfer",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"transferReference\": \"BANK-REFERENCE\",\n  \"evidence\": \"private evidence reference\",\n  \"reason\": \"Monthly facility settlement\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/payouts/bookings/{{careHomeBookingId}}/record",
+            "description": "STATE-CHANGING: call only after the external bank transfer is complete. One payout per completed eligible stay; gross, percentage fee, net, Finance rule version, evidence/reference, actor and time are snapshotted."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('payout record contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"] } }]
+        },
+        {
+          "name": "Record confirmed post-payout refund/reversal",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"customerRefundAmount\": 575.00,\n  \"reference\": \"REFUND-OR-REVERSAL-REFERENCE\",\n  \"reason\": \"Confirmed customer refund after settlement\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/payouts/bookings/{{careHomeBookingId}}/record-reversal",
+            "description": "STATE-CHANGING: records a confirmed external refund/reversal for reconciliation; it does not issue the refund. Facility debt is proportional to the recorded net payout for the refunded share. Reference is the idempotency key."
+          },
+          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('payout reversal contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"] } }]
+        }
       ]
     }
   ]
