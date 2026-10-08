@@ -88,6 +88,9 @@ is recorded below:
 - Community: `20261005101553_InitialCommunity`
 - Care Homes: `20261008041054_AddCareHomeProfileMedia`
 - Care Homes: `20261008052316_AddCareHomePayoutLedger`
+- Care Homes: `20261008112556_AddCareHomeRatings`
+- Care Homes: `20261008122857_AddCareHomeBookingExtensions`
+- Care Homes: `20261008141359_AddCareHomeFinanceReporting`
 
 To inspect SQL without changing a database, use the module Infrastructure
 project and the API startup project:
