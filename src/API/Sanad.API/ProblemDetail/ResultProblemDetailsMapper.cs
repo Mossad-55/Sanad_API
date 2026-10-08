@@ -170,6 +170,12 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Lookups.ParentNotFound"] = 404,
             ["Caregivers.Lookups.ParentNotActive"] = 409,
 
+            ["Caregivers.PayoutAccount.NotFound"] = 404,
+            ["Caregivers.PayoutAccount.InvalidIban"] = 400,
+            ["Caregivers.PayoutAccount.UnknownBank"] = 400,
+            ["Caregivers.PayoutAccount.InactiveBank"] = 409,
+            ["Caregivers.PayoutAccount.ProtectionUnavailable"] = 503,
+
             ["Caregivers.Onboarding.AlreadyExists"] = 409,
             ["Caregivers.Onboarding.NotFound"] = 404,
             ["Caregivers.Onboarding.WrongCaregiverType"] = 409,

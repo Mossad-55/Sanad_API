@@ -47,6 +47,17 @@ public sealed class NewEndpointsAuthorizationContractTests
         Assert.Equal("FamilyAccess", GetAuthorizePolicy(typeof(DependentMedicalAccessGrantsController)));
     }
 
+    [Fact]
+    public void PayoutAccountEndpoints_RequireCaregiverAccess()
+    {
+        Assert.Equal("CaregiverAccess", GetAuthorizePolicy(typeof(CaregiverPayoutAccountController)));
+        Assert.Equal(
+            "api/v1/caregiver/payout-account",
+            typeof(CaregiverPayoutAccountController).GetCustomAttributes<RouteAttribute>().Single().Template);
+        Assert.NotNull(typeof(CaregiverPayoutAccountController).GetMethod(nameof(CaregiverPayoutAccountController.GetPayoutAccount)));
+        Assert.NotNull(typeof(CaregiverPayoutAccountController).GetMethod(nameof(CaregiverPayoutAccountController.UpdatePayoutAccount)));
+    }
+
     private static string? GetAuthorizePolicy(Type controllerType)
     {
         return controllerType.GetCustomAttributes<AuthorizeAttribute>().Single().Policy;
