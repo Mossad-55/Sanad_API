@@ -71,6 +71,7 @@ public static class ApplicationBuilderExtensions
             }
 
             SeedSuperAdmin(app);
+            SeedFinanceAdmin(app);
             SeedTestUsers(app);
         }
 
@@ -120,6 +121,21 @@ public static class ApplicationBuilderExtensions
         SuperAdminSeeder seeder =
             scope.ServiceProvider.GetRequiredService<
                 SuperAdminSeeder>();
+
+        seeder.SeedAsync()
+            .GetAwaiter()
+            .GetResult();
+    }
+
+    private static void SeedFinanceAdmin(
+        WebApplication app)
+    {
+        using IServiceScope scope =
+            app.Services.CreateScope();
+
+        FinanceAdminSeeder seeder =
+            scope.ServiceProvider.GetRequiredService<
+                FinanceAdminSeeder>();
 
         seeder.SeedAsync()
             .GetAwaiter()

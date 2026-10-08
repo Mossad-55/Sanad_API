@@ -10,6 +10,7 @@ public sealed class AdminAccountInvariantTests
     [InlineData(AccountType.SuperAdmin)]
     [InlineData(AccountType.ContentAdmin)]
     [InlineData(AccountType.SupportAdmin)]
+    [InlineData(AccountType.FinanceAdmin)]
     public void AddAccount_ShouldAllowSingleAdministrativeAccount(
         AccountType accountType)
     {
@@ -118,6 +119,48 @@ public sealed class AdminAccountInvariantTests
 
         Assert.Equal(
             AccountType.ContentAdmin,
+            account.AccountType);
+    }
+
+    [Fact]
+    public void AddAccount_ShouldRejectMixingFinanceAdminWithSupportAdmin()
+    {
+        User user =
+            CreateUser();
+
+        user.AddAccount(
+            AccountType.FinanceAdmin);
+
+        Assert.Throws<DomainException>(
+            () => user.AddAccount(
+                AccountType.SupportAdmin));
+
+        UserAccount account =
+            Assert.Single(user.Accounts);
+
+        Assert.Equal(
+            AccountType.FinanceAdmin,
+            account.AccountType);
+    }
+
+    [Fact]
+    public void AddAccount_ShouldRejectFinanceAdmin_WhenUserHasAppAccount()
+    {
+        User user =
+            CreateUser();
+
+        user.AddAccount(
+            AccountType.Family);
+
+        Assert.Throws<DomainException>(
+            () => user.AddAccount(
+                AccountType.FinanceAdmin));
+
+        UserAccount account =
+            Assert.Single(user.Accounts);
+
+        Assert.Equal(
+            AccountType.Family,
             account.AccountType);
     }
 

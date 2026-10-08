@@ -273,6 +273,13 @@ public static class DependencyInjection
                 policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
             });
 
+            options.AddPolicy(AuthorizationPolicies.PayoutOperationalAdmin, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.FinanceAdmin.ToString());
+            });
+
             options.AddPolicy(
                 AuthorizationPolicies.SubscriptionPlanAdmin,
                 policy =>
