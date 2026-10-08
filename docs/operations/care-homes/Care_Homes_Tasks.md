@@ -236,7 +236,7 @@ Historical runtime addendum (2026-10-04; superseded by latest checkpoint above):
 ## Notifications and documentation
 
 - [ ] HC-TASK-060 — In progress: onboarding/review and license-expiry alerts are implemented in-app/email, with no SMS. Booking, payment/refund, dispute, and other Admin event categories remain tracked by their owning tasks.
-- [ ] HC-TASK-061 — In progress: owner and Admin guides now document profile media limits, private draft visibility, approved-revision discovery, notification recipients, and the file routes. Broader slice examples and Postman synchronization remain incomplete; no Bruno runtime was run for this change.
+- [ ] HC-TASK-061 — In progress: owner and Admin guides document profile media limits, private draft visibility, approved-revision discovery, notification recipients, and file routes. Owner Postman examples now include media upload/readback/removal with an explicit local image path; broader slice examples remain incomplete. No Bruno/Postman runtime was run for this change.
 - [ ] HC-TASK-062 — Document deferred items and unresolved blockers; update slice evidence and handoff without duplicating this checklist.
 
 ### HC-TASK-031 verified closeout update (2026-10-03)

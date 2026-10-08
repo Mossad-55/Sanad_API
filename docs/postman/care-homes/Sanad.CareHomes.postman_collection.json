@@ -15,6 +15,8 @@
     { "key": "careHomeFamilyJwt", "value": "" },
     { "key": "careHomeAdminJwt", "value": "" },
     { "key": "careHomeFacilityVersion", "value": "1" },
+    { "key": "careHomeProfileMediaId", "value": "" },
+    { "key": "careHomeProfileImagePath", "value": "" },
     { "key": "careHomeDiscoveryId", "value": "" },
     { "key": "careHomeDiscoveryUnknownId", "value": "" },
     { "key": "expectedCareHomeEnglishName", "value": "" },
@@ -161,6 +163,31 @@
           "name": "Read back uploaded document metadata",
           "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine" },
           "event": [{ "listen": "test", "script": { "exec": ["pm.test('document metadata is readable by its owner', () => pm.response.to.have.status(200));", "if (pm.response.code === 200) { pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version); pm.test('license is pending review', () => pm.expect(pm.response.json().documents.some(d => d.type === 1 && d.status === 1)).to.eql(true)); }"] } }]
+        },
+        {
+          "name": "Upload private gallery image",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": { "mode": "formdata", "formdata": [
+              { "key": "expectedVersion", "value": "{{careHomeFacilityVersion}}", "type": "text" },
+              { "key": "kind", "value": "2", "type": "text" },
+              { "key": "file", "type": "file", "src": "{{careHomeProfileImagePath}}" }
+            ] },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/media",
+            "description": "Choose a local JPG/PNG no larger than 5 MB in careHomeProfileImagePath. Draft media stays private until the revision is approved."
+          },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('private profile image upload succeeds', () => pm.response.to.have.status(200));", "if (pm.response.code === 200) { const media = pm.response.json(); pm.collectionVariables.set('careHomeProfileMediaId', media.id); pm.test('gallery image metadata is returned', () => { pm.expect(media.kind).to.eql(2); pm.expect(media.contentType).to.be.oneOf(['image/jpeg', 'image/png']); pm.expect(media.length).to.be.at.most(5242880); }); }"] } }]
+        },
+        {
+          "name": "Read back private gallery metadata",
+          "request": { "method": "GET", "header": [], "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine" },
+          "event": [{ "listen": "test", "script": { "exec": ["pm.test('owner can read uploaded gallery metadata', () => pm.response.to.have.status(200));", "if (pm.response.code === 200) { const body = pm.response.json(); pm.collectionVariables.set('careHomeFacilityVersion', body.version); pm.test('uploaded media is present in owner profile', () => pm.expect(body.profileMedia.some(m => m.id === pm.collectionVariables.get('careHomeProfileMediaId'))).to.eql(true)); }"] } }]
+        },
+        {
+          "name": "Remove private gallery image",
+          "request": { "method": "DELETE", "header": [], "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/media/{{careHomeProfileMediaId}}?expectedVersion={{careHomeFacilityVersion}}" },
+          "description": "State-changing example: use a newly uploaded image and the current facility version."
         }
       ]
     },
