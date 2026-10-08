@@ -6,7 +6,7 @@ Sanad is an Arabic/English elderly-care platform. Current agreed scope is the Ca
 
 Only this slice is planned. Future direction is Care homes → Chat → Notifications → full application UI reconciliation, not a prewritten task backlog. Family/Elderly inputs are supplied; broader caregiver requirements will be discussed separately.
 
-Current Care Homes checkpoint (2026-10-08): HC-TASK-050 is implemented and committed as `43a382c`; push/remote verification is pending. The read-only Admin expiring-license view and docs/Postman are complete; focused tests passed 3/3 and the final solution build passed with 0 warnings/errors. Include the `.codex/config.toml` newline-only edit in the commit per owner direction. No migration, database/runtime, production, or deployment activity.
+Current Care Homes checkpoint (2026-10-08): HC-TASK-050 is implemented as `43a382c`, with closeout in `bd7fe2f`; both are pushed to `origin/main`, which matches HEAD. The read-only Admin expiring-license view and docs/Postman are complete; focused tests passed 3/3 and the final solution build passed with 0 warnings/errors. The `.codex/config.toml` newline-only edit is included in the implementation commit. No migration, database/runtime, production, or deployment activity.
 
 ## Canonical files
 

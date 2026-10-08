@@ -2,7 +2,7 @@
 
 ## Current state — 2026-10-08
 
-HC-TASK-040 visits are implemented and verified under the owner-approved scope, committed as `ec040e6`, and pushed to `origin/main`. HC-TASK-050 is implemented and committed as `43a382c` on `main`, with `.codex/config.toml` included; push/remote verification is pending. Focused tests passed 3/3, final solution build passed with 0 warnings/errors, and Admin guide/Postman are synchronized. See the [Care Homes checklist](operations/care-homes/Care_Homes_Tasks.md) and [execution handoff](operations/care-homes/Execution_Handoff.md).
+HC-TASK-040 visits are implemented and verified under the owner-approved scope, committed as `ec040e6`, and pushed to `origin/main`. HC-TASK-050 is implemented and committed as `43a382c` on `main`, with `.codex/config.toml` included. Closeout commit `bd7fe2f` is pushed; `origin/main` matches HEAD. Focused tests passed 3/3, final solution build passed with 0 warnings/errors, and Admin guide/Postman are synchronized. See the [Care Homes checklist](operations/care-homes/Care_Homes_Tasks.md) and [execution handoff](operations/care-homes/Execution_Handoff.md).
 
 The checkout-eligibility follow-up `f9fdc35`, onboarding media/notifications `283a564`, documentation/Postman sync `e856a99`, and verification follow-up `f364268` are pushed to `main`. Work remains directly on `D:/Sanad_API` `main`; preserve the unrelated pre-existing `.codex/config.toml` change. No production change or deployment is authorized by this handoff.
 
