@@ -31,8 +31,8 @@ public static class CaregiverPayoutPolicyErrors
     public static readonly Error Conflict = new("Finance.PayoutPolicy.Conflict", "The payout policy configuration changed concurrently.");
     public static readonly Error Missing = new("Finance.PayoutPolicy.Missing", "No effective caregiver payout policy exists.");
 
-    public static CaregiverPayoutPolicyResponse Map(CaregiverPayoutPolicy x) =>
-        new(x.Id, x.PayoutDelayHours, x.Version, x.EffectiveOnUtc, x.CreatedOnUtc, x.IsActive);
+    public static CaregiverPayoutPolicyResponse Map(CaregiverPayoutPolicy x, bool isActive) =>
+        new(x.Id, x.PayoutDelayHours, x.Version, x.EffectiveOnUtc, x.CreatedOnUtc, isActive);
 }
 
 public sealed class CreateCaregiverPayoutPolicyHandler(ICaregiverPayoutPolicyWriter writer) : ICommandHandler<CreateCaregiverPayoutPolicyCommand, Guid>
@@ -53,12 +53,20 @@ public sealed class CreateCaregiverPayoutPolicyHandler(ICaregiverPayoutPolicyWri
 public sealed class GetCurrentCaregiverPayoutPolicyHandler(IFinanceDbContext db) : IQueryHandler<GetCurrentCaregiverPayoutPolicyQuery, CaregiverPayoutPolicyResponse?>
 {
     public async Task<Result<CaregiverPayoutPolicyResponse?>> Handle(GetCurrentCaregiverPayoutPolicyQuery request, CancellationToken ct)
-        => Map(await db.CaregiverPayoutPolicies.AsNoTracking().Where(x => x.EffectiveOnUtc <= DateTime.UtcNow).OrderByDescending(x => x.Version).FirstOrDefaultAsync(ct));
-    private static CaregiverPayoutPolicyResponse? Map(CaregiverPayoutPolicy? x) => x is null ? null : CaregiverPayoutPolicyErrors.Map(x);
+    {
+        var current = await db.CaregiverPayoutPolicies.AsNoTracking()
+            .Where(x => x.EffectiveOnUtc <= DateTime.UtcNow)
+            .OrderByDescending(x => x.Version)
+            .FirstOrDefaultAsync(ct);
+        return Result<CaregiverPayoutPolicyResponse?>.Success(
+            current is null ? null : CaregiverPayoutPolicyErrors.Map(current, true));
+    }
 }
 
-public sealed class GetCaregiverPayoutPolicyHistoryHandler(IFinanceDbContext db) : IQueryHandler<GetCaregiverPayoutPolicyHistoryQuery, IReadOnlyList<CaregiverPayoutPolicyResponse>>
+public sealed class GetCaregiverPayoutPolicyHistoryHandler(ICaregiverPayoutPolicyReader reader) : IQueryHandler<GetCaregiverPayoutPolicyHistoryQuery, IReadOnlyList<CaregiverPayoutPolicyResponse>>
 {
     public async Task<Result<IReadOnlyList<CaregiverPayoutPolicyResponse>>> Handle(GetCaregiverPayoutPolicyHistoryQuery request, CancellationToken ct)
-        => (await db.CaregiverPayoutPolicies.AsNoTracking().OrderByDescending(x => x.Version).ToListAsync(ct)).Select(x => CaregiverPayoutPolicyErrors.Map(x)).ToList();
+        => (await reader.GetHistoryAsync(ct))
+            .Select(x => new CaregiverPayoutPolicyResponse(x.Id, x.PayoutDelayHours, x.Version, x.EffectiveOnUtc, x.CreatedOnUtc, x.IsActive))
+            .ToList();
 }

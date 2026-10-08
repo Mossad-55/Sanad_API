@@ -111,13 +111,20 @@ version/active changes return `409 Finance.PayoutPolicy.Conflict`.
 The current route returns the effective policy, or JSON `null` when no
 effective policy exists — payout processing must fail closed in that case and
 never assume a default delay. History returns all stored policies ordered by
-descending version. A future `effectiveOnUtc` is retained for scheduling but
-is not effective until reached. Creating an immediately-effective policy
-deactivates the previous active one; only one policy is active at a time.
+descending version. A future `effectiveOnUtc` is retained for scheduling and
+becomes effective automatically once reached; no transition job or stored
+flag flip runs.
+
+Active status is computed, not stored: at any moment the effective policy is
+the highest-versioned policy whose `effectiveOnUtc` has arrived (equal
+effective times resolve to the highest version). History marks exactly that
+policy active, so current and history always agree. Version numbers must keep
+increasing, which keeps this precedence total: a later-scheduled policy takes
+effect on arrival regardless of creation order. The `isActive` response field
+reports this computed status.
 
 Table `finance.caregiver_payout_policies` (`id`, `payout_delay_hours`,
-`version` unique, `effective_on_utc`, `created_on_utc`, `is_active` with a
-single-active partial unique index). Migration `AddCaregiverPayoutPolicy` is
+`version` unique, `effective_on_utc`, `created_on_utc`). Migration `AddCaregiverPayoutPolicy` is
 authored only and must not be applied except on an explicitly authorized
 database. No seed policy is committed; the first effective policy comes only
 from the Admin create route.

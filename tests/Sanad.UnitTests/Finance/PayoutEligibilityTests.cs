@@ -80,5 +80,14 @@ public sealed class PayoutEligibilityTests
         Assert.Null(result.EligibleAfterUtc);
     }
 
+    [Fact]
+    public void Evaluate_ShouldFailClosed_WhenDelayOverflows()
+    {
+        var result = PayoutEligibility.Evaluate(Utc(1), Utc(1), int.MaxValue, Utc(10));
+
+        Assert.False(result.IsEligible);
+        Assert.Null(result.EligibleAfterUtc);
+    }
+
     private static DateTime Utc(int day) => new(2026, 10, day, 0, 0, 0, DateTimeKind.Utc);
 }

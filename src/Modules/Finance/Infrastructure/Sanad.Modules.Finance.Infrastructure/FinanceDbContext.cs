@@ -45,9 +45,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             builder.Property(x => x.Version).HasColumnName("version").IsRequired();
             builder.Property(x => x.EffectiveOnUtc).HasColumnName("effective_on_utc").IsRequired();
             builder.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
-            builder.Property(x => x.IsActive).HasColumnName("is_active").IsRequired();
             builder.HasIndex(x => x.Version).IsUnique().HasDatabaseName("ux_caregiver_payout_policy_version");
-            builder.HasIndex(x => x.IsActive).HasFilter("\"is_active\" = TRUE").IsUnique().HasDatabaseName("ux_caregiver_payout_policy_active");
         });
     }
 }
