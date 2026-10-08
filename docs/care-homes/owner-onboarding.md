@@ -55,7 +55,7 @@ Errors: `400 CareHomes.Facility.InvalidProfile` for field limits, `404 CareHomes
 
 Fields: `expectedVersion` (current facility version), `type` (`1` operating license, `2` registration, `3` health certificate, `4` civil-defense certificate), optional `expiryDate` (`YYYY-MM-DD`), and `file`. The upload is accepted only for the caller's editable draft/correction. Content is checked server-side by file signature and MIME type; accepted files are PDF/JPG/PNG up to 10 MiB. A replacement creates a new private document row; prior revision/document evidence is retained. The response is `200 OK` with the new document's ID, type, revision, nullable expiry, `PendingReview` state, and timestamps; the facility version increments.
 
-The owner read endpoint returns document metadata only. It never returns the private storage key or file content. Private file retrieval and document verification/rejection are Admin operations and will be documented under `docs/admin` when implemented.
+The owner read endpoint returns document metadata only. It never returns the private storage key or file content. Private file retrieval and document verification/rejection are Admin operations documented in [the Admin Care Homes guide](../admin/care-homes.md).
 
 Errors: `400 CareHomes.Document.InvalidContent` or `Storage.File.*` for unsupported/mismatched/empty/oversized files, `404 CareHomes.Document.FacilityNotFound`, `409 CareHomes.Document.Conflict` for stale version or a non-editable state, and `401/403` for authentication/account-policy failures.
 

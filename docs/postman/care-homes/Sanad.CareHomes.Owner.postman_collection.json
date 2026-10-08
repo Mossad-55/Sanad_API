@@ -1236,6 +1236,60 @@
             "url": "{{baseUrl}}/api/v1/care-homes/visits/mine/{{careHomeVisitId}}/decision",
             "description": "Approve a still-pending visit. Set approve false and provide a reason to reject."
           }
+        },
+        {
+          "name": "Reject pending visit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"approve\": false, \"reason\": \"Unable to host at this time\" }"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/visits/mine/{{careHomeVisitId}}/decision",
+            "description": "Rejects a still-pending request. A nonblank reason is required."
+          }
+        },
+        {
+          "name": "Cancel facility visit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"reason\": \"Facility schedule changed\" }"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/visits/mine/{{careHomeVisitId}}/cancel",
+            "description": "Cancels a visit before its start time."
+          }
+        },
+        {
+          "name": "Update visit settings",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": 1,\n  \"visitorCapacity\": 4,\n  \"operatingHours\": [{ \"day\": \"Monday\", \"startTime\": \"09:00\", \"endTime\": \"17:00\" }],\n  \"visitingWindows\": [{ \"day\": \"Monday\", \"startTime\": \"10:00\", \"endTime\": \"16:00\" }],\n  \"closures\": []\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/visit-settings",
+            "description": "Replaces versioned schedule settings. Use the current expectedVersion; changes that invalidate reserved visits are rejected."
+          }
         }
       ]
     }
