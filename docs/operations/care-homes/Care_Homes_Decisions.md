@@ -68,8 +68,12 @@ This document consolidates owner-confirmed Care homes behavior from the operator
 - V1 includes booking payments/refunds, receipts, revenue dashboard data, and exports. Include internal booking notes. Defer legal-support integration, notification-test controls, resident wallet, and advanced preventive maintenance.
 - Admin review and oversight include application queue, submitted details/private documents, revision history, approve/reject/request-correction, suspend/reactivate, expiring-license queue, booking/payment/refund inspection, check-in dispute handling, and failed-refund follow-up.
 - SuperAdmin and SupportAdmin perform these operational actions with authorization checks and reasons. ContentAdmin remains CMS-only.
-- Caregiver review currently grants ContentAdmin access in the existing implementation. Include the bounded correction to grant SuperAdmin and SupportAdmin instead, with focused regression tests; do not expand caregiver booking work.
+- Caregiver review must grant operational access to SuperAdmin and SupportAdmin, not ContentAdmin; the bounded correction is recorded complete under HC-TASK-053 (consolidated with HC-052), with focused regression tests and role scenarios. Do not expand caregiver booking work.
 - Notifications are in-app and email only. No SMS notification channel is in scope. Include booking, review, license, payment, refund, and relevant Admin events through existing supported infrastructure.
+
+## HC-TASK-051 Admin inspection proposal
+
+The owner confirms no Care Homes Admin booking/payment/refund screens currently exist and requests a recommended navigation, filtering, and analysis design. On 2026-10-08 the owner approved the bounded backend plan in [the task checklist](Care_Homes_Tasks.md): Admin navigation recommendation (Overview, Bookings, Refunds & disputes; payouts separate), read-only list/detail, operational Admin policy, and reuse of existing read models and financial contracts. The implemented list filters, response projection, and privacy exclusions are API design choices for the approved read surface; existing dashboard/revenue, receipts/notes, disputes, refund recovery, payout ledger, and shared Finance rules remain authoritative. No new financial or resident-wallet behavior is approved.
 
 ## Execution contract details — inspect existing conventions first
 
