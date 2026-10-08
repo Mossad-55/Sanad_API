@@ -85,6 +85,8 @@ public static class ResultProblemDetailsMapper
             ["CareHomes.Bookings.PaymentConflict"] = 409,
             ["CareHomes.Bookings.ChargesNotConfigured"] = 503,
             ["CareHomes.Bookings.RefundNotRetryable"] = 409,
+            ["CareHomes.Bookings.InvalidNote"] = 400,
+            ["CareHomes.Revenue.InvalidRange"] = 400,
             ["CareHomes.Bookings.InvalidAssignment"] = 400,
             ["CareHomes.Bookings.AssignmentConflict"] = 409,
             ["CareHomes.Bookings.InvalidTransferDate"] = 400,

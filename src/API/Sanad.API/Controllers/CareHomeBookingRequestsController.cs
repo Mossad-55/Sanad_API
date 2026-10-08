@@ -40,4 +40,20 @@ public sealed class CareHomeBookingRequestsController(ISender sender, IDateTimeP
 
     [HttpGet("{bookingId:guid}/operational")]
     public async Task<IActionResult> Operational(Guid bookingId, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new GetOwnerCareHomeBookingOperationalQuery(actor, bookingId, clock.UtcNow), ct)) : Unauthorized();
+
+    [HttpGet("{bookingId:guid}/receipt")]
+    public async Task<IActionResult> Receipt(Guid bookingId, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor)
+        ? ToActionResult(await sender.Send(new GetOwnerCareHomeReceiptQuery(actor, bookingId), ct)) : Unauthorized();
+
+    [HttpGet("{bookingId:guid}/internal-notes")]
+    public async Task<IActionResult> Notes(Guid bookingId, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor)
+        ? ToActionResult(await sender.Send(new GetOwnerCareHomeInternalBookingNotesQuery(actor, bookingId), ct)) : Unauthorized();
+
+    [HttpPost("{bookingId:guid}/internal-notes")]
+    public async Task<IActionResult> AddNote(Guid bookingId, [FromBody] AddCareHomeInternalNoteRequest request, CancellationToken ct) =>
+        TryGetAuthenticatedUserId(out UserId actor)
+            ? ToActionResult(await sender.Send(new AddOwnerCareHomeInternalBookingNoteCommand(actor, bookingId, request.Text, clock.UtcNow), ct))
+            : Unauthorized();
 }
+
+public sealed record AddCareHomeInternalNoteRequest(string Text);

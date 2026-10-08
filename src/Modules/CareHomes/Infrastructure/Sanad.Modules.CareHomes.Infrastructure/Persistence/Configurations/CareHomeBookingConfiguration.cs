@@ -29,6 +29,7 @@ public sealed class CareHomeBookingConfiguration : IEntityTypeConfiguration<Care
         b.Property(x => x.RefundFailureReason).HasColumnName("refund_failure_reason").HasMaxLength(2000);
         b.Property(x => x.RefundCompletedOnUtc).HasColumnName("refund_completed_on_utc");
         b.Property(x => x.RefundCompletedBy).HasConversion(x => x.HasValue ? x.Value.Value : (Guid?)null, x => x.HasValue ? new UserId(x.Value) : (UserId?)null).HasColumnName("refund_completed_by");
+        b.Property(x => x.PaymentCompletedOnUtc).HasColumnName("payment_completed_on_utc");
         b.Property(x => x.EarliestArrivalUtc).HasColumnName("earliest_arrival_utc");
         b.Property(x => x.PaymentIntentClaimedOnUtc).HasColumnName("payment_intent_claimed_on_utc");
         b.Property(x => x.PaymentIntentMethod).HasColumnName("payment_intent_method");

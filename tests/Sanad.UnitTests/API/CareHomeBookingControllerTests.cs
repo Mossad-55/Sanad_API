@@ -39,6 +39,25 @@ public sealed class CareHomeBookingControllerTests
         Assert.Equal("{bookingId:guid}/operational", controller.GetMethod(nameof(CareHomeBookingRequestsController.Operational))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
         Assert.Equal("{bookingId:guid}/assignment/transfer", controller.GetMethod(nameof(CareHomeBookingRequestsController.Transfer))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
         Assert.Equal("{bookingId:guid}/cancel", controller.GetMethod(nameof(CareHomeBookingRequestsController.Cancel))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
+        Assert.Equal("{bookingId:guid}/receipt", controller.GetMethod(nameof(CareHomeBookingRequestsController.Receipt))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Equal("{bookingId:guid}/internal-notes", controller.GetMethod(nameof(CareHomeBookingRequestsController.Notes))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Equal("{bookingId:guid}/internal-notes", controller.GetMethod(nameof(CareHomeBookingRequestsController.AddNote))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
+    }
+
+    [Fact]
+    public void Finance_and_note_routes_use_owner_and_operational_admin_policies()
+    {
+        var owner = typeof(CareHomeFinanceController);
+        Assert.Equal(AuthorizationPolicies.CareHomeOwnerAccess, Assert.Single(owner.GetCustomAttributes<AuthorizeAttribute>()).Policy);
+        Assert.Equal("api/v1/care-homes", Assert.Single(owner.GetCustomAttributes<RouteAttribute>()).Template);
+        Assert.Equal("dashboard/mine", owner.GetMethod(nameof(CareHomeFinanceController.Dashboard))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Equal("revenue/mine", owner.GetMethod(nameof(CareHomeFinanceController.Revenue))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Equal("revenue/mine/export.csv", owner.GetMethod(nameof(CareHomeFinanceController.Export))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
+
+        var admin = typeof(AdminCareHomeFinanceController);
+        Assert.Equal(AuthorizationPolicies.CareHomesOperationalAdmin, Assert.Single(admin.GetCustomAttributes<AuthorizeAttribute>()).Policy);
+        Assert.Equal("api/v1/admin/care-homes", Assert.Single(admin.GetCustomAttributes<RouteAttribute>()).Template);
+        Assert.Equal("bookings/{bookingId:guid}/internal-notes", admin.GetMethod(nameof(AdminCareHomeFinanceController.AddNote))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
     }
 
     [Fact]
@@ -107,6 +126,8 @@ public sealed class CareHomeBookingControllerTests
     [InlineData("CareHomes.Bookings.CapacityConflict", 409)]
     [InlineData("CareHomes.Bookings.PaymentConflict", 409)]
     [InlineData("CareHomes.Bookings.ChargesNotConfigured", 503)]
+    [InlineData("CareHomes.Bookings.InvalidNote", 400)]
+    [InlineData("CareHomes.Revenue.InvalidRange", 400)]
     [InlineData("CareHomes.Bookings.InvalidTransferDate", 400)]
     [InlineData("CareHomes.Bookings.TransferConflict", 409)]
     [InlineData("CareHomes.Bookings.RefundNotRetryable", 409)]

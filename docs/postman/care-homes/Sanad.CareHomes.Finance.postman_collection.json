@@ -1,0 +1,41 @@
+{
+  "info": {
+    "_postman_id": "f1b37125-bce5-4c2a-93f3-950f10f7be37",
+    "name": "Sanad Care Homes — Finance and Notes (HC-037)",
+    "description": "HC-037 receipt, dashboard, revenue, CSV export, and internal-note examples. Owner calls use careHomeOwnerJwt; Admin calls use accessToken. Examples are authored, not runtime evidence.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5235" },
+    { "key": "careHomeOwnerJwt", "value": "" },
+    { "key": "accessToken", "value": "" },
+    { "key": "careHomeBookingId", "value": "" },
+    { "key": "careHomeFacilityId", "value": "" },
+    { "key": "from", "value": "2026-10-01" },
+    { "key": "to", "value": "2026-10-31" }
+  ],
+  "item": [
+    {
+      "name": "Facility Owner",
+      "item": [
+        { "name": "Receipt", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/receipt" } },
+        { "name": "Dashboard", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/care-homes/dashboard/mine?from={{from}}&to={{to}}" } },
+        { "name": "Revenue and transactions", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/care-homes/revenue/mine?from={{from}}&to={{to}}" } },
+        { "name": "Revenue CSV", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/care-homes/revenue/mine/export.csv?from={{from}}&to={{to}}" } },
+        { "name": "List internal notes", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/internal-notes" } },
+        { "name": "Append internal note", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"text\": \"Follow up with the facility team.\"\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/internal-notes" } }
+      ]
+    },
+    {
+      "name": "Operational Admin",
+      "item": [
+        { "name": "Receipt", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{careHomeBookingId}}/receipt" } },
+        { "name": "Dashboard", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/admin/care-homes/dashboard?facilityId={{careHomeFacilityId}}&from={{from}}&to={{to}}" } },
+        { "name": "Revenue and transactions", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/admin/care-homes/revenue?facilityId={{careHomeFacilityId}}&from={{from}}&to={{to}}" } },
+        { "name": "Revenue CSV", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/admin/care-homes/revenue/export.csv?facilityId={{careHomeFacilityId}}&from={{from}}&to={{to}}" } },
+        { "name": "List internal notes", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{careHomeBookingId}}/internal-notes" } },
+        { "name": "Append internal note", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"text\": \"Review the refund reference.\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{careHomeBookingId}}/internal-notes" } }
+      ]
+    }
+  ]
+}

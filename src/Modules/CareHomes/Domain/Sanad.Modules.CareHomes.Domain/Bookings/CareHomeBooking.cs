@@ -120,6 +120,7 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
     public string? CareNeedsNotes { get; private set; }
     public string MerchantReference { get; private set; } = string.Empty;
     public long? PaymobTransactionId { get; private set; }
+    public DateTime? PaymentCompletedOnUtc { get; private set; }
     public string? RefundReference { get; private set; }
     public DateTime? RefundClaimedOnUtc { get; private set; }
     public CareHomeRefundStatus RefundStatus { get; private set; }
@@ -215,6 +216,7 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
         if (PaymentStatus == CareHomeBookingPaymentStatus.Paid && PaymobTransactionId == transactionId) return;
         if (PaymentStatus == CareHomeBookingPaymentStatus.Paid && PaymobTransactionId != transactionId)
             throw new InvalidOperationException("CareHomes.Bookings.PaymentConflict");
+        PaymentCompletedOnUtc ??= utcNow;
         if (Status is not CareHomeBookingStatus.PendingPayment || CheckoutHoldUntilUtc <= utcNow)
         {
             PaymentStatus = CareHomeBookingPaymentStatus.Paid;
