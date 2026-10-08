@@ -136,6 +136,44 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
         return document;
     }
 
+    public CareHomeProfileRevision PrepareProfileMediaRevision(UserId actorUserId, int expectedVersion, DateTime utcNow)
+    {
+        EnsureOwner(actorUserId);
+        EnsureVersion(expectedVersion);
+        EnsureUtc(utcNow);
+        if (Status is CareHomeStatus.PendingReview or CareHomeStatus.Suspended)
+            throw new DomainException("Profile media cannot be changed while the facility is under review or suspended.");
+
+        CareHomeProfileRevision? editable = _revisions.LastOrDefault(revision => !revision.IsFrozen);
+        if (editable is not null)
+            return editable;
+
+        CareHomeProfileRevision? source = ApprovedRevisionId is Guid approvedId
+            ? _revisions.SingleOrDefault(revision => revision.Id == approvedId)
+            : _revisions.OrderByDescending(revision => revision.RevisionNumber).FirstOrDefault();
+        if (source is null)
+            throw new DomainException("Save a profile draft before adding facility media.");
+
+        editable = CareHomeProfileRevision.Create(_revisions.Count + 1, actorUserId, source.ToDraft(), utcNow);
+        _revisions.Add(editable);
+        UpdatedOnUtc = utcNow;
+        Version++;
+        return editable;
+    }
+
+    public void RecordProfileMediaChange(UserId actorUserId, int expectedVersion, DateTime utcNow)
+    {
+        EnsureOwner(actorUserId);
+        EnsureVersion(expectedVersion);
+        EnsureUtc(utcNow);
+        if (Status is CareHomeStatus.PendingReview or CareHomeStatus.Suspended)
+            throw new DomainException("Profile media cannot be changed while the facility is under review or suspended.");
+        if (!_revisions.Any(revision => !revision.IsFrozen))
+            throw new DomainException("An editable profile revision is required for facility media.");
+        UpdatedOnUtc = utcNow;
+        Version++;
+    }
+
     public void Submit(UserId actorUserId, int expectedVersion, DateTime utcNow)
     {
         EnsureOwner(actorUserId);

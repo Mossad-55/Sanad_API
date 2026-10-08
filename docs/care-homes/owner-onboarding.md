@@ -59,6 +59,14 @@ The owner read endpoint returns document metadata only. It never returns the pri
 
 Errors: `400 CareHomes.Document.InvalidContent` or `Storage.File.*` for unsupported/mismatched/empty/oversized files, `404 CareHomes.Document.FacilityNotFound`, `409 CareHomes.Document.Conflict` for stale version or a non-editable state, and `401/403` for authentication/account-policy failures.
 
+## Manage facility cover and gallery media
+
+`POST /api/v1/care-homes/facilities/mine/media` (`multipart/form-data`)
+
+Fields: `expectedVersion`, `kind` (`1` cover, `2` gallery), and `file`. Images must be actual JPG or PNG content and no larger than 5 MB. A revision can contain one cover and up to ten gallery images. Uploads are stored privately and increment the facility version. `DELETE /api/v1/care-homes/facilities/mine/media/{mediaId}?expectedVersion={version}` removes an image from the editable draft/correction revision and also increments the version. Stale versions and non-editable revisions are rejected; drafts do not become public when changed.
+
+`GET /api/v1/care-homes/facilities/mine/media/{mediaId}/file` reads the owner's image. Admin review uses `GET /api/v1/admin/care-homes/{careHomeId}/media/{mediaId}/file`. Public discovery emits cover/gallery URLs only for the approved revision, served by `GET /api/v1/care-homes/discovery/{careHomeId}/media/{mediaId}`. Draft and pending media remain private. The generic `/files` static route does not serve private storage keys.
+
 ## Submit the application
 
 `POST /api/v1/care-homes/facilities/mine/submit`
@@ -73,6 +81,6 @@ Submission is the validation boundary. The current draft must contain the requir
 
 ## Current lifecycle boundary
 
-This API slice exposes owner draft editing, private document upload/replacement, and submission. Admin review and private-file inspection are documented separately under `docs/admin/care-homes.md`. A replacement upload remains `PendingReview` until Admin verification; it does not restore approval or booking eligibility by itself. License-expiry alerts are produced by the Admin-side daily UTC-midnight monitor described in the Admin guide. Public discovery/detail and checkout eligibility are documented in `docs/care-homes/discovery.md`; checkout rechecks current license eligibility, while existing stays remain unchanged. Private documents use storage outside the public/static file route. Submission and review are covered by the existing Bruno/Postman requests; HC-TASK-014 adds no HTTP route and therefore no collection request.
+This API slice exposes owner draft editing, private document and image uploads, and submission. Admin review and private-file inspection are documented separately under `docs/admin/care-homes.md`. Submission and each review decision produce idempotent in-app/email status notifications: the owner receives status changes; active SuperAdmin/SupportAdmin accounts receive submission and correction events. No SMS is sent. A document replacement remains `PendingReview` until Admin verification; it does not restore approval or booking eligibility by itself. License-expiry alerts are produced by the Admin-side daily UTC-midnight monitor described in the Admin guide. Public discovery/detail and checkout eligibility are documented in `docs/care-homes/discovery.md`; checkout rechecks current license eligibility, while existing stays remain unchanged. Private documents and draft images cannot be served through the generic public/static file route.
 
 Runnable requests: `docs/postman/care-homes/Sanad.CareHomes.postman_collection.json` and `tests/Bruno/collections/Sanad/care-homes-onboarding`.

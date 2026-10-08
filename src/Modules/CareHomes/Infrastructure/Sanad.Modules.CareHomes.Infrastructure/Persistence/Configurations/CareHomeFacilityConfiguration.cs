@@ -138,6 +138,25 @@ public sealed class CareHomeReviewHistoryConfiguration : IEntityTypeConfiguratio
     }
 }
 
+public sealed class CareHomeProfileMediaConfiguration : IEntityTypeConfiguration<CareHomeProfileMedia>
+{
+    public void Configure(EntityTypeBuilder<CareHomeProfileMedia> builder)
+    {
+        builder.ToTable("profile_media");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+        builder.Property(x => x.ProfileRevisionId).HasColumnName("profile_revision_id").IsRequired();
+        builder.Property(x => x.Kind).HasColumnName("kind").HasConversion<int>().IsRequired();
+        builder.Property(x => x.Position).HasColumnName("position").IsRequired();
+        builder.Property(x => x.StorageKey).HasColumnName("storage_key").HasMaxLength(500).IsRequired();
+        builder.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(100).IsRequired();
+        builder.Property(x => x.Length).HasColumnName("length").IsRequired();
+        builder.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
+        builder.HasOne<CareHomeProfileRevision>().WithMany().HasForeignKey(x => x.ProfileRevisionId).OnDelete(DeleteBehavior.Cascade);
+        builder.HasIndex(x => new { x.ProfileRevisionId, x.Kind, x.Position }).IsUnique();
+    }
+}
+
 internal static class CareHomeInventoryConfiguration
 {
     internal static void ConfigureFacility<TEntity>(EntityTypeBuilder<TEntity> builder) where TEntity : class => builder.Property<CareHomeId>("FacilityId").HasConversion(x => x.Value, x => new CareHomeId(x)).HasColumnName("care_home_id").IsRequired();

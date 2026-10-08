@@ -161,6 +161,7 @@ public static class ApplicationBuilderExtensions
 
         Directory.CreateDirectory(root);
 
+        app.UseMiddleware<PrivateStorageRequestGuard>();
         app.UseStaticFiles(
             new StaticFileOptions
             {
@@ -168,5 +169,19 @@ public static class ApplicationBuilderExtensions
                     new PhysicalFileProvider(root),
                 RequestPath = "/files"
             });
+    }
+}
+
+public sealed class PrivateStorageRequestGuard : IMiddleware
+{
+    public Task InvokeAsync(HttpContext context, RequestDelegate next)
+    {
+        if (context.Request.Path.StartsWithSegments("/files/private", StringComparison.OrdinalIgnoreCase))
+        {
+            context.Response.StatusCode = StatusCodes.Status404NotFound;
+            return Task.CompletedTask;
+        }
+
+        return next(context);
     }
 }

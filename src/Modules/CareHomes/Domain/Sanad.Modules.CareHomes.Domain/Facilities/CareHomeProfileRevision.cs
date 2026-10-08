@@ -66,6 +66,11 @@ public sealed class CareHomeProfileRevision : Entity<Guid>
     public IReadOnlyList<BilingualCareHomeItem> MedicalServices { get; private set; } = [];
     public bool IsFrozen => SubmittedOnUtc is not null;
 
+    internal CareHomeProfileDraft ToDraft() => new(
+        ArabicName, EnglishName, ArabicDescription, EnglishDescription, ContactName, ContactPhone,
+        ContactEmail, Governorate, City, Area, Address, ArabicAdmissionConditions,
+        EnglishAdmissionConditions, Amenities, MedicalServices);
+
     internal static CareHomeProfileRevision Create(
         int revisionNumber,
         UserId actorUserId,

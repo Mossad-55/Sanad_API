@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
@@ -16,7 +17,11 @@ public sealed record CareHomeOwnerProfile(
     Guid? ApprovedRevisionId,
     CareHomeProfileDraft? Draft,
     IReadOnlyList<CareHomeDocumentResponse> Documents,
-    IReadOnlyList<CareHomeReviewHistory> ReviewHistory);
+    IReadOnlyList<CareHomeReviewHistory> ReviewHistory,
+    IReadOnlyList<CareHomeProfileMediaResponse> ProfileMedia);
+
+public sealed record CareHomeProfileMediaResponse(Guid Id, CareHomeProfileMediaKind Kind, int Position,
+    string ContentType, long Length, Guid ProfileRevisionId, string FilePath);
 
 public sealed record CreateCareHomeFacilityCommand(UserId ActorUserId) : ICommand<CareHomeOwnerProfile>;
 public sealed record GetMyCareHomeFacilityQuery(UserId ActorUserId) : IQuery<CareHomeOwnerProfile>;
@@ -55,7 +60,7 @@ public sealed class CreateCareHomeFacilityCommandHandler(ICareHomesDbContext db)
         return Map(facility);
     }
 
-    internal static CareHomeOwnerProfile Map(CareHomeFacility facility)
+    internal static CareHomeOwnerProfile Map(CareHomeFacility facility, IReadOnlyList<CareHomeProfileMedia>? media = null)
     {
         CareHomeProfileRevision? draft = facility.Revisions.LastOrDefault(x => !x.IsFrozen);
         CareHomeProfileDraft? profile = draft is null ? null : new CareHomeProfileDraft(
@@ -67,8 +72,13 @@ public sealed class CreateCareHomeFacilityCommandHandler(ICareHomesDbContext db)
             facility.Id.Value, facility.Status, facility.Version, facility.SubmittedRevisionId,
             facility.ApprovedRevisionId, profile,
             facility.Documents.Select(UploadCareHomeDocumentCommandHandler.ToResponse).ToArray(),
-            facility.ReviewHistory.ToArray());
+            facility.ReviewHistory.ToArray(), MapMedia(media ?? []));
     }
+
+    internal static IReadOnlyList<CareHomeProfileMediaResponse> MapMedia(IEnumerable<CareHomeProfileMedia> media) =>
+        media.OrderBy(x => x.Position).Select(x => new CareHomeProfileMediaResponse(x.Id, x.Kind, x.Position,
+            x.ContentType, x.Length, x.ProfileRevisionId,
+            $"/api/v1/care-homes/facilities/mine/media/{x.Id:D}/file")).ToArray();
 }
 
 public sealed class GetMyCareHomeFacilityQueryHandler(ICareHomesDbContext db)
@@ -84,9 +94,11 @@ public sealed class GetMyCareHomeFacilityQueryHandler(ICareHomesDbContext db)
             .Include(x => x.ReviewHistory)
             .AsSplitQuery()
             .SingleOrDefaultAsync(x => x.OwnerUserId == request.ActorUserId, ct);
-        return facility is null
-            ? Result<CareHomeOwnerProfile>.Failure(NotFound)
-            : CreateCareHomeFacilityCommandHandler.Map(facility);
+        if (facility is null)
+            return Result<CareHomeOwnerProfile>.Failure(NotFound);
+        var media = await db.ProfileMedia.AsNoTracking()
+            .Where(x => facility.Revisions.Select(r => r.Id).Contains(x.ProfileRevisionId)).ToListAsync(ct);
+        return CreateCareHomeFacilityCommandHandler.Map(facility, media);
     }
 }
 
@@ -123,7 +135,9 @@ public sealed class SaveMyCareHomeProfileCommandHandler(ICareHomesDbContext db)
             return Result<CareHomeOwnerProfile>.Failure(Conflict);
         }
 
-        return CreateCareHomeFacilityCommandHandler.Map(facility);
+        var media = await db.ProfileMedia.AsNoTracking()
+            .Where(x => facility.Revisions.Select(revision => revision.Id).Contains(x.ProfileRevisionId)).ToListAsync(ct);
+        return CreateCareHomeFacilityCommandHandler.Map(facility, media);
     }
 }
 
@@ -160,6 +174,8 @@ public sealed class SubmitMyCareHomeApplicationCommandHandler(ICareHomesDbContex
             return Result<CareHomeOwnerProfile>.Failure(Conflict);
         }
 
-        return CreateCareHomeFacilityCommandHandler.Map(facility);
+        var media = await db.ProfileMedia.AsNoTracking()
+            .Where(x => facility.Revisions.Select(revision => revision.Id).Contains(x.ProfileRevisionId)).ToListAsync(ct);
+        return CreateCareHomeFacilityCommandHandler.Map(facility, media);
     }
 }

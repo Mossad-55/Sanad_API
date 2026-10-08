@@ -41,7 +41,9 @@ public sealed record CareHomeDiscoveryDetail(
     string EnglishAdmissionConditions,
     IReadOnlyList<BilingualCareHomeItem> Amenities,
     IReadOnlyList<BilingualCareHomeItem> MedicalServices,
-    IReadOnlyList<CareHomeDiscoveryRoomType> RoomTypes);
+    IReadOnlyList<CareHomeDiscoveryRoomType> RoomTypes,
+    string? CoverImageUrl,
+    IReadOnlyList<string> GalleryImageUrls);
 
 public sealed record GetCareHomeDiscoveryQuery(int Page, int PageSize) : IQuery<CareHomeDiscoveryPage>;
 public sealed record GetCareHomeDiscoveryDetailQuery(Guid CareHomeId) : IQuery<CareHomeDiscoveryDetail>;
@@ -206,6 +208,12 @@ public sealed class GetCareHomeDiscoveryDetailQueryHandler(ICareHomesDbContext d
             return Result<CareHomeDiscoveryDetail>.Failure(CareHomeDiscoveryErrors.NotFound);
 
         CareHomeProfileRevision revision = record.Revision;
+        var approvedMedia = await db.ProfileMedia.AsNoTracking()
+            .Where(x => x.ProfileRevisionId == revision.Id).OrderBy(x => x.Position).ToListAsync(ct);
+        string? coverUrl = approvedMedia.FirstOrDefault(x => x.Kind == CareHomeProfileMediaKind.Cover) is { } cover
+            ? $"/api/v1/care-homes/discovery/{record.Summary.Id:D}/media/{cover.Id:D}" : null;
+        string[] galleryUrls = approvedMedia.Where(x => x.Kind == CareHomeProfileMediaKind.Gallery)
+            .Select(x => $"/api/v1/care-homes/discovery/{record.Summary.Id:D}/media/{x.Id:D}").ToArray();
         return Result<CareHomeDiscoveryDetail>.Success(new(
             record.Summary,
             revision.Address,
@@ -215,6 +223,6 @@ public sealed class GetCareHomeDiscoveryDetailQueryHandler(ICareHomesDbContext d
             revision.MedicalServices,
             record.ActiveRoomTypes.Select(x => new CareHomeDiscoveryRoomType(
                 x.Id, x.ArabicName, x.EnglishName, x.ArabicDescription, x.EnglishDescription,
-                x.AllocationMode, x.MonthlyPriceEgp)).ToArray()));
+                x.AllocationMode, x.MonthlyPriceEgp)).ToArray(), coverUrl, galleryUrls));
     }
 }
