@@ -118,6 +118,138 @@ public sealed class CareHomeBookingLifecycleTests
     }
 
     [Fact]
+    public async Task Successful_callback_retries_after_a_concurrent_failure_and_refunds_the_late_payment()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<CareHomesDbContext>().UseInMemoryDatabase(databaseName).Options;
+        var booking = Create(new DateOnly(2026, 10, 5));
+        await using (var seed = new CareHomesDbContext(options))
+        {
+            seed.Bookings.Add(booking);
+            await seed.SaveChangesAsync();
+        }
+
+        await using var db = new CareHomesDbContext(options);
+        var competing = new ConcurrentSaveCareHomesDbContext(db, async () =>
+        {
+            await using var winner = new CareHomesDbContext(options);
+            var current = await winner.Bookings.SingleAsync(x => x.Id == booking.Id);
+            current.MarkPaymentFailed(Now.AddMinutes(1));
+            await winner.SaveChangesAsync();
+        });
+        var paymob = new FakePaymob();
+
+        var result = await new ConfirmPaymentHandler(competing, paymob).Handle(
+            new ConfirmCareHomePaymentCommand(booking.MerchantReference, 8101,
+                decimal.ToInt64(booking.TotalAmount * 100m), true, false, Now.AddMinutes(2)), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, paymob.RefundCalls);
+        await using var verify = new CareHomesDbContext(options);
+        var persisted = await verify.Bookings.SingleAsync(x => x.Id == booking.Id);
+        Assert.Equal(CareHomeBookingStatus.RefundInitiated, persisted.Status);
+        Assert.Equal(CareHomeBookingPaymentStatus.RefundInitiated, persisted.PaymentStatus);
+        Assert.Equal(8101, persisted.PaymobTransactionId);
+    }
+
+    [Fact]
+    public async Task Duplicate_late_success_after_concurrent_commit_still_submits_pending_refund()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<CareHomesDbContext>().UseInMemoryDatabase(databaseName).Options;
+        var booking = Create(new DateOnly(2026, 10, 5));
+        await using (var seed = new CareHomesDbContext(options))
+        {
+            seed.Bookings.Add(booking);
+            await seed.SaveChangesAsync();
+        }
+
+        await using var db = new CareHomesDbContext(options);
+        var competing = new ConcurrentSaveCareHomesDbContext(db, async () =>
+        {
+            await using var winner = new CareHomesDbContext(options);
+            var current = await winner.Bookings.SingleAsync(x => x.Id == booking.Id);
+            current.MarkPaid(8103, Now.AddMinutes(16));
+            await winner.SaveChangesAsync();
+        });
+        var paymob = new FakePaymob();
+
+        var result = await new ConfirmPaymentHandler(competing, paymob).Handle(
+            new ConfirmCareHomePaymentCommand(booking.MerchantReference, 8103,
+                decimal.ToInt64(booking.TotalAmount * 100m), true, false, Now.AddMinutes(17)), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, paymob.RefundCalls);
+    }
+
+    [Fact]
+    public async Task Concurrent_different_success_transaction_is_returned_as_conflict()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<CareHomesDbContext>().UseInMemoryDatabase(databaseName).Options;
+        var booking = Create(new DateOnly(2026, 10, 5));
+        await using (var seed = new CareHomesDbContext(options))
+        {
+            seed.Bookings.Add(booking);
+            await seed.SaveChangesAsync();
+        }
+
+        await using var db = new CareHomesDbContext(options);
+        var competing = new ConcurrentSaveCareHomesDbContext(db, async () =>
+        {
+            await using var winner = new CareHomesDbContext(options);
+            var current = await winner.Bookings.SingleAsync(x => x.Id == booking.Id);
+            current.MarkPaid(8102, Now.AddMinutes(1));
+            await winner.SaveChangesAsync();
+        });
+
+        var result = await new ConfirmPaymentHandler(competing, new FakePaymob()).Handle(
+            new ConfirmCareHomePaymentCommand(booking.MerchantReference, 8101,
+                decimal.ToInt64(booking.TotalAmount * 100m), true, false, Now.AddMinutes(2)), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.PaymentConflict", result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Owner_accept_losing_to_decision_expiry_returns_a_state_conflict()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+        var options = new DbContextOptionsBuilder<CareHomesDbContext>().UseInMemoryDatabase(databaseName).Options;
+        Guid bookingId = Guid.Empty;
+        UserId owner;
+        await using (var seed = new CareHomesDbContext(options))
+        {
+            var facility = AddApprovedFacility(seed);
+            owner = facility.OwnerUserId;
+            var booking = CareHomeBooking.Create(facility.Id, UserId.New(), FamilyId.New(), ElderlyId.New(),
+                Guid.NewGuid(), new DateOnly(2026, 10, 5), 100m, 0m, 0m, 1,
+                "ع", "Elderly", 75, null, "Contact", null, null, null, Now);
+            booking.MarkPaid(8200, Now.AddMinutes(1));
+            seed.Bookings.Add(booking);
+            await seed.SaveChangesAsync();
+            bookingId = booking.Id;
+        }
+
+        await using var db = new CareHomesDbContext(options);
+        var competing = new ConcurrentSaveCareHomesDbContext(db, async () =>
+        {
+            await using var winner = new CareHomesDbContext(options);
+            var current = await winner.Bookings.SingleAsync(x => x.Id == bookingId);
+            current.ExpireIfNeeded(Now.AddHours(25));
+            await winner.SaveChangesAsync();
+        });
+        var result = await new DecideHandler(competing, new FakePaymob()).Handle(
+            new DecideCareHomeBookingCommand(owner, bookingId, true, null, Now.AddHours(2)), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.InvalidState", result.Error.Code);
+        await using var verify = new CareHomesDbContext(options);
+        Assert.Equal(CareHomeBookingStatus.RefundPending,
+            (await verify.Bookings.SingleAsync(x => x.Id == bookingId)).Status);
+    }
+
+    [Fact]
     public void Create_rejects_arrival_before_the_next_Cairo_calendar_date()
     {
         Assert.Throws<ArgumentException>(() => Create(new DateOnly(2026, 10, 3)));
@@ -487,6 +619,38 @@ public sealed class CareHomeBookingLifecycleTests
             return Task.FromResult(FailRefund
                 ? Result<string?>.Failure(new Error("Paymob.RefundRejected", "temporary"))
                 : Result<string?>.Success("refund"));
+        }
+    }
+
+    private sealed class ConcurrentSaveCareHomesDbContext(
+        CareHomesDbContext inner,
+        Func<Task> competingCommit) : ICareHomesDbContext
+    {
+        private bool _raceTriggered;
+
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeFacility> Facilities => inner.Facilities;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeRoomType> RoomTypes => inner.RoomTypes;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeRoom> Rooms => inner.Rooms;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeBed> Beds => inner.Beds;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => inner.MaintenanceBlocks;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeBooking> Bookings => inner.Bookings;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeRating> Ratings => inner.Ratings;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomePayout> Payouts => inner.Payouts;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomePayoutDebt> PayoutDebts => inner.PayoutDebts;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => inner.BookingAssignmentHistory;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => inner.TransferNotificationOutbox;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeCheckInDispute> CheckInDisputes => inner.CheckInDisputes;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeProfileMedia> ProfileMedia => inner.ProfileMedia;
+
+        public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            if (!_raceTriggered)
+            {
+                _raceTriggered = true;
+                await competingCommit();
+                throw new DbUpdateConcurrencyException("Simulated competing callback commit.");
+            }
+            return await inner.SaveChangesAsync(cancellationToken);
         }
     }
 }

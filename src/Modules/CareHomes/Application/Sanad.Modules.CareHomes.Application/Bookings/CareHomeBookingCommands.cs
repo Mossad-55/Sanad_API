@@ -104,10 +104,93 @@ public sealed class PaymentIntentHandler(ICareHomesDbContext db, IPaymobClient p
 public sealed class OwnerListHandler(ICareHomesDbContext db) : IQueryHandler<ListOwnerCareHomeBookingsQuery, IReadOnlyList<CareHomeBookingListItem>>
 { public async Task<Result<IReadOnlyList<CareHomeBookingListItem>>> Handle(ListOwnerCareHomeBookingsQuery r, CancellationToken ct) { var f = await db.Facilities.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == r.Actor, ct); if (f is null) return Result<IReadOnlyList<CareHomeBookingListItem>>.Failure(new Error("CareHomes.Bookings.NotFound", "Facility was not found.")); var xs = await db.Bookings.AsNoTracking().Where(x => x.FacilityId == f.Id && x.PaymentStatus != CareHomeBookingPaymentStatus.Pending && x.PaymentStatus != CareHomeBookingPaymentStatus.Failed).OrderByDescending(x => x.CreatedOnUtc).ToListAsync(ct); return xs.Select(x => new CareHomeBookingListItem(x.Id, x.FacilityId.Value, x.RoomTypeId, x.StartDate, x.EndDate, x.Status, x.PaymentStatus, x.TotalAmount, "EGP", x.ElderlyEnglishName, x.AssignedRoomId, x.AssignedBedId, x.ActualCheckInOnUtc, x.ActualCheckOutOnUtc, x.FamilyCheckInConfirmedOnUtc, x.RefundStatus, x.RefundAmount)).ToArray(); } }
 public sealed class DecideHandler(ICareHomesDbContext db, IPaymobClient paymob) : ICommandHandler<DecideCareHomeBookingCommand, CareHomeBookingResponse>
-{ public async Task<Result<CareHomeBookingResponse>> Handle(DecideCareHomeBookingCommand r, CancellationToken ct) { var f = await db.Facilities.SingleOrDefaultAsync(x => x.OwnerUserId == r.Actor, ct); var x = f is null ? null : await db.Bookings.SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FacilityId == f.Id, ct); if (x is null) return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.NotFound", "Booking was not found.")); try { if (r.Accept) { x.Accept(r.UtcNow); await db.SaveChangesAsync(ct); } else { x.Reject(r.Reason ?? string.Empty, r.UtcNow); await db.SaveChangesAsync(ct); var refund = await CareHomeRefundProcessor.InitiateAsync(db, paymob, x, r.UtcNow, ct); if (refund.IsFailure) return Result<CareHomeBookingResponse>.Failure(refund.Error); } return CheckoutHandler.Map(x); } catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.InvalidState", ex.Message)); } } }
+{
+    public async Task<Result<CareHomeBookingResponse>> Handle(DecideCareHomeBookingCommand r, CancellationToken ct)
+    {
+        var f = await db.Facilities.SingleOrDefaultAsync(x => x.OwnerUserId == r.Actor, ct);
+        var x = f is null ? null : await db.Bookings.SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FacilityId == f.Id, ct);
+        if (x is null) return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.NotFound", "Booking was not found."));
+        try
+        {
+            if (r.Accept)
+            {
+                x.Accept(r.UtcNow);
+                await db.SaveChangesAsync(ct);
+            }
+            else
+            {
+                x.Reject(r.Reason ?? string.Empty, r.UtcNow);
+                await db.SaveChangesAsync(ct);
+                var refund = await CareHomeRefundProcessor.InitiateAsync(db, paymob, x, r.UtcNow, ct);
+                if (refund.IsFailure) return Result<CareHomeBookingResponse>.Failure(refund.Error);
+            }
+            return CheckoutHandler.Map(x);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
+        {
+            return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.InvalidState", ex.Message));
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.InvalidState", "The booking changed while the facility decision was being processed."));
+        }
+    }
+}
 
 public sealed class ConfirmPaymentHandler(ICareHomesDbContext db, IPaymobClient paymob, CareHomeBookingTiming? timing = null) : ICommandHandler<ConfirmCareHomePaymentCommand>
 {
     private readonly CareHomeBookingTiming _timing = timing ?? CareHomeBookingTiming.Default;
-    public async Task<Result> Handle(ConfirmCareHomePaymentCommand r, CancellationToken ct) { var x = await db.Bookings.SingleOrDefaultAsync(x => x.MerchantReference == r.MerchantReference, ct); if (x is null) return Result.Failure(new Error("CareHomes.Bookings.NotFound", "Booking was not found.")); if (r.AmountCents != decimal.ToInt64(decimal.Round(x.TotalAmount * 100m))) return Result.Failure(new Error("Paymob.AmountMismatch", "Payment amount does not match the booking.")); if (x.PaymentStatus == CareHomeBookingPaymentStatus.Paid && x.PaymobTransactionId == r.TransactionId) return Result.Success(); try { if (r.Success) x.MarkPaid(r.TransactionId, r.UtcNow, _timing.DecisionHoldDuration); else if (!r.Pending) x.MarkPaymentFailed(r.UtcNow); await db.SaveChangesAsync(ct); if (r.Success && x.Status == CareHomeBookingStatus.RefundPending) return await CareHomeRefundProcessor.InitiateAsync(db, paymob, x, r.UtcNow, ct); return Result.Success(); } catch (InvalidOperationException ex) when (ex.Message == "CareHomes.Bookings.PaymentConflict") { return Result.Failure(new Error("CareHomes.Bookings.PaymentConflict", "A different payment transaction is already recorded.")); } catch (DbUpdateConcurrencyException) { return Result.Success(); } }
+    public async Task<Result> Handle(ConfirmCareHomePaymentCommand r, CancellationToken ct)
+    {
+        var x = await db.Bookings.SingleOrDefaultAsync(x => x.MerchantReference == r.MerchantReference, ct);
+        if (x is null) return Result.Failure(new Error("CareHomes.Bookings.NotFound", "Booking was not found."));
+        if (r.AmountCents != decimal.ToInt64(decimal.Round(x.TotalAmount * 100m)))
+            return Result.Failure(new Error("Paymob.AmountMismatch", "Payment amount does not match the booking."));
+
+        try
+        {
+            ApplyPaymentResult(x, r);
+            await db.SaveChangesAsync(ct);
+        }
+        catch (InvalidOperationException ex) when (ex.Message == "CareHomes.Bookings.PaymentConflict")
+        {
+            return PaymentConflict();
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // Re-read the winning state before acknowledging a provider callback. A success
+            // racing a failure must still be recorded (and refunded if its hold has ended),
+            // while a different successful transaction must remain a visible conflict.
+            await db.Bookings.Entry(x).ReloadAsync(ct);
+            try
+            {
+                if (x.PaymentStatus != CareHomeBookingPaymentStatus.Paid || x.PaymobTransactionId != r.TransactionId)
+                {
+                    ApplyPaymentResult(x, r);
+                    await db.SaveChangesAsync(ct);
+                }
+            }
+            catch (InvalidOperationException ex) when (ex.Message == "CareHomes.Bookings.PaymentConflict")
+            {
+                return PaymentConflict();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result.Failure(new Error("CareHomes.Bookings.PaymentConflict", "The booking payment changed concurrently; retry the provider callback."));
+            }
+        }
+
+        if (r.Success && x.Status == CareHomeBookingStatus.RefundPending)
+            return await CareHomeRefundProcessor.InitiateAsync(db, paymob, x, r.UtcNow, ct);
+        return Result.Success();
+    }
+
+    private void ApplyPaymentResult(CareHomeBooking booking, ConfirmCareHomePaymentCommand request)
+    {
+        if (request.Success) booking.MarkPaid(request.TransactionId, request.UtcNow, _timing.DecisionHoldDuration);
+        else if (!request.Pending) booking.MarkPaymentFailed(request.UtcNow);
+    }
+
+    private static Result PaymentConflict() =>
+        Result.Failure(new Error("CareHomes.Bookings.PaymentConflict", "A different payment transaction is already recorded."));
 }
