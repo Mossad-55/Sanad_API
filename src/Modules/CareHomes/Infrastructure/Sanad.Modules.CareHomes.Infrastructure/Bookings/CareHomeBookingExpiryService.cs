@@ -14,7 +14,12 @@ public static class CareHomeBookingExpiryService
         var pending = await db.Bookings.Where(x => (x.Status == CareHomeBookingStatus.PendingPayment && x.CheckoutHoldUntilUtc <= now) || (x.Status == CareHomeBookingStatus.PaidAwaitingDecision && x.DecisionHoldUntilUtc <= now)).ToListAsync(stoppingToken);
         foreach (var booking in pending)
         {
-            booking.ExpireIfNeeded(now); await db.SaveChangesAsync(stoppingToken);
+            bool decisionExpired = booking.Status == CareHomeBookingStatus.PaidAwaitingDecision;
+            booking.ExpireIfNeeded(now);
+            if (decisionExpired && booking.Status == CareHomeBookingStatus.RefundPending)
+                CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.DecisionExpired, booking.Id, now,
+                    eventKey: CareHomeNotificationEvents.TransitionKey(booking.Id, CareHomeNotificationEvent.DecisionExpired));
+            await db.SaveChangesAsync(stoppingToken);
             if (booking.Status != CareHomeBookingStatus.RefundPending || booking.PaymobTransactionId is null) continue;
             await CareHomeRefundProcessor.InitiateAsync(db, paymob, booking, now, stoppingToken);
         }

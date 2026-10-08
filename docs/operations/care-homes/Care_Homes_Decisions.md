@@ -70,6 +70,7 @@ This document consolidates owner-confirmed Care homes behavior from the operator
 - SuperAdmin and SupportAdmin perform these operational actions with authorization checks and reasons. ContentAdmin remains CMS-only.
 - Caregiver review must grant operational access to SuperAdmin and SupportAdmin, not ContentAdmin; the bounded correction is recorded complete under HC-TASK-053 (consolidated with HC-052), with focused regression tests and role scenarios. Do not expand caregiver booking work.
 - Notifications are in-app and email only. No SMS notification channel is in scope. Include booking, review, license, payment, refund, and relevant Admin events through existing supported infrastructure.
+- HC-TASK-060 event routing (owner-approved 2026-10-09): Family receives successful-payment, facility-decision, decision-expiry, owner-cancellation, refund-completion, and dispute-resolution notices; facility owner receives a paid-booking decision request and notice of Family cancellation of a paid stay; active SuperAdmin/SupportAdmin receive failed-refund follow-up and first dispute-open notices; Family and owner both receive dispute resolution. Email is queued when an address exists; in-app is always materialized; no SMS. Failed-payment/failed-refund notices to Family, unpaid cancellation, intermediate retries, visits, ratings, payouts, internal notes, and checkout-hold expiry are excluded. Apply the same booking rules to extension segments.
 
 ## HC-TASK-051 Admin inspection proposal
 

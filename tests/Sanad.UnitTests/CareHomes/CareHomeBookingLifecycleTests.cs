@@ -8,6 +8,7 @@ using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
+using Sanad.Modules.CareHomes.Infrastructure.Bookings;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Finance.Application;
@@ -115,6 +116,53 @@ public sealed class CareHomeBookingLifecycleTests
         Assert.True(result.IsSuccess);
         Assert.Equal(Now.AddSeconds(1).AddMinutes(1), booking.DecisionHoldUntilUtc);
         Assert.Equal(CareHomeBookingStatus.PaidAwaitingDecision, booking.Status);
+        Assert.Contains(db.BookingNotificationOutbox, x => x.BookingId == booking.Id && x.EventType == CareHomeNotificationEvent.PaymentSucceeded);
+        Assert.Contains(db.BookingNotificationOutbox, x => x.BookingId == booking.Id && x.EventType == CareHomeNotificationEvent.OwnerDecisionNeeded);
+    }
+
+    [Fact]
+    public async Task Facility_acceptance_and_decision_expiry_emit_the_matching_family_events()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db);
+        var accepted = CareHomeBooking.Create(facility.Id, UserId.New(), FamilyId.New(), ElderlyId.New(), Guid.NewGuid(),
+            new DateOnly(2026, 10, 5), 100m, 0m, 0m, 1, "ع", "Elderly", 75, null, "Contact", null, null, null, Now);
+        accepted.MarkPaid(7201, Now.AddMinutes(1));
+        db.Bookings.Add(accepted);
+        await db.SaveChangesAsync();
+
+        var decision = await new DecideHandler(db, new FakePaymob()).Handle(
+            new DecideCareHomeBookingCommand(facility.OwnerUserId, accepted.Id, true, null, Now.AddMinutes(2)), default);
+        Assert.True(decision.IsSuccess);
+        Assert.Contains(db.BookingNotificationOutbox, x => x.BookingId == accepted.Id && x.EventType == CareHomeNotificationEvent.DecisionAccepted);
+
+        var expired = CareHomeBooking.Create(facility.Id, UserId.New(), FamilyId.New(), ElderlyId.New(), Guid.NewGuid(),
+            new DateOnly(2026, 10, 5), 100m, 0m, 0m, 1, "ع", "Elderly", 75, null, "Contact", null, null, null, Now);
+        expired.MarkPaid(7202, Now.AddMinutes(3), TimeSpan.FromMinutes(1));
+        db.Bookings.Add(expired);
+        await db.SaveChangesAsync();
+        await CareHomeBookingExpiryService.SweepAsync(db, new FakePaymob(), CancellationToken.None);
+
+        Assert.Contains(db.BookingNotificationOutbox, x => x.BookingId == expired.Id && x.EventType == CareHomeNotificationEvent.DecisionExpired);
+    }
+
+    [Fact]
+    public async Task Facility_cancellation_of_an_accepted_booking_emits_the_family_event()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db);
+        var booking = CareHomeBooking.Create(facility.Id, UserId.New(), FamilyId.New(), ElderlyId.New(), Guid.NewGuid(),
+            new DateOnly(2026, 10, 5), 100m, 0m, 0m, 1, "ع", "Elderly", 75, null, "Contact", null, null, null, Now);
+        booking.MarkPaid(7203, Now.AddMinutes(1));
+        booking.Accept(Now.AddMinutes(2));
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync();
+
+        var result = await new CancelOwnerCareHomeBookingHandler(db, new FakePaymob()).Handle(
+            new CancelOwnerCareHomeBookingCommand(facility.OwnerUserId, booking.Id, "Facility closure", Now.AddMinutes(3)), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Contains(db.BookingNotificationOutbox, x => x.BookingId == booking.Id && x.EventType == CareHomeNotificationEvent.OwnerCancelledAcceptedBooking);
     }
 
     [Fact]
@@ -327,6 +375,7 @@ public sealed class CareHomeBookingLifecycleTests
         Assert.Equal(CareHomeBookingStatus.RefundInitiated, extension.Status);
         Assert.Equal(extension.TotalAmount, extension.RefundAmount);
         Assert.Equal(1, paymob.RefundCalls);
+        Assert.Contains(db.BookingNotificationOutbox, x => x.BookingId == extension.Id && x.EventType == CareHomeNotificationEvent.DecisionRejected);
     }
 
     [Fact]
@@ -388,6 +437,7 @@ public sealed class CareHomeBookingLifecycleTests
         Assert.Equal(original.TotalAmount, original.RefundAmount);
         Assert.Equal(extension.TotalAmount, extension.RefundAmount);
         Assert.Equal(2, paymob.RefundCalls);
+        Assert.Contains(db.BookingNotificationOutbox, x => x.BookingId == original.Id && x.EventType == CareHomeNotificationEvent.FamilyCancelledPaidBooking);
     }
 
     [Fact]
@@ -587,6 +637,7 @@ public sealed class CareHomeBookingLifecycleTests
 
         Assert.False(cancel.IsSuccess);
         Assert.Equal(CareHomeRefundStatus.Failed, booking.RefundStatus);
+        Assert.Contains(db.BookingNotificationOutbox, x => x.BookingId == booking.Id && x.EventType == CareHomeNotificationEvent.RefundFailed);
         Assert.Equal(booking.TotalAmount, booking.RefundAmount);
         paymob.FailRefund = false;
 
@@ -600,6 +651,7 @@ public sealed class CareHomeBookingLifecycleTests
         await new CompleteCareHomeRefundCallbackHandler(db)
             .Handle(new CompleteCareHomeRefundCallbackCommand(9001, 7110, true, Now.AddMinutes(3)), default);
         Assert.Equal(CareHomeRefundStatus.Completed, booking.RefundStatus);
+        Assert.Contains(db.BookingNotificationOutbox, x => x.BookingId == booking.Id && x.EventType == CareHomeNotificationEvent.RefundCompleted);
     }
 
     [Fact]
@@ -786,6 +838,7 @@ public sealed class CareHomeBookingLifecycleTests
         public Microsoft.EntityFrameworkCore.DbSet<CareHomePayoutDebt> PayoutDebts => inner.PayoutDebts;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => inner.BookingAssignmentHistory;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => inner.TransferNotificationOutbox;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeNotificationOutbox> BookingNotificationOutbox => inner.BookingNotificationOutbox;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeCheckInDispute> CheckInDisputes => inner.CheckInDisputes;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeProfileMedia> ProfileMedia => inner.ProfileMedia;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeVisitSettings> VisitSettings => inner.VisitSettings;

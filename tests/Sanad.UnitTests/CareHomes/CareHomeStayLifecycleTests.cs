@@ -360,6 +360,7 @@ public sealed class CareHomeStayLifecycleTests
 
         Assert.True(checkIn.IsSuccess);
         Assert.True(checkOut.IsSuccess);
+        Assert.Single(db.BookingNotificationOutbox.Where(x => x.BookingId == booking.Id && x.EventType == CareHomeNotificationEvent.DisputeOpened));
         Assert.Equal(Now.AddHours(1), booking.ActualCheckInOnUtc);
         Assert.Equal(Now.AddHours(9), booking.ActualCheckOutOnUtc);
         Assert.Equal("CareHomes.Bookings.InvalidState", duplicate.Error.Code);
@@ -442,6 +443,7 @@ public sealed class CareHomeStayLifecycleTests
         Assert.Single(listed.Value);
         Assert.Equal("CareHomes.CheckInDispute.InvalidState", invalid.Error.Code);
         Assert.True(resolved.IsSuccess);
+        Assert.Single(db.BookingNotificationOutbox.Where(x => x.BookingId == dispute.BookingId && x.EventType == CareHomeNotificationEvent.DisputeResolved));
         Assert.Equal(CareHomeCheckInDisputeStatus.Resolved, dispute.Status);
         Assert.Equal("signed log", dispute.Evidence);
         Assert.Equal("Family confirmation missing at checkout", dispute.Reason);
@@ -520,6 +522,7 @@ public sealed class CareHomeStayLifecycleTests
         Assert.Equal("CareHomes.CheckInDispute.NotFound", wrongFamily.Error.Code);
         Assert.True(first.IsSuccess);
         Assert.True(repeated.IsSuccess);
+        Assert.Single(db.BookingNotificationOutbox.Where(x => x.BookingId == booking.Id && x.EventType == CareHomeNotificationEvent.DisputeOpened));
         Assert.Equal(first.Value.Id, repeated.Value.Id);
         Assert.Equal("first reason", repeated.Value.FamilyReason);
         Assert.Single(db.CheckInDisputes);
@@ -832,6 +835,7 @@ public sealed class CareHomeStayLifecycleTests
         public DbSet<CareHomeCheckInDispute> CheckInDisputes => inner.CheckInDisputes;
         public DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => inner.BookingAssignmentHistory;
         public DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => inner.TransferNotificationOutbox;
+        public DbSet<CareHomeNotificationOutbox> BookingNotificationOutbox => inner.BookingNotificationOutbox;
         public DbSet<CareHomeProfileMedia> ProfileMedia => inner.ProfileMedia;
         public DbSet<CareHomeVisitSettings> VisitSettings => inner.VisitSettings;
         public DbSet<CareHomeVisit> Visits => inner.Visits;
@@ -865,6 +869,7 @@ public sealed class CareHomeStayLifecycleTests
         public DbSet<CareHomeCheckInDispute> CheckInDisputes => inner.CheckInDisputes;
         public DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => inner.BookingAssignmentHistory;
         public DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => inner.TransferNotificationOutbox;
+        public DbSet<CareHomeNotificationOutbox> BookingNotificationOutbox => inner.BookingNotificationOutbox;
         public DbSet<CareHomeProfileMedia> ProfileMedia => inner.ProfileMedia;
         public DbSet<CareHomeVisitSettings> VisitSettings => inner.VisitSettings;
         public DbSet<CareHomeVisit> Visits => inner.Visits;

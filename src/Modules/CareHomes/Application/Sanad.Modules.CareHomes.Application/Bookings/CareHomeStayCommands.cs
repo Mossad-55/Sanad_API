@@ -104,7 +104,12 @@ public sealed class RecordCareHomeCheckOutHandler(ICareHomesDbContext db, IPaymo
         {
             b.RecordCheckOut(r.Actor, r.UtcNow);
             if (b.FamilyCheckInConfirmedOnUtc is null && !await db.CheckInDisputes.AnyAsync(x => x.BookingId == b.Id && x.Status == CareHomeCheckInDisputeStatus.Open, ct))
-                db.CheckInDisputes.Add(CareHomeCheckInDispute.Open(b.Id, b.FacilityId, r.UtcNow, r.Actor, r.UtcNow));
+            {
+                var dispute = CareHomeCheckInDispute.Open(b.Id, b.FacilityId, r.UtcNow, r.Actor, r.UtcNow);
+                db.CheckInDisputes.Add(dispute);
+                CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.DisputeOpened, b.Id, r.UtcNow,
+                    dispute.Id, $"care-home-dispute:{dispute.Id:N}:opened");
+            }
             await db.SaveChangesAsync(ct);
         }
         catch (DbUpdateException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.CheckInDispute.OpenConflict", "A check-in dispute was opened concurrently for this booking.")); }
@@ -126,7 +131,7 @@ public sealed class ConfirmCareHomeCheckInHandler(ICareHomesDbContext db) : ICom
 public sealed class CheckInDisputeHandlers(ICareHomesDbContext db) : IQueryHandler<ListCareHomeCheckInDisputesQuery, IReadOnlyList<CareHomeCheckInDisputeResponse>>, ICommandHandler<ResolveCareHomeCheckInDisputeCommand, CareHomeCheckInDisputeResponse>, ICommandHandler<SubmitCareHomeCheckInDisputeCommand, CareHomeCheckInDisputeResponse>
 {
     public async Task<Result<IReadOnlyList<CareHomeCheckInDisputeResponse>>> Handle(ListCareHomeCheckInDisputesQuery r, CancellationToken ct) => (await db.CheckInDisputes.AsNoTracking().OrderByDescending(x => x.OpenedOnUtc).ToListAsync(ct)).Select(Map).ToArray();
-    public async Task<Result<CareHomeCheckInDisputeResponse>> Handle(ResolveCareHomeCheckInDisputeCommand r, CancellationToken ct) { var c = await db.CheckInDisputes.SingleOrDefaultAsync(x => x.Id == r.CaseId, ct); if (c is null) return Result<CareHomeCheckInDisputeResponse>.Failure(new("CareHomes.CheckInDispute.NotFound", "Check-in dispute was not found.")); try { c.Resolve(r.Actor, r.EffectiveCheckInOnUtc, r.Evidence, r.Reason, r.UtcNow); await db.SaveChangesAsync(ct); return Map(c); } catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Result<CareHomeCheckInDisputeResponse>.Failure(new("CareHomes.CheckInDispute.InvalidState", ex.Message)); } }
+    public async Task<Result<CareHomeCheckInDisputeResponse>> Handle(ResolveCareHomeCheckInDisputeCommand r, CancellationToken ct) { var c = await db.CheckInDisputes.SingleOrDefaultAsync(x => x.Id == r.CaseId, ct); if (c is null) return Result<CareHomeCheckInDisputeResponse>.Failure(new("CareHomes.CheckInDispute.NotFound", "Check-in dispute was not found.")); try { c.Resolve(r.Actor, r.EffectiveCheckInOnUtc, r.Evidence, r.Reason, r.UtcNow); CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.DisputeResolved, c.BookingId, r.UtcNow, c.Id, $"care-home-dispute:{c.Id:N}:resolved"); await db.SaveChangesAsync(ct); return Map(c); } catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Result<CareHomeCheckInDisputeResponse>.Failure(new("CareHomes.CheckInDispute.InvalidState", ex.Message)); } }
     public async Task<Result<CareHomeCheckInDisputeResponse>> Handle(SubmitCareHomeCheckInDisputeCommand r, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(r.Reason) || r.Reason.Trim().Length > 2000)
@@ -141,6 +146,8 @@ public sealed class CheckInDisputeHandlers(ICareHomesDbContext db) : IQueryHandl
         {
             created = CareHomeCheckInDispute.Open(booking.Id, booking.FacilityId, booking.ActualCheckOutOnUtc, r.Actor, r.UtcNow, r.Reason);
             db.CheckInDisputes.Add(created);
+            CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.DisputeOpened, booking.Id, r.UtcNow,
+                created.Id, $"care-home-dispute:{created.Id:N}:opened");
             await db.SaveChangesAsync(ct);
             return Map(created);
         }

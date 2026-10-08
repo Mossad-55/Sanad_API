@@ -30,6 +30,7 @@ public static class CareHomeRefundProcessor
         if (booking.PaymobTransactionId is null)
         {
             booking.MarkRefundFailed("No Paymob transaction is stored for this paid booking.", utcNow);
+            CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.RefundFailed, booking.Id, utcNow);
             await db.SaveChangesAsync(cancellationToken);
             return Result.Failure(new Error("CareHomes.Bookings.RefundNotRetryable", "The paid booking has no stored Paymob transaction."));
         }
@@ -43,6 +44,7 @@ public static class CareHomeRefundProcessor
             if (result.Error.Code == "Paymob.RefundRejected")
             {
                 booking.MarkRefundFailed(result.Error.Code, utcNow);
+                CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.RefundFailed, booking.Id, utcNow);
                 await db.SaveChangesAsync(cancellationToken);
             }
             return Result.Failure(result.Error);
@@ -66,6 +68,8 @@ public sealed class CancelFamilyCareHomeBookingHandler(ICareHomesDbContext db, I
         try
         {
             decimal refundAmount = booking.CancelByFamily(request.UtcNow);
+            if (refundAmount > 0m)
+                CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.FamilyCancelledPaidBooking, booking.Id, request.UtcNow);
             await db.SaveChangesAsync(ct);
             Result futureExtensions = await CareHomeFutureExtensionRefunds.ProcessAsync(
                 db, paymob, booking, CareHomeFutureExtensionRefunds.CairoDate(request.UtcNow), request.UtcNow, ct);
@@ -104,6 +108,7 @@ public sealed class CancelOwnerCareHomeBookingHandler(ICareHomesDbContext db, IP
         try
         {
             booking.CancelByFacility(request.Reason, request.UtcNow);
+            CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.OwnerCancelledAcceptedBooking, booking.Id, request.UtcNow);
             await db.SaveChangesAsync(ct);
             Result futureExtensions = await CareHomeFutureExtensionRefunds.ProcessAsync(
                 db, paymob, booking, CareHomeFutureExtensionRefunds.CairoDate(request.UtcNow), request.UtcNow, ct);
@@ -163,6 +168,7 @@ public sealed class RecordCareHomeRefundCompletedHandler(ICareHomesDbContext db)
         try
         {
             booking.MarkRefundManuallyCompleted(request.Reference, request.Reason, request.Actor, request.UtcNow);
+            CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.RefundCompleted, booking.Id, request.UtcNow);
             await db.SaveChangesAsync(ct);
             return CheckoutHandler.Map(booking);
         }
@@ -191,6 +197,7 @@ public sealed class CompleteCareHomeRefundCallbackHandler(ICareHomesDbContext db
         if (booking is null) return Result.Success();
         if (booking.MarkRefundCompletedFromProviderCallback(refundReference, request.ParentTransactionId, request.UtcNow))
         {
+            CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.RefundCompleted, booking.Id, request.UtcNow);
             try { await db.SaveChangesAsync(ct); }
             catch (DbUpdateConcurrencyException) { return Result.Success(); }
         }

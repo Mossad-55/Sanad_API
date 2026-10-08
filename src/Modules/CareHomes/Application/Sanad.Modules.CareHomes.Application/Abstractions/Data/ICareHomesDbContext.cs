@@ -18,6 +18,7 @@ public interface ICareHomesDbContext
     DbSet<CareHomePayoutDebt> PayoutDebts { get; }
     DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory { get; }
     DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox { get; }
+    DbSet<CareHomeNotificationOutbox> BookingNotificationOutbox { get; }
     DbSet<CareHomeCheckInDispute> CheckInDisputes { get; }
     DbSet<CareHomeProfileMedia> ProfileMedia { get; }
     DbSet<CareHomeVisitSettings> VisitSettings { get; }

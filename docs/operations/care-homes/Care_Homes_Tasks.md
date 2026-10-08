@@ -282,9 +282,41 @@ The owner confirms there are no Care Homes Admin booking/payment/refund screens 
 
 ## Notifications and documentation
 
-- [ ] HC-TASK-060 — In progress: onboarding/review and license-expiry alerts are implemented in-app/email, with no SMS. Booking, payment/refund, dispute, and other Admin event categories remain tracked by their owning tasks.
+- [x] HC-TASK-060 — **Done (2026-10-09):** implemented the owner-approved booking/payment/decision/cancellation/expiry, refund completion/failure, and check-in dispute notification matrix using a Care Homes transactional outbox and retrying materializer. Existing review, license-expiry, and transfer paths are unchanged. Focused tests passed 69/69; final Release solution build passed with 0 warnings/errors. Migration `20261008221643_AddCareHomeBookingNotificationOutbox` is generated and unapplied. No Bruno/runtime DB test was run; async delivery and PostgreSQL claim concurrency remain unverified outside in-memory processor/domain tests. See the closeout evidence below.
 - [ ] HC-TASK-061 — In progress: owner and Admin guides document profile media limits, private draft visibility, approved-revision discovery, notification recipients, and file routes. Owner Postman examples now include media upload/readback/removal with an explicit local image path; broader slice examples remain incomplete. No Bruno/Postman runtime was run for this change.
 - [ ] HC-TASK-062 — Document deferred items and unresolved blockers; update slice evidence and handoff without duplicating this checklist.
+
+### HC-TASK-060 owner-approved event matrix and implementation (2026-10-09)
+
+The owner approved the following event matrix. Existing application submission/review, daily operating-license expiry, and physical-transfer notifications retain their existing contracts.
+
+| Event | Recipient | Channels | Scope/trigger |
+|---|---|---|---|
+| Successful payment | Booking Family; facility owner separately when entering `PaidAwaitingDecision` | In-app always; email when address exists | Late success that immediately enters refund flow does not create owner decision request |
+| Facility accepts or rejects a paid booking | Booking Family | In-app always; email when address exists | Decision transition only |
+| Booking decision window expires | Booking Family | In-app always; email when address exists | Decision expiry only; unpaid checkout-hold expiry excluded |
+| Family cancels a paid booking | Facility owner | In-app always; email when address exists | Paid cancellation; unpaid cancellation excluded |
+| Facility owner cancels an accepted booking | Booking Family | In-app always; email when address exists | Paid accepted booking transition |
+| Refund completes | Booking Family | In-app always; email when address exists | Provider callback or manual completion transition |
+| Refund attempt fails and needs operational follow-up | Active SuperAdmin and SupportAdmin | In-app always; email when address exists | Each failed attempt; pending, initiated, and intermediate retry states excluded |
+| Check-in dispute opens | Active SuperAdmin and SupportAdmin | In-app always; email when address exists | First open case only; repeat submission does not notify again |
+| Admin resolves a check-in dispute | Booking Family and facility owner | In-app always; email when address exists | Resolution transition |
+
+Apply the booking rules to extensions. Keep existing review, license-expiry, and transfer notifications unchanged. Exclude failed-payment notices to Family, failed-refund notices to Family, unpaid cancellation, visits, ratings, payouts, internal notes, checkout-hold expiry, and intermediate retry states. No SMS.
+
+**Reuse and implementation:** The shared Notifications database provides unique per-channel idempotency keys and a retrying email outbox. The Care Homes transfer path established the separate Care Homes transactional outbox pattern. Since booking rows retain current state and selected timestamps rather than general history, and Care Homes/Notifications may have separate connections, HC-060 adds `care_homes.booking_notification_outbox`. It stores a unique event key, event type, booking/dispute IDs, UTC creation/attempt times, retry status, and optimistic claim version; no event snapshot or sensitive booking data is stored. Producers save events with their domain transitions. The hosted processor writes idempotent in-app and email-outbox rows; email delivery remains retryable/at-least-once. Migration `20261008221643_AddCareHomeBookingNotificationOutbox` is generated and remains unapplied pending exact-target authorization.
+
+**Approved acceptance:** (1) each approved event is durably created with its state transition; (2) duplicate callbacks/commands and repeated dispute submissions do not duplicate a transition event, while distinct refund failures remain visible; (3) recipient selection, idempotent channels, retry recovery, and privacy are covered by focused tests; (4) content is localized and excludes payment secrets, medical JSON, care notes, and reasons; email is queued only when the recipient has an address; (5) no wallet, new financial rule, excluded workflow notification, SMS, or frontend work is added. No notification-trigger HTTP contract changes, so no fabricated event trigger was added to Postman. Bruno was not selected because the changed boundary is exercised by focused automated tests and no new HTTP route exists.
+
+**Decision and status:** owner approved this matrix with “Approve as drafted” on 2026-10-09. HC-060 implementation and focused verification are complete. The additive migration source was generated and inspected, but not applied; applying it still requires exact-target authorization.
+
+### HC-TASK-060 closeout evidence (2026-10-09)
+
+- **Implementation:** `CareHomeNotificationOutbox` stores only event type and source IDs, event identity, creation time, claim/version, and retry state. Payment success/owner decision-needed, facility accept/reject, paid Family/owner cancellation, decision expiry, refund failure/completion, and first dispute open/resolution are enqueued in the same Care Homes `SaveChanges` as the domain transition. Extension segments use the same lifecycle handlers. Failed refund attempts get separate event identities; repeat payment/refund callbacks and repeated dispute submissions do not recreate committed transitions.
+- **Delivery:** hosted `CareHomeBookingNotificationProcessor` claims with an optimistic concurrency version, materializes idempotent in-app notifications, and queues email only when the selected recipient has an address. Copy is localized by recipient language and does not include refund/decision reasons, medical profile JSON, care notes, contact details, or payment credentials. Existing shared email retry remains the email-delivery boundary.
+- **Files/contracts:** additive migration `20261008221643_AddCareHomeBookingNotificationOutbox` creates only `care_homes.booking_notification_outbox` and its unique event-key / retry indexes. The migration is generated and model snapshot current, but unapplied. Notification events add no new HTTP endpoint/request payload; `docs/postman/care-homes/README.md` records use of the existing `/api/v1/notifications` inbox, with no fabricated trigger request.
+- **Verification:** `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-restore -m:1 --nologo --filter "FullyQualifiedName~CareHomeBookingNotificationTests|FullyQualifiedName~CareHomeBookingLifecycleTests|FullyQualifiedName~CareHomeStayLifecycleTests"` passed 69/69, 0 skipped. `dotnet build Sanad.slnx --no-restore -c Release -m:1 --nologo` passed with 0 warnings/errors. `git diff --check` passed. Bruno was not selected because no HTTP contract changed and the focused automated tests exercise the event/materialization boundary; no API, live email provider, fixture, or database was used by these checks.
+- **Limitations/safety:** PostgreSQL cross-worker claim behavior, configured SMTP delivery, and runtime inbox visibility were not exercised. The migration was not applied; no reset, production change, deployment, or external provider call occurred. During migration correction, EF's guarded `migrations remove` refused to run after a read-only migration-history query found `20261008154517_AddCareHomeVisits`; it made no schema/data changes. `.codex/config.toml` was not changed.
 
 ### HC-TASK-031 verified closeout update (2026-10-03)
 

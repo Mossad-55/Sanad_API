@@ -1,10 +1,10 @@
 # Care homes — execution mastermind handoff
 
-## Current Care Homes handoff — 2026-10-08
+## Current Care Homes handoff — 2026-10-09
 
 HC-TASK-037 receipts/revenue/CSV/internal notes, HC-TASK-040 visits, and HC-TASK-050 the Admin license-expiry view are complete. The HC-037 migration batch was applied to the approved disposable database; HC-040's migration remains unapplied; HC-050 required no migration. No production change, deployment, or destructive reset is authorized.
 
-**Current action:** HC-051 is complete on `main` and pushed as `614b3de` (`Add Care Homes admin booking inspection`); local `main` matches `origin/main`. Added read-only Admin booking list/detail routes under `CareHomesOperationalAdmin`; focused tests passed 5/5 after rebasing onto the latest `origin/main`, and the final Release solution build passed with 0 warnings/errors. The Admin guide, Postman collection, audience map, decisions, checklist, and handoff are synchronized. The API reuses HC-034 assignment/dispute history, HC-035 refund facts, HC-037 finance reporting/receipts/notes, HC-038 payout separation, and existing Finance contracts. No migration, Bruno/runtime, database/provider, production, reset, or deployment activity occurred. HC-052 remains consolidated into completed HC-053. Three active feature checklist items remain: HC-060–062 (notification categories, broader guides/examples, and slice evidence/deferred-item handoff); none blocks HC-051.
+**Current action:** HC-060 is implemented under the owner's approved event matrix. The Care Homes transactional outbox and background materializer cover payment/decision, cancellation/expiry, refund, and dispute events; existing review, license, and transfer notifications remain unchanged. Focused booking/stay/notification tests passed 69/69; final Release solution build passed with 0 warnings/errors. Migration `20261008221643_AddCareHomeBookingNotificationOutbox` is generated and unapplied. No Bruno, live SMTP, API runtime, fixture, or DB test ran; PostgreSQL delivery/claim behavior remains unverified. No production/reset/deployment action occurred. Checklist and decision record are synchronized. **Next:** commit and push the completed HC-060 changes on `main`, preserving `.codex/config.toml`.
 
 ## HC-TASK-050 completion checkpoint — 2026-10-08
 
