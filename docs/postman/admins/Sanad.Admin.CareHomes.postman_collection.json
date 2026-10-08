@@ -1,0 +1,436 @@
+{
+  "info": {
+    "_postman_id": "a07b66e0-6780-4b75-8f25-ea1b2a758f96",
+    "name": "Sanad Admin — Care Homes",
+    "description": "Care Homes operational endpoints only. CareHomesOperationalAdmin allows SuperAdmin and SupportAdmin; ContentAdmin is denied. Uses the existing Admin environment accessToken.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5235"
+    },
+    {
+      "key": "careHomeBookingId",
+      "value": ""
+    },
+    {
+      "key": "careHomeCheckInDisputeId",
+      "value": ""
+    },
+    {
+      "key": "careHomeDocumentId",
+      "value": ""
+    },
+    {
+      "key": "careHomeId",
+      "value": ""
+    },
+    {
+      "key": "careHomeVersion",
+      "value": ""
+    },
+    {
+      "key": "hc035ExternalRefundReference",
+      "value": ""
+    },
+    {
+      "key": "hc035FailedRefundBookingId",
+      "value": ""
+    },
+    {
+      "key": "hc035ManualRefundBookingId",
+      "value": ""
+    },
+    {
+      "key": "careHomeProfileMediaId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Check-in dispute operations",
+      "description": "Source-authored HC-034 room/bed assignment, actual facility check-in/out, Family confirmation, Family-submitted dispute, owner operational readback, and Admin dispute resolution. Requires an accepted booking and disposable fixture IDs. Check-out without Family confirmation opens a case immediately; a Family dispute requires a booking owned by that Family with facility check-in recorded. These examples are authored, not runtime evidence.",
+      "item": [
+        {
+          "name": "List check-in dispute cases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/check-in-disputes",
+            "description": "CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin is denied). Lists cases newest first. Provide an authorized admin token before running."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('dispute list authored response', () => pm.expect([200, 401, 403]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200 && pm.response.json().length) pm.collectionVariables.set('careHomeCheckInDisputeId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolve check-in dispute case",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"effectiveCheckInOnUtc\": \"2026-11-10T12:00:00Z\",\n  \"evidence\": \"Signed arrival log\",\n  \"reason\": \"Facility record reconciled\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/check-in-disputes/{{careHomeCheckInDisputeId}}/resolve",
+            "description": "CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin is denied). Evidence, reason and a UTC effective check-in are required. Missing case is 404 CareHomes.CheckInDispute.NotFound; repeated/invalid resolution is 409 CareHomes.CheckInDispute.InvalidState. Supply an authorized admin token before running."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('dispute resolution authored response', () => pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. Refund recovery",
+      "description": "Requires separate disposable bookings in the indicated states. Family cancellation before recorded check-in refunds totalAmount; after recorded check-in it refunds 50%. Owner cancellation of an accepted stay refunds the full amount. Admin recovery requires a failed or externally completed refund. No requests reset or seed the database.",
+      "item": [
+        {
+          "name": "Admin retries failed refund",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "none"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035FailedRefundBookingId}}/refund/retry",
+            "description": "Only a persisted failed refund is retryable. Local runtime requires a disposable failed-refund fixture; no provider call outside the Development stub is authorized."
+          }
+        },
+        {
+          "name": "Admin records externally completed refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"{{hc035ExternalRefundReference}}\",\n  \"reason\": \"Verified external refund completion\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035ManualRefundBookingId}}/refund/record-completed",
+            "description": "Records completion only; this endpoint does not call Paymob. SuperAdmin/SupportAdmin only."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Facility application review",
+      "description": "SuperAdmin/SupportAdmin only. ContentAdmin must receive 403. Requests are authored against the current controller contract and require an existing submitted disposable application; no Bruno execution is claimed.",
+      "item": [
+        {
+          "name": "List care-home applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes?page=1&pageSize=20",
+            "description": "Returns page/pageSize/totalCount/items. Invalid paging or status returns 400 CareHomes.Admin.InvalidQuery."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('care-home list contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get care-home application detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}",
+            "description": "Returns revisions, document metadata and review history without private storage keys. Unknown IDs return 404 CareHomes.Admin.ApplicationNotFound."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('care-home detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read private care-home document",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}/file",
+            "description": "Streams private content only for PendingReview/Approved/Suspended applications. Draft/correction returns CareHomes.Admin.PrivateDocumentUnavailable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('private-file contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify non-expiring document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeVersion}},\n  \"expiryDate\": null,\n  \"confirmNonExpiring\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}/verify",
+            "description": "Explicit confirmation is required for a verified document with no expiry. Stale version returns 409 CareHomes.Admin.Conflict."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('document verify contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject care-home document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeVersion}},\n  \"reason\": \"Unreadable document\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}/reject",
+            "description": "Reasoned rejection returns the updated detail. Invalid state returns 400 CareHomes.Admin.InvalidOperation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('document reject contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review care-home application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeVersion}},\n  \"action\": 1,\n  \"reason\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/review",
+            "description": "Action enum: 1 Approved, 2 Rejected, 3 CorrectionsRequested, 4 Suspended, 5 Reactivated. Supply a reason for rejection, correction, or suspension."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('application review contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read private facility media for review",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/media/{{careHomeProfileMediaId}}/file",
+            "description": "Private facility media for operational review. Requires CareHomesOperationalAdmin (SuperAdmin or SupportAdmin); ContentAdmin is denied. Returns media bytes or 404 for unknown/unassociated media."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin media review contract', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Inventory inspection",
+      "description": "SuperAdmin/SupportAdmin only under CareHomesOperationalAdmin. ContentAdmin, owners, Family accounts and anonymous callers are denied. Requests are authored from the current source contract; the additive migration awaits fresh exact-target authorization and no Bruno execution is claimed for this delta.",
+      "item": [
+        {
+          "name": "Get care-home inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/admin/{{careHomeId}}"
+          },
+          "description": "Returns room types, rooms, beds, maintenance and inventory version. Unknown facility returns 404 CareHomes.Inventory.NotFound."
+        },
+        {
+          "name": "Get care-home availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-01-20\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/admin/{{careHomeId}}/availability"
+          },
+          "description": "Returns derived room-type availability. Dates are Egypt-local calendar dates; end must be after start. Archived assets, maintenance and supplied active occupancy are excluded. The current occupancy provider is empty until HC-TASK-032/034."
+        }
+      ]
+    },
+    {
+      "name": "05. Payout ledger",
+      "description": "HC-TASK-038. CareHomesOperationalAdmin (SuperAdmin/SupportAdmin) only. A bank transfer must already have been performed outside Sanad; these requests only record/read ledger state and never initiate provider transfers. Use only an authorized disposable fixture. The migration source is generated but not applied and no Bruno run is claimed.",
+      "item": [
+        {
+          "name": "Read payout ledger",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/payouts/ledger?facilityId={{careHomeId}}",
+            "description": "Returns checked-out paid/refunded bookings, remaining payable, effective Finance payout-fee rate, net amount, recorded transfer metadata, and outstanding facility debt. An eligible payable requires an effective Finance rule; absent configuration fails closed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payout ledger contract', function () { pm.expect([200, 401, 403, 404, 500]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Record completed external bank transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transferReference\": \"BANK-REFERENCE\",\n  \"evidence\": \"private evidence reference\",\n  \"reason\": \"Monthly facility settlement\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/payouts/bookings/{{careHomeBookingId}}/record",
+            "description": "STATE-CHANGING: call only after the external bank transfer is complete. One payout per completed eligible stay; gross, percentage fee, net, Finance rule version, evidence/reference, actor and time are snapshotted."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payout record contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Record confirmed post-payout refund/reversal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerRefundAmount\": 575.00,\n  \"reference\": \"REFUND-OR-REVERSAL-REFERENCE\",\n  \"reason\": \"Confirmed customer refund after settlement\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/payouts/bookings/{{careHomeBookingId}}/record-reversal",
+            "description": "STATE-CHANGING: records a confirmed external refund/reversal for reconciliation; it does not issue the refund. Facility debt is proportional to the recorded net payout for the refunded share. Reference is the idempotency key."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payout reversal contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -25,10 +25,11 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | City & area lookups | `docs/admin/lookups-cities-areas.md` |
 | Specialization, title & degree lookups | `docs/admin/lookups-specializations-titles-degrees.md` |
 | Caregiver review | `docs/admin/caregivers-review.md` |
+| Care Homes operational review, inventory, disputes, refunds, and payouts | `docs/admin/care-homes.md` |
 | Care-needs assessment quiz | `docs/admin/care-assessments.md` |
 | Elderly medication operational reads (prescriptions, dose logs, adherence) | `docs/admin/elderly-medications.md` |
 | Bookings (cancellations & refunds) | `docs/admin/bookings.md` |
-| Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
+| Postman | General Admin: `docs/postman/admins/Sanad.Admin.postman_collection.json`; Care Homes operations: `docs/postman/admins/Sanad.Admin.CareHomes.postman_collection.json` |
 
 ## Caregiver lookups
 

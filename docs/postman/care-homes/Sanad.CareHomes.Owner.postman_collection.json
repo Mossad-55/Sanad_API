@@ -1,0 +1,1195 @@
+{
+  "info": {
+    "_postman_id": "7bfb291d-22be-446a-8879-b5d47b4f504c",
+    "name": "Sanad Care Homes — Facility Owner",
+    "description": "Facility-owner portal endpoints only. Token: owner account authorized by CareHomeOwnerAccess.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{careHomeOwnerJwt}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5235"
+    },
+    {
+      "key": "careHomeBookingId",
+      "value": ""
+    },
+    {
+      "key": "careHomeFacilityVersion",
+      "value": "1"
+    },
+    {
+      "key": "careHomeFamilyJwt",
+      "value": ""
+    },
+    {
+      "key": "careHomeOwnerJwt",
+      "value": ""
+    },
+    {
+      "key": "careHomeProfileImagePath",
+      "value": ""
+    },
+    {
+      "key": "careHomeProfileMediaId",
+      "value": ""
+    },
+    {
+      "key": "hc023ConflictBookingId",
+      "value": ""
+    },
+    {
+      "key": "hc023InventoryVersion",
+      "value": ""
+    },
+    {
+      "key": "hc023MaintenanceId",
+      "value": ""
+    },
+    {
+      "key": "hc023MaintenanceNewEndDate",
+      "value": ""
+    },
+    {
+      "key": "hc023MaintenanceNewStartDate",
+      "value": ""
+    },
+    {
+      "key": "hc023OccupiedRoomId",
+      "value": ""
+    },
+    {
+      "key": "hc023PrivateBookingId",
+      "value": ""
+    },
+    {
+      "key": "hc023PrivateDestinationRoomId",
+      "value": ""
+    },
+    {
+      "key": "hc023SuiteBedId",
+      "value": ""
+    },
+    {
+      "key": "hc023SuiteBookingId",
+      "value": ""
+    },
+    {
+      "key": "hc023SuiteDestinationRoomId",
+      "value": ""
+    },
+    {
+      "key": "hc023SuiteTransferEffectiveDate",
+      "value": ""
+    },
+    {
+      "key": "hc023TransferEffectiveDate",
+      "value": ""
+    },
+    {
+      "key": "hc035OwnerBookingId",
+      "value": ""
+    },
+    {
+      "key": "inventoryBedId",
+      "value": ""
+    },
+    {
+      "key": "inventoryRoomId",
+      "value": ""
+    },
+    {
+      "key": "inventoryRoomTypeId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Facility onboarding and profile",
+      "description": "Owner-scoped draft lifecycle. Login requests use local test fixtures; replace credentials outside local development.",
+      "item": [
+        {
+          "name": "Create facility draft",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('created or already exists for the one-facility owner rule', () => pm.expect([201, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read my facility",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('facility is readable', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Save bilingual profile draft",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"draft\": {\n    \"arabicName\": \"دار الأمل\",\n    \"englishName\": \"Hope House\",\n    \"arabicDescription\": \"رعاية وإقامة آمنة\",\n    \"englishDescription\": \"Safe care and accommodation\",\n    \"contactName\": \"Test Contact\",\n    \"contactPhone\": \"+201000000011\",\n    \"contactEmail\": \"carehome.owner@test.sanad.local\",\n    \"governorate\": \"Cairo\",\n    \"city\": \"Nasr City\",\n    \"area\": \"District 1\",\n    \"address\": \"1 Example Street\",\n    \"arabicAdmissionConditions\": \"الشروط متاحة عند التواصل\",\n    \"englishAdmissionConditions\": \"Contact us for admission conditions\",\n    \"amenities\": [],\n    \"medicalServices\": []\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('draft saved', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version); pm.test('English name round-trips', () => pm.expect(pm.response.json().draft.englishName).to.eql('Hope House')); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload operating-license document",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "expectedVersion",
+                  "value": "{{careHomeFacilityVersion}}",
+                  "type": "text"
+                },
+                {
+                  "key": "type",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "expiryDate",
+                  "value": "2030-01-01",
+                  "type": "text",
+                  "disabled": true
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/documents"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('document is stored pending review', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) pm.test('document starts pending', () => pm.expect(pm.response.json().status).to.eql(1));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read back uploaded document metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('document metadata is readable by its owner', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version); pm.test('license is pending review', () => pm.expect(pm.response.json().documents.some(d => d.type === 1 && d.status === 1)).to.eql(true)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Upload private gallery image",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "expectedVersion",
+                  "value": "{{careHomeFacilityVersion}}",
+                  "type": "text"
+                },
+                {
+                  "key": "kind",
+                  "value": "2",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{careHomeProfileImagePath}}"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/media",
+            "description": "Choose a local JPG/PNG no larger than 5 MB in careHomeProfileImagePath. Draft media stays private until the revision is approved."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('private profile image upload succeeds', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const media = pm.response.json(); pm.collectionVariables.set('careHomeProfileMediaId', media.id); pm.test('gallery image metadata is returned', () => { pm.expect(media.kind).to.eql(2); pm.expect(media.contentType).to.be.oneOf(['image/jpeg', 'image/png']); pm.expect(media.length).to.be.at.most(5242880); }); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read back private gallery metadata",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('owner can read uploaded gallery metadata', () => pm.response.to.have.status(200));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.collectionVariables.set('careHomeFacilityVersion', body.version); pm.test('uploaded media is present in owner profile', () => pm.expect(body.profileMedia.some(m => m.id === pm.collectionVariables.get('careHomeProfileMediaId'))).to.eql(true)); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove private gallery image",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/media/{{careHomeProfileMediaId}}?expectedVersion={{careHomeFacilityVersion}}"
+          },
+          "description": "State-changing example: use a newly uploaded image and the current facility version."
+        },
+        {
+          "name": "Read owner profile media file",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/media/{{careHomeProfileMediaId}}/file",
+            "description": "Private owner readback for a media item belonging to this facility. Returns image bytes; missing or foreign media returns 404. Requires CareHomeOwnerAccess."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('owner media readback contract', () => pm.expect([200, 401, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. Submit and resubmit",
+      "description": "Authored submission contract. Run after the owner has saved all required bilingual fields and uploaded all four private documents; the current disposable fixture has not yet been executed for this delta.",
+      "item": [
+        {
+          "name": "Submit application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}}\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/submit",
+            "description": "Owner-only state change. Validates the bilingual profile and four required documents, freezes the submitted revision, and enters PendingReview. Expected errors: 409 CareHomes.Facility.InvalidSubmission for incomplete requirements or 409 CareHomes.Facility.Conflict for stale/non-editable versions."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('submission contract response', () => pm.expect([200, 400, 401, 403, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { pm.test('application is pending review', () => pm.expect(pm.response.json().status).to.eql(2)); pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03. Ownership and authorization",
+      "item": [
+        {
+          "name": "Anonymous read is rejected",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('anonymous rejected', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Family read is forbidden",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('non-owner role forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Stale draft version conflicts",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": 1,\n  \"draft\": { \"amenities\": [], \"medicalServices\": [] }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/profile"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('stale version conflicts', () => pm.response.to.have.status(409));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Owner inventory and availability",
+      "description": "Owner-managed room types, rooms, beds, maintenance and derived availability. Authored from the current source contract; the additive migration awaits fresh exact-target authorization and these requests have not been executed in Bruno.",
+      "item": [
+        {
+          "name": "Read my inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('inventory read contract', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create room type",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"arabicName\": \"غرفة مشتركة\",\n  \"englishName\": \"Shared room\",\n  \"monthlyPriceEgp\": 10000,\n  \"allocationMode\": 1,\n  \"arabicDescription\": \"\",\n  \"englishDescription\": \"Shared accommodation\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types"
+          },
+          "description": "Owner only. AllocationMode: Shared=1, Private=2, Suite=3. Success returns the full inventory and increments version."
+        },
+        {
+          "name": "Update room type",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"arabicName\": \"غرفة مشتركة محدثة\",\n  \"englishName\": \"Shared room updated\",\n  \"monthlyPriceEgp\": 11000,\n  \"allocationMode\": 1,\n  \"arabicDescription\": null,\n  \"englishDescription\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}"
+          },
+          "description": "Owner only; expectedVersion is required."
+        },
+        {
+          "name": "Archive room type",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false"
+          },
+          "description": "Archives while retaining the stable ID; set restore=true to restore."
+        },
+        {
+          "name": "Create room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomTypeId\": \"{{inventoryRoomTypeId}}\",\n  \"roomNumber\": \"101\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms"
+          },
+          "description": "Room numbers are unique within the facility."
+        },
+        {
+          "name": "Rename room",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomTypeId\": \"{{inventoryRoomTypeId}}\",\n  \"roomNumber\": \"102\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}"
+          },
+          "description": "Room number changes are rejected while an active hold or stay exists; room numbers remain facility-unique."
+        },
+        {
+          "name": "Archive room",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false"
+          },
+          "description": "Archives while retaining the stable ID; set restore=true to restore."
+        },
+        {
+          "name": "Create bed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomId\": \"{{inventoryRoomId}}\",\n  \"label\": \"A\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/beds"
+          }
+        },
+        {
+          "name": "Rename bed",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomId\": \"{{inventoryRoomId}}\",\n  \"label\": \"B\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/beds/{{inventoryBedId}}"
+          }
+        },
+        {
+          "name": "Archive bed",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/beds/{{inventoryBedId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false"
+          },
+          "description": "Archives while retaining the stable ID; set restore=true to restore."
+        },
+        {
+          "name": "Create maintenance block",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"target\": 2,\n  \"targetId\": \"{{inventoryBedId}}\",\n  \"startDate\": \"2027-01-10\",\n  \"endDate\": \"2027-01-12\",\n  \"reason\": \"Planned repair\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/maintenance"
+          },
+          "description": "Egypt-local half-open dates; target Room=1 or Bed=2. Overlaps with active holds/stays or conflicting blocks are rejected."
+        },
+        {
+          "name": "Read my availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-01-20\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/availability"
+          },
+          "description": "Derived by room type. The current occupancy provider is empty until later booking work supplies holds and stays."
+        }
+      ]
+    },
+    {
+      "name": "05. Booking decisions and cancellation",
+      "description": "Source-authored HC-TASK-032 booking and HC-036 extension examples. Requires the disposable Development fixture variables below, including an accepted/paid booking for the extension request, and an effective Finance rule. These requests have not been runtime-verified; do not point them at production or reset a database to make them runnable.",
+      "item": [
+        {
+          "name": "List owner booking requests",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine",
+            "description": "CareHomeOwnerAccess. Lists paid requests for the owner's facility only."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('owner booking list contract', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Decide owner booking request",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accept\": false,\n  \"reason\": \"Capacity unavailable\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/decision",
+            "description": "CareHomeOwnerAccess. Accept moves PaidAwaitingDecision to Accepted. Reject requires a reason, moves to RefundPending, and initiates a full refund when a transaction exists."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('owner decision authored response', () => pm.expect([200, 400, 401, 403, 404, 409, 500]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06. Stay operations",
+      "description": "Source-authored HC-034 room/bed assignment, actual facility check-in/out, Family confirmation, Family-submitted dispute, owner operational readback, and Admin dispute resolution. Requires an accepted booking and disposable fixture IDs. Check-out without Family confirmation opens a case immediately; a Family dispute requires a booking owned by that Family with facility check-in recorded. These examples are authored, not runtime evidence.",
+      "item": [
+        {
+          "name": "Assign physical room and bed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{inventoryRoomId}}\",\n  \"bedId\": \"{{inventoryBedId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/assignment",
+            "description": "CareHomeOwnerAccess. Shared stays require a bed; Private/Suite stays must send bedId as null and reserve the whole room. The room must match the booking facility and room type. Invalid allocation returns 400 CareHomes.Bookings.InvalidAssignment; an occupied resource returns 409 CareHomes.Bookings.AssignmentConflict."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('assignment authored response', () => pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('careHomeAssignedRoomId', pm.response.json().assignedRoomId); pm.collectionVariables.set('careHomeAssignedBedId', pm.response.json().assignedBedId || ''); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Record facility check-in",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/check-in",
+            "description": "CareHomeOwnerAccess. Records the server UTC actual check-in for an accepted, assigned booking. Repeated or invalid lifecycle transitions return 409 CareHomes.Bookings.InvalidState."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('facility check-in authored response', () => pm.expect([200, 401, 403, 404, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read owner operational state",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/operational",
+            "description": "CareHomeOwnerAccess. Returns assigned room/bed, actual facility timestamps and actors, and Family confirmation timestamp/actor."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('operational readback authored response', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Record facility check-out",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/check-out",
+            "description": "CareHomeOwnerAccess. Records server UTC actual check-out. If Family confirmation is missing, opens one Open Admin case immediately; no timeout is used. Repeated/invalid transitions return 409 CareHomes.Bookings.InvalidState."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('facility check-out authored response', () => pm.expect([200, 401, 403, 404, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07. Room transfers and maintenance",
+      "description": "Requires separate pre-existing disposable fixtures: accepted bookings assigned to Private and Suite rooms with same-type destination rooms; an overlapping accepted booking; a future maintenance block; and an Owner JWT. Transfer effective dates must be Cairo-local, non-backdated, and within the stay. No fixture setup, DB reset, or provider request is included.",
+      "item": [
+        {
+          "name": "Transfer Private booking without bed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{hc023PrivateDestinationRoomId}}\",\n  \"bedId\": null,\n  \"effectiveDate\": \"{{hc023TransferEffectiveDate}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc023PrivateBookingId}}/assignment/transfer",
+            "description": "Same-type Private room transfer; Suite follows the equivalent contract. Success preserves booking room type and price/payment snapshots, appends transfer history and queues Family in-app/email notifications. A future effective date leaves the operational current assignment unchanged until that Cairo date."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Private transfer succeeds', () => pm.response.to.have.status(200));",
+                  "pm.test('Private room transfer keeps bed null', () => pm.expect(pm.response.json().assignedBedId).to.be.null);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Transfer Suite booking without bed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{hc023SuiteDestinationRoomId}}\",\n  \"bedId\": null,\n  \"effectiveDate\": \"{{hc023SuiteTransferEffectiveDate}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc023SuiteBookingId}}/assignment/transfer",
+            "description": "Same-type Suite room transfer; the assigned resource is the whole room and bedId must be null. Provide a separate accepted Suite booking and active same-type destination room."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Suite transfer succeeds', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().assignedBedId).to.be.null; });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read transfer history and current assignment",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc023PrivateBookingId}}/operational",
+            "description": "Owner operational readback includes current effective room/bed plus append-only assignmentHistory with prior/new resources, Cairo effectiveDate and actorUserId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('operational history is present', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().assignmentHistory).to.be.an('array').that.is.not.empty; });",
+                  "const history = pm.response.json().assignmentHistory; pm.test('transfer entry includes actor and destination', () => { const move = history.find(x => x.toRoomId === pm.collectionVariables.get('hc023PrivateDestinationRoomId')); pm.expect(move).to.exist; pm.expect(move.actorUserId).to.be.a('string'); pm.expect(move.effectiveDate).to.eql(pm.collectionVariables.get('hc023TransferEffectiveDate')); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject repeated transfer on same Cairo date",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{hc023PrivateDestinationRoomId}}\",\n  \"bedId\": null,\n  \"effectiveDate\": \"{{hc023TransferEffectiveDate}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc023PrivateBookingId}}/assignment/transfer",
+            "description": "The transfer date is already present in this booking's assignment history; expected 409 CareHomes.Bookings.TransferConflict."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('same-day repeat is rejected', () => { pm.response.to.have.status(409); pm.expect(pm.response.json().code).to.eql('CareHomes.Bookings.TransferConflict'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject transfer to occupied room",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{hc023OccupiedRoomId}}\",\n  \"bedId\": null,\n  \"effectiveDate\": \"{{hc023TransferEffectiveDate}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc023ConflictBookingId}}/assignment/transfer",
+            "description": "An overlapping accepted stay owns this destination; expected 409 CareHomes.Bookings.AssignmentConflict."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('occupied destination conflicts', () => { pm.response.to.have.status(409); pm.expect(pm.response.json().code).to.eql('CareHomes.Bookings.AssignmentConflict'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject a bed on Suite transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"roomId\": \"{{hc023SuiteDestinationRoomId}}\",\n  \"bedId\": \"{{hc023SuiteBedId}}\",\n  \"effectiveDate\": \"{{hc023TransferEffectiveDate}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc023SuiteBookingId}}/assignment/transfer",
+            "description": "Private and Suite transfers reserve the whole room and reject a supplied bed with 400 CareHomes.Bookings.InvalidAssignment."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Suite bed shape is rejected', () => { pm.response.to.have.status(400); pm.expect(pm.response.json().code).to.eql('CareHomes.Bookings.InvalidAssignment'); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Amend a future maintenance block",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{hc023InventoryVersion}},\n  \"startDate\": \"{{hc023MaintenanceNewStartDate}}\",\n  \"endDate\": \"{{hc023MaintenanceNewEndDate}}\",\n  \"reason\": \"Updated planned maintenance\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/maintenance/{{hc023MaintenanceId}}",
+            "description": "Only a block and amended start date strictly after today's Cairo date can be amended. Occupancy, overlaps and expected facility version are revalidated."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('future maintenance amendment succeeds', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('hc023InventoryVersion', pm.response.json().version);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Cancel future maintenance and verify retained state",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{hc023InventoryVersion}}\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/maintenance/{{hc023MaintenanceId}}/cancel",
+            "description": "Cancellation is retained (not hard-deleted), records actor/time, and removes the block from availability immediately."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('maintenance cancellation succeeds', () => pm.response.to.have.status(200));",
+                  "const block = pm.response.json().maintenance.find(x => x.id === pm.collectionVariables.get('hc023MaintenanceId')); pm.test('cancelled block remains readable', () => { pm.expect(block.isCancelled).to.eql(true); pm.expect(block.cancelledBy).to.be.a('string'); pm.expect(block.cancelledOnUtc).to.be.a('string'); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08. Facility cancellation",
+      "description": "Requires separate disposable bookings in the indicated states. Family cancellation before recorded check-in refunds totalAmount; after recorded check-in it refunds 50%. Owner cancellation of an accepted stay refunds the full amount. Admin recovery requires a failed or externally completed refund. No requests reset or seed the database.",
+      "item": [
+        {
+          "name": "Owner cancels accepted stay",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Facility cancellation for local verification\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{hc035OwnerBookingId}}/cancel",
+            "description": "Accepted stay cancellation returns a full refund and records the reason."
+          }
+        }
+      ]
+    }
+  ]
+}

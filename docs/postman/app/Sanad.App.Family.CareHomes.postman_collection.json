@@ -1,0 +1,602 @@
+{
+  "info": {
+    "_postman_id": "076186cd-fddb-4a61-adb0-2051a80258da",
+    "name": "Sanad App — Family Care Homes",
+    "description": "Family endpoints only. Token: FamilyAccess. Public discovery requests explicitly use no authentication.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{careHomeFamilyJwt}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5235"
+    },
+    {
+      "key": "careHomeAcceptedBookingId",
+      "value": ""
+    },
+    {
+      "key": "careHomeBookingId",
+      "value": ""
+    },
+    {
+      "key": "careHomeDiscoveryId",
+      "value": ""
+    },
+    {
+      "key": "careHomeDiscoveryUnknownId",
+      "value": ""
+    },
+    {
+      "key": "careHomeElderlyId",
+      "value": ""
+    },
+    {
+      "key": "careHomeExtensionBookingId",
+      "value": ""
+    },
+    {
+      "key": "careHomeFacilityId",
+      "value": ""
+    },
+    {
+      "key": "careHomeFamilyDisputeBookingId",
+      "value": ""
+    },
+    {
+      "key": "careHomeFamilyDisputeReason",
+      "value": "The recorded arrival does not match our evidence."
+    },
+    {
+      "key": "careHomeFamilyJwt",
+      "value": ""
+    },
+    {
+      "key": "careHomeRoomTypeId",
+      "value": ""
+    },
+    {
+      "key": "careHomeStartDate",
+      "value": "2026-11-10"
+    },
+    {
+      "key": "hc035FamilyCheckedInBookingId",
+      "value": ""
+    },
+    {
+      "key": "hc035FamilyPreCheckInBookingId",
+      "value": ""
+    },
+    {
+      "key": "careHomeProfileMediaId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Public discovery (anonymous)",
+      "description": "Read-only public discovery. Every request explicitly uses noauth despite the collection-level bearer auth. Use only an approved eligible disposable fixture; no setup or database reset is included. Eligibility requires the approved revision and the latest revision-scoped operating license, registration, health certificate, and civil defense document to be usable on the current Cairo date. Ratings/top-10 is deferred to HC-TASK-041.",
+      "item": [
+        {
+          "name": "List eligible Care Homes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery?page=1&pageSize=10",
+            "description": "Returns page, pageSize, totalCount, and ID-ascending summaries. page must be at least 1 and pageSize must be 1..50. Public fields omit contact details, private documents, owner/review data, ratings, availability/capacity, room instances/beds, and resident clinical data. startingFromMonthlyPriceEgp is the minimum non-archived room-type price, including zero; it is null when no active room type exists."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('anonymous discovery succeeds', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json(); pm.test('page shape is present', () => { pm.expect(body.page).to.eql(1); pm.expect(body.pageSize).to.eql(10); pm.expect(body.totalCount).to.be.a('number'); pm.expect(body.items).to.be.an('array'); });",
+                  "pm.test('public response omits private fields', () => { const raw = pm.response.text(); ['contactName','contactPhone','contactEmail','privateStorageKey','documents','ownerUserId','reviewHistory'].forEach(field => pm.expect(raw).not.to.include(field)); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List invalid pagination",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery?page=0&pageSize=51",
+            "description": "Invalid pagination returns 400 with code CareHomes.Discovery.InvalidQuery."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('invalid pagination is rejected', () => pm.response.to.have.status(400));",
+                  "pm.test('invalid-query code is returned', () => pm.expect(pm.response.json().code).to.eql('CareHomes.Discovery.InvalidQuery'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read eligible Care Home detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryId}}",
+            "description": "Use careHomeDiscoveryId from a guarded disposable fixture. Detail includes the approved address, admission conditions, amenities, medical services, and active room-type cards; it does not expose private or resident data. Optional expectedCareHomeEnglishName and expectedStartingFromMonthlyPriceEgp variables enable exact fixture assertions."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('eligible detail succeeds', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json(); pm.test('detail shape is present', () => { pm.expect(body.summary.id).to.eql(pm.variables.get('careHomeDiscoveryId')); pm.expect(body.summary.arabicName).to.be.a('string'); pm.expect(body.summary.englishName).to.be.a('string'); pm.expect(body.address).to.be.a('string'); pm.expect(body.roomTypes).to.be.an('array'); });",
+                  "const expectedName = pm.variables.get('expectedCareHomeEnglishName'); if (expectedName) pm.test('fixture name matches', () => pm.expect(body.summary.englishName).to.eql(expectedName));",
+                  "const expectedPrice = pm.variables.get('expectedStartingFromMonthlyPriceEgp'); if (expectedPrice) pm.test('fixture minimum price matches', () => pm.expect(String(body.summary.startingFromMonthlyPriceEgp)).to.eql(String(expectedPrice)));",
+                  "pm.test('detail omits private fields', () => { const raw = pm.response.text(); ['contactName','contactPhone','contactEmail','privateStorageKey','documents','ownerUserId','reviewHistory','ratings','capacity'].forEach(field => pm.expect(raw).not.to.include(field)); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown or ineligible detail is 404",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "noauth"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryUnknownId}}",
+            "description": "Use a GUID that is not an eligible facility. Unknown and ineligible IDs intentionally map to the same 404 code CareHomes.Discovery.NotFound."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('unknown or ineligible detail is hidden', () => pm.response.to.have.status(404));",
+                  "pm.test('not-found code is returned', () => pm.expect(pm.response.json().code).to.eql('CareHomes.Discovery.NotFound'));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read approved facility media (anonymous)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryId}}/media/{{careHomeProfileMediaId}}",
+            "description": "Public media is served only when it belongs to the facility's approved revision. Request is anonymous; missing, draft, or non-approved media returns 404.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('approved public media contract', () => pm.expect([200, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. Family bookings, payments and extensions",
+      "description": "Source-authored HC-TASK-032 booking and HC-036 extension examples. Requires the disposable Development fixture variables below, including an accepted/paid booking for the extension request, and an effective Finance rule. These requests have not been runtime-verified; do not point them at production or reset a database to make them runnable.",
+      "item": [
+        {
+          "name": "List family Care-home bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-bookings",
+            "description": "FamilyAccess. Lists the caller family's bookings newest first."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('family booking list contract', () => pm.expect([200, 401, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Checkout Care-home booking",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"elderlyId\": \"{{careHomeElderlyId}}\",\n  \"facilityId\": \"{{careHomeFacilityId}}\",\n  \"roomTypeId\": \"{{careHomeRoomTypeId}}\",\n  \"requestedStartDate\": \"{{careHomeStartDate}}\",\n  \"careNeedsNotes\": \"Authored booking example\",\n  \"responsibleContactName\": \"Fixture contact\",\n  \"responsibleContactPhone\": \"+201000000000\",\n  \"responsibleContactRelationship\": \"Daughter\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-bookings/checkout",
+            "description": "Creates one calendar month with a 15-minute unpaid hold. Start date must be at least 24 hours from checkout in Cairo time. Success is 200; validation/arrival/capacity/configuration errors are mapped by the API."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('checkout authored response', () => pm.expect([200, 400, 401, 404, 409, 503]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('careHomeBookingId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request Care-home stay extension",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "none"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeAcceptedBookingId}}/extensions",
+            "description": "FamilyAccess. Requires the caller's current accepted and paid, not-checked-out segment. Creates a separate pending-payment segment for one calendar month from the existing endDate, within the same room type. Use the returned id with the standard payment-intent request; payment does not imply facility acceptance. The original segment is unchanged. Authored example only; it requires an eligible disposable accepted-booking fixture."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('extension request authored response', () => pm.expect([200, 401, 404, 409, 503]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('careHomeExtensionBookingId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Care-home extension payment intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": 1,\n  \"billing\": { \"firstName\": \"Fixture\", \"lastName\": \"Family\", \"email\": \"family@example.test\", \"phoneNumber\": \"+201000000000\" }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeExtensionBookingId}}/payments/intent",
+            "description": "Creates the separate Paymob Card/Wallet intent for an extension segment. Payment callback updates only that extension; facility acceptance remains a separate decision. Requires a previously created extension with a current payment hold."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('extension payment-intent authored response', () => pm.expect([200, 401, 404, 409, 503]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('careHomeExtensionMerchantReference', pm.response.json().merchantReference);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read family Care-home booking",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}",
+            "description": "Family scoped detail. Cross-family and unknown IDs return 404 CareHomes.Bookings.NotFound."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('family booking detail contract', () => pm.expect([200, 401, 404, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Create Care-home payment intent",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"method\": 1,\n  \"billing\": { \"firstName\": \"Fixture\", \"lastName\": \"Family\", \"email\": \"family@example.test\", \"phoneNumber\": \"+201000000000\" }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}/payments/intent",
+            "description": "Card/Wallet Paymob intent. Repeating an existing intent returns the same intent; expired/non-payable bookings return 409 CareHomes.Bookings.InvalidState."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('payment intent authored response', () => pm.expect([200, 401, 404, 409, 503]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('careHomeMerchantReference', pm.response.json().merchantReference);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03. Family confirmation and disputes",
+      "description": "Source-authored HC-034 room/bed assignment, actual facility check-in/out, Family confirmation, Family-submitted dispute, owner operational readback, and Admin dispute resolution. Requires an accepted booking and disposable fixture IDs. Check-out without Family confirmation opens a case immediately; a Family dispute requires a booking owned by that Family with facility check-in recorded. These examples are authored, not runtime evidence.",
+      "item": [
+        {
+          "name": "Family confirm check-in",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}/check-in-confirmation",
+            "description": "FamilyAccess. The booking must belong to the caller's Family and have an active facility check-in. Cross-family/unknown IDs return 404 CareHomes.Bookings.NotFound; before-check-in or repeated confirmation returns 409 CareHomes.Bookings.InvalidState."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Family confirmation authored response', () => pm.expect([200, 401, 404, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Family submit check-in dispute",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"{{careHomeFamilyDisputeReason}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeFamilyDisputeBookingId}}/check-in-dispute",
+            "description": "FamilyAccess. The booking must belong to the caller's Family and have a facility-recorded check-in. The reason is trimmed and must contain 1-2000 characters. A valid first submission returns one Open Admin case with familyReason; a repeat returns the same open case without replacing the reason. Facility actualCheckInOnUtc and actualCheckOutOnUtc remain unchanged. Anonymous is 401, wrong-family/unknown is 404 CareHomes.CheckInDispute.NotFound, missing check-in is 409 CareHomes.CheckInDispute.InvalidState, and invalid reason is 400 CareHomes.CheckInDispute.InvalidReason. This request is authored only and requires an eligible disposable booking."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Family dispute authored response', () => pm.expect([200, 400, 401, 404, 409]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) pm.collectionVariables.set('careHomeCheckInDisputeId', pm.response.json().id);"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Family cancellation",
+      "description": "Requires separate disposable bookings in the indicated states. Family cancellation before recorded check-in refunds totalAmount; after recorded check-in it refunds 50%. Owner cancellation of an accepted stay refunds the full amount. Admin recovery requires a failed or externally completed refund. No requests reset or seed the database.",
+      "item": [
+        {
+          "name": "Family cancels before check-in",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "none"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{hc035FamilyPreCheckInBookingId}}/cancel",
+            "description": "Returns full refund amount, including after facility approval but before recorded check-in."
+          }
+        },
+        {
+          "name": "Family cancels after check-in",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "none"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{hc035FamilyCheckedInBookingId}}/cancel",
+            "description": "Returns 50% of totalAmount after actual facility check-in is recorded; checkout must not yet be recorded."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Care-home ratings and ranking",
+      "description": "FamilyAccess only. Rating requires an owned Family booking with Family-confirmed check-in. Repeating the PUT edits the existing one-per-booking rating. Top 10 excludes unrated and publicly ineligible homes. Bruno was not selected because focused automated tests cover this bounded behavior; no stateful HTTP evidence is claimed.",
+      "item": [
+        {
+          "name": "Family top-10 rated Care homes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-ratings/top-10",
+            "description": "Returns up to ten eligible rated homes, ordered by unrounded average, review count, then ID."
+          }
+        },
+        {
+          "name": "Rate or edit a checked-in booking",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeFamilyJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stars\": 5,\n  \"reviewText\": \"Care was attentive\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-ratings/bookings/{{careHomeBookingId}}",
+            "description": "Use a disposable booking with FamilyCheckInConfirmedOnUtc set. Repeated calls update its rating without increasing review count. Source-authored; not runtime-verified."
+          }
+        }
+      ]
+    }
+  ]
+}

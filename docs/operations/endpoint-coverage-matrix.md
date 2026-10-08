@@ -1,8 +1,8 @@
 # API contract coverage matrix
 
-## Current whole-API coverage checkpoint — 2026-10-01
+## Current whole-API coverage checkpoint — 2026-10-08
 
-The latest verified static inventory records 312 controller route-method signatures. The Postman mapping contains 352 requests, with 0 missing and 0 orphan matches. Bruno contains 993 API request files; all controller signatures have Bruno request-file matches, with 0 orphan signatures.
+The latest verified static inventory records 418 controller route-method signatures. The Postman mapping contains 475 requests, with 0 missing and 0 orphan matches. Bruno contains 1,411 API request files; 11 controller signatures have no Bruno request-file match and there are 0 orphan signatures.
 
 These figures describe static request-file mapping only. Separately, the owner confirms the remaining provider-backed Family booking/subscription payment-intent and Card amount-synchronization tests were performed previously; detailed run artifacts/metrics are not present in this workspace. The full audit is closed on that owner confirmation. The checker's regex-based source parsing has documented limitations, and its controller count is route-method signatures rather than controller actions.
 
@@ -22,16 +22,22 @@ The checker normalizes route parameters and compares controller actions with eve
 
 | Evidence | Count | Status |
 |---|---:|---|
-| Controller route-method signatures | 312 | inventory |
-| Postman API requests | 352 | complete |
+| Controller route-method signatures | 418 | inventory |
+| Postman API requests | 475 | complete |
 | Controller signatures without Postman | 0 | complete |
 | Orphan Postman API routes | 0 | complete |
-| Postman JSON files parsed | 7 | complete |
-| Bruno API requests | 993 | inventory |
-| Controller signatures without Bruno match | 0 | complete mapping; runtime coverage is tracked separately |
+| Postman JSON files parsed | 16 | complete |
+| Bruno API requests | 1,411 | inventory |
+| Controller signatures without Bruno match | 11 | mapping gaps listed below; runtime coverage is tracked separately |
 | Orphan Bruno route signatures | 0 | complete |
 
-Latest two-way checker result (2026-10-01): 312 controller route-method signatures, 352 Postman API requests (0 missing / 0 orphan), and 993 Bruno API requests (0 unmatched / 0 orphan). These are file mappings, not runtime results. The focused checker script passed.
+Latest two-way checker result (2026-10-08): 418 controller route-method signatures, 475 Postman API requests (0 missing / 0 orphan), and 1,411 Bruno API requests (11 unmatched / 0 orphan). These are file mappings, not runtime results. The focused checker script passed for Postman; its nonzero exit reflects the Bruno gaps listed below.
+
+## Care Homes audience collections
+
+Care Homes requests are separated by their server authorization boundary: [Facility Owner](../postman/care-homes/Sanad.CareHomes.Owner.postman_collection.json), [Family app](../postman/app/Sanad.App.Family.CareHomes.postman_collection.json), and [Admin Care Homes](../postman/admins/Sanad.Admin.CareHomes.postman_collection.json). Public discovery GETs are included in the Family collection and explicitly disable authentication. The prior combined collection is an empty index. Static mapping confirms all 418 controller route-method signatures have Postman mappings with no orphan requests.
+
+The 11 current Bruno mapping gaps are Care Homes requests: three payout routes; three owner profile-media routes; Admin and public profile-media reads; the paid extension route; and both Family rating routes. This records file coverage only and does not claim those routes were runtime-tested.
 
 For product-screen reconciliation, see the [Family UI audit](family-ui-audit.md) and the [Elderly UI audit](elderly-ui-audit.md). These distinguish complete mappings for existing routes from missing UI-driven API capabilities and record role/permission evidence, owner verification/deferral decisions, and the need for Admin read/inspection coverage.
 

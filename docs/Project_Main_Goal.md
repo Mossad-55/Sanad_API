@@ -15,6 +15,7 @@ Current Care Homes checkpoint (2026-10-08): onboarding closeout and HC-TASK-038 
 - [Care homes tasks](operations/care-homes/Care_Homes_Tasks.md): the single implementation checklist, grouped by dependencies.
 - [UI evidence](operations/care-homes/UI_Review.md): 29 reviewed screenshots.
 - [Execution handoff](operations/care-homes/Execution_Handoff.md): current execution guidance for the active slice.
+- [Care Homes API audience map](care-homes/README.md) and [Postman collection guide](postman/care-homes/README.md): Family, facility-owner, and Admin routes, permissions, and matching collections.
 - [Governance](governance/AGENTS.md) and [workflow](operations/codex-workflow.md): flexible worker roles, focused risk-based verification, optional Bruno, and fixture-first preparation.
 
 ## Boundaries

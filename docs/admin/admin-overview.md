@@ -27,6 +27,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | City & area lookups | `docs/admin/lookups-cities-areas.md` |
 | Specialization, title & degree lookups | `docs/admin/lookups-specializations-titles-degrees.md` |
 | Caregiver review | `docs/admin/caregivers-review.md` |
+| Care Homes operational review, inventory, disputes, refunds, and payouts | `docs/admin/care-homes.md` |
 | National ID review | `docs/admin/identity-documents.md` |
 | Care-needs assessment quiz | `docs/admin/care-assessments.md` |
 | Bookings (cancellations & refunds) | `docs/admin/bookings.md` |
@@ -36,7 +37,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Elderly help-request operations and history | `docs/admin/elderly-help-requests.md` |
 | Elderly SOS operational reads, history, and status | `docs/admin/elderly-sos.md` |
 | Durable notification inspection | `docs/admin/notifications.md` |
-| Postman | `docs/postman/admins/Sanad.Admin.postman_collection.json` |
+| Postman | General Admin: `docs/postman/admins/Sanad.Admin.postman_collection.json`; Care Homes operations: `docs/postman/admins/Sanad.Admin.CareHomes.postman_collection.json` |
 
 ## Durable notification inspection
 
