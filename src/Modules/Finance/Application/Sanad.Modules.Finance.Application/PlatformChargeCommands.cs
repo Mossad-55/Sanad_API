@@ -8,6 +8,7 @@ namespace Sanad.Modules.Finance.Application;
 public interface IFinanceDbContext
 {
     DbSet<PlatformChargeRule> PlatformChargeRules { get; }
+    DbSet<CaregiverPayoutPolicy> CaregiverPayoutPolicies { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
 

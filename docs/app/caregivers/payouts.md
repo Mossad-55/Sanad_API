@@ -73,3 +73,7 @@ Table `caregivers.caregiver_payout_accounts` (`id`, `caregiver_id` unique, `acco
 - `400 Caregivers.PayoutAccount.InvalidIban` — IBAN fails structure/checksum validation.
 - `400 Caregivers.PayoutAccount.UnknownBank` — bank code matches no bank.
 - `409 Caregivers.PayoutAccount.InactiveBank` — bank code matches an inactive bank.
+
+## Payout timing policy (Admin-managed)
+
+Payout eligibility timing is controlled by the Admin-managed caregiver payout policy (payoutDelayHours after a booking is both Completed and Paid). The policy has no fee field: entitlement is always the booking snapshot `BaseCaregiverFee` in full, and the snapshot `PlatformFeeAmount` (charged to the family on top) is never deducted. Policy administration is a SuperAdmin/FinanceAdmin operation; see docs/admin/finance-platform-charges.md.

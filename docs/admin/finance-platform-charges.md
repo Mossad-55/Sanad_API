@@ -68,6 +68,67 @@ Subscriptions.Quote.TaxNotConfigured`; caregiver quote and caregiver checkout
 return their existing quote/charges-not-configured errors. Clients cannot
 override server-calculated amounts or rates.
 
+## Caregiver payout policy (timing only, no payout fee)
+
+Separate Admin-managed policy controlling **when** a completed and paid
+caregiver booking becomes payout-eligible. It configures timing only:
+`payoutDelayHours` (integer, zero or more) after a booking is both Completed
+(`CompletedOnUtc`) and Paid (`PaidOnUtc`). Eligibility is `max(completedOnUtc,
+paidOnUtc) + payoutDelayHours`; a booking missing either timestamp is never
+eligible. There is deliberately **no payout fee field**: payout entitlement is
+always the booking snapshot `BaseCaregiverFee` in full. The snapshot
+`PlatformFeeAmount` is charged to the family on top of the base fee and is
+never deducted from the caregiver payout.
+
+These routes require the `PayoutOperationalAdmin` policy: **SuperAdmin or
+FinanceAdmin** (normal access). SupportAdmin and ContentAdmin are denied. This
+is intentionally separate from the `FinanceOperationalAdmin`
+(SuperAdmin/SupportAdmin) platform-charge routes above, which are unchanged.
+
+```text
+POST /api/v1/admin/finance/caregiver-payout-policies
+GET  /api/v1/admin/finance/caregiver-payout-policies/current
+GET  /api/v1/admin/finance/caregiver-payout-policies/history
+```
+
+Create with:
+
+```json
+{
+  "payoutDelayHours": 72,
+  "version": 1,
+  "effectiveOnUtc": "2026-10-08T00:00:00Z"
+}
+```
+
+`version` must be positive and greater than the latest stored payout policy
+version; `payoutDelayHours` must be zero or more; `effectiveOnUtc` must be a
+UTC timestamp. The create route returns `201` with the new policy UUID.
+Invalid input returns `400 Finance.PayoutPolicy.Invalid`; out-of-order
+versions return `409 Finance.PayoutPolicy.VersionConflict`; concurrent
+version/active changes return `409 Finance.PayoutPolicy.Conflict`.
+
+The current route returns the effective policy, or JSON `null` when no
+effective policy exists — payout processing must fail closed in that case and
+never assume a default delay. History returns all stored policies ordered by
+descending version. A future `effectiveOnUtc` is retained for scheduling and
+becomes effective automatically once reached; no transition job or stored
+flag flip runs.
+
+Active status is computed, not stored: at any moment the effective policy is
+the highest-versioned policy whose `effectiveOnUtc` has arrived (equal
+effective times resolve to the highest version). History marks exactly that
+policy active, so current and history always agree. Version numbers must keep
+increasing, which keeps this precedence total: a later-scheduled policy takes
+effect on arrival regardless of creation order. The `isActive` response field
+reports this computed status.
+
+Table `finance.caregiver_payout_policies` (`id`, `payout_delay_hours`,
+`version` unique, `effective_on_utc`, `created_on_utc`). Migration `AddCaregiverPayoutPolicy` is
+authored only and must not be applied except on an explicitly authorized
+database. No seed policy is committed; the first effective policy comes only
+from the Admin create route.
+
 ## Legacy subscription-tax adapter
 
 The existing routes remain available for compatibility:

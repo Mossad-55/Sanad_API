@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sanad.Modules.Finance.Infrastructure;
@@ -11,9 +12,11 @@ using Sanad.Modules.Finance.Infrastructure;
 namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(FinanceDbContext))]
-    partial class FinanceDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261008200844_AddCaregiverPayoutPolicy")]
+    partial class AddCaregiverPayoutPolicy
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -37,6 +40,10 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("effective_on_utc");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
                     b.Property<int>("PayoutDelayHours")
                         .HasColumnType("integer")
                         .HasColumnName("payout_delay_hours");
@@ -46,6 +53,11 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                         .HasColumnName("version");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("IsActive")
+                        .IsUnique()
+                        .HasDatabaseName("ux_caregiver_payout_policy_active")
+                        .HasFilter("\"is_active\" = TRUE");
 
                     b.HasIndex("Version")
                         .IsUnique()
