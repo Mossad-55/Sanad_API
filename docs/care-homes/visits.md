@@ -13,6 +13,15 @@ Care-home visits are separate from care-giver home-visit bookings. They are free
 | `POST /api/v1/family/care-home-visits/{visitId}/cancel` | `FamilyAccess` | Cancel before the visit starts |
 | `POST /api/v1/family/care-home-visits/{visitId}/reschedule` | `FamilyAccess` | Ask for a new slot; the facility must approve it |
 
+The create request includes `facilityId`, `kind` (`Prospective` or `Resident`),
+`elderlyId` (null for prospective visits), `visitorName`, `visitorPhone`, an
+exact `visitorCount`, and a UTC-offset `startsAt`. A resident visit requires an
+elderly ID belonging to the active Family and an eligible accepted, paid stay
+at that facility on the visit date. Reschedule accepts
+`{ "startsAt": "2026-11-12T08:00:00Z" }`. Family and owner cancellation accept
+`{ "reason": "Schedule changed" }`; the reason may be null. Each family read
+and mutation is scoped to the caller's active Family.
+
 Create request example:
 
 ```json
@@ -44,6 +53,23 @@ All routes require `CareHomeOwnerAccess` and are scoped to the owner's facility:
 | `POST /api/v1/care-homes/visits/mine/{visitId}/cancel` | Cancel before the visit starts |
 
 Settings requests contain `visitorCapacity`, arrays of `{ "day": "Monday", "startTime": "09:00", "endTime": "17:00" }` for `operatingHours` and `visitingWindows`, and closure entries `{ "date": "2026-11-10", "reason": "Holiday" }`. A stale settings version conflicts. Settings that would make an already-reserved future appointment invalid or exceed capacity are rejected.
+
+The complete settings request also contains `expectedVersion`; for example:
+
+```json
+{
+  "expectedVersion": 1,
+  "visitorCapacity": 4,
+  "operatingHours": [{ "day": "Monday", "startTime": "09:00", "endTime": "17:00" }],
+  "visitingWindows": [{ "day": "Monday", "startTime": "10:00", "endTime": "16:00" }],
+  "closures": []
+}
+```
+
+The owner decision request is `{ "approve": true, "reason": null }` to approve;
+rejection sets `approve` to false and supplies a nonblank reason. The Postman
+Family and Owner visit folders contain authored examples for these routes;
+examples do not claim runtime execution.
 
 When a reschedule is requested, the approved original remains active and continues to reserve capacity. Approval of the replacement changes both records in one transaction; rejection, expiry, or cancellation leaves the original appointment intact. Either the Family or facility owner may cancel until the appointment start time.
 

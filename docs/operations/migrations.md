@@ -92,6 +92,8 @@ is recorded below:
 - Care Homes: `20261008122857_AddCareHomeBookingExtensions`
 - Care Homes: `20261008141359_AddCareHomeFinanceReporting`
 
+HC-TASK-060 adds generated migration `20261008221643_AddCareHomeBookingNotificationOutbox` for the durable booking-notification outbox, event-key uniqueness, retry scheduling, and optimistic claim version. It is unapplied; do not run `database update` without exact-target authorization. The migration's `Down` removes only this new outbox table.
+
 To inspect SQL without changing a database, use the module Infrastructure
 project and the API startup project:
 

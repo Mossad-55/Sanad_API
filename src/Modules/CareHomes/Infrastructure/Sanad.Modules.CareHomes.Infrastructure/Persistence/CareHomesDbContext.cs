@@ -22,6 +22,7 @@ public sealed class CareHomesDbContext(DbContextOptions<CareHomesDbContext> opti
     public DbSet<CareHomePayoutDebt> PayoutDebts => Set<CareHomePayoutDebt>();
     public DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => Set<CareHomeBookingAssignmentHistory>();
     public DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => Set<CareHomeTransferNotificationOutbox>();
+    public DbSet<CareHomeNotificationOutbox> BookingNotificationOutbox => Set<CareHomeNotificationOutbox>();
     public DbSet<CareHomeCheckInDispute> CheckInDisputes => Set<CareHomeCheckInDispute>();
     public DbSet<CareHomeProfileMedia> ProfileMedia => Set<CareHomeProfileMedia>();
     public DbSet<CareHomeVisitSettings> VisitSettings => Set<CareHomeVisitSettings>();

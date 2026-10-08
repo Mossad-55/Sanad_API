@@ -65,6 +65,18 @@ The runnable Admin requests are in [`Sanad.Admin.CareHomes.postman_collection.js
 This read-only route requires `CareHomesOperationalAdmin` (SuperAdmin or SupportAdmin); ContentAdmin, owners, Family accounts, and anonymous callers are denied. `through` is a required ISO `YYYY-MM-DD` Cairo-local calendar date and is inclusive. It must be supplied by the caller so the view does not impose an undocumented “soon” horizon. `page` defaults to 1; `pageSize` defaults to 20 and is limited to 1–100. Invalid date or paging returns `400 CareHomes.Admin.InvalidQuery`.
 
 The result contains `throughDate`, `page`, `pageSize`, `totalCount`, and `items`. Each item contains facility ID/status and bilingual names, license document ID, expiry date, days until expiry relative to the current Cairo date, `isExpired` (expiry strictly before today), and verification timestamp. Results include already-expired licenses and future expiries up to `through`, sorted by expiry date then facility ID. Only approved facilities and the latest operating-license document on their approved revision qualify; the document must be verified, dated, and not Admin-confirmed non-expiring. A replacement on a draft revision does not change the approved license shown until that revision is approved. No private storage key or file content is returned. The route does not mutate data or send notifications.
+
+## Inspect bookings
+
+Recommended Admin navigation is **Care Homes → Overview, Bookings, Refunds & disputes**. Overview uses the existing dashboard and revenue/CSV reports. The bookings register links to this read-only detail route. Refund recovery and dispute resolution retain their existing workflows; the payout ledger remains a separate view because it uses `PayoutOperationalAdmin`.
+
+`GET /api/v1/admin/care-homes/bookings?page=1&pageSize=25&facilityId={{careHomeId}}&bookingStatus=3&paymentStatus=2&refundStatus=0&stayFrom=2026-10-01&stayTo=2026-10-31&search={{careHomeBookingId}}`
+
+All query filters except page/pageSize are optional. Page defaults to 1; pageSize defaults to 25 and is bounded to 1–100. State filters use the numeric Care Homes booking/payment/refund enums. Stay dates are inclusive calendar dates and match stays overlapping the requested interval. `search` is an exact booking GUID or exact merchant reference. Results sort by booking creation descending, then booking ID ascending. The page response contains `page`, `pageSize`, `totalCount`, and `items`; rows include booking/facility/room-type IDs, resident bilingual display names, stay dates, booking/payment/refund states, amount/currency, creation/payment/refund timestamps and amount, and current room/bed IDs. Invalid paging, state, range, or oversized search returns `400 CareHomes.Admin.InvalidQuery`.
+
+`GET /api/v1/admin/care-homes/bookings/{bookingId}` returns the persisted booking and immutable charge snapshot, resident/facility/room-type identifiers and bilingual display names, lifecycle/decision timestamps and reason, merchant reference and payment transaction/timestamp, refund facts, check-in/out facts and actors, assignment history, and the latest linked check-in dispute if one exists. It does not return medical profile JSON, care-needs notes, responsible-contact fields, payment client credentials, or provider order identifiers. The detail is a projection of persisted current state and explicit assignment/dispute records; it is not a complete event timeline. Unknown booking IDs return `404 CareHomes.Bookings.NotFound`.
+
+Both routes require `CareHomesOperationalAdmin` (SuperAdmin or SupportAdmin); ContentAdmin, owners, Family accounts, and anonymous callers are denied. Use the existing receipt and internal-note routes on the booking ID as needed. Dashboard/revenue metrics, Cairo-local period filters, CSV export, refund actions, dispute resolution, and payout policy are defined by their existing contracts and are not changed by these read routes.
 ## Inspect Care Homes inventory and availability
 
 `GET /api/v1/care-homes/inventory/admin/{facilityId}` returns the facility's
@@ -77,8 +89,11 @@ allowed, while `ContentAdmin`, owners, Family accounts, and anonymous callers
 are denied. Availability uses Egypt-local half-open maintenance dates and
 excludes archived assets, maintenance, and supplied active occupancy.
 
-The current occupancy provider is intentionally empty until HC-TASK-032/034
-supply Care Homes holds and stays. Booking creation is not part of HC-TASK-020.
-The additive inventory migration has not been generated and awaits fresh
-owner authorization for the exact disposable target; no database execution is
-claimed here.
+The registered `CareHomeBookingOccupancyProvider` now supplies active checkout
+holds, paid decision holds, and accepted stays. Before assignment, occupancy is
+counted against the room type; after assignment, Shared stays occupy a bed and
+Private/Suite stays occupy a room. Check-out and date-effective transfers are
+reflected in the occupancy intervals. Booking lifecycle details are documented
+in [the Care Homes booking guide](../care-homes/booking-lifecycle.md). This
+guide's original HC-020 inventory evidence is historical; current availability
+is booking-aware.

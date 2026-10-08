@@ -74,3 +74,26 @@ public sealed class CareHomeTransferNotificationOutboxConfiguration : IEntityTyp
         b.HasIndex(x => x.TransferId).IsUnique(); b.HasIndex(x => new { x.Status, x.NextAttemptOnUtc });
     }
 }
+
+public sealed class CareHomeNotificationOutboxConfiguration : IEntityTypeConfiguration<CareHomeNotificationOutbox>
+{
+    public void Configure(EntityTypeBuilder<CareHomeNotificationOutbox> b)
+    {
+        b.ToTable("booking_notification_outbox"); b.HasKey(x => x.Id);
+        b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+        b.Property(x => x.EventKey).HasColumnName("event_key").HasMaxLength(180).IsRequired();
+        b.Property(x => x.EventType).HasColumnName("event_type").HasConversion<int>().IsRequired();
+        b.Property(x => x.BookingId).HasColumnName("booking_id").IsRequired();
+        b.Property(x => x.DisputeId).HasColumnName("dispute_id");
+        b.Property(x => x.Status).HasConversion<int>().IsRequired();
+        b.Property(x => x.Version).HasColumnName("version").IsConcurrencyToken();
+        b.Property(x => x.AttemptCount).HasColumnName("attempt_count").IsRequired();
+        b.Property(x => x.NextAttemptOnUtc).HasColumnName("next_attempt_on_utc").IsRequired();
+        b.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
+        b.Property(x => x.LastAttemptOnUtc).HasColumnName("last_attempt_on_utc");
+        b.Property(x => x.LastError).HasMaxLength(2000);
+        b.Property(x => x.ClaimToken).HasColumnName("claim_token");
+        b.HasIndex(x => x.EventKey).IsUnique();
+        b.HasIndex(x => new { x.Status, x.NextAttemptOnUtc });
+    }
+}

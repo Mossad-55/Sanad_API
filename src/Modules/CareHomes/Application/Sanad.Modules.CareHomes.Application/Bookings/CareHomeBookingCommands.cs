@@ -116,11 +116,15 @@ public sealed class DecideHandler(ICareHomesDbContext db, IPaymobClient paymob) 
             if (r.Accept)
             {
                 x.Accept(r.UtcNow);
+                CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.DecisionAccepted, x.Id, r.UtcNow,
+                    eventKey: CareHomeNotificationEvents.TransitionKey(x.Id, CareHomeNotificationEvent.DecisionAccepted));
                 await db.SaveChangesAsync(ct);
             }
             else
             {
                 x.Reject(r.Reason ?? string.Empty, r.UtcNow);
+                CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.DecisionRejected, x.Id, r.UtcNow,
+                    eventKey: CareHomeNotificationEvents.TransitionKey(x.Id, CareHomeNotificationEvent.DecisionRejected));
                 await db.SaveChangesAsync(ct);
                 var refund = await CareHomeRefundProcessor.InitiateAsync(db, paymob, x, r.UtcNow, ct);
                 if (refund.IsFailure) return Result<CareHomeBookingResponse>.Failure(refund.Error);
@@ -150,7 +154,16 @@ public sealed class ConfirmPaymentHandler(ICareHomesDbContext db, IPaymobClient 
 
         try
         {
+            bool paymentWasRecorded = x.PaymentStatus == CareHomeBookingPaymentStatus.Paid;
             ApplyPaymentResult(x, r);
+            if (r.Success && !paymentWasRecorded)
+            {
+                CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.PaymentSucceeded, x.Id, r.UtcNow,
+                    eventKey: CareHomeNotificationEvents.TransitionKey(x.Id, CareHomeNotificationEvent.PaymentSucceeded));
+                if (x.Status == CareHomeBookingStatus.PaidAwaitingDecision)
+                    CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.OwnerDecisionNeeded, x.Id, r.UtcNow,
+                        eventKey: CareHomeNotificationEvents.TransitionKey(x.Id, CareHomeNotificationEvent.OwnerDecisionNeeded));
+            }
             await db.SaveChangesAsync(ct);
         }
         catch (InvalidOperationException ex) when (ex.Message == "CareHomes.Bookings.PaymentConflict")
@@ -162,12 +175,24 @@ public sealed class ConfirmPaymentHandler(ICareHomesDbContext db, IPaymobClient 
             // Re-read the winning state before acknowledging a provider callback. A success
             // racing a failure must still be recorded (and refunded if its hold has ended),
             // while a different successful transaction must remain a visible conflict.
+            foreach (var entry in db.BookingNotificationOutbox.Local.ToArray())
+                if (db.BookingNotificationOutbox.Entry(entry).State == EntityState.Added)
+                    db.BookingNotificationOutbox.Remove(entry);
             await db.Bookings.Entry(x).ReloadAsync(ct);
             try
             {
                 if (x.PaymentStatus != CareHomeBookingPaymentStatus.Paid || x.PaymobTransactionId != r.TransactionId)
                 {
+                    bool paymentWasRecorded = x.PaymentStatus == CareHomeBookingPaymentStatus.Paid;
                     ApplyPaymentResult(x, r);
+                    if (r.Success && !paymentWasRecorded)
+                    {
+                        CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.PaymentSucceeded, x.Id, r.UtcNow,
+                            eventKey: CareHomeNotificationEvents.TransitionKey(x.Id, CareHomeNotificationEvent.PaymentSucceeded));
+                        if (x.Status == CareHomeBookingStatus.PaidAwaitingDecision)
+                            CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.OwnerDecisionNeeded, x.Id, r.UtcNow,
+                                eventKey: CareHomeNotificationEvents.TransitionKey(x.Id, CareHomeNotificationEvent.OwnerDecisionNeeded));
+                    }
                     await db.SaveChangesAsync(ct);
                 }
             }

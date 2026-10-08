@@ -642,6 +642,58 @@
             "url": "{{baseUrl}}/api/v1/family/care-home-visits",
             "description": "Creates a pending request for the active Family. For resident visits use kind Resident and a Family-owned elderly ID with an active accepted and paid stay."
           }
+        },
+        {
+          "name": "List my Family visits",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/family/care-home-visits",
+            "description": "Lists visits belonging to the active Family."
+          }
+        },
+        {
+          "name": "Read my Family visit",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/family/care-home-visits/{{careHomeVisitId}}",
+            "description": "Reads a visit only when it belongs to the active Family."
+          }
+        },
+        {
+          "name": "Request visit reschedule",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startsAt\": \"{{careHomeVisitReplacementStart}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-visits/{{careHomeVisitId}}/reschedule",
+            "description": "Requests a replacement slot. The approved original remains active until the facility approves the replacement."
+          }
+        },
+        {
+          "name": "Cancel my Family visit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"reason\": \"Schedule changed\" }"
+            },
+            "url": "{{baseUrl}}/api/v1/family/care-home-visits/{{careHomeVisitId}}/cancel",
+            "description": "Cancels a visit before its start time."
+          }
         }
       ]
     }

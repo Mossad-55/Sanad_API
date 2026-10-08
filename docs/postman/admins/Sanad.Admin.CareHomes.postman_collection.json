@@ -462,6 +462,54 @@
           ]
         }
       ]
+    },
+    {
+      "name": "07. Booking inspection",
+      "description": "Read-only operational booking register and detail. Requires CareHomesOperationalAdmin; no fixture or database mutation is performed.",
+      "item": [
+        {
+          "name": "List Care Homes bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings?page=1&pageSize=25",
+            "description": "All filters except page/pageSize are optional. Page size is 1–100. State filters use numeric enum values. Stay dates are inclusive and select overlapping stays. Search matches an exact booking GUID or merchant reference. Results order newest first then booking ID. The response contains page, pageSize, totalCount and items. Invalid query returns 400 CareHomes.Admin.InvalidQuery. Authenticated runtime evidence is not claimed by this authored request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('booking list contract status', () => pm.expect([200, 400, 401, 403]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('items').that.is.an('array'); pm.expect(body.items.length).to.be.at.most(100); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Care Homes booking detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{careHomeBookingId}}",
+            "description": "Returns persisted booking/charge/payment/refund/check-in/out facts and assignment/dispute history. Does not expose clinical intake, care notes, contact fields, or payment credentials. Unknown booking returns 404 CareHomes.Bookings.NotFound. Authenticated runtime evidence is not claimed by this authored request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('booking detail contract status', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('bookingId'); pm.expect(body).to.have.property('assignmentHistory').that.is.an('array'); pm.expect(JSON.stringify(body)).not.to.include('PaymentClientSecret'); pm.expect(JSON.stringify(body)).not.to.include('MedicalSnapshotJson'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
     }
   ]
 }

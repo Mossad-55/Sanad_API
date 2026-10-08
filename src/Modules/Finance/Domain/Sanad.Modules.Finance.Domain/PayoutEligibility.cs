@@ -19,9 +19,18 @@ public static class PayoutEligibility
             payoutDelayHours < 0)
             return new Result(false, null);
 
-        DateTime eligibleAfterUtc =
-            (completedOnUtc.Value > paidOnUtc.Value ? completedOnUtc.Value : paidOnUtc.Value)
-                .AddHours(payoutDelayHours);
+        DateTime later =
+            completedOnUtc.Value > paidOnUtc.Value ? completedOnUtc.Value : paidOnUtc.Value;
+
+        DateTime eligibleAfterUtc;
+        try
+        {
+            eligibleAfterUtc = later.AddHours(payoutDelayHours);
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            return new Result(false, null);
+        }
 
         return new Result(utcNow >= eligibleAfterUtc, eligibleAfterUtc);
     }
