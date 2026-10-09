@@ -66,6 +66,20 @@ like is idempotent, unlike removes only the caller’s like, and favorite toggle
 only the caller’s saved state. A database uniqueness constraint protects each
 target/user/interaction combination.
 
+```text
+POST   /api/v1/community/posts/{postId}/like
+DELETE /api/v1/community/posts/{postId}/like
+POST   /api/v1/community/posts/{postId}/favorite
+POST   /api/v1/community/posts/{postId}/comments
+GET    /api/v1/community/posts/{postId}/comments
+PUT    /api/v1/community/comments/{commentId}
+DELETE /api/v1/community/comments/{commentId}
+POST   /api/v1/community/comments/{commentId}/like
+POST   /api/v1/community/comments/{commentId}/replies
+GET    /api/v1/community/comments/{commentId}/replies
+GET    /api/v1/community/help-request-catalog
+```
+
 Post ratings are unique per post/user; check-ins are unique per post/user/local
 date. Interactions are persisted in the `community` schema. The SQL mappings use
 PostgreSQL-compatible `timestamp with time zone`, `date`, `time`, `text`, and

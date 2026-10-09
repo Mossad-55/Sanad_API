@@ -86,11 +86,13 @@ National ID is optional at activation. The app may call `PUT /identity-document`
 Detailed documents:
 
 - [Registration and verification](registration-and-verification.md)
+- [Avatar](avatar.md)
 - [National ID (identity document)](identity-document.md)
 - [Email or phone/password login](email-password-login.md)
 - [Elderly SMS login](elderly-sms-login.md)
 - [Refresh and sessions](refresh-and-sessions.md)
 - [Password reset and change](password-reset-and-change.md)
+- [Account self-edit](account.md)
 - [Claims and policies](claims-and-policies.md)
 - [Error catalog](errors.md)
 
@@ -112,5 +114,13 @@ Detailed documents:
 | POST | `/api/v1/auth/sessions/logout-all` | Normal JWT |
 | GET | `/api/v1/auth/sessions` | Normal JWT |
 | DELETE | `/api/v1/auth/sessions/{sessionId}` | Normal JWT |
+| GET | `/api/v1/auth/avatar` | Normal JWT (image) |
+| PUT | `/api/v1/auth/avatar` | Normal JWT, multipart `file` |
 | GET | `/api/v1/auth/identity-document` | Normal JWT |
 | PUT | `/api/v1/auth/identity-document` | Normal JWT, multipart `front` + `back` |
+| GET | `/api/v1/account` | Normal JWT |
+| PUT | `/api/v1/account` | Normal JWT, partial `arabicFullName` / `englishFullName` / `email` / `phoneNumber` |
+| GET | `/api/v1/account/language` | Normal JWT |
+| PUT | `/api/v1/account/language` | Normal JWT, body `uiLanguage`: `1` Arabic / `2` English |
+| GET | `/api/v1/account/notification-preferences` | Normal JWT |
+| PUT | `/api/v1/account/notification-preferences` | Normal JWT, full-replacement body with all eight bools: `checkInAlerts` / `medicationReminders` / `bookingUpdates` / `communityNotifications` / `familyActivityAlerts` / `newOrders` / `messagesFromFamilies` / `systemNotifications` |

@@ -4,11 +4,11 @@ Admin routes live under `/api/v1/admin/...`.
 
 ## Access
 
-| Role | JWT `account_type` | CMS content write — splash, legal, help center (`CmsContent`) | Lookup write (`CaregiversAdmin`) | Caregiver review (`CaregiversAdmin`) |
+| Role | JWT `account_type` | CMS content write — splash, legal, help center (`CmsContent`) | Lookup write (`CaregiversAdmin`) | Caregiver review (`CaregiverReviewAdmin`) |
 |---|---|---|---|---|
 | Super Admin | `SuperAdmin` | Yes | Yes | Yes |
-| Content Admin | `ContentAdmin` | Yes | Yes | Yes |
-| Support Admin | `SupportAdmin` | No | No | No |
+| Content Admin | `ContentAdmin` | Yes | Yes | No |
+| Support Admin | `SupportAdmin` | No | No | Yes |
 | Family / Caregiver / Elderly | app types | No | No | No |
 
 All admin writes also require `access_type` = `Normal`. Restricted verification tokens cannot call admin routes.
@@ -28,7 +28,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Specialization, title & degree lookups | `docs/admin/lookups-specializations-titles-degrees.md` |
 | Caregiver review | `docs/admin/caregivers-review.md` |
 | Care Homes operational review, inventory, disputes, refunds, and payouts | `docs/admin/care-homes.md` |
-| National ID review | `docs/admin/identity-documents.md` |
+| National ID review | `docs/admin/admin-identity-documents.md` |
 | Care-needs assessment quiz | `docs/admin/care-assessments.md` |
 | Bookings (cancellations & refunds) | `docs/admin/bookings.md` |
 | Subscription plans, publication/retirement, and coupon configuration | `docs/admin/subscriptions.md` |
@@ -37,6 +37,10 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Elderly help-request operations and history | `docs/admin/elderly-help-requests.md` |
 | Elderly SOS operational reads, history, and status | `docs/admin/elderly-sos.md` |
 | Durable notification inspection | `docs/admin/notifications.md` |
+| Bank catalogue | `docs/admin/lookups-banks.md` |
+| Finance platform charges and caregiver payout policy | `docs/admin/finance-platform-charges.md` |
+| Caregiver payout accounts and payouts | `docs/app/caregivers/payouts.md` |
+| Community moderation | `docs/app/community/writes.md` |
 | Postman | General Admin: `docs/postman/admins/Sanad.Admin.postman_collection.json`; Care Homes operations: `docs/postman/admins/Sanad.Admin.CareHomes.postman_collection.json` |
 
 ## Durable notification inspection
@@ -53,7 +57,7 @@ validation, response shapes, and remaining owner-verification items.
 
 ## Caregiver lookups
 
-Eight admin-managed lookups, each with create / rename / activate / deactivate and an admin list that returns active **and** inactive records with `isActive`:
+Nine admin-managed lookups, each with create / rename / activate / deactivate and an admin list that returns active **and** inactive records with `isActive`:
 
 ```text
 Services            POST/PUT/POST activate/POST deactivate  GET list (all)
@@ -64,9 +68,19 @@ Areas               parent = city + governorate (active chain); GET ?cityId=
 Specializations     typed (Medical/Companion); name unique per type
 Professional titles Medical only; name unique globally
 Academic degrees    Medical only; name unique globally
+Banks               SWIFT-compatible code + bilingual names, code immutable
 ```
 
 Public (app) reads are anonymous, active-only, and live under `/api/v1/lookups/...` — see `docs/app/public/lookups.md`.
+
+## Finance and payout operations
+
+Shared platform-charge rules use `FinanceOperationalAdmin` (SuperAdmin or
+SupportAdmin). Caregiver payout policy, payout-account review, and manual
+payout-transfer recording use `PayoutOperationalAdmin` (SuperAdmin or
+FinanceAdmin); SupportAdmin and ContentAdmin are denied on those routes. See
+`docs/admin/finance-platform-charges.md` and
+`docs/app/caregivers/payouts.md`.
 
 ## Caregiver review
 
@@ -91,7 +105,6 @@ See `docs/admin/caregivers-review.md`. Caregiver self-service onboarding routes 
 ## National ID review
 
 Under `/api/v1/admin/identity-documents/...` (`CaregiversAdmin`):
-
 ```text
 GET    /identity-documents?page=&pageSize=&status=     paged list (no file URLs)
 GET    /identity-documents/{userId}                    metadata only

@@ -32,7 +32,7 @@ Create a rule with:
 `version` must be positive and greater than the latest stored version;
 percentages are inclusive from `0` through `100`, rounded to two decimals;
 and `effectiveOnUtc` must be a UTC timestamp. The create route returns `201`
-with the new rule UUID. Invalid input returns `409 Finance.Charges.Invalid`;
+with the new rule UUID. Invalid input returns `400 Finance.Charges.Invalid`;
 duplicate/out-of-order versions return a conflict; concurrent version/active
 changes return `409 Finance.Charges.Conflict`.
 

@@ -12,6 +12,6 @@ Status: historical contract reference retained after legacy worker-brief cleanup
 
 ## Evidence and ownership
 
-The public behavior is documented in [Admin subscriptions](../../admin/subscriptions.md) and [Family subscriptions](../../app/families/subscriptions.md). The deleted worker briefs were historical routing/correction notes; they are not implementation authority and are not an executable backlog.
+The public behavior is documented in [Admin subscriptions](../../admin/subscriptions.md) and [Family subscriptions](../../app/families/subscriptions.md). Shared platform-fee and tax configuration now lives in the Finance surface ([Finance platform charges](../../admin/finance-platform-charges.md), `FinanceOperationalAdmin`: SuperAdmin or SupportAdmin); the routes above remain as the compatibility adapter. The deleted worker briefs were historical routing/correction notes; they are not implementation authority and are not an executable backlog.
 
 The former dedicated PostgreSQL concurrency check was optional local regression evidence. It must remain disposable and guarded; no database reset or provider action is authorized by this reference.

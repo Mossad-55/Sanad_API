@@ -4,9 +4,11 @@
 
 Sanad is an Arabic/English elderly-care platform. Current agreed scope is the Care homes backend: operator onboarding/review, inventory, Family discovery/stays/visits, payments/refunds/fees, ratings, Admin operations and in-app/email notifications.
 
-Only Care Homes is currently planned, and that slice is complete. The next priority is Chat, followed by Notifications and full application UI reconciliation; those are directions, not an approved task backlog. Before planning Chat, review what already exists in the owner's application, discuss its scope and tasks, and obtain explicit approval of the assembled plan. Family/Elderly inputs are supplied; broader caregiver requirements will be discussed separately.
+Only Care Homes is currently planned, and that slice is complete. The next priority is Chat, followed by Notifications and full application UI reconciliation. Chat intake is complete and its execution package (`docs/chat/`) is owner-approved with no implementation started; Notifications intake is next. Family/Elderly inputs are supplied; broader caregiver requirements will be discussed separately.
 
 Current Care Homes checkpoint (2026-10-09): HC-TASK-037 receipts/revenue/CSV/internal notes, HC-TASK-040 visits, HC-TASK-050 Admin license expiry, HC-TASK-051 Admin booking inspection, HC-TASK-053 caregiver-review authorization, and HC-TASK-060 notifications are complete. HC-TASK-061 guide/Postman synchronization and HC-TASK-062 evidence/handoff closeout are complete. HC-060 focused tests passed 69/69 and the Release solution build passed with 0 warnings/errors; its outbox migration remains generated and unapplied. Documentation closeout commits `f6c4648` and `8353352` are pushed; `main` and `origin/main` were verified synchronized. See the checklist for verification limits and deferred work. HC-TASK-052 is consolidated into HC-TASK-053.
+
+Cross-slice note: the caregiver-money chain (T0–T4 with follow-ups) and community lane (T5–T7) are implemented with gates green; T0–T2 merged, T3–T7 on task branches pending integration. A docs cleanup pass is in progress (fixes only; deletions need separate approval).
 
 ## Canonical files
 

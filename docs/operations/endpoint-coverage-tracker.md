@@ -70,7 +70,7 @@ Last verified: 2026-10-01. This tracker records the all-endpoints Bruno audit. T
 
 ## Operating rule
 
-At the end of every group: run only against guarded `Development` + `SanadBrunoTestDb`, revoke/logout all exact fixture-account sessions created or recovered for that group, remove generated files/rows belonging to the group, update this tracker plus `docs/goal-progress.md` and `docs/operations/endpoint-coverage-matrix.md`, and update docs/Postman whenever source logic or HTTP status behavior changes.
+At the end of every group: run only against guarded `Development` + `SanadBrunoTestDb`, revoke/logout all exact fixture-account sessions created or recovered for that group, remove generated files/rows belonging to the group, update this tracker plus `docs/operations/endpoint-coverage-matrix.md`, and update docs/Postman whenever source logic or HTTP status behavior changes.
 
 Protected paths remain excluded: private handoff files, `tests/Bruno/environments/vps.bru`, booking test files, `UI/`, and `subscription-vat-tax/`.
 
