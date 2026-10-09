@@ -2,11 +2,16 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
+using Sanad.Modules.Caregivers.Application.Abstractions.Data;
+using Sanad.Modules.Caregivers.Application.Discovery;
+using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Application.PayoutAccounts;
 using Sanad.Modules.Caregivers.Application.Payouts;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 using Sanad.Modules.Families.Application;
+using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Finance.Application;
@@ -508,6 +513,125 @@ public sealed class CaregiverPayoutHandlerTests
 
     private static DateTime Utc(int day) => new(2026, 10, day, 0, 0, 0, DateTimeKind.Utc);
 
+    [Fact]
+    public async Task Record_ShouldReturnConflict_WhenPaidConstraintViolated()
+    {
+        using CaregiversDbContext inner = CreateCaregiversDbContext();
+        using FamiliesDbContext familiesDb = CreateFamiliesDbContext();
+
+        Caregiver caregiver = await AddCaregiverAsync(inner);
+        Booking booking = await AddCompletedBookingAsync(familiesDb, caregiver.Id);
+        await AddPayoutAccountAsync(inner, caregiver.Id);
+
+        var dbContext = new ThrowingSaveCaregiversDbContext(
+            inner,
+            () => new DbUpdateException(
+                "duplicate key value violates unique constraint " +
+                "\"ux_caregiver_payouts_booking_paid\"",
+                innerException: null));
+
+        var handler = new RecordCaregiverPayoutCommandHandler(
+            dbContext,
+            familiesDb,
+            new FixedPolicyReader(new CaregiverPayoutPolicyRates(72, 2)));
+
+        var result =
+            await handler.Handle(
+                new RecordCaregiverPayoutCommand(
+                    booking.Id.Value,
+                    UserId.New(),
+                    "BANK-2026-000123",
+                    "Transfer advice 000123",
+                    "October weekly payout",
+                    Utc(10)),
+                default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CaregiverPayoutErrors.Conflict, result.Error);
+    }
+
+    [Fact]
+    public async Task Record_ShouldPropagateUnrelatedDatabaseFailures()
+    {
+        using CaregiversDbContext inner = CreateCaregiversDbContext();
+        using FamiliesDbContext familiesDb = CreateFamiliesDbContext();
+
+        Caregiver caregiver = await AddCaregiverAsync(inner);
+        Booking booking = await AddCompletedBookingAsync(familiesDb, caregiver.Id);
+        await AddPayoutAccountAsync(inner, caregiver.Id);
+
+        var dbContext = new ThrowingSaveCaregiversDbContext(
+            inner,
+            () => new DbUpdateException("connection failure", innerException: null));
+
+        var handler = new RecordCaregiverPayoutCommandHandler(
+            dbContext,
+            familiesDb,
+            new FixedPolicyReader(new CaregiverPayoutPolicyRates(72, 2)));
+
+        await Assert.ThrowsAsync<DbUpdateException>(() => handler.Handle(
+            new RecordCaregiverPayoutCommand(
+                booking.Id.Value,
+                UserId.New(),
+                "BANK-2026-000123",
+                "Transfer advice 000123",
+                "October weekly payout",
+                Utc(10)),
+            default));
+    }
+
+    private sealed class ThrowingSaveCaregiversDbContext(
+        ICaregiversDbContext inner,
+        Func<DbUpdateException> failure) : ICaregiversDbContext
+    {
+        public DbSet<Caregiver> Caregivers => inner.Caregivers;
+        public DbSet<CaregiverRating> CaregiverRatings => inner.CaregiverRatings;
+        public DbSet<Service> Services => inner.Services;
+        public DbSet<Language> Languages => inner.Languages;
+        public DbSet<Bank> Banks => inner.Banks;
+        public DbSet<CaregiverPayoutAccount> PayoutAccounts => inner.PayoutAccounts;
+        public DbSet<CaregiverPayout> Payouts => inner.Payouts;
+        public DbSet<Governorate> Governorates => inner.Governorates;
+        public DbSet<City> Cities => inner.Cities;
+        public DbSet<Area> Areas => inner.Areas;
+        public DbSet<Specialization> Specializations => inner.Specializations;
+        public DbSet<ProfessionalTitle> ProfessionalTitles => inner.ProfessionalTitles;
+        public DbSet<AcademicDegree> AcademicDegrees => inner.AcademicDegrees;
+
+        public Task<IReadOnlyList<AdminCaregiverListItem>> GetAdminCaregiversAsync(
+            int page, int pageSize, int? status, int? type,
+            CancellationToken cancellationToken = default) =>
+            inner.GetAdminCaregiversAsync(page, pageSize, status, type, cancellationToken);
+
+        public Task<int> CountAdminCaregiversAsync(
+            int? status, int? type,
+            CancellationToken cancellationToken = default) =>
+            inner.CountAdminCaregiversAsync(status, type, cancellationToken);
+
+        public Task<(IReadOnlyList<CaregiverSearchCardResponse> Items, int TotalCount)> SearchActiveCaregiversAsync(
+            string? search, int? type, int? gender, Guid? areaId, Guid? specializationId,
+            int? availability, decimal? minPrice, decimal? maxPrice, decimal? minRating,
+            int? minExperienceYears, int page, int pageSize,
+            CancellationToken cancellationToken = default) =>
+            inner.SearchActiveCaregiversAsync(
+                search, type, gender, areaId, specializationId, availability,
+                minPrice, maxPrice, minRating, minExperienceYears, page, pageSize,
+                cancellationToken);
+
+        public Task<CaregiverUserHeader?> GetCaregiverUserHeaderAsync(
+            UserId userId,
+            CancellationToken cancellationToken = default) =>
+            inner.GetCaregiverUserHeaderAsync(userId, cancellationToken);
+
+        public Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(
+            CancellationToken cancellationToken = default) =>
+            inner.GetTopRatedCaregiversAsync(cancellationToken);
+
+        public Task<int> SaveChangesAsync(
+            CancellationToken cancellationToken = default) =>
+            throw failure();
+    }
+
     private sealed class FixedPolicyReader(
         CaregiverPayoutPolicyRates? rates) : ICaregiverPayoutPolicyReader
     {
@@ -517,6 +641,7 @@ public sealed class CaregiverPayoutHandlerTests
             Task.FromResult(rates);
 
         public Task<IReadOnlyList<CaregiverPayoutPolicyHistoryItem>> GetHistoryAsync(
+            DateTime utcNow,
             CancellationToken cancellationToken) =>
             Task.FromResult<IReadOnlyList<CaregiverPayoutPolicyHistoryItem>>([]);
     }

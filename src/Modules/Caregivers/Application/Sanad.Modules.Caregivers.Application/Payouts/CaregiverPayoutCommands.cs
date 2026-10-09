@@ -297,7 +297,18 @@ public sealed class RecordCaregiverPayoutCommandHandler(
         }
 
         dbContext.Payouts.Add(payout);
-        await dbContext.SaveChangesAsync(cancellationToken);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateException ex) when (ex.ToString().Contains(
+            "ux_caregiver_payouts_booking_paid",
+            StringComparison.Ordinal))
+        {
+            return Result<CaregiverPayoutResponse>.Failure(
+                CaregiverPayoutErrors.Conflict);
+        }
 
         return Result<CaregiverPayoutResponse>.Success(
             payout.ToResponse());
