@@ -40,3 +40,23 @@ Done criteria per item: same as Lane A.
 - [ ] Not started — Full solution build (0 warnings) + full unit + architecture suites once (new packages + shared model).
 - [ ] Not started — `git diff --check`, Postman JSON validation.
 - [ ] Not started — Live Firebase verification only with explicit owner authorization + test device; Development stub otherwise.
+
+## Ready for integration (Integrator-owned discovery)
+
+A task is mergeable only if ALL hold: its box below is checked, its report
+file `docs/notifications/reports/<slug>.md` exists with branch + base/final
+SHAs + gate evidence, its dependencies are already in `main`, and the branch
+tip equals the reported final SHA. Otherwise it is skipped as blocked (never
+force-merged). On owner trigger "integrate now", the Integrator scans these
+boxes, merges qualifying tasks in dependency order (Lane A before Lane B),
+marks each merged box with the `main` SHA, and pushes `main` once. Workers
+never merge or push; workers write the report file as part of Done.
+
+- [ ] lane-a-registry — report: `docs/notifications/reports/lane-a-registry.md`
+- [ ] lane-a-sender — report: `docs/notifications/reports/lane-a-sender.md`
+- [ ] lane-a-outbox — report: `docs/notifications/reports/lane-a-outbox.md`
+- [ ] lane-a-fanout — report: `docs/notifications/reports/lane-a-fanout.md`
+- [ ] lane-a-docs — report: `docs/notifications/reports/lane-a-docs.md`
+- [ ] lane-b-templates — report: `docs/notifications/reports/lane-b-templates.md`
+- [ ] lane-b-sender — report: `docs/notifications/reports/lane-b-sender.md`
+- [ ] lane-b-docs — report: `docs/notifications/reports/lane-b-docs.md`

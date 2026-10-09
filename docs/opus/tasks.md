@@ -56,3 +56,21 @@ exclusive: Opus edits only the files below plus the listed docs/collections.
 Done criteria per phase: zero-warning build, focused tests green, docs +
 Postman synced, branch + SHA reported. State-changing checks only on
 authorized disposable targets with fixture-first preparation.
+
+## Ready for integration (Integrator-owned discovery)
+
+A phase is mergeable only if ALL hold: its box below is checked, its report
+file `docs/opus/reports/<slug>.md` exists with branch + base/final SHAs +
+gate evidence, its dependencies are already in `main`, and the branch tip
+equals the reported final SHA. Otherwise it is skipped as blocked (never
+force-merged). On owner trigger "integrate now", the Integrator scans these
+boxes, merges qualifying phases in numeric order, marks each merged box with
+the `main` SHA, and pushes `main` once. Workers never merge or push; workers
+write the report file as part of Done.
+
+- [ ] phase-1-rating — report: `docs/opus/reports/phase-1-rating.md`
+- [ ] phase-2-categories — report: `docs/opus/reports/phase-2-categories.md`
+- [ ] phase-3-search — report: `docs/opus/reports/phase-3-search.md`
+- [ ] phase-4-chat-deltas — report: `docs/opus/reports/phase-4-chat-deltas.md`
+- [ ] phase-5-library — report: `docs/opus/reports/phase-5-library.md`
+- [ ] phase-6-payout-reads — report: `docs/opus/reports/phase-6-payout-reads.md`

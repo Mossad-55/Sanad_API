@@ -49,3 +49,26 @@ Done criteria per item: same as Lane A. Lane B integrates after Lane A lands.
 - [ ] Not started — Full solution build (0 warnings) + full unit + architecture suites once.
 - [ ] Not started — `git diff --check`, Postman JSON validation.
 - [ ] Not started — Risk-based Bruno on disposable fixtures only, only if the contract demands live evidence.
+
+## Ready for integration (Integrator-owned discovery)
+
+A task is mergeable only if ALL hold: its box below is checked, its report
+file `docs/chat/reports/<slug>.md` exists with branch + base/final SHAs +
+gate evidence, its dependencies are already in `main`, and the branch tip
+equals the reported final SHA. Otherwise it is skipped as blocked (never
+force-merged). On owner trigger "integrate now", the Integrator scans these
+boxes, merges qualifying tasks in dependency order (Lane A before Lane B),
+marks each merged box with the `main` SHA, and pushes `main` once. Workers
+never merge or push; workers write the report file as part of Done.
+
+- [ ] lane-a-domain — report: `docs/chat/reports/lane-a-domain.md`
+- [ ] lane-a-persistence — report: `docs/chat/reports/lane-a-persistence.md`
+- [ ] lane-a-endpoints — report: `docs/chat/reports/lane-a-endpoints.md`
+- [ ] lane-a-attachments — report: `docs/chat/reports/lane-a-attachments.md`
+- [ ] lane-a-blocks — report: `docs/chat/reports/lane-a-blocks.md`
+- [ ] lane-a-docs — report: `docs/chat/reports/lane-a-docs.md`
+- [ ] lane-b-domain — report: `docs/chat/reports/lane-b-domain.md`
+- [ ] lane-b-endpoints — report: `docs/chat/reports/lane-b-endpoints.md`
+- [ ] lane-b-reports — report: `docs/chat/reports/lane-b-reports.md`
+- [ ] lane-b-notifications — report: `docs/chat/reports/lane-b-notifications.md`
+- [ ] lane-b-docs — report: `docs/chat/reports/lane-b-docs.md`
