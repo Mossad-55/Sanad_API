@@ -19,6 +19,7 @@ public sealed class NewEndpointsAuthorizationContractTests
     [InlineData(typeof(FamilyBookingsController), "AddBookingReview", "api/v1/family/bookings", "{bookingId:guid}/review")]
     [InlineData(typeof(FamilyController), "AcknowledgeDependentHelpRequest", "api/v1/family", "dependents/{dependentId:guid}/help-requests/{requestId:guid}/acknowledge")]
     [InlineData(typeof(CommunityPostsController), "GetPosts", "api/v1/community", "posts")]
+    [InlineData(typeof(CommunityPostsController), "GetRecommendations", "api/v1/community", "recommendations")]
     [InlineData(typeof(CommunityPostsController), "CreatePost", "api/v1/community", "posts")]
     [InlineData(typeof(CommentsController), "CreateComment", "api/v1/community", "posts/{postId:guid}/comments")]
     [InlineData(typeof(CommentsController), "UpdateComment", "api/v1/community", "comments/{commentId:guid}")]

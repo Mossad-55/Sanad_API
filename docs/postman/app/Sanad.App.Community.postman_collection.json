@@ -26,7 +26,8 @@
         { "name": "Add or update rating", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"ratingValue\": \"5\"\n}" }, "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/rating" } },
         { "name": "Get rating average", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/rating/average" } },
         { "name": "Submit local-day check-in", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"answer\": true,\n  \"timeZoneId\": \"Africa/Cairo\",\n  \"localDate\": \"2026-10-05\",\n  \"answeredAtLocalTime\": \"14:30:00\"\n}" }, "url": "{{baseUrl}}/api/v1/community/posts/{{postId}}/check-in" }, "description": "One row per user/post/local date. Invalid time zones return Community.CheckIn.Invalid." },
-        { "name": "Get help-request catalog", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/help-request-catalog" } }
+        { "name": "Get help-request catalog", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/help-request-catalog" } },
+        { "name": "Get personalized recommendations", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/recommendations?page=1&pageSize=10" }, "description": "Authenticated read. Published posts only, affinity authors first, already-interacted posts excluded. No totalCount is returned." }
       ]
     },
     {

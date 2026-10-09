@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Community.Domain.Comments;
 using Sanad.Modules.Community.Domain.CheckIns;
 using Sanad.Modules.Community.Domain.Posts;
@@ -19,4 +20,13 @@ public interface ICommunityDbContext
     DbSet<CommunityImage> CommunityImages { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
+
+    // Personalized recommendations computed entirely in the database:
+    // published posts excluding the caller's interacted posts, affinity
+    // authors first, then newest with deterministic tie-breaks.
+    Task<IReadOnlyList<Post>> GetRecommendedPostsAsync(
+        UserId userId,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
 }
