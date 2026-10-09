@@ -141,3 +141,49 @@ Example response (record/detail):
 ```
 
 Bank details are the `bankCode` and masked IBAN snapshotted from the caregiver payout account at record time. The full IBAN is never returned by any payout route and never logged. Audit identity is the recording/failing actor (`recordedBy`, plus failure actor/time on `Failed` rows).
+
+## Admin payout-account review
+
+Payout accounts start `Pending` and pay out only while `Verified`. Any caregiver
+edit returns the account to `Pending` for a fresh review. All routes below
+require the `PayoutOperationalAdmin` policy (**SuperAdmin or FinanceAdmin**);
+no verification role is granted to other account types.
+
+```text
+GET  /api/v1/admin/caregiver-payout-accounts?status=&page=1&pageSize=20
+GET  /api/v1/admin/caregiver-payout-accounts/{caregiverId}
+GET  /api/v1/admin/caregiver-payout-accounts/{caregiverId}/reviews
+POST /api/v1/admin/caregiver-payout-accounts/{caregiverId}/approve
+POST /api/v1/admin/caregiver-payout-accounts/{caregiverId}/reject
+POST /api/v1/admin/caregiver-payout-accounts/{caregiverId}/revoke
+POST /api/v1/admin/caregiver-payout-accounts/{caregiverId}/reveal
+```
+
+The queue lists accounts pending-first with masked IBANs only, plus the
+caregiver identity names for matching. Detail adds verification evidence and
+decision history pointers. Every decision carries the reviewer's current
+`expectedRevision`; a decision against a stale revision fails with `409
+Caregivers.PayoutAccount.RevisionConflict` so the reviewer reloads first.
+
+Ownership verification is a manual external check: the reviewer confirms the
+exact account belongs to the caregiver through an authorized third-party
+source outside Sanad (for example the bank's own portal) and records that
+source plus an optional non-sensitive reference in Sanad. A format check,
+account-existence check, or name plausibility alone is not ownership
+verification. Approve requires the verification source (`POST` with
+`{ "expectedRevision": 3, "verificationSource": "BankPortal", "reference":
+"optional" }`); reject and revoke require a reason of 1–500 characters.
+Allowed transitions are `Pending → Verified`, `Pending → Rejected`, and a
+direct `Verified → Revoked`; repeats against the wrong state return `409
+Caregivers.PayoutAccount.InvalidState`.
+
+The reveal route is the only operation that returns the full IBAN. It is a
+`POST` (never a `GET`, so the IBAN never appears in a URL), sends
+`Cache-Control: no-store`, writes an audited `Revealed` history entry, and
+fails closed with `503` when decryption is unavailable. Plaintext IBANs and
+provider credentials/results are never logged or persisted. Failed decryption
+writes no audit row.
+
+T4 payout recording requires a `Verified` account; `Pending`, `Rejected`, and
+`Revoked` accounts are rejected with `409
+Caregivers.Payouts.AccountNotVerified`.

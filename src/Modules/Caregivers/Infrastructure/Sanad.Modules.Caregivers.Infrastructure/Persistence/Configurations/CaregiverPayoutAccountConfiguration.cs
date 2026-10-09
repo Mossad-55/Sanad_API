@@ -37,12 +37,33 @@ public sealed class CaregiverPayoutAccountConfiguration :
             .HasColumnName("iban_last4")
             .HasMaxLength(CaregiverPayoutAccount.IbanLast4Length)
             .IsRequired();
+        builder.Property(account => account.Revision)
+            .HasColumnName("revision")
+            .IsRequired();
         builder.Property(account => account.Status)
             .HasColumnName("status")
             .IsRequired();
         builder.Property(account => account.RejectionReason)
             .HasColumnName("rejection_reason")
             .HasMaxLength(500);
+        builder.Property(account => account.VerifiedBy)
+            .HasConversion(id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? new UserId(value.Value) : null)
+            .HasColumnName("verified_by");
+        builder.Property(account => account.VerifiedOnUtc)
+            .HasColumnName("verified_on_utc");
+        builder.Property(account => account.ReviewedBy)
+            .HasConversion(id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? new UserId(value.Value) : null)
+            .HasColumnName("reviewed_by");
+        builder.Property(account => account.ReviewedOnUtc)
+            .HasColumnName("reviewed_on_utc");
+        builder.Property(account => account.VerificationSource)
+            .HasColumnName("verification_source")
+            .HasMaxLength(CaregiverPayoutAccount.MaximumSourceLength);
+        builder.Property(account => account.Reference)
+            .HasColumnName("reference")
+            .HasMaxLength(CaregiverPayoutAccount.MaximumReferenceLength);
         builder.Property(account => account.CreatedOnUtc)
             .HasColumnName("created_on_utc")
             .IsRequired();

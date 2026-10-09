@@ -281,6 +281,134 @@
           "description": "Moves a paid payout to Failed with actor and time. Only paid payouts can be marked; otherwise 409."
         }
       ]
+    },
+    {
+      "name": "Caregiver payout accounts (SuperAdmin or FinanceAdmin)",
+      "description": "Payout-account review queue under /api/v1/admin/caregiver-payout-accounts. Requires the PayoutOperationalAdmin policy. Ownership is verified through an external source; the full IBAN is revealed only by the dedicated audited reveal request. Manual fixture only.",
+      "item": [
+        {
+          "name": "List payout accounts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payout-accounts?page=1&pageSize=20"
+          },
+          "description": "Returns 200 with masked IBANs only, pending first. SuperAdmin and FinanceAdmin only."
+        },
+        {
+          "name": "Get payout account",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payout-accounts/{{caregiverId}}"
+          },
+          "description": "Returns 200 with masked bank details and verification evidence, or 404."
+        },
+        {
+          "name": "List payout account reviews",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payout-accounts/{{caregiverId}}/reviews"
+          },
+          "description": "Returns 200 with the append-only decision history, newest first. Reveal events are included; no IBAN content."
+        },
+        {
+          "name": "Approve payout account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedRevision\": 1,\n  \"verificationSource\": \"BankPortal\",\n  \"reference\": \"optional\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payout-accounts/{{caregiverId}}/approve"
+          },
+          "description": "Owner: approve only after an external source confirms the exact account belongs to the caregiver. Stale revisions return 409. Manual fixture only."
+        },
+        {
+          "name": "Reject payout account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedRevision\": 1,\n  \"reason\": \"Name mismatch\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payout-accounts/{{caregiverId}}/reject"
+          },
+          "description": "Reason of 1-500 characters is required. Only pending accounts can be rejected."
+        },
+        {
+          "name": "Revoke payout account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payout-accounts/{{caregiverId}}/revoke",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedRevision\": 1,\n  \"reason\": \"Fraud suspected\"\n}"
+            }
+          },
+          "description": "Direct revocation of a verified account. Reason of 1-500 characters is required."
+        },
+        {
+          "name": "Reveal payout account IBAN",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payout-accounts/{{caregiverId}}/reveal"
+          },
+          "description": "The only operation returning the full IBAN. No-store response; every reveal is audited. Manual fixture only; never replay against shared data."
+        }
+      ]
     }
   ]
 }

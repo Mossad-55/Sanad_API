@@ -480,15 +480,84 @@ public sealed class CaregiverPayoutHandlerTests
         CaregiversDbContext dbContext,
         CaregiverId caregiverId)
     {
-        dbContext.PayoutAccounts.Add(
-            CaregiverPayoutAccount.Create(
-                caregiverId,
-                "Mohamed Ahmed",
-                "NBE",
-                "v1.test.ciphertext",
-                "0002"));
+        var account = CaregiverPayoutAccount.Create(
+            caregiverId,
+            "Mohamed Ahmed",
+            "NBE",
+            "v1.test.ciphertext",
+            "0002");
 
+        account.Verify(UserId.New(), 1, Utc(2), "BankPortal", null);
+        dbContext.PayoutAccounts.Add(account);
         await dbContext.SaveChangesAsync();
+    }
+
+    private static async Task AddPayoutAccountInStatusAsync(
+        CaregiversDbContext dbContext,
+        CaregiverId caregiverId,
+        PayoutAccountStatus status)
+    {
+        var account = CaregiverPayoutAccount.Create(
+            caregiverId,
+            "Mohamed Ahmed",
+            "NBE",
+            "v1.test.ciphertext",
+            "0002");
+
+        switch (status)
+        {
+            case PayoutAccountStatus.Verified:
+                account.Verify(UserId.New(), 1, Utc(2), "BankPortal", null);
+                break;
+            case PayoutAccountStatus.Rejected:
+                account.Reject(UserId.New(), "Name mismatch", 1, Utc(2));
+                break;
+            case PayoutAccountStatus.Revoked:
+                account.Verify(UserId.New(), 1, Utc(2), "BankPortal", null);
+                account.Revoke(UserId.New(), "Fraud suspected", 1, Utc(3));
+                break;
+        }
+
+        dbContext.PayoutAccounts.Add(account);
+        await dbContext.SaveChangesAsync();
+    }
+
+    [Fact]
+    public async Task Record_ShouldRejectUnverifiedPayoutAccount()
+    {
+        foreach (var status in new[]
+                 {
+                     PayoutAccountStatus.Pending,
+                     PayoutAccountStatus.Rejected,
+                     PayoutAccountStatus.Revoked
+                 })
+        {
+            using CaregiversDbContext dbContext = CreateCaregiversDbContext();
+            using FamiliesDbContext familiesDb = CreateFamiliesDbContext();
+
+            Caregiver caregiver = await AddCaregiverAsync(dbContext);
+            Booking booking = await AddCompletedBookingAsync(familiesDb, caregiver.Id);
+            await AddPayoutAccountInStatusAsync(dbContext, caregiver.Id, status);
+
+            var handler = new RecordCaregiverPayoutCommandHandler(
+                dbContext,
+                familiesDb,
+                new FixedPolicyReader(new CaregiverPayoutPolicyRates(72, 2)));
+
+            var result =
+                await handler.Handle(
+                    new RecordCaregiverPayoutCommand(
+                        booking.Id.Value,
+                        UserId.New(),
+                        "BANK-2026-000123",
+                        "Transfer advice 000123",
+                        "October weekly payout",
+                        Utc(10)),
+                    default);
+
+            Assert.True(result.IsFailure);
+            Assert.Equal(CaregiverPayoutErrors.AccountNotVerified, result.Error);
+        }
     }
 
     private static CaregiversDbContext CreateCaregiversDbContext()
@@ -590,6 +659,7 @@ public sealed class CaregiverPayoutHandlerTests
         public DbSet<Language> Languages => inner.Languages;
         public DbSet<Bank> Banks => inner.Banks;
         public DbSet<CaregiverPayoutAccount> PayoutAccounts => inner.PayoutAccounts;
+        public DbSet<CaregiverPayoutAccountReview> PayoutAccountReviews => inner.PayoutAccountReviews;
         public DbSet<CaregiverPayout> Payouts => inner.Payouts;
         public DbSet<Governorate> Governorates => inner.Governorates;
         public DbSet<City> Cities => inner.Cities;

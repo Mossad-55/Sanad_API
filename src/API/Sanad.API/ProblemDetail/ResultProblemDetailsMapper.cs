@@ -51,6 +51,7 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Payouts.Ineligible"] = 409,
             ["Caregivers.Payouts.Conflict"] = 409,
             ["Caregivers.Payouts.InvalidState"] = 409,
+            ["Caregivers.Payouts.AccountNotVerified"] = 409,
 
             ["CareHomes.Rating.BookingNotEligible"] = 404,
             ["CareHomes.Rating.Conflict"] = 409,
@@ -179,6 +180,8 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.PayoutAccount.InvalidIban"] = 400,
             ["Caregivers.PayoutAccount.UnknownBank"] = 400,
             ["Caregivers.PayoutAccount.InactiveBank"] = 409,
+            ["Caregivers.PayoutAccount.InvalidState"] = 409,
+            ["Caregivers.PayoutAccount.RevisionConflict"] = 409,
             ["Caregivers.PayoutAccount.ProtectionUnavailable"] = 503,
 
             ["Caregivers.Onboarding.AlreadyExists"] = 409,

@@ -40,6 +40,16 @@ public static class PayoutAccountErrors
         new(
             "Caregivers.PayoutAccount.ProtectionUnavailable",
             "Payout account protection is temporarily unavailable.");
+
+    public static readonly Error InvalidState =
+        new(
+            "Caregivers.PayoutAccount.InvalidState",
+            "The payout account is not in a valid state for this operation.");
+
+    public static readonly Error RevisionConflict =
+        new(
+            "Caregivers.PayoutAccount.RevisionConflict",
+            "The payout account changed; reload it before deciding.");
 }
 
 public sealed record CaregiverPayoutAccountResponse(

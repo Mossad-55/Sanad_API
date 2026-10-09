@@ -35,6 +35,11 @@ public static class CaregiverPayoutErrors
         new(
             "Caregivers.Payouts.InvalidState",
             "The payout is not in a valid state for this operation.");
+
+    public static readonly Error AccountNotVerified =
+        new(
+            "Caregivers.Payouts.AccountNotVerified",
+            "The caregiver payout account is not verified.");
 }
 
 public sealed record CaregiverPayoutResponse(
@@ -258,6 +263,12 @@ public sealed class RecordCaregiverPayoutCommandHandler(
         {
             return Result<CaregiverPayoutResponse>.Failure(
                 PayoutAccountErrors.NotFound);
+        }
+
+        if (account.Status != PayoutAccountStatus.Verified)
+        {
+            return Result<CaregiverPayoutResponse>.Failure(
+                CaregiverPayoutErrors.AccountNotVerified);
         }
 
         bool alreadyPaid = await dbContext.Payouts.AnyAsync(
