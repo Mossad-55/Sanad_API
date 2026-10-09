@@ -89,7 +89,9 @@ Posts the caller already interacted with are excluded. With no interactions,
 the affinity set is empty and the result equals the newest-first published
 feed. Like the posts feed, the response is a bare list with `page` (minimum
 1) and `pageSize` (1–100); no `totalCount` is returned. Anonymous posts are
-included with their anonymity preserved.
+included with their anonymity preserved. Ranking is computed in a single
+database query over the existing interaction tables (covered by SQLite-backed
+focused tests); the caller's history is never materialized into memory.
 
 Community interactions are not financial or medically authoritative records.
 Run state-changing checks only against disposable fixtures.
