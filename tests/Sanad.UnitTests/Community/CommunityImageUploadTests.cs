@@ -30,12 +30,17 @@ public sealed class CommunityImageUploadTests : IDisposable
 
         Assert.True(result.IsSuccess);
         Assert.NotEqual(Guid.Empty, result.Value.ImageId);
-        Assert.StartsWith("/files/community/", result.Value.ImageUrl);
+        Assert.Equal(
+            $"/api/v1/community/uploads/images/{result.Value.ImageId}/file",
+            result.Value.ImageUrl);
         Assert.Equal("image/jpeg", result.Value.ContentType);
         Assert.Equal(jpeg.Length, result.Value.SizeBytes);
 
         Assert.Equal(1, await db.CommunityImages.CountAsync());
         Assert.Equal(0, await db.Posts.CountAsync());
+
+        string storageKey = (await db.CommunityImages.SingleAsync()).StorageKey;
+        Assert.StartsWith("private/", storageKey);
     }
 
     [Fact]

@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sanad.API.Authorization;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Community.Application.Uploads;
 
@@ -11,10 +12,14 @@ namespace Sanad.API.Controllers;
 public sealed class CommunityUploadsController : ApiControllerBase
 {
     private readonly ISender _sender;
+    private readonly IAuthorizationService _authorizationService;
 
-    public CommunityUploadsController(ISender sender)
+    public CommunityUploadsController(
+        ISender sender,
+        IAuthorizationService authorizationService)
     {
         _sender = sender;
+        _authorizationService = authorizationService;
     }
 
     [HttpPost("images")]
@@ -50,5 +55,36 @@ public sealed class CommunityUploadsController : ApiControllerBase
         var result = await _sender.Send(command, cancellationToken);
         if (!result.IsSuccess) return ToActionResult(result);
         return StatusCode(StatusCodes.Status201Created, result.Value);
+    }
+
+    [HttpGet("images/{imageId:guid}/file")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ReadImage(
+        Guid imageId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        AuthorizationResult moderation = await _authorizationService.AuthorizeAsync(
+            User,
+            null,
+            AuthorizationPolicies.CommunityModeration);
+
+        var result = await _sender.Send(
+            new GetCommunityImageFileQuery(imageId, userId, moderation.Succeeded),
+            cancellationToken);
+
+        if (!result.IsSuccess) return ToActionResult(result);
+
+        Response.GetTypedHeaders().CacheControl =
+            new Microsoft.Net.Http.Headers.CacheControlHeaderValue { NoStore = true };
+        Response.Headers.Pragma = "no-cache";
+
+        // FileStreamResult disposes the stream after sending.
+        return File(result.Value.Content, result.Value.ContentType);
     }
 }

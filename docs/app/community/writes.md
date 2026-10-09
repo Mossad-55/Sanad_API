@@ -78,12 +78,12 @@ Run state-changing checks only against disposable fixtures.
 
 `POST /api/v1/community/uploads/images` accepts one image as `multipart/form-data`
 with a `file` field. Any authenticated account may upload. The response carries
-the stable image id and the public URL to attach when creating a post:
+the stable image id and the URL to attach when creating a post:
 
 ```json
 {
   "imageId": "0198e2c2-4444-7777-8888-000000000001",
-  "imageUrl": "/files/community/0198e2c2444477778888000000000001.jpg",
+  "imageUrl": "/api/v1/community/uploads/images/0198e2c2-4444-7777-8888-000000000001/file",
   "contentType": "image/jpeg",
   "sizeBytes": 184320
 }
@@ -97,13 +97,22 @@ Empty, oversized, unsupported, or signature-mismatched files return `400`
 (`Storage.File.*` or `Community.Image.Invalid`); unauthenticated callers
 receive `401`.
 
-Storage behavior: files are saved with a generated safe key under the public
-`community` folder and served through the static `/files` host, so published
-posts can display them. Each upload is recorded (`community.CommunityImages`)
-with uploader and time. Uploading never creates or publishes a post, and the
-existing moderation still applies in full when a post is created: the post
-starts `PendingReview` and its image becomes visible only after a moderator
-publishes it. Moderators open the `imageUrl` at review time.
+Storage behavior: files are saved with a generated safe key under private
+storage and are never served through the static `/files` host, so an uploaded
+image cannot be opened publicly before its post is approved — unlike post
+bodies, image bytes stay gated until publication. Each upload is recorded
+(`community.CommunityImages`) with uploader and time. Uploading never creates
+or publishes a post, and the existing moderation still applies in full when a
+post is created: the post starts `PendingReview` and its image becomes
+visible to readers only after a moderator publishes it.
+
+`GET /api/v1/community/uploads/images/{imageId}/file` serves the bytes with
+`Cache-Control: no-store`. It allows the uploader's own images, any image for
+content moderators (`CommunityModeration`: SuperAdmin or ContentAdmin, for
+pending-post preview), and images attached to a published post for any
+authenticated caller. Anything else — including unapproved or rejected-post
+images for strangers — returns `404` without revealing whether the image
+exists; unauthenticated callers receive `401`, and unknown ids return `404`.
 
 Orphan retention: uploaded images that are never attached to a post are
 retained; no cleanup subsystem exists. The upload table makes orphans

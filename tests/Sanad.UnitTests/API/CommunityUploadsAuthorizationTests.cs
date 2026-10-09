@@ -25,8 +25,15 @@ public sealed class CommunityUploadsAuthorizationTests
 
         Assert.Equal(
             "images",
-            typeof(CommunityUploadsController)
-                .GetMethod(nameof(CommunityUploadsController.UploadImage))!
-                .GetCustomAttributes<HttpMethodAttribute>().Single().Template);
+            TemplateOf(nameof(CommunityUploadsController.UploadImage)));
+
+        Assert.Equal(
+            "images/{imageId:guid}/file",
+            TemplateOf(nameof(CommunityUploadsController.ReadImage)));
     }
+
+    private static string? TemplateOf(string methodName) =>
+        typeof(CommunityUploadsController)
+            .GetMethod(methodName)!
+            .GetCustomAttributes<HttpMethodAttribute>().Single().Template;
 }

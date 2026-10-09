@@ -10,7 +10,8 @@ namespace Sanad.Modules.Community.Application.Uploads;
 
 public sealed class UploadCommunityImageCommandHandler : ICommandHandler<UploadCommunityImageCommand, CommunityImageUploadResponse>
 {
-    private const string Folder = "community";
+    public const string Folder = "community";
+    public const long MaximumBytes = 2_097_152;
 
     private static readonly HashSet<string> AllowedContentTypes =
         new(StringComparer.OrdinalIgnoreCase)
@@ -66,11 +67,12 @@ public sealed class UploadCommunityImageCommandHandler : ICommandHandler<UploadC
         }
 
         await using var image = new MemoryStream(bytes, writable: false);
-        var saved = await _storage.SaveAsync(
+        var saved = await _storage.SavePrivateAsync(
             image,
             contentType,
             bytes.LongLength,
             Folder,
+            MaximumBytes,
             cancellationToken);
 
         if (saved.IsFailure)
@@ -93,7 +95,7 @@ public sealed class UploadCommunityImageCommandHandler : ICommandHandler<UploadC
             return Result<CommunityImageUploadResponse>.Success(
                 new CommunityImageUploadResponse(
                     record.Id.Value,
-                    "/files/" + saved.Value.Key,
+                    CommunityImageUrls.For(record.Id),
                     contentType,
                     bytes.LongLength));
         }
