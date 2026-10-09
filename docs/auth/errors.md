@@ -43,6 +43,7 @@ Validation failures are also Problem Details. `detail` is a safe public message.
 | `Identity.Refresh.UserNotFound` | 401 |
 | `Identity.Refresh.UserNotActive` | 403 |
 | `Identity.Refresh.ReuseDetected` | 401 |
+| `Identity.ElderlyLogin.AccountNotRegistered` | 404 |
 | `Identity.ElderlyLogin.OtpVerificationFailed` | 401 |
 | `Identity.ElderlyLogin.SessionLimitReached` | 409 |
 | `Identity.Password.UserNotFound` | 401 |
@@ -58,8 +59,16 @@ Validation failures are also Problem Details. `detail` is a safe public message.
 | `Identity.IdentityDocument.UserNotFound` | 404 |
 | `Identity.IdentityDocument.UnsupportedAccountType` | 409 |
 | `Identity.IdentityDocument.InvalidOperation` | 409 |
+| `Identity.Avatar.UserNotFound` | 404 |
+| `Identity.Avatar.NotFound` | 404 |
+| `Identity.Avatar.UnsupportedAccountType` | 409 |
+| `Identity.Avatar.InvalidOperation` | 409 |
 | `Identity.Account.UserNotFound` | 404 |
-| `Identity.Account.InvalidOperation` | 409 |
+| `Identity.Account.CaregiverOnly` | 403 |
+| `Identity.Account.CaregiverProfileNotFound` | 404 |
+| `Identity.Account.ActiveBookingExists` | 409 |
+| `Identity.Account.ElderlyManagedByFamily` | 409 |
+| `Identity.Account.OwnershipTransferRequired` | 409 |
 | `Storage.File.Empty` | 400 |
 | `Storage.File.TooLarge` | 400 |
 | `Storage.File.UnsupportedType` | 400 |
@@ -78,3 +87,5 @@ Unmapped application errors become `400`.
 | Other 400 | The request could not be completed. |
 
 Clients should branch on `status` and `code`, not on `detail`.
+
+For `Identity.ElderlyLogin.AccountNotRegistered`, the safe public detail is `Elderly account not registered.` This same 404 is returned for an unknown phone and every ineligible Elderly login account/profile.

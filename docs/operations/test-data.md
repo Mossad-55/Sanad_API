@@ -78,7 +78,7 @@ rollover `None`, and benefit keys `1, 2, 3, 5` included (keys `4, 6, 7, 8` exclu
 | Elderly | `POST /api/v1/auth/elderly/request-otp` with the phone → receive the code (SMS Misr test panel, API logs under the development SMS sender, or ask the test coordinator to relay it) → `POST /api/v1/auth/elderly/verify-otp`. |
 | Admin | `POST /api/v1/auth/login` with the `Identity__AdminSeed` account. |
 
-Sessions are capped (`DeviceSessionPolicy.MaximumActiveSessions`, currently 5): repeated logins from test scripts eventually return **409 `Identity.Login.SessionLimitReached`**. Remedy in a scratch environment: delete rows from `identity.device_sessions` (or revoke) and retry.
+Sessions are capped (`DeviceSessionPolicy.MaximumActiveSessions`, currently 5): repeated logins from test scripts eventually return **409 `Identity.Login.SessionLimitReached`**. Remedy only on the already-authorized disposable target, preferring revoke/logout over deletes, and read back the result; see the fixture guards in `docs/operations/codex-workflow.md` and `docs/operations/bruno-failure-first.md`.
 
 ## Payments in Development
 

@@ -6,6 +6,8 @@ HC-TASK-060 is committed and pushed: `fd90975` is included in `b693ff9`. HC-TASK
 
 The Care Homes slice is complete and the working tree is clean. **Next priority:** Chat. It is not planned yet; first review what exists in the owner's application, agree scope/tasks, and obtain explicit plan approval. Do not begin implementation before that intake and approval.
 
+**Cross-slice update:** the caregiver-money chain (T0 FinanceAdmin role, T1 bank catalogue, T2 payout account with IBAN encryption, T3 payout timing policy with future-effective fix, T4 payout ledger with review workflow) and the community lane (T5 image upload with gated serving, T6 recommendations, T7 medical recipients) are implemented with gates green; T0–T2 are merged, T3–T7 await integration on their task branches. The owner-approved Chat execution package lives in `docs/chat/` with no implementation started. A docs cleanup pass is in progress on a task branch (fixes only; deletions need separate approval).
+
 ## Historical handoff checkpoints
 
 The dated execution notes below preserve historical evidence. Their past “In Progress,” blocker, and next-action statements may have been superseded; current slice status is in the checklist and the summary above. Do not treat the historical next actions as current instructions.

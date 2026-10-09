@@ -5,7 +5,7 @@ These repository-wide rules are referenced by the root AGENTS.md. Owner-approved
 ## Start and resume
 
 - Mandatory owner intake BEFORE planning or developing ANY product slice: ask what the owner already has in the application, review supplied screens and instructions, and clarify missing behavior. Recommend options for discussion; do not infer endpoint or business-rule approval from screenshots. Add, remove, or modify tasks with the owner, then obtain explicit plan approval before development.
-- The current mastermind is the planning mastermind. Prepare only the currently discussed Care homes plan and, after owner approval, an exact execution handoff/prompt for another mastermind. Other product slices remain unplanned until discussed. Previously generated project-wide task files are superseded drafts pending scoped cleanup, not an executable backlog.
+- The current mastermind is the planning mastermind. Prepare only the currently discussed slice plan and, after owner approval, an exact execution handoff/prompt for another mastermind. Care Homes is complete; Chat is planned with an approved execution package and no implementation started. Notifications and later slices remain unplanned until discussed. Previously generated project-wide task files are superseded drafts pending scoped cleanup, not an executable backlog.
 
 - Read docs/Mastermind_Handoff.md, then only the active slice and linked contracts. docs/Project_Main_Goal.md owns project scope, priorities, and the phase-to-slice index.
 - Inspect git status and the relevant diff first; preserve unrelated edits and private files. Resume at the unfinished role. Reopen completed work only for a concrete defect, changed requirement, or invalidated evidence.
