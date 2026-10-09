@@ -58,11 +58,25 @@ public interface ICaregiversDbContext
         UserId userId,
         CancellationToken cancellationToken = default);
 
+    Task<PayoutRecordSaveResult> SavePayoutIfAccountRevisionVerifiedAsync(
+        CaregiverId caregiverId,
+        int expectedRevision,
+        CaregiverPayout payout,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(
         CancellationToken cancellationToken = default);
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
+}
+
+public enum PayoutRecordSaveResult
+{
+    Saved,
+    AccountNotFound,
+    AccountNotVerified,
+    RevisionConflict
 }
 
 public sealed record CaregiverUserHeader(

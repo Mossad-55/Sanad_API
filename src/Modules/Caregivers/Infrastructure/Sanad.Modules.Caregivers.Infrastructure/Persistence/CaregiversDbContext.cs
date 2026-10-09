@@ -38,6 +38,61 @@ public sealed class CaregiversDbContext :
     public DbSet<ProfessionalTitle> ProfessionalTitles => Set<ProfessionalTitle>();
     public DbSet<AcademicDegree> AcademicDegrees => Set<AcademicDegree>();
 
+    public async Task<PayoutRecordSaveResult> SavePayoutIfAccountRevisionVerifiedAsync(
+        CaregiverId caregiverId,
+        int expectedRevision,
+        CaregiverPayout payout,
+        CancellationToken cancellationToken = default)
+    {
+        Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction? transaction = null;
+        if (Database.IsRelational())
+        {
+            transaction = await Database.BeginTransactionAsync(cancellationToken);
+        }
+
+        try
+        {
+            CaregiverPayoutAccount? account = Database.IsRelational()
+                ? await PayoutAccounts.FromSqlInterpolated(
+                        $"SELECT * FROM caregivers.caregiver_payout_accounts WHERE caregiver_id = {caregiverId.Value} FOR UPDATE")
+                    .SingleOrDefaultAsync(cancellationToken)
+                : await PayoutAccounts.AsNoTracking().SingleOrDefaultAsync(
+                    a => a.CaregiverId == caregiverId,
+                    cancellationToken);
+
+            if (account is null)
+            {
+                return PayoutRecordSaveResult.AccountNotFound;
+            }
+
+            if (account.Revision != expectedRevision)
+            {
+                return PayoutRecordSaveResult.RevisionConflict;
+            }
+
+            if (account.Status != PayoutAccountStatus.Verified)
+            {
+                return PayoutRecordSaveResult.AccountNotVerified;
+            }
+
+            Payouts.Add(payout);
+            await SaveChangesAsync(cancellationToken);
+            if (transaction is not null)
+            {
+                await transaction.CommitAsync(cancellationToken);
+            }
+
+            return PayoutRecordSaveResult.Saved;
+        }
+        finally
+        {
+            if (transaction is not null)
+            {
+                await transaction.DisposeAsync();
+            }
+        }
+    }
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

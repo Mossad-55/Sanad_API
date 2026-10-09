@@ -307,11 +307,14 @@ public sealed class RecordCaregiverPayoutCommandHandler(
                 CaregiverPayoutErrors.InvalidState);
         }
 
-        dbContext.Payouts.Add(payout);
-
+        PayoutRecordSaveResult saveResult;
         try
         {
-            await dbContext.SaveChangesAsync(cancellationToken);
+            saveResult = await dbContext.SavePayoutIfAccountRevisionVerifiedAsync(
+                booking.CaregiverId,
+                account.Revision,
+                payout,
+                cancellationToken);
         }
         catch (DbUpdateException ex) when (ex.ToString().Contains(
             "ux_caregiver_payouts_booking_paid",
@@ -319,6 +322,18 @@ public sealed class RecordCaregiverPayoutCommandHandler(
         {
             return Result<CaregiverPayoutResponse>.Failure(
                 CaregiverPayoutErrors.Conflict);
+        }
+
+        if (saveResult != PayoutRecordSaveResult.Saved)
+        {
+            var error = saveResult switch
+            {
+                PayoutRecordSaveResult.AccountNotFound => PayoutAccountErrors.NotFound,
+                PayoutRecordSaveResult.AccountNotVerified => CaregiverPayoutErrors.AccountNotVerified,
+                PayoutRecordSaveResult.RevisionConflict => PayoutAccountErrors.RevisionConflict,
+                _ => CaregiverPayoutErrors.InvalidState
+            };
+            return Result<CaregiverPayoutResponse>.Failure(error);
         }
 
         return Result<CaregiverPayoutResponse>.Success(

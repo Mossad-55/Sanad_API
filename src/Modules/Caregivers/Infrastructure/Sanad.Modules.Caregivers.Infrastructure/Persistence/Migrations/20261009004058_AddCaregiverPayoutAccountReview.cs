@@ -39,7 +39,7 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                 table: "caregiver_payout_accounts",
                 type: "integer",
                 nullable: false,
-                defaultValue: 0);
+                defaultValue: 1);
 
             migrationBuilder.AddColumn<string>(
                 name: "verification_source",

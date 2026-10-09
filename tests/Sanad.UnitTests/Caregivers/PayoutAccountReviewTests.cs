@@ -15,6 +15,7 @@ public sealed class PayoutAccountReviewTests
         account.Verify(actor, 1, Utc(2), "BankPortal", "REF-1");
 
         Assert.Equal(PayoutAccountStatus.Verified, account.Status);
+        Assert.Equal(2, account.Revision);
         Assert.Equal(actor, account.VerifiedBy);
         Assert.Equal(Utc(2), account.VerifiedOnUtc);
         Assert.Equal(actor, account.ReviewedBy);
@@ -32,6 +33,7 @@ public sealed class PayoutAccountReviewTests
         account.Reject(actor, "Name mismatch", 1, Utc(2));
 
         Assert.Equal(PayoutAccountStatus.Rejected, account.Status);
+        Assert.Equal(2, account.Revision);
         Assert.Equal("Name mismatch", account.RejectionReason);
         Assert.Equal(actor, account.ReviewedBy);
         Assert.Equal(Utc(2), account.ReviewedOnUtc);
@@ -46,9 +48,10 @@ public sealed class PayoutAccountReviewTests
         account.Verify(verifier, 1, Utc(2), "BankPortal", null);
         var revoker = UserId.New();
 
-        account.Revoke(revoker, "Fraud suspected", 1, Utc(3));
+        account.Revoke(revoker, "Fraud suspected", 2, Utc(3));
 
         Assert.Equal(PayoutAccountStatus.Revoked, account.Status);
+        Assert.Equal(3, account.Revision);
         Assert.Equal("Fraud suspected", account.RejectionReason);
         Assert.Null(account.VerifiedBy);
         Assert.Null(account.VerifiedOnUtc);
@@ -74,7 +77,7 @@ public sealed class PayoutAccountReviewTests
         account.Verify(UserId.New(), 1, Utc(2), "BankPortal", null);
 
         Assert.Throws<DomainException>(
-            () => account.Reject(UserId.New(), "Late rejection", 1, Utc(3)));
+            () => account.Reject(UserId.New(), "Late rejection", 2, Utc(3)));
     }
 
     [Theory]
@@ -134,7 +137,7 @@ public sealed class PayoutAccountReviewTests
             "v1.k1.new",
             "3000");
 
-        Assert.Equal(2, account.Revision);
+        Assert.Equal(3, account.Revision);
         Assert.Equal(PayoutAccountStatus.Pending, account.Status);
         Assert.Null(account.VerifiedBy);
         Assert.Null(account.VerifiedOnUtc);
@@ -166,7 +169,7 @@ public sealed class PayoutAccountReviewTests
                 break;
             case PayoutAccountStatus.Revoked:
                 account.Verify(UserId.New(), 1, Utc(2), "BankPortal", null);
-                account.Revoke(UserId.New(), "Reason", 1, Utc(3));
+                account.Revoke(UserId.New(), "Reason", 2, Utc(3));
                 break;
         }
 

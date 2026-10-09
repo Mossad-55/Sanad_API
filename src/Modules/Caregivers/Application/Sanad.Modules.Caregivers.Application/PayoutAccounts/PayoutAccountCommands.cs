@@ -244,7 +244,15 @@ public sealed class UpdateCaregiverPayoutAccountCommandHandler :
                 ibanLast4);
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result<CaregiverPayoutAccountResponse>.Failure(
+                PayoutAccountErrors.RevisionConflict);
+        }
 
         return Result<CaregiverPayoutAccountResponse>.Success(
             account.ToResponse());

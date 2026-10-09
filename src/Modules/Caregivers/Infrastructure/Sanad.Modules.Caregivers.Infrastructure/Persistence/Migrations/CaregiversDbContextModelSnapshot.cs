@@ -247,7 +247,8 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
 
                     b.Property<int>("Revision")
                         .HasColumnType("integer")
-                        .HasColumnName("revision");
+                        .HasColumnName("revision")
+                        .IsConcurrencyToken();
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")

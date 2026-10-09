@@ -138,7 +138,7 @@ public sealed class PayoutAccountReviewHandlerTests
                 new RevokePayoutAccountCommand(
                     caregiver.Id.Value,
                     UserId.New(),
-                    1,
+                    2,
                     "Fraud suspected",
                     Utc(3)),
                 default);
@@ -289,7 +289,7 @@ public sealed class PayoutAccountReviewHandlerTests
             default)).IsSuccess);
         Assert.True((await new RevokePayoutAccountCommandHandler(dbContext).Handle(
             new RevokePayoutAccountCommand(
-                caregiver.Id.Value, actor, 1, "Fraud suspected", Utc(3)),
+            caregiver.Id.Value, actor, 2, "Fraud suspected", Utc(3)),
             default)).IsSuccess);
 
         var result =
@@ -440,7 +440,7 @@ public sealed class PayoutAccountReviewHandlerTests
             CancellationToken cancellationToken = default) =>
             Task.FromResult<CaregiverUserHeader?>(
                 new CaregiverUserHeader(
-                    requestedUserId.Value,
+                    userId.Value,
                     "محمد أحمد",
                     "Mohamed Ahmed",
                     null,
@@ -449,6 +449,12 @@ public sealed class PayoutAccountReviewHandlerTests
         public Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(
             CancellationToken cancellationToken = default) =>
             inner.GetTopRatedCaregiversAsync(cancellationToken);
+
+        public Task<PayoutRecordSaveResult> SavePayoutIfAccountRevisionVerifiedAsync(
+            CaregiverId caregiverId, int expectedRevision, CaregiverPayout payout,
+            CancellationToken cancellationToken = default) =>
+            inner.SavePayoutIfAccountRevisionVerifiedAsync(
+                caregiverId, expectedRevision, payout, cancellationToken);
 
         public Task<int> SaveChangesAsync(
             CancellationToken cancellationToken = default) =>

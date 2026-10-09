@@ -76,9 +76,38 @@ public sealed class CaregiversDbContextModelTests
 
         Assert.NotNull(entityType);
         Assert.Equal("caregiver_payout_accounts", entityType!.GetTableName());
+        Assert.True(entityType.FindProperty(nameof(CaregiverPayoutAccount.Revision))!.IsConcurrencyToken);
         Assert.Contains(entityType!.GetIndexes(),
             index => index.IsUnique && index.Properties.Count == 1
                 && index.Properties[0].Name == "CaregiverId");
+    }
+
+    [Fact]
+    public async Task PayoutAccountRevision_ShouldRejectStaleConcurrentUpdate()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+        var caregiverId = CaregiverId.New();
+        var account = CaregiverPayoutAccount.Create(
+            caregiverId, "Caregiver Name", "NBE", "encrypted-value", "1234");
+
+        using (CaregiversDbContext setup = CreateDbContext(databaseName))
+        {
+            setup.PayoutAccounts.Add(account);
+            await setup.SaveChangesAsync();
+        }
+
+        using CaregiversDbContext reviewContext = CreateDbContext(databaseName);
+        using CaregiversDbContext caregiverContext = CreateDbContext(databaseName);
+        CaregiverPayoutAccount staleReviewCopy = await reviewContext.PayoutAccounts.SingleAsync();
+        CaregiverPayoutAccount editedAccount = await caregiverContext.PayoutAccounts.SingleAsync();
+
+        editedAccount.UpdateDetails(
+            "Updated Name", "NBE", "encrypted-new-value", "5678");
+        await caregiverContext.SaveChangesAsync();
+
+        staleReviewCopy.Verify(UserId.New(), 1, DateTime.UtcNow, "BankPortal", null);
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => reviewContext.SaveChangesAsync());
     }
 
     [Fact]

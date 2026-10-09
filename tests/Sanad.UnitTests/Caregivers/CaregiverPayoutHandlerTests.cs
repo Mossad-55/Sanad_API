@@ -514,7 +514,7 @@ public sealed class CaregiverPayoutHandlerTests
                 break;
             case PayoutAccountStatus.Revoked:
                 account.Verify(UserId.New(), 1, Utc(2), "BankPortal", null);
-                account.Revoke(UserId.New(), "Fraud suspected", 1, Utc(3));
+                account.Revoke(UserId.New(), "Fraud suspected", 2, Utc(3));
                 break;
         }
 
@@ -696,6 +696,11 @@ public sealed class CaregiverPayoutHandlerTests
         public Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(
             CancellationToken cancellationToken = default) =>
             inner.GetTopRatedCaregiversAsync(cancellationToken);
+
+        public Task<PayoutRecordSaveResult> SavePayoutIfAccountRevisionVerifiedAsync(
+            CaregiverId caregiverId, int expectedRevision, CaregiverPayout payout,
+            CancellationToken cancellationToken = default) =>
+            throw failure();
 
         public Task<int> SaveChangesAsync(
             CancellationToken cancellationToken = default) =>

@@ -186,4 +186,8 @@ writes no audit row.
 
 T4 payout recording requires a `Verified` account; `Pending`, `Rejected`, and
 `Revoked` accounts are rejected with `409
-Caregivers.Payouts.AccountNotVerified`.
+Caregivers.Payouts.AccountNotVerified`. The account revision and status are
+rechecked under a database row lock in the same transaction that records the
+payout. A concurrent caregiver edit or Admin revocation therefore either
+completes before the payout check (and blocks it) or after the payout has been
+recorded; a payout cannot use a stale verified-account snapshot.

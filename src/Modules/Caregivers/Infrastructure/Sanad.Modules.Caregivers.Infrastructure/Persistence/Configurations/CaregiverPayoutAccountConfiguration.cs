@@ -39,6 +39,7 @@ public sealed class CaregiverPayoutAccountConfiguration :
             .IsRequired();
         builder.Property(account => account.Revision)
             .HasColumnName("revision")
+            .IsConcurrencyToken()
             .IsRequired();
         builder.Property(account => account.Status)
             .HasColumnName("status")

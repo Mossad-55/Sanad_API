@@ -172,6 +172,7 @@ public sealed class CaregiverPayoutAccount :
         }
 
         Status = PayoutAccountStatus.Verified;
+        Revision = checked(Revision + 1);
         RejectionReason = null;
         VerifiedBy = actor;
         VerifiedOnUtc = utcNow;
@@ -191,6 +192,7 @@ public sealed class CaregiverPayoutAccount :
         EnsureDecisionPreconditions(actor, expectedRevision, utcNow, PayoutAccountStatus.Pending);
 
         Status = PayoutAccountStatus.Rejected;
+        Revision = checked(Revision + 1);
         RejectionReason = NormalizeReason(reason);
         ReviewedBy = actor;
         ReviewedOnUtc = utcNow;
@@ -206,6 +208,7 @@ public sealed class CaregiverPayoutAccount :
         EnsureDecisionPreconditions(actor, expectedRevision, utcNow, PayoutAccountStatus.Verified);
 
         Status = PayoutAccountStatus.Revoked;
+        Revision = checked(Revision + 1);
         RejectionReason = NormalizeReason(reason);
         VerifiedBy = null;
         VerifiedOnUtc = null;

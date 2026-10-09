@@ -338,14 +338,22 @@ public sealed class ApprovePayoutAccountCommandHandler(
         dbContext.PayoutAccountReviews.Add(
             CaregiverPayoutAccountReview.Create(
                 account.Id,
-                account.Revision,
+                request.ExpectedRevision,
                 PayoutAccountReviewDecision.Verified,
                 request.ActorUserId,
                 request.UtcNow,
                 account.VerificationSource,
                 account.Reference));
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result<PayoutAccountAdminDetailResponse>.Failure(
+                PayoutAccountErrors.RevisionConflict);
+        }
 
         return await new GetPayoutAccountDetailQueryHandler(dbContext).Handle(
             new GetPayoutAccountDetailQuery(request.CaregiverId),
@@ -443,13 +451,21 @@ public sealed class RejectPayoutAccountCommandHandler(
         dbContext.PayoutAccountReviews.Add(
             CaregiverPayoutAccountReview.Create(
                 account.Id,
-                account.Revision,
+                request.ExpectedRevision,
                 PayoutAccountReviewDecision.Rejected,
                 request.ActorUserId,
                 request.UtcNow,
                 reason: account.RejectionReason));
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result<PayoutAccountAdminDetailResponse>.Failure(
+                PayoutAccountErrors.RevisionConflict);
+        }
 
         return await new GetPayoutAccountDetailQueryHandler(dbContext).Handle(
             new GetPayoutAccountDetailQuery(request.CaregiverId),
@@ -547,13 +563,21 @@ public sealed class RevokePayoutAccountCommandHandler(
         dbContext.PayoutAccountReviews.Add(
             CaregiverPayoutAccountReview.Create(
                 account.Id,
-                account.Revision,
+                request.ExpectedRevision,
                 PayoutAccountReviewDecision.Revoked,
                 request.ActorUserId,
                 request.UtcNow,
                 reason: account.RejectionReason));
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result<PayoutAccountAdminDetailResponse>.Failure(
+                PayoutAccountErrors.RevisionConflict);
+        }
 
         return await new GetPayoutAccountDetailQueryHandler(dbContext).Handle(
             new GetPayoutAccountDetailQuery(request.CaregiverId),
