@@ -18,6 +18,15 @@ public interface ICaregiversDbContext
     DbSet<CaregiverPayoutAccount> PayoutAccounts { get; }
     DbSet<CaregiverPayoutAccountReview> PayoutAccountReviews { get; }
     DbSet<CaregiverPayout> Payouts { get; }
+
+    // Active medical caregivers for the Family medical-access recipient picker.
+    // Intentionally independent of discovery privacy filters: grant eligibility
+    // depends only on caregiver type and status.
+    Task<(IReadOnlyList<MedicalCaregiverRecipientItem> Items, int TotalCount)> SearchActiveMedicalCaregiversAsync(
+        string? search,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default);
     DbSet<Governorate> Governorates { get; }
     DbSet<City> Cities { get; }
     DbSet<Area> Areas { get; }

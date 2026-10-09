@@ -688,6 +688,11 @@ public sealed class CaregiverPayoutHandlerTests
                 minPrice, maxPrice, minRating, minExperienceYears, page, pageSize,
                 cancellationToken);
 
+        public Task<(IReadOnlyList<MedicalCaregiverRecipientItem> Items, int TotalCount)> SearchActiveMedicalCaregiversAsync(
+            string? search, int page, int pageSize,
+            CancellationToken cancellationToken = default) =>
+            inner.SearchActiveMedicalCaregiversAsync(search, page, pageSize, cancellationToken);
+
         public Task<CaregiverUserHeader?> GetCaregiverUserHeaderAsync(
             UserId userId,
             CancellationToken cancellationToken = default) =>

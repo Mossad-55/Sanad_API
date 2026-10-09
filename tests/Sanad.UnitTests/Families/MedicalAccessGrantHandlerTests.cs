@@ -90,5 +90,9 @@ public sealed class MedicalAccessGrantHandlerTests
     {
         public Task<bool> IsActiveMedicalCaregiverAsync(UserId userId, CancellationToken cancellationToken = default) =>
             Task.FromResult(active);
+
+        public Task<MedicalCaregiverRecipientPage> SearchActiveMedicalCaregiversAsync(
+            string? search, int page, int pageSize, CancellationToken cancellationToken = default) =>
+            Task.FromResult(new MedicalCaregiverRecipientPage([], 0));
     }
 }
