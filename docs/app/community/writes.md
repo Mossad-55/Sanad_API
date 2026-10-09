@@ -73,3 +73,48 @@ PostgreSQL-compatible `timestamp with time zone`, `date`, `time`, `text`, and
 
 Community interactions are not financial or medically authoritative records.
 Run state-changing checks only against disposable fixtures.
+
+## Image uploads
+
+`POST /api/v1/community/uploads/images` accepts one image as `multipart/form-data`
+with a `file` field. Any authenticated account may upload. The response carries
+the stable image id and the URL to attach when creating a post:
+
+```json
+{
+  "imageId": "0198e2c2-4444-7777-8888-000000000001",
+  "imageUrl": "/api/v1/community/uploads/images/0198e2c2-4444-7777-8888-000000000001/file",
+  "contentType": "image/jpeg",
+  "sizeBytes": 184320
+}
+```
+
+Validation: `image/jpeg`, `image/png`, or `image/webp` only; the declared
+content type must match the file's magic bytes (the submitted filename and
+content type alone are not trusted); size is bounded by the public storage
+limit (`Storage:Local:MaxBytes`, default 2 MB, mirrored by the request cap).
+Empty, oversized, unsupported, or signature-mismatched files return `400`
+(`Storage.File.*` or `Community.Image.Invalid`); unauthenticated callers
+receive `401`.
+
+Storage behavior: files are saved with a generated safe key under private
+storage and are never served through the static `/files` host, so an uploaded
+image cannot be opened publicly before its post is approved — unlike post
+bodies, image bytes stay gated until publication. Each upload is recorded
+(`community.CommunityImages`) with uploader and time. Uploading never creates
+or publishes a post, and the existing moderation still applies in full when a
+post is created: the post starts `PendingReview` and its image becomes
+visible to readers only after a moderator publishes it.
+
+`GET /api/v1/community/uploads/images/{imageId}/file` serves the bytes with
+`Cache-Control: no-store`. It allows the uploader's own images, any image for
+content moderators (`CommunityModeration`: SuperAdmin or ContentAdmin, for
+pending-post preview), and images attached to a published post for any
+authenticated caller. Anything else — including unapproved or rejected-post
+images for strangers — returns `404` without revealing whether the image
+exists; unauthenticated callers receive `401`, and unknown ids return `404`.
+
+Orphan retention: uploaded images that are never attached to a post are
+retained; no cleanup subsystem exists. The upload table makes orphans
+queryable (stored keys never referenced by a post) for a future admin
+cleanup, if ever needed.

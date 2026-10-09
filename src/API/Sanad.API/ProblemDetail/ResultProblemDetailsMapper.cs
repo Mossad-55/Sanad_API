@@ -318,6 +318,8 @@ public static class ResultProblemDetailsMapper
             , ["Community.PostNotFound"] = 404
             , ["Community.InvalidModerationOperation"] = 409
             , ["Community.CheckIn.Invalid"] = 400
+            , ["Community.Image.Invalid"] = 400
+            , ["Community.Image.NotFound"] = 404
         };
 
     public static ProblemDetails Create(
