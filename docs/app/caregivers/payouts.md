@@ -77,3 +77,113 @@ Table `caregivers.caregiver_payout_accounts` (`id`, `caregiver_id` unique, `acco
 ## Payout timing policy (Admin-managed)
 
 Payout eligibility timing is controlled by the Admin-managed caregiver payout policy (payoutDelayHours after a booking is both Completed and Paid). The policy has no fee field: entitlement is always the booking snapshot `BaseCaregiverFee` in full, and the snapshot `PlatformFeeAmount` (charged to the family on top) is never deducted. Policy administration is a SuperAdmin/FinanceAdmin operation; see docs/admin/finance-platform-charges.md.
+
+## Admin payout records and manual transfers
+
+Admin payout operations require the `PayoutOperationalAdmin` policy (**SuperAdmin or FinanceAdmin**). SupportAdmin and ContentAdmin are denied. Transfers themselves are manual bank transfers executed outside the API; these routes only record them. No payment-provider integration exists.
+
+```text
+GET  /api/v1/admin/caregiver-payouts?status=&caregiverId=&page=1&pageSize=20
+GET  /api/v1/admin/caregiver-payouts/{payoutId}
+POST /api/v1/admin/caregiver-payouts/record
+POST /api/v1/admin/caregiver-payouts/{payoutId}/mark-failed
+```
+
+The list returns recorded payouts (both `Paid` and `Failed`) ordered by recording time descending, with optional status/caregiver filters and `PagedResult` pagination (page size clamped 1–100). Detail returns one payout or `404 Caregivers.Payouts.NotFound`.
+
+Record body:
+
+```json
+{
+  "bookingId": "0198e2c2-2222-7777-8888-000000000003",
+  "transferReference": "BANK-2026-000123",
+  "evidence": "Transfer advice 000123",
+  "reason": "October weekly payout"
+}
+```
+
+Recording validates, in order: the booking exists and is Completed **and** Paid (missing timestamps fail closed); an effective payout policy exists (otherwise `Finance.PayoutPolicy.Missing`); the policy delay has passed since `max(completedOnUtc, paidOnUtc)`; the caregiver has a saved payout account; and no `Paid` payout already exists for the booking (`409 Caregivers.Payouts.Conflict`, backed by a partial unique index so concurrent duplicate records serialize to one success and one conflict). Success returns `201` with the payout in `Paid` status.
+
+A `Paid` payout recorded in error (for example, a rejected bank transfer) is corrected with `POST .../mark-failed` and a reason body (`{"reason": "..."}`), moving it to `Failed` with the failing actor and time. `Failed` is terminal for that row; recording again for the same booking creates a new row. Marking a non-`Paid` payout returns `409 Caregivers.Payouts.InvalidState`.
+
+## Amount calculation
+
+Per payout, from the booking price snapshot and the effective payout policy version:
+
+- `grossAmount` = snapshot `BaseCaregiverFee` (the caregiver entitlement basis).
+- `platformFeeAmount` = snapshot `PlatformFeeAmount`, kept for audit visibility only. It is the fee charged to the family on top of the base fee and is **never deducted** from the caregiver payout.
+- `netAmount` = `grossAmount` (no payout-level fee exists or is deducted; enforced structurally and by test).
+- `currency` = snapshot currency; `policyVersion` = applied payout-policy version.
+
+Example response (record/detail):
+
+```json
+{
+  "payoutId": "0198e2c2-3333-7777-8888-000000000001",
+  "bookingId": "0198e2c2-2222-7777-8888-000000000003",
+  "caregiverId": "0198e2c2-2222-7777-8888-000000000001",
+  "grossAmount": 150.00,
+  "platformFeeAmount": 22.50,
+  "netAmount": 150.00,
+  "currency": "EGP",
+  "status": "Paid",
+  "transferReference": "BANK-2026-000123",
+  "evidence": "Transfer advice 000123",
+  "failureReason": null,
+  "recordedOnUtc": "2026-10-08T10:00:00Z",
+  "paidOnUtc": "2026-10-08T10:00:00Z",
+  "failedOnUtc": null,
+  "recordedBy": "0198e2c2-1111-7777-8888-000000000001",
+  "policyVersion": 2,
+  "bankCode": "NBE",
+  "maskedIban": "****0002"
+}
+```
+
+Bank details are the `bankCode` and masked IBAN snapshotted from the caregiver payout account at record time. The full IBAN is never returned by any payout route and never logged. Audit identity is the recording/failing actor (`recordedBy`, plus failure actor/time on `Failed` rows).
+
+## Admin payout-account review
+
+Payout accounts start `Pending` and pay out only while `Verified`. Any caregiver
+edit returns the account to `Pending` for a fresh review. All routes below
+require the `PayoutOperationalAdmin` policy (**SuperAdmin or FinanceAdmin**);
+no verification role is granted to other account types.
+
+```text
+GET  /api/v1/admin/caregiver-payout-accounts?status=&page=1&pageSize=20
+GET  /api/v1/admin/caregiver-payout-accounts/{caregiverId}
+GET  /api/v1/admin/caregiver-payout-accounts/{caregiverId}/reviews
+POST /api/v1/admin/caregiver-payout-accounts/{caregiverId}/approve
+POST /api/v1/admin/caregiver-payout-accounts/{caregiverId}/reject
+POST /api/v1/admin/caregiver-payout-accounts/{caregiverId}/revoke
+POST /api/v1/admin/caregiver-payout-accounts/{caregiverId}/reveal
+```
+
+The queue lists accounts pending-first with masked IBANs only, plus the
+caregiver identity names for matching. Detail adds verification evidence and
+decision history pointers. Every decision carries the reviewer's current
+`expectedRevision`; a decision against a stale revision fails with `409
+Caregivers.PayoutAccount.RevisionConflict` so the reviewer reloads first.
+
+Ownership verification is a manual external check: the reviewer confirms the
+exact account belongs to the caregiver through an authorized third-party
+source outside Sanad (for example the bank's own portal) and records that
+source plus an optional non-sensitive reference in Sanad. A format check,
+account-existence check, or name plausibility alone is not ownership
+verification. Approve requires the verification source (`POST` with
+`{ "expectedRevision": 3, "verificationSource": "BankPortal", "reference":
+"optional" }`); reject and revoke require a reason of 1–500 characters.
+Allowed transitions are `Pending → Verified`, `Pending → Rejected`, and a
+direct `Verified → Revoked`; repeats against the wrong state return `409
+Caregivers.PayoutAccount.InvalidState`.
+
+The reveal route is the only operation that returns the full IBAN. It is a
+`POST` (never a `GET`, so the IBAN never appears in a URL), sends
+`Cache-Control: no-store`, writes an audited `Revealed` history entry, and
+fails closed with `503` when decryption is unavailable. Plaintext IBANs and
+provider credentials/results are never logged or persisted. Failed decryption
+writes no audit row.
+
+T4 payout recording requires a `Verified` account; `Pending`, `Rejected`, and
+`Revoked` accounts are rejected with `409
+Caregivers.Payouts.AccountNotVerified`.

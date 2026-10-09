@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
@@ -11,9 +12,11 @@ using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
 {
     [DbContext(typeof(CaregiversDbContext))]
-    partial class CaregiversDbContextModelSnapshot : ModelSnapshot
+    [Migration("20261008204406_AddCaregiverPayouts")]
+    partial class AddCaregiverPayouts
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -227,27 +230,10 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(4)")
                         .HasColumnName("iban_last4");
 
-                    b.Property<string>("Reference")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("reference");
-
                     b.Property<string>("RejectionReason")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
                         .HasColumnName("rejection_reason");
-
-                    b.Property<Guid?>("ReviewedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("reviewed_by");
-
-                    b.Property<DateTime?>("ReviewedOnUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("reviewed_on_utc");
-
-                    b.Property<int>("Revision")
-                        .HasColumnType("integer")
-                        .HasColumnName("revision");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -257,74 +243,12 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_on_utc");
 
-                    b.Property<string>("VerificationSource")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("verification_source");
-
-                    b.Property<Guid?>("VerifiedBy")
-                        .HasColumnType("uuid")
-                        .HasColumnName("verified_by");
-
-                    b.Property<DateTime?>("VerifiedOnUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("verified_on_utc");
-
                     b.HasKey("Id");
 
                     b.HasIndex("CaregiverId")
                         .IsUnique();
 
                     b.ToTable("caregiver_payout_accounts", "caregivers");
-                });
-
-            modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverPayoutAccountReview", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("AccountRevision")
-                        .HasColumnType("integer")
-                        .HasColumnName("account_revision");
-
-                    b.Property<Guid>("ActorUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("actor_user_id");
-
-                    b.Property<int>("Decision")
-                        .HasColumnType("integer")
-                        .HasColumnName("decision");
-
-                    b.Property<DateTime>("OccurredOnUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("occurred_on_utc");
-
-                    b.Property<Guid>("PayoutAccountId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("payout_account_id");
-
-                    b.Property<string>("Reason")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("reason");
-
-                    b.Property<string>("Reference")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("reference");
-
-                    b.Property<string>("VerificationSource")
-                        .HasMaxLength(200)
-                        .HasColumnType("character varying(200)")
-                        .HasColumnName("verification_source");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PayoutAccountId")
-                        .HasDatabaseName("ix_caregiver_payout_account_reviews_account");
-
-                    b.ToTable("caregiver_payout_account_reviews", "caregivers");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverRating", b =>
@@ -1161,15 +1085,6 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                     b.Navigation("ServiceSelections");
 
                     b.Navigation("Visibility")
-                        .IsRequired();
-                });
-
-            modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverPayoutAccountReview", b =>
-                {
-                    b.HasOne("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverPayoutAccount", null)
-                        .WithMany()
-                        .HasForeignKey("PayoutAccountId")
-                        .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });
 

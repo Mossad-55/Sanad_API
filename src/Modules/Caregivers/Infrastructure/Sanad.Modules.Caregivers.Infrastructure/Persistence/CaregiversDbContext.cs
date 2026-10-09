@@ -29,6 +29,8 @@ public sealed class CaregiversDbContext :
     public DbSet<Language> Languages => Set<Language>();
     public DbSet<Bank> Banks => Set<Bank>();
     public DbSet<CaregiverPayoutAccount> PayoutAccounts => Set<CaregiverPayoutAccount>();
+    public DbSet<CaregiverPayoutAccountReview> PayoutAccountReviews => Set<CaregiverPayoutAccountReview>();
+    public DbSet<CaregiverPayout> Payouts => Set<CaregiverPayout>();
     public DbSet<Governorate> Governorates => Set<Governorate>();
     public DbSet<City> Cities => Set<City>();
     public DbSet<Area> Areas => Set<Area>();
