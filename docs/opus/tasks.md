@@ -40,11 +40,16 @@ exclusive: Opus edits only the files below plus the listed docs/collections.
   tests, `docs/chat/*` deltas, Postman chat deltas. Frozen chat rules
   (1:1, send-only, polling, no groups) are not renegotiated here.
 
-- [ ] Not started — **Phase 5. Library in CMS (+migration).**
+- [x] Done — **Phase 5. Library in CMS (+migration).**
   Owns: `Modules/Cms/{Domain,Application,Infrastructure}` (categories,
   content, sections, saved/liked/views), `Sanad.API/Controllers`
   (public + `CmsContent` admin endpoints), cover upload handling, tests,
-  new `docs/app/library/` guide, Postman App library folder.
+  new `docs/app/library/` guide, Postman App library folder. Additive
+  migration `20261010131314_AddLibraryContent` authored only (never
+  applied). Note: shared `ResultProblemDetailsMapper.cs` gained nine
+  `Cms.Library*` status lines and `Cms.Application` references
+  `Families.Application`/`Families.Domain` for the frozen benefit-key-8
+  premium gate — both flagged in the report.
 
 - [ ] Not started — **Phase 6. Caregiver payout reads.**
   Owns: `Modules/Caregivers/Application` (summary/list/detail/policy-read
@@ -76,5 +81,5 @@ write the report file as part of Done.
 - [x] phase-2-categories — report: `docs/opus/reports/phase-2-categories.md`
 - [x] phase-3-search — report: `docs/opus/reports/phase-3-search.md`
 - [ ] phase-4-chat-deltas — report: `docs/opus/reports/phase-4-chat-deltas.md`
-- [ ] phase-5-library — report: `docs/opus/reports/phase-5-library.md`
+- [x] phase-5-library — report: `docs/opus/reports/phase-5-library.md`
 - [ ] phase-6-payout-reads — report: `docs/opus/reports/phase-6-payout-reads.md`
