@@ -1,0 +1,39 @@
+# Report: lane-a-endpoints — Conversation open/list/detail + hide endpoints with participant authorization
+
+- Task name: Conversation open/list/detail + hide endpoints with participant authorization; focused handler/controller tests (Lane A item 3).
+- Branch: `opencode/chat-lane-a`
+- Base SHA: `fe91d64` (main at branch point).
+- Final SHA (task content, verified): `de7a52db4130e8f9a309ea897cfcec31e4f3bb79`
+  - Convention (as in prior Lane A reports): `final SHA` = task-content commit whose code passed the gates. Docs commit follows separately, docs-only.
+- Changed files (task commit `de7a52d`):
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Conversations/IChatUserLookup.cs` (new, port + `UserProfile`)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Conversations/IChatEligibilityChecker.cs` (new, port)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Conversations/ConversationErrors.cs` (new, `Chat.Conversation.NotFound` privacy code)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Conversations/ConversationResponses.cs` (new, DTOs + `PagedResult<T>`)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Conversations/OpenConversationCommand.cs` + `OpenConversationCommandHandler.cs` (new)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Conversations/GetConversationsQuery.cs` + `GetConversationsQueryHandler.cs` (new)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Conversations/HideConversationCommand.cs` + `HideConversationCommandHandler.cs` (new)
+  - `src/API/Sanad.API/ChatIntegration/ApiChatUserLookup.cs` (new, Identity `GetUserProfilesByIdsQuery` wrapper)
+  - `src/API/Sanad.API/ChatIntegration/ApiChatEligibilityChecker.cs` (new, self/exists checks + booking-state TODO seam)
+  - `src/API/Sanad.API/Controllers/ChatController.cs` (new, endpoints 1/2/10 only)
+  - `src/API/Sanad.API/Controllers/Requests/ChatOpenConversationRequest.cs` (new)
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Conversations/Conversation.cs` (modified: +`Unhide` mirroring `Hide`)
+  - `src/API/Sanad.API/DependencyInjection.cs` (modified: MediatR Chat assembly + lookup/checker registrations)
+  - `tests/Sanad.UnitTests/Chat/ConversationTests.cs` (extended: +14 tests, 0 deletions)
+- Exact verification commands (workdir `D:\Sanad_API-OpenCode`):
+  - `dotnet build src/API/Sanad.API/Sanad.API.csproj --no-restore -m:1 --nologo -v minimal` → exit 0, 0 warnings, 0 errors.
+  - `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --filter "FullyQualifiedName~Sanad.UnitTests.Chat" --nologo -v minimal` → exit 0; Passed 29, Failed 0, Skipped 0, Total 29 (15 domain + 14 new).
+  - `git diff --check` → clean.
+  - Postman JSON validation: not applicable (no Postman files touched in this item).
+- Skipped/blocked checks with reasons:
+  - Full unit + architecture suites: deferred to once-per-lane gate at end of Lane A.
+  - Bruno/API runtime: not run; no disposable-target authorization; handler-level InMemory coverage is the evidence. Limitation, not blocker.
+  - No new migration (none needed); existing `InitialChat` untouched, never applied.
+- Dependencies confirmed in main: `ApiControllerBase.TryGetAuthenticatedUserId`, `ToActionResult`/`ResultProblemDetailsMapper` privacy-404 precedent, `FamilyIdentityGateway` → Identity `GetUserProfilesByIdsQuery` pattern, Community command/handler + paging patterns, `ICommandHandler`/`Result` in BuildingBlocks. All present at base.
+- Remaining owner decisions:
+  - `lastMessage=null` + `unreadCount=0` stubs in list until Lane B owns messages (commented inline).
+  - Booking-state verification (non-cancelled/non-expired, both users on booking) is a documented TODO seam in `ApiChatEligibilityChecker`; no cross-module refs added. Needs CareHomes lookup decision before booking-scoped opens are fully verified.
+  - `PagedResult<T>` duplicated in Chat Application (no BuildingBlocks/Caregivers cross-ref); flagged for Integrator seam review.
+  - Reopen-after-hide unhides opener only; `LastActivityOnUtc` untouched by reopen (Lane B send bumps it).
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime; no message content logged).
+- Notes: Lane B endpoint slots (3–4/8/11) untouched in `ChatController`; shared `ResultProblemDetailsMapper` not edited; nothing pushed/merged/deployed.
