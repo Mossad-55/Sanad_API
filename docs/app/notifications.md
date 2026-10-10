@@ -175,11 +175,13 @@ suppressed. No live Firebase verification was run for this implementation.
 
 Email uses the existing SMTP transport and the durable `notifications.email_outbox`.
 The shared template layout places Arabic first with RTL direction, English second
-with LTR direction, a text wordmark, and system fonts. Every rendered message is
-stored as an immutable plain-text and HTML snapshot when it is enqueued. SMTP
-sends both parts as `multipart/alternative`; legacy outbox rows without an HTML
-snapshot remain plain-text messages. The correlation key continues to determine
-the stable SMTP `MessageId`.
+with LTR direction, a text wordmark, and system fonts. Outbox-backed notification
+messages are rendered and stored as immutable plain-text and HTML snapshots when
+they are enqueued. SMTP sends both parts as `multipart/alternative`; legacy
+outbox rows without an HTML snapshot remain plain-text messages. The correlation
+key continues to determine the stable SMTP `MessageId`. OTP and family-invitation
+emails continue through the existing direct Identity send path and render both
+parts immediately before SMTP delivery.
 
 | Trigger | Template kind | Delivery |
 |---|---|---|

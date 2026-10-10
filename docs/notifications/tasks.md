@@ -24,13 +24,13 @@ Done criteria per item: zero-warning build, focused tests green, docs + Postman 
 
 ## Lane B — Email overhaul (assignee TBD)
 
-Owns: `Identity/Infrastructure/Messaging/EmailTemplates/*` (layout + 12 templates),
+Owns: `Identity/Infrastructure/Messaging/EmailTemplates/*` (layout + 16 template variants),
 sender `multipart/alternative` upgrade, outbox enqueueing for notification emails,
 `tests/.../EmailTemplateTests.cs`, docs + Postman deltas.
 
-- [ ] Not started — Shared bilingual layout (Arabic-first RTL + English below, text wordmark, system fonts) + all 12 templates with plain-text twins; snapshot tests (no sending).
-- [ ] Not started — Sender upgrade to `multipart/alternative`; outbox enqueue for notification emails (render-at-enqueue snapshots); existing `MessageId` stability kept; focused tests.
-- [ ] Not started — Docs + Postman sync; contract-mapping check.
+- [x] Done — Shared bilingual layout (Arabic-first RTL + English below, text wordmark, system fonts) + all 16 listed template variants with plain-text twins; snapshot tests (no sending). Owner clarified renewal-upcoming uses the renewed template with upcoming copy; plan-retired shares the changed template with event-specific copy. Report: `docs/notifications/reports/lane-b-templates.md`.
+- [x] Done — Sender upgrade to `multipart/alternative`; outbox enqueue for existing notification emails (render-at-enqueue snapshots); existing `MessageId` stability kept; focused tests. Report: `docs/notifications/reports/lane-b-sender.md`.
+- [x] Done — Docs + Postman sync; contract-mapping check. Report: `docs/notifications/reports/lane-b-docs.md`.
 
 Done criteria per item: same as Lane A.
 
@@ -57,6 +57,6 @@ never merge or push; workers write the report file as part of Done.
 - [x] lane-a-outbox — report: `docs/notifications/reports/lane-a-outbox.md`
 - [x] lane-a-fanout — report: `docs/notifications/reports/lane-a-fanout.md`
 - [x] lane-a-docs — report: `docs/notifications/reports/lane-a-docs.md`
-- [ ] lane-b-templates — report: `docs/notifications/reports/lane-b-templates.md`
-- [ ] lane-b-sender — report: `docs/notifications/reports/lane-b-sender.md`
-- [ ] lane-b-docs — report: `docs/notifications/reports/lane-b-docs.md`
+- [x] lane-b-templates — report: `docs/notifications/reports/lane-b-templates.md`
+- [x] lane-b-sender — report: `docs/notifications/reports/lane-b-sender.md`
+- [x] lane-b-docs — report: `docs/notifications/reports/lane-b-docs.md`
