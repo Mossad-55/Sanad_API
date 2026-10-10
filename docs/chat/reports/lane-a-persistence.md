@@ -36,3 +36,6 @@
 - Remaining owner decisions: implementer decision 2 adopted — two filtered unique indexes (booking-scoped + direct) instead of one composite, because PostgreSQL treats NULLs as distinct and a single composite would not dedupe Direct conversations. Domain invariant Scope⇔BookingId-null holds. If owner prefers the literal single index, it is a one-line config change + re-scaffold (still authored-only).
 - Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime used; process-scoped dummy connection string for ef check only).
 - Notes: nothing pushed/merged/deployed; no Lane B files touched; `Sanad.slnx` untouched (transitive via API reference, same precedent as domain item).
+
+## Addendum — InitialChat rescaffold for endpoint 7, task commit `c51de33e4b0954ba950d6979363b8a49e5215d48`
+- The `InitialChat` migration was rescaffolded (old `20261010005405` files deleted, `20261010134949_InitialChat` authored) to add the `chat.ConversationReadStates` table (FK cascade to Conversations, unique `(ConversationId, UserId)`). Still exactly ONE migration, still authored-only, never applied (`database update` never run; `has-pending-model-changes` → none). All other tables/indexes unchanged.

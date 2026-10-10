@@ -37,3 +37,8 @@
   - Reopen-after-hide unhides opener only; `LastActivityOnUtc` untouched by reopen (Lane B send bumps it).
 - Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime; no message content logged).
 - Notes: Lane B endpoint slots (3–4/8/11) untouched in `ChatController`; shared `ResultProblemDetailsMapper` not edited; nothing pushed/merged/deployed.
+
+## Addendum — endpoint 7 (PUT …/{id}/read), task commit `c51de33e4b0954ba950d6979363b8a49e5215d48`
+- Endpoint 7 was missing from the original `de7a52d` set (Lane A owns 1–2, 5–7, 9–10) and is closed here: `PUT /api/v1/chat/conversations/{id}/read {lastReadMessageId}` → 204 idempotent; participant-only; unknown/foreign → same generic privacy 404 (participant gate precedes payload validation so the body is never an oracle); empty message id → 400 `Chat.ConversationRead.Invalid`.
+- Read state is a per-user watermark (`ConversationReadState`: ConversationId + UserId + LastReadMessageId + ReadOnUtc, unique per pair) because `Message` is Lane B-owned and cannot be validated yet — marks are recorded verbatim, Lane B interprets them (unread counts, read ticks). Read marks never touch `LastActivityOnUtc`.
+- Verification (same workdir): API build exit 0, 0/0; Chat focused tests exit 0 — Passed 67 (55 prior + 12 new `ReadMarkTests`), 0 failed/skipped; `has-pending-model-changes` → none; `git diff --check` clean; migration folder holds exactly one set (`20261010134949_InitialChat` + snapshot), still authored-only, never applied.
