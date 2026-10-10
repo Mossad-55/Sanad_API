@@ -4,11 +4,11 @@
 Deliver the owner-approved backend Chat slice per `plan.md`, Lane A then Lane B.
 
 ## Current state
-Lane A executing on `opencode/chat-lane-a` (base `fe91d64`). Done: domain (`60aed69`), persistence (`9323639`, migration authored only), endpoints 1–2/10 (`de7a52d`), attachments 5–6 (`c128c1e`), blocks 9 (`7a6c7cb`, reports in `docs/chat/reports/`). Next: docs + Postman sync. Contract, lanes, and
+Lane A complete on `opencode/chat-lane-a` (base `fe91d64`). Done: domain (`60aed69`), persistence (`9323639` + rescaffold `c51de33`, one migration authored only), endpoints 1–2/7/10 (`de7a52d` + `c51de33`), attachments 5–6 (`c128c1e`), blocks 9 (`7a6c7cb`), docs + Postman (`ac6e7c2`; reports in `docs/chat/reports/`, all six Ready boxes checked). Gates: solution build 0 warnings; arch 1/1; full unit 2699 passed + 3 skipped + 1 unrelated pre-existing Finance date failure (see `lane-a-docs.md`); `diff --check` clean; Postman parses; contract map 0 gaps. Migration never applied; no Bruno (unauthorized); nothing pushed/merged/deployed. Contract, lanes, and
 file manifests remain frozen in `plan.md` / `tasks.md`.
 
 ## Blockers
-None.
+None in Lane A scope. One unrelated pre-existing failure noted (Finance date-sensitive test, zero Lane A files involved) for Integrator awareness.
 
 ## Next action
-Write Lane A docs (docs/app/chat/conversations.md) + Postman App chat folder sync + contract check on `opencode/chat-lane-a`.
+Hand back branch tip + report paths; Integrator merges on owner's "integrate now".
