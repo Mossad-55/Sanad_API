@@ -29,7 +29,11 @@ exclusive: Opus edits only the files below plus the listed docs/collections.
   `CommunityPostResponse` additive fields, `CreatePostCommand` (+`categoryId`),
   controller query params, tests, docs, Postman. Moderation untouched.
 
-- [ ] Not started — **Phase 4. Chat deltas.**
+- [ ] Blocked — **Phase 4. Chat deltas.** Blocked: the Chat module
+  implementation (`src/Modules/Chat`) is not tracked in this clone's git and
+  absent from the working tree; the delta cannot be applied until the Chat
+  lane's core code lands on `main`. Re-verify before starting; do not
+  force-implement chat core (out of scope).
   Owns: `Modules/Chat/*` deltas (booking-open resolution, Location type +
   validation, POST read, attachment route + `contactUserId` on facility
   detail, accountType/care-home resolution), `Sanad.API/Controllers/Chat*`,
