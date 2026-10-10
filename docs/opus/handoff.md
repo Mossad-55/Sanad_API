@@ -8,18 +8,19 @@ files only for the listed deltas.
 
 ## Current state
 
-Phase 0 done (branch `opencode/opus-work` from `main` @ `fe91d64`, clean
-base). Phase 1 (rating unification) done — content commit `e8d9e6f`, report
-`docs/opus/reports/phase-1-rating.md`, Ready box checked. Phase 2 (community
-categories) is next. Effective model: `opencode/mimo-v2.6-flash-free`.
+Phases 0–2 done on `opencode/opus-work` (base `main` @ `fe91d64`):
+phase-1 content `e8d9e6f`, phase-2 content `b35a040`; reports under
+`docs/opus/reports/`, Ready boxes checked. Phase 2 added five Community
+status mappings to the shared `ResultProblemDetailsMapper.cs` (required by
+the frozen 404/409 contract) — flagged in the phase-2 report for owner
+visibility. Effective model: `opencode/mimo-v2.6-flash-free`.
 
 ## Blockers
 
-None. Shared contracts unchanged so far (unmapped error codes already default
-to 400). Dated history, if any accumulates, is archived under
+None. Dated history, if any accumulates, is archived under
 `docs/opus/history/` — never stacked here.
 
 ## Next action
 
-Opus continues with Phase 2 (community categories + additive migration,
-authored only — never applied).
+Opus continues with Phase 3 (community search/filter/sort, favorites list,
+per-user state, post `categoryId` wiring).

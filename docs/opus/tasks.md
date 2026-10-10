@@ -17,7 +17,7 @@ exclusive: Opus edits only the files below plus the listed docs/collections.
   (binding only), `tests/.../Community/*Rating*`, Postman community requests,
   `docs/app/community/writes.md` touch-up.
 
-- [ ] Not started — **Phase 2. Community categories (+migration).**
+- [x] Done — **Phase 2. Community categories (+migration).**
   Owns: `Modules/Community/Domain` (category entity),
   `Modules/Community/Application` (category lookups + admin CRUD),
   `Modules/Community/Infrastructure` (config + additive migration authored
@@ -69,7 +69,7 @@ the `main` SHA, and pushes `main` once. Workers never merge or push; workers
 write the report file as part of Done.
 
 - [x] phase-1-rating — report: `docs/opus/reports/phase-1-rating.md`
-- [ ] phase-2-categories — report: `docs/opus/reports/phase-2-categories.md`
+- [x] phase-2-categories — report: `docs/opus/reports/phase-2-categories.md`
 - [ ] phase-3-search — report: `docs/opus/reports/phase-3-search.md`
 - [ ] phase-4-chat-deltas — report: `docs/opus/reports/phase-4-chat-deltas.md`
 - [ ] phase-5-library — report: `docs/opus/reports/phase-5-library.md`
