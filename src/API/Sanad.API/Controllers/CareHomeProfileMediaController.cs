@@ -12,7 +12,7 @@ using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 namespace Sanad.API.Controllers;
 
 [ApiController]
-public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbContext db, IFileStorage storage) : ControllerBase
+public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbContext db, IFileStorage storage) : ApiControllerBase
 {
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpPost("api/v1/care-homes/facilities/mine/media")]
@@ -21,7 +21,7 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
     public async Task<IActionResult> Upload([FromForm] int expectedVersion, [FromForm] CareHomeProfileMediaKind kind,
         [FromForm] IFormFile? file, CancellationToken ct)
     {
-        if (!TryActor(out UserId actor)) return Unauthorized();
+        if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized();
         if (file is null) return BadRequest();
         await using var content = new MemoryStream();
         await file.CopyToAsync(content, ct);
@@ -35,7 +35,7 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
     [HttpDelete("api/v1/care-homes/facilities/mine/media/{mediaId:guid}")]
     public async Task<IActionResult> Remove(Guid mediaId, [FromQuery] int expectedVersion, CancellationToken ct)
     {
-        if (!TryActor(out UserId actor)) return Unauthorized();
+        if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized();
         var result = await sender.Send(new RemoveCareHomeProfileMediaCommand(actor, expectedVersion, mediaId), ct);
         return result.IsFailure ? BadRequest(result.Error) : NoContent();
     }
@@ -44,7 +44,7 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
     [HttpGet("api/v1/care-homes/facilities/mine/media/{mediaId:guid}/file")]
     public async Task<IActionResult> ReadOwner(Guid mediaId, CancellationToken ct)
     {
-        if (!TryActor(out UserId actor)) return Unauthorized();
+        if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized();
         var item = await db.ProfileMedia.AsNoTracking().SingleOrDefaultAsync(x => x.Id == mediaId, ct);
         if (item is not null && !await db.Facilities.AsNoTracking().AnyAsync(f => f.OwnerUserId == actor &&
             f.Revisions.Any(r => r.Id == item.ProfileRevisionId), ct)) item = null;
@@ -81,11 +81,4 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
         return File(result.Value.Content, result.Value.ContentType, enableRangeProcessing: false);
     }
 
-    private bool TryActor(out UserId actor)
-    {
-        string? value = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value;
-        if (Guid.TryParse(value, out Guid id)) { actor = new UserId(id); return true; }
-        actor = UserId.Empty;
-        return false;
-    }
 }
