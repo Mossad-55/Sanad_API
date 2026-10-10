@@ -22,7 +22,8 @@ Both moderation routes return `204` on success and require the
 the public read routes. Unknown posts return the standard Community not-found
 problem response.
 
-Post creation body:
+Post creation body (all fields except `imageUrl`, `isAnonymous`, and
+`categoryId` are required):
 
 ```json
 {
@@ -31,9 +32,43 @@ Post creation body:
   "contentArabic": "تذكّر شرب الماء.",
   "contentEnglish": "Remember to drink water.",
   "imageUrl": null,
-  "isAnonymous": false
+  "isAnonymous": false,
+  "categoryId": null
 }
 ```
+
+`categoryId` is optional. When supplied it must reference an existing
+**active** category: unknown ids return `400` `Community.InvalidCategory`;
+inactive categories return `409` `Community.CategoryInactive`.
+
+## Feed, filters, sort, and per-user state
+
+`GET /api/v1/community/posts` supports (all optional, combinable):
+
+- `search=` — case-insensitive match against Arabic/English titles and
+  contents.
+- `categoryId=` — only posts in that category.
+- `fromDate=` / `toDate=` — inclusive bounds on the UTC creation timestamp.
+- `sort=Newest|Oldest|MostLiked` (case-insensitive; default `Newest`;
+  `MostLiked` breaks ties by recency then id). Any other value returns `400`
+  with code `Community.InvalidSort`. `fromDate` after `toDate` returns `400`
+  with code `Community.InvalidDateRange`.
+- `page=` (minimum 1) and `pageSize=` (1–100). The bare-list envelope is
+  unchanged: no wrapper object, no `totalCount`.
+
+List, detail, and recommendations items carry these **additive** per-user
+fields computed for the authenticated caller: `categoryId`,
+`categoryArabicName`, `categoryEnglishName`, `isLiked`, `isFavorited`, and
+`currentUserRating` (integer 1–5, `null` when the caller never rated the
+post). On the recommendations feed `isLiked`/`isFavorited` are always
+`false` and `currentUserRating` is always `null` because already-interacted
+posts are excluded from recommendations by definition. The favorite toggle
+endpoint is unchanged.
+
+`GET /api/v1/community/favorites?page=&pageSize=` returns the caller's
+favorited published posts (same post shape and per-user fields as the feed),
+newest-favorited-first. Untoggling a favorite removes the post from the list
+on the next call.
 
 ## Categories
 

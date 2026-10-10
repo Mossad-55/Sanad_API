@@ -1,4 +1,6 @@
 using Sanad.Modules.Community.Application.Abstractions.Data;
+using Sanad.Modules.Community.Application.Categories;
+using Sanad.Modules.Community.Domain.Categories;
 using Sanad.Modules.Community.Domain.Posts;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
@@ -16,6 +18,23 @@ public sealed class CreatePostCommandHandler : ICommandHandler<CreatePostCommand
 
     public async Task<Result<Post>> Handle(CreatePostCommand request, CancellationToken cancellationToken)
     {
+        CommunityCategoryId? categoryId = null;
+        if (request.CategoryId is Guid rawCategoryId)
+        {
+            var category = await _dbContext.Categories
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    c => c.Id == new CommunityCategoryId(rawCategoryId),
+                    cancellationToken);
+
+            if (category is null)
+                return Result<Post>.Failure(CommunityCategoryErrors.InvalidCategory);
+            if (!category.IsActive)
+                return Result<Post>.Failure(CommunityCategoryErrors.CategoryInactive);
+
+            categoryId = category.Id;
+        }
+
         var post = Post.Create(
             request.TitleArabic,
             request.TitleEnglish,
@@ -24,7 +43,8 @@ public sealed class CreatePostCommandHandler : ICommandHandler<CreatePostCommand
             request.ImageUrl,
             request.IsAnonymous,
             new UserId(request.AuthorId),
-            DateTime.UtcNow);
+            DateTime.UtcNow,
+            categoryId);
 
         _dbContext.Posts.Add(post);
         await _dbContext.SaveChangesAsync(cancellationToken);
