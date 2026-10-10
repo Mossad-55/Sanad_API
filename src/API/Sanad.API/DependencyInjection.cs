@@ -44,6 +44,7 @@ using Sanad.Modules.CareHomes.Infrastructure;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.Community.Infrastructure;
 using Sanad.Modules.Community.Application.Posts;
+using Sanad.Modules.Chat.Infrastructure;
 using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.Finance.Infrastructure;
@@ -104,6 +105,7 @@ public static class DependencyInjection
 
         services.AddNotificationsInfrastructure(configuration);
         services.AddCommunityInfrastructure(configuration);
+        services.AddChatInfrastructure(configuration);
         services.AddFinanceInfrastructure(configuration);
         services.AddHostedService<CareHomeLicenseExpiryMonitor>();
         services.AddHostedService<CareHomeBookingExpiryHostedService>();
