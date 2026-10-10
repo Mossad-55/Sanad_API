@@ -38,7 +38,7 @@ Postman), verified, and committed as the single Phase 5 content commit.
 - `src/Modules/Cms/Infrastructure/.../Configurations/LibraryCategoryConfiguration.cs`,
   `LibraryContentConfiguration.cs` — tables `cms.library_categories`,
   `cms.library_contents`, `cms.library_content_sections` (owned collection,
-  jsonb bullet arrays, unique (content, displayOrder)), 
+  jsonb bullet arrays, unique (content, displayOrder)),
   `cms.library_content_interactions` (unique (content, user, kind)).
 - `src/Modules/Cms/Infrastructure/.../Migrations/20261010131314_AddLibraryContent.cs`
   (+ `.Designer.cs`, snapshot regenerated) — **additive, authored only, never
