@@ -55,7 +55,10 @@ timestamp. A repeated local-date submission updates that user’s row. Invalid
 time zones and dates return `Community.CheckIn.Invalid`.
 
 `POST /api/v1/community/posts/{postId}/rating` accepts `{ "value": 1 }` through
-`{ "value": 5 }`; the caller’s rating is created or updated. `GET
+`{ "value": 5 }`; `value` is an integer and is range-validated server-side
+(out-of-range or non-integer values return `400` `Community.Rating.Invalid`;
+there is no legacy `ratingValue` support). The caller's rating is created or
+updated. `GET
 /api/v1/community/posts/{postId}/rating/average` returns the current average
 and count.
 
