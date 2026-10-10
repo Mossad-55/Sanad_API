@@ -7,14 +7,19 @@ additions, rating unification, chat deltas) per `plan.md`, phases 0–7 in
 files only for the listed deltas.
 
 ## Current state
-Planned and approved. No implementation has started. Contract, phases, and
-file manifests are frozen in `plan.md` / `tasks.md`.
+
+Phase 0 done (branch `opencode/opus-work` from `main` @ `fe91d64`, clean
+base). Phase 1 (rating unification) done — content commit `e8d9e6f`, report
+`docs/opus/reports/phase-1-rating.md`, Ready box checked. Phase 2 (community
+categories) is next. Effective model: `opencode/mimo-v2.6-flash-free`.
 
 ## Blockers
-None. Opus starts with Phase 0 on a task branch from latest `main` once the
-owner assigns it. Dated history, if any accumulates, is archived under
+
+None. Shared contracts unchanged so far (unmapped error codes already default
+to 400). Dated history, if any accumulates, is archived under
 `docs/opus/history/` — never stacked here.
 
 ## Next action
-Owner assigns the package to Opus; Opus confirms the base SHA and begins
-Phase 0. Shared contracts (DTOs, error codes) change only through the owner.
+
+Opus continues with Phase 2 (community categories + additive migration,
+authored only — never applied).

@@ -8,10 +8,10 @@ exclusive: Opus edits only the files below plus the listed docs/collections.
 
 ## Order (dependency-ordered, commit per phase locally, no push/merge/deploy)
 
-- [ ] Not started — **Phase 0.** Branch `opencode/opus-work` from latest `main`; verify clean base.
+- [x] Done — **Phase 0.** Branch `opencode/opus-work` from latest `main`; verify clean base.
   Owns: new branch only.
 
-- [ ] Not started — **Phase 1. Rating unification.**
+- [x] Done — **Phase 1. Rating unification.**
   Owns: `Modules/Community/Application/Ratings/AddRatingCommand.cs` (+handler
   range validation), `Sanad.API/Controllers/CommunityPostsController.cs`
   (binding only), `tests/.../Community/*Rating*`, Postman community requests,
@@ -68,7 +68,7 @@ boxes, merges qualifying phases in numeric order, marks each merged box with
 the `main` SHA, and pushes `main` once. Workers never merge or push; workers
 write the report file as part of Done.
 
-- [ ] phase-1-rating — report: `docs/opus/reports/phase-1-rating.md`
+- [x] phase-1-rating — report: `docs/opus/reports/phase-1-rating.md`
 - [ ] phase-2-categories — report: `docs/opus/reports/phase-2-categories.md`
 - [ ] phase-3-search — report: `docs/opus/reports/phase-3-search.md`
 - [ ] phase-4-chat-deltas — report: `docs/opus/reports/phase-4-chat-deltas.md`
