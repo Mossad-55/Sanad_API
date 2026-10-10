@@ -284,7 +284,7 @@ public sealed class CaregiverPayoutReadTests
         Assert.True(clamped.IsSuccess);
         Assert.Equal(1, clamped.Value.Page);
         Assert.Equal(1, clamped.Value.PageSize);
-        Assert.Equal(1, clamped.Value.Items.Count);
+        Assert.Single(clamped.Value.Items);
     }
 
     [Fact]
