@@ -10,3 +10,5 @@
 - **Dependencies confirmed in main:** Existing Identity SMTP sender, email sender abstraction, OTP/invitation methods, and notification outbox model were present at the base SHA. Lane A code is branch-local and is not yet in `main`, so integration dependency order remains Lane A before Lane B.
 - **Remaining owner decisions:** None for template count or event reuse. Owner clarified 16 variants; renewal-upcoming reuses `SubscriptionRenewed` with upcoming copy, and plan-retired reuses `SubscriptionChanged` with retirement copy. Event producers for caregiver bookings, subscriptions, payouts, and community moderation are absent from the base; the templates are ready but those future events will not enqueue until their producers exist.
 - **Effective model/runtime:** GPT-6; local Windows PowerShell.
+
+SHA semantics: this final SHA identifies the implementation commit, not the later report/closeout commit. The Integrator verifies it is an ancestor of the current branch tip and reviews every descendant commit, as specified in `docs/notifications/tasks.md`.

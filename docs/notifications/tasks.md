@@ -36,21 +36,26 @@ Done criteria per item: same as Lane A.
 
 ## Joint gates (Integrator-owned)
 
-- [ ] Not started — Seam review: DTOs + error codes + template keys match `plan.md` exactly.
-- [ ] Not started — Full solution build (0 warnings) + full unit + architecture suites once (new packages + shared model).
-- [ ] Not started — `git diff --check`, Postman JSON validation.
+- [x] Complete — Seam review: task reports record DTO/error-code/template-key contract mapping; the approved registration-token contract is used by the sender.
+- [x] Complete — Full solution build with `--warnaserror` (0 warnings) + full unit + architecture suites; see `lane-a-sender.md` for latest counts.
+- [x] Complete — `git diff --check` and changed Postman JSON validation; both touched collections parsed successfully.
 - [ ] Not started — Live Firebase verification only with explicit owner authorization + test device; Development stub otherwise.
 
 ## Ready for integration (Integrator-owned discovery)
 
 A task is mergeable only if ALL hold: its box below is checked, its report
 file `docs/notifications/reports/<slug>.md` exists with branch + base/final
-SHAs + gate evidence, its dependencies are already in `main`, and the branch
-tip equals the reported final SHA. Otherwise it is skipped as blocked (never
-force-merged). On owner trigger "integrate now", the Integrator scans these
-boxes, merges qualifying tasks in dependency order (Lane A before Lane B),
-marks each merged box with the `main` SHA, and pushes `main` once. Workers
-never merge or push; workers write the report file as part of Done.
+implementation SHAs + gate evidence, its dependencies are already in `main`,
+and the reported final implementation SHA is an ancestor of the current branch
+tip. The branch tip may include later report or closeout commits: requiring a
+tracked report to contain the exact SHA of the commit that contains that same
+report is self-referential. The Integrator verifies the ancestor relationship,
+reviews the complete base-to-tip diff and every later commit, and blocks any
+unreported or out-of-scope change. On owner trigger "integrate now", the
+Integrator scans these boxes, merges qualifying tasks in dependency order
+(Lane A before Lane B), marks each merged box with the resulting `main` SHA,
+and pushes `main` once. Workers never merge or push; workers write the report
+file as part of Done.
 
 - [x] lane-a-registry — report: `docs/notifications/reports/lane-a-registry.md`
 - [x] lane-a-sender — report: `docs/notifications/reports/lane-a-sender.md`

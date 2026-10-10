@@ -10,3 +10,5 @@
 - **Dependencies confirmed in main:** Existing notification inbox/device endpoints, family invitation request, care-home email producers, and email outbox status model were present at the base SHA. Lane A is not yet in `main`, so the branch is not mergeable until its dependency is integrated by the Integrator.
 - **Remaining owner decisions:** None. Docs call out event categories whose producers are absent from the base; templates alone do not create those events. The Postman collection notes that invitation tokens are not logged and Development suppresses delivery.
 - **Effective model/runtime:** GPT-6; local Windows PowerShell.
+
+SHA semantics: this final SHA identifies the implementation commit, not the later report/closeout commit. The Integrator verifies it is an ancestor of the current branch tip and reviews every descendant commit, as specified in `docs/notifications/tasks.md`.

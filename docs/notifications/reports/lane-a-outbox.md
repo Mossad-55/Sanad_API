@@ -11,4 +11,4 @@
 - **Remaining owner decisions:** Migration application awaits the regular integration/deployment process. Mobile team to confirm the deep-link prefix. No live Firebase verification authorized or performed.
 - **Effective model/runtime:** GPT-6; local Windows PowerShell.
 
-Reports use the implementation SHA by owner direction. A docs-only closeout commit follows these reports; the branch tip is recorded in `docs/notifications/handoff.md`.
+SHA semantics: this final SHA identifies the implementation commit, not the later report/closeout commit. The Integrator verifies it is an ancestor of the current branch tip and reviews every descendant commit, as specified in `docs/notifications/tasks.md`.

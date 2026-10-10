@@ -11,4 +11,4 @@
 - **Remaining owner decisions:** Add/confirm event producer seams for missing categories in their owning lanes; mobile team confirmation of `sanad://` deep-link prefix. No preference API changes were made.
 - **Effective model/runtime:** GPT-6; local Windows PowerShell.
 
-Reports use the implementation SHA by owner direction. A docs-only closeout commit follows these reports; the branch tip is recorded in `docs/notifications/handoff.md`.
+SHA semantics: this final SHA identifies the implementation commit, not the later report/closeout commit. The Integrator verifies it is an ancestor of the current branch tip and reviews every descendant commit, as specified in `docs/notifications/tasks.md`.
