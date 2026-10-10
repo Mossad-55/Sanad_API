@@ -24,7 +24,7 @@ exclusive: Opus edits only the files below plus the listed docs/collections.
   only, DI untouched), `Sanad.API/Controllers` (admin category endpoints +
   public list), tests, docs, Postman.
 
-- [ ] Not started — **Phase 3. Community search/filter/sort + favorites + per-user state.**
+- [x] Done — **Phase 3. Community search/filter/sort + favorites + per-user state.**
   Owns: `GetPostsQuery` extension, new favorites-list query,
   `CommunityPostResponse` additive fields, `CreatePostCommand` (+`categoryId`),
   controller query params, tests, docs, Postman. Moderation untouched.
@@ -70,7 +70,7 @@ write the report file as part of Done.
 
 - [x] phase-1-rating — report: `docs/opus/reports/phase-1-rating.md`
 - [x] phase-2-categories — report: `docs/opus/reports/phase-2-categories.md`
-- [ ] phase-3-search — report: `docs/opus/reports/phase-3-search.md`
+- [x] phase-3-search — report: `docs/opus/reports/phase-3-search.md`
 - [ ] phase-4-chat-deltas — report: `docs/opus/reports/phase-4-chat-deltas.md`
 - [ ] phase-5-library — report: `docs/opus/reports/phase-5-library.md`
 - [ ] phase-6-payout-reads — report: `docs/opus/reports/phase-6-payout-reads.md`
