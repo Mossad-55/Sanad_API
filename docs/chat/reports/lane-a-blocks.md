@@ -1,0 +1,31 @@
+# Report: lane-a-blocks — Block/unblock/list endpoints
+
+- Task name: Block/unblock/list endpoints; focused tests (generic sender failure, unblock restore) (Lane A item 5).
+- Branch: `opencode/chat-lane-a`
+- Base SHA: `fe91d64` (main at branch point).
+- Final SHA (task content, verified): `7a6c7cb98a779ba452c5bddc84ced9b2bf1018c6`
+  - Convention (as in prior Lane A reports): `final SHA` = task-content commit whose code passed the gates. Docs commit follows separately, docs-only.
+- Changed files (task commit `7a6c7cb`):
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Blocks/BlockErrors.cs` (new)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Blocks/BlockUserCommand.cs` + `BlockUserCommandHandler.cs` (new)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Blocks/UnblockUserCommand.cs` + `UnblockUserCommandHandler.cs` (new)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Blocks/GetBlockedUsersQuery.cs` + `GetBlockedUsersQueryHandler.cs` (new)
+  - `src/API/Sanad.API/Controllers/Requests/ChatBlockUserRequest.cs` (new)
+  - `src/API/Sanad.API/Controllers/ChatController.cs` (modified: endpoint 9 only)
+  - `tests/Sanad.UnitTests/Chat/BlockTests.cs` (new, 13 tests)
+- Exact verification commands (workdir `D:\Sanad_API-OpenCode`):
+  - `dotnet build src/API/Sanad.API/Sanad.API.csproj --no-restore -m:1 --nologo -v minimal` → exit 0, 0 warnings, 0 errors.
+  - `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --filter "FullyQualifiedName~Sanad.UnitTests.Chat" --nologo -v minimal` → exit 0; Passed 55, Failed 0, Skipped 0, Total 55 (42 prior + 13 new).
+  - `git diff --check` → clean.
+  - Postman JSON validation: not applicable (no Postman files touched in this item).
+- Skipped/blocked checks with reasons:
+  - Full unit + architecture suites: deferred to once-per-lane gate at end of Lane A.
+  - Bruno/API runtime/DB: not run; no authorization; InMemory handler coverage is the evidence. Limitation, not blocker.
+  - No new migration; `InitialChat` untouched, never applied.
+- Dependencies confirmed in main: `IChatUserLookup` (target-exists check), controller privacy-404 mechanism, InMemory handler-test pattern. Present at base/tip.
+- Remaining owner decisions:
+  - Self-block → 400 `Chat.Block.Invalid`; unknown target → privacy 404 `Chat.Block.NotFound`; unblock always 204 (idempotent, reveals nothing).
+  - List ordered most-recent first (`CreatedOnUtc` desc).
+  - Generic sender failure is send-time (Lane B): blocked sender gets the same generic failure as not-participant, never a block-specific code; removal restores sending. Documented in handler + covered by enforcement-predicate test; no send path in Lane A.
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime; no message content logged).
+- Notes: endpoints 1–2/5–7/10 and Lane B slots untouched; nothing pushed/merged/deployed.

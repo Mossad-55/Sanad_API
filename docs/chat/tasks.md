@@ -65,7 +65,7 @@ never merge or push; workers write the report file as part of Done.
 - [x] lane-a-persistence — report: `docs/chat/reports/lane-a-persistence.md` (task commit `9323639`)
 - [x] lane-a-endpoints — report: `docs/chat/reports/lane-a-endpoints.md` (task commit `de7a52d`)
 - [x] lane-a-attachments — report: `docs/chat/reports/lane-a-attachments.md` (task commit `c128c1e`)
-- [ ] lane-a-blocks — report: `docs/chat/reports/lane-a-blocks.md`
+- [x] lane-a-blocks — report: `docs/chat/reports/lane-a-blocks.md` (task commit `7a6c7cb`)
 - [ ] lane-a-docs — report: `docs/chat/reports/lane-a-docs.md`
 - [ ] lane-b-domain — report: `docs/chat/reports/lane-b-domain.md`
 - [ ] lane-b-endpoints — report: `docs/chat/reports/lane-b-endpoints.md`
