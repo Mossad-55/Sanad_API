@@ -6,6 +6,7 @@ using Sanad.API.ProblemDetail;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Attachments;
+using Sanad.Modules.Chat.Application.Blocks;
 using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Domain.Attachments;
 using Sanad.Modules.Chat.Domain.Conversations;
@@ -13,11 +14,11 @@ using Sanad.Modules.Chat.Domain.Conversations;
 namespace Sanad.API.Controllers;
 
 /// <summary>
-/// Chat app routes (endpoints 1, 2, 5, 6, and 10 of the frozen contract).
+/// Chat app routes (endpoints 1, 2, 5, 6, 9, and 10 of the frozen contract).
 /// Lane B adds its own endpoints (3-4, 8, 11) to this controller later. All
 /// routes resolve the participant from the JWT; unknown or foreign
-/// conversations, attachments, and files answer with a privacy-preserving
-/// 404 that never reveals why.
+/// conversations, attachments, files, and block targets answer with a
+/// privacy-preserving 404 that never reveals why.
 /// </summary>
 [Authorize]
 [Route("api/v1/chat")]
@@ -193,6 +194,78 @@ public sealed class ChatController : ApiControllerBase
         return File(result.Value.Content, result.Value.ContentType);
     }
 
+    /// <summary>
+    /// Endpoint 9 — block a user (204, idempotent). Self-block is a 400
+    /// <see cref="BlockErrors.Invalid"/>: the caller is entitled to know
+    /// their own request was invalid. An unknown target user answers the
+    /// generic privacy 404, so this route never confirms whether an arbitrary
+    /// user id is registered. The blocked sender's send-time failure is
+    /// deliberately identical to a not-participant failure (Lane B).
+    /// </summary>
+    [HttpPost("blocks")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> BlockUser(
+        [FromBody] BlockUserRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new BlockUserCommand(userId, new UserId(request.BlockedUserId)),
+            cancellationToken);
+
+        return ToChatActionResult(result);
+    }
+
+    /// <summary>
+    /// Endpoint 9 — unblock (204, idempotent). A missing row still succeeds:
+    /// unblock is the blocker's own action and never reveals whether a block
+    /// existed. Removing the row restores sending (Lane B send-time check).
+    /// </summary>
+    [HttpDelete("blocks/{userId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> UnblockUser(
+        Guid userId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actor))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new UnblockUserCommand(actor, new UserId(userId)),
+            cancellationToken);
+
+        return ToChatActionResult(result);
+    }
+
+    /// <summary>
+    /// Endpoint 9 — the caller's blocked user ids, most-recent block first.
+    /// Per-user: never lists ids blocked by anyone else.
+    /// </summary>
+    [HttpGet("blocks")]
+    [ProducesResponseType(typeof(Guid[]), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetBlockedUsers(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actor))
+        {
+            return Unauthorized();
+        }
+
+        Result<Guid[]> result = await _sender.Send(
+            new GetBlockedUsersQuery(actor),
+            cancellationToken);
+
+        return ToChatActionResult(result);
+    }
+
     private IActionResult ToChatActionResult(Result result) =>
         IsPrivacyFailure(result)
             ? PrivacyNotFound(result.Error)
@@ -206,13 +279,16 @@ public sealed class ChatController : ApiControllerBase
     /// <summary>
     /// Both the conversation code (endpoints 1/2/10, and upload scope
     /// failures) and the attachment code (endpoint 6 serve denials) are
-    /// privacy failures. Upload validation codes deliberately do NOT match:
-    /// they surface as 400s to the uploader.
+    /// privacy failures, as is the block code for endpoint 9's unknown
+    /// target user. Upload validation codes and Chat.Block.Invalid
+    /// deliberately do NOT match: they surface as 400s to the caller, who
+    /// is entitled to know their own request was invalid.
     /// </summary>
     private static bool IsPrivacyFailure(Result result) =>
         result.IsFailure &&
         (result.Error.Code == ConversationErrors.NotFound.Code ||
-         result.Error.Code == AttachmentErrors.NotFound.Code);
+         result.Error.Code == AttachmentErrors.NotFound.Code ||
+         result.Error.Code == BlockErrors.NotFound.Code);
 
     /// <summary>
     /// Chat forces the status/detail pair for its privacy failures here
