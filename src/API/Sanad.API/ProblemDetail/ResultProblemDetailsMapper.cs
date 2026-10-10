@@ -320,6 +320,11 @@ public static class ResultProblemDetailsMapper
             , ["Community.CheckIn.Invalid"] = 400
             , ["Community.Image.Invalid"] = 400
             , ["Community.Image.NotFound"] = 404
+            , ["Community.CategoryNotFound"] = 404
+            , ["Community.CategoryInactive"] = 409
+            , ["Community.CategoryInUse"] = 409
+            , ["Community.InvalidCategory"] = 400
+            , ["Community.Category.Invalid"] = 400
         };
 
     public static ProblemDetails Create(

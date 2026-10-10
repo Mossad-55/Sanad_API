@@ -47,6 +47,12 @@
       "item": [
         { "name": "Submit app rating", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"rating\": 5,\n  \"comment\": \"The medication reminders are clear.\",\n  \"deviceInfo\": \"Android\",\n  \"appVersion\": \"1.0.0\"\n}" }, "url": "{{baseUrl}}/api/v1/feedback/app-rating" }, "description": "Authenticated identity is assigned by the server; rating must be 1–5." }
       ]
+    },
+    {
+      "name": "04. Categories",
+      "item": [
+        { "name": "List active categories", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/community/categories" }, "description": "Authenticated read. Active categories only, ordered by creation time then id. Bare list of {id, arabicName, englishName}." }
+      ]
     }
   ]
 }

@@ -23,6 +23,35 @@ namespace Sanad.Modules.Community.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Sanad.Modules.Community.Domain.Categories.CommunityCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("ArabicName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("EnglishName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime?>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("CommunityCategories", "community");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Community.Domain.CheckIns.CheckIn", b =>
                 {
                     b.Property<Guid>("Id")
@@ -183,6 +212,9 @@ namespace Sanad.Modules.Community.Infrastructure.Persistence.Migrations
                     b.Property<Guid>("AuthorId")
                         .HasColumnType("uuid");
 
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid");
+
                     b.Property<int>("CommentsCount")
                         .HasColumnType("integer");
 
@@ -235,6 +267,8 @@ namespace Sanad.Modules.Community.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
 
                     b.ToTable("Posts", "community");
                 });
@@ -326,6 +360,16 @@ namespace Sanad.Modules.Community.Infrastructure.Persistence.Migrations
                         .HasForeignKey("CommentId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Community.Domain.Posts.Post", b =>
+                {
+                    b.HasOne("Sanad.Modules.Community.Domain.Categories.CommunityCategory", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.Navigation("Category");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Community.Domain.Ratings.Rating", b =>

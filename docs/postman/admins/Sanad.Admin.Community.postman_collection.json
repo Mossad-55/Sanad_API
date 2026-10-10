@@ -8,7 +8,8 @@
   "variable": [
     { "key": "baseUrl", "value": "https://localhost:7296" },
     { "key": "accessToken", "value": "" },
-    { "key": "postId", "value": "" }
+    { "key": "postId", "value": "" },
+    { "key": "categoryId", "value": "" }
   ],
   "item": [
     {
@@ -28,6 +29,44 @@
         "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}/reject"
       },
       "description": "ContentAdmin or SuperAdmin only. Returns 204; rejected posts remain hidden from public Community reads."
+    },
+    {
+      "name": "List categories (admin)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/categories"
+      },
+      "description": "ContentAdmin or SuperAdmin only. All categories including inactive, with isActive and timestamps."
+    },
+    {
+      "name": "Create category",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"نصائح صحية\",\n  \"englishName\": \"Health tips\",\n  \"isActive\": true\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/categories"
+      },
+      "description": "ContentAdmin or SuperAdmin only. Returns 201 with the created item. Names are required (1–200 chars); invalid names return 400 Community.Category.Invalid. Capture the returned id as categoryId."
+    },
+    {
+      "name": "Update category",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"نصائح صحية\",\n  \"englishName\": \"Health tips\",\n  \"isActive\": false\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/categories/{{categoryId}}"
+      },
+      "description": "Renames and toggles isActive. Returns 200 with the updated item. Unknown ids return 404 Community.CategoryNotFound."
+    },
+    {
+      "name": "Delete category",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/categories/{{categoryId}}"
+      },
+      "description": "Hard delete. Returns 204. Unknown ids return 404 Community.CategoryNotFound; categories referenced by posts return 409 Community.CategoryInUse."
     }
   ]
 }

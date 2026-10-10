@@ -1,6 +1,7 @@
 using Sanad.BuildingBlocks.Domain.Abstractions;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Community.Domain.Categories;
 
 namespace Sanad.Modules.Community.Domain.Posts;
 
@@ -19,6 +20,7 @@ public sealed class Post : AggregateRoot<CommunityPostId>
         string? imageUrl,
         bool isAnonymous,
         UserId authorId,
+        CommunityCategoryId? categoryId,
         DateTime createdOnUtc)
         : base(id)
     {
@@ -34,6 +36,7 @@ public sealed class Post : AggregateRoot<CommunityPostId>
 
         IsAnonymous = isAnonymous;
         AuthorId = authorId;
+        CategoryId = categoryId;
         Status = PostStatus.PendingReview;
         CreatedOnUtc = createdOnUtc;
     }
@@ -49,6 +52,8 @@ public sealed class Post : AggregateRoot<CommunityPostId>
     public int CommentsCount { get; private set; }
     public int FavoritesCount { get; private set; }
     public UserId AuthorId { get; private set; }
+    public CommunityCategoryId? CategoryId { get; private set; }
+    public CommunityCategory? Category { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime? UpdatedOnUtc { get; private set; }
     public string? PublishedBy { get; private set; }
@@ -62,9 +67,10 @@ public sealed class Post : AggregateRoot<CommunityPostId>
         string? imageUrl,
         bool isAnonymous,
         UserId authorId,
-        DateTime createdOnUtc) =>
+        DateTime createdOnUtc,
+        CommunityCategoryId? categoryId = null) =>
         new(CommunityPostId.New(), titleArabic, titleEnglish, contentArabic,
-            contentEnglish, imageUrl, isAnonymous, authorId, createdOnUtc);
+            contentEnglish, imageUrl, isAnonymous, authorId, categoryId, createdOnUtc);
 
     public void IncrementLikes() => LikesCount = checked(LikesCount + 1);
     public void DecrementLikes() => LikesCount = Math.Max(0, LikesCount - 1);

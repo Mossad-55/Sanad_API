@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Sanad.Modules.Community.Domain.Categories;
 using Sanad.Modules.Community.Domain.Posts;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
@@ -15,6 +16,14 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
             .HasConversion(id => id.Value, value => new CommunityPostId(value));
         builder.Property(e => e.AuthorId)
             .HasConversion(id => id.Value, value => new UserId(value));
+        builder.Property(e => e.CategoryId)
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? new CommunityCategoryId(value.Value) : null);
+        builder.HasOne(e => e.Category)
+            .WithMany()
+            .HasForeignKey(e => e.CategoryId)
+            .OnDelete(DeleteBehavior.SetNull);
         builder.Property(e => e.TitleArabic).HasMaxLength(200);
         builder.Property(e => e.TitleEnglish).HasMaxLength(200);
         builder.Property(e => e.ContentArabic).HasColumnType("text");

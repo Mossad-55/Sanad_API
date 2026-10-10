@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Community.Domain.Categories;
 using Sanad.Modules.Community.Domain.Comments;
 using Sanad.Modules.Community.Domain.CheckIns;
 using Sanad.Modules.Community.Domain.Posts;
@@ -18,6 +19,7 @@ public interface ICommunityDbContext
     DbSet<Rating> Ratings { get; }
     DbSet<CommunityInteraction> Interactions { get; }
     DbSet<CommunityImage> CommunityImages { get; }
+    DbSet<CommunityCategory> Categories { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 

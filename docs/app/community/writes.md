@@ -35,6 +35,39 @@ Post creation body:
 }
 ```
 
+## Categories
+
+Community categories are a bilingual, admin-managed lookup used to classify
+posts. The public list is available to any authenticated account:
+
+`GET /api/v1/community/categories` → `200` with a bare list of active
+categories only, ordered by creation time then id:
+
+```json
+[
+  { "id": "0198e2c2-4444-7777-8888-000000000001", "arabicName": "نصائح صحية", "englishName": "Health tips" }
+]
+```
+
+Administrators with the `CommunityModeration` policy (`SuperAdmin` or
+`ContentAdmin`) manage the full lookup under
+`/api/v1/admin/community/categories`:
+
+- `GET` — list all categories (including inactive) with `isActive`,
+  `createdOnUtc`, and `updatedOnUtc`.
+- `POST` — create `{ "arabicName": "…", "englishName": "…", "isActive": true }`
+  → `201` with the created item. Both names are required (1–200 chars,
+  trimmed); invalid names return `400` `Community.Category.Invalid`.
+- `PUT /{categoryId}` — update names and `isActive` → `200`. Unknown ids
+  return `404` `Community.CategoryNotFound`.
+- `DELETE /{categoryId}` — hard delete → `204`. Unknown ids return `404`
+  `Community.CategoryNotFound`; a category referenced by posts returns `409`
+  `Community.CategoryInUse` (posts never lose their category implicitly
+  through delete).
+
+Deactivating a category hides it from the public list immediately; existing
+posts keep their stored category.
+
 ## Check-ins and ratings
 
 Published posts may receive one check-in per user/post/local date:
