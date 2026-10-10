@@ -47,7 +47,9 @@ public sealed class FcmPushSender : IPushSender, IDisposable
         {
             string id = await _messaging.SendAsync(new Message
             {
-                Fid = token,
+#pragma warning disable CS0618 // The plan requires registration tokens; Firebase Admin currently deprecates Token in favor of FID.
+                Token = token,
+#pragma warning restore CS0618
                 Notification = new FirebaseAdmin.Messaging.Notification { Title = title, Body = body },
                 Data = new Dictionary<string, string>(data)
             }, cancellationToken);
@@ -65,5 +67,3 @@ public sealed class FcmPushSender : IPushSender, IDisposable
 
     public void Dispose() => _app?.Delete();
 }
-
-

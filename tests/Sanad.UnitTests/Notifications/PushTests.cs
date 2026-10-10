@@ -159,4 +159,3 @@ public sealed class PushTests
             Task.FromResult(new PushSendResult(PushSendOutcome.Sent, "unit-test-message"));
     }
 }
-
