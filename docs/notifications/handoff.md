@@ -9,6 +9,9 @@ Lane A and Lane B are implemented on `codex/notifications-lane-a`; base `fe91d64
 ## Evidence and open items
 All five Lane A and three Lane B reports exist. Latest verification at `1bfa056523e9d9e70ea0829ce0db07e7ad5e2872`: solution build with `--warnaserror` passed with 0 warnings/errors; focused Notifications/email tests 55 passed; full suite architecture 1 passed and unit 2,682 passed, 3 skipped, 0 failed; `git diff --check` and both changed Postman JSON validations passed. FCM now uses the owner-approved registration-token contract via `Message.Token`; a scoped CS0618 suppression is required by FirebaseAdmin 3.7.0. No live Firebase call; SMTP accepted the 18 test samples noted below. Migration was authored only. OTP/invitation remain direct Identity sends, not outbox rows. Effective runtime: GPT-6 Codex desktop; exact runtime build identifier is not exposed to the repository shell.
 
+## Local integration
+The Notifications branch was merged into local `main` with merge commit `9005f145a4bdec7a24f86e50452b72547cd0d3cd`; Lane A implementation/report commits precede Lane B in the branch history. All eight Ready items record that merge SHA. `origin/main` remains unchanged pending explicit owner confirmation to push.
+
 ## Post-integration follow-ups
 - After Lane A then Lane B reach `main`, verify the additive notifications migration against an explicitly authorized disposable database; do not apply it during branch implementation.
 - Run a real Firebase send only after per-run owner authorization and with the designated test device; otherwise retain Development-stub evidence. No service-account key or token belongs in reports or logs.
@@ -19,4 +22,4 @@ All five Lane A and three Lane B reports exist. Latest verification at `1bfa0565
 - FirebaseAdmin 3.7.0 marks `Message.Token` obsolete in favor of `Message.Fid`; the owner confirmed the plan's registration-token contract. The sender uses `Message.Token` with a narrowly scoped CS0618 suppression. Real provider delivery remains unverified until the owner authorizes a per-run send and provides a test device/token.
 
 ## Next action
-After local integration review, obtain the owner's explicit confirmation before pushing `main` to `origin/main`. Keep the live Firebase send gated on per-run authorization and a designated test device.
+Obtain the owner's explicit confirmation before pushing local `main` to `origin/main`. Keep the live Firebase send gated on per-run authorization and a designated test device.

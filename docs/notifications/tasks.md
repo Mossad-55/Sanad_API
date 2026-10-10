@@ -57,11 +57,11 @@ Integrator scans these boxes, merges qualifying tasks in dependency order
 and pushes `main` once. Workers never merge or push; workers write the report
 file as part of Done.
 
-- [x] lane-a-registry — report: `docs/notifications/reports/lane-a-registry.md`
-- [x] lane-a-sender — report: `docs/notifications/reports/lane-a-sender.md`
-- [x] lane-a-outbox — report: `docs/notifications/reports/lane-a-outbox.md`
-- [x] lane-a-fanout — report: `docs/notifications/reports/lane-a-fanout.md`
-- [x] lane-a-docs — report: `docs/notifications/reports/lane-a-docs.md`
-- [x] lane-b-templates — report: `docs/notifications/reports/lane-b-templates.md`
-- [x] lane-b-sender — report: `docs/notifications/reports/lane-b-sender.md`
-- [x] lane-b-docs — report: `docs/notifications/reports/lane-b-docs.md`
+- [x] lane-a-registry — report: `docs/notifications/reports/lane-a-registry.md` — merged into main at `9005f145a4bdec7a24f86e50452b72547cd0d3cd`
+- [x] lane-a-sender — report: `docs/notifications/reports/lane-a-sender.md` — merged into main at `9005f145a4bdec7a24f86e50452b72547cd0d3cd`
+- [x] lane-a-outbox — report: `docs/notifications/reports/lane-a-outbox.md` — merged into main at `9005f145a4bdec7a24f86e50452b72547cd0d3cd`
+- [x] lane-a-fanout — report: `docs/notifications/reports/lane-a-fanout.md` — merged into main at `9005f145a4bdec7a24f86e50452b72547cd0d3cd`
+- [x] lane-a-docs — report: `docs/notifications/reports/lane-a-docs.md` — merged into main at `9005f145a4bdec7a24f86e50452b72547cd0d3cd`
+- [x] lane-b-templates — report: `docs/notifications/reports/lane-b-templates.md` — merged into main at `9005f145a4bdec7a24f86e50452b72547cd0d3cd`
+- [x] lane-b-sender — report: `docs/notifications/reports/lane-b-sender.md` — merged into main at `9005f145a4bdec7a24f86e50452b72547cd0d3cd`
+- [x] lane-b-docs — report: `docs/notifications/reports/lane-b-docs.md` — merged into main at `9005f145a4bdec7a24f86e50452b72547cd0d3cd`
