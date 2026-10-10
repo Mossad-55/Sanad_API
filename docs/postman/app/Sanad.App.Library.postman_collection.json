@@ -1,0 +1,174 @@
+{
+	"info": {
+		"_postman_id": "b3f1c2a4-0002-4a10-library-000000000001",
+		"name": "Sanad App — Library",
+		"description": "Authenticated family-facing Library reads and interactions. Only Published content is visible; premium items return metadata with canAccess=false unless the caller's family subscription grants the PremiumContent benefit (key 8). Use Sanad.local.postman_environment.json and supply a disposable access token.",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"variable": [
+		{ "key": "baseUrl", "value": "https://localhost:7296" },
+		{ "key": "accessToken", "value": "" },
+		{
+			"key": "libraryCategoryId",
+			"value": "",
+			"description": "Paste an active library category UUID for categoryId filters."
+		},
+		{
+			"key": "libraryContentId",
+			"value": "",
+			"description": "Paste a Published library content UUID for detail, recommendations, saved/liked/view, and gate checks."
+		}
+	],
+	"item": [
+		{
+			"name": "01. Categories",
+			"item": [
+				{
+					"name": "List active categories",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": "{{baseUrl}}/api/v1/library/categories"
+					},
+					"description": "Authenticated read. Active categories only, ordered by creation time then id. Bare list of {id, arabicName, englishName}."
+				}
+			]
+		},
+		{
+			"name": "02. Content feed and detail",
+			"item": [
+				{
+					"name": "List published content",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": "{{baseUrl}}/api/v1/library/content?type=&categoryId={{libraryCategoryId}}&search=&sort=Newest&page=1&pageSize=20"
+					},
+					"description": "Published content only. Filters: type=Article|Video, categoryId, search (titles+summaries, both languages), sort=Newest|MostViewed (default Newest; invalid → 400 Cms.Library.InvalidSort), page, pageSize (1–100). Bare list; every item carries isLiked, isSaved, isPremium, canAccess."
+				},
+				{
+					"name": "Get content detail",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": "{{baseUrl}}/api/v1/library/content/{{libraryContentId}}"
+					},
+					"description": "Published detail with sections (Article) or videoUrl+durationSeconds (Video). Premium content without the PremiumContent benefit returns metadata only: videoUrl=null, sections=[], canAccess=false (200, not an error). Unknown/draft/archived → 404 Cms.LibraryContent.NotPublished."
+				}
+			]
+		},
+		{
+			"name": "03. Recommendations",
+			"item": [
+				{
+					"name": "Get recommendations",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": "{{baseUrl}}/api/v1/library/recommendations?contentId={{libraryContentId}}&categoryId=&page=1&pageSize=10"
+					},
+					"description": "Deterministic, no ML. Seed precedence contentId > categoryId; same-category newest first excluding the seed, then top-viewed fallback (viewCount desc, recency, id). Same list item shape as the feed, including canAccess."
+				}
+			]
+		},
+		{
+			"name": "04. Saved, liked, views",
+			"item": [
+				{
+					"name": "List saved content",
+					"request": {
+						"method": "GET",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": "{{baseUrl}}/api/v1/library/saved?page=1&pageSize=20"
+					},
+					"description": "The caller's saved Published content, newest-saved-first, same item shape as the feed."
+				},
+				{
+					"name": "Set saved",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"value\": true\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{baseUrl}}/api/v1/library/content/{{libraryContentId}}/saved"
+					},
+					"description": "Explicit set, idempotent 204. {\"value\": true|false}. Only Published content (else 404 Cms.LibraryContent.NotFound)."
+				},
+				{
+					"name": "Set liked",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							},
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"value\": true\n}",
+							"options": { "raw": { "language": "json" } }
+						},
+						"url": "{{baseUrl}}/api/v1/library/content/{{libraryContentId}}/liked"
+					},
+					"description": "Explicit set, idempotent 204; maintains likesCount (never below zero). Only Published content (else 404 Cms.LibraryContent.NotFound)."
+				},
+				{
+					"name": "Record view",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Authorization",
+								"value": "Bearer {{accessToken}}"
+							}
+						],
+						"url": "{{baseUrl}}/api/v1/library/content/{{libraryContentId}}/view"
+					},
+					"description": "204; increments viewCount on every call — the client calls it once per actual open; the server does not deduplicate. Only Published content (else 404 Cms.LibraryContent.NotFound)."
+				}
+			]
+		}
+	]
+}

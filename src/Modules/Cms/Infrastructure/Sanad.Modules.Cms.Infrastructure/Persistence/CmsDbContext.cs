@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Cms.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Domain.Help;
 using Sanad.Modules.Cms.Domain.Legal;
+using Sanad.Modules.Cms.Domain.Library;
 using Sanad.Modules.Cms.Domain.Splash;
 using Sanad.Modules.Cms.Domain.Wellness;
 using Sanad.Modules.Cms.Domain.SentenceBuilder;
@@ -40,6 +41,9 @@ public sealed class CmsDbContext :
     public DbSet<MedicationLatenessSetting> MedicationLatenessSettings => Set<MedicationLatenessSetting>();
     public DbSet<MedicationLatenessSettingRevision> MedicationLatenessSettingRevisions => Set<MedicationLatenessSettingRevision>();
     public DbSet<ElderlyWelcome> ElderlyWelcomes => Set<ElderlyWelcome>();
+    public DbSet<LibraryCategory> LibraryCategories => Set<LibraryCategory>();
+    public DbSet<LibraryContent> LibraryContents => Set<LibraryContent>();
+    public DbSet<LibraryContentInteraction> LibraryContentInteractions => Set<LibraryContentInteraction>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
