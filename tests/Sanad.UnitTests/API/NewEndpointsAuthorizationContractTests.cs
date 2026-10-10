@@ -60,6 +60,31 @@ public sealed class NewEndpointsAuthorizationContractTests
         Assert.NotNull(typeof(CaregiverPayoutAccountController).GetMethod(nameof(CaregiverPayoutAccountController.UpdatePayoutAccount)));
     }
 
+    [Fact]
+    public void CaregiverPayoutReadEndpoints_RequireCaregiverAccess()
+    {
+        Assert.Equal("CaregiverAccess", GetAuthorizePolicy(typeof(CaregiverPayoutsController)));
+        Assert.Equal(
+            "api/v1/caregiver",
+            typeof(CaregiverPayoutsController).GetCustomAttributes<RouteAttribute>().Single().Template);
+        Assert.NotNull(typeof(CaregiverPayoutsController).GetMethod(nameof(CaregiverPayoutsController.GetSummary)));
+        Assert.NotNull(typeof(CaregiverPayoutsController).GetMethod(nameof(CaregiverPayoutsController.GetPayouts)));
+        Assert.NotNull(typeof(CaregiverPayoutsController).GetMethod(nameof(CaregiverPayoutsController.GetPayout)));
+        Assert.NotNull(typeof(CaregiverPayoutsController).GetMethod(nameof(CaregiverPayoutsController.GetPaymentPolicy)));
+
+        Assert.Equal("payouts/summary", HttpRoute(typeof(CaregiverPayoutsController), nameof(CaregiverPayoutsController.GetSummary)));
+        Assert.Equal("payouts", HttpRoute(typeof(CaregiverPayoutsController), nameof(CaregiverPayoutsController.GetPayouts)));
+        Assert.Equal("payouts/{payoutId:guid}", HttpRoute(typeof(CaregiverPayoutsController), nameof(CaregiverPayoutsController.GetPayout)));
+        Assert.Equal("payment-policy", HttpRoute(typeof(CaregiverPayoutsController), nameof(CaregiverPayoutsController.GetPaymentPolicy)));
+    }
+
+    private static string HttpRoute(Type controllerType, string methodName)
+    {
+        var method = controllerType.GetMethod(methodName);
+        Assert.NotNull(method);
+        return method!.GetCustomAttributes<HttpMethodAttribute>().Single().Template!;
+    }
+
     private static string? GetAuthorizePolicy(Type controllerType)
     {
         return controllerType.GetCustomAttributes<AuthorizeAttribute>().Single().Policy;

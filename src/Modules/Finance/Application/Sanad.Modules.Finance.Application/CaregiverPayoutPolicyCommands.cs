@@ -6,8 +6,20 @@ using Sanad.Modules.Finance.Domain;
 
 namespace Sanad.Modules.Finance.Application;
 
-public sealed record CaregiverPayoutPolicyRates(int PayoutDelayHours, int Version);
-public sealed record CaregiverPayoutPolicyHistoryItem(Guid Id, int PayoutDelayHours, int Version, DateTime EffectiveOnUtc, DateTime CreatedOnUtc, bool IsActive);
+public sealed record CaregiverPayoutPolicyRates(
+    int PayoutDelayHours,
+    int Version,
+    string? DescriptionArabic = null,
+    string? DescriptionEnglish = null);
+public sealed record CaregiverPayoutPolicyHistoryItem(
+    Guid Id,
+    int PayoutDelayHours,
+    int Version,
+    DateTime EffectiveOnUtc,
+    DateTime CreatedOnUtc,
+    bool IsActive,
+    string? DescriptionArabic = null,
+    string? DescriptionEnglish = null);
 
 public interface ICaregiverPayoutPolicyReader
 {
@@ -17,11 +29,30 @@ public interface ICaregiverPayoutPolicyReader
 
 public interface ICaregiverPayoutPolicyWriter
 {
-    Task<Result<Guid>> CreateAsync(int payoutDelayHours, int requestedVersion, DateTime effectiveOnUtc, CancellationToken cancellationToken);
+    Task<Result<Guid>> CreateAsync(
+        int payoutDelayHours,
+        int requestedVersion,
+        DateTime effectiveOnUtc,
+        string? descriptionArabic = null,
+        string? descriptionEnglish = null,
+        CancellationToken cancellationToken = default);
 }
 
-public sealed record CreateCaregiverPayoutPolicyCommand(int PayoutDelayHours, int Version, DateTime EffectiveOnUtc) : ICommand<Guid>;
-public sealed record CaregiverPayoutPolicyResponse(Guid Id, int PayoutDelayHours, int Version, DateTime EffectiveOnUtc, DateTime CreatedOnUtc, bool IsActive);
+public sealed record CreateCaregiverPayoutPolicyCommand(
+    int PayoutDelayHours,
+    int Version,
+    DateTime EffectiveOnUtc,
+    string? DescriptionArabic = null,
+    string? DescriptionEnglish = null) : ICommand<Guid>;
+public sealed record CaregiverPayoutPolicyResponse(
+    Guid Id,
+    int PayoutDelayHours,
+    int Version,
+    DateTime EffectiveOnUtc,
+    DateTime CreatedOnUtc,
+    bool IsActive,
+    string? DescriptionArabic = null,
+    string? DescriptionEnglish = null);
 public sealed record GetCurrentCaregiverPayoutPolicyQuery : IQuery<CaregiverPayoutPolicyResponse?>;
 public sealed record GetCaregiverPayoutPolicyHistoryQuery : IQuery<IReadOnlyList<CaregiverPayoutPolicyResponse>>;
 
@@ -33,7 +64,7 @@ public static class CaregiverPayoutPolicyErrors
     public static readonly Error Missing = new("Finance.PayoutPolicy.Missing", "No effective caregiver payout policy exists.");
 
     public static CaregiverPayoutPolicyResponse Map(CaregiverPayoutPolicy x, bool isActive) =>
-        new(x.Id, x.PayoutDelayHours, x.Version, x.EffectiveOnUtc, x.CreatedOnUtc, isActive);
+        new(x.Id, x.PayoutDelayHours, x.Version, x.EffectiveOnUtc, x.CreatedOnUtc, isActive, x.DescriptionArabic, x.DescriptionEnglish);
 }
 
 public sealed class CreateCaregiverPayoutPolicyHandler(ICaregiverPayoutPolicyWriter writer) : ICommandHandler<CreateCaregiverPayoutPolicyCommand, Guid>
@@ -42,7 +73,13 @@ public sealed class CreateCaregiverPayoutPolicyHandler(ICaregiverPayoutPolicyWri
     {
         try
         {
-            return await writer.CreateAsync(request.PayoutDelayHours, request.Version, request.EffectiveOnUtc, ct);
+            return await writer.CreateAsync(
+                request.PayoutDelayHours,
+                request.Version,
+                request.EffectiveOnUtc,
+                request.DescriptionArabic,
+                request.DescriptionEnglish,
+                ct);
         }
         catch (Sanad.BuildingBlocks.Domain.Exceptions.DomainException ex)
         {
@@ -69,6 +106,14 @@ public sealed class GetCaregiverPayoutPolicyHistoryHandler(ICaregiverPayoutPolic
 {
     public async Task<Result<IReadOnlyList<CaregiverPayoutPolicyResponse>>> Handle(GetCaregiverPayoutPolicyHistoryQuery request, CancellationToken ct)
         => (await reader.GetHistoryAsync(clock.UtcNow, ct))
-            .Select(x => new CaregiverPayoutPolicyResponse(x.Id, x.PayoutDelayHours, x.Version, x.EffectiveOnUtc, x.CreatedOnUtc, x.IsActive))
+            .Select(x => new CaregiverPayoutPolicyResponse(
+                x.Id,
+                x.PayoutDelayHours,
+                x.Version,
+                x.EffectiveOnUtc,
+                x.CreatedOnUtc,
+                x.IsActive,
+                x.DescriptionArabic,
+                x.DescriptionEnglish))
             .ToList();
 }

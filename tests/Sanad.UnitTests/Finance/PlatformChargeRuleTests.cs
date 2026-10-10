@@ -124,10 +124,15 @@ public sealed class PlatformChargeRuleTests
     {
         await using var db = CreateContext();
         var writer = new PlatformChargeRuleReader(db);
+        // The scheduled date must stay in the future: the writer derives the
+        // new rule's active flag from "effectiveOnUtc <= DateTime.UtcNow",
+        // so a hardcoded calendar date silently turns this into an immediate
+        // schedule as time passes (regression: Utc(10) = 2026-10-10).
+        DateTime scheduled = new(2030, 1, 1, 0, 0, 0, DateTimeKind.Utc);
         Assert.True((await writer.CreateAsync(10m, 5m, 1, Utc(1), default)).IsSuccess);
-        Assert.True((await writer.CreateAsync(12m, 7m, 2, Utc(10), default)).IsSuccess);
+        Assert.True((await writer.CreateAsync(12m, 7m, 2, scheduled, default)).IsSuccess);
 
-        var conflict = await writer.CreateAsync(13m, 8m, 2, Utc(11), default);
+        var conflict = await writer.CreateAsync(13m, 8m, 2, scheduled, default);
 
         Assert.False(conflict.IsSuccess);
         Assert.Equal("Finance.Charges.VersionConflict", conflict.Error.Code);

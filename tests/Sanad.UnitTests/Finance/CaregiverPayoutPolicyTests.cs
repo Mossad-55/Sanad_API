@@ -46,6 +46,63 @@ public sealed class CaregiverPayoutPolicyTests
     }
 
     [Fact]
+    public void Create_ShouldPersistAndTrimDescriptions()
+    {
+        var policy = CaregiverPayoutPolicy.Create(
+            72, 1, Utc(1), Utc(1), "  وصف السحب  ", "  Payout terms  ");
+
+        Assert.Equal("وصف السحب", policy.DescriptionArabic);
+        Assert.Equal("Payout terms", policy.DescriptionEnglish);
+    }
+
+    [Fact]
+    public void Create_ShouldNormalizeBlankDescriptionsToNull()
+    {
+        var policy = CaregiverPayoutPolicy.Create(
+            72, 1, Utc(1), Utc(1), "", "   ");
+
+        Assert.Null(policy.DescriptionArabic);
+        Assert.Null(policy.DescriptionEnglish);
+    }
+
+    [Fact]
+    public void Create_ShouldRejectTooLongDescription()
+    {
+        string tooLong = new('a', CaregiverPayoutPolicy.MaximumDescriptionLength + 1);
+
+        Assert.Throws<Sanad.BuildingBlocks.Domain.Exceptions.DomainException>(() =>
+            CaregiverPayoutPolicy.Create(72, 1, Utc(1), Utc(1), tooLong, null));
+    }
+
+    [Fact]
+    public async Task Store_roundtrips_descriptions_through_effective_read_and_history()
+    {
+        await using var db = CreateContext();
+        var store = new CaregiverPayoutPolicyStore(db);
+        var handler = new CreateCaregiverPayoutPolicyHandler(store);
+
+        var created = await handler.Handle(
+            new(72, 1, Utc(1), "يُدفع بعد 72 ساعة", "Payout after 72 hours"),
+            default);
+
+        Assert.True(created.IsSuccess);
+
+        var effective = await store.GetEffectiveAsync(Utc(2), default);
+        Assert.Equal("يُدفع بعد 72 ساعة", effective!.DescriptionArabic);
+        Assert.Equal("Payout after 72 hours", effective.DescriptionEnglish);
+
+        var history = await new GetCaregiverPayoutPolicyHistoryHandler(
+            store, new FixedClock(Utc(2))).Handle(new(), default);
+        Assert.Equal("يُدفع بعد 72 ساعة", history.Value.Single().DescriptionArabic);
+        Assert.Equal("Payout after 72 hours", history.Value.Single().DescriptionEnglish);
+
+        var current = await new GetCurrentCaregiverPayoutPolicyHandler(
+            db, new FixedClock(Utc(2))).Handle(new(), default);
+        Assert.Equal("يُدفع بعد 72 ساعة", current.Value!.DescriptionArabic);
+        Assert.Equal("Payout after 72 hours", current.Value.DescriptionEnglish);
+    }
+
+    [Fact]
     public async Task Handler_rejects_duplicate_version_and_preserves_active_policy()
     {
         await using var db = CreateContext();

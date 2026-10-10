@@ -142,6 +142,100 @@ Example response (record/detail):
 
 Bank details are the `bankCode` and masked IBAN snapshotted from the caregiver payout account at record time. The full IBAN is never returned by any payout route and never logged. Audit identity is the recording/failing actor (`recordedBy`, plus failure actor/time on `Failed` rows).
 
+## Caregiver-facing payout reads (self-only)
+
+Four authenticated reads. The caregiver is resolved from the JWT identity — there is no `caregiverId` parameter — so a caller can never read another caregiver's payouts. All routes require `CaregiverAccess`; a valid token whose identity has no caregiver profile receives `401`.
+
+```text
+GET /api/v1/caregiver/payouts/summary
+GET /api/v1/caregiver/payouts?status=&page=1&pageSize=20
+GET /api/v1/caregiver/payouts/{payoutId}
+GET /api/v1/caregiver/payment-policy
+```
+
+### Status labels (merged T4)
+
+Payout rows stay per-booking `Paid` or `Failed`. **`Transferred` ≡ `Paid`**: the historic T4 "Transferred" label names the same merged state and is documented as an alias, never renamed in the API. There is **no `Processing` state** on any of these surfaces (none exists in the product; nothing creates one). The `status=` query parameter accepts `Paid` or `Failed`; any other value fails model binding with `400`.
+
+### Summary
+
+```json
+{
+  "currency": "EGP",
+  "unpaidAmount": 300.00,
+  "transferredAmount": 150.00,
+  "failedAmount": 150.00,
+  "nextExpectedPayoutOnUtc": "2026-10-08T00:00:00Z"
+}
+```
+
+- `unpaidAmount` — computed eligible-unrecorded amount: Σ snapshot `BaseCaregiverFee` over bookings that are Completed **and** Paid, past the effective payout-policy delay (`max(completedOnUtc, paidOnUtc) + payoutDelayHours`), with **no `Paid` payout row**. A `Failed` payout row does not clear the debt — the same booking may be recorded again after a failure, so those bookings still count as unpaid.
+- `transferredAmount` — Σ `netAmount` of `Paid` rows. `failedAmount` — Σ `netAmount` of `Failed` rows.
+- `nextExpectedPayoutOnUtc` — earliest eligibility time among unpaid bookings, computed **only when the payout account is `Verified`** (`null` otherwise, and `null` when no unpaid booking exists). The value can be in the past (already due, awaiting an Admin record) or in the future.
+- `currency` — from the most recent payout row, else the most recent completed-booking snapshot; `null` when the caregiver has no payout and no completed booking. Rows are expected in one currency (today: EGP); mixed-currency summaries are not modelled.
+- No effective payout policy exists → the summary fails closed with `400 Finance.PayoutPolicy.Missing` (eligibility is undefined without the configured delay; the same code admin recording returns — the shared problem-details mapper does not special-case it).
+
+### List
+
+`page` is clamped to ≥ 1, `pageSize` to 1–100 (out-of-range values are clamped, not rejected), ordered newest-recorded first, in the standard `PagedResult` envelope:
+
+```json
+{
+  "items": [{
+    "id": "0198e2c2-3333-7777-8888-000000000001",
+    "amount": 150.00,
+    "currency": "EGP",
+    "status": "Paid",
+    "bankNameArabic": "البنك الاهلي المصري",
+    "bankNameEnglish": "National Bank of Egypt",
+    "maskedIban": "****0002",
+    "transferReference": "BANK-2026-000123",
+    "createdOnUtc": "2026-10-08T10:00:00Z",
+    "transferredOnUtc": "2026-10-08T10:00:00Z",
+    "failureReason": null
+  }],
+  "page": 1, "pageSize": 20, "totalCount": 1, "totalPages": 1
+}
+```
+
+- `amount` = `grossAmount` (`netAmount` always equals gross — no payout-level fee exists; family-paid `platformFeeAmount` is not part of these reads).
+- `bankNameArabic`/`bankNameEnglish` — resolved from the payout's snapshotted `bankCode` against the bank catalogue; `null` when the code matches no catalogue row (renamed/removed bank), never a guess.
+- `transferredOnUtc` — the `Paid` time (`paidOnUtc`, equal to `createdOnUtc` for immediately-paid rows) on `Paid` rows; `null` on `Failed` rows.
+
+### Detail
+
+Identical item fields plus a one-element `bookingItems` array (payouts are per-booking rows; the shape matches the coded mobile contract and stays forward-compatible if grouping ever arrives):
+
+```json
+"bookingItems": [{ "bookingId": "0198e2c2-2222-7777-8888-000000000003", "caregiverAmount": 150.00, "currency": "EGP" }]
+```
+
+Reading another caregiver's payout id returns `404 Caregivers.Payouts.NotFound` (ownership failures do not leak existence); an unknown id returns the same `404`.
+
+### Payment policy
+
+```json
+{
+  "descriptionArabic": "يُدفع بعد 72 ساعة من إتمام الحجز وسداده",
+  "descriptionEnglish": "Payout is released 72 hours after the booking is completed and paid.",
+  "requiresVerifiedBankAccount": true,
+  "minimumPayoutAmount": null,
+  "expectedProcessingDays": null
+}
+```
+
+- `descriptionArabic`/`descriptionEnglish` — admin-authored bilingual terms carried by the effective payout policy (added to policy create; each create is a new policy version). Policies created before descriptions existed read back `null`; with no effective policy at all the endpoint still returns `200` with both descriptions `null`.
+- `requiresVerifiedBankAccount` — always `true`, derived from the enforced `Verified` gate on payout recording.
+- `minimumPayoutAmount` / `expectedProcessingDays` — honest `null`s: no minimum-amount or processing-time rule exists in the product and none is created.
+
+### Errors (caregiver reads)
+
+- `401` — missing/invalid token, or the identity has no caregiver profile.
+- `403` — valid token without the caregiver account role.
+- `404 Caregivers.Payouts.NotFound` — detail id not owned by the caller (or unknown).
+- `400 Finance.PayoutPolicy.Missing` — summary when no effective payout policy exists (fail closed).
+- `400` — `status=` value other than `Paid`/`Failed` (enum binding).
+
 ## Admin payout-account review
 
 Payout accounts start `Pending` and pay out only while `Verified`. Any caregiver
