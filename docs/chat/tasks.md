@@ -62,7 +62,7 @@ marks each merged box with the `main` SHA, and pushes `main` once. Workers
 never merge or push; workers write the report file as part of Done.
 
 - [x] lane-a-domain — report: `docs/chat/reports/lane-a-domain.md` (task commit `60aed69`)
-- [ ] lane-a-persistence — report: `docs/chat/reports/lane-a-persistence.md`
+- [x] lane-a-persistence — report: `docs/chat/reports/lane-a-persistence.md` (task commit `9323639`)
 - [ ] lane-a-endpoints — report: `docs/chat/reports/lane-a-endpoints.md`
 - [ ] lane-a-attachments — report: `docs/chat/reports/lane-a-attachments.md`
 - [ ] lane-a-blocks — report: `docs/chat/reports/lane-a-blocks.md`
