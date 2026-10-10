@@ -63,10 +63,15 @@ exclusive: Opus edits only the files below plus the listed docs/collections.
   date-dependent `PlatformChargeRuleTests` time-bomb was repaired
   (test-only, hardcoded 2026-10-10 schedule date became the past).
 
-- [ ] Not started — **Phase 7. Docs + Postman sync and gates.**
+- [x] Done — **Phase 7. Docs + Postman sync and gates.**
   Owns: doc/collection files only. Full solution build (0 warnings) +
   full unit + architecture suites once, `git diff --check`, Postman JSON
   validation. No provider calls, no migration applies, no seed data.
+  Gates: build 0W/0E; unit 2691 passed / 0 failed / 3 pre-existing static
+  skips; architecture 1/1; all 20 Postman JSONs valid. Doc sync: stale
+  payout-policy create body in `finance-platform-charges.md` + two
+  document-map rows; one-line xUnit2013 analyzer fix in the phase-6 test
+  file (see report).
 
 Done criteria per phase: zero-warning build, focused tests green, docs +
 Postman synced, branch + SHA reported. State-changing checks only on
