@@ -145,6 +145,29 @@ public sealed class Conversation : AggregateRoot<ConversationId>
             "Only a participant can hide a conversation.");
     }
 
+    /// <summary>
+    /// Reopening a hidden conversation (a fresh open after a per-user hide)
+    /// restores visibility for that participant only; the other party's
+    /// flag is never touched. Nothing is erased on either side.
+    /// </summary>
+    public void Unhide(UserId participant)
+    {
+        if (participant == ParticipantOne)
+        {
+            HiddenForParticipantOne = false;
+            return;
+        }
+
+        if (participant == ParticipantTwo)
+        {
+            HiddenForParticipantTwo = false;
+            return;
+        }
+
+        throw new DomainException(
+            "Only a participant can restore a conversation.");
+    }
+
     public bool IsHiddenFor(UserId participant)
     {
         if (participant == ParticipantOne)
