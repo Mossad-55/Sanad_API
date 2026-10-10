@@ -61,7 +61,7 @@ boxes, merges qualifying tasks in dependency order (Lane A before Lane B),
 marks each merged box with the `main` SHA, and pushes `main` once. Workers
 never merge or push; workers write the report file as part of Done.
 
-- [ ] lane-a-domain — report: `docs/chat/reports/lane-a-domain.md`
+- [x] lane-a-domain — report: `docs/chat/reports/lane-a-domain.md` (task commit `60aed69`)
 - [ ] lane-a-persistence — report: `docs/chat/reports/lane-a-persistence.md`
 - [ ] lane-a-endpoints — report: `docs/chat/reports/lane-a-endpoints.md`
 - [ ] lane-a-attachments — report: `docs/chat/reports/lane-a-attachments.md`
