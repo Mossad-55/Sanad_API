@@ -8,6 +8,7 @@ using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.Modules.Identity.Application.Authentication;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 using Sanad.Modules.Identity.Domain.Support;
+using Sanad.Modules.Identity.Infrastructure.Messaging.EmailTemplates;
 
 namespace Sanad.Modules.Identity.Infrastructure.Messaging;
 
@@ -21,24 +22,44 @@ public sealed class SmtpEmailSender : IEmailSender
         _options = options.Value;
     }
 
-    public async Task SendEmailAsync(string email, string subject, string body, string? correlationId, CancellationToken cancellationToken)
+    public Task SendEmailAsync(string email, string subject, string body, string? correlationId, CancellationToken cancellationToken) =>
+        SendEmailAsync(email, subject, body, null, correlationId, cancellationToken);
+
+    public async Task SendEmailAsync(string email, string subject, string plainTextBody, string? htmlBody, string? correlationId, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
         var message = new MimeMessage();
         message.From.Add(new MailboxAddress(string.IsNullOrWhiteSpace(_options.FromName) ? "Sanad Care" : _options.FromName, _options.FromAddress));
         message.To.Add(MailboxAddress.Parse(email));
         message.Subject = subject;
-        if (!string.IsNullOrWhiteSpace(correlationId))
-        {
-            string stableId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(correlationId)));
-            message.MessageId = $"<sanad-{stableId}@sanad-care>";
-        }
-        message.Body = new TextPart("plain") { Text = body };
+        string? messageId = CreateMessageId(correlationId);
+        if (messageId is not null) message.MessageId = messageId;
+        message.Body = CreateBody(plainTextBody, htmlBody);
+
         using var client = new SmtpClient();
         await client.ConnectAsync(_options.Host, _options.Port, _options.UseSsl ? SecureSocketOptions.Auto : SecureSocketOptions.None, cancellationToken);
         if (!string.IsNullOrWhiteSpace(_options.Username)) await client.AuthenticateAsync(_options.Username, _options.Password, cancellationToken);
         await client.SendAsync(message, cancellationToken);
         await client.DisconnectAsync(true, cancellationToken);
+    }
+
+    private static string? CreateMessageId(string? correlationId)
+    {
+        if (string.IsNullOrWhiteSpace(correlationId)) return null;
+        string stableId = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(correlationId)));
+        return $"<sanad-{stableId}@sanad-care>";
+    }
+
+    internal static MimeEntity CreateBody(string plainTextBody, string? htmlBody)
+    {
+        if (string.IsNullOrWhiteSpace(htmlBody))
+            return new TextPart("plain") { Text = plainTextBody };
+
+        return new Multipart("alternative")
+        {
+            new TextPart("plain") { Text = plainTextBody },
+            new TextPart("html") { Text = htmlBody }
+        };
     }
 
     public async Task SendVerificationCodeAsync(
@@ -86,6 +107,25 @@ public sealed class SmtpEmailSender : IEmailSender
         string code,
         VerificationPurpose purpose)
     {
+        string arabicPurpose = purpose switch
+        {
+            VerificationPurpose.ResetPassword => "إعادة تعيين كلمة المرور",
+            VerificationPurpose.VerifyEmail => "تأكيد البريد الإلكتروني",
+            _ => "التحقق"
+        };
+        string englishPurpose = purpose switch
+        {
+            VerificationPurpose.ResetPassword => "password reset",
+            VerificationPurpose.VerifyEmail => "email verification",
+            _ => "verification"
+        };
+        var model = EmailTemplateModel.ForOtpCode(
+            new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["code"] = code,
+                ["expiresIn"] = $"{(int)OtpPolicy.Lifetime.TotalMinutes} minutes"
+            }, arabicPurpose, englishPurpose);
+        RenderedEmailTemplate rendered = EmailTemplateCatalog.Render(EmailTemplateKind.OtpCode, model);
         var message = new MimeMessage();
 
         message.From.Add(
@@ -98,49 +138,10 @@ public sealed class SmtpEmailSender : IEmailSender
         message.To.Add(
             MailboxAddress.Parse(email));
 
-        message.Subject =
-            "Sanad Care verification code | رمز التحقق من سند";
-
-        message.Body = new TextPart("plain")
-        {
-            Text = CreateBody(code, purpose)
-        };
+        message.Subject = rendered.Subject;
+        message.Body = CreateBody(rendered.PlainTextBody, rendered.HtmlBody);
 
         return message;
-    }
-
-    private static string CreateBody(
-        string code,
-        VerificationPurpose purpose)
-    {
-        string arabicPurpose = purpose switch
-        {
-            VerificationPurpose.ResetPassword =>
-                "إعادة تعيين كلمة المرور",
-            VerificationPurpose.VerifyEmail =>
-                "تأكيد البريد الإلكتروني",
-            _ =>
-                "التحقق"
-        };
-
-        string englishPurpose = purpose switch
-        {
-            VerificationPurpose.ResetPassword =>
-                "password reset",
-            VerificationPurpose.VerifyEmail =>
-                "email verification",
-            _ =>
-                "verification"
-        };
-
-        int lifetimeMinutes = (int)OtpPolicy.Lifetime.TotalMinutes;
-
-        return
-            $"رمز {arabicPurpose} الخاص بك في سند هو: {code}{Environment.NewLine}" +
-            $"صالح لمدة {lifetimeMinutes} دقائق.{Environment.NewLine}" +
-            Environment.NewLine +
-            $"Your Sanad Care {englishPurpose} code is: {code}{Environment.NewLine}" +
-            $"It expires in {lifetimeMinutes} minutes.";
     }
 
     public async Task SendFamilyInvitationAsync(
@@ -189,6 +190,13 @@ public sealed class SmtpEmailSender : IEmailSender
         string familyName,
         string inviteLink)
     {
+        RenderedEmailTemplate rendered = EmailTemplateCatalog.Render(
+            EmailTemplateKind.Invitation,
+            new EmailTemplateModel(new Dictionary<string, string>(StringComparer.Ordinal)
+            {
+                ["familyName"] = familyName,
+                ["inviteLink"] = inviteLink
+            }));
         var message = new MimeMessage();
 
         message.From.Add(
@@ -201,22 +209,8 @@ public sealed class SmtpEmailSender : IEmailSender
         message.To.Add(
             MailboxAddress.Parse(email));
 
-        message.Subject =
-            "You're invited to join a family on Sanad Care | دعوة للانضمام إلى عائلة في سند";
-
-        message.Body = new TextPart("plain")
-        {
-            Text =
-                $"You have been invited to join the family " +
-                $"\"{familyName}\" on Sanad Care.\n\n" +
-                $"Open this link in the Sanad Care app to accept:\n" +
-                $"{inviteLink}\n\n" +
-                $"The invitation expires in 7 days.\n\n" +
-                $"— Sanad Care\n\n" +
-                $"تمت دعوتك للانضمام إلى عائلة \"{familyName}\" " +
-                $"في تطبيق سند. افتح الرابط داخل التطبيق للموافقة، " +
-                $"علماً بأن الدعوة تنتهي خلال 7 أيام."
-        };
+        message.Subject = rendered.Subject;
+        message.Body = CreateBody(rendered.PlainTextBody, rendered.HtmlBody);
 
         return message;
     }
@@ -253,25 +247,25 @@ public sealed class SmtpEmailSender : IEmailSender
                 MailboxAddress.Parse(senderEmail));
         }
 
-        mimeMessage.Subject =
-            "Sanad Care support request | طلب دعم من سند";
-
-        mimeMessage.Body = new TextPart("plain")
-        {
-            Text =
-                $"المرسل: {senderName}\n" +
-                $"البريد الإلكتروني: {senderEmail ?? "—"}\n" +
-                $"رقم الهاتف: {senderPhoneNumber}\n" +
-                $"نوع الحساب: {accountTypes}\n" +
-                $"الموضوع: {subject}\n" +
-                $"الرسالة: {message}\n\n" +
-                $"Sender: {senderName}\n" +
-                $"Email: {senderEmail ?? "—"}\n" +
-                $"Phone: {senderPhoneNumber}\n" +
-                $"Account types: {accountTypes}\n" +
-                $"Subject: {subject}\n" +
-                $"Message: {message}"
-        };
+        string bodyAr =
+            $"المرسل: {senderName}\n" +
+            $"البريد الإلكتروني: {senderEmail ?? "—"}\n" +
+            $"رقم الهاتف: {senderPhoneNumber}\n" +
+            $"نوع الحساب: {accountTypes}\n" +
+            $"الموضوع: {subject}\n" +
+            $"الرسالة: {message}";
+        string bodyEn =
+            $"Sender: {senderName}\n" +
+            $"Email: {senderEmail ?? "—"}\n" +
+            $"Phone: {senderPhoneNumber}\n" +
+            $"Account types: {accountTypes}\n" +
+            $"Subject: {subject}\n" +
+            $"Message: {message}";
+        RenderedEmailTemplate rendered = EmailTemplateCatalog.RenderBilingual(
+            "طلب دعم جديد من سند", "New Sanad Care support request",
+            "طلب دعم جديد", "New support request", bodyAr, bodyEn);
+        mimeMessage.Subject = rendered.Subject;
+        mimeMessage.Body = CreateBody(rendered.PlainTextBody, rendered.HtmlBody);
 
         using var client = new SmtpClient();
 

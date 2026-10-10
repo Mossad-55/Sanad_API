@@ -103,6 +103,13 @@ public static class DependencyInjection
         services.AddSingleton(provider => ResolveCareHomeBookingTiming(configuration, provider.GetRequiredService<IHostEnvironment>()));
 
         services.AddNotificationsInfrastructure(configuration);
+        services.Configure<Sanad.Modules.Notifications.Infrastructure.Push.PushFirebaseOptions>(configuration.GetSection(Sanad.Modules.Notifications.Infrastructure.Push.PushFirebaseOptions.SectionName));
+        services.AddSingleton<Sanad.Modules.Notifications.Application.Abstractions.Push.IPushSender>(sp =>
+        {
+            if (sp.GetService<IHostEnvironment>()?.IsDevelopment() == true)
+                return new Sanad.Modules.Notifications.Infrastructure.Push.DevelopmentNoOpPushSender();
+            return ActivatorUtilities.CreateInstance<Sanad.Modules.Notifications.Infrastructure.Push.FcmPushSender>(sp);
+        });
         services.AddCommunityInfrastructure(configuration);
         services.AddFinanceInfrastructure(configuration);
         services.AddHostedService<CareHomeLicenseExpiryMonitor>();
@@ -111,6 +118,7 @@ public static class DependencyInjection
         services.AddHostedService<CareHomeBookingNotificationProcessor>();
         services.AddHostedService<CareHomeReviewNotificationProcessor>();
         services.AddHostedService<EmailOutboxProcessor>();
+        services.AddHostedService<PushOutboxProcessor>();
         services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
         services.AddScoped<ICaregiverBookingRatingEligibility, CaregiverBookingRatingEligibilityGateway>();
         services.AddScoped<IHelpRequestCatalogGateway, HelpRequestCatalogGateway>();

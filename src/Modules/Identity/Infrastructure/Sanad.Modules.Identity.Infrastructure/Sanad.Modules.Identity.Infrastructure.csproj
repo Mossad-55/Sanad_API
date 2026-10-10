@@ -30,4 +30,7 @@
     <PackageReference Include="MailKit" />
     <PackageReference Include="MimeKit" />
   </ItemGroup>
+  <ItemGroup>
+    <InternalsVisibleTo Include="Sanad.UnitTests" />
+  </ItemGroup>
 </Project>

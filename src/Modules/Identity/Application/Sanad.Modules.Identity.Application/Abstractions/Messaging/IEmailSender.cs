@@ -6,6 +6,8 @@ namespace Sanad.Modules.Identity.Application.Abstractions.Messaging;
 public interface IEmailSender
 {
     Task SendEmailAsync(string email, string subject, string body, string? correlationId, CancellationToken cancellationToken);
+    Task SendEmailAsync(string email, string subject, string plainTextBody, string? htmlBody, string? correlationId, CancellationToken cancellationToken) =>
+        SendEmailAsync(email, subject, plainTextBody, correlationId, cancellationToken);
     Task SendVerificationCodeAsync(
         string email,
         string code,

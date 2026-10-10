@@ -5,6 +5,7 @@ using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
+using Sanad.Modules.Identity.Infrastructure.Messaging.EmailTemplates;
 using Sanad.Modules.Notifications.Domain.Notifications;
 using Sanad.Modules.Notifications.Infrastructure.Persistence;
 
@@ -84,13 +85,28 @@ public sealed class CareHomeReviewNotificationProcessor(
             nameof(CareHomeReviewAction.Reactivated) => arabic ? "تمت إعادة تفعيل دار الرعاية" : "Care home reactivated",
             _ => arabic ? "تم تحديث حالة دار الرعاية" : "Care-home status updated"
         };
-        string body = arabic ? $"المنشأة: {facilityId}. الحالة: {title}." : $"Facility: {facilityId}. Status: {title}.";
+        (string TitleAr, string TitleEn) titles = action switch
+        {
+            "Submitted" => ("تم إرسال طلب دار الرعاية", "Care-home application submitted"),
+            nameof(CareHomeReviewAction.CorrectionsRequested) => ("مطلوب استكمال بيانات دار الرعاية", "Care-home corrections requested"),
+            nameof(CareHomeReviewAction.Approved) => ("تمت الموافقة على دار الرعاية", "Care-home application approved"),
+            nameof(CareHomeReviewAction.Rejected) => ("تم رفض طلب دار الرعاية", "Care-home application rejected"),
+            nameof(CareHomeReviewAction.Suspended) => ("تم إيقاف دار الرعاية", "Care home suspended"),
+            nameof(CareHomeReviewAction.Reactivated) => ("تمت إعادة تفعيل دار الرعاية", "Care home reactivated"),
+            _ => ("تم تحديث حالة دار الرعاية", "Care-home status updated")
+        };
+        string bodyAr = $"المنشأة: {facilityId}. الحالة: {titles.TitleAr}.";
+        string bodyEn = $"Facility: {facilityId}. Status: {titles.TitleEn}.";
+        string body = arabic ? bodyAr : bodyEn;
         string prefix = $"care-home-onboarding:{eventKey}:{userId:N}";
         await SaveNotificationAsync(db, userId, title, body, facilityId, prefix + ":in-app", occurredOnUtc, ct);
         if (string.IsNullOrWhiteSpace(email)) return;
         string key = prefix + ":email";
         if (await db.EmailOutboxMessages.AnyAsync(x => x.IdempotencyKey == key, ct)) return;
-        var message = EmailOutboxMessage.Create(email, title, body, key, occurredOnUtc);
+        var emailCopy = EmailTemplateCatalog.RenderBilingual(titles.TitleAr, titles.TitleEn,
+            titles.TitleAr, titles.TitleEn, bodyAr, bodyEn);
+        var message = EmailOutboxMessage.Create(email, emailCopy.Subject, emailCopy.PlainTextBody,
+            emailCopy.HtmlBody, key, occurredOnUtc);
         db.EmailOutboxMessages.Add(message);
         try { await db.SaveChangesAsync(ct); }
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })

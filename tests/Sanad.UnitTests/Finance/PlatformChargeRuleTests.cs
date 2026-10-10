@@ -124,8 +124,9 @@ public sealed class PlatformChargeRuleTests
     {
         await using var db = CreateContext();
         var writer = new PlatformChargeRuleReader(db);
-        Assert.True((await writer.CreateAsync(10m, 5m, 1, Utc(1), default)).IsSuccess);
-        Assert.True((await writer.CreateAsync(12m, 7m, 2, Utc(10), default)).IsSuccess);
+        DateTime now = DateTime.UtcNow;
+        Assert.True((await writer.CreateAsync(10m, 5m, 1, now.AddDays(-1), default)).IsSuccess);
+        Assert.True((await writer.CreateAsync(12m, 7m, 2, now.AddDays(1), default)).IsSuccess);
 
         var conflict = await writer.CreateAsync(13m, 8m, 2, Utc(11), default);
 

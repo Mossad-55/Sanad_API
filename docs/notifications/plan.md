@@ -1,8 +1,8 @@
 # Notifications slice — frozen contract (owner-approved)
 
-Backend-only slice. No implementation has started. This document freezes the
-product contract; `tasks.md` owns execution order and `handoff.md` owns live
-status. Changing anything below needs a new explicit owner decision.
+Backend-only slice contract. `tasks.md` owns execution order and `handoff.md`
+owns live status. The approved clarifications are recorded below; changing the
+contract further needs a new explicit owner decision.
 
 ## Channel stack (locked)
 
@@ -38,7 +38,7 @@ existing `EmailOutboxMessage` table rendered at enqueue) → SMS untouched.
 ## Email rules (locked)
 
 - Shared bilingual layout (Arabic-first RTL + English below), text wordmark header (no logo — dropped by owner decision), system fonts, sender "Sanad Care".
-- 12 templates: OTP code, invitation, support acknowledgment, booking paid/accepted/declined/started/completed/cancelled(+refund), subscription renewed/failed/changed, payout recorded/failed, post published/rejected. Every HTML email ships a plain-text twin.
+- 16 template variants: OTP code, invitation, support acknowledgment, booking paid/accepted/declined/started/completed/cancelled(+refund), subscription renewed/failed/changed, payout recorded/failed, post published/rejected. Every HTML email ships a plain-text twin. Subscription renewal-upcoming reuses the renewed template with upcoming copy; plan-changed and plan-retired share the changed template with event-specific copy.
 - Bodies rendered at enqueue and stored in the outbox (immutable snapshots); existing `MessageId` stability kept.
 
 ## Preferences (locked)

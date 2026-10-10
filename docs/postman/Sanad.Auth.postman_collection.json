@@ -2065,7 +2065,16 @@
         {
           "name": "GET Account choices",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/account/accounts",
             "description": "Safe read. Normal JWT required. 200 returns owned regular account types (1 Family, 2 Medical Caregiver, 3 Companion Caregiver, 8 CareHomeOwner); 404 user missing; 409 invalid account state."
@@ -2074,10 +2083,27 @@
         {
           "name": "POST Add account choice (manual)",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"accountType\": 2\n}" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountType\": 2\n}"
+            },
             "url": "{{baseUrl}}/api/v1/account/accounts",
             "description": "Manual account mutation. 200 returns accountType and refreshRequired=true; refresh the session afterward. Regular account types include 1 Family, 2 MedicalCaregiver, 3 CompanionCaregiver, and 8 CareHomeOwner. Do not replay on shared data. 400 validation, 403 restricted token, 409 duplicate/exclusive/retained caregiver or invalid state."
           }
@@ -2085,10 +2111,27 @@
         {
           "name": "POST Switch account selection",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "body": { "mode": "raw", "raw": "{\n  \"accountType\": 2\n}" },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountType\": 2\n}"
+            },
             "url": "{{baseUrl}}/api/v1/account/switch",
             "description": "Safe selection validation. Regular choices include Family (1), MedicalCaregiver (2), CompanionCaregiver (3), and CareHomeOwner (8). 200 returns accountType; no JWT/session is issued and the current JWT remains authoritative. 400 invalid type, 404 user missing, 409 unowned type or invalid state."
           }
@@ -2196,7 +2239,16 @@
         {
           "name": "List notifications",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/notifications?pageSize=20",
             "description": "Optional opaque cursor is used as `cursor`. `pageSize` defaults to 20 and is bounded 1–100. Returns newest-first items, nextCursor, and unreadCount; only the caller's notifications created within the last year are available. Each item contains category, type, title, body, createdOnUtc, nullable readOnUtc, and destinationEntityKind + destinationEntityId. 400 for invalid pageSize or Notifications.InvalidCursor; 401 missing/invalid token; 403 restricted token."
@@ -2207,42 +2259,268 @@
               "status": "OK",
               "code": 200,
               "_postman_previewlanguage": "json",
-              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
               "body": "{\n  \"items\": [{\n    \"id\": \"018f0000-0000-7000-8000-000000000001\",\n    \"category\": \"check-in\",\n    \"type\": \"elderly-not-okay\",\n    \"title\": \"Check-in needs attention\",\n    \"body\": \"An elderly check-in was marked not okay.\",\n    \"destinationEntityKind\": \"Elderly\",\n    \"destinationEntityId\": \"018f0000-0000-7000-8000-000000000002\",\n    \"createdOnUtc\": \"2026-09-27T08:00:00Z\",\n    \"readOnUtc\": null\n  }],\n  \"nextCursor\": null,\n  \"unreadCount\": 1\n}"
             }
           ],
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["if (pm.response.code === 200) {", "  const body = pm.response.json();", "  pm.expect(body).to.have.property('items');", "  pm.expect(body).to.have.property('nextCursor');", "  pm.expect(body).to.have.property('unreadCount');", "  if (body.items.length) { pm.expect(body.items[0]).to.have.all.keys('id', 'category', 'type', 'title', 'body', 'destinationEntityKind', 'destinationEntityId', 'createdOnUtc', 'readOnUtc'); }", "}"] } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body).to.have.property('items');",
+                  "  pm.expect(body).to.have.property('nextCursor');",
+                  "  pm.expect(body).to.have.property('unreadCount');",
+                  "  if (body.items.length) { pm.expect(body.items[0]).to.have.all.keys('id', 'category', 'type', 'title', 'body', 'destinationEntityKind', 'destinationEntityId', 'createdOnUtc', 'readOnUtc'); }",
+                  "}"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get unread notification count",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/notifications/unread-count",
             "description": "Returns a JSON integer for unread caller-owned notifications still available within the one-year read-time window. Read-only."
           },
-          "response": [{ "name": "200 Unread count", "status": "OK", "code": 200, "_postman_previewlanguage": "json", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": "1" }],
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["if (pm.response.code === 200) { pm.expect(pm.response.json()).to.be.a('number'); }"] } }]
+          "response": [
+            {
+              "name": "200 Unread count",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "1"
+            }
+          ],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) { pm.expect(pm.response.json()).to.be.a('number'); }"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Mark one notification read",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PUT",
             "url": "{{baseUrl}}/api/v1/notifications/{{notificationId}}/read",
             "description": "Marks the caller's current notification read and returns 204. This request changes read state; use only with an owner-approved disposable notificationId. Unknown, foreign, or older-than-one-year IDs return 404 Notifications.NotFound."
           },
-          "response": [{ "name": "204 Read", "status": "No Content", "code": 204, "body": "" }]
+          "response": [
+            {
+              "name": "204 Read",
+              "status": "No Content",
+              "code": 204,
+              "body": ""
+            }
+          ]
         },
         {
           "name": "Mark all notifications read",
           "request": {
-            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{accessToken}}", "type": "string" }] },
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
             "method": "PUT",
             "url": "{{baseUrl}}/api/v1/notifications/read-all",
             "description": "Marks all current unread notifications for the caller read and returns 204. This request changes read state; do not run against shared data without approval."
           },
-          "response": [{ "name": "204 All read", "status": "No Content", "code": 204, "body": "" }]
+          "response": [
+            {
+              "name": "204 All read",
+              "status": "No Content",
+              "code": 204,
+              "body": ""
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "13. Push devices",
+      "item": [
+        {
+          "name": "Register push device",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/devices",
+            "description": "Normal JWT. The authenticated user owns the token. Use an environment placeholder for a synthetic/test FCM token. Tokens are never saved in this collection. A duplicate token refreshes registration metadata. Production requires host configuration Push__Firebase__ServiceAccountJson; missing or invalid configuration returns 503 Push.NotConfigured.",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform\": \"android\",\n  \"token\": \"{{deviceToken}}\",\n  \"appVersion\": \"1.2.3\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": [
+            {
+              "name": "200 Registered",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"deviceId\": \"018f0000-0000-7000-8000-000000000010\",\n  \"pushEnabled\": true\n}"
+            },
+            {
+              "name": "400 Invalid token",
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"code\": \"Devices.InvalidToken\"\n}"
+            },
+            {
+              "name": "503 Push not configured",
+              "status": "Service Unavailable",
+              "code": 503,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"code\": \"Push.NotConfigured\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "List my push devices",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/devices",
+            "description": "Normal JWT. Lists only the caller's devices. Tokens are masked except for the last six characters."
+          },
+          "response": [
+            {
+              "name": "200 Device list",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "[\n  {\n    \"deviceId\": \"018f0000-0000-7000-8000-000000000010\",\n    \"platform\": \"Android\",\n    \"maskedToken\": \"…234567\",\n    \"appVersion\": \"1.2.3\",\n    \"registeredOnUtc\": \"2026-10-10T12:00:00Z\",\n    \"lastSeenOnUtc\": \"2026-10-10T12:00:00Z\"\n  }\n]"
+            }
+          ]
+        },
+        {
+          "name": "Unregister push device",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "DELETE",
+            "url": "{{baseUrl}}/api/v1/devices/{{deviceId}}",
+            "description": "Normal JWT. Removes only a device owned by the caller. Returns 204 even if the ID is absent or belongs to someone else."
+          },
+          "response": [
+            {
+              "name": "204 Unregistered",
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "text",
+              "header": [],
+              "body": ""
+            }
+          ]
         }
       ]
     }

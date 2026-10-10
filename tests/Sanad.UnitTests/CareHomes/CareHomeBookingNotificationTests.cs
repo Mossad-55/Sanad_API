@@ -44,6 +44,9 @@ public sealed class CareHomeBookingNotificationTests
         Assert.DoesNotContain(notices, x => x.RecipientUserId == family.Id.Value);
         Assert.Single(emails);
         Assert.Equal(owner.Email!.Value, emails[0].RecipientEmail);
+        Assert.NotNull(emails[0].HtmlBody);
+        Assert.Contains("lang=\"ar\" dir=\"rtl\"", emails[0].HtmlBody);
+        Assert.Contains("lang=\"en\" dir=\"ltr\"", emails[0].HtmlBody);
         Assert.Equal(CareHomeNotificationOutboxStatus.Completed, row.Status);
         Assert.DoesNotContain("private medical snapshot", notices[0].Body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain("private care notes", notices[0].Body, StringComparison.OrdinalIgnoreCase);
@@ -74,6 +77,7 @@ public sealed class CareHomeBookingNotificationTests
         Assert.Contains(notices, x => x.RecipientUserId == support.Id.Value);
         Assert.DoesNotContain(notices, x => x.RecipientUserId == family.Id.Value || x.RecipientUserId == owner.Id.Value);
         Assert.Equal(2, emails.Count);
+        Assert.All(emails, x => Assert.NotNull(x.HtmlBody));
         Assert.Contains(emails, x => x.RecipientEmail == "super@example.test");
         Assert.Contains(emails, x => x.RecipientEmail == "support@example.test");
     }
