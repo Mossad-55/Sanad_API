@@ -51,11 +51,17 @@ exclusive: Opus edits only the files below plus the listed docs/collections.
   `Families.Application`/`Families.Domain` for the frozen benefit-key-8
   premium gate — both flagged in the report.
 
-- [ ] Not started — **Phase 6. Caregiver payout reads.**
+- [x] Done — **Phase 6. Caregiver payout reads.**
   Owns: `Modules/Caregivers/Application` (summary/list/detail/policy-read
-  queries), `Modules/Finance` (policy description fields + migration),
-  `Sanad.API/Controllers` (caregiver payout reads), tests, `payouts.md`
-  deltas, Postman deltas. No ledger/transfer/policy-admin changes.
+  queries), `Modules/Finance` (policy description fields + additive
+  migration `20261010143327_AddCaregiverPayoutPolicyDescriptions`, authored
+  only), `Sanad.API/Controllers` (caregiver payout reads), tests,
+  `payouts.md` deltas, Postman deltas. No ledger/transfer changes; the
+  policy-create request gained only optional bilingual descriptions
+  (contract-mandated, additive — flagged in the report), no other
+  policy-admin behavior touched. Report also flags: a pre-existing
+  date-dependent `PlatformChargeRuleTests` time-bomb was repaired
+  (test-only, hardcoded 2026-10-10 schedule date became the past).
 
 - [ ] Not started — **Phase 7. Docs + Postman sync and gates.**
   Owns: doc/collection files only. Full solution build (0 warnings) +
@@ -82,4 +88,4 @@ write the report file as part of Done.
 - [x] phase-3-search — report: `docs/opus/reports/phase-3-search.md`
 - [ ] phase-4-chat-deltas — report: `docs/opus/reports/phase-4-chat-deltas.md`
 - [x] phase-5-library — report: `docs/opus/reports/phase-5-library.md`
-- [ ] phase-6-payout-reads — report: `docs/opus/reports/phase-6-payout-reads.md`
+- [x] phase-6-payout-reads — report: `docs/opus/reports/phase-6-payout-reads.md`
