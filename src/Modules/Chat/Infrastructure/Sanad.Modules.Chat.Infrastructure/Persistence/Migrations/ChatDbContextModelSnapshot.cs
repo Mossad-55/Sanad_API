@@ -134,7 +134,41 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
                     b.ToTable("Conversations", "chat");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Chat.Domain.Conversations.ConversationReadState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("LastReadMessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ReadOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("ConversationReadStates", "chat");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Chat.Domain.Attachments.Attachment", b =>
+                {
+                    b.HasOne("Sanad.Modules.Chat.Domain.Conversations.Conversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Chat.Domain.Conversations.ConversationReadState", b =>
                 {
                     b.HasOne("Sanad.Modules.Chat.Domain.Conversations.Conversation", null)
                         .WithMany()

@@ -14,7 +14,8 @@ using Sanad.Modules.Chat.Domain.Conversations;
 namespace Sanad.API.Controllers;
 
 /// <summary>
-/// Chat app routes (endpoints 1, 2, 5, 6, 9, and 10 of the frozen contract).
+/// Chat app routes (endpoints 1, 2, 5, 6, 7, 9, and 10 of the frozen
+/// contract).
 /// Lane B adds its own endpoints (3-4, 8, 11) to this controller later. All
 /// routes resolve the participant from the JWT; unknown or foreign
 /// conversations, attachments, files, and block targets answer with a
@@ -98,6 +99,42 @@ public sealed class ChatController : ApiControllerBase
             new HideConversationCommand(
                 userId,
                 new ConversationId(conversationId)),
+            cancellationToken);
+
+        return ToChatActionResult(result);
+    }
+
+    /// <summary>
+    /// Endpoint 7 — record the participant's read mark (204, idempotent).
+    /// One row per (conversation, user): repeating the call updates the
+    /// same row and answers 204 again. The conversation/participant gate
+    /// runs before anything else, so unknown and foreign conversation ids
+    /// are the same generic privacy 404 and never reveal existence; only a
+    /// participant who sent an empty/missing lastReadMessageId gets the 400
+    /// <see cref="Conversations.ConversationReadErrors.Invalid"/>. The
+    /// message id itself is recorded verbatim — validating it against
+    /// messages is Lane B's job (Lane A has no Message table), and a read
+    /// mark never changes last activity, hiding, or visibility.
+    /// </summary>
+    [HttpPut("conversations/{conversationId:guid}/read")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MarkConversationRead(
+        Guid conversationId,
+        [FromBody] ChatMarkReadRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new MarkConversationReadCommand(
+                userId,
+                new ConversationId(conversationId),
+                request.LastReadMessageId),
             cancellationToken);
 
         return ToChatActionResult(result);
@@ -277,12 +314,13 @@ public sealed class ChatController : ApiControllerBase
             : ToActionResult(result);
 
     /// <summary>
-    /// Both the conversation code (endpoints 1/2/10, and upload scope
+    /// Both the conversation code (endpoints 1/2/7/10, and upload scope
     /// failures) and the attachment code (endpoint 6 serve denials) are
     /// privacy failures, as is the block code for endpoint 9's unknown
-    /// target user. Upload validation codes and Chat.Block.Invalid
-    /// deliberately do NOT match: they surface as 400s to the caller, who
-    /// is entitled to know their own request was invalid.
+    /// target user. Upload validation codes, Chat.Block.Invalid, and
+    /// Chat.ConversationRead.Invalid deliberately do NOT match: they surface
+    /// as 400s to the caller, who is entitled to know their own request was
+    /// invalid.
     /// </summary>
     private static bool IsPrivacyFailure(Result result) =>
         result.IsFailure &&

@@ -18,6 +18,7 @@ public class ChatDbContext : DbContext, IChatDbContext
     public DbSet<Conversation> Conversations { get; set; } = null!;
     public DbSet<Attachment> Attachments { get; set; } = null!;
     public DbSet<Block> Blocks { get; set; } = null!;
+    public DbSet<ConversationReadState> ReadStates { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

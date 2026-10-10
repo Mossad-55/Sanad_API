@@ -637,6 +637,8 @@ public sealed class AttachmentTests : IDisposable
 
         public DbSet<Block> Blocks => inner.Blocks;
 
+        public DbSet<ConversationReadState> ReadStates => inner.ReadStates;
+
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
             throw new DbUpdateException(
                 "Simulated database failure.",

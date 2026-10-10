@@ -10,6 +10,7 @@ public interface IChatDbContext
     DbSet<Conversation> Conversations { get; }
     DbSet<Attachment> Attachments { get; }
     DbSet<Block> Blocks { get; }
+    DbSet<ConversationReadState> ReadStates { get; }
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
