@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
+using Sanad.Modules.Identity.Infrastructure.Messaging.EmailTemplates;
 using Sanad.Modules.Notifications.Domain.Notifications;
 using Sanad.Modules.Notifications.Infrastructure.Persistence;
 
@@ -62,10 +63,12 @@ public sealed class CareHomeTransferNotificationProcessor(
                 string from = await ResourceLabelAsync(careHomes, transfer.FromRoomId, transfer.FromBedId, ct);
                 string to = await ResourceLabelAsync(careHomes, transfer.ToRoomId, transfer.ToBedId, ct);
                 bool arabic = recipient.UiLanguage == UiLanguage.Arabic;
-                string title = arabic ? "تم تحديث تخصيص الغرفة" : "Care-home room assignment updated";
-                string body = arabic
-                    ? $"سيتغير تخصيص إقامتك من {from} إلى {to} بتاريخ {transfer.EffectiveDate:yyyy-MM-dd}. رقم الحجز: {booking.Id}."
-                    : $"Your care-home stay assignment changes from {from} to {to} on {transfer.EffectiveDate:yyyy-MM-dd}. Booking: {booking.Id}.";
+                const string titleAr = "تم تحديث تخصيص الغرفة";
+                const string titleEn = "Care-home room assignment updated";
+                string bodyAr = $"سيتغير تخصيص إقامتك من {from} إلى {to} بتاريخ {transfer.EffectiveDate:yyyy-MM-dd}. رقم الحجز: {booking.Id}.";
+                string bodyEn = $"Your care-home stay assignment changes from {from} to {to} on {transfer.EffectiveDate:yyyy-MM-dd}. Booking: {booking.Id}.";
+                string title = arabic ? titleAr : titleEn;
+                string body = arabic ? bodyAr : bodyEn;
                 string prefix = $"care-home-transfer:{transfer.Id:N}:{booking.FamilyUserId.Value:N}";
                 var inAppKey = prefix + ":in-app";
                 if (!await notifications.Notifications.AnyAsync(x => x.IdempotencyKey == inAppKey, ct))
@@ -80,7 +83,9 @@ public sealed class CareHomeTransferNotificationProcessor(
                 var emailKey = prefix + ":email";
                 if (!await notifications.EmailOutboxMessages.AnyAsync(x => x.IdempotencyKey == emailKey, ct))
                 {
-                    notifications.EmailOutboxMessages.Add(EmailOutboxMessage.Create(recipient.Email.Value, title, body, emailKey, now));
+                    var email = EmailTemplateCatalog.RenderBilingual(titleAr, titleEn, titleAr, titleEn, bodyAr, bodyEn);
+                    notifications.EmailOutboxMessages.Add(EmailOutboxMessage.Create(recipient.Email.Value,
+                        email.Subject, email.PlainTextBody, email.HtmlBody, emailKey, now));
                     await SaveIdempotentlyAsync(notifications, ct);
                 }
                 row.MarkCompleted();

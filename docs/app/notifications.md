@@ -170,3 +170,43 @@ Transient provider errors use capped exponential backoff (maximum 60 minutes,
 up to eight attempts). FCM `Unregistered` and `InvalidArgument` responses retire
 the token immediately. A user with no device or a disabled topic preference is
 suppressed. No live Firebase verification was run for this implementation.
+
+## Email notifications
+
+Email uses the existing SMTP transport and the durable `notifications.email_outbox`.
+The shared template layout places Arabic first with RTL direction, English second
+with LTR direction, a text wordmark, and system fonts. Every rendered message is
+stored as an immutable plain-text and HTML snapshot when it is enqueued. SMTP
+sends both parts as `multipart/alternative`; legacy outbox rows without an HTML
+snapshot remain plain-text messages. The correlation key continues to determine
+the stable SMTP `MessageId`.
+
+| Trigger | Template kind | Delivery |
+|---|---|---|
+| OTP code | `OtpCode` | Email + SMS; never push |
+| Family invitation | `Invitation` | Email |
+| Support request | `SupportAcknowledgment` | Email to support |
+| Booking paid, accepted, declined, started, completed | Matching `Booking*` kind | App + push + email |
+| Booking cancelled with refund | `BookingCancelledWithRefund` | App + push + email |
+| Subscription renewed or renewal upcoming | `SubscriptionRenewed`; upcoming uses upcoming-specific copy | App + email |
+| Subscription failed | `SubscriptionFailed` | App + email |
+| Plan changed or retired | `SubscriptionChanged`; retirement uses event-specific copy | App + email |
+| Payout recorded or failed | `PayoutRecorded` / `PayoutFailed` | App + email |
+| Own post published or rejected | `PostPublished` / `PostRejected` | App + push + email |
+| Existing care-home email notices | Shared bilingual layout with existing Arabic and English event copy | Existing app + email; push is added where eligible |
+
+The table is the approved event-to-channel contract. The current repository has
+no event producers for caregiver bookings, subscription changes, payouts, or
+community-post moderation; their templates are ready, but those messages will
+not be enqueued until those event seams exist. Chat remains without a producer
+as noted above.
+
+Likes, favorites, and comments on a user's own post remain silent. Followed-author
+posts remain deferred because there is no follow graph. Chat and OTP are not
+emailed as notification events. Email delivery is asynchronous: outbox rows move
+through `Pending`, `Processing`, `Sent`, or `Failed`; failed sends retry with
+backoff. There is no synchronous email error code returned to the app. Push
+configuration errors remain `Push.NotConfigured`.
+
+The Postman collection contains authenticated device and inbox endpoints. Email
+templates are server-rendered behavior and do not add a client API route.

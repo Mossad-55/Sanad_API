@@ -31,6 +31,7 @@ public sealed class EmailOutboxMessageConfiguration : IEntityTypeConfiguration<E
         b.Property(x => x.RecipientEmail).HasColumnName("recipient_email").HasMaxLength(254).IsRequired();
         b.Property(x => x.Subject).HasColumnName("subject").HasMaxLength(500).IsRequired();
         b.Property(x => x.Body).HasColumnName("body").HasMaxLength(10000).IsRequired();
+        b.Property(x => x.HtmlBody).HasColumnName("html_body").HasColumnType("text");
         b.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key").HasMaxLength(300).IsRequired();
         b.Property(x => x.Status).HasColumnName("status").HasConversion<int>().IsRequired();
         b.Property(x => x.AttemptCount).HasColumnName("attempt_count").IsRequired();

@@ -5,6 +5,7 @@ using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
+using Sanad.Modules.Identity.Infrastructure.Messaging.EmailTemplates;
 using Sanad.Modules.Notifications.Domain.Notifications;
 using Sanad.Modules.Notifications.Infrastructure.Persistence;
 
@@ -74,7 +75,12 @@ public sealed class CareHomeBookingNotificationProcessor(
                     await WriteInAppAsync(notifications, recipient.Id, copy.Type, title, body,
                         destinationKind, destinationId, key + ":in-app", row.CreatedOnUtc, ct);
                     if (!string.IsNullOrWhiteSpace(recipient.Email))
-                        await WriteEmailAsync(notifications, recipient.Email, title, body, key + ":email", row.CreatedOnUtc, ct);
+                    {
+                        var email = EmailTemplateCatalog.RenderBilingual(
+                            copy.TitleAr, copy.TitleEn, copy.TitleAr, copy.TitleEn, copy.BodyAr, copy.BodyEn);
+                        await WriteEmailAsync(notifications, recipient.Email, email.Subject, email.PlainTextBody,
+                            email.HtmlBody, key + ":email", row.CreatedOnUtc, ct);
+                    }
                 }
 
                 row.MarkCompleted(token);
@@ -136,10 +142,10 @@ public sealed class CareHomeBookingNotificationProcessor(
     }
 
     private static async Task WriteEmailAsync(NotificationsDbContext db, string email, string title,
-        string body, string key, DateTime created, CancellationToken ct)
+        string plainTextBody, string htmlBody, string key, DateTime created, CancellationToken ct)
     {
         if (await db.EmailOutboxMessages.AnyAsync(x => x.IdempotencyKey == key, ct)) return;
-        var message = EmailOutboxMessage.Create(email, title, body, key, created);
+        var message = EmailOutboxMessage.Create(email, title, plainTextBody, htmlBody, key, created);
         db.EmailOutboxMessages.Add(message);
         await SaveIdempotentlyAsync(db, message, ct);
     }

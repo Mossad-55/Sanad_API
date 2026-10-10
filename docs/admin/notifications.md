@@ -83,3 +83,10 @@ Push delivery is tracked separately in `notifications.push_outbox` with
 next-attempt time, a sanitized last error code, and the FCM message ID when
 available. Device tokens and message bodies are not included in the Admin
 inspection responses. There is no Admin push-delivery route in Lane A.
+
+Email delivery is tracked separately in `notifications.email_outbox`. Each row
+stores the recipient, subject, plain-text body, optional HTML snapshot, stable
+idempotency key, status, attempt count, next-attempt time, and delivery timestamps.
+The processor sends HTML and plain text as `multipart/alternative` when an HTML
+snapshot exists. Recipients and email bodies are not exposed by the Admin
+notification inspection routes.
