@@ -1,0 +1,14 @@
+# Lane A — push outbox and processor
+
+- **Task:** Durable push outbox, processor, capped retry, and invalid-token retirement.
+- **Branch:** `codex/notifications-lane-a`
+- **Base SHA:** `fe91d64d0f8b753d336f2fe8d3dc6b35e1a1e82b`
+- **Final SHA (implementation):** `12b8611f45c7dc465946bbdab65806843366402a`
+- **Changed files:** `src/Modules/Notifications/Domain/Sanad.Modules.Notifications.Domain/Notifications/PushOutboxMessage.cs`; `src/Modules/Notifications/Infrastructure/Sanad.Modules.Notifications.Infrastructure/Persistence/NotificationsDbContext.cs`; `src/Modules/Notifications/Infrastructure/Sanad.Modules.Notifications.Infrastructure/Persistence/Configurations/NotificationConfiguration.cs`; `src/Modules/Notifications/Infrastructure/Sanad.Modules.Notifications.Infrastructure/Persistence/Migrations/20261010001128_AddPushNotifications.cs`; migration designer and `NotificationsDbContextModelSnapshot.cs`; `src/API/Sanad.API/NotificationsIntegration/PushOutboxProcessor.cs`; `src/API/Sanad.API/DependencyInjection.cs`; outbox tests in `tests/Sanad.UnitTests/Notifications/PushTests.cs`; delivery-state note in `docs/admin/notifications.md`.
+- **Verification:** `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-restore --filter 'FullyQualifiedName~PushTests|FullyQualifiedName~FanoutTests' -m:1 --nologo --logger 'console;verbosity=minimal'` — exit 0, 21 passed, 0 failed, 0 skipped. `dotnet build Sanad.slnx --no-restore -m:1 --nologo` — exit 0, 0 warnings, 0 errors. `dotnet test Sanad.slnx --no-build --no-restore -m:1 --nologo --logger 'console;verbosity=minimal'` — exit 1: architecture 1 passed; unit 2,653 passed, 3 skipped, 1 failed. `git diff --check` — exit 0. `python -m json.tool docs/postman/Sanad.Auth.postman_collection.json > $null` — exit 0.
+- **Skipped/blocked checks:** The one full-suite failure is the unrelated Finance test `PlatformChargeRuleTests.Writer_requires_strictly_increasing_versions_and_preserves_future_schedule`; 3 PostgreSQL-only tests skipped. Migration generated and reviewed, never applied. An EF metadata-removal attempt tried a dummy localhost database and received authentication failure `28P01`; there was no database mutation. No live Firebase call.
+- **Dependencies confirmed in main:** Existing notification row and identity preference models; existing hosted-service registration in API. New additive notification tables and migration are branch-local.
+- **Remaining owner decisions:** Migration application awaits the regular integration/deployment process. Mobile team to confirm the deep-link prefix. No live Firebase verification authorized or performed.
+- **Effective model/runtime:** GPT-6; local Windows PowerShell.
+
+Reports use the implementation SHA by owner direction. A final docs-only closeout commit follows these reports; the branch tip is recorded in `docs/notifications/handoff.md`.

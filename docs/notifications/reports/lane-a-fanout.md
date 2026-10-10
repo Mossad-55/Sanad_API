@@ -1,0 +1,14 @@
+# Lane A — event fan-out
+
+- **Task:** Push fan-out per the event matrix, including server-side preference checks and atomic outbox enqueue.
+- **Branch:** `codex/notifications-lane-a`
+- **Base SHA:** `fe91d64d0f8b753d336f2fe8d3dc6b35e1a1e82b`
+- **Final SHA (implementation):** `12b8611f45c7dc465946bbdab65806843366402a`
+- **Changed files:** `src/Modules/Notifications/Application/Sanad.Modules.Notifications.Application/Notifications/PushFanoutPolicy.cs`; `src/Modules/Notifications/Application/Sanad.Modules.Notifications.Application/Abstractions/Data/INotificationsDbContext.cs`; `src/Modules/Notifications/Infrastructure/Sanad.Modules.Notifications.Infrastructure/Persistence/NotificationsDbContext.cs`; `src/API/Sanad.API/NotificationsIntegration/PushOutboxProcessor.cs`; `tests/Sanad.UnitTests/Notifications/FanoutTests.cs`; related mapping in `docs/app/notifications.md`.
+- **Verification:** `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-restore --filter 'FullyQualifiedName~PushTests|FullyQualifiedName~FanoutTests' -m:1 --nologo --logger 'console;verbosity=minimal'` — exit 0, 21 passed, 0 failed, 0 skipped. `dotnet build Sanad.slnx --no-restore -m:1 --nologo` — exit 0, 0 warnings, 0 errors. `dotnet test Sanad.slnx --no-build --no-restore -m:1 --nologo --logger 'console;verbosity=minimal'` — exit 1: architecture 1 passed; unit 2,653 passed, 3 skipped, 1 failed. `git diff --check` — exit 0. `python -m json.tool docs/postman/Sanad.Auth.postman_collection.json > $null` — exit 0.
+- **Skipped/blocked checks:** Full suite has one unrelated Finance assertion failure (`PlatformChargeRuleTests.Writer_requires_strictly_increasing_versions_and_preserves_future_schedule`) and 3 PostgreSQL-dependent skips. Main has no Chat notification producer; community and caregiver-booking notification rows were not found in the included producer seams, so the policy covers their matrix categories when those rows are emitted. Chat/Opus files were excluded. No real Firebase call. Migration not applied; metadata removal attempted a dummy DB connection and failed authentication (`28P01`), without DB changes.
+- **Dependencies confirmed in main:** Existing notification producers for care-home booking and health/safety rows; current identity preference switches. The existing SOS recipient path uses `helpRequestAlerts`. Main has no Chat notification producer. Some matrix event producers are not present in this repository slice.
+- **Remaining owner decisions:** Add/confirm event producer seams for missing categories in their owning lanes; mobile team confirmation of `sanad://` deep-link prefix. No preference API changes were made.
+- **Effective model/runtime:** GPT-6; local Windows PowerShell.
+
+Reports use the implementation SHA by owner direction. A final docs-only closeout commit follows these reports; the branch tip is recorded in `docs/notifications/handoff.md`.

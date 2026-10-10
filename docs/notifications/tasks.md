@@ -14,11 +14,11 @@ Infrastructure(config, FCM sender, processor, migration, DI)}`,
 `tests/.../{PushTests, FanoutTests}`,
 `docs/app/notifications.md` (devices, deep links, prefs) + Postman deltas.
 
-- [ ] Not started — Token registry + register/list/unregister endpoints with ownership; focused tests.
-- [ ] Not started — `IPushSender` + FCM sender (pinned FirebaseAdmin 3.7.0) + Development stub; config-gated, fail-closed; focused tests (no secrets in logs).
-- [ ] Not started — Push outbox + processor with capped backoff and invalid-token retirement; focused tests.
-- [ ] Not started — Fan-out on chat/booking/payout/health events per the matrix (preferences checked server-side); focused tests.
-- [ ] Not started — Docs + Postman sync; contract-mapping check.
+- [x] Done — Token registry + register/list/unregister endpoints with ownership; focused tests. Report: `docs/notifications/reports/lane-a-registry.md`.
+- [x] Done — `IPushSender` + FCM sender (pinned FirebaseAdmin 3.7.0) + Development stub; config-gated, fail-closed; focused tests (no secrets in logs). Report: `docs/notifications/reports/lane-a-sender.md`.
+- [x] Done — Push outbox + processor with capped backoff and invalid-token retirement; focused tests. Report: `docs/notifications/reports/lane-a-outbox.md`.
+- [x] Done — Fan-out per the applicable matrix rows (preferences checked server-side); focused tests. Report: `docs/notifications/reports/lane-a-fanout.md`.
+- [x] Done — Docs + Postman sync; contract-mapping check. Report: `docs/notifications/reports/lane-a-docs.md`.
 
 Done criteria per item: zero-warning build, focused tests green, docs + Postman synced, branch + SHA reported. No push/merge/deploy. No live Firebase calls except against the real project with explicit per-run owner authorization and a test device.
 
@@ -52,11 +52,11 @@ boxes, merges qualifying tasks in dependency order (Lane A before Lane B),
 marks each merged box with the `main` SHA, and pushes `main` once. Workers
 never merge or push; workers write the report file as part of Done.
 
-- [ ] lane-a-registry — report: `docs/notifications/reports/lane-a-registry.md`
-- [ ] lane-a-sender — report: `docs/notifications/reports/lane-a-sender.md`
-- [ ] lane-a-outbox — report: `docs/notifications/reports/lane-a-outbox.md`
-- [ ] lane-a-fanout — report: `docs/notifications/reports/lane-a-fanout.md`
-- [ ] lane-a-docs — report: `docs/notifications/reports/lane-a-docs.md`
+- [x] lane-a-registry — report: `docs/notifications/reports/lane-a-registry.md`
+- [x] lane-a-sender — report: `docs/notifications/reports/lane-a-sender.md`
+- [x] lane-a-outbox — report: `docs/notifications/reports/lane-a-outbox.md`
+- [x] lane-a-fanout — report: `docs/notifications/reports/lane-a-fanout.md`
+- [x] lane-a-docs — report: `docs/notifications/reports/lane-a-docs.md`
 - [ ] lane-b-templates — report: `docs/notifications/reports/lane-b-templates.md`
 - [ ] lane-b-sender — report: `docs/notifications/reports/lane-b-sender.md`
 - [ ] lane-b-docs — report: `docs/notifications/reports/lane-b-docs.md`
