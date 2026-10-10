@@ -103,19 +103,14 @@ Marks all current unread notifications belonging to the caller read and returns
 - `404 Notifications.NotFound` for a missing, foreign, or expired notification
   in the single-read route.
 
-No complete category list or general event delivery policy should be inferred
-from the current fields. The delivered help-request and negative check-in
-producers create durable in-app alerts only; push/email providers and retries
-remain deferred to Notifications/Events, and SMS is excluded.
+The event delivery policy is listed in the Push fan-out section below. Eligible check-in, help-request, medication-late, SOS, and care-home booking notifications enqueue push when a device is registered. The worker checks the existing topic preference before delivery. Email and SMS rules remain as described by their owning slices.
 
 Medication late/missed evaluation uses the `MedicationReminders` preference for
 eligible active linked Family recipients. It also targets the assigned caregiver
 only during an active `Confirmed` or `InProgress` booking for the Elderly, plus
 active `SupportAdmin` users. Unassigned or unbooked caregivers are excluded.
 The current event is `category = MedicationReminders` and
-`type = MedicationDoseMissed`, with a typed `Medication` destination. Rows are
-durable and idempotent per recipient and scheduled dose. Push/email delivery,
-outbox, and scheduler behavior are deferred and remain Needs Owner Verification.
+`type = MedicationDoseMissed`, with a typed `Medication` destination. Rows are durable and idempotent per recipient and scheduled dose. Eligible recipients with a registered device receive push through the outbox after the `medicationReminders` preference check. Email and scheduling remain outside Lane A.
 
 SOS creation uses the same durable inbox foundation. It creates
 `category = ElderlySos`, `type = SosCreated`, and destination kind
@@ -126,6 +121,52 @@ lookup, the assigned caregiver only during an active `Confirmed` or
 active `SupportAdmin` users. Unrelated caregivers are excluded. The current
 implementation reuses the help-request preference lookup; a dedicated SOS
 preference and exact preference semantics
-are **Needs Owner Verification**. Push/email delivery, outbox, scheduler,
-physical purge, device-dialer behavior, and export remain **Needs Owner
-Verification**. SMS and server-side dialing are excluded.
+are **Needs Owner Verification**. Push delivery uses the outbox and checks `helpRequestAlerts` server-side, matching the current recipient lookup. Email, scheduler, physical purge, device-dialer behavior, and export remain **Needs Owner Verification**. SMS and server-side dialing are excluded.
+
+## Push devices
+
+Push registration is available to any authenticated account with a Normal JWT.
+The authenticated user owns every listed or removed token; requests do not accept
+an owner ID.
+
+| Method and route | Request | Result |
+|---|---|---|
+| `POST /api/v1/devices` | ``{ "platform": "android", "token": "<FCM token>", "appVersion": "<optional>" }` (platform is `android` or `ios`)` | `200 { "deviceId": "<uuid>", "pushEnabled": true }`; registering the same token refreshes its metadata and owner |
+| `GET /api/v1/devices` | none | Own devices only; token is masked except for its last six characters |
+| `DELETE /api/v1/devices/{deviceId}` | none | `204`; another user's ID is not deleted |
+
+Registration rejects unknown platforms and malformed tokens with `400`. When
+Firebase configuration is missing or invalid outside Development, registration
+returns `503 { "code": "Push.NotConfigured" }` and stores no token. Development
+uses a no-op sender. Configure the service-account JSON only through host
+configuration, for example `Push__Firebase__ServiceAccountJson`; never place it
+in source, database rows, request examples, or logs.
+
+## Push fan-out and deep links
+
+Eligible in-app notification rows atomically enqueue a push outbox item when the
+recipient has a registered device. The processor checks the existing preference
+switch immediately before sending. The current mapping is:
+
+| Event category/type | Push topic | Payload navigation |
+|---|---|---|
+| Care-home booking events (`CareHomes` with `Booking*` types) | `bookingUpdates` | `sanad://inbox?notificationId=<id>` |
+| Check-in (`ElderlyCheckIn`) | `checkInAlerts` | inbox fallback |
+| Medication late (`MedicationReminders`) | `medicationReminders` | inbox fallback |
+| Help request (`ElderlyHelpRequest`) | `helpRequestAlerts` | inbox fallback |
+| SOS (`ElderlySos`) | `helpRequestAlerts` (current recipient lookup) | inbox fallback |
+| Own community post published/rejected (`CommunityNotifications`) | `communityNotifications` | inbox fallback |
+| New chat message (`MessagesFromFamilies`, `NewMessage` / `ChatMessageReceived`) | `messagesFromFamilies` | inbox fallback |
+
+Payload data contains notification/entity IDs, entity kind, and the deep link; it
+does not include message text. Push title/body use the in-app notification's
+own title/body. Likes, favorites, comments, money/payout events, and OTP are not
+pushed by this policy. Chat has no notification producer on the current main
+base; its event will use this mapping when the chat seam creates the in-app row.
+The `sanad://inbox` scheme is centralized in `PushFanoutPolicy.BuildData` so the
+mobile team can confirm or change it in one place.
+
+Transient provider errors use capped exponential backoff (maximum 60 minutes,
+up to eight attempts). FCM `Unregistered` and `InvalidArgument` responses retire
+the token immediately. A user with no device or a disabled topic preference is
+suppressed. No live Firebase verification was run for this implementation.

@@ -7,5 +7,7 @@ public interface INotificationsDbContext
 {
     DbSet<Notification> Notifications { get; }
     DbSet<EmailOutboxMessage> EmailOutboxMessages { get; }
+    DbSet<DeviceToken> DeviceTokens { get; }
+    DbSet<PushOutboxMessage> PushOutboxMessages { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

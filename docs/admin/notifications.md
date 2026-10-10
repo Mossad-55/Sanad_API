@@ -74,3 +74,12 @@ notification category/event inventory, event-specific timezone behavior,
 physical notification purge and retention beyond the one-year read window, and
 enforcement of seven-year audit retention. Provider delivery, outbox,
 scheduling, and retries are outside these operational views.
+
+## Delivery state
+
+Admin notification inspection continues to read the in-app notification store.
+Push delivery is tracked separately in `notifications.push_outbox` with
+`Pending`, `Processing`, `Sent`, `Suppressed`, or `Failed` status, attempt count,
+next-attempt time, a sanitized last error code, and the FCM message ID when
+available. Device tokens and message bodies are not included in the Admin
+inspection responses. There is no Admin push-delivery route in Lane A.
