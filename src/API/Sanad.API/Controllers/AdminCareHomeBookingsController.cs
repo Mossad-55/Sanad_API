@@ -12,6 +12,8 @@ namespace Sanad.API.Controllers;
 public sealed class AdminCareHomeBookingsController(ISender sender) : ApiControllerBase
 {
     [HttpGet]
+    [ProducesResponseType(typeof(AdminCareHomeBookingPage), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 25,
         [FromQuery] Guid? facilityId = null, [FromQuery] CareHomeBookingStatus? bookingStatus = null,
         [FromQuery] CareHomeBookingPaymentStatus? paymentStatus = null,
@@ -21,6 +23,9 @@ public sealed class AdminCareHomeBookingsController(ISender sender) : ApiControl
             bookingStatus, paymentStatus, refundStatus, stayFrom, stayTo, search), ct));
 
     [HttpGet("{bookingId:guid}")]
+    [ProducesResponseType(typeof(AdminCareHomeBookingDetail), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Detail(Guid bookingId, CancellationToken ct) =>
         ToActionResult(await sender.Send(new GetAdminCareHomeBookingQuery(bookingId), ct));
 }

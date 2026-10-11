@@ -66,6 +66,9 @@ Enabled when `Username`, `Password`, and `Sender` are set.
 - Template set → `POST /api/OTP/`
 - Test senders usually have no template. Leave `Template` unset.
 
+See [SMS Misr VPS configuration and verification](sms-misr-vps-runbook.md) for
+the sender-token distinction, deployment setup, and resend verification steps.
+
 ## Optional Paymob (online payments)
 
 Enabled when `SecretKey` is set. Otherwise `DevelopmentPaymobClient` serves payment intents with dev orders (`dev-…` / instant fake refunds) — no real gateway calls.

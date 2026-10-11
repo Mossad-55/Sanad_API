@@ -15,12 +15,19 @@ public sealed record RecordCompletedCareHomeRefundRequest(string Reference, stri
 public sealed class AdminCareHomeRefundsController(ISender sender, IDateTimeProvider clock) : ApiControllerBase
 {
     [HttpPost("retry")]
+    [ProducesResponseType(typeof(CareHomeBookingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Retry(Guid bookingId, CancellationToken ct) =>
         TryGetAuthenticatedUserId(out UserId actor)
             ? ToActionResult(await sender.Send(new RetryCareHomeRefundCommand(actor, bookingId, clock.UtcNow), ct))
             : Unauthorized();
 
     [HttpPost("record-completed")]
+    [ProducesResponseType(typeof(CareHomeBookingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> RecordCompleted(
         Guid bookingId,
         RecordCompletedCareHomeRefundRequest request,

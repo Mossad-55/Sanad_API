@@ -18,6 +18,9 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
     [HttpPost("api/v1/care-homes/facilities/mine/media")]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(5_242_880 + 102_400)]
+    [ProducesResponseType(typeof(CareHomeProfileMediaResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Upload([FromForm] int expectedVersion, [FromForm] CareHomeProfileMediaKind kind,
         [FromForm] IFormFile? file, CancellationToken ct)
     {
@@ -33,6 +36,9 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
 
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpDelete("api/v1/care-homes/facilities/mine/media/{mediaId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Remove(Guid mediaId, [FromQuery] int expectedVersion, CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized();
@@ -42,6 +48,9 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
 
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpGet("api/v1/care-homes/facilities/mine/media/{mediaId:guid}/file")]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> ReadOwner(Guid mediaId, CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized();

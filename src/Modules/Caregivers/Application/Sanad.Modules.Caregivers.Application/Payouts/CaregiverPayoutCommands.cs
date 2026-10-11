@@ -50,6 +50,8 @@ public sealed record CaregiverPayoutResponse(
     decimal PlatformFeeAmount,
     decimal NetAmount,
     string Currency,
+    [property: System.ComponentModel.DataAnnotations.AllowedValues(
+        nameof(PayoutStatus.Paid), nameof(PayoutStatus.Failed))]
     string Status,
     string TransferReference,
     string Evidence,

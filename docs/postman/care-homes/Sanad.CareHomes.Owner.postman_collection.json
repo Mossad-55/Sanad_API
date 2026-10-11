@@ -281,7 +281,7 @@
               ]
             },
             "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/media",
-            "description": "Choose a local JPG/PNG no larger than 5 MB in careHomeProfileImagePath. Draft media stays private until the revision is approved."
+            "description": "Choose a local JPG/PNG no larger than 5 MB in careHomeProfileImagePath. Send expectedVersion and kind as text fields and file as a file in multipart/form-data. Do not send JSON or set Content-Type manually; JSON requests return 415. Draft media stays private until the revision is approved."
           },
           "event": [
             {
