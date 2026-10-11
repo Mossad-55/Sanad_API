@@ -29,16 +29,30 @@ exclusive: Opus edits only the files below plus the listed docs/collections.
   `CommunityPostResponse` additive fields, `CreatePostCommand` (+`categoryId`),
   controller query params, tests, docs, Postman. Moderation untouched.
 
-- [ ] Blocked — **Phase 4. Chat deltas.** Blocked: the Chat module
-  implementation (`src/Modules/Chat`) is not tracked in this clone's git and
-  absent from the working tree; the delta cannot be applied until the Chat
-  lane's core code lands on `main`. Re-verify before starting; do not
-  force-implement chat core (out of scope).
+- [x] Done — **Phase 4. Chat deltas.** Unblocked this session by merging
+  `origin/main` @ `9c2e9ca` (Chat Lane A+B core) into the work branch
+  (`21081a8`); chat core re-verified (71 files). Applied all 7 deltas:
+  open-by-`bookingId` XOR `recipientUserId` with backend counterpart
+  resolution + validity (new `IChatBookingGateway` port, `400
+  Chat.Conversation.OpenTargetInvalid` on both/neither, privacy 404 on all
+  denials); `beforeId`/`pageSize` + `conversationId` + wire `createdOnUtc`;
+  `Location` type + payload + additive migration
+  `20261011145248_AddChatMessageLocation` (authored only); read marking
+  PUT→POST; attachment download at `GET /api/v1/chat/attachments/{id}/file`
+  with attachment-derived participant check; `accountType` + care-home
+  facility display + additive `contactUserId` on facility detail (authed
+  callers only); realtime verified polling-only (no changes).
   Owns: `Modules/Chat/*` deltas (booking-open resolution, Location type +
   validation, POST read, attachment route + `contactUserId` on facility
   detail, accountType/care-home resolution), `Sanad.API/Controllers/Chat*`,
   tests, `docs/chat/*` deltas, Postman chat deltas. Frozen chat rules
   (1:1, send-only, polling, no groups) are not renegotiated here.
+  Gates: build 0W/0E; full unit 2903 passed / 0 failed / 3 pre-existing
+  static skips; architecture 1/1; all 20 Postman JSONs valid. 23 new tests
+  (incl. gateway tests on real InMemory Families/Caregivers/CareHomes
+  stores). See report for interpretation flags (wire-only createdOnUtc,
+  literal terminal-status sets, first-registered accountType, remaining
+  role-matrix gap).
 
 - [x] Done — **Phase 5. Library in CMS (+migration).**
   Owns: `Modules/Cms/{Domain,Application,Infrastructure}` (categories,
@@ -91,6 +105,6 @@ write the report file as part of Done.
 - [x] phase-1-rating — report: `docs/opus/reports/phase-1-rating.md`
 - [x] phase-2-categories — report: `docs/opus/reports/phase-2-categories.md`
 - [x] phase-3-search — report: `docs/opus/reports/phase-3-search.md`
-- [ ] phase-4-chat-deltas — report: `docs/opus/reports/phase-4-chat-deltas.md`
+- [x] phase-4-chat-deltas — report: `docs/opus/reports/phase-4-chat-deltas.md`
 - [x] phase-5-library — report: `docs/opus/reports/phase-5-library.md`
 - [x] phase-6-payout-reads — report: `docs/opus/reports/phase-6-payout-reads.md`

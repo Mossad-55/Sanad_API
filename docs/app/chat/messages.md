@@ -20,27 +20,28 @@ they answer `404` with the generic problem body (`title: "Not Found"`,
 `detail: "The requested resource was not found."`). The `code` extension names
 the failing gate family — `Chat.Conversation.NotFound` (unknown/foreign/hidden
 conversation, and the blocked-sender failure), `Chat.Message.NotFound` (an
-unresolvable `beforeMessageId`), `Chat.Attachment.NotFound` (an unbindable
+unresolvable `beforeId`), `Chat.Attachment.NotFound` (an unbindable
 attachment) — but never *why*. Failures of the caller's *own* payload (bad
-type, empty or oversized text, a reused `clientMessageId` with different
-content) are `400`s/`409`s carrying the specific `Chat.Message.*` code: the
-sender is entitled to know their own request was invalid or conflicting.
+type, empty or oversized text, bad or missing location payload, a reused
+`clientMessageId` with different content) are `400`s/`409`s carrying the
+specific `Chat.Message.*` code: the sender is entitled to know their own
+request was invalid or conflicting.
 
-## List messages — `GET /api/v1/chat/conversations/{conversationId}/messages?beforeMessageId=&limit=30`
+## List messages — `GET /api/v1/chat/conversations/{conversationId}/messages?beforeId=&pageSize=30`
 
 Returns one cursor page of a conversation's messages, newest first by
-(`sentOnUtc`, `id`). The gate runs first: unknown, foreign, and
+(`createdOnUtc`, `id`). The gate runs first: unknown, foreign, and
 hidden-for-requester conversations are the one generic privacy `404`
 (`Chat.Conversation.NotFound`). Reopen (endpoint 2) restores visibility.
 
 ```text
-GET /api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000c001/messages?limit=30
+GET /api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000c001/messages?pageSize=30
 ```
 
-- `limit` defaults to 30 and is clamped to 1–100 by the handler (values outside
+- `pageSize` defaults to 30 and is clamped to 1–100 by the handler (values outside
   the range are clamped, never rejected).
 - Paging is by opaque cursor, not page number: pass the previous response's
-  `nextCursor` back as `beforeMessageId` to fetch the next (older) page. A raw
+  `nextCursor` back as `beforeId` to fetch the next (older) page. A raw
   message id also works when it resolves inside *this* conversation; anything
   else — malformed string, unknown id, another conversation's message id — is
   the message-scoped privacy `404` (`Chat.Message.NotFound`), so the parameter
@@ -53,23 +54,27 @@ GET /api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000c001/messages?lim
   "items": [
     {
       "id": "0198e2c2-4444-7a10-8000-00000000b002",
+      "conversationId": "0198e2c2-4444-7a10-8000-00000000c001",
       "clientMessageId": "web-0002",
       "senderUserId": "00000000-0000-0000-0000-000000000001",
       "type": "Text",
       "text": "Hello — is Thursday still fine for the visit?",
       "attachment": null,
-      "sentOnUtc": "2026-10-11T09:15:30Z",
+      "location": null,
+      "createdOnUtc": "2026-10-11T09:15:30Z",
       "deliveredOnUtc": "2026-10-11T09:16:02Z",
       "readOnUtc": null
     },
     {
       "id": "0198e2c2-4444-7a10-8000-00000000b001",
+      "conversationId": "0198e2c2-4444-7a10-8000-00000000c001",
       "clientMessageId": "web-0001",
       "senderUserId": "00000000-0000-0000-0000-000000000002",
       "type": "File",
       "text": null,
       "attachment": { "attachmentId": "0198e2c2-4444-7a10-8000-00000000a001" },
-      "sentOnUtc": "2026-10-11T09:10:00Z",
+      "location": null,
+      "createdOnUtc": "2026-10-11T09:10:00Z",
       "deliveredOnUtc": "2026-10-11T09:16:02Z",
       "readOnUtc": "2026-10-11T09:20:11Z"
     }
@@ -79,11 +84,30 @@ GET /api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000c001/messages?lim
 }
 ```
 
-**Item shape.** `attachment` is the id reference only — file metadata travels
-with the file endpoint (endpoint 6), so the message item never joins the
-attachment row. `text` is `null` for `File` messages. `readOnUtc` is *computed*
-for the reader of the item (see the read rule below); it is not a raw column
-echo.
+A `Location` message carries the coordinate payload instead of a body:
+
+```json
+{
+  "id": "0198e2c2-4444-7a10-8000-00000000b003",
+  "conversationId": "0198e2c2-4444-7a10-8000-00000000c001",
+  "clientMessageId": "web-0003",
+  "senderUserId": "00000000-0000-0000-0000-000000000001",
+  "type": "Location",
+  "text": null,
+  "attachment": null,
+  "location": { "latitude": 30.0444, "longitude": 31.2357, "label": "Cairo Tower" },
+  "createdOnUtc": "2026-10-11T09:18:00Z",
+  "deliveredOnUtc": null,
+  "readOnUtc": null
+}
+```
+
+**Item shape.** Every item carries its `conversationId`. `attachment` is the id
+reference only — file metadata travels with the file endpoint (endpoint 6), so
+the message item never joins the attachment row. `text` is `null` for `File`
+and `Location` messages; `location` is `null` for `Text` and `File` messages.
+`readOnUtc` is *computed* for the reader of the item (see the read rule
+below); it is not a raw column echo.
 
 **Delivery write side effect.** A successful fetch stamps `deliveredOnUtc` —
 set-once, server UTC — on every returned message that the requester did not
@@ -105,6 +129,14 @@ send and that has no delivery stamp yet, and persists the change. Consequences:
 }
 ```
 
+```json
+{
+  "clientMessageId": "web-0003",
+  "type": "Location",
+  "location": { "latitude": 30.0444, "longitude": 31.2357, "label": "Cairo Tower" }
+}
+```
+
 Messages are **immutable once sent** — there is no edit or delete path, and
 retention is indefinite. All stamps are server-set UTC; clients cannot supply
 timestamps.
@@ -122,27 +154,33 @@ conversation list ordering fresh.
 
 **Payload rules (the sender's own `400 Chat.Message.Invalid` triggers).**
 
-- `type` must be the name `Text` or `File` (case-insensitive; never a numeric
-  enum value).
+- `type` must be the name `Text`, `File`, or `Location` (case-insensitive;
+  never a numeric enum value).
 - `clientMessageId` is the caller's idempotency key: trimmed, 1–100 characters,
   unique per conversation (database index plus handler pre-check).
-- `Text`: `text` required, trimmed, 1–2000 characters; `attachmentId` must be
-  absent.
-- `File`: `attachmentId` required and must not be the empty GUID; `text` must
-  be absent (a File message never carries a body — the domain rejects it too);
-  the attachment must exist **in this conversation**, be uploaded by the
-  sender (endpoint 5), and not already bound to another message. An
-  unknown/foreign/cross-conversation attachment id is instead the privacy
-  `404` (`Chat.Attachment.NotFound`); an already-bound one is the `400`
-  (the single-use bind is a caller mistake once it happened to them).
-  Attachments are PDF-only for documents per the Lane A upload limits.
+- `Text`: `text` required, trimmed, 1–2000 characters; `attachmentId` and the
+  location fields must be absent.
+- `File`: `attachmentId` required and must not be the empty GUID; `text` and
+  the location fields must be absent (a File message never carries a body —
+  the domain rejects it too); the attachment must exist **in this
+  conversation**, be uploaded by the sender (endpoint 5), and not already
+  bound to another message. An unknown/foreign/cross-conversation attachment
+  id is instead the privacy `404` (`Chat.Attachment.NotFound`); an
+  already-bound one is the `400` (the single-use bind is a caller mistake
+  once it happened to them). Attachments are PDF-only for documents per the
+  Lane A upload limits.
+- `Location`: `location.latitude` (-90…90) and `location.longitude`
+  (-180…180) required; `location.label` optional (trimmed, ≤ 200 characters,
+  blank becomes `null`); `text` and `attachmentId` must be absent. A Location
+  message is participant-only exactly like text — the message list never
+  widens who can see it.
 
 **Idempotency in detail.** Replay matching compares the stored (trimmed) type,
-text, and `attachmentId`; any difference is the frozen `409`. Idempotency runs
-*before* attachment resolution, so an exact replay of a File message returns
-the original without re-binding or re-validating the attachment. A newly
-created message always shows `readOnUtc: null` — no existing watermark can
-cover something newer than every mark already taken.
+text, location payload, and `attachmentId`; any difference is the frozen
+`409`. Idempotency runs *before* attachment resolution, so an exact replay of
+a File message returns the original without re-binding or re-validating the
+attachment. A newly created message always shows `readOnUtc: null` — no
+existing watermark can cover something newer than every mark already taken.
 
 **Gate order.** Conversation existence, participation, and visibility are
 checked first, then the block check, then the caller's payload — so a
@@ -201,7 +239,7 @@ disagree.
 ## The read rule (how read ticks and unread counts are computed)
 
 Read state is per-user, one `ConversationReadState` row per (conversation,
-user) from endpoint 7's `PUT …/read`. A message counts as **read** for a
+user) from endpoint 7's `POST …/read`. A message counts as **read** for a
 reader iff all of the following fail to deny it, in order:
 
 1. The message carries its own explicit set-once `ReadOnUtc` stamp → read.
@@ -209,7 +247,7 @@ reader iff all of the following fail to deny it, in order:
    conversation is read for them).
 3. The row's `lastReadMessageId` resolves to a message **in the same
    conversation** → the mark is a watermark: everything up to and including
-   that message (ordered by `sentOnUtc`, ties broken by id) is read; anything
+   that message (ordered by `createdOnUtc`, ties broken by id) is read; anything
    newer is not.
 4. The row's id does not resolve inside the conversation (Lane A accepted any
    non-empty GUID and never validated it) → **timestamp fallback**: the mark's
@@ -233,7 +271,7 @@ Marking read (endpoint 7) never stamps message rows and never changes
 ## Interaction with Lane A surfaces (summary)
 
 - **Conversation list (endpoint 1)** now returns real `lastMessage`
-  (`{id, type, text, sentOnUtc}`; a File message's `text` travels as `""`
+  (`{id, type, text, createdOnUtc}`; a File message's `text` travels as `""`
   because the frozen shape carries a non-nullable string) and real
   `unreadCount` values — the Lane A stubs are gone.
 - **Hide (endpoint 10)** also hides the conversation from send and from unread
@@ -245,19 +283,18 @@ Marking read (endpoint 7) never stamps message rows and never changes
 - **Attachments (endpoints 5/6)**: a send of `type: "File"` is what binds an
   uploaded attachment to exactly one message (`Bind()` is single-use); serving
   stays participant-only with `no-store`.
-- **Eligibility TODO carried from Lane A**: the role/participant matrix and
-  booking-state checks are still an open seam at open time (see
-  conversations.md); the send path itself only enforces participant +
-  visibility + block. The frozen contract is unchanged; wiring the seam is an
-  owner decision.
+- **Eligibility open seam now wired (Opus delta).** Booking opens resolve and
+  validate through the backend booking gateway (see conversations.md); only
+  the direct-chat role/participant matrix stays an open seam at open time.
+  The send path itself only enforces participant + visibility + block.
 
 ## Timestamps, ordering, retention
 
-- Every stamp is server-set UTC. `sentOnUtc` is the send time; `deliveredOnUtc`
-  is the recipient's first-fetch time (set-once); `readOnUtc` on the wire is
-  the reader's mark timestamp once the read rule counts the message read
-  (otherwise `null`).
-- List ordering is `sentOnUtc` descending, id descending as the tie-break — a
+- Every stamp is server-set UTC. `createdOnUtc` is the send time;
+  `deliveredOnUtc` is the recipient's first-fetch time (set-once); `readOnUtc`
+  on the wire is the reader's mark timestamp once the read rule counts the
+  message read (otherwise `null`).
+- List ordering is `createdOnUtc` descending, id descending as the tie-break — a
   total order that stays stable even when server timestamps collide.
 - Display ticks are presentation over these fields: sent time, delivered grey,
   read blue (frozen contract).
@@ -274,10 +311,10 @@ Every body below is `application/problem+json` with `type`, `title`, `status`,
 |---|---|---|---|
 | (no token or no usable `sub` claim) | `401` | 3, 4, 8 | Anonymous or unusable JWT |
 | `Chat.Conversation.NotFound` | `404` generic privacy | 3, 4 | Unknown conversation id; caller not a participant; conversation hidden for the requester; **blocked sender at send time** (deliberately identical) |
-| `Chat.Message.NotFound` | `404` generic privacy | 3 | `beforeMessageId` is malformed, or names a message unknown to or outside this conversation |
+| `Chat.Message.NotFound` | `404` generic privacy | 3 | `beforeId` is malformed, or names a message unknown to or outside this conversation |
 | `Chat.Attachment.NotFound` | `404` generic privacy | 4 | `attachmentId` unknown, owned by another conversation, or uploaded by the other participant |
-| `Chat.Message.Invalid` | `400` | 4 | Unknown/numeric `type`; empty/oversized `clientMessageId` (after trim, >100); empty/oversized `text` (after trim, >2000); `Text` carrying an `attachmentId`; `File` without one, with an empty GUID, or carrying a body; `attachmentId` already bound; domain backstop |
-| `Chat.Message.IdempotencyConflict` | `409` | 4 | `clientMessageId` already exists in this conversation with different type/text/attachment |
+| `Chat.Message.Invalid` | `400` | 4 | Unknown/numeric `type`; empty/oversized `clientMessageId` (after trim, >100); empty/oversized `text` (after trim, >2000); `Text` carrying an `attachmentId` or location fields; `File` without one, with an empty GUID, carrying a body, or carrying location fields; `Location` without coordinates, with out-of-range coordinates, with an oversized label, or carrying a body/attachment; `attachmentId` already bound; domain backstop |
+| `Chat.Message.IdempotencyConflict` | `409` | 4 | `clientMessageId` already exists in this conversation with different type/text/location/attachment |
 | (MVC model-binding validation) | `400` | 4 | Missing/unparseable JSON body or non-GUID id — generic `errors` payload, no Chat code |
 
 The three privacy codes are rewritten by the Chat controller to the generic
@@ -292,7 +329,7 @@ The three privacy codes are rewritten by the Chat controller to the generic
   from the JWT.
 - Unknown, foreign, and hidden conversations, unresolvable cursors, and
   unbindable attachments are the same generic `404` — no existence, ownership,
-  or reason leak; `beforeMessageId` cannot be used as an id oracle.
+  or reason leak; `beforeId` cannot be used as an id oracle.
 - The blocked sender learns nothing: the send-time failure is byte-for-byte
   the non-participant failure.
 - Notifications carry ids only; message text never reaches the notification
