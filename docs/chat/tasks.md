@@ -61,12 +61,12 @@ boxes, merges qualifying tasks in dependency order (Lane A before Lane B),
 marks each merged box with the `main` SHA, and pushes `main` once. Workers
 never merge or push; workers write the report file as part of Done.
 
-- [ ] lane-a-domain — report: `docs/chat/reports/lane-a-domain.md`
-- [ ] lane-a-persistence — report: `docs/chat/reports/lane-a-persistence.md`
-- [ ] lane-a-endpoints — report: `docs/chat/reports/lane-a-endpoints.md`
-- [ ] lane-a-attachments — report: `docs/chat/reports/lane-a-attachments.md`
-- [ ] lane-a-blocks — report: `docs/chat/reports/lane-a-blocks.md`
-- [ ] lane-a-docs — report: `docs/chat/reports/lane-a-docs.md`
+- [x] lane-a-domain — report: `docs/chat/reports/lane-a-domain.md` (task commit `60aed69`)
+- [x] lane-a-persistence — report: `docs/chat/reports/lane-a-persistence.md` (task commits `9323639` + rescaffold addendum `c51de33`)
+- [x] lane-a-endpoints — report: `docs/chat/reports/lane-a-endpoints.md` (task commits `de7a52d` + endpoint-7 addendum `c51de33`)
+- [x] lane-a-attachments — report: `docs/chat/reports/lane-a-attachments.md` (task commit `c128c1e`)
+- [x] lane-a-blocks — report: `docs/chat/reports/lane-a-blocks.md` (task commit `7a6c7cb`)
+- [x] lane-a-docs — report: `docs/chat/reports/lane-a-docs.md` (task commit `ac6e7c2`)
 - [ ] lane-b-domain — report: `docs/chat/reports/lane-b-domain.md`
 - [ ] lane-b-endpoints — report: `docs/chat/reports/lane-b-endpoints.md`
 - [ ] lane-b-reports — report: `docs/chat/reports/lane-b-reports.md`

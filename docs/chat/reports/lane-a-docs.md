@@ -1,0 +1,31 @@
+# Report: lane-a-docs — Docs + Postman sync for Lane A routes; contract-mapping check
+
+- Task name: Docs + Postman sync for Lane A routes; contract-mapping check (Lane A item 6).
+- Branch: `opencode/chat-lane-a`
+- Base SHA: `fe91d64` (main at branch point).
+- Final SHA (task content, verified): `ac6e7c2e01f2609cf3abfea3c2e37cc53f8f92cf`
+  - Convention (as in prior Lane A reports): `final SHA` = task-content commit whose content passed the gates. Docs-meta commit follows separately, docs-only.
+- Changed files (task commit `ac6e7c2`):
+  - `docs/app/chat/conversations.md` (new, 404 lines)
+  - `docs/app/chat/README.md` (new, 11 lines)
+  - `docs/postman/app/Sanad.App.Chat.postman_collection.json` (new, 9 requests / 5 folders)
+- Exact verification commands (workdir `D:\Sanad_API-OpenCode`):
+  - `python -c "import json; ...json.load(open('docs/postman/app/Sanad.App.Chat.postman_collection.json',encoding='utf-8'))"` → exit 0, `JSON-OK items=5` (top-level folders; 9 requests inside).
+  - `git diff --check` → clean (exit 0).
+  - `git status --short` after commit → clean (only this report + tasks + handoff pending, committed separately).
+  - Contract-mapping check (routes extracted from `ChatController.cs`): all 9 frozen Lane A operations map 1:1 — 1 List, 2 Open-or-get, 5 Upload, 6 Serve, 7 Mark-read, 9a Block, 9b Unblock, 9c List-blocks, 10 Hide — each with controller action + Postman request + doc section. 0 gaps. Lane B slots (3–4, 8, 11, 12–15) intentionally absent.
+  - No .NET build/test run for this docs-only item (no code inputs changed).
+- Once-per-lane joint gates (run here, evidence recorded for the Integrator):
+  - `dotnet build Sanad.slnx --no-restore -m:1 --nologo -v minimal` → exit 0, **0 warnings, 0 errors**.
+  - `dotnet test tests/Sanad.ArchitectureTests/... --no-restore --nologo -v minimal` → exit 0; **Passed 1, Failed 0, Skipped 0**.
+  - `dotnet test tests/Sanad.UnitTests/... --no-restore --nologo -v minimal` (full) → **Passed 2699, Failed 1, Skipped 3, Total 2703**. The 1 failure is `Finance.PlatformChargeRuleTests.Writer_requires_strictly_increasing_versions_and_preserves_future_schedule` (line 135): the test hardcodes October-2026 effective dates (`Utc(day) => new(2026,10,day,...)`) and today is 2026-10-10, so rule v2 is now effective and v1 is inactive — a pre-existing date-sensitive failure in Finance scope. Proof of unrelatedness: `git diff fe91d64..HEAD -- tests/.../Finance src/Modules/Finance` is EMPTY (Lane A touches zero Finance files); failure is deterministic on re-run. NOT fixed here (lane-exclusive manifests; Finance is another lane's). The 3 skips are PostgreSQL-only tests.
+  - Focused Chat suite (for the record): Passed 67, Failed 0, Skipped 0.
+- Skipped/blocked checks with reasons:
+  - Bruno: not selected; no disposable-target authorization and no live HTTP boundary beyond what unit tests cover. Recorded as limitation. Postman examples are statically authored from verified code/tests, never executed (stated in doc + collection).
+  - Migration application: explicitly out of scope (authored only, never applied).
+- Dependencies confirmed in main: `docs/app/community/` pattern, `docs/postman/app/Sanad.App.*` per-feature collection convention, Community/Family Postman idioms (variables, `{{accessToken}}`, `pm.collectionVariables.set`, saved ProblemDetails responses). Present at base.
+- Remaining owner decisions:
+  - Eligibility matrix + booking-state rules are documented as implemented-vs-not-enforced (checker currently: self-deny, recipient-exists, non-empty booking id + TODO seam). Wiring CareHomes state checks is a follow-up decision already tracked in `lane-a-endpoints.md`.
+  - Stubs/seams documented as such: `lastMessage null`/`unreadCount 0` (Lane B), read-marks recorded verbatim (Lane B interprets), PDF-only documents, block generic-failure at send time (Lane B).
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime; no message content logged).
+- Notes: no code/tests/migrations touched in this item; nothing pushed/merged/deployed.

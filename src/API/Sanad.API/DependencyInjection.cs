@@ -44,6 +44,9 @@ using Sanad.Modules.CareHomes.Infrastructure;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.Community.Infrastructure;
 using Sanad.Modules.Community.Application.Posts;
+using Sanad.Modules.Chat.Infrastructure;
+using Sanad.API.ChatIntegration;
+using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.Finance.Infrastructure;
@@ -111,6 +114,7 @@ public static class DependencyInjection
             return ActivatorUtilities.CreateInstance<Sanad.Modules.Notifications.Infrastructure.Push.FcmPushSender>(sp);
         });
         services.AddCommunityInfrastructure(configuration);
+        services.AddChatInfrastructure(configuration);
         services.AddFinanceInfrastructure(configuration);
         services.AddHostedService<CareHomeLicenseExpiryMonitor>();
         services.AddHostedService<CareHomeBookingExpiryHostedService>();
@@ -425,6 +429,9 @@ public static class DependencyInjection
 
             configuration.RegisterServicesFromAssembly(
                 typeof(GetPostsQuery).Assembly);
+
+            configuration.RegisterServicesFromAssembly(
+                typeof(OpenConversationCommand).Assembly);
         });
         services.AddScoped<Sanad.Modules.Families.Application.Subscriptions.ISubscriptionInvoiceService,
             Sanad.Modules.Families.Application.Subscriptions.SubscriptionInvoiceService>();
@@ -469,6 +476,11 @@ public static class DependencyInjection
 
         services.AddScoped<
             ICaregiverBookingPricing, CaregiverBookingPricingGateway>();
+
+        // Chat outbound ports (interfaces live in Chat Application,
+        // implementations here — same gateway pattern as FamilyIdentityGateway).
+        services.AddScoped<IChatUserLookup, ApiChatUserLookup>();
+        services.AddScoped<IChatEligibilityChecker, ApiChatEligibilityChecker>();
 
         return services;
     }

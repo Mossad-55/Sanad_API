@@ -1,0 +1,41 @@
+# Report: lane-a-persistence — Persistence: context, configurations, one additive migration (authored only), DI registration
+
+- Task name: Persistence — context, configurations, one additive migration (authored only), DI registration (Lane A item 2).
+- Branch: `opencode/chat-lane-a`
+- Base SHA: `fe91d64` (main at branch point).
+- Final SHA (task content, verified): `932363933babb8060f8ef6d2575d7d70d9ccff4c`
+  - Convention (as in lane-a-domain): `final SHA` = task-content commit whose code passed the gates. Docs commit follows separately, docs-only.
+- Changed files (task commit `9323639`):
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Sanad.Modules.Chat.Application.csproj` (new)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Abstractions/Data/IChatDbContext.cs` (new)
+  - `src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/Sanad.Modules.Chat.Infrastructure.csproj` (new)
+  - `src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/DependencyInjection.cs` (new, `AddChatInfrastructure`)
+  - `src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/Persistence/ChatDbContext.cs` (new, schema `chat`)
+  - `src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/Persistence/ChatDbContextFactory.cs` (new)
+  - `src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/Persistence/Configurations/ConversationConfiguration.cs` (new)
+  - `src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/Persistence/Configurations/AttachmentConfiguration.cs` (new)
+  - `src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/Persistence/Configurations/BlockConfiguration.cs` (new)
+  - `src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/Persistence/Migrations/20261010005405_InitialChat.cs` (new, authored only)
+  - `src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/Persistence/Migrations/20261010005405_InitialChat.Designer.cs` (new)
+  - `src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/Persistence/Migrations/ChatDbContextModelSnapshot.cs` (new)
+  - `src/API/Sanad.API/DependencyInjection.cs` (modified: `AddChatInfrastructure` after Community line)
+  - `src/API/Sanad.API/Sanad.API.csproj` (modified: Chat Infrastructure project reference)
+- Exact verification commands (workdir `D:\Sanad_API-OpenCode`, branch tip at run):
+  - `dotnet build src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Sanad.Modules.Chat.Application.csproj --nologo -v minimal` → exit 0, 0 warnings, 0 errors.
+  - `dotnet build src/Modules/Chat/Infrastructure/Sanad.Modules.Chat.Infrastructure/Sanad.Modules.Chat.Infrastructure.csproj --nologo -v minimal` → exit 0, 0 warnings, 0 errors.
+  - `dotnet build src/API/Sanad.API/Sanad.API.csproj --no-restore -m:1 --nologo -v minimal` → exit 0, 0 warnings, 0 errors.
+  - `dotnet ef migrations has-pending-model-changes --project ...Chat.Infrastructure --startup-project ...Chat.Infrastructure --context ChatDbContext` → exit 0, "No changes have been made to the model since the last migration."
+  - `git diff --check` → clean.
+  - Postman JSON validation: not applicable (no Postman files touched).
+- Skipped/blocked checks with reasons:
+  - Focused unit tests: no new behavior tests in this item (persistence shape only); domain tests (15/15) still green from prior item, inputs unchanged.
+  - Full unit + architecture suites: deferred to once-per-lane gate at end of Lane A.
+  - Bruno/API runtime: not run — migration authored only, never applied; no disposable-target authorization. Recorded as limitation.
+  - Migration application (`database update`): explicitly NOT done per task brief (authored only). Verified no DB connection was opened (ef check is offline model comparison; dummy process-scoped connection string only).
+- Dependencies confirmed in main: EF Core Npgsql provider, `MigrationsHistoryTable(schema)` pattern, `ChatDatabase → IdentityDatabase` fallback convention, Community persistence files listed in implementer brief. All present at base.
+- Remaining owner decisions: implementer decision 2 adopted — two filtered unique indexes (booking-scoped + direct) instead of one composite, because PostgreSQL treats NULLs as distinct and a single composite would not dedupe Direct conversations. Domain invariant Scope⇔BookingId-null holds. If owner prefers the literal single index, it is a one-line config change + re-scaffold (still authored-only).
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime used; process-scoped dummy connection string for ef check only).
+- Notes: nothing pushed/merged/deployed; no Lane B files touched; `Sanad.slnx` untouched (transitive via API reference, same precedent as domain item).
+
+## Addendum — InitialChat rescaffold for endpoint 7, task commit `c51de33e4b0954ba950d6979363b8a49e5215d48`
+- The `InitialChat` migration was rescaffolded (old `20261010005405` files deleted, `20261010134949_InitialChat` authored) to add the `chat.ConversationReadStates` table (FK cascade to Conversations, unique `(ConversationId, UserId)`). Still exactly ONE migration, still authored-only, never applied (`database update` never run; `has-pending-model-changes` → none). All other tables/indexes unchanged.

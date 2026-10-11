@@ -1,0 +1,31 @@
+# Report: lane-a-attachments — Attachment upload/serve with type/size/signature validation and single-use binding
+
+- Task name: Attachment upload/serve with type/size/signature validation and single-use binding; focused tests with real temp-root storage (Lane A item 4).
+- Branch: `opencode/chat-lane-a`
+- Base SHA: `fe91d64` (main at branch point).
+- Final SHA (task content, verified): `c128c1e8accef7662f3c6097d97a762674341dfb`
+  - Convention (as in prior Lane A reports): `final SHA` = task-content commit whose code passed the gates. Docs commit follows separately, docs-only.
+- Changed files (task commit `c128c1e`):
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Attachments/AttachmentErrors.cs` (new)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Attachments/UploadAttachmentCommand.cs` (new)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Attachments/UploadAttachmentCommandHandler.cs` (new)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Attachments/GetAttachmentFileQuery.cs` (new, query + handler)
+  - `src/API/Sanad.API/Controllers/ChatController.cs` (modified: endpoints 5–6 only, privacy mapping extended, behavior-preserving for 1–2/10)
+  - `src/BuildingBlocks/Infrastructure/Sanad.BuildingBlocks.Infrastructure/Storage/LocalDiskFileStorage.cs` (modified: approved additive-only — `video/mp4` private allowlist + `.mp4` extension + `.mp4` serve content-type; public path untouched)
+  - `tests/Sanad.UnitTests/Chat/AttachmentTests.cs` (new, 13 tests)
+- Exact verification commands (workdir `D:\Sanad_API-OpenCode`):
+  - `dotnet build src/API/Sanad.API/Sanad.API.csproj --no-restore -m:1 --nologo -v minimal` → exit 0, 0 warnings, 0 errors.
+  - `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --filter "FullyQualifiedName~Sanad.UnitTests.Chat" --nologo -v minimal` → exit 0; Passed 42, Failed 0, Skipped 0, Total 42 (29 prior + 13 new; real temp-root `LocalDiskFileStorage` in attachment tests).
+  - `git diff --check` → clean.
+  - Postman JSON validation: not applicable (no Postman files touched in this item).
+- Skipped/blocked checks with reasons:
+  - Full unit + architecture suites: deferred to once-per-lane gate at end of Lane A.
+  - Bruno/API runtime/DB: not run; no authorization; handler-level InMemory + real temp-root storage is the evidence. Limitation, not blocker.
+  - No new migration; `InitialChat` untouched, never applied.
+- Dependencies confirmed in main: `IFileStorage.SavePrivateAsync` per-type `maximumBytes` overload, private `private/` sibling never served statically, Community upload handler (signature check + `DbUpdateException` → storage cleanup) and `ReadImage` no-store serving, temp-root test pattern. All present at base.
+- Remaining owner decisions:
+  - Documents = PDF-only in Lane A (approved); doc/docx deferred to provider work.
+  - Upload validation failures → 400 with specific `Chat.Attachment.*` codes; serve denials collapse to privacy 404 (`Chat.Attachment.NotFound`); upload on unknown/foreign conversation → `Chat.Conversation.NotFound`. Shared result mapper not edited.
+  - Uploads created unbound; single-use enforced by domain `Bind()`; Lane B binds on send. 201 `fileName` echoes sanitized original (domain persists generated key only).
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime; no message content logged).
+- Notes: endpoints 1–2/10, Lane B slots, blocks untouched; nothing pushed/merged/deployed.

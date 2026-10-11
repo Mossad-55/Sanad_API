@@ -22,7 +22,8 @@ public sealed class LocalDiskFileStorage : IFileStorage
             "application/pdf",
             "image/jpeg",
             "image/png",
-            "image/webp"
+            "image/webp",
+            "video/mp4"
         };
 
     private readonly LocalStorageOptions _options;
@@ -167,6 +168,7 @@ public sealed class LocalDiskFileStorage : IFileStorage
             "image/jpeg" => ".jpg",
             "image/png" => ".png",
             "image/webp" => ".webp",
+            "video/mp4" => ".mp4",
             _ => ".bin"
         };
 
@@ -257,6 +259,7 @@ public sealed class LocalDiskFileStorage : IFileStorage
                 ".jpg" => "image/jpeg",
                 ".png" => "image/png",
                 ".webp" => "image/webp",
+                ".mp4" => "video/mp4",
                 _ => "application/octet-stream"
             };
 

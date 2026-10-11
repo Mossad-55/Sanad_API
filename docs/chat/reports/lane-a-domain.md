@@ -1,0 +1,31 @@
+# Report: lane-a-domain — Conversation + Block domain with open-or-get, hide, and block invariants
+
+- Task name: Conversation + Block domain with open-or-get, hide, and block invariants; focused domain tests (Lane A item 1).
+- Branch: `opencode/chat-lane-a`
+- Base SHA: `fe91d64` (main at branch point; tree clean).
+- Final SHA (task content, verified): `60aed6931490d013b46233da6cbf3eced49a0749`
+  - Convention: `final SHA` = the task-content commit whose code passed the gates below. The report/checklist/handoff docs commit follows separately and is docs-only (no build/test inputs change), so gates are reused while valid per repo guidance. Branch tip at hand-back is given in chat/handoff.
+- Changed files (task commit `60aed69`):
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Sanad.Modules.Chat.Domain.csproj` (new)
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Conversations/Conversation.cs` (new)
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Conversations/ConversationId.cs` (new)
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Conversations/ConversationScope.cs` (new)
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Attachments/Attachment.cs` (new)
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Attachments/AttachmentId.cs` (new)
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Blocks/Block.cs` (new)
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Blocks/BlockId.cs` (new)
+  - `tests/Sanad.UnitTests/Chat/ConversationTests.cs` (new, 15 tests)
+  - `tests/Sanad.UnitTests/Sanad.UnitTests.csproj` (modified, 1 line: ProjectReference to Chat.Domain)
+- Exact verification commands (run on branch, workdir `D:\Sanad_API-OpenCode`):
+  - `dotnet build src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Sanad.Modules.Chat.Domain.csproj --nologo -v minimal` → exit 0, 0 warnings, 0 errors.
+  - `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --filter "FullyQualifiedName~Sanad.UnitTests.Chat" --nologo -v minimal` → exit 0; Passed 15, Failed 0, Skipped 0, Total 15.
+  - `git diff --check` → clean (no output, exit True/$?).
+  - Postman JSON validation: not applicable (no Postman files touched in this item).
+- Skipped/blocked checks with reasons:
+  - Full unit + architecture suites: deferred to the once-per-lane gate at the end of Lane A (per task brief: full suites once).
+  - Bruno: not selected; no disposable target authorized; no live HTTP boundary in a pure-domain change. Recorded as limitation, not a blocker.
+  - Migration: none authored in this item (belongs to lane-a-persistence); nothing applied.
+- Dependencies confirmed in main: `Sanad.BuildingBlocks.Domain` (`AggregateRoot<TId>`, `DomainException`, `UserId`), Community domain shape (`CommunityImage` + `CommunityImageId` readonly record struct, Guid v7), `Sanad.UnitTests` project. All present at base `fe91d64`.
+- Remaining owner decisions: none for this item. Open Lane A decisions tracked separately: video allowlist extension (approved: normal upload now, external provider later; needs `video/mp4` private-allowlist addition in attachments item), eligibility gateway pattern, block generic-failure outward code, `LastActivityOnUtc` ownership (domain already carries the field + `UpdateLastActivity` seam for Lane B).
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32, API 5245 / DB SanadBrunoTestOpenCodeDb isolation; no API/DB/Bruno runtime used).
+- Notes: no message content logged; nothing pushed/merged/deployed; no Lane B or other lanes' files touched; `Sanad.slnx` untouched (Chat.Domain builds transitively via UnitTests reference).
