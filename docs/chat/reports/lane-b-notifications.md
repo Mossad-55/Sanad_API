@@ -1,0 +1,29 @@
+# Report: lane-b-notifications — New-message in-app alert producer through the existing notification seam (ids only)
+
+- Task name: New-message in-app alert producer through the existing notification seam (ids only); focused tests (Lane B item 4).
+- Branch: `opencode/chat-lane-b` (base: Lane A tip `e842d87`; main base `fe91d64`). Dependency: Lane A (unmerged; this lane merges after Lane A lands).
+- Final SHA (task content, verified): `0bbdbaa55e61ee39b68fee3a71ec096e74f54f81`
+  - Convention (as in prior reports): `final SHA` = task-content commit whose code passed the gates. Docs commit follows separately, docs-only.
+- Changed files (task commit `0bbdbaa`):
+  - `src/Modules/Notifications/Application/.../Notifications/CreateChatMessageNotificationCommand.cs` (new: command + validator + handler — the one owned file)
+  - `tests/Sanad.UnitTests/Chat/ChatMessageNotificationTests.cs` (new, 6 tests)
+  - `src/Modules/Chat/Application/.../Messages/SendMessageCommand.cs` (modified: sanctioned wiring — optional `ISender?` ctor param + awaited producer call on create path)
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Sanad.Modules.Chat.Application.csproj` (modified: +ProjectReference to Notifications.Application; cross-module Application refs have precedent)
+- Exact verification commands (workdir `D:\Sanad_API-OpenCode`):
+  - `dotnet build src/API/Sanad.API/Sanad.API.csproj --no-restore -m:1 --nologo -v minimal` → exit 0, 0 warnings, 0 errors.
+  - `dotnet test ... --filter "FullyQualifiedName~Sanad.UnitTests.Chat"` → exit 0; Passed 135, Failed 0, Skipped 0 (129 prior + 6 new).
+  - `dotnet test ... --filter "FullyQualifiedName~Notifications"` → exit 0; Passed 43, Failed 0, Skipped 0.
+  - `dotnet build tests/Sanad.UnitTests/Sanad.UnitTests.csproj` → exit 0, 0 warnings.
+  - `git diff --check` → clean. `git status` showed only the 4 owned/sanctioned files.
+  - Postman JSON validation: not applicable.
+- Skipped/blocked checks with reasons:
+  - Full unit + architecture suites (lane gate): deferred to end of Lane B.
+  - Bruno/API runtime/DB: not run; no authorization. Limitation, not blocker.
+  - Migration application: NOT done (authored only).
+- Dependencies confirmed in main: `CreateInAppNotificationCommand` seam (Notification.Create, idempotency-key unique index + race handling), HelpRequest/MedicationLate producer idiom, optional-ctor-param precedent, `AddMediatR` ISender registration. Present at base.
+- Remaining owner decisions:
+  - Producer fires on create path only (replay produces no second alert); recipient is the non-sender; sender never alerted.
+  - Failure semantics: awaited, no silent swallow — failure propagates; client's retry takes the exact-replay path (200, no second attempt). Residual: a producer failure can leave a delivered message unalerted (no retry loop for this seam in V1; re-firing on replay would be a one-line change if preferred).
+  - Title/body carry ids only (`Conversation: {id}. Message: {id}.`); the command has no text field (reflection-pinned). Idempotency key `chat-message:{messageId:N}:{recipientId:N}`.
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime; no message content logged or stored in notifications).
+- Notes: nothing else touched; nothing pushed/merged/deployed.
