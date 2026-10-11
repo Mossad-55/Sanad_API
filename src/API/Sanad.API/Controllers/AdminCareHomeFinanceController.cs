@@ -15,11 +15,15 @@ public sealed record AddAdminCareHomeInternalNoteRequest(string Text);
 public sealed class AdminCareHomeFinanceController(ISender sender, IDateTimeProvider clock) : ApiControllerBase
 {
     [HttpGet("dashboard")]
+    [ProducesResponseType(typeof(CareHomeDashboard), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Dashboard([FromQuery] Guid? facilityId, [FromQuery] DateOnly? from,
         [FromQuery] DateOnly? to, CancellationToken ct) =>
         ToActionResult(await sender.Send(new GetAdminCareHomeDashboardQuery(facilityId, from, to, clock.UtcNow), ct));
 
     [HttpGet("revenue")]
+    [ProducesResponseType(typeof(CareHomeRevenueReport), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> Revenue([FromQuery] Guid? facilityId, [FromQuery] DateOnly? from,
         [FromQuery] DateOnly? to, CancellationToken ct) =>
         ToActionResult(await sender.Send(new GetAdminCareHomeRevenueQuery(facilityId, from, to), ct));
@@ -34,14 +38,21 @@ public sealed class AdminCareHomeFinanceController(ISender sender, IDateTimeProv
     }
 
     [HttpGet("bookings/{bookingId:guid}/receipt")]
+    [ProducesResponseType(typeof(CareHomeReceipt), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Receipt(Guid bookingId, CancellationToken ct) =>
         ToActionResult(await sender.Send(new GetAdminCareHomeReceiptQuery(bookingId), ct));
 
     [HttpGet("bookings/{bookingId:guid}/internal-notes")]
+    [ProducesResponseType(typeof(IReadOnlyList<CareHomeInternalBookingNoteItem>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Notes(Guid bookingId, CancellationToken ct) =>
         ToActionResult(await sender.Send(new GetAdminCareHomeInternalBookingNotesQuery(bookingId), ct));
 
     [HttpPost("bookings/{bookingId:guid}/internal-notes")]
+    [ProducesResponseType(typeof(CareHomeInternalBookingNoteItem), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AddNote(Guid bookingId, [FromBody] AddAdminCareHomeInternalNoteRequest request,
         CancellationToken ct) =>
         TryGetAuthenticatedUserId(out UserId actor)

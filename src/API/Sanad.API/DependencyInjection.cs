@@ -44,6 +44,9 @@ using Sanad.Modules.CareHomes.Infrastructure;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.Community.Infrastructure;
 using Sanad.Modules.Community.Application.Posts;
+using Sanad.Modules.Chat.Infrastructure;
+using Sanad.API.ChatIntegration;
+using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.Finance.Infrastructure;
@@ -103,7 +106,15 @@ public static class DependencyInjection
         services.AddSingleton(provider => ResolveCareHomeBookingTiming(configuration, provider.GetRequiredService<IHostEnvironment>()));
 
         services.AddNotificationsInfrastructure(configuration);
+        services.Configure<Sanad.Modules.Notifications.Infrastructure.Push.PushFirebaseOptions>(configuration.GetSection(Sanad.Modules.Notifications.Infrastructure.Push.PushFirebaseOptions.SectionName));
+        services.AddSingleton<Sanad.Modules.Notifications.Application.Abstractions.Push.IPushSender>(sp =>
+        {
+            if (sp.GetService<IHostEnvironment>()?.IsDevelopment() == true)
+                return new Sanad.Modules.Notifications.Infrastructure.Push.DevelopmentNoOpPushSender();
+            return ActivatorUtilities.CreateInstance<Sanad.Modules.Notifications.Infrastructure.Push.FcmPushSender>(sp);
+        });
         services.AddCommunityInfrastructure(configuration);
+        services.AddChatInfrastructure(configuration);
         services.AddFinanceInfrastructure(configuration);
         services.AddHostedService<CareHomeLicenseExpiryMonitor>();
         services.AddHostedService<CareHomeBookingExpiryHostedService>();
@@ -111,6 +122,7 @@ public static class DependencyInjection
         services.AddHostedService<CareHomeBookingNotificationProcessor>();
         services.AddHostedService<CareHomeReviewNotificationProcessor>();
         services.AddHostedService<EmailOutboxProcessor>();
+        services.AddHostedService<PushOutboxProcessor>();
         services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
         services.AddScoped<ICaregiverBookingRatingEligibility, CaregiverBookingRatingEligibilityGateway>();
         services.AddScoped<IHelpRequestCatalogGateway, HelpRequestCatalogGateway>();
@@ -390,6 +402,15 @@ public static class DependencyInjection
                 policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
                 policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
             });
+            // Chat support routes (endpoints 12-15): verbatim shape of the
+            // ElderlySosOperational precedent above — SuperAdmin + SupportAdmin
+            // on a normal AccessType. No other role gains chat-admin rights.
+            options.AddPolicy(AuthorizationPolicies.ChatSupportAdmin, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+            });
         });
 
         services.AddMediatR(configuration =>
@@ -417,6 +438,9 @@ public static class DependencyInjection
 
             configuration.RegisterServicesFromAssembly(
                 typeof(GetPostsQuery).Assembly);
+
+            configuration.RegisterServicesFromAssembly(
+                typeof(OpenConversationCommand).Assembly);
         });
         services.AddScoped<Sanad.Modules.Families.Application.Subscriptions.ISubscriptionInvoiceService,
             Sanad.Modules.Families.Application.Subscriptions.SubscriptionInvoiceService>();
@@ -461,6 +485,11 @@ public static class DependencyInjection
 
         services.AddScoped<
             ICaregiverBookingPricing, CaregiverBookingPricingGateway>();
+
+        // Chat outbound ports (interfaces live in Chat Application,
+        // implementations here — same gateway pattern as FamilyIdentityGateway).
+        services.AddScoped<IChatUserLookup, ApiChatUserLookup>();
+        services.AddScoped<IChatEligibilityChecker, ApiChatEligibilityChecker>();
 
         return services;
     }

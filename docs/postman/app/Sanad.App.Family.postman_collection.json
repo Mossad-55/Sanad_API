@@ -1185,14 +1185,14 @@
                     "  const body = pm.response.json();",
                     "  if (body.id) { pm.environment.set('invitationId', body.id); }",
                     "}",
-                    "// The plaintext token is only delivered by email (development: server log",
-                    "// line '[DevEmail] Family invitation ... sanad://family/invite?token=...').",
-                    "// Copy it from the log into the invitationToken variable, then accept/decline."
+                    "// The invitation token is delivered only by email; it is never written to logs.",
+                    "// Production SMTP renders the bilingual Invitation template.",
+                    "// The Development email stub suppresses delivery; use a test inbox to accept/decline."
                   ]
                 }
               }
             ],
-            "description": "role 2 = Editor, 3 = Viewer; relationshipType 6 = Sister. 409 RecipientNotRegistered (unknown email), RecipientMissingFamilyAccount, CannotInviteYourself, AlreadyMember, PendingInvitationExists. The token is returned only by email/log — paste it into invitationToken."
+            "description": "role 2 = Editor, 3 = Viewer; relationshipType 6 = Sister. 409 RecipientNotRegistered (unknown email), RecipientMissingFamilyAccount, CannotInviteYourself, AlreadyMember, PendingInvitationExists. The invite token is delivered only by email and never logged. Production SMTP uses the bilingual Invitation template; the Development sender suppresses delivery."
           },
           {
             "name": "List my pending invitations (invitee)",

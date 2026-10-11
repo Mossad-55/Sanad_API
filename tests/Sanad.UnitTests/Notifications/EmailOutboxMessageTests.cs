@@ -37,6 +37,19 @@ public sealed class EmailOutboxMessageTests
     }
 
     [Fact]
+    public void Create_StoresImmutableHtmlAndPlainTextSnapshots()
+    {
+        DateTime created = UtcNow();
+        EmailOutboxMessage message = EmailOutboxMessage.Create(
+            "admin@example.test", "subject", "Plain snapshot", "<p>HTML snapshot</p>", "key", created);
+
+        Assert.Equal("Plain snapshot", message.Body);
+        Assert.Equal("<p>HTML snapshot</p>", message.HtmlBody);
+        Assert.Throws<ArgumentException>(() => EmailOutboxMessage.Create(
+            "admin@example.test", "subject", "", "<p>HTML snapshot</p>", "key", created));
+    }
+
+    [Fact]
     public void FailureRetryDelay_IsCappedAndErrorIsBounded()
     {
         DateTime now = UtcNow();

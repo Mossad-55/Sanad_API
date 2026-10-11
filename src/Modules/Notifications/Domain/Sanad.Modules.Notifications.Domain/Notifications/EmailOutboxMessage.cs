@@ -14,12 +14,13 @@ public sealed class EmailOutboxMessage : Entity<Guid>
 {
     private EmailOutboxMessage() { }
 
-    private EmailOutboxMessage(Guid id, string recipientEmail, string subject, string body,
+    private EmailOutboxMessage(Guid id, string recipientEmail, string subject, string body, string? htmlBody,
         string idempotencyKey, DateTime createdOnUtc) : base(id)
     {
         RecipientEmail = recipientEmail;
         Subject = subject;
         Body = body;
+        HtmlBody = htmlBody;
         IdempotencyKey = idempotencyKey;
         CreatedOnUtc = createdOnUtc;
         NextAttemptOnUtc = createdOnUtc;
@@ -29,6 +30,7 @@ public sealed class EmailOutboxMessage : Entity<Guid>
     public string RecipientEmail { get; private set; } = string.Empty;
     public string Subject { get; private set; } = string.Empty;
     public string Body { get; private set; } = string.Empty;
+    public string? HtmlBody { get; private set; }
     public string IdempotencyKey { get; private set; } = string.Empty;
     public EmailOutboxStatus Status { get; private set; }
     public int AttemptCount { get; private set; }
@@ -45,7 +47,18 @@ public sealed class EmailOutboxMessage : Entity<Guid>
         if (string.IsNullOrWhiteSpace(recipientEmail) || string.IsNullOrWhiteSpace(idempotencyKey))
             throw new ArgumentException("Email recipient and idempotency key are required.");
         if (createdOnUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Outbox time must be UTC.");
-        return new EmailOutboxMessage(Guid.CreateVersion7(), recipientEmail.Trim(), subject.Trim(), body.Trim(), idempotencyKey.Trim(), createdOnUtc);
+        return new EmailOutboxMessage(Guid.CreateVersion7(), recipientEmail.Trim(), subject.Trim(), body.Trim(), null, idempotencyKey.Trim(), createdOnUtc);
+    }
+
+    public static EmailOutboxMessage Create(string recipientEmail, string subject, string plainTextBody,
+        string htmlBody, string idempotencyKey, DateTime createdOnUtc)
+    {
+        if (string.IsNullOrWhiteSpace(recipientEmail) || string.IsNullOrWhiteSpace(idempotencyKey))
+            throw new ArgumentException("Email recipient and idempotency key are required.");
+        if (string.IsNullOrWhiteSpace(plainTextBody) || string.IsNullOrWhiteSpace(htmlBody))
+            throw new ArgumentException("Both plain-text and HTML email bodies are required.");
+        if (createdOnUtc.Kind != DateTimeKind.Utc) throw new ArgumentException("Outbox time must be UTC.");
+        return new EmailOutboxMessage(Guid.CreateVersion7(), recipientEmail.Trim(), subject.Trim(), plainTextBody.Trim(), htmlBody.Trim(), idempotencyKey.Trim(), createdOnUtc);
     }
 
     public void MarkProcessing(DateTime utcNow, Guid claimToken)

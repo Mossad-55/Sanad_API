@@ -16,10 +16,15 @@ public sealed record RecordCareHomePayoutReversalRequest(decimal CustomerRefundA
 public sealed class AdminCareHomePayoutsController(ISender sender, IDateTimeProvider clock) : ApiControllerBase
 {
     [HttpGet("ledger")]
+    [ProducesResponseType(typeof(IReadOnlyList<CareHomePayoutLedgerItem>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Ledger([FromQuery] Guid? facilityId, CancellationToken ct) =>
         ToActionResult(await sender.Send(new GetCareHomePayoutLedgerQuery(facilityId, clock.UtcNow), ct));
 
     [HttpPost("bookings/{bookingId:guid}/record-reversal")]
+    [ProducesResponseType(typeof(CareHomePayoutLedgerItem), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> RecordReversal(Guid bookingId, RecordCareHomePayoutReversalRequest request, CancellationToken ct) =>
         TryGetAuthenticatedUserId(out UserId actor)
             ? ToActionResult(await sender.Send(new RecordCareHomePayoutReversalCommand(
@@ -27,6 +32,10 @@ public sealed class AdminCareHomePayoutsController(ISender sender, IDateTimeProv
             : Unauthorized();
 
     [HttpPost("bookings/{bookingId:guid}/record")]
+    [ProducesResponseType(typeof(CareHomePayoutLedgerItem), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Record(Guid bookingId, RecordCareHomePayoutRequest request, CancellationToken ct) =>
         TryGetAuthenticatedUserId(out UserId actor)
             ? ToActionResult(await sender.Send(new RecordCareHomePayoutCommand(

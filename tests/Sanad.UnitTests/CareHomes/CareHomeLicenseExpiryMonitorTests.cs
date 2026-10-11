@@ -50,6 +50,7 @@ public sealed class CareHomeLicenseExpiryMonitorTests
         Assert.Contains(alerts, x => x.RecipientUserId == superAdmin.Id.Value && x.DestinationEntityId == expired.Id.Value);
         Assert.Contains(alerts, x => x.RecipientUserId == supportAdmin.Id.Value && x.DestinationEntityId == expired.Id.Value);
         Assert.All(emails, x => Assert.Contains("expired", x.Body, StringComparison.OrdinalIgnoreCase));
+        Assert.All(emails, x => Assert.NotNull(x.HtmlBody));
         Assert.DoesNotContain(alerts, x => x.DestinationEntityId == boundary.Id.Value);
         Assert.DoesNotContain(alerts, x => x.DestinationEntityId == future.Id.Value);
         Assert.DoesNotContain(alerts, x => x.DestinationEntityId == nonExpiring.Id.Value);

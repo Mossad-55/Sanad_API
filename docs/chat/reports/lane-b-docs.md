@@ -1,0 +1,29 @@
+# Report: lane-b-docs — Docs + Postman sync for Lane B routes; contract-mapping check
+
+- Task name: Docs + Postman sync for Lane B routes; contract-mapping check (Lane B item 5).
+- Branch: `opencode/chat-lane-b` (base: Lane A tip `e842d87`; main base `fe91d64`). Dependency: Lane A (unmerged; this lane merges after Lane A lands).
+- Final SHA (task content, verified): `be880a66f7a3eed3efa1b98688d7002972126246`
+  - Convention (as in prior reports): `final SHA` = task-content commit whose content passed the gates. Docs-meta commit follows separately, docs-only.
+- Changed files (task commit `be880a6`):
+  - `docs/app/chat/messages.md` (new — endpoints 3, 4, 8)
+  - `docs/app/chat/reports.md` (new — endpoints 11–15)
+  - `docs/app/chat/README.md` (modified: links to new docs + Admin collection)
+  - `docs/postman/app/Sanad.App.Chat.postman_collection.json` (modified: folders 06–08 for 3, 4, 8, 11)
+  - `docs/postman/admins/Sanad.Admin.Chat.postman_collection.json` (new — endpoints 12–15)
+- Exact verification commands (workdir `D:\Sanad_API-OpenCode`):
+  - Postman parse: `python -c "import json; ..."` over both collections → exit 0, `both parse OK`.
+  - `git diff --check` → clean. `git status` showed only the 5 owned files.
+  - Contract-mapping check: all 9 frozen Lane B operations map 1:1 (3 List, 4 Send, 8 Unread, 11 Submit, 12 Queue, 13 Detail, 13 Messages-view, 14 Dismiss, 15 Uphold) → controller action + Postman example + doc section. 0 gaps.
+  - No .NET gates for this docs-only item.
+- Once-per-lane joint gates (run here, evidence for the Integrator):
+  - `dotnet build Sanad.slnx --no-restore -m:1 --nologo -v minimal` → exit 0, **0 warnings, 0 errors**.
+  - `dotnet test tests/Sanad.ArchitectureTests/... --no-restore --nologo -v minimal` → exit 0; **Passed 1, Failed 0, Skipped 0** (covers the Chat→Notifications Application reference).
+  - `dotnet test tests/Sanad.UnitTests/... --no-restore --nologo -v minimal` (full) → **Passed 2767, Failed 1, Skipped 3, Total 2771**. The 1 failure is the known pre-existing `Finance.PlatformChargeRuleTests...preserves_future_schedule` date-sensitive test (hardcoded Oct-2026 dates; today 2026-10-11; zero Chat files involved — Lane B diff on Finance paths is empty). Same failure as Lane A baseline; NOT fixed here (another lane's scope). The 3 skips are PostgreSQL-only.
+  - Focused Chat suite: 135/135; Notifications seam suite: 43/43.
+- Skipped/blocked checks with reasons:
+  - Bruno: not selected; no disposable-target authorization. Postman examples statically authored from verified code/tests, never executed (stated in docs + collections).
+  - Migration application: NOT done (authored only, still one migration, never applied).
+- Dependencies confirmed in main: per-feature Postman conventions (`Sanad.Admin.Community` layout mirrored), Lane A guide tone/structure, `Sanad.Admin.*` collection layout. Present at base.
+- Remaining owner decisions: none new. Carried seams documented as seams (read-rule fallback, producer-failure residual, booking-state TODO, PDF-only).
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime; no message content logged).
+- Notes: no code/tests/migrations touched in this item; nothing pushed/merged/deployed.

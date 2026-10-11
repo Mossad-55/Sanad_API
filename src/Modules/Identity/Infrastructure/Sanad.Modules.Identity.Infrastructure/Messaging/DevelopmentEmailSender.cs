@@ -13,11 +13,12 @@ public sealed class DevelopmentEmailSender :
         Console.WriteLine($"[DevEmail] Message to {email}: {subject}");
         return Task.CompletedTask;
     }
+    public Task SendEmailAsync(string email, string subject, string plainTextBody, string? htmlBody, string? correlationId, CancellationToken cancellationToken) =>
+        SendEmailAsync(email, subject, plainTextBody, correlationId, cancellationToken);
     public Task SendFamilyInvitationAsync(string email, string familyName, string inviteLink, CancellationToken cancellationToken)
     {
-        Console.WriteLine(
-            $"[DevEmail] Family invitation to {email} " +
-            $"for '{familyName}': {inviteLink}");
+        cancellationToken.ThrowIfCancellationRequested();
+        Console.WriteLine("[DevEmail] Family invitation suppressed in Development.");
 
         return Task.CompletedTask;
     }

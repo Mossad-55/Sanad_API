@@ -5,6 +5,7 @@ using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
+using Sanad.Modules.Identity.Infrastructure.Messaging.EmailTemplates;
 using Sanad.Modules.Notifications.Domain.Notifications;
 using Sanad.Modules.Notifications.Infrastructure.Persistence;
 
@@ -65,7 +66,9 @@ public sealed class CareHomeLicenseExpiryMonitor(
             foreach (var admin in admins)
             {
                 string baseKey = $"care-home-license-expiry:{currentDate:yyyy-MM-dd}:{facility.FacilityId:N}:{admin.UserId:N}";
-                string body = $"Care home {facility.FacilityId} has an expired operating license and requires review.";
+                string bodyAr = $"انتهت صلاحية ترخيص التشغيل لدار الرعاية {facility.FacilityId} ويحتاج إلى مراجعة.";
+                string bodyEn = $"Care home {facility.FacilityId} has an expired operating license and requires review.";
+                string body = bodyEn;
                 string inAppKey = baseKey + ":in-app";
                 if (!await notifications.Notifications.AnyAsync(x => x.IdempotencyKey == inAppKey, ct))
                 {
@@ -82,7 +85,11 @@ public sealed class CareHomeLicenseExpiryMonitor(
                     string emailKey = baseKey + ":email";
                     if (!await notifications.EmailOutboxMessages.AnyAsync(x => x.IdempotencyKey == emailKey, ct))
                     {
-                        var email = EmailOutboxMessage.Create(admin.Email, "Care-home operating license expired", body, emailKey, createdOnUtc);
+                        var emailCopy = EmailTemplateCatalog.RenderBilingual("انتهت صلاحية ترخيص دار الرعاية",
+                            "Care-home operating license expired", "انتهت صلاحية ترخيص دار الرعاية",
+                            "Care-home operating license expired", bodyAr, bodyEn);
+                        var email = EmailOutboxMessage.Create(admin.Email, emailCopy.Subject,
+                            emailCopy.PlainTextBody, emailCopy.HtmlBody, emailKey, createdOnUtc);
                         notifications.EmailOutboxMessages.Add(email);
                         try { await notifications.SaveChangesAsync(ct); }
                         catch (DbUpdateException ex) when (IsUniqueViolation(ex))
@@ -144,7 +151,8 @@ public sealed class EmailOutboxProcessor(
             claimedRow = await db.EmailOutboxMessages.SingleAsync(x => x.Id == row.Id, ct);
             try
             {
-                await sender.SendEmailAsync(claimedRow.RecipientEmail, claimedRow.Subject, claimedRow.Body, claimedRow.IdempotencyKey, ct);
+                await sender.SendEmailAsync(claimedRow.RecipientEmail, claimedRow.Subject, claimedRow.Body,
+                    claimedRow.HtmlBody, claimedRow.IdempotencyKey, ct);
                 claimedRow.MarkSent(DateTime.UtcNow, claimToken);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)

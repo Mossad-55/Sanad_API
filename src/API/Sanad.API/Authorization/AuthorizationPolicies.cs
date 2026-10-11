@@ -43,4 +43,8 @@ public static class AuthorizationPolicies
     public const string AdminNotificationOperationalRead = "AdminNotificationOperationalRead";
     public const string FinanceOperationalAdmin = "FinanceOperationalAdmin";
     public const string PayoutOperationalAdmin = "PayoutOperationalAdmin";
+
+    /// <summary>Chat support routes (endpoints 12–15): SuperAdmin +
+    /// SupportAdmin, mirroring the elderly-ops operational policies.</summary>
+    public const string ChatSupportAdmin = "ChatSupportAdmin";
 }

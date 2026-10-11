@@ -18,6 +18,9 @@ public sealed record PayoutAccountAdminItem(
     string BankCode,
     string? BankName,
     string MaskedIban,
+    [property: System.ComponentModel.DataAnnotations.AllowedValues(
+        nameof(PayoutAccountStatus.Pending), nameof(PayoutAccountStatus.Verified),
+        nameof(PayoutAccountStatus.Rejected), nameof(PayoutAccountStatus.Revoked))]
     string Status,
     int Revision,
     DateTime UpdatedOnUtc);
@@ -30,6 +33,9 @@ public sealed record PayoutAccountAdminDetailResponse(
     string BankCode,
     string? BankName,
     string MaskedIban,
+    [property: System.ComponentModel.DataAnnotations.AllowedValues(
+        nameof(PayoutAccountStatus.Pending), nameof(PayoutAccountStatus.Verified),
+        nameof(PayoutAccountStatus.Rejected), nameof(PayoutAccountStatus.Revoked))]
     string Status,
     int Revision,
     string? RejectionReason,

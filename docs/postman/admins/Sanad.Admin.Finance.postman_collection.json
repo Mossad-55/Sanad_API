@@ -206,7 +206,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/caregiver-payouts?page=1&pageSize=20"
           },
-          "description": "Returns 200 with paid and failed payouts ordered by recording time descending. SuperAdmin and FinanceAdmin only."
+          "description": "Returns 200 with payouts ordered by recording time descending. Response status is Paid or Failed. SuperAdmin and FinanceAdmin only."
         },
         {
           "name": "Get caregiver payout",
@@ -284,7 +284,7 @@
     },
     {
       "name": "Caregiver payout accounts (SuperAdmin or FinanceAdmin)",
-      "description": "Payout-account review queue under /api/v1/admin/caregiver-payout-accounts. Requires the PayoutOperationalAdmin policy. Ownership is verified through an external source; the full IBAN is revealed only by the dedicated audited reveal request. Manual fixture only.",
+      "description": "Payout-account review queue under /api/v1/admin/caregiver-payout-accounts. Status values are Pending, Verified, Rejected, and Revoked. Requires the PayoutOperationalAdmin policy. Ownership is verified through an external source; the full IBAN is revealed only by the dedicated audited reveal request. Manual fixture only.",
       "item": [
         {
           "name": "List payout accounts",

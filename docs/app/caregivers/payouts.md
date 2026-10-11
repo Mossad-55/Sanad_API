@@ -89,6 +89,11 @@ POST /api/v1/admin/caregiver-payouts/record
 POST /api/v1/admin/caregiver-payouts/{payoutId}/mark-failed
 ```
 
+Payout response `status` is a string with the values `Paid` or `Failed`.
+Payout-account review `status` is a string with the values `Pending`,
+`Verified`, `Rejected`, or `Revoked`. The OpenAPI schemas publish these allowed
+values for client display and filtering.
+
 The list returns recorded payouts (both `Paid` and `Failed`) ordered by recording time descending, with optional status/caregiver filters and `PagedResult` pagination (page size clamped 1–100). Detail returns one payout or `404 Caregivers.Payouts.NotFound`.
 
 Record body:

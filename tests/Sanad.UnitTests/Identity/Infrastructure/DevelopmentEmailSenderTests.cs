@@ -6,6 +6,27 @@ namespace Sanad.UnitTests.Identity.Infrastructure;
 public sealed class DevelopmentEmailSenderTests
 {
     [Fact]
+    public async Task FamilyInvitation_DoesNotWriteRecipientOrTokenToConsole()
+    {
+        TextWriter original = Console.Out;
+        using StringWriter output = new();
+        try
+        {
+            Console.SetOut(output);
+            await new DevelopmentEmailSender().SendFamilyInvitationAsync(
+                "user@example.test", "Private family", "sanad://family/invite?token=secret-token", CancellationToken.None);
+        }
+        finally
+        {
+            Console.SetOut(original);
+        }
+
+        Assert.DoesNotContain("user@example.test", output.ToString());
+        Assert.DoesNotContain("Private family", output.ToString());
+        Assert.DoesNotContain("secret-token", output.ToString());
+    }
+
+    [Fact]
     public async Task SendVerificationCodeAsync_ShouldCompleteWithoutThrowing()
     {
         var sender =

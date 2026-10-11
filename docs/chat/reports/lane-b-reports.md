@@ -1,0 +1,30 @@
+# Report: lane-b-reports — Report submit + Support review/uphold/dismiss endpoints under ChatSupportAdmin; mutual-block on uphold
+
+- Task name: Report submit + Support review/uphold/dismiss endpoints under `ChatSupportAdmin`; mutual-block on uphold; focused tests (Lane B item 3).
+- Branch: `opencode/chat-lane-b` (base: Lane A tip `e842d87`; main base `fe91d64`). Dependency: Lane A (unmerged; this lane merges after Lane A lands).
+- Final SHA (task content, verified): `952e49f68707e6078dd4335604a58be5802aa5aa`
+  - Convention (as in prior reports): `final SHA` = task-content commit whose code passed the gates. Docs commit follows separately, docs-only.
+- Changed files (task commit `952e49f`):
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Reports/` (new: `ReportErrors.cs`, `ReportResponses.cs` + internal `ReportItemFactory`, `SubmitReportCommand.cs`, `GetReportsQuery.cs`, `GetReportQuery.cs`, `GetReportMessagesQuery.cs`, `DismissReportCommand.cs`, `UpholdReportCommand.cs`)
+  - `src/API/Sanad.API/Controllers/AdminChatReportsController.cs` (new, endpoints 12–15)
+  - `src/API/Sanad.API/Controllers/Requests/ChatSubmitReportRequest.cs` (new)
+  - `src/API/Sanad.API/Controllers/ChatController.cs` (modified: endpoint 11 only + privacy list)
+  - `src/API/Sanad.API/Authorization/AuthorizationPolicies.cs` (modified: +`ChatSupportAdmin` const, 4 lines)
+  - `src/API/Sanad.API/DependencyInjection.cs` (modified: +`AddPolicy(ChatSupportAdmin)`, 9 lines)
+  - `tests/Sanad.UnitTests/Chat/ReportTests.cs` (extended 13 → 29, +16 tests)
+- Exact verification commands (workdir `D:\Sanad_API-OpenCode`):
+  - `dotnet build src/API/Sanad.API/Sanad.API.csproj --no-restore -m:1 --nologo -v minimal` → exit 0, 0 warnings, 0 errors.
+  - `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --filter "FullyQualifiedName~Sanad.UnitTests.Chat" --nologo -v minimal` → exit 0; Passed 129, Failed 0, Skipped 0 (113 prior + 16 new).
+  - `git diff --check` → clean. `git diff --stat` on shared files: policies +4, DI +9 (no line-ending churn; verified LF-preserved).
+  - Postman JSON validation: not applicable (docs item covers Postman).
+- Skipped/blocked checks with reasons:
+  - Full unit + architecture suites (lane gate): deferred to end of Lane B.
+  - Bruno/API runtime/DB: not run; no authorization. The `ChatSupportAdmin` DI wiring is code-mirrored from precedent + attribute-level reflection test; full-host verification needs an API run, which is out of scope. Recorded limitation.
+  - Migration application: NOT done (authored only).
+- Dependencies confirmed in main: `ElderlySosOperational` policy shape, `AdminElderlySosController` conventions, `Block.Create` + idempotent pre-check, `MessageItemFactory` reuse, repo array-response precedent. Present at base.
+- Remaining owner decisions:
+  - Double-resolve → 409 `Chat.Report.InvalidState`; uphold is atomic (guard before blocks; one save); pre-existing blocks left untouched.
+  - Admin unknown-report → plain 404 (no privacy forcing on admin routes); app-side report failures use privacy 404.
+  - Support sees reported conversations only (no general access); report rows retained with history on both outcomes.
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime; no message content logged).
+- Notes: messages/notifications/docs untouched (later items); nothing pushed/merged/deployed.

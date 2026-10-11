@@ -1,0 +1,1017 @@
+{
+  "info": {
+    "_postman_id": "b3f1c2a4-000a-4a10-chat-000000000001",
+    "name": "Sanad App — Chat",
+    "description": "Authenticated Chat surface (frozen contract endpoints 1-4, 5-8, 9-11): conversation list/open-or-get, message cursor list/send with idempotency, attachment upload/serve, read marks, unread totals, block/unblock/list, per-user hiding, and report submit. The Support review routes (endpoints 12-15) live in the Sanad.Admin.Chat collection. Use Sanad.local.postman_environment.json and supply a disposable access token in the accessToken collection variable; set recipientUserId to a second disposable user. Requests, bodies, and response examples are statically authored from the verified controller/handler behavior and docs/chat/reports/lane-a-*.md + lane-b-*.md — they were never executed against a live API or database, and no secrets are stored here.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7296" },
+    { "key": "accessToken", "value": "" },
+    { "key": "conversationId", "value": "" },
+    { "key": "recipientUserId", "value": "" },
+    { "key": "attachmentId", "value": "" },
+    { "key": "lastReadMessageId", "value": "" },
+    { "key": "blockedUserId", "value": "" },
+    { "key": "clientMessageId", "value": "postman-0001" },
+    { "key": "messageId", "value": "" },
+    { "key": "reportId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "01. Conversations",
+      "description": "Endpoints 1 and 2. All routes resolve the participant from the JWT (401 without a token); unknown, foreign, and ineligible ids answer the same generic privacy 404.",
+      "item": [
+        {
+          "name": "List conversations (paged, last activity first)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/chat/conversations?page=1&pageSize=20",
+            "description": "Endpoint 1 → 200 PagedResult {items, page, pageSize, totalCount, totalPages}, ordered by lastActivityOnUtc descending. page is clamped up to 1; pageSize is clamped to 1–100 (default 20). Only the caller's conversations appear, minus rows the caller hid; foreign rows are never an error. participant is always the other side of the pair (Identity display name, English preferred with Arabic fallback; avatarUrl may be null). Lane A stub: lastMessage is null and unreadCount is 0 until Lane B owns messages. 401 without a token."
+          },
+          "response": [
+            {
+              "name": "200 — Page of conversations (Lane A stub fields)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/conversations?page=1&pageSize=20"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"items\": [\n    {\n      \"id\": \"0198e2c2-4444-7a10-8000-00000000c001\",\n      \"participant\": {\n        \"userId\": \"00000000-0000-0000-0000-000000000002\",\n        \"displayName\": \"Salma Nasr\",\n        \"avatarUrl\": null\n      },\n      \"lastMessage\": null,\n      \"unreadCount\": 0\n    }\n  ],\n  \"page\": 1,\n  \"pageSize\": 20,\n  \"totalCount\": 1,\n  \"totalPages\": 1\n}"
+            }
+          ]
+        },
+        {
+          "name": "Open or get conversation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientUserId\": \"{{recipientUserId}}\",\n  \"bookingId\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/chat/conversations",
+            "description": "Endpoint 2 → always 200, never a duplicate: created=true means new history; created=false returns the existing row for the same normalized pair + booking reference (and reopens it for this caller only if this caller had hidden it — the peer's hidden flag and lastActivityOnUtc stay untouched). bookingId null = direct scope; replace null with a booking GUID for booking-scoped chat (a booking-scoped row and a direct row between the same pair are different conversations). Self-open, unknown/deleted recipient, empty recipient id, and a Guid.Empty booking reference all collapse into the same generic 404 Chat.Conversation.NotFound. Not yet checked (documented TODO seam): the role/participant matrix from docs/chat/plan.md and booking state (both users on a non-cancelled, non-expired booking) — a booking id is currently stored as-is."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.conversationId) { pm.collectionVariables.set('conversationId', body.conversationId); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 — New conversation (created true)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"recipientUserId\": \"{{recipientUserId}}\",\n  \"bookingId\": null\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"conversationId\": \"0198e2c2-4444-7a10-8000-00000000c001\",\n  \"created\": true\n}"
+            },
+            {
+              "name": "200 — Existing conversation returned (created false)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"recipientUserId\": \"{{recipientUserId}}\",\n  \"bookingId\": null\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"conversationId\": \"0198e2c2-4444-7a10-8000-00000000c001\",\n  \"created\": false\n}"
+            },
+            {
+              "name": "404 — Ineligible/unknown open (generic privacy 404)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"recipientUserId\": \"00000000-0000-0000-0000-0000000000ff\",\n  \"bookingId\": null\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/chat/conversations\",\n  \"code\": \"Chat.Conversation.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. Attachments",
+      "description": "Endpoints 5 and 6. Conversation-scoped, uploader-bound uploads in private storage; serving is controller-authorised and participant-only.",
+      "item": [
+        {
+          "name": "Upload attachment (multipart file)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/attachments",
+            "description": "Endpoint 5 → 201 {attachmentId, fileName, contentType, sizeBytes}; fileName is the sanitized echo of the original name (last path segment, fallback \"file\") while storage uses a generated safe key. multipart/form-data with a single file field is required (415 otherwise). Limits by declared type: image/jpeg, image/png, image/webp ≤ 5 MB (5,242,880); video/mp4 ≤ 50 MB (52,428,800); application/pdf ≤ 10 MB (10,485,760) — documents are PDF-only in Lane A, no voice notes. Magic bytes are verified against the declared type (a matching content type alone is never trusted). Errors: 400 Chat.Attachment.Invalid (missing/empty file, length mismatch, signature mismatch, persistence failure), 400 Chat.Attachment.TooLarge, 400 Chat.Attachment.UnsupportedType; 404 generic privacy (Chat.Conversation.NotFound) when the conversation id is unknown or the caller is not a participant — that gate runs before file validation; the host also caps the whole request at 50 MB (413/connection reset). Uploads are created unbound and bind to a single message when Lane B's send path runs. Select a local file before sending."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.attachmentId) { pm.collectionVariables.set('attachmentId', body.attachmentId); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 — Attachment created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "file", "type": "file", "src": "" }
+                  ]
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/attachments"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"attachmentId\": \"0198e2c2-4444-7a10-8000-00000000a001\",\n  \"fileName\": \"referral.pdf\",\n  \"contentType\": \"application/pdf\",\n  \"sizeBytes\": 184320\n}"
+            },
+            {
+              "name": "400 — Unsupported attachment type",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "file", "type": "file", "src": "" }
+                  ]
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/attachments"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000c001/attachments\",\n  \"code\": \"Chat.Attachment.UnsupportedType\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "404 — Unknown or foreign conversation (generic privacy 404)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    { "key": "file", "type": "file", "src": "" }
+                  ]
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000dead/attachments"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000dead/attachments\",\n  \"code\": \"Chat.Conversation.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Download attachment file",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/attachments/{{attachmentId}}/file",
+            "description": "Endpoint 6 → 200 raw bytes with the stored content type plus Cache-Control: no-store and Pragma: no-cache. Participant-only: unknown conversation, foreign caller, unknown attachment id, an attachment owned by a different conversation, and a missing blob all return the identical generic 404 (Chat.Attachment.NotFound), so the caller cannot tell which check failed. No signed URLs exist in V1; 401 without a token."
+          },
+          "response": [
+            {
+              "name": "200 — File bytes with no-store headers (body omitted from this static example)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/attachments/{{attachmentId}}/file"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "text",
+              "header": [
+                { "key": "Content-Type", "value": "application/pdf" },
+                { "key": "Cache-Control", "value": "no-store" },
+                { "key": "Pragma", "value": "no-cache" }
+              ],
+              "cookie": [],
+              "body": ""
+            },
+            {
+              "name": "404 — Unknown/foreign/cross-conversation file (generic privacy 404)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/attachments/0198e2c2-4444-7a10-8000-00000000dead/file"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000c001/attachments/0198e2c2-4444-7a10-8000-00000000dead/file\",\n  \"code\": \"Chat.Attachment.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "03. Read state",
+      "description": "Endpoint 7. Per-user read watermark recorded verbatim; unread counts and read ticks are Lane B's to interpret.",
+      "item": [
+        {
+          "name": "Mark conversation read",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"lastReadMessageId\": \"{{lastReadMessageId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/read",
+            "description": "Endpoint 7 → 204, idempotent: one row per (conversation, user), so repeats update the same row and refresh its ReadOnUtc stamp. The message id is recorded verbatim — Lane A has no Message table, so any non-empty GUID is accepted and Lane B interprets marks (unread counts, read ticks); set lastReadMessageId to a real message id once Lane B exists. Errors: 400 Chat.ConversationRead.Invalid for a participant sending the empty GUID 00000000-0000-0000-0000-000000000000 or an omitted lastReadMessageId property; a non-GUID or missing body never reaches the handler (generic model-binding 400, no Chat code); the generic privacy 404 for unknown/foreign conversations runs before payload validation, so a malformed body is never an existence oracle. A read mark never changes lastActivityOnUtc, hiding, or visibility, and survives hide/reopen."
+          },
+          "response": [
+            {
+              "name": "204 — Mark recorded (idempotent)",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lastReadMessageId\": \"{{lastReadMessageId}}\"\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/read"
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": ""
+            },
+            {
+              "name": "400 — Empty lastReadMessageId (participant's own mistake)",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lastReadMessageId\": \"00000000-0000-0000-0000-000000000000\"\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/read"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000c001/read\",\n  \"code\": \"Chat.ConversationRead.Invalid\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "404 — Unknown or foreign conversation (gate runs before validation)",
+              "originalRequest": {
+                "method": "PUT",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"lastReadMessageId\": \"{{lastReadMessageId}}\"\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000dead/read"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000dead/read\",\n  \"code\": \"Chat.Conversation.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Blocks",
+      "description": "Endpoint 9. Per-user, directional blocks. Block state is not consulted by any Lane A route; Lane B enforces it at send time with the generic non-participant failure.",
+      "item": [
+        {
+          "name": "Block user",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"blockedUserId\": \"{{blockedUserId}}\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/chat/blocks",
+            "description": "Endpoint 9 → 204, idempotent (a repeated block of the same user succeeds again; the unique pair index is the database backstop). Directional: the (blocker, blocked) row denies sends FROM the blocked user TO the blocker at Lane B send time, while the blocker may still send. Errors: 400 Chat.Block.Invalid for self-block or an empty/absent blockedUserId; the generic privacy 404 (Chat.Block.NotFound) when the target id is not registered, so this route can never probe whether an arbitrary user id exists. Blocking changes nothing about conversations today (list, open, read, hide, upload, serve are unaffected)."
+          },
+          "response": [
+            {
+              "name": "204 — Blocked (or already blocked)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"blockedUserId\": \"{{blockedUserId}}\"\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/blocks"
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": ""
+            },
+            {
+              "name": "400 — Self-block (Chat.Block.Invalid)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"blockedUserId\": \"00000000-0000-0000-0000-000000000001\"\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/blocks"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/chat/blocks\",\n  \"code\": \"Chat.Block.Invalid\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "404 — Unknown target user (generic privacy 404)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"blockedUserId\": \"00000000-0000-0000-0000-0000000000ff\"\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/blocks"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/chat/blocks\",\n  \"code\": \"Chat.Block.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Unblock user",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/chat/blocks/{{blockedUserId}}",
+            "description": "Endpoint 9 → always 204, idempotent: a missing row still succeeds, so unblock never reveals whether a block ever existed. Removing the row is the complete Lane B off-switch — send-time checks read the block rows directly, so unblocking restores sending. 401 without a token."
+          },
+          "response": [
+            {
+              "name": "204 — Unblock succeeded (also when no block existed)",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/blocks/{{blockedUserId}}"
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": ""
+            }
+          ]
+        },
+        {
+          "name": "List blocked users",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/chat/blocks",
+            "description": "Endpoint 9 → 200 array of the caller's own blocked user ids, most-recent block first (CreatedOnUtc descending). Per-user isolation: ids blocked by anyone else are never listed."
+          },
+          "response": [
+            {
+              "name": "200 — Caller's blocked user ids (most recent first)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/blocks"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "[\n  \"00000000-0000-0000-0000-000000000009\",\n  \"00000000-0000-0000-0000-000000000007\"\n]"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "05. Hide conversation",
+      "description": "Endpoint 10. Hide is a per-user visibility flag, not a delete — the peer keeps the history and nothing is erased.",
+      "item": [
+        {
+          "name": "Hide conversation (delete for me only)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}",
+            "description": "Endpoint 10 → 204, idempotent for participants. The row disappears from this caller's GET conversations list while the other party keeps it and its full history; nothing is erased (there is no erasure path in V1, retention is indefinite). Hiding is not activity: lastActivityOnUtc, read marks, and the peer's view are untouched. Reopen by calling \"Open or get conversation\" again for the same pair (+ booking) — that returns created:false and unhides the caller only. Unknown or foreign conversation ids answer the generic privacy 404. 401 without a token."
+          },
+          "response": [
+            {
+              "name": "204 — Hidden (also when already hidden)",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}"
+              },
+              "status": "No Content",
+              "code": 204,
+              "_postman_previewlanguage": "json",
+              "header": [],
+              "cookie": [],
+              "body": ""
+            },
+            {
+              "name": "404 — Unknown or foreign conversation (generic privacy 404)",
+              "originalRequest": {
+                "method": "DELETE",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000dead"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000dead\",\n  \"code\": \"Chat.Conversation.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06. Messages (Lane B)",
+      "description": "Endpoints 3 and 4. Immutable send-only messages with per-conversation idempotency keys; cursor list newest first. Send-time enforcement of blocks (generic failure) and hiding; a successful create fires an ids-only in-app alert through the notification seam (no second alert on replay).",
+      "item": [
+        {
+          "name": "List messages (cursor page, newest first)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/messages?limit=30",
+            "description": "Endpoint 3 → 200 {items, nextCursor, hasMore}, ordered by (sentOnUtc, id) descending. limit defaults to 30 and is clamped to 1–100 (never rejected). Omit beforeMessageId for the newest page; pass the previous nextCursor back as beforeMessageId to page older (a raw message id also works when it resolves inside this conversation). Write side effect: the recipient's first fetch stamps deliveredOnUtc (set-once, server UTC) on every returned message they did not send; the sender's fetch never stamps their own messages; only messages the fetch actually returns are stamped. readOnUtc on each item is computed from the reader's read mark (the reader is whoever did not send the message) — see docs/app/chat/messages.md for the full read rule. Errors: 404 generic privacy (Chat.Conversation.NotFound) for unknown, foreign, or hidden-for-requester conversations (reopen with endpoint 2 restores); 404 generic privacy (Chat.Message.NotFound) for a malformed beforeMessageId or one that names a message unknown to or outside this conversation — the parameter can never probe ids; 401 without a token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  const items = body.items || [];",
+                  "  if (items.length > 0) {",
+                  "    pm.collectionVariables.set('messageId', items[0].id);",
+                  "    pm.collectionVariables.set('lastReadMessageId', items[0].id);",
+                  "  }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "200 — Cursor page (newest first)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/messages?limit=30"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"items\": [\n    {\n      \"id\": \"0198e2c2-4444-7a10-8000-00000000b002\",\n      \"clientMessageId\": \"web-0002\",\n      \"senderUserId\": \"00000000-0000-0000-0000-000000000001\",\n      \"type\": \"Text\",\n      \"text\": \"Hello — is Thursday still fine for the visit?\",\n      \"attachment\": null,\n      \"sentOnUtc\": \"2026-10-11T09:15:30Z\",\n      \"deliveredOnUtc\": \"2026-10-11T09:16:02Z\",\n      \"readOnUtc\": null\n    },\n    {\n      \"id\": \"0198e2c2-4444-7a10-8000-00000000b001\",\n      \"clientMessageId\": \"web-0001\",\n      \"senderUserId\": \"00000000-0000-0000-0000-000000000002\",\n      \"type\": \"File\",\n      \"text\": null,\n      \"attachment\": { \"attachmentId\": \"0198e2c2-4444-7a10-8000-00000000a001\" },\n      \"sentOnUtc\": \"2026-10-11T09:10:00Z\",\n      \"deliveredOnUtc\": \"2026-10-11T09:16:02Z\",\n      \"readOnUtc\": \"2026-10-11T09:20:11Z\"\n    }\n  ],\n  \"nextCursor\": \"NjM5MjczMDY4NDAwMDAwMDAwOjAxOThlMmMyNDQ0NDdhMTA4MDAwMDAwMDAwMDBiMDAz\",\n  \"hasMore\": true\n}"
+            },
+            {
+              "name": "404 — Unknown, foreign, or hidden conversation (generic privacy 404)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000dead/messages?limit=30"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000dead/messages\",\n  \"code\": \"Chat.Conversation.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "404 — Unresolvable beforeMessageId (message-scoped privacy 404)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/messages?beforeMessageId=0198e2c2-4444-7a10-8000-00000000dead&limit=30"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000c001/messages\",\n  \"code\": \"Chat.Message.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Send text message (idempotent clientMessageId)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientMessageId\": \"{{clientMessageId}}\",\n  \"type\": \"Text\",\n  \"text\": \"Hello from Postman (static example)\",\n  \"attachmentId\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/messages",
+            "description": "Endpoint 4 → 201 on create, 200 on an exact replay of the same clientMessageId with the same content (the body is the message item either way; the status code alone tells them apart), 409 Chat.Message.IdempotencyConflict when the key is reused with different content. Messages are immutable (no edit/delete) and retention is indefinite; all stamps are server-set UTC. Payload rules (each failure → 400 Chat.Message.Invalid): type must be the name Text or File (case-insensitive, never numeric); clientMessageId is trimmed, 1–100 chars, unique per conversation; Text requires trimmed text of 1–2000 chars and no attachmentId; File requires attachmentId (not the empty GUID), no text, and an attachment of this conversation uploaded by the sender that is not already bound (an unknown/foreign/cross-conversation attachment id is instead the generic privacy 404 Chat.Attachment.NotFound; an already-bound one is the 400). Gate order: unknown, foreign, and hidden-for-requester conversations, and a blocked sender, all answer the identical generic privacy 404 (Chat.Conversation.NotFound) — the blocked sender never learns a block exists; a non-participant with a malformed body still gets the 404, never a validation code. Sending bumps lastActivityOnUtc. Side effect: after the row commits, an awaited ids-only in-app alert is produced for the non-sender (conversation id + message id, never the text); an exact replay fires no second alert, and a producer failure surfaces to the client while the message stays committed (a retry with the same key takes the 200 replay path — documented V1 residual: that message may go unalerted)."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201 || pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.id) { pm.collectionVariables.set('messageId', body.id); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 — Message created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientMessageId\": \"{{clientMessageId}}\",\n  \"type\": \"Text\",\n  \"text\": \"Hello from Postman (static example)\",\n  \"attachmentId\": null\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/messages"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"0198e2c2-4444-7a10-8000-00000000b003\",\n  \"clientMessageId\": \"postman-0001\",\n  \"senderUserId\": \"00000000-0000-0000-0000-000000000001\",\n  \"type\": \"Text\",\n  \"text\": \"Hello from Postman (static example)\",\n  \"attachment\": null,\n  \"sentOnUtc\": \"2026-10-11T09:25:00Z\",\n  \"deliveredOnUtc\": null,\n  \"readOnUtc\": null\n}"
+            },
+            {
+              "name": "200 — Exact replay of the same clientMessageId (original item)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientMessageId\": \"{{clientMessageId}}\",\n  \"type\": \"Text\",\n  \"text\": \"Hello from Postman (static example)\",\n  \"attachmentId\": null\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/messages"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"id\": \"0198e2c2-4444-7a10-8000-00000000b003\",\n  \"clientMessageId\": \"postman-0001\",\n  \"senderUserId\": \"00000000-0000-0000-0000-000000000001\",\n  \"type\": \"Text\",\n  \"text\": \"Hello from Postman (static example)\",\n  \"attachment\": null,\n  \"sentOnUtc\": \"2026-10-11T09:25:00Z\",\n  \"deliveredOnUtc\": \"2026-10-11T09:26:10Z\",\n  \"readOnUtc\": null\n}"
+            },
+            {
+              "name": "409 — Same clientMessageId with different content",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientMessageId\": \"{{clientMessageId}}\",\n  \"type\": \"Text\",\n  \"text\": \"A different body under the same key\",\n  \"attachmentId\": null\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/messages"
+              },
+              "status": "Conflict",
+              "code": 409,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/409\",\n  \"title\": \"Conflict\",\n  \"status\": 409,\n  \"detail\": \"The request conflicts with the current state.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000c001/messages\",\n  \"code\": \"Chat.Message.IdempotencyConflict\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "400 — Sender's own payload invalid (empty text)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientMessageId\": \"{{clientMessageId}}\",\n  \"type\": \"Text\",\n  \"text\": \"\",\n  \"attachmentId\": null\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/{{conversationId}}/messages"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000c001/messages\",\n  \"code\": \"Chat.Message.Invalid\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "404 — Unknown/foreign/hidden conversation or blocked sender (indistinguishable)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"clientMessageId\": \"{{clientMessageId}}\",\n  \"type\": \"Text\",\n  \"text\": \"Hello from Postman (static example)\",\n  \"attachmentId\": null\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000dead/messages"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/chat/conversations/0198e2c2-4444-7a10-8000-00000000dead/messages\",\n  \"code\": \"Chat.Conversation.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07. Unread count (Lane B)",
+      "description": "Endpoint 8. Requester-scoped unread totals over visible conversations; the same read rule backs each conversation's unreadCount in the list and the readOnUtc ticks on items.",
+      "item": [
+        {
+          "name": "Get unread totals",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/chat/unread-count",
+            "description": "Endpoint 8 → always 200 {unreadMessagesCount, unreadConversationsCount} (a requester with nothing visible answers 0/0 — this route has no 404 path). unreadMessagesCount counts messages the caller did not send that the read rule does not count as read for them; unreadConversationsCount counts visible conversations holding at least one such message. Conversations the caller hid are excluded entirely (a hidden conversation cannot contribute a badge; reopening via endpoint 2 restores it). The read rule (docs/app/chat/messages.md): an explicit read stamp wins; otherwise the caller's read mark (endpoint 7) is a watermark over (sentOnUtc, id) when its lastReadMessageId resolves inside the conversation; a Lane A-era unresolvable id falls back to the mark's own timestamp; no mark means nothing is read. 401 without a token."
+          },
+          "response": [
+            {
+              "name": "200 — Unread totals",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/unread-count"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"unreadMessagesCount\": 3,\n  \"unreadConversationsCount\": 1\n}"
+            },
+            {
+              "name": "200 — Nothing visible (0/0)",
+              "originalRequest": {
+                "method": "GET",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+                ],
+                "url": "{{baseUrl}}/api/v1/chat/unread-count"
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"unreadMessagesCount\": 0,\n  \"unreadConversationsCount\": 0\n}"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08. Report conversation (Lane B)",
+      "description": "Endpoint 11. A participant reports a conversation or one message in it; Support reviews via the Sanad.Admin.Chat collection (endpoints 12-15).",
+      "item": [
+        {
+          "name": "Submit report",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"conversationId\": \"{{conversationId}}\",\n  \"messageId\": null,\n  \"reason\": \"Harassment in this conversation\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/chat/reports",
+            "description": "Endpoint 11 → 201 {reportId}; the new report enters the Support queue as Open. Only a participant may report (a hidden conversation still qualifies — reporting is how it reaches Support). messageId is optional: null reports the conversation as a whole; a value must be a message of THIS conversation (unknown ids, the empty GUID, and another conversation's message id are the indistinguishable generic privacy 404 Chat.Report.NotFound). reason is trimmed and must be 1–500 characters (else 400 Chat.Report.Invalid). Gate-then-validate: membership and message ownership run before reason validation, so a non-participant probing with a bad reason still gets the 404 and the endpoint can never probe conversation ids. Submitting is not idempotent — two submits create two reports. Review, dismiss, and uphold live on the admin surface (Chat.SupportAdmin: SuperAdmin + SupportAdmin). 401 without a token."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "  const body = pm.response.json();",
+                  "  if (body.reportId) { pm.collectionVariables.set('reportId', body.reportId); }",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "response": [
+            {
+              "name": "201 — Report created",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"conversationId\": \"{{conversationId}}\",\n  \"messageId\": null,\n  \"reason\": \"Harassment in this conversation\"\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/reports"
+              },
+              "status": "Created",
+              "code": 201,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"reportId\": \"0198e2c2-4444-7a10-8000-00000000e001\"\n}"
+            },
+            {
+              "name": "400 — Reason out of bounds (reporter's own mistake)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"conversationId\": \"{{conversationId}}\",\n  \"messageId\": null,\n  \"reason\": \"\"\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/reports"
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/400\",\n  \"title\": \"Bad Request\",\n  \"status\": 400,\n  \"detail\": \"The request could not be completed.\",\n  \"instance\": \"/api/v1/chat/reports\",\n  \"code\": \"Chat.Report.Invalid\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            },
+            {
+              "name": "404 — Unknown or foreign conversation (generic privacy 404)",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  { "key": "Authorization", "value": "Bearer {{accessToken}}" },
+                  { "key": "Content-Type", "value": "application/json" }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"conversationId\": \"0198e2c2-4444-7a10-8000-00000000dead\",\n  \"messageId\": null,\n  \"reason\": \"Harassment in this conversation\"\n}"
+                },
+                "url": "{{baseUrl}}/api/v1/chat/reports"
+              },
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                { "key": "Content-Type", "value": "application/problem+json" }
+              ],
+              "cookie": [],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/chat/reports\",\n  \"code\": \"Chat.Report.NotFound\",\n  \"traceId\": \"00-00000000000000000000000000000000-0000000000000000-00\"\n}"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
