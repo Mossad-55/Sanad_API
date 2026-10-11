@@ -3,6 +3,7 @@ using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
+using Sanad.Modules.Chat.Application.Messages;
 using Sanad.Modules.Chat.Domain.Conversations;
 
 namespace Sanad.Modules.Chat.Application.Conversations;
@@ -53,6 +54,15 @@ public sealed class GetConversationsQueryHandler
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
+        // Lane B: one pass over the message facts for this page (last
+        // message + not-read count per conversation), computed by the same
+        // rule that backs endpoint 8 so the two can never disagree.
+        MessageFacts facts = await MessageReadRules.LoadAsync(
+            _dbContext,
+            request.Requester,
+            conversations,
+            cancellationToken);
+
         var items = new List<ConversationListItemResponse>(
             conversations.Count);
 
@@ -73,12 +83,10 @@ public sealed class GetConversationsQueryHandler
                     otherParticipant.Value,
                     profile?.DisplayName ?? string.Empty,
                     profile?.AvatarUrl),
-                // STUB (Lane B): the Messages module does not exist in this
-                // lane, so lastMessage is always null and unreadCount is
-                // always 0. Wire both to Message once Lane B lands — the
-                // field names are already frozen by the contract.
-                LastMessage: null,
-                UnreadCount: 0));
+                // LoadAsync gives every conversation it was handed an entry,
+                // so both reads are safe indexers.
+                facts.LastMessages[conversation.Id],
+                facts.UnreadCounts[conversation.Id]));
         }
 
         return Result<PagedResult<ConversationListItemResponse>>.Success(

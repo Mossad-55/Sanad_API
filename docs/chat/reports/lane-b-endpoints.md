@@ -1,0 +1,37 @@
+# Report: lane-b-endpoints — Message send/list/receipts/unread-count endpoints with participant authorization
+
+- Task name: Message send/list/receipts/unread-count endpoints with participant authorization; focused handler/controller tests (Lane B item 2).
+- Branch: `opencode/chat-lane-b` (base: Lane A tip `e842d87`; main base `fe91d64`). Dependency: Lane A (unmerged; this lane merges after Lane A lands).
+- Final SHA (task content, verified): `878140ea1b417c50e222fff138d58523cdfb3bb3`
+  - Convention (as in Lane A): `final SHA` = task-content commit whose code passed the gates. Docs commit follows separately, docs-only.
+- Changed files (task commit `878140e`):
+  - `src/Modules/Chat/Application/Sanad.Modules.Chat.Application/Messages/` (new: `SendMessageCommand.cs`, `GetMessagesQuery.cs`, `GetUnreadCountQuery.cs`, `MessageCursor.cs`, `MessageReadRules.cs`, `MessageItemFactory.cs`, `MessageErrors.cs`, `MessageResponses.cs`)
+  - `src/Modules/Chat/Application/.../Abstractions/Data/IChatDbContext.cs` (modified: +Messages, +Reports)
+  - `src/Modules/Chat/Application/.../Conversations/GetConversationsQueryHandler.cs` (modified: stubs wired to `MessageReadRules` — sanctioned Lane A touch, behavior otherwise identical)
+  - `src/Modules/Chat/Infrastructure/.../Persistence/ChatDbContext.cs` (modified: +DbSets)
+  - `src/Modules/Chat/Infrastructure/.../Persistence/Configurations/MessageConfiguration.cs` (new)
+  - `src/Modules/Chat/Infrastructure/.../Persistence/Configurations/ReportConfiguration.cs` (new)
+  - `src/Modules/Chat/Infrastructure/.../Persistence/Migrations/` (rescaffolded: `20261011111627_InitialChat`, old `20261010134949` deleted; still ONE migration)
+  - `src/API/Sanad.API/Controllers/ChatController.cs` (modified: endpoints 3, 4, 8; 409 forced in-controller)
+  - `src/API/Sanad.API/Controllers/Requests/ChatSendMessageRequest.cs` (new)
+  - `tests/Sanad.UnitTests/Chat/MessageTests.cs` (extended 15 → 35), `AttachmentTests.cs` (stub updated for new DbSets)
+- Exact verification commands (workdir `D:\Sanad_API-OpenCode`):
+  - `dotnet build src/API/Sanad.API/Sanad.API.csproj --no-restore -m:1 --nologo -v minimal` → exit 0, 0 warnings, 0 errors (run twice: after implementer drop and again after reverting unrelated churn — both green).
+  - `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --filter "FullyQualifiedName~Sanad.UnitTests.Chat" --nologo -v minimal` → exit 0; Passed 113, Failed 0, Skipped 0 (93 prior + 20 new).
+  - Full suite (implementer-run, for the record): 2745 passed, 3 skipped, 1 failed = pre-existing Finance date test (untouched, see lane-a-docs.md).
+  - `dotnet ef migrations has-pending-model-changes --project ...Chat.Infrastructure --startup-project ...Chat.Infrastructure --context ChatDbContext` → exit 0, none pending. Migration folder holds exactly one set.
+  - `git diff --check` → clean.
+  - Postman JSON validation: not applicable (no Postman files touched).
+- Incident during this item (handled, no residue): the implementer run left whole-file LF→CRLF churn in 10 unrelated files (`.gitignore`, `docs/tools/*`, `launchSettings.json`, Seeding guards, `tests/Bruno*`, `tools/*`, one unrelated test). All 10 were reverted via `git checkout --` to HEAD (prior tip was verified clean, so HEAD state is authoritative). Post-revert `git status` shows only owned files; build + focused tests re-ran green. A scratch probe test file with intentional failures was deleted by the implementer before handback.
+- Skipped/blocked checks with reasons:
+  - Full unit + architecture suites (lane gate): deferred to end of Lane B.
+  - Bruno/API runtime/DB: not run; no authorization. Limitation, not blocker.
+  - Migration application: explicitly NOT done (authored only).
+- Dependencies confirmed in main: `NotificationCursor` base64 pattern, 1–100 clamp precedent, block enforcement predicate, gate-then-validate order, `UpdateLastActivity`, `Attachment.Bind()`. Present at base.
+- Remaining owner decisions:
+  - Read rule: reader-scoped watermark — a message is read for the viewer iff their ReadState references a message with SentOnUtc >= its own (timestamp fallback when id unknown; explicit `ReadOnUtc` stamp wins). Item `readOnUtc` is computed for the *other* participant.
+  - Hidden conversations excluded from send, list, and unread totals (reopen restores).
+  - 409 `Chat.Message.IdempotencyConflict` forced in `ChatController` (shared mapper untouched); block denial reuses `Chat.Conversation.NotFound`.
+  - Exact replay (same id + same type/text/attachment) → 200 original; same id different content → 409. Delivered stamped on recipient fetch only, idempotent.
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime; no message content logged).
+- Notes: endpoint 11, admin controller, notifications untouched (later items); nothing pushed/merged/deployed.

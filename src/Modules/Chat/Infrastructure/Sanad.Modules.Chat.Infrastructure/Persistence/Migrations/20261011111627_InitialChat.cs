@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using Microsoft.EntityFrameworkCore.Migrations;
 
 #nullable disable
@@ -98,6 +98,68 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
                         onDelete: ReferentialAction.Cascade);
                 });
 
+            migrationBuilder.CreateTable(
+                name: "Messages",
+                schema: "chat",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ConversationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    SenderUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Type = table.Column<int>(type: "integer", nullable: false),
+                    Text = table.Column<string>(type: "character varying(2000)", maxLength: 2000, nullable: true),
+                    AttachmentId = table.Column<Guid>(type: "uuid", nullable: true),
+                    ClientMessageId = table.Column<string>(type: "character varying(100)", maxLength: 100, nullable: false),
+                    SentOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    DeliveredOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ReadOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Messages", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Messages_Conversations_ConversationId",
+                        column: x => x.ConversationId,
+                        principalSchema: "chat",
+                        principalTable: "Conversations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "Reports",
+                schema: "chat",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    ConversationId = table.Column<Guid>(type: "uuid", nullable: false),
+                    MessageId = table.Column<Guid>(type: "uuid", nullable: true),
+                    ReporterUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Reason = table.Column<string>(type: "character varying(500)", maxLength: 500, nullable: false),
+                    Status = table.Column<int>(type: "integer", nullable: false),
+                    CreatedOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    ResolvedOnUtc = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    ResolvedBy = table.Column<Guid>(type: "uuid", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_Reports", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_Reports_Conversations_ConversationId",
+                        column: x => x.ConversationId,
+                        principalSchema: "chat",
+                        principalTable: "Conversations",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_Reports_Messages_MessageId",
+                        column: x => x.MessageId,
+                        principalSchema: "chat",
+                        principalTable: "Messages",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
             migrationBuilder.CreateIndex(
                 name: "IX_Attachments_ConversationId",
                 schema: "chat",
@@ -153,6 +215,44 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
                 columns: new[] { "ParticipantOne", "ParticipantTwo", "Scope" },
                 unique: true,
                 filter: "\"BookingId\" IS NULL");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Messages_ConversationId_ClientMessageId",
+                schema: "chat",
+                table: "Messages",
+                columns: new[] { "ConversationId", "ClientMessageId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Messages_ConversationId_SenderUserId",
+                schema: "chat",
+                table: "Messages",
+                columns: new[] { "ConversationId", "SenderUserId" });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Messages_ConversationId_SentOnUtc_Id",
+                schema: "chat",
+                table: "Messages",
+                columns: new[] { "ConversationId", "SentOnUtc", "Id" },
+                descending: new[] { false, true, true });
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Reports_ConversationId",
+                schema: "chat",
+                table: "Reports",
+                column: "ConversationId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Reports_MessageId",
+                schema: "chat",
+                table: "Reports",
+                column: "MessageId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_Reports_Status",
+                schema: "chat",
+                table: "Reports",
+                column: "Status");
         }
 
         /// <inheritdoc />
@@ -168,6 +268,14 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
 
             migrationBuilder.DropTable(
                 name: "ConversationReadStates",
+                schema: "chat");
+
+            migrationBuilder.DropTable(
+                name: "Reports",
+                schema: "chat");
+
+            migrationBuilder.DropTable(
+                name: "Messages",
                 schema: "chat");
 
             migrationBuilder.DropTable(

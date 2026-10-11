@@ -3,6 +3,8 @@ using Sanad.Modules.Chat.Application.Abstractions.Data;
 using Sanad.Modules.Chat.Domain.Attachments;
 using Sanad.Modules.Chat.Domain.Blocks;
 using Sanad.Modules.Chat.Domain.Conversations;
+using Sanad.Modules.Chat.Domain.Messages;
+using Sanad.Modules.Chat.Domain.Reports;
 
 namespace Sanad.Modules.Chat.Infrastructure.Persistence;
 
@@ -19,6 +21,8 @@ public class ChatDbContext : DbContext, IChatDbContext
     public DbSet<Attachment> Attachments { get; set; } = null!;
     public DbSet<Block> Blocks { get; set; } = null!;
     public DbSet<ConversationReadState> ReadStates { get; set; } = null!;
+    public DbSet<Message> Messages { get; set; } = null!;
+    public DbSet<Report> Reports { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

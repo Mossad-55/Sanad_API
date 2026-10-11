@@ -1,0 +1,29 @@
+# Report: lane-b-domain — Message + Report domain (idempotency key uniqueness, read/delivered stamping rules, report lifecycle)
+
+- Task name: Message + Report domain (idempotency key uniqueness, read/delivered stamping rules, report lifecycle); focused domain tests (Lane B item 1).
+- Branch: `opencode/chat-lane-b` (base: Lane A tip `e842d87`; main base `fe91d64`).
+- Base SHA: `e842d87`. Dependency: Lane A (unmerged; this lane merges after Lane A lands per the Ready-box dependency rule).
+- Final SHA (task content, verified): `0c61f4ce30831215a229a2d2307f2c3221900ab8`
+  - Convention (as in Lane A): `final SHA` = task-content commit whose code passed the gates. Docs commit follows separately, docs-only.
+- Changed files (task commit `0c61f4c`, all new, zero modifications):
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Messages/MessageId.cs`
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Messages/MessageType.cs` (Text=0, File=1)
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Messages/Message.cs`
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Reports/ReportId.cs`
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Reports/ReportStatus.cs` (Open=0, Dismissed=1, Upheld=2)
+  - `src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Reports/Report.cs`
+  - `tests/Sanad.UnitTests/Chat/MessageTests.cs` (14 tests)
+  - `tests/Sanad.UnitTests/Chat/ReportTests.cs` (12 tests)
+- Exact verification commands (workdir `D:\Sanad_API-OpenCode`):
+  - `dotnet build src/Modules/Chat/Domain/Sanad.Modules.Chat.Domain/Sanad.Modules.Chat.Domain.csproj --nologo -v minimal` → exit 0, 0 warnings, 0 errors.
+  - `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --filter "FullyQualifiedName~Sanad.UnitTests.Chat" --nologo -v minimal` → exit 0; Passed 93, Failed 0, Skipped 0 (67 prior + 26 new).
+  - `git diff --check` → clean.
+  - Postman JSON validation: not applicable (no Postman files touched).
+- Skipped/blocked checks with reasons:
+  - Full unit + architecture suites: deferred to once-per-lane gate at end of Lane B.
+  - Bruno/API runtime/DB: not run; no authorization; pure-domain change. Limitation, not blocker.
+  - Migration: none in this item (persistence comes with the endpoints item via approved InitialChat rescaffold).
+- Dependencies confirmed in main: `AggregateRoot<TId>`, `DomainException`, Guid-v7 typed-id shape, sibling aggregates. Present at base.
+- Remaining owner decisions: set-once stamps (first fetch/mark wins; non-UTC still throws on no-op path); `ClientMessageId` max 100 (no Community precedent); File carrying a text body is rejected (not discarded); uniqueness per conversation stays DB-index + handler territory (200/409 replay contract implemented in endpoints item).
+- Effective model: `muse-spark-1.3-contributor-free` (OpenCode clone, win32; no API/DB/Bruno runtime; no message content logged).
+- Notes: nothing pushed/merged/deployed; no Lane A files modified; no handler/controller/persistence/notification/docs/Postman files touched.
