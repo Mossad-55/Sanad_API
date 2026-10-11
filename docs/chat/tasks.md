@@ -43,12 +43,12 @@ Owns: `Modules/Chat/Domain` (Message, Report),
 
 Done criteria per item: same as Lane A. Lane B integrates after Lane A lands.
 
-## Joint gates (Integrator-owned)
+## Joint gates (Integrator-owned — all run on merged `main` `4864a93`, 2026-10-11)
 
-- [ ] Not started — Seam review: DTOs + error codes match `plan.md` exactly.
-- [ ] Not started — Full solution build (0 warnings) + full unit + architecture suites once.
-- [ ] Not started — `git diff --check`, Postman JSON validation.
-- [ ] Not started — Risk-based Bruno on disposable fixtures only, only if the contract demands live evidence.
+- [x] Done — Seam review: DTOs + error codes match `plan.md` exactly (lane-a-docs + lane-b-docs contract maps re-verified: 0 gaps; merged file list is owned Chat/docs/Postman + 4 known shared files).
+- [x] Done — Full solution build (0 warnings, 0 errors, `TreatWarningsAsErrors`) + full unit (2822 passed, 0 failed, 3 Postgres-only skips) + architecture suite (1/1) once.
+- [x] Done — `git diff --check` clean, Postman JSON validation (App + Admin Chat collections both parse).
+- [x] Done — Risk-based Bruno: not selected (no live HTTP boundary beyond unit coverage; Postman examples statically validated, never executed). Recorded limitation, not a blocker.
 
 ## Ready for integration (Integrator-owned discovery)
 
@@ -61,14 +61,14 @@ boxes, merges qualifying tasks in dependency order (Lane A before Lane B),
 marks each merged box with the `main` SHA, and pushes `main` once. Workers
 never merge or push; workers write the report file as part of Done.
 
-- [x] lane-a-domain — report: `docs/chat/reports/lane-a-domain.md` (task commit `60aed69`)
-- [x] lane-a-persistence — report: `docs/chat/reports/lane-a-persistence.md` (task commits `9323639` + rescaffold addendum `c51de33`)
-- [x] lane-a-endpoints — report: `docs/chat/reports/lane-a-endpoints.md` (task commits `de7a52d` + endpoint-7 addendum `c51de33`)
-- [x] lane-a-attachments — report: `docs/chat/reports/lane-a-attachments.md` (task commit `c128c1e`)
-- [x] lane-a-blocks — report: `docs/chat/reports/lane-a-blocks.md` (task commit `7a6c7cb`)
-- [x] lane-a-docs — report: `docs/chat/reports/lane-a-docs.md` (task commit `ac6e7c2`)
-- [x] lane-b-domain — report: `docs/chat/reports/lane-b-domain.md` (task commit `0c61f4c`, branch `opencode/chat-lane-b`)
-- [x] lane-b-endpoints — report: `docs/chat/reports/lane-b-endpoints.md` (task commit `878140e`, branch `opencode/chat-lane-b`)
-- [x] lane-b-reports — report: `docs/chat/reports/lane-b-reports.md` (task commit `952e49f`, branch `opencode/chat-lane-b`)
-- [x] lane-b-notifications — report: `docs/chat/reports/lane-b-notifications.md` (task commit `0bbdbaa`, branch `opencode/chat-lane-b`)
-- [x] lane-b-docs — report: `docs/chat/reports/lane-b-docs.md` (task commit `be880a6`, branch `opencode/chat-lane-b`)
+- [x] lane-a-domain — report: `docs/chat/reports/lane-a-domain.md` (task commit `60aed69`; merged into `main` via `5d26f9f`)
+- [x] lane-a-persistence — report: `docs/chat/reports/lane-a-persistence.md` (task commits `9323639` + rescaffold addendum `c51de33`; merged via `5d26f9f`)
+- [x] lane-a-endpoints — report: `docs/chat/reports/lane-a-endpoints.md` (task commits `de7a52d` + endpoint-7 addendum `c51de33`; merged via `5d26f9f`)
+- [x] lane-a-attachments — report: `docs/chat/reports/lane-a-attachments.md` (task commit `c128c1e`; merged via `5d26f9f`)
+- [x] lane-a-blocks — report: `docs/chat/reports/lane-a-blocks.md` (task commit `7a6c7cb`; merged via `5d26f9f`)
+- [x] lane-a-docs — report: `docs/chat/reports/lane-a-docs.md` (task commit `ac6e7c2`; merged via `5d26f9f`)
+- [x] lane-b-domain — report: `docs/chat/reports/lane-b-domain.md` (task commit `0c61f4c`, branch `opencode/chat-lane-b`; merged into `main` via `4864a93`)
+- [x] lane-b-endpoints — report: `docs/chat/reports/lane-b-endpoints.md` (task commit `878140e`, branch `opencode/chat-lane-b`; merged via `4864a93`)
+- [x] lane-b-reports — report: `docs/chat/reports/lane-b-reports.md` (task commit `952e49f`, branch `opencode/chat-lane-b`; merged via `4864a93`)
+- [x] lane-b-notifications — report: `docs/chat/reports/lane-b-notifications.md` (task commit `0bbdbaa`, branch `opencode/chat-lane-b`; merged via `4864a93`)
+- [x] lane-b-docs — report: `docs/chat/reports/lane-b-docs.md` (task commit `be880a6`, branch `opencode/chat-lane-b`; merged via `4864a93`)
