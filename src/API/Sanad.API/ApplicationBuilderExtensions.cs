@@ -7,6 +7,7 @@ using Sanad.API.Seeding;
 using Sanad.BuildingBlocks.Infrastructure.Storage;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
+using Sanad.Modules.Chat.Infrastructure.Persistence;
 using Sanad.Modules.Cms.Infrastructure.Persistence;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
@@ -63,6 +64,7 @@ public static class ApplicationBuilderExtensions
             ApplyMigrations<CareHomesDbContext>(app);
             ApplyMigrations<NotificationsDbContext>(app);
             ApplyMigrations<CommunityDbContext>(app);
+            ApplyMigrations<ChatDbContext>(app);
             if (StartupMigrationPolicy.ShouldApplyFinanceMigrations(
                     app.Configuration,
                     app.Environment))
