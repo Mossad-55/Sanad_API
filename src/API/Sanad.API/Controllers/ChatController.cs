@@ -9,17 +9,20 @@ using Sanad.Modules.Chat.Application.Attachments;
 using Sanad.Modules.Chat.Application.Blocks;
 using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Application.Messages;
+using Sanad.Modules.Chat.Application.Reports;
 using Sanad.Modules.Chat.Domain.Attachments;
 using Sanad.Modules.Chat.Domain.Conversations;
+using Sanad.Modules.Chat.Domain.Messages;
 
 namespace Sanad.API.Controllers;
 
 /// <summary>
-/// Chat app routes (endpoints 1–4 and 5–10 of the frozen contract; endpoint
-/// 11 comes with the reports item). All routes resolve the participant from
-/// the JWT; unknown or foreign conversations, messages, attachments, files,
-/// and block targets answer with a privacy-preserving 404 that never reveals
-/// why.
+/// Chat app routes (endpoints 1–4, 5–11 of the frozen contract). All routes
+/// resolve the participant from the JWT; unknown or foreign conversations,
+/// messages, attachments, files, block targets, and reports answer with a
+/// privacy-preserving 404 that never reveals why. The support side of the
+/// report flow (endpoints 12–15) lives in
+/// <see cref="AdminChatReportsController"/>.
 /// </summary>
 [Authorize]
 [Route("api/v1/chat")]
@@ -421,6 +424,52 @@ public sealed class ChatController : ApiControllerBase
         return ToChatActionResult(result);
     }
 
+    /// <summary>
+    /// Endpoint 11 — submit a report over a conversation (or one message in
+    /// it) → 201 <c>{reportId}</c>. Only a participant may report, so an
+    /// unknown or foreign conversation and an unknown or cross-conversation
+    /// <c>messageId</c> are the same generic privacy 404
+    /// (<see cref="ReportErrors.NotFound"/>); an out-of-bounds reason is the
+    /// caller's own 400 (<see cref="ReportErrors.Invalid"/>). Review,
+    /// dismiss, and uphold are Support's side of the flow (endpoints 12–15).
+    /// </summary>
+    [HttpPost("reports")]
+    [ProducesResponseType(
+        typeof(SubmitReportResponse),
+        StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> SubmitReport(
+        [FromBody] ChatSubmitReportRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        MessageId? messageId = request.MessageId is { } value
+            ? new MessageId(value)
+            : null;
+
+        var result = await _sender.Send(
+            new SubmitReportCommand(
+                userId,
+                new ConversationId(request.ConversationId),
+                messageId,
+                request.Reason),
+            cancellationToken);
+
+        if (!result.IsSuccess)
+        {
+            return ToChatActionResult(result);
+        }
+
+        return StatusCode(
+            StatusCodes.Status201Created,
+            result.Value);
+    }
+
     private IActionResult ToChatActionResult(Result result) =>
         IsPrivacyFailure(result)
             ? PrivacyNotFound(result.Error)
@@ -438,20 +487,25 @@ public sealed class ChatController : ApiControllerBase
     /// <summary>
     /// The conversation code (endpoints 1/2/7/10, and upload scope
     /// failures), the attachment code (endpoint 6 serve denials), the block
-    /// code (endpoint 9's unknown target user), and the message code
-    /// (endpoint 3's unresolvable <c>beforeMessageId</c>) are privacy
-    /// failures: one indistinguishable generic 404 each. Upload validation
-    /// codes, Chat.Message.Invalid, Chat.Block.Invalid, and
+    /// code (endpoint 9's unknown target user), the message code
+    /// (endpoint 3's unresolvable <c>beforeMessageId</c>), and the report
+    /// code (endpoint 11's unknown/foreign conversation and unknown/
+    /// cross-conversation messageId) are privacy failures: one
+    /// indistinguishable generic 404 each. Upload validation codes,
+    /// Chat.Message.Invalid, Chat.Block.Invalid, Chat.Report.Invalid, and
     /// Chat.ConversationRead.Invalid deliberately do NOT match: they surface
     /// as 400s to the caller, who is entitled to know their own request was
-    /// invalid.
+    /// invalid. Chat.Report.NotFound is forced here only on the app route —
+    /// the admin controller renders the same code as a plain 404, where
+    /// privacy forcing has no meaning (Support is never a participant).
     /// </summary>
     private static bool IsPrivacyFailure(Result result) =>
         result.IsFailure &&
         (result.Error.Code == ConversationErrors.NotFound.Code ||
          result.Error.Code == AttachmentErrors.NotFound.Code ||
          result.Error.Code == BlockErrors.NotFound.Code ||
-         result.Error.Code == MessageErrors.NotFound.Code);
+         result.Error.Code == MessageErrors.NotFound.Code ||
+         result.Error.Code == ReportErrors.NotFound.Code);
 
     /// <summary>
     /// Endpoint 4's idempotency 409. Like the privacy failures, Chat forces

@@ -394,6 +394,15 @@ public static class DependencyInjection
                 policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
                 policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
             });
+            // Chat support routes (endpoints 12-15): verbatim shape of the
+            // ElderlySosOperational precedent above — SuperAdmin + SupportAdmin
+            // on a normal AccessType. No other role gains chat-admin rights.
+            options.AddPolicy(AuthorizationPolicies.ChatSupportAdmin, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+            });
         });
 
         services.AddMediatR(configuration =>
