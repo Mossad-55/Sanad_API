@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Domain.Bookings;
+using Sanad.Modules.CareHomes.Domain.Facilities;
 
 namespace Sanad.Modules.CareHomes.Application.Bookings;
 
@@ -76,7 +77,8 @@ public sealed class ListAdminCareHomeBookingsHandler(ICareHomesDbContext db)
             return Result<AdminCareHomeBookingPage>.Failure(AdminCareHomeBookingErrors.InvalidQuery);
 
         IQueryable<CareHomeBooking> query = db.Bookings.AsNoTracking();
-        if (request.FacilityId is Guid facilityId) query = query.Where(x => x.FacilityId.Value == facilityId);
+        CareHomeId? facilityFilter = request.FacilityId is Guid filterId ? new CareHomeId(filterId) : null;
+        if (facilityFilter is not null) query = query.Where(x => x.FacilityId == facilityFilter);
         if (request.BookingStatus is { } bookingStatus) query = query.Where(x => x.Status == bookingStatus);
         if (request.PaymentStatus is { } paymentStatus) query = query.Where(x => x.PaymentStatus == paymentStatus);
         if (request.RefundStatus is { } refundStatus) query = query.Where(x => x.RefundStatus == refundStatus);

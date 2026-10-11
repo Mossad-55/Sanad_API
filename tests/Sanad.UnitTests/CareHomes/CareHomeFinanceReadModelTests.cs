@@ -4,6 +4,7 @@ using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.CareHomes.Application.Inventory;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
+using Sanad.Modules.CareHomes.Infrastructure.Bookings;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 
 namespace Sanad.UnitTests.CareHomes;
@@ -90,11 +91,11 @@ public sealed class CareHomeFinanceReadModelTests
         db.Entry(historic).Property(x => x.PaymentCompletedOnUtc).CurrentValue = null;
         await db.SaveChangesAsync();
 
-        var dayOne = await CareHomeRevenueProjection.Revenue(db, facility.Id.Value,
+        var dayOne = await CareHomeRevenueProjection.Revenue(db, facility.Id,
             new DateOnly(2026, 10, 8), new DateOnly(2026, 10, 8), default);
-        var dayTwo = await CareHomeRevenueProjection.Revenue(db, facility.Id.Value,
+        var dayTwo = await CareHomeRevenueProjection.Revenue(db, facility.Id,
             new DateOnly(2026, 10, 9), new DateOnly(2026, 10, 9), default);
-        var all = await CareHomeRevenueProjection.Revenue(db, facility.Id.Value, null, null, default);
+        var all = await CareHomeRevenueProjection.Revenue(db, facility.Id, null, null, default);
 
         Assert.True(dayOne.IsSuccess);
         Assert.Equal(1150m, dayOne.Value.Totals.GrossCollected);
@@ -203,6 +204,73 @@ public sealed class CareHomeFinanceReadModelTests
 
         Assert.Contains("\"'=HYPERLINK(\"\"bad\"\")\"", csv);
         Assert.Contains(",1150.00,-1150.00,", csv);
+    }
+
+    [Fact]
+    public async Task Owner_dashboard_and_revenue_return_empty_success_for_draft_facility_without_bookings()
+    {
+        await using var db = CreateDb();
+        var owner = UserId.New();
+        var facility = CareHomeFacility.CreateDraft(owner, Now);
+        db.Facilities.Add(facility);
+        await db.SaveChangesAsync();
+
+        var dashboard = await new GetOwnerCareHomeDashboardHandler(db, new CareHomeBookingOccupancyProvider(db))
+            .Handle(new(owner, null, null, Now), default);
+        var revenue = await new GetOwnerCareHomeRevenueHandler(db)
+            .Handle(new(owner, null, null), default);
+
+        Assert.True(dashboard.IsSuccess);
+        Assert.Equal(0, dashboard.Value.TotalResources);
+        Assert.Equal(0, dashboard.Value.OccupiedResources);
+        Assert.Equal(0m, dashboard.Value.OccupancyPercentage);
+        Assert.Equal(0, dashboard.Value.PendingPaymentCount);
+        Assert.Equal(0, dashboard.Value.AwaitingDecisionCount);
+        Assert.True(revenue.IsSuccess);
+        Assert.Equal(0m, revenue.Value.Totals.NetCollected);
+        Assert.Empty(revenue.Value.Transactions);
+    }
+
+    [Fact]
+    public async Task Admin_dashboard_and_revenue_with_facility_filter_return_empty_success_without_bookings()
+    {
+        await using var db = CreateDb();
+        var facility = CareHomeFacility.CreateDraft(UserId.New(), Now);
+        db.Facilities.Add(facility);
+        await db.SaveChangesAsync();
+
+        var dashboard = await new GetAdminCareHomeDashboardHandler(db, new CareHomeBookingOccupancyProvider(db))
+            .Handle(new(facility.Id.Value, null, null, Now), default);
+        var revenue = await new GetAdminCareHomeRevenueHandler(db)
+            .Handle(new(facility.Id.Value, null, null), default);
+
+        Assert.True(dashboard.IsSuccess);
+        Assert.Equal(0, dashboard.Value.TotalResources);
+        Assert.True(revenue.IsSuccess);
+        Assert.Equal(0m, revenue.Value.Totals.NetCollected);
+        Assert.Empty(revenue.Value.Transactions);
+    }
+
+    [Fact]
+    public async Task Owner_dashboard_and_revenue_queries_translate_on_relational_store_without_bookings()
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<CareHomesDbContext>().UseSqlite(connection).Options;
+        await using var db = new CareHomesDbContext(options);
+        await db.Database.EnsureCreatedAsync();
+        var owner = UserId.New();
+        db.Facilities.Add(CareHomeFacility.CreateDraft(owner, Now));
+        await db.SaveChangesAsync();
+
+        var dashboard = await new GetOwnerCareHomeDashboardHandler(db, new CareHomeBookingOccupancyProvider(db))
+            .Handle(new(owner, null, null, Now), default);
+        var revenue = await new GetOwnerCareHomeRevenueHandler(db)
+            .Handle(new(owner, null, null), default);
+
+        Assert.True(dashboard.IsSuccess);
+        Assert.True(revenue.IsSuccess);
+        Assert.Empty(revenue.Value.Transactions);
     }
 
     private static CareHomeBooking CreateBooking(CareHomeId? facilityId = null) =>

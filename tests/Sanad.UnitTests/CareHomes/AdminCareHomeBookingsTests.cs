@@ -109,6 +109,33 @@ public sealed class AdminCareHomeBookingsTests
             .GetCustomAttributes<HttpGetAttribute>()).Template);
     }
 
+    [Fact]
+    public async Task List_with_facility_filter_translates_on_relational_store()
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        await using var db = new CareHomesDbContext(
+            new DbContextOptionsBuilder<CareHomesDbContext>().UseSqlite(connection).Options);
+        await db.Database.EnsureCreatedAsync();
+        var facility = CareHomeFacility.CreateDraft(UserId.New(), Now);
+        db.Facilities.Add(facility);
+        await db.SaveChangesAsync();
+        db.Bookings.Add(CreateBooking(facility.Id, Now));
+        await db.SaveChangesAsync();
+
+        var result = await new ListAdminCareHomeBookingsHandler(db)
+            .Handle(new(FacilityId: facility.Id.Value), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value.TotalCount);
+
+        var unfiltered = await new ListAdminCareHomeBookingsHandler(db)
+            .Handle(new(), default);
+
+        Assert.True(unfiltered.IsSuccess);
+        Assert.Equal(1, unfiltered.Value.TotalCount);
+    }
+
     private static CareHomeBooking CreateBooking(CareHomeId facility, DateTime created) =>
         CareHomeBooking.Create(facility, UserId.New(), FamilyId.New(), ElderlyId.New(), Guid.NewGuid(),
             new DateOnly(2026, 10, 10), 1000m, 100m, 50m, 4, "مقيم", "Resident", 80,

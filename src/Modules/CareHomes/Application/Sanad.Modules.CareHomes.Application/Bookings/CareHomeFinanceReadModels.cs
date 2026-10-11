@@ -85,14 +85,14 @@ public static class CareHomeRevenueProjection
     }
 
     public static async Task<Result<CareHomeRevenueReport>> Revenue(
-        ICareHomesDbContext db, Guid? facilityId, DateOnly? from, DateOnly? to, CancellationToken ct)
+        ICareHomesDbContext db, CareHomeId? facilityId, DateOnly? from, DateOnly? to, CancellationToken ct)
     {
         (DateTime? start, DateTime? until) range;
         try { range = ToUtcRange(from, to); }
         catch (ArgumentException) { return Result<CareHomeRevenueReport>.Failure(InvalidRange); }
 
         var bookings = await db.Bookings.AsNoTracking()
-            .Where(x => facilityId == null || x.FacilityId.Value == facilityId)
+            .Where(x => facilityId == null || x.FacilityId == facilityId)
             .Where(x => (x.PaymentStatus == CareHomeBookingPaymentStatus.Paid
                          || x.PaymentStatus == CareHomeBookingPaymentStatus.Refunded
                          || x.RefundStatus == CareHomeRefundStatus.Completed
@@ -177,7 +177,7 @@ public sealed class GetOwnerCareHomeRevenueHandler(ICareHomesDbContext db)
     {
         var facility = await db.Facilities.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == q.Actor, ct);
         return facility is null ? Result<CareHomeRevenueReport>.Failure(CareHomeRevenueProjection.NotFound)
-            : await CareHomeRevenueProjection.Revenue(db, facility.Id.Value, q.From, q.To, ct);
+            : await CareHomeRevenueProjection.Revenue(db, facility.Id, q.From, q.To, ct);
     }
 }
 
@@ -185,7 +185,8 @@ public sealed class GetAdminCareHomeRevenueHandler(ICareHomesDbContext db)
     : IQueryHandler<GetAdminCareHomeRevenueQuery, CareHomeRevenueReport>
 {
     public Task<Result<CareHomeRevenueReport>> Handle(GetAdminCareHomeRevenueQuery q, CancellationToken ct) =>
-        CareHomeRevenueProjection.Revenue(db, q.FacilityId, q.From, q.To, ct);
+        CareHomeRevenueProjection.Revenue(db, q.FacilityId is Guid adminFacility ? new CareHomeId(adminFacility) : null,
+            q.From, q.To, ct);
 }
 
 public sealed class GetOwnerCareHomeDashboardHandler(ICareHomesDbContext db, ICareHomeOccupancyProvider occupancy)
@@ -195,7 +196,7 @@ public sealed class GetOwnerCareHomeDashboardHandler(ICareHomesDbContext db, ICa
     {
         var facility = await db.Facilities.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == q.Actor, ct);
         return facility is null ? Result<CareHomeDashboard>.Failure(CareHomeRevenueProjection.NotFound)
-            : await CareHomeDashboardProjection.Get(db, occupancy, facility.Id.Value, q.From, q.To, q.UtcNow, ct);
+            : await CareHomeDashboardProjection.Get(db, occupancy, facility.Id, q.From, q.To, q.UtcNow, ct);
     }
 }
 
@@ -203,20 +204,22 @@ public sealed class GetAdminCareHomeDashboardHandler(ICareHomesDbContext db, ICa
     : IQueryHandler<GetAdminCareHomeDashboardQuery, CareHomeDashboard>
 {
     public Task<Result<CareHomeDashboard>> Handle(GetAdminCareHomeDashboardQuery q, CancellationToken ct) =>
-        CareHomeDashboardProjection.Get(db, occupancy, q.FacilityId, q.From, q.To, q.UtcNow, ct);
+        CareHomeDashboardProjection.Get(db, occupancy,
+            q.FacilityId is Guid dashboardFacility ? new CareHomeId(dashboardFacility) : null,
+            q.From, q.To, q.UtcNow, ct);
 }
 
 internal static class CareHomeDashboardProjection
 {
     public static async Task<Result<CareHomeDashboard>> Get(ICareHomesDbContext db,
-        ICareHomeOccupancyProvider occupancy, Guid? facilityId, DateOnly? from, DateOnly? to,
+        ICareHomeOccupancyProvider occupancy, CareHomeId? facilityId, DateOnly? from, DateOnly? to,
         DateTime utcNow, CancellationToken ct)
     {
         if (utcNow.Kind != DateTimeKind.Utc) return Result<CareHomeDashboard>.Failure(CareHomeRevenueProjection.InvalidRange);
         var revenue = await CareHomeRevenueProjection.Revenue(db, facilityId, from, to, ct);
         if (revenue.IsFailure) return Result<CareHomeDashboard>.Failure(revenue.Error);
         var facilities = await db.Facilities.AsNoTracking()
-            .Where(x => facilityId == null || x.Id.Value == facilityId).Select(x => x.Id).ToListAsync(ct);
+            .Where(x => facilityId == null || x.Id == facilityId).Select(x => x.Id).ToListAsync(ct);
         DateOnly today = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(utcNow, CareHomeRevenueProjection.CairoZone()));
         int occupied = 0, total = 0;
         foreach (CareHomeId id in facilities)
@@ -240,7 +243,7 @@ internal static class CareHomeDashboardProjection
                 || x.ResourceKind == CareHomeResourceKind.Bed && sharedBedIds.Contains(x.ResourceId));
             occupied += active.Where(x => x.ResourceKind == CareHomeResourceKind.RoomType).Sum(x => x.Quantity);
         }
-        var bookingQuery = db.Bookings.AsNoTracking().Where(x => facilityId == null || x.FacilityId.Value == facilityId);
+        var bookingQuery = db.Bookings.AsNoTracking().Where(x => facilityId == null || x.FacilityId == facilityId);
         int pendingPayment = await bookingQuery.CountAsync(x => x.Status == CareHomeBookingStatus.PendingPayment
             && x.CheckoutHoldUntilUtc > utcNow, ct);
         int awaitingDecision = await bookingQuery.CountAsync(x => x.Status == CareHomeBookingStatus.PaidAwaitingDecision

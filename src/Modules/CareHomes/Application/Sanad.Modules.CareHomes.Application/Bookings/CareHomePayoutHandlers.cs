@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Domain.Bookings;
+using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.Finance.Application;
 
 namespace Sanad.Modules.CareHomes.Application.Bookings;
@@ -70,10 +71,11 @@ public sealed class GetCareHomePayoutLedgerHandler(
 {
     public async Task<Result<IReadOnlyList<CareHomePayoutLedgerItem>>> Handle(GetCareHomePayoutLedgerQuery request, CancellationToken ct)
     {
+        CareHomeId? facilityFilter = request.FacilityId is Guid ledgerFacility ? new CareHomeId(ledgerFacility) : null;
         var bookings = await db.Bookings.AsNoTracking()
             .Where(x => x.ActualCheckOutOnUtc != null
                 && (x.PaymentStatus == CareHomeBookingPaymentStatus.Paid || x.PaymentStatus == CareHomeBookingPaymentStatus.Refunded)
-                && (request.FacilityId == null || x.FacilityId.Value == request.FacilityId))
+                && (facilityFilter == null || x.FacilityId == facilityFilter))
             .OrderByDescending(x => x.ActualCheckOutOnUtc).ToListAsync(ct);
         var payouts = await db.Payouts.AsNoTracking().ToDictionaryAsync(x => x.BookingId, ct);
         var debts = await db.PayoutDebts.AsNoTracking().GroupBy(x => x.BookingId)
