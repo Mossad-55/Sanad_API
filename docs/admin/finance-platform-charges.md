@@ -97,16 +97,23 @@ Create with:
 {
   "payoutDelayHours": 72,
   "version": 1,
-  "effectiveOnUtc": "2026-10-08T00:00:00Z"
+  "effectiveOnUtc": "2026-10-08T00:00:00Z",
+  "descriptionArabic": "يُدفع بعد 72 ساعة من إتمام الحجز وسداده",
+  "descriptionEnglish": "Payout is released 72 hours after the booking is completed and paid."
 }
 ```
 
 `version` must be positive and greater than the latest stored payout policy
 version; `payoutDelayHours` must be zero or more; `effectiveOnUtc` must be a
-UTC timestamp. The create route returns `201` with the new policy UUID.
-Invalid input returns `400 Finance.PayoutPolicy.Invalid`; out-of-order
-versions return `409 Finance.PayoutPolicy.VersionConflict`; concurrent
-version/active changes return `409 Finance.PayoutPolicy.Conflict`.
+UTC timestamp. `descriptionArabic`/`descriptionEnglish` are optional
+bilingual terms (trimmed, maximum 4000 characters each, blank normalized to
+`null`); they are the admin-authored text caregivers read back from
+`GET /api/v1/caregiver/payment-policy`, and policies created before
+descriptions existed surface them as `null`. The create route returns `201`
+with the new policy UUID. Invalid input returns
+`400 Finance.PayoutPolicy.Invalid`; out-of-order versions return
+`409 Finance.PayoutPolicy.VersionConflict`; concurrent version/active
+changes return `409 Finance.PayoutPolicy.Conflict`.
 
 The current route returns the effective policy, or JSON `null` when no
 effective policy exists — payout processing must fail closed in that case and

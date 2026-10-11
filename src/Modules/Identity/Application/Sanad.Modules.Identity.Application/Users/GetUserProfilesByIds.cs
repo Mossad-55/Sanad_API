@@ -15,7 +15,8 @@ public sealed record UserProfileById(
     string? PhoneNumber,
     string? AvatarUrl,
     int Status,
-    DateTime? LastLoginOnUtc);
+    DateTime? LastLoginOnUtc,
+    int? AccountType);
 
 public sealed record GetUserProfilesByIdsQuery(
     IReadOnlyCollection<UserId> UserIds)
@@ -51,6 +52,7 @@ public sealed class GetUserProfilesByIdsQueryHandler
             await _dbContext.Users
                 .AsNoTracking()
                 .Where(user => userIds.Contains(user.Id))
+                .Include(user => user.Accounts)
                 .ToListAsync(cancellationToken);
 
         IReadOnlyList<UserProfileById> profiles =
@@ -63,10 +65,21 @@ public sealed class GetUserProfilesByIdsQueryHandler
                     user.PhoneNumber.Value,
                     user.AvatarUrl,
                     (int)user.Status,
-                    user.LastLoginOnUtc))
+                    user.LastLoginOnUtc,
+                    // A user may hold several account types; consumers that
+                    // need one integer (chat participants) get the
+                    // first-registered account as the deterministic primary.
+                    PrimaryAccountType(user)))
                 .ToList();
 
         return Result<IReadOnlyList<UserProfileById>>.Success(
             profiles);
     }
+
+    private static int? PrimaryAccountType(User user) =>
+        user.Accounts
+            .OrderBy(account => account.CreatedOnUtc)
+            .ThenBy(account => account.AccountType)
+            .Select(account => (int?)account.AccountType)
+            .FirstOrDefault();
 }

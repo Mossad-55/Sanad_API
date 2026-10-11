@@ -91,6 +91,7 @@ Retries are safe: the operation is idempotent, and a partially completed deletio
 | Booking actions on family requests | `docs/app/caregivers/bookings.md` |
 | Caregiver help requests | `docs/app/caregivers/bookings.md` |
 | Availability read, earnings, medication tasks and help-request transitions | `docs/app/caregivers/earnings-and-medication-tasks.md` |
+| Payout account, caregiver payout reads, payment policy | `docs/app/caregivers/payouts.md` |
 | Family rating and top-10 endpoints | `docs/app/caregivers/family-ratings.md` |
 | Postman (caregiver self-service) | `docs/postman/app/Sanad.App.Caregiver.postman_collection.json` |
 | Postman (caregiver operations) | `docs/postman/app/Sanad.App.Caregiver.Operations.postman_collection.json` |

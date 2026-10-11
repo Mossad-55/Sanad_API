@@ -12,7 +12,7 @@ public sealed class CaregiverPayoutPolicyStore(FinanceDbContext dbContext) : ICa
             .OrderByDescending(x => x.EffectiveOnUtc)
             .ThenByDescending(x => x.Version)
             .FirstOrDefaultAsync(cancellationToken);
-        return policy is null ? null : new(policy.PayoutDelayHours, policy.Version);
+        return policy is null ? null : new(policy.PayoutDelayHours, policy.Version, policy.DescriptionArabic, policy.DescriptionEnglish);
     }
 
     public async Task<IReadOnlyList<CaregiverPayoutPolicyHistoryItem>> GetHistoryAsync(DateTime utcNow, CancellationToken cancellationToken)
@@ -27,18 +27,38 @@ public sealed class CaregiverPayoutPolicyStore(FinanceDbContext dbContext) : ICa
             .Select(x => (Guid?)x.Id)
             .FirstOrDefault();
         return policies
-            .Select(x => new CaregiverPayoutPolicyHistoryItem(x.Id, x.PayoutDelayHours, x.Version, x.EffectiveOnUtc, x.CreatedOnUtc, x.Id == currentId))
+            .Select(x => new CaregiverPayoutPolicyHistoryItem(
+                x.Id,
+                x.PayoutDelayHours,
+                x.Version,
+                x.EffectiveOnUtc,
+                x.CreatedOnUtc,
+                x.Id == currentId,
+                x.DescriptionArabic,
+                x.DescriptionEnglish))
             .ToList();
     }
 
-    public async Task<Sanad.BuildingBlocks.Application.Results.Result<Guid>> CreateAsync(int payoutDelayHours, int requestedVersion, DateTime effectiveOnUtc, CancellationToken cancellationToken)
+    public async Task<Sanad.BuildingBlocks.Application.Results.Result<Guid>> CreateAsync(
+        int payoutDelayHours,
+        int requestedVersion,
+        DateTime effectiveOnUtc,
+        string? descriptionArabic = null,
+        string? descriptionEnglish = null,
+        CancellationToken cancellationToken = default)
     {
         var latestVersion = await dbContext.CaregiverPayoutPolicies.Select(x => (int?)x.Version).MaxAsync(cancellationToken) ?? 0;
         if (requestedVersion <= latestVersion)
             return Sanad.BuildingBlocks.Application.Results.Result<Guid>.Failure(new("Finance.PayoutPolicy.VersionConflict", "The payout policy version must be greater than the current Finance version."));
         try
         {
-            var policy = Sanad.Modules.Finance.Domain.CaregiverPayoutPolicy.Create(payoutDelayHours, requestedVersion, effectiveOnUtc);
+            var policy = Sanad.Modules.Finance.Domain.CaregiverPayoutPolicy.Create(
+                payoutDelayHours,
+                requestedVersion,
+                effectiveOnUtc,
+                createdOnUtc: null,
+                descriptionArabic,
+                descriptionEnglish);
             dbContext.CaregiverPayoutPolicies.Add(policy);
             await dbContext.SaveChangesAsync(cancellationToken);
             return Sanad.BuildingBlocks.Application.Results.Result<Guid>.Success(policy.Id);

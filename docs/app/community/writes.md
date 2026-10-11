@@ -22,7 +22,8 @@ Both moderation routes return `204` on success and require the
 the public read routes. Unknown posts return the standard Community not-found
 problem response.
 
-Post creation body:
+Post creation body (all fields except `imageUrl`, `isAnonymous`, and
+`categoryId` are required):
 
 ```json
 {
@@ -31,9 +32,76 @@ Post creation body:
   "contentArabic": "تذكّر شرب الماء.",
   "contentEnglish": "Remember to drink water.",
   "imageUrl": null,
-  "isAnonymous": false
+  "isAnonymous": false,
+  "categoryId": null
 }
 ```
+
+`categoryId` is optional. When supplied it must reference an existing
+**active** category: unknown ids return `400` `Community.InvalidCategory`;
+inactive categories return `409` `Community.CategoryInactive`.
+
+## Feed, filters, sort, and per-user state
+
+`GET /api/v1/community/posts` supports (all optional, combinable):
+
+- `search=` — case-insensitive match against Arabic/English titles and
+  contents.
+- `categoryId=` — only posts in that category.
+- `fromDate=` / `toDate=` — inclusive bounds on the UTC creation timestamp.
+- `sort=Newest|Oldest|MostLiked` (case-insensitive; default `Newest`;
+  `MostLiked` breaks ties by recency then id). Any other value returns `400`
+  with code `Community.InvalidSort`. `fromDate` after `toDate` returns `400`
+  with code `Community.InvalidDateRange`.
+- `page=` (minimum 1) and `pageSize=` (1–100). The bare-list envelope is
+  unchanged: no wrapper object, no `totalCount`.
+
+List, detail, and recommendations items carry these **additive** per-user
+fields computed for the authenticated caller: `categoryId`,
+`categoryArabicName`, `categoryEnglishName`, `isLiked`, `isFavorited`, and
+`currentUserRating` (integer 1–5, `null` when the caller never rated the
+post). On the recommendations feed `isLiked`/`isFavorited` are always
+`false` and `currentUserRating` is always `null` because already-interacted
+posts are excluded from recommendations by definition. The favorite toggle
+endpoint is unchanged.
+
+`GET /api/v1/community/favorites?page=&pageSize=` returns the caller's
+favorited published posts (same post shape and per-user fields as the feed),
+newest-favorited-first. Untoggling a favorite removes the post from the list
+on the next call.
+
+## Categories
+
+Community categories are a bilingual, admin-managed lookup used to classify
+posts. The public list is available to any authenticated account:
+
+`GET /api/v1/community/categories` → `200` with a bare list of active
+categories only, ordered by creation time then id:
+
+```json
+[
+  { "id": "0198e2c2-4444-7777-8888-000000000001", "arabicName": "نصائح صحية", "englishName": "Health tips" }
+]
+```
+
+Administrators with the `CommunityModeration` policy (`SuperAdmin` or
+`ContentAdmin`) manage the full lookup under
+`/api/v1/admin/community/categories`:
+
+- `GET` — list all categories (including inactive) with `isActive`,
+  `createdOnUtc`, and `updatedOnUtc`.
+- `POST` — create `{ "arabicName": "…", "englishName": "…", "isActive": true }`
+  → `201` with the created item. Both names are required (1–200 chars,
+  trimmed); invalid names return `400` `Community.Category.Invalid`.
+- `PUT /{categoryId}` — update names and `isActive` → `200`. Unknown ids
+  return `404` `Community.CategoryNotFound`.
+- `DELETE /{categoryId}` — hard delete → `204`. Unknown ids return `404`
+  `Community.CategoryNotFound`; a category referenced by posts returns `409`
+  `Community.CategoryInUse` (posts never lose their category implicitly
+  through delete).
+
+Deactivating a category hides it from the public list immediately; existing
+posts keep their stored category.
 
 ## Check-ins and ratings
 
@@ -55,7 +123,10 @@ timestamp. A repeated local-date submission updates that user’s row. Invalid
 time zones and dates return `Community.CheckIn.Invalid`.
 
 `POST /api/v1/community/posts/{postId}/rating` accepts `{ "value": 1 }` through
-`{ "value": 5 }`; the caller’s rating is created or updated. `GET
+`{ "value": 5 }`; `value` is an integer and is range-validated server-side
+(out-of-range or non-integer values return `400` `Community.Rating.Invalid`;
+there is no legacy `ratingValue` support). The caller's rating is created or
+updated. `GET
 /api/v1/community/posts/{postId}/rating/average` returns the current average
 and count.
 

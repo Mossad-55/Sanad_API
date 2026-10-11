@@ -98,6 +98,80 @@ public sealed class MessageTests
     }
 
     // ------------------------------------------------------------------
+    // Create — Location payload (Opus delta).
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public void Create_AcceptsAValidLocationPayloadAndTrimsTheLabel()
+    {
+        Message message = CreateLocation(30.0444, 31.2357, "  Cairo Tower  ");
+
+        Assert.Equal(MessageType.Location, message.Type);
+        Assert.Equal(30.0444, message.Latitude);
+        Assert.Equal(31.2357, message.Longitude);
+        Assert.Equal("Cairo Tower", message.LocationLabel);
+        Assert.Null(message.Text);
+        Assert.Null(message.AttachmentId);
+    }
+
+    [Fact]
+    public void Create_AcceptsLocationWithoutALabelAndDropsABlankOne()
+    {
+        Assert.Null(CreateLocation(0, 0, null).LocationLabel);
+        Assert.Null(CreateLocation(0, 0, "   ").LocationLabel);
+    }
+
+    [Theory]
+    [InlineData(-91.0, 0.0)]
+    [InlineData(91.0, 0.0)]
+    [InlineData(0.0, -181.0)]
+    [InlineData(0.0, 181.0)]
+    public void Create_RejectsOutOfRangeCoordinates(
+        double latitude,
+        double longitude)
+    {
+        Assert.Throws<DomainException>(() =>
+            CreateLocation(latitude, longitude, null));
+    }
+
+    [Fact]
+    public void Create_RejectsLocationWithoutCoordinatesMixedPayloadsAndLongLabels()
+    {
+        ConversationId conversation = ConversationId.New();
+        UserId sender = UserId.New();
+
+        // Missing one or both coordinates.
+        Assert.Throws<DomainException>(() => Message.Create(
+            conversation, sender, MessageType.Location,
+            null, null, "client-key-1", UtcStamp));
+        Assert.Throws<DomainException>(() => Message.Create(
+            conversation, sender, MessageType.Location,
+            null, null, "client-key-1", UtcStamp, latitude: 30.0));
+
+        // Location must not carry a body or an attachment.
+        Assert.Throws<DomainException>(() => Message.Create(
+            conversation, sender, MessageType.Location,
+            "body", null, "client-key-1", UtcStamp,
+            latitude: 30.0, longitude: 31.0));
+        Assert.Throws<DomainException>(() => Message.Create(
+            conversation, sender, MessageType.Location,
+            null, AttachmentId.New(), "client-key-1", UtcStamp,
+            latitude: 30.0, longitude: 31.0));
+
+        // Other types must not carry a location payload.
+        Assert.Throws<DomainException>(() => Message.Create(
+            conversation, sender, MessageType.Text,
+            "hi", null, "client-key-1", UtcStamp,
+            latitude: 30.0, longitude: 31.0));
+
+        // Oversized label.
+        Assert.Throws<DomainException>(() => CreateLocation(
+            30.0,
+            31.0,
+            new('l', Message.MaximumLocationLabelLength + 1)));
+    }
+
+    // ------------------------------------------------------------------
     // Create — client idempotency key shape.
     // ------------------------------------------------------------------
 
@@ -263,11 +337,11 @@ public sealed class MessageTests
 
         Message stored = Assert.Single(db.Messages);
         Assert.Equal(stored.Id.Value, item.Id);
-        Assert.Equal(stored.SentOnUtc, item.SentOnUtc);
+        Assert.Equal(stored.SentOnUtc, item.CreatedOnUtc);
 
         // Sending is the only thing that moves conversation activity, and it
         // carries the very stamp the message was created with.
-        Assert.Equal(item.SentOnUtc, conversation.LastActivityOnUtc);
+        Assert.Equal(item.CreatedOnUtc, conversation.LastActivityOnUtc);
     }
 
     [Fact]
@@ -306,6 +380,149 @@ public sealed class MessageTests
 
         // The conflict wrote nothing.
         Assert.Single(db.Messages);
+    }
+
+    [Fact]
+    public async Task Send_LocationCarriesCoordinatesReplaysExactlyAndConflictsOnDifferentPayload()
+    {
+        await using ChatDbContext db = CreateDb();
+        (UserId alice, _, Conversation conversation) =
+            await SeedConversationAsync(db);
+
+        var handler = new SendMessageCommandHandler(db);
+
+        Result<SendMessageResponse> created = await handler.Handle(
+            new SendMessageCommand(
+                alice, conversation.Id, "loc-1", "Location",
+                null, null, 30.0444, 31.2357, "Cairo Tower"),
+            default);
+
+        Assert.True(created.IsSuccess);
+        Assert.True(created.Value.Created);
+
+        MessageItemResponse item = created.Value.Message;
+        Assert.Equal("Location", item.Type);
+        Assert.Equal(conversation.Id.Value, item.ConversationId);
+        Assert.Null(item.Text);
+        Assert.Null(item.Attachment);
+        Assert.Equal(30.0444, item.Location!.Latitude);
+        Assert.Equal(31.2357, item.Location.Longitude);
+        Assert.Equal("Cairo Tower", item.Location.Label);
+
+        Result<SendMessageResponse> replay = await handler.Handle(
+            new SendMessageCommand(
+                alice, conversation.Id, "loc-1", "Location",
+                null, null, 30.0444, 31.2357, "Cairo Tower"),
+            default);
+
+        Assert.True(replay.IsSuccess);
+        Assert.False(replay.Value.Created);
+        Assert.Equal(created.Value.Message.Id, replay.Value.Message.Id);
+
+        Result<SendMessageResponse> conflict = await handler.Handle(
+            new SendMessageCommand(
+                alice, conversation.Id, "loc-1", "Location",
+                null, null, 30.5, 31.2357, "Cairo Tower"),
+            default);
+
+        Assert.True(conflict.IsFailure);
+        Assert.Equal(MessageErrors.IdempotencyConflict.Code, conflict.Error.Code);
+        Assert.Single(db.Messages);
+    }
+
+    [Fact]
+    public async Task Send_LocationRejectsMissingCoordinatesRangesAndMixedPayloads()
+    {
+        await using ChatDbContext db = CreateDb();
+        (UserId alice, _, Conversation conversation) =
+            await SeedConversationAsync(db);
+
+        var handler = new SendMessageCommandHandler(db);
+
+        var missing = await handler.Handle(
+            new SendMessageCommand(
+                alice, conversation.Id, "loc-missing", "Location",
+                null, null, null, null, null),
+            default);
+        var ranged = await handler.Handle(
+            new SendMessageCommand(
+                alice, conversation.Id, "loc-range", "Location",
+                null, null, 95.0, 31.0, null),
+            default);
+        var withText = await handler.Handle(
+            new SendMessageCommand(
+                alice, conversation.Id, "loc-text", "Location",
+                "body", null, 30.0, 31.0, null),
+            default);
+        var withAttachment = await handler.Handle(
+            new SendMessageCommand(
+                alice, conversation.Id, "loc-file", "Location",
+                null, new AttachmentId(Guid.NewGuid()), 30.0, 31.0, null),
+            default);
+        var textWithLocation = await handler.Handle(
+            new SendMessageCommand(
+                alice, conversation.Id, "text-loc", "Text",
+                "hi", null, 30.0, 31.0, null),
+            default);
+        var unknownType = await handler.Handle(
+            new SendMessageCommand(
+                alice, conversation.Id, "loc-type", "Pin",
+                null, null, 30.0, 31.0, null),
+            default);
+
+        Assert.All(
+            new[] { missing, ranged, withText, withAttachment, textWithLocation, unknownType },
+            result =>
+            {
+                Assert.True(result.IsFailure);
+                Assert.Equal(MessageErrors.Invalid.Code, result.Error.Code);
+            });
+        Assert.Empty(db.Messages);
+    }
+
+    [Fact]
+    public async Task GetMessages_ItemsCarryConversationIdCreatedOnUtcAndLocation()
+    {
+        await using ChatDbContext db = CreateDb();
+        (UserId alice, UserId bob, Conversation conversation) =
+            await SeedConversationAsync(db);
+
+        Message text = SeedMessage(db, conversation, alice, UtcStamp.AddMinutes(1), "first");
+        Message location = Message.Create(
+            conversation.Id,
+            bob,
+            MessageType.Location,
+            null,
+            null,
+            "client-loc-1",
+            UtcStamp.AddMinutes(2),
+            30.0,
+            31.0,
+            "Home");
+        db.Messages.Add(location);
+        await db.SaveChangesAsync();
+
+        var handler = new GetMessagesQueryHandler(db);
+
+        Result<MessageCursorPage> result = await handler.Handle(
+            new GetMessagesQuery(alice, conversation.Id, null, 30),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Items.Count);
+
+        MessageItemResponse newest = result.Value.Items[0];
+        Assert.Equal(location.Id.Value, newest.Id);
+        Assert.Equal(conversation.Id.Value, newest.ConversationId);
+        Assert.Equal(location.SentOnUtc, newest.CreatedOnUtc);
+        Assert.Equal(30.0, newest.Location!.Latitude);
+        Assert.Equal("Home", newest.Location.Label);
+
+        MessageItemResponse oldest = result.Value.Items[1];
+        Assert.Equal(text.Id.Value, oldest.Id);
+        Assert.Equal(conversation.Id.Value, oldest.ConversationId);
+        Assert.Equal(text.SentOnUtc, oldest.CreatedOnUtc);
+        Assert.Null(oldest.Location);
     }
 
     [Fact]
@@ -886,7 +1103,7 @@ public sealed class MessageTests
 
         var lookup = new FakeChatUserLookup();
         lookup.Add(alice, "Alice");
-        var handler = new GetConversationsQueryHandler(db, lookup);
+        var handler = new GetConversationsQueryHandler(db, lookup, new FakeChatFacilityLookup());
 
         Result<PagedResult<ConversationListItemResponse>> result =
             await handler.Handle(new GetConversationsQuery(bob, 1, 20), default);
@@ -896,7 +1113,7 @@ public sealed class MessageTests
         Assert.Equal(newer.Id.Value, item.LastMessage!.Id);
         Assert.Equal("second", item.LastMessage.Text);
         Assert.Equal(MessageType.Text.ToString(), item.LastMessage.Type);
-        Assert.Equal(newer.SentOnUtc, item.LastMessage.SentOnUtc);
+        Assert.Equal(newer.SentOnUtc, item.LastMessage.CreatedOnUtc);
 
         // Alice's message is still unread for Bob; his own is not.
         Assert.Equal(1, item.UnreadCount);
@@ -913,10 +1130,12 @@ public sealed class MessageTests
         UserId actor = UserId.New();
         MessageItemResponse item = new(
             Guid.NewGuid(),
+            Guid.NewGuid(),
             "client-1",
             actor.Value,
             "Text",
             "hi",
+            null,
             null,
             UtcStamp,
             null,
@@ -1008,8 +1227,8 @@ public sealed class MessageTests
 
         Assert.Equal(actor, query.Requester);
         Assert.Equal(new ConversationId(conversationId), query.ConversationId);
-        Assert.Equal(messageId.ToString(), query.BeforeMessageId);
-        Assert.Equal(17, query.Limit);
+        Assert.Equal(messageId.ToString(), query.BeforeId);
+        Assert.Equal(17, query.PageSize);
 
         // An unresolvable cursor is the message privacy 404, forced to the
         // same generic body as every other Chat 404.
@@ -1076,6 +1295,22 @@ public sealed class MessageTests
             attachmentId,
             "client-key-1",
             UtcStamp);
+
+    private static Message CreateLocation(
+        double latitude,
+        double longitude,
+        string? label) =>
+        Message.Create(
+            ConversationId.New(),
+            UserId.New(),
+            MessageType.Location,
+            null,
+            null,
+            "client-key-1",
+            UtcStamp,
+            latitude,
+            longitude,
+            label);
 
     private static ChatDbContext CreateDb() =>
         new(new DbContextOptionsBuilder<ChatDbContext>()
@@ -1187,8 +1422,13 @@ public sealed class MessageTests
     {
         private readonly Dictionary<UserId, UserProfile> _profiles = new();
 
-        public void Add(UserId userId, string displayName, string? avatarUrl = null) =>
-            _profiles[userId] = new UserProfile(userId, displayName, avatarUrl);
+        public void Add(
+            UserId userId,
+            string displayName,
+            string? avatarUrl = null,
+            int? accountType = null) =>
+            _profiles[userId] = new UserProfile(
+                userId, displayName, avatarUrl, accountType);
 
         public Task<UserProfile?> GetProfileAsync(
             UserId userId,
@@ -1196,6 +1436,22 @@ public sealed class MessageTests
             Task.FromResult(
                 _profiles.TryGetValue(userId, out UserProfile? profile)
                     ? profile
+                    : null);
+    }
+
+    private sealed class FakeChatFacilityLookup : IChatFacilityLookup
+    {
+        private readonly Dictionary<UserId, FacilityPresentation> _facilities = new();
+
+        public void Set(UserId ownerUserId, FacilityPresentation presentation) =>
+            _facilities[ownerUserId] = presentation;
+
+        public Task<FacilityPresentation?> GetForOwnerAsync(
+            UserId ownerUserId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(
+                _facilities.TryGetValue(ownerUserId, out FacilityPresentation? presentation)
+                    ? presentation
                     : null);
     }
 

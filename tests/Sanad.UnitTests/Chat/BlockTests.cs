@@ -409,8 +409,13 @@ public sealed class BlockTests
     {
         private readonly Dictionary<UserId, UserProfile> _profiles = new();
 
-        public void Add(UserId userId, string displayName, string? avatarUrl = null) =>
-            _profiles[userId] = new UserProfile(userId, displayName, avatarUrl);
+        public void Add(
+            UserId userId,
+            string displayName,
+            string? avatarUrl = null,
+            int? accountType = null) =>
+            _profiles[userId] = new UserProfile(
+                userId, displayName, avatarUrl, accountType);
 
         public Task<UserProfile?> GetProfileAsync(
             UserId userId,

@@ -1,15 +1,22 @@
 namespace Sanad.Modules.Chat.Application.Conversations;
 
+/// <summary>
+/// The conversation's counterpart. <c>accountType</c> is the Identity
+/// <c>AccountType</c> integer (Opus delta; null only when the Identity user
+/// row is gone). For care-home owners <c>displayName</c>/<c>avatarUrl</c>
+/// resolve to the facility's name and cover over the owner's user id.
+/// </summary>
 public sealed record ParticipantResponse(
     Guid UserId,
     string DisplayName,
-    string? AvatarUrl);
+    string? AvatarUrl,
+    int? AccountType);
 
 public sealed record LastMessageResponse(
     Guid Id,
     string Type,
     string Text,
-    DateTime SentOnUtc);
+    DateTime CreatedOnUtc);
 
 public sealed record ConversationListItemResponse(
     Guid Id,

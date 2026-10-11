@@ -38,6 +38,15 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         builder.Property(e => e.ClientMessageId)
             .HasMaxLength(Message.MaximumClientMessageIdLength)
             .IsRequired();
+        // Location payload (Opus delta): nullable triple, populated only for
+        // MessageType.Location messages.
+        builder.Property(e => e.Latitude)
+            .IsRequired(false);
+        builder.Property(e => e.Longitude)
+            .IsRequired(false);
+        builder.Property(e => e.LocationLabel)
+            .HasMaxLength(Message.MaximumLocationLabelLength)
+            .IsRequired(false);
         builder.Property(e => e.SentOnUtc)
             .HasColumnType("timestamp with time zone");
         builder.Property(e => e.DeliveredOnUtc)

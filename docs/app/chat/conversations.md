@@ -8,10 +8,13 @@ receive `401`.
 
 This page specifies Lane A of the frozen contract in `docs/chat/plan.md`:
 endpoints 1 (list), 2 (open-or-get), 5 (attachment upload), 6 (attachment
-serve), 7 (read mark), 9 (block/unblock/list), and 10 (hide). Messages, unread
-counts, and reports (endpoints 3–4, 8, 11) plus the `/api/v1/admin/chat`
-support routes (12–15) land with Lane B and are specified in `messages.md` /
-`reports.md` when they arrive.
+serve), 7 (read mark), 9 (block/unblock/list), and 10 (hide) — with the Opus
+deltas applied (exactly-one open target with backend booking resolution,
+participant `accountType` + facility display, `createdOnUtc` on message
+timestamps, attachment serve by attachment id, read mark over `POST`).
+Messages, unread counts, and reports (endpoints 3–4, 8, 11) plus the
+`/api/v1/admin/chat` support routes (12–15) are specified in `messages.md` /
+`reports.md`.
 
 **Privacy posture (applies to every route below).** An unknown id, a foreign
 row, and an ineligible row are indistinguishable: they answer `404` with the
@@ -22,9 +25,10 @@ names the failing gate family — `Chat.Conversation.NotFound`,
 "does not exist", "not yours", and "not eligible" are one and the same code,
 and the route already tells the caller which resource kind was addressed.
 Failures of the caller's *own* request (bad file, empty read reference,
-self-block) are `400`s carrying the specific `Chat.Attachment.*`,
-`Chat.ConversationRead.Invalid`, or `Chat.Block.Invalid` code: the caller is
-entitled to know their own request was invalid.
+self-block, both/neither open target) are `400`s carrying the specific
+`Chat.Attachment.*`, `Chat.ConversationRead.Invalid`,
+`Chat.Conversation.OpenTargetInvalid`, or `Chat.Block.Invalid` code: the
+caller is entitled to know their own request was invalid.
 
 ## Conversations
 
@@ -53,7 +57,8 @@ GET /api/v1/chat/conversations?page=1&pageSize=20
       "participant": {
         "userId": "00000000-0000-0000-0000-000000000002",
         "displayName": "Salma Nasr",
-        "avatarUrl": null
+        "avatarUrl": null,
+        "accountType": 1
       },
       "lastMessage": null,
       "unreadCount": 0
@@ -69,25 +74,31 @@ GET /api/v1/chat/conversations?page=1&pageSize=20
 `participant` is always the *other* side of the 1:1 pair, resolved through the
 Identity profile lookup: `displayName` prefers the English full name and falls
 back to Arabic (an unresolvable profile yields an empty string, and
-`avatarUrl` stays `null`). **Lane A stub:** `lastMessage` is always `null` and
-`unreadCount` is always `0` — the Messages module does not exist in this lane.
-Both field names are already frozen by the contract and are wired to `Message`
-when Lane B lands.
+`avatarUrl` stays `null`). `accountType` is the Identity `AccountType`
+integer of the counterpart's first-registered account (`null` only when their
+Identity row is gone). A care-home owner presents as the facility instead of
+the owner: `displayName` is the facility name (English preferred, Arabic
+fallback) and `avatarUrl` is its approved cover image, while `userId` stays
+the owner's id so messaging and blocking keep working. **Lane A stub:**
+`lastMessage` is always `null` and `unreadCount` is always `0` — the Messages
+module does not exist in this lane. Both field names are already frozen by the
+contract and are wired to `Message` when Lane B lands.
 
 ### Open-or-get — `POST /api/v1/chat/conversations`
 
-Opens a conversation with a recipient, or returns the existing one. Always
-`200` — this route never creates a duplicate.
+Opens a conversation, or returns the existing one. Always `200` — this route
+never creates a duplicate. Exactly one target is required (Opus delta): a
+direct chat names the recipient, a booking chat names the booking and the
+backend resolves the counterpart.
 
 ```json
-{
-  "recipientUserId": "00000000-0000-0000-0000-000000000002",
-  "bookingId": null
-}
+{ "recipientUserId": "00000000-0000-0000-0000-000000000002" }
 ```
 
-Set `bookingId` to a booking GUID for booking-scoped chat (the conversation
-then carries `scope = Booking`); keep it `null` for direct, booking-less chat.
+```json
+{ "bookingId": "00000000-0000-0000-0000-0000000000b1" }
+```
+
 `{ "conversationId": "...", "created": true }` means new history;
 `created: false` means the existing row was returned.
 
@@ -98,6 +109,11 @@ then carries `scope = Booking`); keep it `null` for direct, booking-less chat.
 }
 ```
 
+A booking open carries `scope = Booking`; a direct open carries
+`scope = Direct`. Both/neither target is `400
+Chat.Conversation.OpenTargetInvalid` (the caller's own malformed request —
+it leaks nothing about any resource).
+
 **Eligibility matrix as implemented.** Eligibility is evaluated at open time,
 before the duplication lookup, and every denial below collapses into the same
 generic privacy `404` (`Chat.Conversation.NotFound`) so the caller can never
@@ -105,31 +121,42 @@ tell which check failed:
 
 | Condition at open time | Result |
 |---|---|
+| Both `recipientUserId` and `bookingId` set, or neither | `400 Chat.Conversation.OpenTargetInvalid` |
 | `recipientUserId` equals the caller (self-open) | `404` |
 | `recipientUserId` empty, unknown, or no longer resolvable | `404` |
 | `bookingId` present but `00000000-0000-0000-0000-000000000000` | `404` |
-| `bookingId` present (any other value) | accepted as-is → `Booking` scope |
-| `bookingId` absent | accepted → `Direct` scope |
+| `bookingId` unknown, or the caller is not a party to the booking, or the booking is cancelled/expired/refunded | `404` |
 | Recipient resolves and pair is not self | `200` |
 
-**Eligibility not yet enforced (TODO seam).** `ApiChatEligibilityChecker`
-carries a documented `TODO(chat eligibility seam)`; the following locked rules
-from `docs/chat/plan.md` are *not* checked yet and must not be assumed by
-clients or tests:
+Booking validity is enforced by the backend booking gateway: a Families
+booking is eligible unless `CancelledByFamily`, `CancelledByCaregiver`,
+`Refunded`, or `Expired` (a caregiver-*declined* booking stays eligible);
+a care-home booking is eligible unless `Expired`, `Cancelled`, or `Refunded`.
+Family-side involvement covers the owner and every member; from the caregiver
+side the counterpart resolves to the booking creator. For care-home bookings
+the two sides are the family user and the facility owner. Whether the
+counterpart resolves to "the other user on the booking" is the complete rule
+— no additional role matrix applies to booking opens.
 
-- The role/participant matrix (family → any caregiver, booked caregivers, any
-  care home; elderly → own family members and booking-linked caregivers;
-  support → everyone; caregiver initiation limited to booking families plus
-  replies; all family roles including Viewer participate).
-- Booking state: both users on the same non-cancelled, non-expired booking.
-  No cross-module booking gateway exists yet, so a booking id is stored
-  verbatim. Consequence today: any two distinct registered users can open a
-  direct conversation with each other, including pairings the plan restricts
-  (e.g. elderly ↔ caregiver without a linking booking).
+**Starting a booking-less care-home chat.** A direct chat with a facility
+names the facility owner's user id as `recipientUserId`. Clients obtain it
+from facility detail — `GET /api/v1/care-homes/discovery/{careHomeId}`
+carries the additive `contactUserId` for authenticated callers (`null` for
+anonymous visitors) — then open with `{ "recipientUserId": "<contactUserId>"
+}`. The counterpart then presents as the facility (name/cover) in the
+conversation list.
 
-The seam is intentionally placed so the CareHomes booking lookup and the role
-matrix drop in behind it without touching any handler. The contract itself is
-unchanged; wiring the seam is an owner decision, not a doc decision.
+**Eligibility not yet enforced (remaining gap).** The following locked rule
+from `docs/chat/plan.md` is *not* checked and must not be assumed by clients
+or tests:
+
+- The direct-chat role/participant matrix (family → any caregiver, booked
+  caregivers, any care home; elderly → own family members and booking-linked
+  caregivers; support → everyone; caregiver initiation limited to booking
+  families plus replies; all family roles including Viewer participate).
+  Consequence today: any two distinct registered users can open a direct
+  conversation with each other, including pairings the plan restricts (e.g.
+  elderly ↔ caregiver without a linking booking).
 
 **Duplication and reopening (matches the frozen rules).** The conversation key
 is the normalized (ordered) participant pair plus the booking reference:
@@ -226,19 +253,20 @@ Files live under private storage with generated keys and are never served by
 the static `/files` host. There is no cleanup subsystem, so uploads that are
 never sent remain stored.
 
-### Serve — `GET /api/v1/chat/conversations/{conversationId}/attachments/{attachmentId}/file`
+### Serve — `GET /api/v1/chat/attachments/{attachmentId}/file`
 
 Returns the raw bytes for participants only, with the stored content type and
 `Cache-Control: no-store` + `Pragma: no-cache`. `401` for anonymous callers.
+The route carries the attachment id only: the participant check runs against
+the conversation the attachment belongs to, so the client can never steer it
+with a conversation id.
 
 Every denial collapses into the same generic privacy `404`
-(`Chat.Attachment.NotFound`): unknown conversation, foreign requester,
-unknown attachment id, an attachment that belongs to a *different*
-conversation, or a missing blob. There is no way to tell which check failed,
-and there are no signed URLs in V1 — authorized serving happens only through
-this controller.
+(`Chat.Attachment.NotFound`): unknown attachment id, a foreign requester, or
+a missing blob. There is no way to tell which check failed, and there are no
+signed URLs in V1 — authorized serving happens only through this controller.
 
-## Read marks — `PUT /api/v1/chat/conversations/{conversationId}/read`
+## Read marks — `POST /api/v1/chat/conversations/{conversationId}/read`
 
 ```json
 {
@@ -330,7 +358,7 @@ asserted as state (the predicate is queryable, unblock clears it).
 - `Attachment.UploadedOnUtc` is the upload time (not echoed in the `201`
   body); `Block.CreatedOnUtc` is the block time.
 - Display ticks for messages (sent time, delivered grey, read blue) are Lane B
-  presentation over `sentOnUtc`/`deliveredOnUtc`/`readOnUtc`; Lane A exposes
+  presentation over `createdOnUtc`/`deliveredOnUtc`/`readOnUtc`; Lane A exposes
   no message timestamps.
 - **Retention is indefinite** (locked). Nothing in Lane A deletes a
   conversation, message, attachment, read mark, or block row; hiding and
@@ -345,8 +373,9 @@ Every body below is `application/problem+json` with `type`, `title`, `status`,
 | Code / condition | HTTP | Routes | Trigger |
 |---|---|---|---|
 | (no token or no usable `sub` claim) | `401` | 1, 2, 5, 6, 7, 9, 10 | Anonymous or unusable JWT |
-| `Chat.Conversation.NotFound` | `404` generic privacy | 2, 5, 7, 10 | Self-open; unknown/deleted/empty recipient; `bookingId` = `Guid.Empty`; unknown conversation id; caller not a participant (upload, read, hide) |
-| `Chat.Attachment.NotFound` | `404` generic privacy | 6 | Unknown conversation, foreign requester, unknown attachment id, cross-conversation attachment id, missing blob |
+| `Chat.Conversation.NotFound` | `404` generic privacy | 2, 5, 7, 10 | Self-open; unknown/deleted/empty recipient; `bookingId` = `Guid.Empty`; unknown booking, caller not a party to the booking, or cancelled/expired/refunded booking; unknown conversation id; caller not a participant (upload, read, hide) |
+| `Chat.Conversation.OpenTargetInvalid` | `400` | 2 | Both or neither of `recipientUserId`/`bookingId` supplied |
+| `Chat.Attachment.NotFound` | `404` generic privacy | 6 | Unknown attachment id, foreign requester, missing blob |
 | `Chat.Block.NotFound` | `404` generic privacy | 9 (POST) | Target user id is not registered |
 | `Chat.Attachment.Invalid` | `400` | 5 | Missing `file` part, zero-length file, declared length ≠ received bytes, magic-byte mismatch, upload-row persistence failure |
 | `Chat.Attachment.TooLarge` | `400` | 5 | File exceeds the per-type limit (5 MB image / 50 MB video / 10 MB PDF) |

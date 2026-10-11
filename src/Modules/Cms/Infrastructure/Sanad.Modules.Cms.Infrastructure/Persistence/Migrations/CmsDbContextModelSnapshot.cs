@@ -162,6 +162,165 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                     b.ToTable("legal_documents", "cms");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Library.LibraryCategory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ArabicName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("arabic_name");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("EnglishName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("english_name");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTime?>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("library_categories", "cms");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Library.LibraryContent", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ArabicSummary")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("arabic_summary");
+
+                    b.Property<string>("ArabicTitle")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("arabic_title");
+
+                    b.Property<Guid?>("CategoryId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("category_id");
+
+                    b.Property<string>("CoverImagePath")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cover_image_path");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<int?>("DurationSeconds")
+                        .HasColumnType("integer")
+                        .HasColumnName("duration_seconds");
+
+                    b.Property<string>("EnglishSummary")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("english_summary");
+
+                    b.Property<string>("EnglishTitle")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("english_title");
+
+                    b.Property<bool>("IsPremium")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_premium");
+
+                    b.Property<int>("LikesCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("likes_count");
+
+                    b.Property<DateTime?>("PublishedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_on_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer")
+                        .HasColumnName("type");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.Property<string>("VideoUrl")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("video_url");
+
+                    b.Property<int>("ViewCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("view_count");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CategoryId");
+
+                    b.HasIndex("Status", "CreatedOnUtc");
+
+                    b.HasIndex("Status", "ViewCount");
+
+                    b.ToTable("library_contents", "cms");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Library.LibraryContentInteraction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ContentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("content_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Kind");
+
+                    b.HasIndex("ContentId", "UserId", "Kind")
+                        .IsUnique();
+
+                    b.ToTable("library_content_interactions", "cms");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Cms.Domain.MedicationLateness.MedicationLatenessSetting", b =>
                 {
                     b.Property<Guid>("Id")
@@ -532,6 +691,65 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                             b1.WithOwner()
                                 .HasForeignKey("DocumentId");
                         });
+
+                    b.Navigation("Sections");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Library.LibraryContent", b =>
+                {
+                    b.HasOne("Sanad.Modules.Cms.Domain.Library.LibraryCategory", "Category")
+                        .WithMany()
+                        .HasForeignKey("CategoryId")
+                        .OnDelete(DeleteBehavior.SetNull);
+
+                    b.OwnsMany("Sanad.Modules.Cms.Domain.Library.LibraryContentSection", "Sections", b1 =>
+                        {
+                            b1.Property<Guid>("Id")
+                                .HasColumnType("uuid")
+                                .HasColumnName("id");
+
+                            b1.PrimitiveCollection<string>("ArabicBullets")
+                                .IsRequired()
+                                .HasColumnType("jsonb")
+                                .HasColumnName("arabic_bullets");
+
+                            b1.Property<string>("ArabicTitle")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("arabic_title");
+
+                            b1.Property<int>("DisplayOrder")
+                                .HasColumnType("integer")
+                                .HasColumnName("display_order");
+
+                            b1.PrimitiveCollection<string>("EnglishBullets")
+                                .IsRequired()
+                                .HasColumnType("jsonb")
+                                .HasColumnName("english_bullets");
+
+                            b1.Property<string>("EnglishTitle")
+                                .IsRequired()
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("english_title");
+
+                            b1.Property<Guid>("LibraryContentId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("library_content_id");
+
+                            b1.HasKey("Id");
+
+                            b1.HasIndex("LibraryContentId", "DisplayOrder")
+                                .IsUnique();
+
+                            b1.ToTable("library_content_sections", "cms");
+
+                            b1.WithOwner()
+                                .HasForeignKey("LibraryContentId");
+                        });
+
+                    b.Navigation("Category");
 
                     b.Navigation("Sections");
                 });

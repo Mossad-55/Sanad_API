@@ -154,7 +154,7 @@
               "type": "noauth"
             },
             "url": "{{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryId}}",
-            "description": "Use careHomeDiscoveryId from a guarded disposable fixture. Detail includes the approved address, admission conditions, amenities, medical services, and active room-type cards; it does not expose private or resident data. Optional expectedCareHomeEnglishName and expectedStartingFromMonthlyPriceEgp variables enable exact fixture assertions."
+            "description": "Use careHomeDiscoveryId from a guarded disposable fixture. Detail includes the approved address, admission conditions, amenities, medical services, and active room-type cards; it does not expose private or resident data. Authenticated callers additionally receive contactUserId (the facility owner's user id) for opening a booking-less direct chat; anonymous callers receive null. Optional expectedCareHomeEnglishName and expectedStartingFromMonthlyPriceEgp variables enable exact fixture assertions."
           },
           "event": [
             {

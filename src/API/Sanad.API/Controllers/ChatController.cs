@@ -54,11 +54,21 @@ public sealed class ChatController : ApiControllerBase
         return ToChatActionResult(result);
     }
 
-    /// <summary>Endpoint 2 — open-or-get (200, never a duplicate).</summary>
+    /// <summary>
+    /// Endpoint 2 — open-or-get (200, never a duplicate). Exactly one
+    /// target is required (Opus delta): <c>recipientUserId</c> opens a
+    /// direct chat; <c>bookingId</c> opens a booking chat whose counterpart
+    /// the backend resolves from the booking (the booking must exist, have
+    /// the caller as a party, and not be cancelled/expired/refunded). Both
+    /// or neither answers 400
+    /// <see cref="ConversationErrors.OpenTargetInvalid"/>; every
+    /// resource-shaped denial stays the generic privacy 404.
+    /// </summary>
     [HttpPost("conversations")]
     [ProducesResponseType(
         typeof(OpenConversationResponse),
         StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> OpenConversation(
         [FromBody] OpenConversationRequest request,
@@ -69,14 +79,18 @@ public sealed class ChatController : ApiControllerBase
             return Unauthorized();
         }
 
-        BookingId? bookingId = request.BookingId is { } value
-            ? new BookingId(value)
+        UserId? recipient = request.RecipientUserId is { } value
+            ? new UserId(value)
+            : null;
+
+        BookingId? bookingId = request.BookingId is { } booking
+            ? new BookingId(booking)
             : null;
 
         var result = await _sender.Send(
             new OpenConversationCommand(
                 userId,
-                new UserId(request.RecipientUserId),
+                recipient,
                 bookingId),
             cancellationToken);
 
@@ -85,11 +99,11 @@ public sealed class ChatController : ApiControllerBase
 
     /// <summary>
     /// Endpoint 3 — cursor page of a conversation's messages, newest first
-    /// by (<c>sentOnUtc</c>, <c>id</c>). <c>limit</c> defaults to 30 and is
-    /// clamped to 1–100 by the handler; <c>beforeMessageId</c> accepts the
+    /// by (<c>createdOnUtc</c>, <c>id</c>). <c>pageSize</c> defaults to 30
+    /// and is clamped to 1–100 by the handler; <c>beforeId</c> accepts the
     /// opaque <c>nextCursor</c> this endpoint returned or a raw message id.
     /// Unknown, foreign, and hidden-for-requester conversations, and any
-    /// <c>beforeMessageId</c> that does not resolve inside this
+    /// <c>beforeId</c> that does not resolve inside this
     /// conversation, are the generic privacy 404 — the parameter can never
     /// be used to probe ids. The response also carries the delivery write
     /// side effect: the recipient's first fetch stamps
@@ -102,8 +116,8 @@ public sealed class ChatController : ApiControllerBase
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetMessages(
         Guid conversationId,
-        [FromQuery] string? beforeMessageId = null,
-        [FromQuery] int limit = GetMessagesQueryHandler.DefaultLimit,
+        [FromQuery] string? beforeId = null,
+        [FromQuery] int pageSize = GetMessagesQueryHandler.DefaultLimit,
         CancellationToken cancellationToken = default)
     {
         if (!TryGetAuthenticatedUserId(out UserId userId))
@@ -115,8 +129,8 @@ public sealed class ChatController : ApiControllerBase
             new GetMessagesQuery(
                 userId,
                 new ConversationId(conversationId),
-                beforeMessageId,
-                limit),
+                beforeId,
+                pageSize),
             cancellationToken);
 
         return ToChatActionResult(result);
@@ -162,7 +176,10 @@ public sealed class ChatController : ApiControllerBase
                 request.ClientMessageId,
                 request.Type,
                 request.Text,
-                attachmentId),
+                attachmentId,
+                request.Location?.Latitude,
+                request.Location?.Longitude,
+                request.Location?.Label),
             cancellationToken);
 
         if (!result.IsSuccess)
@@ -227,7 +244,8 @@ public sealed class ChatController : ApiControllerBase
 
     /// <summary>
     /// Endpoint 7 — record the participant's read mark (204, idempotent).
-    /// One row per (conversation, user): repeating the call updates the
+    /// POST as of the Opus delta (was PUT; semantics unchanged). One row
+    /// per (conversation, user): repeating the call updates the
     /// same row and answers 204 again. The conversation/participant gate
     /// runs before anything else, so unknown and foreign conversation ids
     /// are the same generic privacy 404 and never reveal existence; only a
@@ -237,7 +255,7 @@ public sealed class ChatController : ApiControllerBase
     /// messages is Lane B's job (Lane A has no Message table), and a read
     /// mark never changes last activity, hiding, or visibility.
     /// </summary>
-    [HttpPut("conversations/{conversationId:guid}/read")]
+    [HttpPost("conversations/{conversationId:guid}/read")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
@@ -315,15 +333,16 @@ public sealed class ChatController : ApiControllerBase
     }
 
     /// <summary>
-    /// Endpoint 6 — participant-only file bytes, never cacheable. Unknown,
-    /// foreign, and cross-conversation ids are indistinguishable privacy
-    /// 404s; no signed URLs exist in V1.
+    /// Endpoint 6 — participant-only file bytes, never cacheable. The route
+    /// carries the attachment id only (Opus delta): the participant check
+    /// runs against the conversation the attachment belongs to, so a client
+    /// can never steer it. Unknown and foreign attachment ids are
+    /// indistinguishable privacy 404s; no signed URLs exist in V1.
     /// </summary>
-    [HttpGet("conversations/{conversationId:guid}/attachments/{attachmentId:guid}/file")]
+    [HttpGet("attachments/{attachmentId:guid}/file")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetAttachmentFile(
-        Guid conversationId,
         Guid attachmentId,
         CancellationToken cancellationToken)
     {
@@ -335,7 +354,6 @@ public sealed class ChatController : ApiControllerBase
         var result = await _sender.Send(
             new GetAttachmentFileQuery(
                 userId,
-                new ConversationId(conversationId),
                 new AttachmentId(attachmentId)),
             cancellationToken);
 
@@ -492,8 +510,9 @@ public sealed class ChatController : ApiControllerBase
     /// code (endpoint 11's unknown/foreign conversation and unknown/
     /// cross-conversation messageId) are privacy failures: one
     /// indistinguishable generic 404 each. Upload validation codes,
-    /// Chat.Message.Invalid, Chat.Block.Invalid, Chat.Report.Invalid, and
-    /// Chat.ConversationRead.Invalid deliberately do NOT match: they surface
+    /// Chat.Message.Invalid, Chat.Block.Invalid, Chat.Report.Invalid,
+    /// Chat.ConversationRead.Invalid, and Chat.Conversation.OpenTargetInvalid
+    /// deliberately do NOT match: they surface
     /// as 400s to the caller, who is entitled to know their own request was
     /// invalid. Chat.Report.NotFound is forced here only on the app route —
     /// the admin controller renders the same code as a plain 404, where

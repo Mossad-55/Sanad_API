@@ -128,12 +128,14 @@ item shape:
 [
   {
     "id": "0198e2c2-4444-7a10-8000-00000000b002",
+    "conversationId": "0198e2c2-4444-7a10-8000-00000000c001",
     "clientMessageId": "web-0002",
     "senderUserId": "00000000-0000-0000-0000-000000000001",
     "type": "Text",
     "text": "You people never listen — I am done with this",
     "attachment": null,
-    "sentOnUtc": "2026-10-11T09:15:30Z",
+    "location": null,
+    "createdOnUtc": "2026-10-11T09:15:30Z",
     "deliveredOnUtc": "2026-10-11T09:16:02Z",
     "readOnUtc": "2026-10-11T09:20:11Z"
   }

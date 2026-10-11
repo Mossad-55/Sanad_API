@@ -16,7 +16,12 @@ public sealed class AdminCaregiverPayoutPolicyController(ISender sender) : ApiCo
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Create(CreateCaregiverPayoutPolicyRequest request, CancellationToken ct)
     {
-        var result = await sender.Send(new CreateCaregiverPayoutPolicyCommand(request.PayoutDelayHours, request.Version, request.EffectiveOnUtc), ct);
+        var result = await sender.Send(new CreateCaregiverPayoutPolicyCommand(
+            request.PayoutDelayHours,
+            request.Version,
+            request.EffectiveOnUtc,
+            request.DescriptionArabic,
+            request.DescriptionEnglish), ct);
         if (result.IsSuccess) return StatusCode(StatusCodes.Status201Created, result.Value);
         return result.Error.Code == "Finance.PayoutPolicy.Invalid"
             ? BadRequest(result.Error)
@@ -32,4 +37,9 @@ public sealed class AdminCaregiverPayoutPolicyController(ISender sender) : ApiCo
     public async Task<IActionResult> History(CancellationToken ct) => Ok((await sender.Send(new GetCaregiverPayoutPolicyHistoryQuery(), ct)).Value);
 }
 
-public sealed record CreateCaregiverPayoutPolicyRequest(int PayoutDelayHours, int Version, DateTime EffectiveOnUtc);
+public sealed record CreateCaregiverPayoutPolicyRequest(
+    int PayoutDelayHours,
+    int Version,
+    DateTime EffectiveOnUtc,
+    string? DescriptionArabic = null,
+    string? DescriptionEnglish = null);

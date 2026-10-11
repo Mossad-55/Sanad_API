@@ -314,12 +314,26 @@ public static class ResultProblemDetailsMapper
             , ["Cms.ElderlyWelcome.AlreadyExists"] = 409
             , ["Cms.ElderlyWelcome.InvalidState"] = 409
             , ["Cms.ElderlyWelcome.Invalid"] = 400
+            , ["Cms.LibraryCategory.NotFound"] = 404
+            , ["Cms.LibraryCategory.Invalid"] = 400
+            , ["Cms.LibraryCategory.InUse"] = 409
+            , ["Cms.LibraryContent.NotFound"] = 404
+            , ["Cms.LibraryContent.NotPublished"] = 404
+            , ["Cms.LibraryContent.Invalid"] = 400
+            , ["Cms.LibraryContent.InvalidOperation"] = 409
+            , ["Cms.Library.InvalidCategory"] = 400
+            , ["Cms.Library.CategoryInactive"] = 409
             , ["Feedback.InvalidRating"] = 400
             , ["Community.PostNotFound"] = 404
             , ["Community.InvalidModerationOperation"] = 409
             , ["Community.CheckIn.Invalid"] = 400
             , ["Community.Image.Invalid"] = 400
             , ["Community.Image.NotFound"] = 404
+            , ["Community.CategoryNotFound"] = 404
+            , ["Community.CategoryInactive"] = 409
+            , ["Community.CategoryInUse"] = 409
+            , ["Community.InvalidCategory"] = 400
+            , ["Community.Category.Invalid"] = 400
         };
 
     public static ProblemDetails Create(

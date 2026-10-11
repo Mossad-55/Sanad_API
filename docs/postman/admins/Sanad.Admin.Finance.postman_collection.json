@@ -80,7 +80,7 @@
     },
     {
       "name": "Caregiver payout policy (SuperAdmin or FinanceAdmin)",
-      "description": "Caregiver payout timing policy under /api/v1/admin/finance/caregiver-payout-policies. Requires the PayoutOperationalAdmin policy (SuperAdmin or FinanceAdmin); SupportAdmin and ContentAdmin are denied. No payout fee is configured here: entitlement is always the booking snapshot BaseCaregiverFee.",
+      "description": "Caregiver payout timing policy under /api/v1/admin/finance/caregiver-payout-policies. Requires the PayoutOperationalAdmin policy (SuperAdmin or FinanceAdmin); SupportAdmin and ContentAdmin are denied. No payout fee is configured here: entitlement is always the booking snapshot BaseCaregiverFee. Each create is a new policy version; optional bilingual descriptions are surfaced to caregivers by GET /api/v1/caregiver/payment-policy.",
       "item": [
         {
           "name": "Create caregiver payout policy",
@@ -98,11 +98,11 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"payoutDelayHours\": 72,\n  \"version\": 1,\n  \"effectiveOnUtc\": \"2026-10-08T00:00:00Z\"\n}"
+              "raw": "{\n  \"payoutDelayHours\": 72,\n  \"version\": 1,\n  \"effectiveOnUtc\": \"2026-10-08T00:00:00Z\",\n  \"descriptionArabic\": \"يُدفع بعد 72 ساعة من إتمام الحجز وسداده\",\n  \"descriptionEnglish\": \"Payout is released 72 hours after the booking is completed and paid.\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/admin/finance/caregiver-payout-policies"
           },
-          "description": "Returns 201 with the new policy UUID. payoutDelayHours must be zero or more; version must exceed the latest stored payout policy version. Manual/destructive configuration request; use only on an owner-authorized disposable target."
+          "description": "Returns 201 with the new policy UUID. payoutDelayHours must be zero or more; version must exceed the latest stored payout policy version. descriptionArabic/descriptionEnglish are optional (trimmed, max 4000 chars each, blank → null) and are what caregivers read back from GET /api/v1/caregiver/payment-policy; policies without them surface null descriptions. Manual/destructive configuration request; use only on an owner-authorized disposable target."
         },
         {
           "name": "Get current caregiver payout policy",
@@ -116,7 +116,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/finance/caregiver-payout-policies/current"
           },
-          "description": "Returns 200 with the effective payout policy, or JSON null when no effective policy exists. SuperAdmin and FinanceAdmin only."
+          "description": "Returns 200 with the effective payout policy (including descriptionArabic/descriptionEnglish when authored), or JSON null when no effective policy exists. SuperAdmin and FinanceAdmin only."
         },
         {
           "name": "Get caregiver payout policy history",

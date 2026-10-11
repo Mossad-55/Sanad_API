@@ -17,13 +17,16 @@ public sealed class GetConversationsQueryHandler
 
     private readonly IChatDbContext _dbContext;
     private readonly IChatUserLookup _userLookup;
+    private readonly IChatFacilityLookup _facilityLookup;
 
     public GetConversationsQueryHandler(
         IChatDbContext dbContext,
-        IChatUserLookup userLookup)
+        IChatUserLookup userLookup,
+        IChatFacilityLookup facilityLookup)
     {
         _dbContext = dbContext;
         _userLookup = userLookup;
+        _facilityLookup = facilityLookup;
     }
 
     public async Task<Result<PagedResult<ConversationListItemResponse>>> Handle(
@@ -77,12 +80,28 @@ public sealed class GetConversationsQueryHandler
                 otherParticipant,
                 cancellationToken);
 
+            // Opus delta: a care-home owner participant presents as the
+            // facility — name and cover resolve over the owner's user id.
+            // Users without a facility keep their personal profile.
+            string displayName = profile?.DisplayName ?? string.Empty;
+            string? avatarUrl = profile?.AvatarUrl;
+
+            FacilityPresentation? facility = await _facilityLookup
+                .GetForOwnerAsync(otherParticipant, cancellationToken);
+
+            if (facility is not null)
+            {
+                displayName = facility.DisplayName;
+                avatarUrl = facility.CoverImageUrl;
+            }
+
             items.Add(new ConversationListItemResponse(
                 conversation.Id.Value,
                 new ParticipantResponse(
                     otherParticipant.Value,
-                    profile?.DisplayName ?? string.Empty,
-                    profile?.AvatarUrl),
+                    displayName,
+                    avatarUrl,
+                    profile?.AccountType),
                 // LoadAsync gives every conversation it was handed an entry,
                 // so both reads are safe indexers.
                 facts.LastMessages[conversation.Id],

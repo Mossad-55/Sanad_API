@@ -1,6 +1,7 @@
 using Sanad.Modules.Community.Application.Abstractions.Data;
 using Sanad.Modules.Community.Domain.Posts;
 using Sanad.BuildingBlocks.Application.Abstractions;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
 namespace Sanad.Modules.Community.Application.Ratings;
@@ -16,11 +17,19 @@ public sealed class AddRatingCommandHandler : ICommandHandler<AddRatingCommand, 
 
     public async Task<Result<bool>> Handle(AddRatingCommand request, CancellationToken cancellationToken)
     {
-        if (request.UserId == Guid.Empty ||
-            !int.TryParse(request.RatingValue, out var ratingValue) || ratingValue is < 1 or > 5)
+        if (request.UserId == Guid.Empty)
         {
             return false;
         }
+
+        if (request.Value is < 1 or > 5)
+        {
+            return Result<bool>.Failure(new Error(
+                "Community.Rating.Invalid",
+                "Rating value must be an integer between 1 and 5."));
+        }
+
+        var ratingValue = request.Value;
 
         var post = await _dbContext.Posts.FindAsync([new CommunityPostId(request.PostId)], cancellationToken);
 

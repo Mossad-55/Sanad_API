@@ -104,7 +104,7 @@ public sealed class CommunityModerationAndCheckInTests
         {
             PostId = post.Id.Value,
             UserId = user.Value,
-            RatingValue = "5"
+            Value = 5
         }, default);
 
         Assert.True(result.IsSuccess);

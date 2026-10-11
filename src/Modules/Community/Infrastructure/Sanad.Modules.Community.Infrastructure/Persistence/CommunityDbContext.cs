@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Community.Application.Abstractions.Data;
+using Sanad.Modules.Community.Domain.Categories;
 using Sanad.Modules.Community.Domain.Comments;
 using Sanad.Modules.Community.Domain.Posts;
 using Sanad.Modules.Community.Domain.CheckIns;
@@ -26,6 +27,7 @@ public class CommunityDbContext : DbContext, ICommunityDbContext
     public DbSet<Rating> Ratings { get; set; } = null!;
     public DbSet<CommunityInteraction> Interactions { get; set; } = null!;
     public DbSet<CommunityImage> CommunityImages { get; set; } = null!;
+    public DbSet<CommunityCategory> Categories { get; set; } = null!;
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

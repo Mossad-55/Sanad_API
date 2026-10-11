@@ -9,25 +9,39 @@ namespace Sanad.Modules.Chat.Application.Messages;
 public sealed record MessageAttachmentResponse(Guid AttachmentId);
 
 /// <summary>
-/// Frozen message item shape: <c>id</c>, <c>clientMessageId</c>,
-/// <c>senderUserId</c>, <c>type</c> ("Text"/"File"), <c>text</c> (null for
-/// File), <c>attachment</c>, <c>sentOnUtc</c>, <c>deliveredOnUtc</c>,
-/// <c>readOnUtc</c>.
+/// The <c>location</c> object of a <c>Location</c> message: coordinate pair
+/// plus an optional human label. Participant-only, exactly like the text
+/// body — the message list never widens who can see it.
+/// </summary>
+public sealed record MessageLocationResponse(
+    double Latitude,
+    double Longitude,
+    string? Label);
+
+/// <summary>
+/// Frozen message item shape: <c>id</c>, <c>conversationId</c>,
+/// <c>clientMessageId</c>, <c>senderUserId</c>, <c>type</c>
+/// ("Text"/"File"/"Location"), <c>text</c> (null for File/Location),
+/// <c>attachment</c>, <c>location</c> (null for Text/File),
+/// <c>createdOnUtc</c> (Opus delta: replaces the former <c>sentOnUtc</c> on
+/// the wire), <c>deliveredOnUtc</c>, <c>readOnUtc</c>.
 /// </summary>
 public sealed record MessageItemResponse(
     Guid Id,
+    Guid ConversationId,
     string ClientMessageId,
     Guid SenderUserId,
     string Type,
     string? Text,
     MessageAttachmentResponse? Attachment,
-    DateTime SentOnUtc,
+    MessageLocationResponse? Location,
+    DateTime CreatedOnUtc,
     DateTime? DeliveredOnUtc,
     DateTime? ReadOnUtc);
 
 /// <summary>
 /// Cursor page for endpoint 3: newest first, <c>nextCursor</c> is the opaque
-/// key of the last returned item (pass it back as <c>beforeMessageId</c>;
+/// key of the last returned item (pass it back as <c>beforeId</c>;
 /// a raw message id works too) and is null once <c>hasMore</c> is false.
 /// </summary>
 public sealed record MessageCursorPage(

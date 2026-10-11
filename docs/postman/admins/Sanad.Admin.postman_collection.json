@@ -99,6 +99,36 @@
       "key": "sentenceBuilderRevisionId",
       "value": "REPLACE_WITH_SENTENCE_BUILDER_REVISION_ID",
       "description": "Approved catalog revision UUID for manual reads/actions."
+    },
+    {
+      "key": "libraryCategoryId",
+      "value": "REPLACE_WITH_LIBRARY_CATEGORY_ID",
+      "description": "Active library category UUID for content create/update form fields and public filters."
+    },
+    {
+      "key": "libraryContentId",
+      "value": "REPLACE_WITH_LIBRARY_CONTENT_ID",
+      "description": "Library content UUID for detail, update, publish, and archive requests."
+    },
+    {
+      "key": "libraryStatus",
+      "value": "",
+      "description": "Optional admin status filter: Draft, Published, or Archived."
+    },
+    {
+      "key": "libraryType",
+      "value": "",
+      "description": "Optional type filter: Article or Video."
+    },
+    {
+      "key": "librarySearch",
+      "value": "",
+      "description": "Optional Arabic or English title search."
+    },
+    {
+      "key": "libraryImageFile",
+      "value": "",
+      "description": "Local disposable JPEG/PNG/WebP cover file path for manual multipart create/update."
     }
   ],
   "item": [
@@ -3016,6 +3046,22 @@
           },
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification aggregate contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }]
         }
+      ]
+    },
+    {
+      "name": "19. Library CMS (manual)",
+      "description": "Library content CMS under the CmsContent policy (SuperAdmin or ContentAdmin). Categories are a bilingual active/inactive lookup; content is Article|Video with a Draft/Published/Archived lifecycle. GETs are safe reads; create/update/delete/publish/archive are manual state-changing authoring examples - run them only against approved disposable CMS fixtures. Success returns 200/201/204 as noted; unauthenticated returns 401; roles outside CmsContent return 403; unknown ids return 404 Cms.LibraryCategory.NotFound or Cms.LibraryContent.NotFound; invalid names or content shapes return 400; delete-in-use and lifecycle violations return 409.",
+      "item": [
+        { "name": "List library categories", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/categories", "description": "Read-only. Returns all categories including inactive with isActive and timestamps. Success 200; 401 unauthenticated; 403 outside CmsContent." } },
+        { "name": "Create library category (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"Health tips\",\n  \"englishName\": \"Health tips\",\n  \"isActive\": true\n}" }, "url": "{{baseUrl}}/api/v1/admin/library/categories", "description": "STATE-CHANGING. Success 201 with the created category. Names are required, bilingual, trimmed, max 200 chars; blank/overlong names return 400 Cms.LibraryCategory.Invalid. isActive defaults to true." } },
+        { "name": "Update library category (manual mutation)", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"Health tips\",\n  \"englishName\": \"Health tips\",\n  \"isActive\": false\n}" }, "url": "{{baseUrl}}/api/v1/admin/library/categories/{{libraryCategoryId}}", "description": "STATE-CHANGING. Success 200. Unknown id returns 404 Cms.LibraryCategory.NotFound; blank/overlong names return 400 Cms.LibraryCategory.Invalid. Deactivating hides the category from the public list without detaching content." } },
+        { "name": "Delete library category (manual mutation)", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/categories/{{libraryCategoryId}}", "description": "STATE-CHANGING. Success 204. Unknown id returns 404 Cms.LibraryCategory.NotFound; a category referenced by any content returns 409 Cms.LibraryCategory.InUse - deactivate it instead." } },
+        { "name": "List library content", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/content?status={{libraryStatus}}&type={{libraryType}}&search={{librarySearch}}&page=1&pageSize=20", "description": "Read-only paged admin list across all statuses. status=Draft|Published|Archived and type=Article|Video are optional; invalid enum values return 400 Cms.Library.InvalidStatus / Cms.Library.InvalidType. search matches both titles. Response is {items, page, pageSize, totalCount}." } },
+        { "name": "Get library content detail", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}", "description": "Read-only. Full admin detail for any status, including sections and video fields. Unknown id returns 404 Cms.LibraryContent.NotFound." } },
+        { "name": "Create library content (manual multipart)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "formdata" }, "url": "{{baseUrl}}/api/v1/admin/library/content", "description": "STATE-CHANGING manual multipart example. Set body mode to form-data with fields: type (Article|Video), categoryId (optional UUID string), arabicTitle, englishTitle, arabicSummary, englishSummary, isPremium (true|false), videoUrl + durationSeconds (Video only), sectionsJson (Article only; JSON array of {displayOrder, arabicTitle, englishTitle, arabicBullets, englishBullets}), and file (cover; required on create, JPEG/PNG/WebP signature checked, max 5 MB). Success 201, always Draft. Unknown category returns 400 Cms.Library.InvalidCategory; inactive category 409 Cms.Library.CategoryInactive; invalid type combinations or section arrays 400 Cms.LibraryContent.Invalid. Do not run without owner-approved disposable CMS fixture data." } },
+        { "name": "Update library content (manual multipart)", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "formdata" }, "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}", "description": "STATE-CHANGING manual multipart example. Same form fields as create; omit file to keep the existing cover. Success 200. Only Draft content can be updated - Published/Archived returns 409 Cms.LibraryContent.InvalidOperation; unknown id 404 Cms.LibraryContent.NotFound. Do not run without owner-approved disposable CMS fixture data." } },
+        { "name": "Publish library content (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}/publish", "description": "STATE-CHANGING. Draft to Published; sets publishedOnUtc on first publish; publishing an already-published item is a no-op success. Unknown id returns 404 Cms.LibraryContent.NotFound; Archived content returns 409 Cms.LibraryContent.InvalidOperation (no restore-from-archive in V1)." } },
+        { "name": "Archive library content (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}/archive", "description": "STATE-CHANGING. Any status to Archived; idempotent. Unknown id returns 404 Cms.LibraryContent.NotFound. Archived content disappears from public reads." } }
       ]
     }
   ]

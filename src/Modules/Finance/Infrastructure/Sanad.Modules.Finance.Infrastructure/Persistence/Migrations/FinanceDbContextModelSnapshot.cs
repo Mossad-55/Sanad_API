@@ -33,6 +33,14 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on_utc");
 
+                    b.Property<string>("DescriptionArabic")
+                        .HasColumnType("text")
+                        .HasColumnName("description_arabic");
+
+                    b.Property<string>("DescriptionEnglish")
+                        .HasColumnType("text")
+                        .HasColumnName("description_english");
+
                     b.Property<DateTime>("EffectiveOnUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("effective_on_utc");

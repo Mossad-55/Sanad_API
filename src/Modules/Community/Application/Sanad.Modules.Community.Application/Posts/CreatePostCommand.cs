@@ -8,5 +8,6 @@ public sealed record CreatePostCommand : ICommand<Post>
     public string ContentEnglish { get; init; } = string.Empty;
     public string? ImageUrl { get; init; }
     public bool IsAnonymous { get; init; }
+    public Guid? CategoryId { get; init; }
     public Guid AuthorId { get; init; }
 }

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Cms.Domain.Help;
 using Sanad.Modules.Cms.Domain.Legal;
+using Sanad.Modules.Cms.Domain.Library;
 using Sanad.Modules.Cms.Domain.Splash;
 using Sanad.Modules.Cms.Domain.Wellness;
 using Sanad.Modules.Cms.Domain.SentenceBuilder;
@@ -25,6 +26,12 @@ public interface ICmsDbContext
     DbSet<MedicationLatenessSetting> MedicationLatenessSettings { get; }
     DbSet<MedicationLatenessSettingRevision> MedicationLatenessSettingRevisions { get; }
     DbSet<ElderlyWelcome> ElderlyWelcomes { get; }
+
+    DbSet<LibraryCategory> LibraryCategories { get; }
+
+    DbSet<LibraryContent> LibraryContents { get; }
+
+    DbSet<LibraryContentInteraction> LibraryContentInteractions { get; }
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
