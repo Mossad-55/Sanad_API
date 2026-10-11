@@ -69,6 +69,6 @@ never merge or push; workers write the report file as part of Done.
 - [x] lane-a-docs — report: `docs/chat/reports/lane-a-docs.md` (task commit `ac6e7c2`)
 - [x] lane-b-domain — report: `docs/chat/reports/lane-b-domain.md` (task commit `0c61f4c`, branch `opencode/chat-lane-b`)
 - [x] lane-b-endpoints — report: `docs/chat/reports/lane-b-endpoints.md` (task commit `878140e`, branch `opencode/chat-lane-b`)
-- [ ] lane-b-reports — report: `docs/chat/reports/lane-b-reports.md`
+- [x] lane-b-reports — report: `docs/chat/reports/lane-b-reports.md` (task commit `952e49f`, branch `opencode/chat-lane-b`)
 - [ ] lane-b-notifications — report: `docs/chat/reports/lane-b-notifications.md`
 - [ ] lane-b-docs — report: `docs/chat/reports/lane-b-docs.md`
