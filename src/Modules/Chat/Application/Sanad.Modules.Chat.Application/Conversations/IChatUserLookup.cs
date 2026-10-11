@@ -7,11 +7,14 @@ namespace Sanad.Modules.Chat.Application.Conversations;
 /// by Sanad.API over the Identity module (the same gateway pattern as
 /// IFamilyIdentityGateway): the Chat Application references no Identity
 /// types, so handlers and tests fake this port.
+/// <c>AccountType</c> is the Identity <c>AccountType</c> integer (Opus
+/// delta) — null only when the user row is gone.
 /// </summary>
 public sealed record UserProfile(
     UserId UserId,
     string DisplayName,
-    string? AvatarUrl);
+    string? AvatarUrl,
+    int? AccountType);
 
 public interface IChatUserLookup
 {

@@ -367,7 +367,7 @@ public sealed class ConversationTests
         var lookup = new FakeChatUserLookup();
         lookup.Add(recipient, "Recipient");
         var handler = new OpenConversationCommandHandler(
-            db, new ApiChatEligibilityChecker(lookup));
+            db, new ApiChatEligibilityChecker(lookup), new FakeChatBookingGateway());
         var command = new OpenConversationCommand(opener, recipient, null);
 
         Result<OpenConversationResponse> first =
@@ -390,7 +390,7 @@ public sealed class ConversationTests
         var lookup = new FakeChatUserLookup();
         lookup.Add(recipient, "Recipient");
         var openHandler = new OpenConversationCommandHandler(
-            db, new ApiChatEligibilityChecker(lookup));
+            db, new ApiChatEligibilityChecker(lookup), new FakeChatBookingGateway());
         var hideHandler = new HideConversationCommandHandler(db);
 
         OpenConversationResponse opened = (await openHandler.Handle(
@@ -422,7 +422,7 @@ public sealed class ConversationTests
     {
         await using ChatDbContext db = CreateDb();
         var handler = new OpenConversationCommandHandler(
-            db, new ApiChatEligibilityChecker(new FakeChatUserLookup()));
+            db, new ApiChatEligibilityChecker(new FakeChatUserLookup()), new FakeChatBookingGateway());
 
         var result = await handler.Handle(
             new OpenConversationCommand(UserId.New(), UserId.New(), null),
@@ -441,14 +441,16 @@ public sealed class ConversationTests
         UserId recipient = UserId.New();
         var lookup = new FakeChatUserLookup();
         lookup.Add(recipient, "Recipient");
+        var bookings = new FakeChatBookingGateway();
         var handler = new OpenConversationCommandHandler(
-            db, new ApiChatEligibilityChecker(lookup));
+            db, new ApiChatEligibilityChecker(lookup), bookings);
         BookingId bookingId = BookingId.New();
+        bookings.Resolve(bookingId, recipient);
 
         OpenConversationResponse direct = (await handler.Handle(
             new OpenConversationCommand(opener, recipient, null), default)).Value;
         OpenConversationResponse booking = (await handler.Handle(
-            new OpenConversationCommand(opener, recipient, bookingId), default)).Value;
+            new OpenConversationCommand(opener, null, bookingId), default)).Value;
         OpenConversationResponse directAgain = (await handler.Handle(
             new OpenConversationCommand(opener, recipient, null), default)).Value;
 
@@ -481,7 +483,7 @@ public sealed class ConversationTests
 
         var lookup = new FakeChatUserLookup();
         lookup.Add(peerTwo, "Peer Two", "avatar-2");
-        var handler = new GetConversationsQueryHandler(db, lookup);
+        var handler = new GetConversationsQueryHandler(db, lookup, new FakeChatFacilityLookup());
 
         PagedResult<ConversationListItemResponse> mine = (await handler.Handle(
             new GetConversationsQuery(requester), default)).Value;
@@ -518,7 +520,7 @@ public sealed class ConversationTests
         lookup.Add(oldest, "Oldest Peer");
         lookup.Add(middle, "Middle Peer");
         lookup.Add(newest, "Newest Peer", "avatar-newest");
-        var handler = new GetConversationsQueryHandler(db, lookup);
+        var handler = new GetConversationsQueryHandler(db, lookup, new FakeChatFacilityLookup());
 
         PagedResult<ConversationListItemResponse> page = (await handler.Handle(
             new GetConversationsQuery(requester, Page: 0, PageSize: 0), default)).Value;
@@ -580,7 +582,7 @@ public sealed class ConversationTests
         Assert.True(stored.IsHiddenFor(deleter));
         Assert.False(stored.IsHiddenFor(other));
 
-        var listHandler = new GetConversationsQueryHandler(db, new FakeChatUserLookup());
+        var listHandler = new GetConversationsQueryHandler(db, new FakeChatUserLookup(), new FakeChatFacilityLookup());
         Assert.Equal(0, (await listHandler.Handle(
             new GetConversationsQuery(deleter), default)).Value.TotalCount);
         Assert.Equal(1, (await listHandler.Handle(
@@ -605,6 +607,145 @@ public sealed class ConversationTests
         Assert.False(await checker.CanOpenAsync(opener, UserId.New(), null));
         Assert.False(await checker.CanOpenAsync(
             opener, recipient, new BookingId(Guid.Empty)));
+    }
+
+    // ------------------------------------------------------------------
+    // Open-time exactly-one-target rule (Opus delta) + booking resolution.
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Open_BothOrNeitherTargetFailsWithOpenTargetInvalidAndPersistsNothing()
+    {
+        await using ChatDbContext db = CreateDb();
+        var handler = new OpenConversationCommandHandler(
+            db,
+            new ApiChatEligibilityChecker(new FakeChatUserLookup()),
+            new FakeChatBookingGateway());
+
+        var both = await handler.Handle(
+            new OpenConversationCommand(
+                UserId.New(), UserId.New(), BookingId.New()),
+            default);
+        var neither = await handler.Handle(
+            new OpenConversationCommand(UserId.New(), null, null),
+            default);
+
+        Assert.True(both.IsFailure);
+        Assert.Equal(
+            ConversationErrors.OpenTargetInvalid.Code, both.Error.Code);
+        Assert.True(neither.IsFailure);
+        Assert.Equal(
+            ConversationErrors.OpenTargetInvalid.Code, neither.Error.Code);
+        Assert.Equal(0, await db.Conversations.CountAsync());
+    }
+
+    [Fact]
+    public async Task Open_UnresolvableBookingFailsWithThePrivacyCodeAndPersistsNothing()
+    {
+        await using ChatDbContext db = CreateDb();
+        var lookup = new FakeChatUserLookup();
+        var handler = new OpenConversationCommandHandler(
+            db,
+            new ApiChatEligibilityChecker(lookup),
+            new FakeChatBookingGateway());
+
+        var result = await handler.Handle(
+            new OpenConversationCommand(
+                UserId.New(), null, BookingId.New()),
+            default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(ConversationErrors.NotFound.Code, result.Error.Code);
+        Assert.Equal(0, await db.Conversations.CountAsync());
+    }
+
+    [Fact]
+    public async Task Open_BookingOnlyOpensTheResolvedCounterpartPairWithoutDuplicating()
+    {
+        await using ChatDbContext db = CreateDb();
+        UserId opener = UserId.New();
+        UserId counterpart = UserId.New();
+        var lookup = new FakeChatUserLookup();
+        lookup.Add(counterpart, "Counterpart");
+        var bookings = new FakeChatBookingGateway();
+        BookingId bookingId = BookingId.New();
+        bookings.Resolve(bookingId, counterpart);
+        var handler = new OpenConversationCommandHandler(
+            db, new ApiChatEligibilityChecker(lookup), bookings);
+
+        Result<OpenConversationResponse> first = await handler.Handle(
+            new OpenConversationCommand(opener, null, bookingId), default);
+        Result<OpenConversationResponse> second = await handler.Handle(
+            new OpenConversationCommand(opener, null, bookingId), default);
+
+        Assert.True(first.Value.Created);
+        Assert.False(second.Value.Created);
+        Assert.Equal(first.Value.ConversationId, second.Value.ConversationId);
+
+        Conversation stored = await db.Conversations.SingleAsync();
+        Assert.Equal(ConversationScope.Booking, stored.Scope);
+        Assert.Equal(bookingId, stored.BookingId);
+    }
+
+    [Fact]
+    public async Task OpenConversation_MapsOpenTargetInvalidTo400WithItsCode()
+    {
+        var sender = new CapturingSender(
+            Result<OpenConversationResponse>.Failure(
+                ConversationErrors.OpenTargetInvalid));
+        UserId actor = UserId.New();
+        ChatController controller = CreateController(sender, actor);
+
+        IActionResult both = await controller.OpenConversation(
+            new OpenConversationRequest(Guid.NewGuid(), Guid.NewGuid()),
+            default);
+
+        ObjectResult badRequest = Assert.IsType<ObjectResult>(both);
+        Assert.Equal(StatusCodes.Status400BadRequest, badRequest.StatusCode);
+        var problemDetails = Assert.IsType<ProblemDetails>(badRequest.Value);
+        Assert.Equal(
+            ConversationErrors.OpenTargetInvalid.Code,
+            problemDetails.Extensions["code"]);
+    }
+
+    [Fact]
+    public async Task GetConversations_ParticipantCarriesAccountTypeAndCareHomeOwnersResolveToTheFacility()
+    {
+        await using ChatDbContext db = CreateDb();
+        UserId requester = UserId.New();
+        UserId peer = UserId.New();
+        UserId owner = UserId.New();
+        Conversation direct = CreateDirect(requester, peer, UtcStamp);
+        Conversation careHome = CreateDirect(requester, owner, UtcStamp);
+        db.Conversations.AddRange(direct, careHome);
+        await db.SaveChangesAsync();
+
+        var lookup = new FakeChatUserLookup();
+        lookup.Add(peer, "Peer", accountType: 1);
+        lookup.Add(owner, "Owner Name", "owner-avatar", accountType: 8);
+        var facilities = new FakeChatFacilityLookup();
+        facilities.Set(
+            owner,
+            new FacilityPresentation("Sunrise Care Home", "/cover/1"));
+        var handler = new GetConversationsQueryHandler(db, lookup, facilities);
+
+        PagedResult<ConversationListItemResponse> page = (await handler.Handle(
+            new GetConversationsQuery(requester), default)).Value;
+
+        Assert.Equal(2, page.TotalCount);
+
+        ConversationListItemResponse family =
+            page.Items.Single(item => item.Id == direct.Id.Value);
+        Assert.Equal(peer.Value, family.Participant.UserId);
+        Assert.Equal("Peer", family.Participant.DisplayName);
+        Assert.Equal(1, family.Participant.AccountType);
+
+        ConversationListItemResponse facility =
+            page.Items.Single(item => item.Id == careHome.Id.Value);
+        Assert.Equal(owner.Value, facility.Participant.UserId);
+        Assert.Equal("Sunrise Care Home", facility.Participant.DisplayName);
+        Assert.Equal("/cover/1", facility.Participant.AvatarUrl);
+        Assert.Equal(8, facility.Participant.AccountType);
     }
 
     // ------------------------------------------------------------------
@@ -680,7 +821,7 @@ public sealed class ConversationTests
     }
 
     [Fact]
-    public async Task OpenConversation_DispatchesTheJwtActorRecipientAndOptionalBooking()
+    public async Task OpenConversation_DispatchesTheJwtActorWithExactlyOneTarget()
     {
         var sender = new CapturingSender(
             Result<OpenConversationResponse>.Success(
@@ -691,20 +832,24 @@ public sealed class ConversationTests
         Guid bookingId = Guid.NewGuid();
 
         IActionResult created = await controller.OpenConversation(
-            new OpenConversationRequest(recipient.Value, bookingId), default);
+            new OpenConversationRequest(recipient.Value, null), default);
 
         Assert.IsType<OkObjectResult>(created);
         OpenConversationCommand command =
             Assert.IsType<OpenConversationCommand>(sender.LastRequest);
         Assert.Equal(actor, command.Opener);
         Assert.Equal(recipient, command.Recipient);
-        Assert.Equal(new BookingId(bookingId), command.BookingId);
+        Assert.Null(command.BookingId);
 
-        await controller.OpenConversation(
-            new OpenConversationRequest(recipient.Value, null), default);
-        OpenConversationCommand direct =
+        IActionResult booking = await controller.OpenConversation(
+            new OpenConversationRequest(null, bookingId), default);
+
+        Assert.IsType<OkObjectResult>(booking);
+        OpenConversationCommand bookingCommand =
             Assert.IsType<OpenConversationCommand>(sender.LastRequest);
-        Assert.Null(direct.BookingId);
+        Assert.Equal(actor, bookingCommand.Opener);
+        Assert.Null(bookingCommand.Recipient);
+        Assert.Equal(new BookingId(bookingId), bookingCommand.BookingId);
     }
 
     [Fact]
@@ -780,8 +925,13 @@ public sealed class ConversationTests
     {
         private readonly Dictionary<UserId, UserProfile> _profiles = new();
 
-        public void Add(UserId userId, string displayName, string? avatarUrl = null) =>
-            _profiles[userId] = new UserProfile(userId, displayName, avatarUrl);
+        public void Add(
+            UserId userId,
+            string displayName,
+            string? avatarUrl = null,
+            int? accountType = null) =>
+            _profiles[userId] = new UserProfile(
+                userId, displayName, avatarUrl, accountType);
 
         public Task<UserProfile?> GetProfileAsync(
             UserId userId,
@@ -789,6 +939,39 @@ public sealed class ConversationTests
             Task.FromResult(
                 _profiles.TryGetValue(userId, out UserProfile? profile)
                     ? profile
+                    : null);
+    }
+
+    private sealed class FakeChatBookingGateway : IChatBookingGateway
+    {
+        private readonly Dictionary<BookingId, UserId> _counterparts = new();
+
+        public void Resolve(BookingId bookingId, UserId counterpart) =>
+            _counterparts[bookingId] = counterpart;
+
+        public Task<UserId?> ResolveCounterpartAsync(
+            BookingId bookingId,
+            UserId openerUserId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(
+                _counterparts.TryGetValue(bookingId, out UserId counterpart)
+                    ? (UserId?)counterpart
+                    : null);
+    }
+
+    private sealed class FakeChatFacilityLookup : IChatFacilityLookup
+    {
+        private readonly Dictionary<UserId, FacilityPresentation> _facilities = new();
+
+        public void Set(UserId ownerUserId, FacilityPresentation presentation) =>
+            _facilities[ownerUserId] = presentation;
+
+        public Task<FacilityPresentation?> GetForOwnerAsync(
+            UserId ownerUserId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(
+                _facilities.TryGetValue(ownerUserId, out FacilityPresentation? presentation)
+                    ? presentation
                     : null);
     }
 

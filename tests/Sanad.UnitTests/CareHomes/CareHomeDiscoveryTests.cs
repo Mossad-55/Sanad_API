@@ -243,6 +243,25 @@ public sealed class CareHomeDiscoveryTests
     }
 
     [Fact]
+    public async Task Detail_ExposesContactUserIdOnlyToAuthenticatedCallers()
+    {
+        DateTime now = Utc(12);
+        await using CareHomesDbContext db = CreateDb();
+        CareHomeFacility approved = await AddApproved(db, now, "Contact");
+
+        var handler = new GetCareHomeDiscoveryDetailQueryHandler(db, new FixedClock(now));
+
+        var authed = await handler.Handle(
+            new(approved.Id.Value, approved.OwnerUserId), default);
+        Assert.True(authed.IsSuccess);
+        Assert.Equal(approved.OwnerUserId.Value, authed.Value.ContactUserId);
+
+        var anonymous = await handler.Handle(new(approved.Id.Value), default);
+        Assert.True(anonymous.IsSuccess);
+        Assert.Null(anonymous.Value.ContactUserId);
+    }
+
+    [Fact]
     public void Controller_IsAnonymous_AndDiscoveryErrorsMapToExpectedHttpStatuses()
     {
         Assert.NotEmpty(typeof(CareHomeDiscoveryController).GetCustomAttributes<AllowAnonymousAttribute>());

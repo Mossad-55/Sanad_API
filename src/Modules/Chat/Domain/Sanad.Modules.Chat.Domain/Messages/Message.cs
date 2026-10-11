@@ -20,6 +20,7 @@ public sealed class Message : AggregateRoot<MessageId>
 {
     public const int MaximumTextLength = 2000;
     public const int MaximumClientMessageIdLength = 100;
+    public const int MaximumLocationLabelLength = 200;
 
     private Message()
     {
@@ -33,7 +34,10 @@ public sealed class Message : AggregateRoot<MessageId>
         string? text,
         AttachmentId? attachmentId,
         string clientMessageId,
-        DateTime sentOnUtc)
+        DateTime sentOnUtc,
+        double? latitude,
+        double? longitude,
+        string? locationLabel)
         : base(id)
     {
         ConversationId = conversationId;
@@ -43,6 +47,9 @@ public sealed class Message : AggregateRoot<MessageId>
         AttachmentId = attachmentId;
         ClientMessageId = clientMessageId;
         SentOnUtc = sentOnUtc;
+        Latitude = latitude;
+        Longitude = longitude;
+        LocationLabel = locationLabel;
     }
 
     public ConversationId ConversationId { get; private set; }
@@ -64,6 +71,19 @@ public sealed class Message : AggregateRoot<MessageId>
 
     public DateTime SentOnUtc { get; private set; }
 
+    /// <summary>Latitude of a <see cref="MessageType.Location"/> message
+    /// (-90…90); always <see langword="null"/> for other types.</summary>
+    public double? Latitude { get; private set; }
+
+    /// <summary>Longitude of a <see cref="MessageType.Location"/> message
+    /// (-180…180); always <see langword="null"/> for other types.</summary>
+    public double? Longitude { get; private set; }
+
+    /// <summary>Optional human label of a <see cref="MessageType.Location"/>
+    /// message (trimmed, ≤ <see cref="MaximumLocationLabelLength"/>); always
+    /// <see langword="null"/> for other types.</summary>
+    public string? LocationLabel { get; private set; }
+
     /// <summary>Set-once: stamped on the recipient's first fetch; later
     /// fetches no-op.</summary>
     public DateTime? DeliveredOnUtc { get; private set; }
@@ -79,7 +99,10 @@ public sealed class Message : AggregateRoot<MessageId>
         string? text,
         AttachmentId? attachmentId,
         string clientMessageId,
-        DateTime sentOnUtc)
+        DateTime sentOnUtc,
+        double? latitude = null,
+        double? longitude = null,
+        string? locationLabel = null)
     {
         if (conversationId.Value == Guid.Empty)
         {
@@ -110,13 +133,66 @@ public sealed class Message : AggregateRoot<MessageId>
             }
 
             text = normalizedText;
+
+            if (attachmentId is not null ||
+                latitude is not null ||
+                longitude is not null ||
+                locationLabel is not null)
+            {
+                throw new DomainException(
+                    "Text message cannot carry a payload.");
+            }
         }
         else if (type == MessageType.File)
         {
-            if (text is not null)
+            if (text is not null ||
+                latitude is not null ||
+                longitude is not null ||
+                locationLabel is not null)
             {
                 throw new DomainException(
-                    "File message cannot carry a text body.");
+                    "File message cannot carry a payload.");
+            }
+        }
+        else if (type == MessageType.Location)
+        {
+            if (text is not null || attachmentId is not null)
+            {
+                throw new DomainException(
+                    "Location message cannot carry a body or attachment.");
+            }
+
+            if (latitude is null || longitude is null)
+            {
+                throw new DomainException(
+                    "Location message requires coordinates.");
+            }
+
+            if (latitude is < -90 or > 90)
+            {
+                throw new DomainException(
+                    "Location latitude must be between -90 and 90.");
+            }
+
+            if (longitude is < -180 or > 180)
+            {
+                throw new DomainException(
+                    "Location longitude must be between -180 and 180.");
+            }
+
+            if (locationLabel is not null)
+            {
+                string normalizedLabel = locationLabel.Trim();
+
+                if (normalizedLabel.Length > MaximumLocationLabelLength)
+                {
+                    throw new DomainException(
+                        $"Location label cannot exceed {MaximumLocationLabelLength} characters.");
+                }
+
+                locationLabel = normalizedLabel.Length == 0
+                    ? null
+                    : normalizedLabel;
             }
         }
         else
@@ -153,7 +229,10 @@ public sealed class Message : AggregateRoot<MessageId>
             text,
             attachmentId,
             normalizedClientMessageId,
-            sentOnUtc);
+            sentOnUtc,
+            latitude,
+            longitude,
+            locationLabel);
     }
 
     /// <summary>

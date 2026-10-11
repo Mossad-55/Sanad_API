@@ -16,10 +16,12 @@ namespace Sanad.Modules.Chat.Application.Messages;
 
 /// <summary>
 /// Endpoint 4 — send one message into a conversation the requester
-/// participates in. <c>Type</c> is the raw wire value ("Text"/"File") and
-/// <c>ClientMessageId</c> is the caller's idempotency key, unique per
-/// conversation; both are validated by the handler so a caller's own
-/// malformed body answers <see cref="MessageErrors.Invalid"/> (400).
+/// participates in. <c>Type</c> is the raw wire value ("Text"/"File"/
+/// "Location") and <c>ClientMessageId</c> is the caller's idempotency key,
+/// unique per conversation; both are validated by the handler so a caller's
+/// own malformed body answers <see cref="MessageErrors.Invalid"/> (400).
+/// <c>Latitude</c>/<c>Longitude</c>/<c>Label</c> form the Location payload
+/// and must be absent for every other type.
 /// </summary>
 public sealed record SendMessageCommand(
     UserId Requester,
@@ -27,7 +29,10 @@ public sealed record SendMessageCommand(
     string? ClientMessageId,
     string? Type,
     string? Text,
-    AttachmentId? AttachmentId)
+    AttachmentId? AttachmentId,
+    double? Latitude = null,
+    double? Longitude = null,
+    string? Label = null)
     : ICommand<SendMessageResponse>;
 
 public sealed class SendMessageCommandHandler
@@ -119,11 +124,17 @@ public sealed class SendMessageCommandHandler
         }
 
         string? text;
+        double? latitude;
+        double? longitude;
+        string? label;
 
         if (type == MessageType.Text)
         {
-            // A Text message never carries an attachment reference.
-            if (request.AttachmentId is not null)
+            // A Text message never carries an attachment or location.
+            if (request.AttachmentId is not null ||
+                request.Latitude is not null ||
+                request.Longitude is not null ||
+                request.Label is not null)
             {
                 return Result<SendMessageResponse>.Failure(
                     MessageErrors.Invalid);
@@ -139,13 +150,51 @@ public sealed class SendMessageCommandHandler
             }
 
             text = candidate;
+            latitude = null;
+            longitude = null;
+            label = null;
+        }
+        else if (type == MessageType.Location)
+        {
+            // A Location message carries exactly the coordinate pair plus
+            // an optional label — no body, no attachment reference.
+            if (request.Text is not null ||
+                request.AttachmentId is not null ||
+                request.Latitude is null ||
+                request.Longitude is null ||
+                request.Latitude is < -90 or > 90 ||
+                request.Longitude is < -180 or > 180)
+            {
+                return Result<SendMessageResponse>.Failure(
+                    MessageErrors.Invalid);
+            }
+
+            string? candidateLabel = request.Label?.Trim();
+
+            if (candidateLabel is not null &&
+                candidateLabel.Length > Message.MaximumLocationLabelLength)
+            {
+                return Result<SendMessageResponse>.Failure(
+                    MessageErrors.Invalid);
+            }
+
+            text = null;
+            latitude = request.Latitude;
+            longitude = request.Longitude;
+            label = string.IsNullOrEmpty(candidateLabel)
+                ? null
+                : candidateLabel;
         }
         else
         {
             // A File message never carries a body (the domain rejects it
             // too) and must name an attachment; an explicit empty guid is a
-            // malformed body, not an unknown one.
+            // malformed body, not an unknown one. Location payload fields
+            // are equally foreign here.
             if (request.Text is not null ||
+                request.Latitude is not null ||
+                request.Longitude is not null ||
+                request.Label is not null ||
                 request.AttachmentId is null ||
                 request.AttachmentId.Value.Value == Guid.Empty)
             {
@@ -154,6 +203,9 @@ public sealed class SendMessageCommandHandler
             }
 
             text = null;
+            latitude = null;
+            longitude = null;
+            label = null;
         }
 
         // Idempotency runs BEFORE the attachment is resolved: an exact
@@ -168,7 +220,14 @@ public sealed class SendMessageCommandHandler
 
         if (existing is not null)
         {
-            return IsExactReplay(existing, type, text, request.AttachmentId)
+            return IsExactReplay(
+                    existing,
+                    type,
+                    text,
+                    request.AttachmentId,
+                    latitude,
+                    longitude,
+                    label)
                 ? Result<SendMessageResponse>.Success(
                     new SendMessageResponse(
                         await CreateItemAsync(
@@ -225,7 +284,10 @@ public sealed class SendMessageCommandHandler
                 text,
                 request.AttachmentId,
                 clientMessageId,
-                now);
+                now,
+                latitude,
+                longitude,
+                label);
         }
         catch (DomainException)
         {
@@ -287,18 +349,25 @@ public sealed class SendMessageCommandHandler
 
     /// <summary>
     /// Exact replay means the same key with the same content: type, body
-    /// (already trimmed, so the comparison is on what was stored) and
-    /// attachment reference. Anything else with the same key is the frozen
-    /// 409 idempotency conflict.
+    /// (already trimmed, so the comparison is on what was stored), the
+    /// location payload (for <c>Location</c> messages) and attachment
+    /// reference. Anything else with the same key is the frozen 409
+    /// idempotency conflict.
     /// </summary>
     private static bool IsExactReplay(
         Message existing,
         MessageType type,
         string? text,
-        AttachmentId? attachmentId) =>
+        AttachmentId? attachmentId,
+        double? latitude,
+        double? longitude,
+        string? label) =>
         existing.Type == type &&
         existing.Text == text &&
-        existing.AttachmentId == attachmentId;
+        existing.AttachmentId == attachmentId &&
+        existing.Latitude == latitude &&
+        existing.Longitude == longitude &&
+        existing.LocationLabel == label;
 
     /// <summary>
     /// Builds the item of a replayed message with the same read tick rule as
@@ -333,8 +402,9 @@ public sealed class SendMessageCommandHandler
     }
 
     /// <summary>
-    /// <c>type</c> is <c>Text</c> or <c>File</c>, matched by name (not by
-    /// enum number, so a numeric string is never accepted as a type).
+    /// <c>type</c> is <c>Text</c>, <c>File</c> or <c>Location</c>, matched
+    /// by name (not by enum number, so a numeric string is never accepted as
+    /// a type).
     /// </summary>
     private static bool TryParseType(
         string? value,
@@ -353,6 +423,13 @@ public sealed class SendMessageCommandHandler
                 trimmed, "File", StringComparison.OrdinalIgnoreCase))
         {
             type = MessageType.File;
+            return true;
+        }
+
+        if (string.Equals(
+                trimmed, "Location", StringComparison.OrdinalIgnoreCase))
+        {
+            type = MessageType.Location;
             return true;
         }
 

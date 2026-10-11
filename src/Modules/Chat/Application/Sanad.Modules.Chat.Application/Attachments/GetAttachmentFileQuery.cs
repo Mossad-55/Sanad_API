@@ -14,15 +14,16 @@ public sealed record AttachmentFileResponse(
     Stream Content);
 
 /// <summary>
-/// Endpoint 6 — participant-only file bytes. Every denial (unknown
-/// conversation, foreign requester, unknown attachment, attachment owned by
-/// a different conversation, missing blob) collapses into
+/// Endpoint 6 — participant-only file bytes. The route carries the
+/// attachment id only (Opus delta): the participant check runs against the
+/// conversation the attachment itself belongs to, so the client can never
+/// steer it with a conversation id. Every denial (unknown attachment,
+/// foreign requester, missing blob) collapses into
 /// <see cref="AttachmentErrors.NotFound"/>, which the controller serves as
 /// a generic privacy 404 — the caller cannot tell which check failed.
 /// </summary>
 public sealed record GetAttachmentFileQuery(
     UserId Requester,
-    ConversationId ConversationId,
     AttachmentId AttachmentId) : IQuery<AttachmentFileResponse>;
 
 public sealed class GetAttachmentFileQueryHandler
@@ -43,27 +44,26 @@ public sealed class GetAttachmentFileQueryHandler
         GetAttachmentFileQuery request,
         CancellationToken cancellationToken)
     {
-        Conversation? conversation = await _dbContext.Conversations
+        Attachment? record = await _dbContext.Attachments
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                item => item.Id == request.ConversationId,
+                item => item.Id == request.AttachmentId,
                 cancellationToken);
 
-        if (conversation is null ||
-            !conversation.IsParticipant(request.Requester))
+        if (record is null)
         {
             return Result<AttachmentFileResponse>.Failure(
                 AttachmentErrors.NotFound);
         }
 
-        Attachment? record = await _dbContext.Attachments
+        Conversation? conversation = await _dbContext.Conversations
             .AsNoTracking()
             .SingleOrDefaultAsync(
-                item => item.Id == request.AttachmentId &&
-                        item.ConversationId == request.ConversationId,
+                item => item.Id == record.ConversationId,
                 cancellationToken);
 
-        if (record is null)
+        if (conversation is null ||
+            !conversation.IsParticipant(request.Requester))
         {
             return Result<AttachmentFileResponse>.Failure(
                 AttachmentErrors.NotFound);

@@ -3,6 +3,7 @@ using System.Linq.Expressions;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 
@@ -43,10 +44,19 @@ public sealed record CareHomeDiscoveryDetail(
     IReadOnlyList<BilingualCareHomeItem> MedicalServices,
     IReadOnlyList<CareHomeDiscoveryRoomType> RoomTypes,
     string? CoverImageUrl,
-    IReadOnlyList<string> GalleryImageUrls);
+    IReadOnlyList<string> GalleryImageUrls,
+    Guid? ContactUserId);
 
 public sealed record GetCareHomeDiscoveryQuery(int Page, int PageSize) : IQuery<CareHomeDiscoveryPage>;
-public sealed record GetCareHomeDiscoveryDetailQuery(Guid CareHomeId) : IQuery<CareHomeDiscoveryDetail>;
+
+/// <summary>
+/// Facility detail. <c>Requester</c> is the authenticated caller when one is
+/// present (the route itself stays anonymous): the additive
+/// <c>ContactUserId</c> (the facility owner's user id) is resolved only for
+/// authenticated callers so they can open a booking-less direct chat with
+/// the facility, and stays null for anonymous visitors.
+/// </summary>
+public sealed record GetCareHomeDiscoveryDetailQuery(Guid CareHomeId, UserId? Requester = null) : IQuery<CareHomeDiscoveryDetail>;
 
 internal static class CareHomeDiscoveryErrors
 {
@@ -214,6 +224,17 @@ public sealed class GetCareHomeDiscoveryDetailQueryHandler(ICareHomesDbContext d
             ? $"/api/v1/care-homes/discovery/{record.Summary.Id:D}/media/{cover.Id:D}" : null;
         string[] galleryUrls = approvedMedia.Where(x => x.Kind == CareHomeProfileMediaKind.Gallery)
             .Select(x => $"/api/v1/care-homes/discovery/{record.Summary.Id:D}/media/{x.Id:D}").ToArray();
+
+        // Additive contact user (Opus delta): only an authenticated caller
+        // receives the owner's user id to open a booking-less direct chat;
+        // anonymous visitors keep null.
+        Guid? contactUserId = request.Requester is null
+            ? null
+            : await db.Facilities.AsNoTracking()
+                .Where(x => x.Id == new CareHomeId(request.CareHomeId))
+                .Select(x => (Guid?)x.OwnerUserId.Value)
+                .SingleOrDefaultAsync(ct);
+
         return Result<CareHomeDiscoveryDetail>.Success(new(
             record.Summary,
             revision.Address,
@@ -223,6 +244,6 @@ public sealed class GetCareHomeDiscoveryDetailQueryHandler(ICareHomesDbContext d
             revision.MedicalServices,
             record.ActiveRoomTypes.Select(x => new CareHomeDiscoveryRoomType(
                 x.Id, x.ArabicName, x.EnglishName, x.ArabicDescription, x.EnglishDescription,
-                x.AllocationMode, x.MonthlyPriceEgp)).ToArray(), coverUrl, galleryUrls));
+                x.AllocationMode, x.MonthlyPriceEgp)).ToArray(), coverUrl, galleryUrls, contactUserId));
     }
 }

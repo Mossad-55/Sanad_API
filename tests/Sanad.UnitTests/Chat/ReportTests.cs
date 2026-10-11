@@ -623,7 +623,7 @@ public sealed class ReportTests
         Assert.Equal("Text", incoming.Type);
         Assert.Equal("second", incoming.Text);
         Assert.Null(incoming.Attachment);
-        Assert.Equal(newer.SentOnUtc, incoming.SentOnUtc);
+        Assert.Equal(newer.SentOnUtc, incoming.CreatedOnUtc);
 
         // The read tick uses endpoint 3's rule with the reader fixed to the
         // non-sender: Bob's mark covers Alice's older message, and nothing

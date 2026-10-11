@@ -1,6 +1,7 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Discovery;
 
 namespace Sanad.API.Controllers;
@@ -21,5 +22,16 @@ public sealed class CareHomeDiscoveryController(ISender sender) : ApiControllerB
     [ProducesResponseType(typeof(CareHomeDiscoveryDetail), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(Guid careHomeId, CancellationToken cancellationToken)
-        => ToActionResult(await sender.Send(new GetCareHomeDiscoveryDetailQuery(careHomeId), cancellationToken));
+    {
+        // Authenticated callers additionally receive contactUserId (the
+        // facility owner's user id) for booking-less direct chat; anonymous
+        // visitors keep null. The route itself stays [AllowAnonymous].
+        UserId? requester = TryGetAuthenticatedUserId(out UserId userId)
+            ? userId
+            : null;
+
+        return ToActionResult(await sender.Send(
+            new GetCareHomeDiscoveryDetailQuery(careHomeId, requester),
+            cancellationToken));
+    }
 }

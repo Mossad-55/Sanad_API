@@ -11,15 +11,16 @@ namespace Sanad.Modules.Chat.Application.Messages;
 
 /// <summary>
 /// Endpoint 3 — a cursor page of one conversation's messages, newest first.
-/// <c>BeforeMessageId</c> is either the <c>nextCursor</c> this endpoint
-/// returned or a raw message id; <c>Limit</c> is clamped to 1–100 by the
-/// handler (30 is the controller default).
+/// <c>BeforeId</c> is either the <c>nextCursor</c> this endpoint returned or
+/// a raw message id (Opus delta: the wire parameter is <c>beforeId</c>);
+/// <c>PageSize</c> is clamped to 1–100 by the handler (30 is the controller
+/// default).
 /// </summary>
 public sealed record GetMessagesQuery(
     UserId Requester,
     ConversationId ConversationId,
-    string? BeforeMessageId,
-    int Limit)
+    string? BeforeId,
+    int PageSize)
     : IQuery<MessageCursorPage>;
 
 public sealed class GetMessagesQueryHandler
@@ -56,11 +57,11 @@ public sealed class GetMessagesQueryHandler
                 ConversationErrors.NotFound);
         }
 
-        int limit = Math.Clamp(request.Limit, 1, MaximumLimit);
+        int limit = Math.Clamp(request.PageSize, 1, MaximumLimit);
 
         CursorResult cursor = await ResolveCursorAsync(
             conversation.Id,
-            request.BeforeMessageId,
+            request.BeforeId,
             cancellationToken);
 
         if (cursor.Error is not null)
@@ -150,7 +151,7 @@ public sealed class GetMessagesQueryHandler
     }
 
     /// <summary>
-    /// Reads <c>beforeMessageId</c> in either accepted form. The opaque
+    /// Reads <c>beforeId</c> in either accepted form. The opaque
     /// cursor is self-contained; a raw message id must resolve to a message
     /// of THIS conversation. Anything that does not resolve (malformed,
     /// unknown, or another conversation's id) answers the message-scoped
@@ -158,23 +159,23 @@ public sealed class GetMessagesQueryHandler
     /// </summary>
     private async Task<CursorResult> ResolveCursorAsync(
         ConversationId conversationId,
-        string? beforeMessageId,
+        string? beforeId,
         CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(beforeMessageId))
+        if (string.IsNullOrWhiteSpace(beforeId))
         {
             return CursorResult.None;
         }
 
         if (MessageCursor.TryDecode(
-                beforeMessageId,
+                beforeId,
                 out DateTime sentOnUtc,
                 out Guid decodedId))
         {
             return new CursorResult((sentOnUtc, decodedId), null);
         }
 
-        if (Guid.TryParse(beforeMessageId, out Guid rawId))
+        if (Guid.TryParse(beforeId, out Guid rawId))
         {
             MessageId messageId = new(rawId);
 
@@ -194,7 +195,7 @@ public sealed class GetMessagesQueryHandler
         return CursorResult.Rejected;
     }
 
-    /// <summary>The outcome of resolving <c>beforeMessageId</c>: either a
+    /// <summary>The outcome of resolving <c>beforeId</c>: either a
     /// cursor to page from, or the privacy 404 to answer with.</summary>
     private sealed record CursorResult(
         (DateTime SentOnUtc, Guid Id)? Cursor,

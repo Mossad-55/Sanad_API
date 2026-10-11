@@ -490,6 +490,8 @@ public static class DependencyInjection
         // implementations here — same gateway pattern as FamilyIdentityGateway).
         services.AddScoped<IChatUserLookup, ApiChatUserLookup>();
         services.AddScoped<IChatEligibilityChecker, ApiChatEligibilityChecker>();
+        services.AddScoped<IChatBookingGateway, ApiChatBookingGateway>();
+        services.AddScoped<IChatFacilityLookup, ApiChatFacilityLookup>();
 
         return services;
     }

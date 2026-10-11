@@ -12,22 +12,61 @@ public sealed class OpenConversationCommandHandler
 {
     private readonly IChatDbContext _dbContext;
     private readonly IChatEligibilityChecker _eligibilityChecker;
+    private readonly IChatBookingGateway _bookingGateway;
 
     public OpenConversationCommandHandler(
         IChatDbContext dbContext,
-        IChatEligibilityChecker eligibilityChecker)
+        IChatEligibilityChecker eligibilityChecker,
+        IChatBookingGateway bookingGateway)
     {
         _dbContext = dbContext;
         _eligibilityChecker = eligibilityChecker;
+        _bookingGateway = bookingGateway;
     }
 
     public async Task<Result<OpenConversationResponse>> Handle(
         OpenConversationCommand request,
         CancellationToken cancellationToken)
     {
+        // Exactly one target (Opus delta): both or neither is the caller's
+        // own malformed request — a 400 that reveals nothing about any
+        // resource. All resource-shaped failures below stay the privacy 404.
+        bool hasRecipient = request.Recipient is not null;
+        bool hasBooking = request.BookingId is not null;
+
+        if (hasRecipient == hasBooking)
+        {
+            return ConversationErrors.OpenTargetInvalid;
+        }
+
+        UserId recipient;
+
+        if (hasBooking)
+        {
+            // Booking chat: the caller supplies the booking only; the
+            // backend resolves the counterpart. Unknown booking, a booking
+            // the opener is not a party to, and a cancelled/expired/
+            // refunded booking all collapse into one null → privacy 404.
+            UserId? resolved = await _bookingGateway.ResolveCounterpartAsync(
+                request.BookingId!.Value,
+                request.Opener,
+                cancellationToken);
+
+            if (resolved is null)
+            {
+                return ConversationErrors.NotFound;
+            }
+
+            recipient = resolved.Value;
+        }
+        else
+        {
+            recipient = request.Recipient!.Value;
+        }
+
         bool canOpen = await _eligibilityChecker.CanOpenAsync(
             request.Opener,
-            request.Recipient,
+            recipient,
             request.BookingId,
             cancellationToken);
 
@@ -41,7 +80,7 @@ public sealed class OpenConversationCommandHandler
 
         Conversation? existing = await FindExistingAsync(
             request.Opener,
-            request.Recipient,
+            recipient,
             request.BookingId,
             cancellationToken);
 
@@ -62,7 +101,7 @@ public sealed class OpenConversationCommandHandler
 
         Conversation conversation = Conversation.Create(
             request.Opener,
-            request.Recipient,
+            recipient,
             request.BookingId is null
                 ? ConversationScope.Direct
                 : ConversationScope.Booking,

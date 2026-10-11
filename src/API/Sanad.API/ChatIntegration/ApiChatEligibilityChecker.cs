@@ -38,13 +38,11 @@ public sealed class ApiChatEligibilityChecker : IChatEligibilityChecker
             return false;
         }
 
-        // TODO(chat eligibility seam): verify booking state through a
-        // CareHomes booking gateway — both users on the booking and
-        // non-cancelled/non-expired per docs/chat/plan.md. Deliberately NOT
-        // wired here: the Chat module must not take a cross-module project
-        // reference and no booking-state port exists yet, so a booking id is
-        // accepted as-is for now (booking-state check drops in behind this
-        // seam without touching any handler).
+        // Booking validity is NOT checked here: booking-only opens are
+        // resolved (and validated against the booking stores) by
+        // ApiChatBookingGateway before this gate runs, and a direct open
+        // carries no booking by the exactly-one-target rule. The scope
+        // consistency above still applies to whatever arrives.
         UserProfile? recipient = await _userLookup.GetProfileAsync(
             recipientUserId,
             cancellationToken);

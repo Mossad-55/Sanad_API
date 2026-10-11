@@ -274,7 +274,7 @@ public sealed class ReadMarkTests
         var lookup = new FakeChatUserLookup();
         lookup.Add(peer, "Peer");
         var openHandler = new OpenConversationCommandHandler(
-            db, new ApiChatEligibilityChecker(lookup));
+            db, new ApiChatEligibilityChecker(lookup), new FakeChatBookingGateway());
         var hideHandler = new HideConversationCommandHandler(db);
         var markHandler = new MarkConversationReadCommandHandler(db);
         Guid messageId = Guid.NewGuid();
@@ -338,7 +338,7 @@ public sealed class ReadMarkTests
 
         Assert.Equal(
             "conversations/{conversationId:guid}/read",
-            mark.GetCustomAttribute<HttpPutAttribute>()!.Template);
+            mark.GetCustomAttribute<HttpPostAttribute>()!.Template);
 
         Assert.Contains(mark.GetCustomAttributes<ProducesResponseTypeAttribute>(),
             attribute => attribute.StatusCode == StatusCodes.Status204NoContent);
@@ -452,8 +452,13 @@ public sealed class ReadMarkTests
     {
         private readonly Dictionary<UserId, UserProfile> _profiles = new();
 
-        public void Add(UserId userId, string displayName, string? avatarUrl = null) =>
-            _profiles[userId] = new UserProfile(userId, displayName, avatarUrl);
+        public void Add(
+            UserId userId,
+            string displayName,
+            string? avatarUrl = null,
+            int? accountType = null) =>
+            _profiles[userId] = new UserProfile(
+                userId, displayName, avatarUrl, accountType);
 
         public Task<UserProfile?> GetProfileAsync(
             UserId userId,
@@ -462,6 +467,15 @@ public sealed class ReadMarkTests
                 _profiles.TryGetValue(userId, out UserProfile? profile)
                     ? profile
                     : null);
+    }
+
+    private sealed class FakeChatBookingGateway : IChatBookingGateway
+    {
+        public Task<UserId?> ResolveCounterpartAsync(
+            BookingId bookingId,
+            UserId openerUserId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult((UserId?)null);
     }
 
     private sealed class CapturingSender(object response) : ISender

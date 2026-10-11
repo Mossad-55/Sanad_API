@@ -304,7 +304,6 @@ public sealed class AttachmentTests : IDisposable
             var served = await handler.Handle(
                 new GetAttachmentFileQuery(
                     viewer,
-                    conversation.Id,
                     new AttachmentId(uploaded.AttachmentId)),
                 default);
 
@@ -322,7 +321,7 @@ public sealed class AttachmentTests : IDisposable
     }
 
     [Fact]
-    public async Task Serve_DeniesStrangersUnknownIdsAndCrossConversationLookupsAlike()
+    public async Task Serve_DeniesStrangersUnknownIdsAndForeignConversationsAlike()
     {
         await using ChatDbContext db = CreateDb();
         UserId uploader = UserId.New();
@@ -339,24 +338,32 @@ public sealed class AttachmentTests : IDisposable
                 new MemoryStream(JpegBytes)),
             default)).Value;
 
+        AttachmentUploadResponse foreign = (await CreateUploadHandler(db).Handle(
+            new UploadAttachmentCommand(
+                other.ParticipantOne,
+                other.Id,
+                "other.png",
+                "image/png",
+                PngBytes.Length,
+                new MemoryStream(PngBytes)),
+            default)).Value;
+
         var handler = new GetAttachmentFileQueryHandler(db, CreateStorage());
         AttachmentId attachmentId = new(uploaded.AttachmentId);
+        AttachmentId foreignAttachmentId = new(foreign.AttachmentId);
 
         var stranger = await handler.Handle(
-            new GetAttachmentFileQuery(UserId.New(), conversation.Id, attachmentId),
-            default);
-        var unknownConversation = await handler.Handle(
-            new GetAttachmentFileQuery(uploader, ConversationId.New(), attachmentId),
+            new GetAttachmentFileQuery(UserId.New(), attachmentId),
             default);
         var unknownAttachment = await handler.Handle(
-            new GetAttachmentFileQuery(uploader, conversation.Id, AttachmentId.New()),
+            new GetAttachmentFileQuery(uploader, AttachmentId.New()),
             default);
-        var crossConversation = await handler.Handle(
-            new GetAttachmentFileQuery(uploader, other.Id, attachmentId),
+        var foreignConversationAttachment = await handler.Handle(
+            new GetAttachmentFileQuery(uploader, foreignAttachmentId),
             default);
 
         Assert.All(
-            new[] { stranger, unknownConversation, unknownAttachment, crossConversation },
+            new[] { stranger, unknownAttachment, foreignConversationAttachment },
             result =>
             {
                 Assert.True(result.IsFailure);
@@ -417,7 +424,7 @@ public sealed class AttachmentTests : IDisposable
             "conversations/{conversationId:guid}/attachments",
             upload.GetCustomAttribute<HttpPostAttribute>()!.Template);
         Assert.Equal(
-            "conversations/{conversationId:guid}/attachments/{attachmentId:guid}/file",
+            "attachments/{attachmentId:guid}/file",
             serve.GetCustomAttribute<HttpGetAttribute>()!.Template);
 
         Assert.NotNull(upload.GetCustomAttribute<ConsumesAttribute>());
@@ -493,7 +500,7 @@ public sealed class AttachmentTests : IDisposable
         ChatController controller = CreateController(sender, actor);
 
         IActionResult served = await controller.GetAttachmentFile(
-            Guid.NewGuid(), Guid.NewGuid(), default);
+            Guid.NewGuid(), default);
 
         // Controller action returns File(stream, contentType) → FileStreamResult.
         FileStreamResult fileResult = Assert.IsType<FileStreamResult>(served);
@@ -508,7 +515,7 @@ public sealed class AttachmentTests : IDisposable
             actor);
 
         IActionResult notFound = await denied.GetAttachmentFile(
-            Guid.NewGuid(), Guid.NewGuid(), default);
+            Guid.NewGuid(), default);
 
         ObjectResult objectResult = Assert.IsType<ObjectResult>(notFound);
         Assert.Equal(StatusCodes.Status404NotFound, objectResult.StatusCode);

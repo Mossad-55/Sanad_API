@@ -53,6 +53,7 @@ public sealed class ApiChatUserLookup : IChatUserLookup
         return new UserProfile(
             profile.UserId,
             displayName,
-            profile.AvatarUrl);
+            profile.AvatarUrl,
+            profile.AccountType);
     }
 }
