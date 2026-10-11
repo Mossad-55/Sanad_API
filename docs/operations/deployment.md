@@ -1,5 +1,7 @@
 # Deployment handoff
 
+Release entry points: [publish.md](publish.md) (trigger word: `publish` — package only, never deploys) and [deploy-runbook.md](deploy-runbook.md) (production releases with local-only environment). Start with the [documentation index](../README.md).
+
 The repository contains a repeatable package step in
 `docs/tools/Publish-SanadApi.ps1`. It publishes the API and writes
 `sanad-deployment-manifest.json` containing the Git revision, package time, and
@@ -65,7 +67,7 @@ Acceptance criteria:
 
 - Audit the API startup migration path, deployment configuration, and server
   launch mechanism for Identity, CMS, Caregivers, Families, Care homes,
-  Notifications, Community, and Finance.
+  Notifications, Community, Finance, and Chat.
 - `Database:ApplyMigrationsOnStartup=false` is accepted only in Development.
   Finance remains separately opt-in only in Development; it is automatic in
   every non-Development environment.

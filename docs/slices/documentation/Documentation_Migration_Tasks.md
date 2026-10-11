@@ -1,5 +1,7 @@
 # Documentation migration tasks
 
+> Historical record only (migration completed 2026-10-02). The two unchecked items below (MIG-06, MIG-07) will not be worked — the follow-through happened through the slice checklists instead. Do not resume anything on this page; current work lives in `docs/chat/tasks.md`, `docs/notifications/tasks.md`, and `docs/opus/tasks.md`.
+
 Status: Historical migration evidence; cleanup completed 2026-10-02. Owner withdrew the whole-project task expansion: plan Care homes only after application intake and owner discussion. This record preserves migration evidence, not authority to resume the former 103-file rollout. See `docs/Mastermind_Handoff.md` and `docs/operations/care-homes/Care_Homes_Tasks.md` for current work. Everything below is historical, including unfinished-role/next-action instructions; do not resume them. The confirmed 118-file legacy cleanup was completed after replacement and link verification; retained current evidence and modified files were excluded.
 
 ## Scope and acceptance

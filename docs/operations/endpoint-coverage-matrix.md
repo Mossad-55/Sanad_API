@@ -1,5 +1,7 @@
 # API contract coverage matrix
 
+> Superseded counts: the figures below are the frozen 2026-10-08 checkpoint. The living source of truth is `docs/tools/Verify-ApiContractMapping.ps1` (2026-10-11: 519 signatures, 579 Postman requests, 0 missing / 0 orphan; Bruno risk-based). Rerun the script instead of quoting these totals.
+
 ## Current whole-API coverage checkpoint — 2026-10-08
 
 The latest verified static inventory records 418 controller route-method signatures. The Postman mapping contains 475 requests, with 0 missing and 0 orphan matches. Bruno contains 1,411 API request files; 11 controller signatures have no Bruno request-file match and there are 0 orphan signatures.

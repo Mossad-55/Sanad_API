@@ -259,6 +259,11 @@ _pkginfo.txt
 ClientBin/
 ~$*
 *~
+# Local-only secrets: environment files, per-host overrides, keys/certs.
+*.local.json
+*.pem
+*.key
+*~
 *.dbmdl
 *.dbproj.schemaview
 *.jfm

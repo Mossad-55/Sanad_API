@@ -1,5 +1,7 @@
 # Sanad API endpoint coverage tracker
 
+> Superseded counts: the figures below are the frozen 2026-10-01 checkpoint. The living source of truth is `docs/tools/Verify-ApiContractMapping.ps1` (2026-10-11: 519 signatures, 579 Postman requests, 0 missing / 0 orphan; Bruno risk-based). Owner confirmations recorded below remain valid; do not treat the stale totals as current.
+
 Last verified: 2026-10-01. This tracker records the all-endpoints Bruno audit. The owner confirmed the remaining provider-backed success checks were tested previously; those are marked owner-verified without invented execution metrics. This does not authorize production requests, deployment, staging, commits, or pushes.
 
 **Current closeout:** The owner confirms that the remaining Family booking payment-intent success; initial, renewal, and plan-change subscription payment-intent success; and Card subscription amount synchronization were tested previously. These five residual runtime checks are owner-verified and Done; detailed artifacts/metrics were not supplied in this workspace. This current closeout supersedes historical table/checkpoint text below that still labels these items In progress or unverified. Static mappings are independently verified at 312 route-method signatures, 352 Postman requests (0 missing/0 orphan), and 993 Bruno requests (0 missing/0 orphan).

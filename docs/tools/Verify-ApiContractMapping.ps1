@@ -18,6 +18,7 @@ function Normalize-Route([string]$Path) {
 
 function Join-Route([string]$Base, [string]$Suffix) {
     if ([string]::IsNullOrWhiteSpace($Suffix)) { return $Base.Trim('/') }
+    if ($Suffix.StartsWith('~/')) { return $Suffix.Substring(2).Trim('/') }
     if ($Suffix.StartsWith('/')) { return $Suffix.Trim('/') }
     return (($Base.Trim('/') + '/' + $Suffix.Trim('/')).Trim('/'))
 }

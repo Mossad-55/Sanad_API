@@ -1,6 +1,12 @@
 # Mastermind handoff
 
-## Current state — 2026-10-09
+## Current state — 2026-10-11 (all slices integrated)
+
+`main` = `origin/main` = `5edd341`, tree clean. Landed in order: Chat Lane A (`5d26f9f`) + Lane B (`4864a93`), Notifications Lanes A+B (`9005f14`, Codex-owned), Opus phases 1–6 (`2db70cc`), care-home finance translation fix (`5edd341`, live-verified on PostgreSQL: owner `dashboard/mine` + `revenue/mine` and admin filtered/unfiltered reads all 200). Gates on merged `main`: solution build 0 warnings/0 errors, full unit 2907 passed / 0 failed / 3 PostgreSQL-only skips, architecture 1/1, contract mapping 519 signatures with 0 missing / 0 orphan Postman routes (Bruno risk-based, 0 orphans). All task branches pruned; only `main` exists locally and on origin. Opus/Chat migrations remain authored-only, never applied. No API/DB/production operation beyond the authorized disposable-target live verification (port 5235, `SanadBrunoTestDb`, stopped afterwards).
+
+**Next action:** release flow now owns `main` — see `docs/operations/publish.md` (trigger word: `publish`) and `docs/operations/deploy-runbook.md`. Live Firebase verification still needs explicit owner authorization + a test device. Opus Phase 0-style intake applies to any future slice: agree scope/tasks first, then explicit plan approval before execution.
+
+## Previous state — 2026-10-09 (superseded by 2026-10-11 above)
 
 HC-TASK-060 is committed and pushed: `fd90975` is included in `b693ff9`. HC-TASK-061/062 guide, Postman, and evidence synchronization is complete in `f6c4648`, with the handoff closeout in `8353352`. Local `main` and `origin/main` were verified synchronized. New Postman examples were statically checked, not executed. No API, database, fixture, provider, production, reset, or deployment operation was performed. HC-040 and HC-060 migrations remain generated and unapplied; see the checklist for runtime and migration limits.
 

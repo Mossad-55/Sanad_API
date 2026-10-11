@@ -53,13 +53,14 @@ $manifest = [ordered]@{
     publishedOnUtc = [DateTime]::UtcNow.ToString('O')
     requiredMigrations = [ordered]@{
         Identity = '20261005101531_AddFeedback'
-        Cms = '20260928052717_AddElderlyWelcome'
-        Caregivers = '20261002003508_AddCaregiverRatings'
+        Cms = '20261010131314_AddLibraryContent'
+        Caregivers = '20261009004058_AddCaregiverPayoutAccountReview'
         Families = '20261005111105_AddMedicalAccessGrantGrantee'
-        CareHomes = '20261004150000_AddFamilyCheckInDisputeReason'
-        Notifications = '20261002134931_AddEmailOutbox'
-        Community = '20261005101553_InitialCommunity'
-        Finance = '20261002210606_AddPlatformChargeRulesEfMetadata'
+        CareHomes = '20261008221643_AddCareHomeBookingNotificationOutbox'
+        Notifications = '20261010010618_AddEmailHtmlSnapshots'
+        Community = '20261010004134_AddCommunityCategories'
+        Finance = '20261010143327_AddCaregiverPayoutPolicyDescriptions'
+        Chat = '20261011145248_AddChatMessageLocation'
     }
     startupMigrationPolicy = 'All registered module migrations run before API startup outside Development; production cannot disable them.'
 }
