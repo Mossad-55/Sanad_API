@@ -121,7 +121,7 @@ public sealed class GetLibraryCategoriesQueryHandler(ICmsDbContext dbContext)
             .AsNoTracking()
             .Where(category => category.IsActive)
             .OrderBy(category => category.CreatedOnUtc)
-            .ThenBy(category => category.Id.Value)
+            .ThenBy(category => category.Id)
             .Select(category => new LibraryCategoryResponse(
                 category.Id.Value, category.ArabicName, category.EnglishName))
             .ToListAsync(cancellationToken);
@@ -142,7 +142,7 @@ public sealed class GetLibraryAdminCategoriesQueryHandler(ICmsDbContext dbContex
         IReadOnlyList<AdminLibraryCategoryResponse> categories = await dbContext.LibraryCategories
             .AsNoTracking()
             .OrderBy(category => category.CreatedOnUtc)
-            .ThenBy(category => category.Id.Value)
+            .ThenBy(category => category.Id)
             .Select(category => new AdminLibraryCategoryResponse(
                 category.Id.Value, category.ArabicName, category.EnglishName,
                 category.IsActive, category.CreatedOnUtc, category.UpdatedOnUtc))

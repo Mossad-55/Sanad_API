@@ -54,10 +54,10 @@ public sealed class GetLibraryContentListQueryHandler(ICmsDbContext db, IFamilie
             LibraryContentSort.MostViewed =>
                 query.OrderByDescending(content => content.ViewCount)
                     .ThenByDescending(content => content.CreatedOnUtc)
-                    .ThenByDescending(content => content.Id.Value),
+                    .ThenByDescending(content => content.Id),
             _ =>
                 query.OrderByDescending(content => content.CreatedOnUtc)
-                    .ThenByDescending(content => content.Id.Value)
+                    .ThenByDescending(content => content.Id)
         };
 
         IReadOnlyList<LibraryContent> contents = await query
@@ -148,7 +148,7 @@ public sealed class GetLibraryRecommendationsQueryHandler(ICmsDbContext db, IFam
             List<Guid> sameCategoryIds = await baseQuery
                 .Where(content => content.CategoryId == categoryId)
                 .OrderByDescending(content => content.CreatedOnUtc)
-                .ThenByDescending(content => content.Id.Value)
+                .ThenByDescending(content => content.Id)
                 .Select(content => content.Id.Value)
                 .ToListAsync(cancellationToken);
             orderedIds.AddRange(sameCategoryIds);
@@ -157,12 +157,13 @@ public sealed class GetLibraryRecommendationsQueryHandler(ICmsDbContext db, IFam
         List<Guid> taken = orderedIds.ToList();
         if (excludedContentId != Guid.Empty)
             taken.Add(excludedContentId);
+        List<LibraryContentId> untakenIds = taken.Select(id => new LibraryContentId(id)).ToList();
 
         List<Guid> topViewedIds = await baseQuery
-            .Where(content => !taken.Contains(content.Id.Value))
+            .Where(content => !untakenIds.Contains(content.Id))
             .OrderByDescending(content => content.ViewCount)
             .ThenByDescending(content => content.CreatedOnUtc)
-            .ThenByDescending(content => content.Id.Value)
+            .ThenByDescending(content => content.Id)
             .Select(content => content.Id.Value)
             .ToListAsync(cancellationToken);
         orderedIds.AddRange(topViewedIds);
@@ -173,11 +174,12 @@ public sealed class GetLibraryRecommendationsQueryHandler(ICmsDbContext db, IFam
             .ToList();
         if (pageIds.Count == 0)
             return Result<IReadOnlyList<LibraryContentListItemResponse>>.Success([]);
+        List<LibraryContentId> pageContentIds = pageIds.Select(id => new LibraryContentId(id)).ToList();
 
         IReadOnlyList<LibraryContent> contents = await db.LibraryContents
             .AsNoTracking()
             .Include(content => content.Category)
-            .Where(content => pageIds.Contains(content.Id.Value))
+            .Where(content => pageContentIds.Contains(content.Id))
             .ToListAsync(cancellationToken);
 
         var contentsById = contents.ToDictionary(content => content.Id.Value);
@@ -223,13 +225,14 @@ public sealed class GetSavedLibraryContentQueryHandler(ICmsDbContext db, IFamili
 
         if (savedContentIds.Count == 0)
             return Result<IReadOnlyList<LibraryContentListItemResponse>>.Success([]);
+        List<LibraryContentId> savedIds = savedContentIds.Select(id => new LibraryContentId(id)).ToList();
 
         IReadOnlyList<LibraryContent> contents = await db.LibraryContents
             .AsNoTracking()
             .Include(content => content.Category)
             .Where(content =>
                 content.Status == LibraryContentStatus.Published &&
-                savedContentIds.Contains(content.Id.Value))
+                savedIds.Contains(content.Id))
             .ToListAsync(cancellationToken);
 
         var contentsById = contents.ToDictionary(content => content.Id.Value);
@@ -277,7 +280,7 @@ public sealed class GetLibraryAdminListQueryHandler(ICmsDbContext db)
         IReadOnlyList<LibraryContent> contents = await query
             .Include(content => content.Category)
             .OrderByDescending(content => content.CreatedOnUtc)
-            .ThenByDescending(content => content.Id.Value)
+            .ThenByDescending(content => content.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .ToListAsync(cancellationToken);

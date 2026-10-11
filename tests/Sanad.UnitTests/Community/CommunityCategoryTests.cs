@@ -169,6 +169,25 @@ public sealed class CommunityCategoryTests
         Assert.Contains(result.Value, c => !c.IsActive);
     }
 
+    [Fact]
+    public async Task UpdateCategory_TranslatesOnRelationalStore()
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        await using var db = new CommunityDbContext(
+            new DbContextOptionsBuilder<CommunityDbContext>().UseSqlite(connection).Options);
+        await db.Database.EnsureCreatedAsync();
+        var created = await new CreateCategoryCommandHandler(db).Handle(
+            new CreateCategoryCommand("رعاية", "Care", true), default);
+        Assert.True(created.IsSuccess);
+
+        var updated = await new UpdateCategoryCommandHandler(db).Handle(
+            new UpdateCategoryCommand(created.Value.Id, "نصيحة", "Tips", false), default);
+
+        Assert.True(updated.IsSuccess);
+        Assert.Equal("Tips", updated.Value.EnglishName);
+    }
+
     private static CommunityDbContext CreateDb() => new(
         new DbContextOptionsBuilder<CommunityDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString())

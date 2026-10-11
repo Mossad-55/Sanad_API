@@ -29,13 +29,14 @@ internal static class LibraryViewerState
             return new Dictionary<Guid, (bool, bool)>();
 
         List<Guid> contentIds = contents.Select(content => content.Id.Value).ToList();
+        List<LibraryContentId> typedContentIds = contents.Select(content => content.Id).ToList();
         var user = new UserId(viewerUserId);
 
         var interactions = await dbContext.LibraryContentInteractions
             .AsNoTracking()
             .Where(interaction =>
                 interaction.UserId == user &&
-                contentIds.Contains(interaction.ContentId.Value))
+                typedContentIds.Contains(interaction.ContentId))
             .Select(interaction => new { interaction.ContentId, interaction.Kind })
             .ToListAsync(cancellationToken);
 

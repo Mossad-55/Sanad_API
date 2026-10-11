@@ -26,7 +26,7 @@ public sealed class GetActiveCategoriesQueryHandler(ICommunityDbContext dbContex
             .AsNoTracking()
             .Where(c => c.IsActive)
             .OrderBy(c => c.CreatedOnUtc)
-            .ThenBy(c => c.Id.Value)
+            .ThenBy(c => c.Id)
             .Select(c => new CategoryResponse(c.Id.Value, c.ArabicName, c.EnglishName))
             .ToListAsync(cancellationToken);
 
@@ -45,7 +45,7 @@ public sealed class GetCommunityCategoriesAdminQueryHandler(ICommunityDbContext 
         IReadOnlyList<AdminCategoryResponse> categories = await dbContext.Categories
             .AsNoTracking()
             .OrderBy(c => c.CreatedOnUtc)
-            .ThenBy(c => c.Id.Value)
+            .ThenBy(c => c.Id)
             .Select(c => new AdminCategoryResponse(
                 c.Id.Value, c.ArabicName, c.EnglishName, c.IsActive, c.CreatedOnUtc, c.UpdatedOnUtc))
             .ToListAsync(cancellationToken);

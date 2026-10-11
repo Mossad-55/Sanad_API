@@ -39,7 +39,7 @@ public sealed class GetHelpCenterQueryHandler :
         IReadOnlyList<HelpCenterFaqItem> items =
             faqs
                 .OrderBy(faq => faq.DisplayOrder)
-                .ThenBy(faq => faq.Id.Value)
+                .ThenBy(faq => faq.Id)
                 .Select(faq => faq.ToAppItem())
                 .ToList();
 

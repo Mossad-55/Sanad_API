@@ -230,6 +230,31 @@ public sealed class CommunityFeedTests
         Assert.Null(found.Value.CurrentUserRating);
     }
 
+    [Fact]
+    public async Task GetPosts_WithViewer_TranslatesOnRelationalStore()
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        await using var db = new CommunityDbContext(
+            new DbContextOptionsBuilder<CommunityDbContext>().UseSqlite(connection).Options);
+        await db.Database.EnsureCreatedAsync();
+        var viewer = UserId.New();
+        var post = CreatePublishedPost("أ", "Post", "a", "a", null, DateTime.UtcNow);
+        db.Posts.Add(post);
+        db.Interactions.Add(CommunityInteraction.Create(
+            CommunityInteractionTarget.Post, post.Id.Value, viewer, CommunityInteractionKind.Like, DateTime.UtcNow));
+        db.Ratings.Add(Rating.Create(post.Id, viewer, 4, DateTime.UtcNow));
+        await db.SaveChangesAsync();
+
+        var withViewer = await new GetPostsQueryHandler(db).Handle(
+            new GetPostsQuery(PostStatus.Published, ViewerUserId: viewer.Value), default);
+
+        Assert.True(withViewer.IsSuccess);
+        var item = Assert.Single(withViewer.Value);
+        Assert.True(item.IsLiked);
+        Assert.Equal(4, item.CurrentUserRating);
+    }
+
     private static Post CreatePublishedPost(
         string titleArabic, string titleEnglish,
         string contentArabic, string contentEnglish,

@@ -37,7 +37,7 @@ public sealed class ListHelpFaqsQueryHandler :
             faqs
                 .OrderBy(faq => faq.Audience)
                 .ThenBy(faq => faq.DisplayOrder)
-                .ThenBy(faq => faq.Id.Value)
+                .ThenBy(faq => faq.Id)
                 .Select(faq => faq.ToResponse())
                 .ToList();
 

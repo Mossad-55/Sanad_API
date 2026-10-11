@@ -25,6 +25,7 @@ internal static class PostViewerState
             return new Dictionary<Guid, (bool, bool, int?)>();
 
         List<Guid> postIds = posts.Select(p => p.Id.Value).ToList();
+        List<CommunityPostId> ratingPostIds = posts.Select(p => p.Id).ToList();
         var user = new UserId(viewerUserId);
 
         var interactions = await dbContext.Interactions
@@ -37,7 +38,7 @@ internal static class PostViewerState
 
         var ratings = await dbContext.Ratings
             .AsNoTracking()
-            .Where(r => r.UserId == user && postIds.Contains(r.PostId.Value))
+            .Where(r => r.UserId == user && ratingPostIds.Contains(r.PostId))
             .Select(r => new { PostId = r.PostId.Value, r.RatingValue })
             .ToListAsync(cancellationToken);
 

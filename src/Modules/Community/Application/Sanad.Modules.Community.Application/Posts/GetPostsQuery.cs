@@ -67,13 +67,13 @@ public sealed class GetPostsQueryHandler
         query = request.Sort switch
         {
             CommunityPostsSort.Oldest =>
-                query.OrderBy(p => p.CreatedOnUtc).ThenBy(p => p.Id.Value),
+                query.OrderBy(p => p.CreatedOnUtc).ThenBy(p => p.Id),
             CommunityPostsSort.MostLiked =>
                 query.OrderByDescending(p => p.LikesCount)
                     .ThenByDescending(p => p.CreatedOnUtc)
-                    .ThenByDescending(p => p.Id.Value),
+                    .ThenByDescending(p => p.Id),
             _ =>
-                query.OrderByDescending(p => p.CreatedOnUtc).ThenByDescending(p => p.Id.Value)
+                query.OrderByDescending(p => p.CreatedOnUtc).ThenByDescending(p => p.Id)
         };
 
         IReadOnlyList<Post> posts = await query

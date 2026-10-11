@@ -497,6 +497,34 @@ public sealed class LibraryTests
         new SetLibraryContentLikedCommandHandler(db)
             .Handle(new SetLibraryContentLikedCommand(contentId, user.Value, value), CancellationToken.None);
 
+    [Fact]
+    public async Task ContentList_WithViewer_TranslatesOnRelationalStore()
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        await using var db = new CmsDbContext(
+            new DbContextOptionsBuilder<CmsDbContext>().UseSqlite(connection).Options);
+        await db.Database.EnsureCreatedAsync();
+        using var familiesConnection = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
+        await familiesConnection.OpenAsync();
+        await using var familiesDb = new FamiliesDbContext(
+            new DbContextOptionsBuilder<FamiliesDbContext>().UseSqlite(familiesConnection).Options);
+        await familiesDb.Database.EnsureCreatedAsync();
+        var viewer = UserId.New();
+        var created = await new CreateLibraryContentCommandHandler(db).Handle(
+            ArticleCommand(null) with { EnglishTitle = "Relational" }, CancellationToken.None);
+        Assert.True(created.IsSuccess);
+        var content = await db.LibraryContents.SingleAsync(item => item.Id == new LibraryContentId(created.Value.Id));
+        content.Publish();
+        await db.SaveChangesAsync();
+
+        var list = await new GetLibraryContentListQueryHandler(db, familiesDb).Handle(
+            new GetLibraryContentListQuery(ViewerUserId: viewer.Value), CancellationToken.None);
+
+        Assert.True(list.IsSuccess);
+        Assert.Single(list.Value);
+    }
+
     private static CreateLibraryContentCommand ArticleCommand(Guid? categoryId) => new(
         LibraryContentType.Article,
         categoryId,
@@ -551,7 +579,7 @@ public sealed class LibraryTests
         var result = await new CreateLibraryContentCommandHandler(db)
             .Handle(command, CancellationToken.None);
         Assert.True(result.IsSuccess);
-        return db.LibraryContents.Single(item => item.Id.Value == result.Value.Id);
+        return db.LibraryContents.Single(item => item.Id == new LibraryContentId(result.Value.Id));
     }
 
     private static CmsDbContext CreateCmsContext()

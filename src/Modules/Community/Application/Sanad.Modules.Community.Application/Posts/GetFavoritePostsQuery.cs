@@ -36,7 +36,7 @@ public sealed class GetFavoritePostsQueryHandler
                         i.Kind == CommunityInteractionKind.Favorite &&
                         i.UserId == user)
             .OrderByDescending(i => i.CreatedOnUtc)
-            .ThenByDescending(i => i.Id.Value)
+            .ThenByDescending(i => i.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
             .Select(i => i.TargetId)
@@ -45,10 +45,11 @@ public sealed class GetFavoritePostsQueryHandler
         if (favoritedPostIds.Count == 0)
             return Result<IReadOnlyList<PostFeedItem>>.Success([]);
 
+        List<CommunityPostId> favoritedPosts = favoritedPostIds.Select(id => new CommunityPostId(id)).ToList();
         IReadOnlyList<Post> posts = await _dbContext.Posts
             .AsNoTracking()
             .Include(p => p.Category)
-            .Where(p => p.Status == PostStatus.Published && favoritedPostIds.Contains(p.Id.Value))
+            .Where(p => p.Status == PostStatus.Published && favoritedPosts.Contains(p.Id))
             .ToListAsync(cancellationToken);
 
         // Preserve newest-favorited-first order from the interaction page.

@@ -35,6 +35,30 @@ public sealed class CommunityRatingTests
         Assert.Equal(value.ToString(), rating.RatingValue);
     }
 
+    [Fact]
+    public async Task AddRating_ValidValue_TranslatesOnRelationalStore()
+    {
+        using var connection = new Microsoft.Data.Sqlite.SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+        await using var db = new CommunityDbContext(
+            new DbContextOptionsBuilder<CommunityDbContext>().UseSqlite(connection).Options);
+        await db.Database.EnsureCreatedAsync();
+        var user = UserId.New();
+        var post = CreatePublishedPost();
+        db.Posts.Add(post);
+        await db.SaveChangesAsync();
+
+        var result = await new AddRatingCommandHandler(db).Handle(new AddRatingCommand
+        {
+            PostId = post.Id.Value,
+            UserId = user.Value,
+            Value = 4
+        }, default);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value);
+    }
+
     [Theory]
     [InlineData(0)]
     [InlineData(6)]
