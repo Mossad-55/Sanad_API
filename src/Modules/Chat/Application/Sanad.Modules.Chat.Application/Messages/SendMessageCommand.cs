@@ -1,3 +1,4 @@
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
@@ -9,6 +10,7 @@ using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Domain.Attachments;
 using Sanad.Modules.Chat.Domain.Conversations;
 using Sanad.Modules.Chat.Domain.Messages;
+using Sanad.Modules.Notifications.Application.Notifications;
 
 namespace Sanad.Modules.Chat.Application.Messages;
 
@@ -33,9 +35,21 @@ public sealed class SendMessageCommandHandler
 {
     private readonly IChatDbContext _dbContext;
 
-    public SendMessageCommandHandler(IChatDbContext dbContext)
+    /// <summary>
+    /// Seam to the Notifications module (the same <c>ISender</c> every
+    /// controller already uses). Optional only so the pre-existing focused
+    /// tests that construct this handler with the bare context keep
+    /// compiling; the container always injects it, so every send in the
+    /// running app fires the new-message alert.
+    /// </summary>
+    private readonly ISender? _notificationSender;
+
+    public SendMessageCommandHandler(
+        IChatDbContext dbContext,
+        ISender? notificationSender = null)
     {
         _dbContext = dbContext;
+        _notificationSender = notificationSender;
     }
 
     public async Task<Result<SendMessageResponse>> Handle(
@@ -236,6 +250,31 @@ public sealed class SendMessageCommandHandler
 
         _dbContext.Messages.Add(message);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Lane B — new-message in-app alert through the existing
+        // notification seam (frozen contract: conversation id + message id
+        // only, never the text, which this call does not carry at all).
+        // The producer is awaited, not fire-and-forget, and its failure is
+        // deliberately NOT swallowed: the message row is already committed,
+        // so a caller's retry with the same clientMessageId takes the exact
+        // replay path above — 200, no duplicate message, no second producer
+        // attempt — exactly the idempotent contract the send itself
+        // follows. The residual is documented: a producer failure can leave
+        // the message delivered without an alert (no retry loop exists for
+        // this seam in V1). The replay path never re-fires the producer
+        // because an existing message means its alert was already produced,
+        // and the producer's per-(message, recipient) idempotency key would
+        // dedupe it anyway.
+        if (_notificationSender is not null)
+        {
+            await _notificationSender.Send(
+                new CreateChatMessageNotificationCommand(
+                    recipient.Value,
+                    conversation.Id.Value,
+                    message.Id.Value,
+                    now),
+                cancellationToken);
+        }
 
         // A message can never come back read on its own create: no existing
         // watermark can cover something newer than every mark already taken,
