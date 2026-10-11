@@ -6,7 +6,9 @@ additions, rating unification, chat deltas) per `plan.md`, phases 0–7 in
 `tasks.md`. Chat core lanes stay with the Chat lane owner; Opus touches chat
 files only for the listed deltas.
 
-## Current state — package complete (model `opencode/muse-spark-1.3-contributor-free`)
+## Current state — 2026-10-11 (Opus integrated into `main`)
+
+Branch `opencode/opus-work` (tip `323ca9c`) merged via `2db70cc` (merge commit, zero conflicts — merge-base was `main` @ `9c2e9ca`). All 6 Ready boxes marked with the merge SHA in `tasks.md`. Joint gates re-run on merged `main`: solution build 0 warnings/0 errors (`TreatWarningsAsErrors`); focused Community/Cms/Caregivers/Finance/Chat/API/CareHomes/Identity 2153/2153; arch 1/1; full unit 2903 passed, 0 failed, 3 pre-existing Postgres-only skips; `git diff --check` clean; all 22 Postman collections parse; EF `has-pending-model-changes` clean on Community, Cms, Finance, Chat contexts. Four migrations (`AddCommunityCategories`, `AddChatMessageLocation`, `AddLibraryContent`, `AddCaregiverPayoutPolicyDescriptions`) authored only, never applied; no Bruno (not selected); push to `origin/main` pending. Known limitations carried: no dedicated admin-library guide (admin CRUD via generic Admin collection + family README); Location alerts flow through the existing ids-only seam (verified on create path); contracted breaking changes (rating int, 7 chat deltas) per frozen plan §2.
 
 Branch `opencode/opus-work` (base `main` @ `fe91d64`), committed per phase,
 reports in `docs/opus/reports/`. Ready boxes checked for 1, 2, 3, 4, 5, 6;
@@ -46,7 +48,7 @@ phase 7 box checked in the Order list (gates report:
   3 pre-existing static skips; full architecture 1/1; `git diff --check`
   clean; all 20 Postman JSONs valid.
 
-Nothing pushed, nothing merged, no migrations applied, no seeds, no
+Push to `origin/main` pending; no migrations applied, no seeds, no
 provider calls.
 
 ## Blockers
@@ -55,9 +57,6 @@ None remaining. All seven phases have checked Ready boxes and reports.
 
 ## Next action
 
-Integration only, on owner trigger "integrate now": the Integrator scans
-the Ready boxes in `tasks.md`, merges the qualifying phases (1–6 — phase 4
-depends on the chat core already in `main`) in numeric order, marks each
-merged box with the `main` SHA, and pushes `main` once. Workers never merge
-or push. Dated history, if any accumulates, is archived under
-`docs/opus/history/` — never stacked here.
+Push `main` to `origin/main` and verify `main == origin/main`; then prune
+`opencode/opus-work` only after the push is verified. Dated history, if any
+accumulates, is archived under `docs/opus/history/` — never stacked here.

@@ -102,9 +102,9 @@ boxes, merges qualifying phases in numeric order, marks each merged box with
 the `main` SHA, and pushes `main` once. Workers never merge or push; workers
 write the report file as part of Done.
 
-- [x] phase-1-rating — report: `docs/opus/reports/phase-1-rating.md`
-- [x] phase-2-categories — report: `docs/opus/reports/phase-2-categories.md`
-- [x] phase-3-search — report: `docs/opus/reports/phase-3-search.md`
-- [x] phase-4-chat-deltas — report: `docs/opus/reports/phase-4-chat-deltas.md`
-- [x] phase-5-library — report: `docs/opus/reports/phase-5-library.md`
-- [x] phase-6-payout-reads — report: `docs/opus/reports/phase-6-payout-reads.md`
+- [x] phase-1-rating — report: `docs/opus/reports/phase-1-rating.md` (merged into `main` via `2db70cc`)
+- [x] phase-2-categories — report: `docs/opus/reports/phase-2-categories.md` (merged via `2db70cc`)
+- [x] phase-3-search — report: `docs/opus/reports/phase-3-search.md` (merged via `2db70cc`)
+- [x] phase-4-chat-deltas — report: `docs/opus/reports/phase-4-chat-deltas.md` (merged via `2db70cc`)
+- [x] phase-5-library — report: `docs/opus/reports/phase-5-library.md` (merged via `2db70cc`)
+- [x] phase-6-payout-reads — report: `docs/opus/reports/phase-6-payout-reads.md` (merged via `2db70cc`)
