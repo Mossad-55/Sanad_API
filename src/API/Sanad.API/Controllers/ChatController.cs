@@ -8,18 +8,18 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Attachments;
 using Sanad.Modules.Chat.Application.Blocks;
 using Sanad.Modules.Chat.Application.Conversations;
+using Sanad.Modules.Chat.Application.Messages;
 using Sanad.Modules.Chat.Domain.Attachments;
 using Sanad.Modules.Chat.Domain.Conversations;
 
 namespace Sanad.API.Controllers;
 
 /// <summary>
-/// Chat app routes (endpoints 1, 2, 5, 6, 7, 9, and 10 of the frozen
-/// contract).
-/// Lane B adds its own endpoints (3-4, 8, 11) to this controller later. All
-/// routes resolve the participant from the JWT; unknown or foreign
-/// conversations, attachments, files, and block targets answer with a
-/// privacy-preserving 404 that never reveals why.
+/// Chat app routes (endpoints 1–4 and 5–10 of the frozen contract; endpoint
+/// 11 comes with the reports item). All routes resolve the participant from
+/// the JWT; unknown or foreign conversations, messages, attachments, files,
+/// and block targets answer with a privacy-preserving 404 that never reveals
+/// why.
 /// </summary>
 [Authorize]
 [Route("api/v1/chat")]
@@ -75,6 +75,124 @@ public sealed class ChatController : ApiControllerBase
                 userId,
                 new UserId(request.RecipientUserId),
                 bookingId),
+            cancellationToken);
+
+        return ToChatActionResult(result);
+    }
+
+    /// <summary>
+    /// Endpoint 3 — cursor page of a conversation's messages, newest first
+    /// by (<c>sentOnUtc</c>, <c>id</c>). <c>limit</c> defaults to 30 and is
+    /// clamped to 1–100 by the handler; <c>beforeMessageId</c> accepts the
+    /// opaque <c>nextCursor</c> this endpoint returned or a raw message id.
+    /// Unknown, foreign, and hidden-for-requester conversations, and any
+    /// <c>beforeMessageId</c> that does not resolve inside this
+    /// conversation, are the generic privacy 404 — the parameter can never
+    /// be used to probe ids. The response also carries the delivery write
+    /// side effect: the recipient's first fetch stamps
+    /// <c>deliveredOnUtc</c>.
+    /// </summary>
+    [HttpGet("conversations/{conversationId:guid}/messages")]
+    [ProducesResponseType(
+        typeof(MessageCursorPage),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetMessages(
+        Guid conversationId,
+        [FromQuery] string? beforeMessageId = null,
+        [FromQuery] int limit = GetMessagesQueryHandler.DefaultLimit,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new GetMessagesQuery(
+                userId,
+                new ConversationId(conversationId),
+                beforeMessageId,
+                limit),
+            cancellationToken);
+
+        return ToChatActionResult(result);
+    }
+
+    /// <summary>
+    /// Endpoint 4 — send a message (201 on create, 200 on an exact replay of
+    /// the same <c>clientMessageId</c> with the same content; the body is
+    /// the message item either way, and the status code alone tells the two
+    /// apart). A reused key with different content is the frozen 409
+    /// <see cref="MessageErrors.IdempotencyConflict"/>, forced here rather
+    /// than in the shared ResultProblemDetailsMapper (which has no Chat.*
+    /// entries and would default an unmapped code to 400).
+    /// </summary>
+    [HttpPost("conversations/{conversationId:guid}/messages")]
+    [ProducesResponseType(
+        typeof(MessageItemResponse),
+        StatusCodes.Status201Created)]
+    [ProducesResponseType(
+        typeof(MessageItemResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> SendMessage(
+        Guid conversationId,
+        [FromBody] ChatSendMessageRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        AttachmentId? attachmentId = request.AttachmentId is { } value
+            ? new AttachmentId(value)
+            : null;
+
+        var result = await _sender.Send(
+            new SendMessageCommand(
+                userId,
+                new ConversationId(conversationId),
+                request.ClientMessageId,
+                request.Type,
+                request.Text,
+                attachmentId),
+            cancellationToken);
+
+        if (!result.IsSuccess)
+        {
+            return ToChatActionResult(result);
+        }
+
+        return result.Value.Created
+            ? StatusCode(StatusCodes.Status201Created, result.Value.Message)
+            : Ok(result.Value.Message);
+    }
+
+    /// <summary>
+    /// Endpoint 8 — the requester's unread totals: messages they did not
+    /// send that the read rule does not count as read, plus how many
+    /// conversations hold at least one such message. Conversations the
+    /// requester hid are excluded; a requester with nothing visible answers
+    /// 0/0.
+    /// </summary>
+    [HttpGet("unread-count")]
+    [ProducesResponseType(
+        typeof(UnreadCountResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetUnreadCount(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new GetUnreadCountQuery(userId),
             cancellationToken);
 
         return ToChatActionResult(result);
@@ -306,18 +424,24 @@ public sealed class ChatController : ApiControllerBase
     private IActionResult ToChatActionResult(Result result) =>
         IsPrivacyFailure(result)
             ? PrivacyNotFound(result.Error)
-            : ToActionResult(result);
+            : IsConflict(result)
+                ? SendConflict(result.Error)
+                : ToActionResult(result);
 
     private IActionResult ToChatActionResult<T>(Result<T> result) =>
         IsPrivacyFailure(result)
             ? PrivacyNotFound(result.Error)
-            : ToActionResult(result);
+            : IsConflict(result)
+                ? SendConflict(result.Error)
+                : ToActionResult(result);
 
     /// <summary>
-    /// Both the conversation code (endpoints 1/2/7/10, and upload scope
-    /// failures) and the attachment code (endpoint 6 serve denials) are
-    /// privacy failures, as is the block code for endpoint 9's unknown
-    /// target user. Upload validation codes, Chat.Block.Invalid, and
+    /// The conversation code (endpoints 1/2/7/10, and upload scope
+    /// failures), the attachment code (endpoint 6 serve denials), the block
+    /// code (endpoint 9's unknown target user), and the message code
+    /// (endpoint 3's unresolvable <c>beforeMessageId</c>) are privacy
+    /// failures: one indistinguishable generic 404 each. Upload validation
+    /// codes, Chat.Message.Invalid, Chat.Block.Invalid, and
     /// Chat.ConversationRead.Invalid deliberately do NOT match: they surface
     /// as 400s to the caller, who is entitled to know their own request was
     /// invalid.
@@ -326,7 +450,18 @@ public sealed class ChatController : ApiControllerBase
         result.IsFailure &&
         (result.Error.Code == ConversationErrors.NotFound.Code ||
          result.Error.Code == AttachmentErrors.NotFound.Code ||
-         result.Error.Code == BlockErrors.NotFound.Code);
+         result.Error.Code == BlockErrors.NotFound.Code ||
+         result.Error.Code == MessageErrors.NotFound.Code);
+
+    /// <summary>
+    /// Endpoint 4's idempotency 409. Like the privacy failures, Chat forces
+    /// the status/detail pair here instead of adding Chat.* entries to the
+    /// shared ResultProblemDetailsMapper: any unmapped code there defaults
+    /// to a 400, and the frozen contract pins this one at 409.
+    /// </summary>
+    private static bool IsConflict(Result result) =>
+        result.IsFailure &&
+        result.Error.Code == MessageErrors.IdempotencyConflict.Code;
 
     /// <summary>
     /// Chat forces the status/detail pair for its privacy failures here
@@ -347,6 +482,27 @@ public sealed class ChatController : ApiControllerBase
 
         return StatusCode(
             StatusCodes.Status404NotFound,
+            problemDetails);
+    }
+
+    /// <summary>
+    /// The 409 counterpart of <see cref="PrivacyNotFound"/>: the code, title,
+    /// status, and generic detail are forced here for
+    /// Chat.Message.IdempotencyConflict. The body's own error code/message
+    /// (returned by the mapper) stay intact so a client can key on them.
+    /// </summary>
+    private IActionResult SendConflict(Error error)
+    {
+        ProblemDetails problemDetails =
+            ResultProblemDetailsMapper.Create(error, HttpContext);
+
+        problemDetails.Type = "https://httpstatuses.com/409";
+        problemDetails.Title = "Conflict";
+        problemDetails.Status = StatusCodes.Status409Conflict;
+        problemDetails.Detail = "The request conflicts with the current state.";
+
+        return StatusCode(
+            StatusCodes.Status409Conflict,
             problemDetails);
     }
 }

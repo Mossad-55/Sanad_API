@@ -19,6 +19,8 @@ using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Domain.Attachments;
 using Sanad.Modules.Chat.Domain.Blocks;
 using Sanad.Modules.Chat.Domain.Conversations;
+using Sanad.Modules.Chat.Domain.Messages;
+using Sanad.Modules.Chat.Domain.Reports;
 using Sanad.Modules.Chat.Infrastructure.Persistence;
 
 namespace Sanad.UnitTests.Chat;
@@ -638,6 +640,12 @@ public sealed class AttachmentTests : IDisposable
         public DbSet<Block> Blocks => inner.Blocks;
 
         public DbSet<ConversationReadState> ReadStates => inner.ReadStates;
+
+        // Lane B extended IChatDbContext with the message/report tables; this
+        // fake only ever runs the upload path, so it simply forwards them.
+        public DbSet<Message> Messages => inner.Messages;
+
+        public DbSet<Report> Reports => inner.Reports;
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
             throw new DbUpdateException(
