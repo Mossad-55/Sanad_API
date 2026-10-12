@@ -9,13 +9,13 @@ owner decision. File manifests are exclusive (see plan §7).
 - [ ] Not started — **Phase 0.** Branch `opencode/admin-users` from latest `main`; verify clean base.
   Owns: new branch only.
 
-- [ ] Not started — **Phase 1. List/detail + SuperAdminOnly policy.**
-  Owns: policy const + DI, `AdminUsersController` (endpoints 1–2), list/detail
+- [ ] Not started — **Phase 1. List/detail/sessions + SuperAdminOnly policy.**
+  Owns: policy const + DI, `AdminUsersController` (endpoints 1–2, 15), list/detail/sessions
   handlers + validators, tests, docs + Postman deltas.
 
-- [ ] Not started — **Phase 2. Suspend/reactivate/block + session revocation.**
-  Owns: status handlers reusing domain transitions, revoke-all wiring, tests
-  (incl. self/seeded/last-superadmin cases), docs + Postman deltas.
+- [ ] Not started — **Phase 2. Suspend/reactivate/block + session revocation + notices.**
+  Owns: status handlers reusing domain transitions, revoke-all wiring, status-change
+  notice enqueue, tests (incl. self/seeded/last-superadmin cases), docs + Postman deltas.
 
 - [ ] Not started — **Phase 3. Password reset + account-type changes + admin create.**
   Owns: reset handler (one-time display, session wipe), change-type handler
