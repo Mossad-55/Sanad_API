@@ -65,7 +65,9 @@ A room type accepts one cover and up to 10 gallery photos. Success returns
 removing a gallery photo re-orders the remaining gallery positions.
 Out-of-bound content types or sizes return
 `400 CareHomes.Inventory.MediaInvalid`; an unknown photo returns
-`404 CareHomes.Inventory.MediaNotFound`.
+`404 CareHomes.Inventory.MediaNotFound`. `coverUrl` is metadata only: no GET
+file route serves it yet (requests return `404`), the contract stays frozen
+until a serving route is added, and clients must not render covers today.
 
 A room type is bookable only once it publishes a cover photo plus at least
 one gallery photo. Until then, creating a checkout hold for its rooms is

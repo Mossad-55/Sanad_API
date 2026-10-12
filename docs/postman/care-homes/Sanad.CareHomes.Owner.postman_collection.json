@@ -597,7 +597,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomTypeId\": \"{{inventoryRoomTypeId}}\",\n  \"roomNumber\": \"102\",\n  \"arabicDisplayName\": \"غرفة مميزة\",\n  \"englishDisplayName\": \"Premium room\"\n}"
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomNumber\": \"102\",\n  \"arabicDisplayName\": \"غرفة مميزة\",\n  \"englishDisplayName\": \"Premium room\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}"
           },

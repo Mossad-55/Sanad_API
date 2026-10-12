@@ -6,28 +6,30 @@ Deliver the owner-approved package per `plan.md`, phases 0–3 in `tasks.md`.
 
 ## Current state
 
-Phase 0 (`759a5d2`), Phase 1 (`cea3300` + `a861763` + tracking `e253716`) and
-Phase 2 delivered on `opencode/room-enrichment`; Phase 2 deliverables are at
-**`90ca26f`** (endpoints 4–6: display override with occupancy-scoped number
-guard, room photos 201/204/404/400, resolved readback names + `media[]`,
-discovery `amenities[]`/`coverImageUrl`, single extended migration; 204/204
-CareHomes tests; Postman contract-map 0/0 absolute). The owner-approved live
-gate ran on 5235/SanadBrunoTestDb with all checks green (display set/clear with
-byte-exact Arabic round-trip, 400/409 guards, full media lifecycle, anonymous
-discovery), all `LiveGate*` sessions revoked (refresh-after-revoke →
-401 `Identity.Refresh.SessionRevoked`), API stopped. Report:
-`reports/phase-2-rooms.md` (includes the corrected Bruno baseline: 135 at
-`4e7f956`, waiver now +4 total). Slice: In progress.
+**All four phases delivered** on `opencode/room-enrichment`:
+
+- Phase 0 `759a5d2` (frozen package)
+- Phase 1 `cea3300` + fixes `a861763` + tracking `e253716` (type amenities,
+  photos, bookability gate; report `reports/phase-1-types.md`)
+- Phase 2 `90ca26f` + tracking `c61fa85` (room display override, room photos,
+  resolved readback; report `reports/phase-2-rooms.md`)
+- Phase 3: guides + Postman polish, joint gate battery once on the final tree
+  (build 0/0 warnaserror, full unit 2986/2986 with 3 known PG-only skips,
+  architecture 1/1, diff-check 0, Postman JSON OK, contract-map Postman 0/0
+  absolute; missing Bruno 139 = baseline 135 + 4 waived per ruling A); report
+  `reports/phase-3-guides-gates.md`
+
+The cover-serving gap (no GET file route for `coverUrl`/`coverImageUrl`,
+contract frozen per owner decision 5) is now documented in both care-homes
+guides as well as the Phase 2/3 reports. All live gates ran on the
+owner-authorized 5235/SanadBrunoTestDb target with sessions revoked and the API
+stopped; 5245 isolation was never touched.
 
 ## Blockers
 
-None. Bruno +4 missing is waived (owner ruling A) in favor of the live
-multipart proofs; recorded in the reports. Known serving gap: room/type
-`coverUrl` has no GET file route (live 404; owner decision 5 keeps contract
-as-is).
+None. All three integration boxes are checked with reports and gate evidence.
 
 ## Next action
 
-Owner/integrator picks up `phase-2-rooms` (box checked, tip `90ca26f` +
-tracking commit). Phase 3 (guides + gates polish, full solution build + full
-unit/architecture suites) starts on order.
+Owner/integrator picks up the package (`phase-1-types`, `phase-2-rooms`,
+`phase-3-guides-gates`) for merge discovery — workers never merge or push.

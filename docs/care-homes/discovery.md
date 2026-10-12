@@ -34,7 +34,9 @@ minimum price. Detail adds the approved address, bilingual admission
 conditions, amenities, medical services, and active room-type cards (bilingual
 names/descriptions, allocation mode, and monthly EGP price, plus the type's
 bilingual marketing `amenities` and `coverImageUrl` when a cover photo is
-published).
+published). `coverImageUrl` is metadata only — no GET file route serves it
+yet (requests return `404`), the contract stays frozen until a serving route
+is added, and public clients must not render covers today.
 
 The public contract excludes contact details, owner identity, private
 documents/storage keys, review history, availability/capacity, room

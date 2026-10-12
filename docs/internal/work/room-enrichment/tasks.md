@@ -24,11 +24,18 @@ exclusive (plan §4).
   run (display override/clear, guards 400/409, room media 201/204/404/400,
   anonymous discovery amenities + coverImageUrl, sessions revoked, API stopped).
   Report `reports/phase-2-rooms.md` written; awaiting integration.
-- [ ] Not started — **Phase 3. Guides + gates.**
+- [ ] In progress — **Phase 3. Guides + gates.**
   Owns: `inventory-and-availability.md` deltas, collection polish, full solution
   build (0 warnings) + full unit + architecture suites once, `git diff --check`,
   Postman JSON validation, contract-map 0/0. No provider calls, no migration
   applies, no seed data.
+  Delivered and verified: cover-serving caveat added to both guides, Postman
+  folder 04 polished (Rename room example now omits `roomTypeId`); joint gate
+  battery once on the final tree — build **0/0** (warnaserror), full unit
+  **2986/2986** (3 known PG-only static skips), architecture **1/1**,
+  diff-check 0, Postman JSON OK (607 requests), contract-map **Postman 0/0
+  absolute** (missing Bruno 139 = baseline 135 + 4 waived, ruling A). Report
+  `reports/phase-3-guides-gates.md` written; package ready for integration.
 
 Done criteria per phase: zero-warning build, focused tests green (InMemory +
 SQLite twins), docs + Postman synced, branch + SHA reported. Live API flows
@@ -44,3 +51,4 @@ as blocked (never force-merged). Workers never merge or push.
 
 - [x] phase-1-types — report: `docs/internal/work/room-enrichment/reports/phase-1-types.md`
 - [x] phase-2-rooms — report: `docs/internal/work/room-enrichment/reports/phase-2-rooms.md`
+- [x] phase-3-guides-gates — report: `docs/internal/work/room-enrichment/reports/phase-3-guides-gates.md`
