@@ -13,9 +13,9 @@ exclusive (plan §4).
   Owns: admin handlers (4–11), `AdminLandingController`, config + additive
   migration (authored only), upload handling, tests, docs + Postman.
   Report: `reports/phase-2-admin.md`.
-- [ ] Not started — **Phase 3. Testimonial refs + FAQ refs + contact flow.**
+- [x] Done — **Phase 3. Testimonial refs + FAQ refs + contact flow.**
   Owns: ref resolution + skip-missing semantics, contact intake wiring, tests,
-  docs + Postman.
+  docs + Postman. Report: `reports/phase-3-refs.md`.
 - [ ] Not started — **Phase 4. History/audit + guides + gates.**
   Owns: audit rows, `docs/app/public/landing.md`, collection polish, full
   solution build (0 warnings) + full unit + architecture suites once,
