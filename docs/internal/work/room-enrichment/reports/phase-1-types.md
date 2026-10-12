@@ -36,8 +36,10 @@ column (one authored migration), hold-creation gate
 | Postman JSON | parse Owner collection | OK |
 | Contract map | `docs/internal/tools/Verify-ApiContractMapping.ps1` | **Postman 0/0 absolute** (543 routes / 605 requests); orphan Bruno 0 |
 
-**Bruno waiver (owner ruling A):** missing Bruno = 136 = origin/main baseline **134**
-+ exactly **2** (endpoints 2–3, proven by set-diff of checker runs at `origin/main`
+**Bruno waiver (owner ruling A):** missing Bruno = 137 = origin/main baseline
+**135** (exact figure at `4e7f956`; the originally recorded 134/136 was a
+miscount — the Phase 2 report already documents the re-measurement) + exactly
+**2** (endpoints 2–3, proven by set-diff of checker runs at `origin/main`
 vs branch). Waived in favor of the live multipart proof below; no manifest change,
 no script change. The earlier 5/5 Postman misses were confirmed a stale-base
 artifact (`~/` fix landed in `4e7f956`; checker moved to `docs/internal/tools/`).
@@ -48,7 +50,11 @@ Guards: seed off, Paymob + SMTP blanked, process-scoped env, loopback only,
 started via a worktree-local `.opencode/start-api.ps1` copy (git-excluded, never
 committed), stopped afterwards (5235 free; 5245 isolation untouched).
 All 9 gate sessions (`deviceName: LiveGate`) revoked (204 each); refresh-after-logout
-rejected (400) proving revocation; access tokens are 15-minute JWTs.
+rejected with the generic **400** validation failure — the session row was
+already deleted by logout, which is a different enforcement path from Phase 2's
+revocation check (a session that still exists but was revoked returns **401
+`Identity.Refresh.SessionRevoked`**). Both paths block refresh and prove
+session teardown; access tokens are 15-minute JWTs.
 
 | # | Check | Evidence |
 |---|---|---|
