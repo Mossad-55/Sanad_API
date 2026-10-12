@@ -50,7 +50,7 @@ public sealed class UploadRoomTypeMediaCommandHandler(ICareHomesDbContext db, IF
             db.RoomTypeMedia.Add(media);
             f!.RecordInventoryChange(DateTime.UtcNow);
             await db.SaveChangesAsync(ct);
-            return Result<CareHomeRoomTypeMediaDto>.Success(ToDto(type.Id, media));
+            return Result<CareHomeRoomTypeMediaDto>.Success(ToDto(f!.Id.Value, type.Id, media));
         }
         catch (DomainException)
         {
@@ -69,10 +69,10 @@ public sealed class UploadRoomTypeMediaCommandHandler(ICareHomesDbContext db, IF
         }
     }
 
-    internal static CareHomeRoomTypeMediaDto ToDto(Guid roomTypeId, CareHomeRoomTypeMedia media) =>
+    internal static CareHomeRoomTypeMediaDto ToDto(Guid facilityId, Guid roomTypeId, CareHomeRoomTypeMedia media) =>
         new(media.Id, media.Kind, media.Position, media.ContentType, media.Length,
             media.Kind == CareHomeRoomTypeMediaKind.Cover
-                ? $"/api/v1/care-homes/inventory/mine/room-types/{roomTypeId:D}/media/{media.Id:D}/file"
+                ? $"/api/v1/care-homes/discovery/{facilityId:D}/room-types/{roomTypeId:D}/media/{media.Id:D}/file"
                 : null);
 
     private static async Task<byte[]> ReadBoundedAsync(Stream input, long declaredLength, CancellationToken ct)

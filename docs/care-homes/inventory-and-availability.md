@@ -65,9 +65,11 @@ A room type accepts one cover and up to 10 gallery photos. Success returns
 removing a gallery photo re-orders the remaining gallery positions.
 Out-of-bound content types or sizes return
 `400 CareHomes.Inventory.MediaInvalid`; an unknown photo returns
-`404 CareHomes.Inventory.MediaNotFound`. `coverUrl` is metadata only: no GET
-file route serves it yet (requests return `404`), the contract stays frozen
-until a serving route is added, and clients must not render covers today.
+`404 CareHomes.Inventory.MediaNotFound`. `coverUrl` points at the public
+discovery file route, served anonymously once the facility is approved
+(`GET /api/v1/care-homes/discovery/{careHomeId}/room-types/{roomTypeId}/media/{mediaId}/file`);
+anything else returns `404`. Owners can also preview photos at any facility
+status with `GET /mine/room-types/{id}/media/{mediaId}/file`.
 
 A room type is bookable only once it publishes a cover photo plus at least
 one gallery photo. Until then, creating a checkout hold for its rooms is
@@ -109,7 +111,10 @@ entry (`coverUrl` for the cover); remove a photo with
 `DELETE /mine/rooms/{id}/media/{mediaId}?expectedVersion=n` (`204`), which
 re-orders the remaining gallery positions. Bad content returns `400
 CareHomes.Inventory.MediaInvalid`; an unknown photo returns `404
-CareHomes.Inventory.MediaNotFound`. Per-room photos never affect the
+CareHomes.Inventory.MediaNotFound`. Room `coverUrl` values use the same
+discovery file-route form (`.../rooms/{roomId}/media/{mediaId}/file`), with
+the same owner preview route under `/mine/rooms/{id}/media/{mediaId}/file`.
+Per-room photos never affect the
 bookability gate — that rule stays on the room type's cover plus gallery.
 
 Create or rename a bed with `POST /mine/beds` or `PUT /mine/beds/{id}`:

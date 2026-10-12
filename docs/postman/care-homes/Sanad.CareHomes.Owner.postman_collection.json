@@ -728,6 +728,24 @@
             "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/availability"
           },
           "description": "Derived by room type. The current occupancy provider is empty until later booking work supplies holds and stays."
+        },
+        {
+          "name": "Download room type photo (owner preview)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/media/{{roomTypeMediaId}}/file"
+          },
+          "description": "Owner preview of a room type photo at any facility status, approved or not. Returns 200 with the image bytes and stored content type; unknown media, another facility, or a non-owner caller returns 404."
+        },
+        {
+          "name": "Download room photo (owner preview)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/media/{{roomMediaId}}/file"
+          },
+          "description": "Owner preview of a room photo at any facility status. Returns 200 with the image bytes and stored content type; unknown media, another facility, or a non-owner caller returns 404."
         }
       ]
     },

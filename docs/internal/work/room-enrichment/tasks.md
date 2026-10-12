@@ -74,3 +74,14 @@ as blocked (never force-merged). Workers never merge or push.
   waiver lift + disposable fixture approval before any authoring.
 - [ ] **Blocked** — HC-013 processor fixes (3e): out of slice; needs a
   separate owner-ordered slice.
+
+## Follow-up — cover serving (owner order 2026-10-13: 3a approved, 3b jpeg/png kept, 3c hold-creation is truth)
+
+- [x] Done — **Phase 4. Photo file serving + URL rewrite + plan corrections.**
+  Owns: `CareHomeRoomMediaController` (4 GET file routes), cover URL rewrite
+  to the public discovery form (4 generation sites), controller + URL unit
+  tests (InMemory + SQLite twins), guide serving updates, Postman additions
+  (2 owner + 2 family), plan.md 3b/3c corrections. No migration, no seeds,
+  no provider calls, no live API (automated gates only; live multipart proof
+  from Phases 1–2 still stands for the media pipeline).
+  Report: `reports/phase-4-serving.md`.

@@ -254,6 +254,6 @@ public sealed class GetCareHomeDiscoveryDetailQueryHandler(ICareHomesDbContext d
                 x.Id, x.ArabicName, x.EnglishName, x.ArabicDescription, x.EnglishDescription,
                 x.AllocationMode, x.MonthlyPriceEgp, x.Amenities,
                 typeMedia.FirstOrDefault(m => m.RoomTypeId == x.Id && m.Kind == CareHomeRoomTypeMediaKind.Cover) is { } cover
-                    ? $"/api/v1/care-homes/inventory/mine/room-types/{x.Id:D}/media/{cover.Id:D}/file" : null)).ToArray(), coverUrl, galleryUrls, contactUserId));
+                    ? $"/api/v1/care-homes/discovery/{record.Summary.Id:D}/room-types/{x.Id:D}/media/{cover.Id:D}/file" : null)).ToArray(), coverUrl, galleryUrls, contactUserId));
     }
 }

@@ -12,15 +12,15 @@ counts live. No duplicated copy-paste across 12 rooms; no editable totals.
 ## 1. Scope (closed — new fields need a new decision)
 
 - Room type gains: amenities set (bilingual items, ≤50), photo collection
-  (cover + gallery, same media rules as facility: jpeg/png/webp, 5 MB,
+  (cover + gallery, same media rules as facility: jpeg/png, 5 MB,
   private storage, cleanup on failure).
 - Room gains: optional display-name override (bilingual, falls back to type
   name); optional per-room photos (same media rules, min 0).
 - Totals (total/available rooms/beds) stay computed, read-only, served inside
   existing inventory responses — no new endpoints for them.
 - Type completeness rule (mirrors the facility cover+2 rule): a room type
-  becomes bookable only with cover + ≥1 gallery photo; enforced at the
-  publish/activate transition with dedicated `400 CareHomes.Inventory.RoomMediaRequired`.
+  becomes bookable only with cover + ≥1 gallery photo; enforced at checkout
+  hold creation with dedicated `400 CareHomes.Inventory.RoomMediaRequired`.
 
 ## 2. Endpoint catalog (frozen contract)
 

@@ -34,9 +34,11 @@ minimum price. Detail adds the approved address, bilingual admission
 conditions, amenities, medical services, and active room-type cards (bilingual
 names/descriptions, allocation mode, and monthly EGP price, plus the type's
 bilingual marketing `amenities` and `coverImageUrl` when a cover photo is
-published). `coverImageUrl` is metadata only — no GET file route serves it
-yet (requests return `404`), the contract stays frozen until a serving route
-is added, and public clients must not render covers today.
+published). `coverImageUrl` points at the public discovery file route
+(`GET /api/v1/care-homes/discovery/{careHomeId}/room-types/{roomTypeId}/media/{mediaId}/file`),
+served anonymously for approved facilities; anything else returns `404`.
+Room photos are served the same way under
+`.../rooms/{roomId}/media/{mediaId}/file`.
 
 The public contract excludes contact details, owner identity, private
 documents/storage keys, review history, availability/capacity, room

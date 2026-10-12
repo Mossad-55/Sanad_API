@@ -216,6 +216,52 @@
               }
             }
           ]
+        },
+        {
+          "name": "Read approved room type photo (anonymous)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryId}}/room-types/{{careHomeRoomTypeId}}/media/{{careHomeRoomTypeMediaId}}/file",
+            "description": "Public room type photo, served only for approved facilities with a non-archived room type. Use careHomeDiscoveryId from the detail response; media IDs come from its room-type coverImageUrl values. Request is anonymous; anything else returns 404.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('approved room type photo contract', () => pm.expect([200, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read approved room photo (anonymous)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryId}}/rooms/{{careHomeRoomId}}/media/{{careHomeRoomMediaId}}/file",
+            "description": "Public room photo, served only for approved facilities with a non-archived room and room type. Request is anonymous; anything else returns 404.",
+            "auth": {
+              "type": "noauth"
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('approved room photo contract', () => pm.expect([200, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
