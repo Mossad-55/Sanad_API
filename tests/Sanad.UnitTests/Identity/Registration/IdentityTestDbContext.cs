@@ -37,6 +37,8 @@ internal sealed class IdentityTestDbContext :
 
     public DbSet<Sanad.Modules.Identity.Domain.Feedback> Feedbacks => Set<Sanad.Modules.Identity.Domain.Feedback>();
 
+    public DbSet<AdminUserAction> AdminUserActions => Set<AdminUserAction>();
+
     internal int SaveChangesCalls { get; private set; }
 
     public override async Task<int> SaveChangesAsync(
@@ -64,6 +66,10 @@ internal sealed class IdentityTestDbContext :
         feedback.HasKey(value => value.Id);
         feedback.Property(value => value.UserId)
             .HasConversion(id => id.Value, value => new UserId(value));
+        var adminAction = modelBuilder.Entity<AdminUserAction>();
+        adminAction.HasKey(value => value.Id);
+        adminAction.Property(value => value.ActorUserId).HasConversion(id => id.Value, value => new UserId(value));
+        adminAction.Property(value => value.TargetUserId).HasConversion(id => id == null ? (Guid?)null : id.Value.Value, value => value == null ? null : new UserId(value.Value));
     }
 
     private static void ConfigureUser(

@@ -236,6 +236,45 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.ToTable("support_tickets", "identity");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Identity.Domain.Users.AdminUserAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid?>("TargetUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("target_user_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId");
+
+                    b.HasIndex("TargetUserId");
+
+                    b.HasIndex("Action", "CreatedOnUtc");
+
+                    b.ToTable("admin_user_actions", "identity");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Identity.Domain.Users.User", b =>
                 {
                     b.Property<Guid>("Id")

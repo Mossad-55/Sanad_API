@@ -24,9 +24,14 @@ public sealed class UserAccount : Entity<Guid>
 
     public static UserAccount Create(AccountType accountType)
     {
+        return Create(accountType, DateTime.UtcNow);
+    }
+
+    public static UserAccount Create(AccountType accountType, DateTime createdOnUtc)
+    {
         return new UserAccount(
             Guid.CreateVersion7(),
             accountType,
-            DateTime.UtcNow);
+            createdOnUtc);
     }
 }

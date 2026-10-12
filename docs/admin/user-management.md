@@ -64,3 +64,38 @@ return the documented `Identity.Admin.*` conflict codes; unknown users return
 `POST /api/v1/admin/users/{id}/sessions/revoke` returns 204 and revokes all
 active sessions. To revoke one session, send `{ "sessionId": "..." }`.
 Unknown users and sessions return `Identity.User.NotFound`.
+
+## Password reset, account type, and admin creation
+
+`POST /api/v1/admin/users/{id}/password-reset` returns a temporary password
+exactly once and revokes all active sessions. Treat the response as a secret;
+do not store or log it. The seeded SuperAdmin cannot be reset through this API.
+
+`PUT /api/v1/admin/users/{id}/account-type` accepts an `accountType` and an
+optional `reason` of up to 1000 characters. It accepts an account type of
+`SuperAdmin`, `SupportAdmin`, `ContentAdmin`, or `FinanceAdmin`. Only
+administrative-to-administrative changes are allowed. The seeded SuperAdmin
+cannot be changed, and demoting the final active SuperAdmin is rejected.
+
+`POST /api/v1/admin/users` accepts the existing registration fields
+(`arabicFullName`, `englishFullName`, `email`, `phoneNumber`, `password`, and
+`accountType`) and returns the existing registration response containing the
+user id and email/phone verification request ids. Only administrative account
+types are accepted. Verification codes are delivered through the existing
+email/SMS OTP flow; the new account stays `PendingVerification` and cannot be
+used as an administrator until the normal verification flow completes. Admins
+cannot force-verify the account.
+
+## Anonymization and audit
+
+`POST /api/v1/admin/users/{id}/anonymize` requires a non-empty `reason` and
+scrubs names, email, phone, and avatar data, blocks the account, and revokes
+active sessions while retaining account aggregates. The seeded SuperAdmin,
+the acting SuperAdmin, and the final active SuperAdmin are protected. Repeating
+anonymization returns `409 Identity.Admin.AlreadyAnonymized`.
+
+`GET /api/v1/admin/users/audit` returns a paged append-only admin-action feed.
+Filters: `actorUserId`, `targetUserId`, `action`, `fromUtc`, and `toUtc`.
+Sorting supports `Newest`, `Oldest`, and `Name`; Name sorts by the acting
+administrator's Arabic name then English name. Mutations record actor, target,
+action, optional reason, and UTC timestamp. Reads do not create audit entries.

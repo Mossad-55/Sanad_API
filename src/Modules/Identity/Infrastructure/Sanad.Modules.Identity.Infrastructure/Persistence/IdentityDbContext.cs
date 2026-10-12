@@ -40,6 +40,8 @@ public sealed class IdentityDbContext :
         Feedbacks =>
             Set<FeedbackEntity>();
 
+    public DbSet<AdminUserAction> AdminUserActions => Set<AdminUserAction>();
+
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

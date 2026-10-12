@@ -14,23 +14,44 @@ owner decision. File manifests are exclusive (see plan §7).
   handlers + validators, `ICareHomeOwnerFacilityLookup` port + API impl (plan §2.1),
   tests, docs + Postman deltas.
 
-- [ ] In progress — **Phase 2. Suspend/reactivate/block + session revocation + notices.**
+- [x] Done — **Phase 2. Suspend/reactivate/block + session revocation + notices.**
   Owns: status handlers reusing domain transitions, revoke-all wiring, status-change
   notice enqueue, tests (incl. self/seeded/last-superadmin cases), docs + Postman deltas.
+  Focused tests and live list/detail/sessions reads pass on the authorized
+  disposable target. After the explicitly authorized audit-table migration,
+  session revocation returned 204 and wrote an audit row; the verification
+  session is revoked and API stopped. Postman mapping is 0 missing/0 orphan;
+  Bruno is excluded per owner direction. Live status mutations were not run.
+  See `reports/phase-2-status.md`.
 
-- [ ] Not started — **Phase 3. Password reset + account-type changes + admin create.**
+- [x] Done — **Phase 3. Password reset + account-type changes + admin create.**
   Owns: reset handler (one-time display, session wipe), change-type handler
-  with promotion matrix, create handler, tests, docs + Postman deltas.
+  with promotion matrix, create handler, tests, docs + Postman deltas. Admin creation
+  uses the existing registration response and email/SMS OTP lifecycle; account stays
+  PendingVerification until normal verification. Focused tests and read-only live
+  routes pass; admin password-reset/account-type/create mutations were not run.
+  Postman mapping is 0/0 and Bruno is excluded per owner direction. The authorized
+  audit-table migration is installed on the disposable target.
+  See `reports/phase-3-accounts.md`.
 
-- [ ] Not started — **Phase 4. Anonymize + audit trail (+migration).**
+- [x] Done — **Phase 4. Anonymize + audit trail (+migration).**
   Owns: anonymize handler (all types), `AdminUserAction` entity + config +
-  additive migration (authored only), audit list handler, tests, docs + Postman.
+  additive migration, audit list handler, tests, docs + Postman. The migration was
+  applied only to the explicitly authorized disposable `SanadBrunoTestDb`; audit GET
+  returned 200 and the audited session-revoke wrote a row. Anonymization was not run
+  live. See `reports/phase-4-audit.md`.
 
-- [ ] Not started — **Phase 5. Docs + Postman sync, guides, gates.**
+- [x] Done — **Phase 5. Docs + Postman sync, guides, gates.**
   Owns: `docs/admin/user-management.md` operator guide (new consumer file — the planning package stays here under `docs/internal/work/admin-users/`), collection polish,
   full solution build (0 warnings) + full unit + architecture suites once,
   `git diff --check`, Postman JSON validation, contract-map 0/0. No provider
-  calls, no migration applies, no seed data.
+  calls, no migration applies, no seed data. Operator guide and Postman sync are
+  complete. The SQLite-only companion availability fixture now assigns the
+  provider-generated shadow key deterministically in its relational test. Strict
+  build passed with 0 warnings/errors; full unit suite passed 2,938, skipped 3,
+  failed 0; architecture passed 1/1; Postman map is 0 missing/0 orphan (Bruno's
+  126 missing mappings excluded per owner direction); both collections parse;
+  `git diff --check` is clean.
 
 Done criteria per phase: zero-warning build, focused tests green (InMemory +
 SQLite twins for every new query), docs + Postman synced, branch + SHA

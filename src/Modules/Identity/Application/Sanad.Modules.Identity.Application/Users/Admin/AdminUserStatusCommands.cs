@@ -16,7 +16,8 @@ public sealed record AdminUserStatusNotice(
     string ArabicName,
     string EnglishName,
     UserStatus Status,
-    DateTime CreatedOnUtc);
+    DateTime CreatedOnUtc,
+    string EventType = "StatusChanged");
 
 public interface IAdminUserSeedProtection
 {
@@ -49,7 +50,7 @@ public sealed record ReactivateAdminUserCommand(UserId ActorUserId, UserId Targe
 public sealed record BlockAdminUserCommand(UserId ActorUserId, UserId TargetUserId, string Reason)
     : ICommand<AdminUserStatusResponse>;
 
-public sealed record RevokeAdminUserSessionsCommand(UserId TargetUserId, DeviceSessionId? SessionId)
+public sealed record RevokeAdminUserSessionsCommand(UserId ActorUserId, UserId TargetUserId, DeviceSessionId? SessionId)
     : ICommand;
 
 public sealed class SuspendAdminUserCommandValidator : AbstractValidator<SuspendAdminUserCommand>
@@ -83,7 +84,11 @@ public sealed class BlockAdminUserCommandValidator : AbstractValidator<BlockAdmi
 
 public sealed class RevokeAdminUserSessionsCommandValidator : AbstractValidator<RevokeAdminUserSessionsCommand>
 {
-    public RevokeAdminUserSessionsCommandValidator() => RuleFor(x => x.TargetUserId).NotEqual(UserId.Empty);
+    public RevokeAdminUserSessionsCommandValidator()
+    {
+        RuleFor(x => x.ActorUserId).NotEqual(UserId.Empty);
+        RuleFor(x => x.TargetUserId).NotEqual(UserId.Empty);
+    }
 }
 
 public sealed class SuspendAdminUserCommandHandler(
@@ -107,6 +112,7 @@ public sealed class SuspendAdminUserCommandHandler(
 
         user.Suspend(reason, now);
         int revoked = await RevokeSessionsAsync(targetId, "Admin suspended the user.", now, ct, db);
+        db.AdminUserActions.Add(AdminUserAction.Create(actorId, targetId, AdminUserActionType.Suspended, reason, now));
         await db.SaveChangesAsync(ct);
         await notices.PublishAsync(new(targetId, user.Email?.Value, user.ArabicFullName.Value, user.EnglishFullName.Value, user.Status, now), ct);
         return new AdminUserStatusResponse(targetId.Value, user.Status, revoked);
@@ -136,6 +142,7 @@ public sealed class ReactivateAdminUserCommandHandler(
         if (user.Status is not UserStatus.Suspended and not UserStatus.Blocked) return AdminUserErrors.NotSuspended;
 
         user.Reactivate(clock.UtcNow);
+        db.AdminUserActions.Add(AdminUserAction.Create(request.ActorUserId, request.TargetUserId, AdminUserActionType.Reactivated, null, clock.UtcNow));
         await db.SaveChangesAsync(ct);
         await notices.PublishAsync(new(user.Id, user.Email?.Value, user.ArabicFullName.Value, user.EnglishFullName.Value, user.Status, clock.UtcNow), ct);
         return new AdminUserStatusResponse(user.Id.Value, user.Status, 0);
@@ -163,6 +170,7 @@ public sealed class BlockAdminUserCommandHandler(
         DateTime now = clock.UtcNow;
         user.Block(request.Reason, now);
         int revoked = await SuspendAdminUserCommandHandler.RevokeSessionsAsync(request.TargetUserId, "Admin blocked the user.", now, ct, db);
+        db.AdminUserActions.Add(AdminUserAction.Create(request.ActorUserId, request.TargetUserId, AdminUserActionType.Blocked, request.Reason, now));
         await db.SaveChangesAsync(ct);
         await notices.PublishAsync(new(user.Id, user.Email?.Value, user.ArabicFullName.Value, user.EnglishFullName.Value, user.Status, now), ct);
         return new AdminUserStatusResponse(user.Id.Value, user.Status, revoked);
@@ -181,6 +189,7 @@ public sealed class RevokeAdminUserSessionsCommandHandler(IIdentityDbContext db,
         if (request.SessionId is not null && sessions.Length == 0) return Result.Failure(AdminUserErrors.NotFound);
         DateTime now = clock.UtcNow;
         foreach (DeviceSession session in sessions) session.Revoke("Revoked by a SuperAdmin.", now);
+        db.AdminUserActions.Add(AdminUserAction.Create(request.ActorUserId, request.TargetUserId, AdminUserActionType.SessionsRevoked, request.SessionId is null ? "All sessions" : "Single session", now));
         await db.SaveChangesAsync(ct);
         return Result.Success();
     }

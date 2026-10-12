@@ -182,6 +182,23 @@
         ]
       },
       {
+        "name": "00.2. SuperAdmin User Management (accounts)",
+        "description": "Phase 3. Admin password reset invalidates all sessions; create remains pending until the normal email and SMS OTP verification flow completes.",
+        "item": [
+          { "name": "Reset user password", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/password-reset", "description": "Returns the temporary password once; never store or log the response. Seeded account reset is forbidden." } },
+          { "name": "Change administrative account type", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"accountType\": \"SupportAdmin\",\n  \"reason\": \"Role adjustment\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/account-type", "description": "Only SuperAdmin, SupportAdmin, ContentAdmin, and FinanceAdmin transitions are allowed." } },
+          { "name": "Create admin account", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"arabicFullName\": \"مدير جديد\",\n  \"englishFullName\": \"New Administrator\",\n  \"email\": \"admin@example.test\",\n  \"phoneNumber\": \"+201000000000\",\n  \"password\": \"Replace-This-123\",\n  \"accountType\": \"SupportAdmin\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users", "description": "Uses the existing registration response and OTP lifecycle; account remains PendingVerification until email and phone OTPs are verified." } }
+        ]
+      },
+      {
+        "name": "00.3. SuperAdmin User Management (anonymize and audit)",
+        "description": "Phase 4. Anonymization is irreversible in normal product flows. The audit feed is append-only and includes actor, target, action, reason, and UTC time.",
+        "item": [
+          { "name": "Anonymize user", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Approved privacy request\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/anonymize", "description": "Scrubs user profile PII, blocks the account, revokes sessions, and writes an audit action. Seeded, self, and final active SuperAdmin targets are refused." } },
+          { "name": "List admin user audit actions", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/users/audit?page=1&pageSize=20&sort=Newest", "description": "Optional filters: actorUserId, targetUserId, action, fromUtc, and toUtc. Sort supports Newest, Oldest, and Name (acting admin ArabicName then EnglishName)." } }
+        ]
+      },
+      {
         "name": "01. Auth",
       "item": [
         {

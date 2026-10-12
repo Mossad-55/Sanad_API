@@ -16,6 +16,9 @@ using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Application.Users.Admin;
 using Sanad.Modules.Identity.Application.Authentication.Tokens;
+using Sanad.Modules.Identity.Application.Authentication.Registration;
+using Sanad.Modules.Identity.Application.Abstractions.Messaging;
+using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
@@ -160,17 +163,17 @@ public sealed class AdminUserManagementTests
         Assert.Equal(AdminUserErrors.NotSuspended.Code, (await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(1)), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id), default)).Error.Code);
 
         var revokeHandler = new RevokeAdminUserSessionsCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(2)));
-        Result invalidSpecificSession = await revokeHandler.Handle(new(target.Id, new DeviceSessionId(Guid.Empty)), default);
+        Result invalidSpecificSession = await revokeHandler.Handle(new(actor.Id, target.Id, new DeviceSessionId(Guid.Empty)), default);
         Assert.Equal(AdminUserErrors.NotFound.Code, invalidSpecificSession.Error.Code);
         Assert.Null(session.RevokedOnUtc);
 
-        Result revoke = await revokeHandler.Handle(new(target.Id, session.Id), default);
+        Result revoke = await revokeHandler.Handle(new(actor.Id, target.Id, session.Id), default);
         Assert.True(revoke.IsSuccess);
         Assert.NotNull(session.RevokedOnUtc);
 
         DeviceSession secondSession = AddSession(contexts.Identity, target.Id, Now, Now.AddDays(1), null);
         await contexts.Identity.SaveChangesAsync();
-        Result revokeAll = await new RevokeAdminUserSessionsCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(3))).Handle(new(target.Id, null), default);
+        Result revokeAll = await new RevokeAdminUserSessionsCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(3))).Handle(new(actor.Id, target.Id, null), default);
         Assert.True(revokeAll.IsSuccess);
         Assert.NotNull(secondSession.RevokedOnUtc);
     }
@@ -200,6 +203,76 @@ public sealed class AdminUserManagementTests
         suspended.Suspend("Existing suspension", Now);
         await contexts.Identity.SaveChangesAsync();
         Assert.Equal(AdminUserErrors.AlreadySuspended.Code, (await new SuspendAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), notices).Handle(new(actor.Id, suspended.Id, "Repeated"), default)).Error.Code);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AccountCommands_ResetChangeAndCreateTranslateOnBothProviders(bool sqlite)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User operatorUser = AddUser(contexts.Identity, AccountType.SuperAdmin, "مدير", "Operator", "operator.account@example.test", "+201000000031", UserStatus.Active);
+        User target = AddUser(contexts.Identity, AccountType.SupportAdmin, "دعم", "Support", "support.account@example.test", "+201000000032", UserStatus.Active);
+        User otherActor = AddUser(contexts.Identity, AccountType.Family, "أسرة", "Other", "other.account@example.test", "+201000000034", UserStatus.Active);
+        DeviceSession session = AddSession(contexts.Identity, target.Id, Now, Now.AddDays(1), null);
+        await contexts.Identity.SaveChangesAsync();
+
+        var hasher = new TestHasher();
+        Result<ResetAdminUserPasswordResponse> reset = await new ResetAdminUserPasswordCommandHandler(contexts.Identity, hasher, new FixedClock(Now), new NeverSeededProtection(), new RecordingNoticePublisher())
+            .Handle(new(operatorUser.Id, target.Id), default);
+        Assert.True(reset.IsSuccess);
+        Assert.True(reset.Value.TemporaryPassword.Length >= 10);
+        Assert.Equal(reset.Value.TemporaryPassword, hasher.LastPassword);
+        Assert.Equal(1, reset.Value.RevokedSessionCount);
+        Assert.NotNull(session.RevokedOnUtc);
+
+        Result<AdminUserAccountTypeResponse> changed = await new ChangeAdminUserAccountTypeCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection())
+            .Handle(new(operatorUser.Id, target.Id, AccountType.ContentAdmin), default);
+        Assert.True(changed.IsSuccess);
+        Assert.Contains(target.Accounts, account => account.AccountType == AccountType.ContentAdmin);
+        var changeHandler = new ChangeAdminUserAccountTypeCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection());
+        Assert.Equal(AdminUserErrors.SelfAction.Code, (await changeHandler.Handle(new(operatorUser.Id, operatorUser.Id, AccountType.SupportAdmin), default)).Error.Code);
+        Assert.Equal(AdminUserErrors.LastSuperAdmin.Code, (await changeHandler.Handle(new(otherActor.Id, operatorUser.Id, AccountType.SupportAdmin), default)).Error.Code);
+
+        var mail = new RecordingVerificationSender();
+        var sms = new RecordingVerificationSender();
+        Result<RegisterUserResponse> created = await new CreateAdminUserCommandHandler(contexts.Identity, new TestHasher(), new TestOtpService(), mail, sms, new FixedClock(Now))
+            .Handle(new(operatorUser.Id, "مدير جديد", "New Admin", "new.admin@example.test", "+201000000033", "Strong-Password-123", AccountType.FinanceAdmin), default);
+        Assert.True(created.IsSuccess);
+        User newAdmin = await contexts.Identity.Users.Include(x => x.Accounts).SingleAsync(x => x.Email == Email.Create("new.admin@example.test"));
+        Assert.Equal(UserStatus.PendingVerification, newAdmin.Status);
+        Assert.Contains(newAdmin.Accounts, account => account.AccountType == AccountType.FinanceAdmin);
+        Assert.Equal(2, await contexts.Identity.VerificationRequests.CountAsync(x => x.UserId == newAdmin.Id));
+        Assert.Single(mail.Sent);
+        Assert.Single(sms.Sent);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AnonymizeAndAuditQueries_TranslateOnBothProviders(bool sqlite)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.SuperAdmin, "أحمد", "Admin", "audit.admin@example.test", "+201000000041", UserStatus.Active);
+        User target = AddUser(contexts.Identity, AccountType.Family, "مستخدم", "Target", "audit.target@example.test", "+201000000042", UserStatus.Active);
+        DeviceSession session = AddSession(contexts.Identity, target.Id, Now, Now.AddDays(1), null);
+        await contexts.Identity.SaveChangesAsync();
+
+        var handler = new AnonymizeAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(1)), new NeverSeededProtection());
+        Result anonymized = await handler.Handle(new(actor.Id, target.Id, "Approved privacy request"), default);
+        Assert.True(anonymized.IsSuccess);
+        Assert.Null(target.Email);
+        Assert.Equal(UserStatus.Blocked, target.Status);
+        Assert.NotNull(session.RevokedOnUtc);
+        Assert.Equal(AdminUserErrors.AlreadyAnonymized.Code, (await handler.Handle(new(actor.Id, target.Id, "Repeat"), default)).Error.Code);
+
+        AdminUserAuditListResponse audit = (await new AdminUserAuditQueryHandler(contexts.Identity).Handle(
+            new(actor.Id.Value.ToString(), target.Id.Value.ToString(), "Anonymized", Now, Now.AddMinutes(2), "Name", 1, 20), default)).Value;
+        Assert.Single(audit.Items);
+        Assert.Equal(actor.Id.Value, audit.Items[0].ActorUserId);
+        Assert.Equal(target.Id.Value, audit.Items[0].TargetUserId);
+        Assert.Equal(AdminUserActionType.Anonymized, audit.Items[0].Action);
+        Assert.Equal("Approved privacy request", audit.Items[0].Reason);
     }
 
     [Fact]
@@ -264,6 +337,30 @@ public sealed class AdminUserManagementTests
             Items.Add(notice);
             return Task.CompletedTask;
         }
+    }
+
+    private sealed class TestHasher : IPasswordHasher
+    {
+        public string? LastPassword { get; private set; }
+        public string Hash(string password) { LastPassword = password; return "hashed-for-tests"; }
+        public PasswordVerificationResult Verify(string passwordHash, string providedPassword) => PasswordVerificationResult.Success;
+    }
+
+    private sealed class TestOtpService : IOtpService
+    {
+        private int _number;
+        public GeneratedOtpCode Generate(int length) { _number++; return new GeneratedOtpCode($"1234{_number}", $"hash{_number}"); }
+        public bool Verify(string providedCode, string otpHash) => true;
+    }
+
+    private sealed class RecordingVerificationSender : IEmailSender, ISmsSender
+    {
+        public List<string> Sent { get; } = [];
+        public Task SendVerificationCodeAsync(string email, string code, Sanad.Modules.Identity.Domain.Authentication.VerificationRequests.VerificationPurpose purpose, CancellationToken cancellationToken) { Sent.Add(email); return Task.CompletedTask; }
+        Task ISmsSender.SendVerificationCodeAsync(string phoneNumber, string code, Sanad.Modules.Identity.Domain.Authentication.VerificationRequests.VerificationPurpose purpose, CancellationToken cancellationToken) { Sent.Add(phoneNumber); return Task.CompletedTask; }
+        public Task SendEmailAsync(string email, string subject, string body, string? correlationId, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SendFamilyInvitationAsync(string email, string familyName, string inviteLink, CancellationToken cancellationToken) => Task.CompletedTask;
+        public Task SendSupportRequestAsync(string senderName, string? senderEmail, string senderPhoneNumber, string accountTypes, string subject, string message, CancellationToken cancellationToken) => Task.CompletedTask;
     }
 
     private sealed class FixedClock(DateTime utcNow) : IDateTimeProvider

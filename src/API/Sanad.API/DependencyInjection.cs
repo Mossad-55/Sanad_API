@@ -553,9 +553,12 @@ internal sealed class AdminUserStatusNoticePublisher(
     {
         try
         {
-            db.Notifications.Add(Notification.Create(notice.UserId.Value, "Identity", $"AdminUser{notice.Status}", "Account status changed", $"Your account status is now {notice.Status}.", "IdentityUser", notice.UserId.Value, notice.CreatedOnUtc));
+            string title = notice.EventType == "PasswordReset" ? "Your account password was reset" : "Account status changed";
+            string message = notice.EventType == "PasswordReset" ? "Your account password was reset by an administrator. Contact support if you did not expect this." : $"Your account status is now {notice.Status}.";
+            string notificationType = notice.EventType == "PasswordReset" ? "AdminUserPasswordReset" : $"AdminUser{notice.Status}";
+            db.Notifications.Add(Notification.Create(notice.UserId.Value, "Identity", notificationType, title, message, "IdentityUser", notice.UserId.Value, notice.CreatedOnUtc));
             if (!string.IsNullOrWhiteSpace(notice.Email))
-                db.EmailOutboxMessages.Add(EmailOutboxMessage.Create(notice.Email!, "Your Sanad account status changed", $"Your Sanad account status is now {notice.Status}.", $"admin-user-status:{notice.UserId.Value:N}:{notice.Status}:{notice.CreatedOnUtc.Ticks}", notice.CreatedOnUtc));
+                db.EmailOutboxMessages.Add(EmailOutboxMessage.Create(notice.Email!, title, message, $"admin-user-{notice.EventType.ToLowerInvariant()}:{notice.UserId.Value:N}:{notice.Status}:{notice.CreatedOnUtc.Ticks}", notice.CreatedOnUtc));
             await db.SaveChangesAsync(cancellationToken);
         }
         catch (Exception ex)

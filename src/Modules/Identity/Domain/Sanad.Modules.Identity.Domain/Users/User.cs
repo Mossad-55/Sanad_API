@@ -230,6 +230,30 @@ public sealed class User : AggregateRoot<UserId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    public void ChangeAdministrativeAccount(AccountType accountType, DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+        if (!IsAdministrativeAccount(accountType))
+        {
+            throw new DomainException("The requested account type is not administrative.");
+        }
+
+        UserAccount? current = _accounts.SingleOrDefault(account => IsAdministrativeAccount(account.AccountType));
+        if (current is null)
+        {
+            throw new DomainException("User does not have an administrative account.");
+        }
+
+        if (current.AccountType == accountType)
+        {
+            return;
+        }
+
+        _accounts.Remove(current);
+        _accounts.Add(UserAccount.Create(accountType, utcNow));
+        UpdatedOnUtc = utcNow;
+    }
+
     public void VerifyEmail(
         DateTime utcNow)
     {
@@ -997,11 +1021,17 @@ public sealed class User : AggregateRoot<UserId>
 
     public void AnonymizeAndDeactivate(DateTime utcNow)
     {
+        AnonymizeAndDeactivate("The family was deleted; the account was anonymized.", utcNow);
+    }
+
+    public void AnonymizeAndDeactivate(string reason, DateTime utcNow)
+    {
         ValidateUtc(utcNow);
+        ArgumentException.ThrowIfNullOrWhiteSpace(reason);
 
         if (Status != UserStatus.Blocked)
         {
-            Block("The family was deleted; the account was anonymized.", utcNow);
+            Block(reason, utcNow);
         }
 
         ArabicFullName = FullName.Create("محذوف");
@@ -1017,7 +1047,7 @@ public sealed class User : AggregateRoot<UserId>
         {
             if (IdentityDocument.VerificationStatus == Sanad.Modules.Identity.Domain.UserIdentityDocument.IdentityDocumentVerificationStatus.Verified)
             {
-                IdentityDocument.Revoke("The family was deleted; the account was anonymized.", utcNow);
+                IdentityDocument.Revoke(reason, utcNow);
             }
         }
 
