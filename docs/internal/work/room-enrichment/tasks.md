@@ -16,8 +16,14 @@ exclusive (plan §4).
   5235/SanadBrunoTestDb target (gates 400↔200, uploads 201, 204/404/400
   negatives, sessions revoked, API stopped). Report
   `reports/phase-1-types.md` written; awaiting integration.
-- [ ] Not started — **Phase 2. Room override + photos + readback.**
+- [ ] In progress — **Phase 2. Room override + photos + readback.**
   Owns: room handlers (4–6), resolved names/covers on reads, tests, docs + Postman.
+  Delivered and verified: `90ca26f`; build 0/0, CareHomes 204/204, Postman
+  contract-map 0/0 absolute (Bruno +4 total waived for live multipart proof,
+  owner ruling A); live gate passed on the owner-approved 5235/SanadBrunoTestDb
+  run (display override/clear, guards 400/409, room media 201/204/404/400,
+  anonymous discovery amenities + coverImageUrl, sessions revoked, API stopped).
+  Report `reports/phase-2-rooms.md` written; awaiting integration.
 - [ ] Not started — **Phase 3. Guides + gates.**
   Owns: `inventory-and-availability.md` deltas, collection polish, full solution
   build (0 warnings) + full unit + architecture suites once, `git diff --check`,
@@ -37,4 +43,4 @@ base/final SHAs + gate evidence, deps in `main`, tip matches. Otherwise skipped
 as blocked (never force-merged). Workers never merge or push.
 
 - [x] phase-1-types — report: `docs/internal/work/room-enrichment/reports/phase-1-types.md`
-- [ ] phase-2-rooms — report: `docs/internal/work/room-enrichment/reports/phase-2-rooms.md`
+- [x] phase-2-rooms — report: `docs/internal/work/room-enrichment/reports/phase-2-rooms.md`

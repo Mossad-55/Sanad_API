@@ -6,19 +6,28 @@ Deliver the owner-approved package per `plan.md`, phases 0–3 in `tasks.md`.
 
 ## Current state
 
-Phase 0 rebased (`759a5d2`) and Phase 1 delivered on `opencode/room-enrichment`
-at **`a861763`** (deliverables `cea3300` + live-gate fixes): endpoints 1–3,
-amenities replace-set, media upload/remove, hold bookability gate, authored
-migration, 194/194 CareHomes tests, guide + Postman deltas, live gate executed
-on the owner-authorized 5235/SanadBrunoTestDb target with all checks green and
-sessions revoked. Report: `reports/phase-1-types.md`. Slice: In progress.
+Phase 0 (`759a5d2`), Phase 1 (`cea3300` + `a861763` + tracking `e253716`) and
+Phase 2 delivered on `opencode/room-enrichment`; Phase 2 deliverables are at
+**`90ca26f`** (endpoints 4–6: display override with occupancy-scoped number
+guard, room photos 201/204/404/400, resolved readback names + `media[]`,
+discovery `amenities[]`/`coverImageUrl`, single extended migration; 204/204
+CareHomes tests; Postman contract-map 0/0 absolute). The owner-approved live
+gate ran on 5235/SanadBrunoTestDb with all checks green (display set/clear with
+byte-exact Arabic round-trip, 400/409 guards, full media lifecycle, anonymous
+discovery), all `LiveGate*` sessions revoked (refresh-after-revoke →
+401 `Identity.Refresh.SessionRevoked`), API stopped. Report:
+`reports/phase-2-rooms.md` (includes the corrected Bruno baseline: 135 at
+`4e7f956`, waiver now +4 total). Slice: In progress.
 
 ## Blockers
 
-None. Bruno +2 missing is waived (owner ruling A) in favor of the live
-multipart proof; recorded in the report.
+None. Bruno +4 missing is waived (owner ruling A) in favor of the live
+multipart proofs; recorded in the reports. Known serving gap: room/type
+`coverUrl` has no GET file route (live 404; owner decision 5 keeps contract
+as-is).
 
 ## Next action
 
-Owner/integrator picks up `phase-1-types` (box checked, tip `a861763` +
-tracking commit); Phase 2 (room override + photos + readback) starts on order.
+Owner/integrator picks up `phase-2-rooms` (box checked, tip `90ca26f` +
+tracking commit). Phase 3 (guides + gates polish, full solution build + full
+unit/architecture suites) starts on order.
