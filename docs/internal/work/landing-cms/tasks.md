@@ -35,6 +35,6 @@ exists with branch + base/final SHAs + gate evidence, deps in `main`, tip
 matches. Otherwise skipped as blocked (never force-merged). Workers never
 merge or push.
 
-- [ ] phase-1-reads — report: `docs/internal/work/landing-cms/reports/phase-1-reads.md`
-- [ ] phase-2-admin — report: `docs/internal/work/landing-cms/reports/phase-2-admin.md`
-- [ ] phase-3-refs — report: `docs/internal/work/landing-cms/reports/phase-3-refs.md`
+- [x] phase-1-reads — report: `docs/internal/work/landing-cms/reports/phase-1-reads.md` (merged into `main` via `dd5c861`)
+- [x] phase-2-admin — report: `docs/internal/work/landing-cms/reports/phase-2-admin.md` (merged via `dd5c861`)
+- [x] phase-3-refs — report: `docs/internal/work/landing-cms/reports/phase-3-refs.md` (merged via `dd5c861`)
