@@ -33,7 +33,9 @@ public sealed record CareHomeDiscoveryRoomType(
     string? ArabicDescription,
     string? EnglishDescription,
     CareHomeAllocationMode AllocationMode,
-    decimal MonthlyPriceEgp);
+    decimal MonthlyPriceEgp,
+    IReadOnlyList<BilingualCareHomeItem> Amenities,
+    string? CoverImageUrl);
 
 public sealed record CareHomeDiscoveryDetail(
     CareHomeDiscoverySummary Summary,
@@ -235,6 +237,12 @@ public sealed class GetCareHomeDiscoveryDetailQueryHandler(ICareHomesDbContext d
                 .Select(x => (Guid?)x.OwnerUserId.Value)
                 .SingleOrDefaultAsync(ct);
 
+        // Additive room-type marketing content: type amenities plus the published
+        // cover photo (public read, same privacy posture as facility media).
+        var typeIds = record.ActiveRoomTypes.Select(x => x.Id).ToList();
+        var typeMedia = await db.RoomTypeMedia.AsNoTracking()
+            .Where(x => typeIds.Contains(x.RoomTypeId)).ToListAsync(ct);
+
         return Result<CareHomeDiscoveryDetail>.Success(new(
             record.Summary,
             revision.Address,
@@ -244,6 +252,8 @@ public sealed class GetCareHomeDiscoveryDetailQueryHandler(ICareHomesDbContext d
             revision.MedicalServices,
             record.ActiveRoomTypes.Select(x => new CareHomeDiscoveryRoomType(
                 x.Id, x.ArabicName, x.EnglishName, x.ArabicDescription, x.EnglishDescription,
-                x.AllocationMode, x.MonthlyPriceEgp)).ToArray(), coverUrl, galleryUrls, contactUserId));
+                x.AllocationMode, x.MonthlyPriceEgp, x.Amenities,
+                typeMedia.FirstOrDefault(m => m.RoomTypeId == x.Id && m.Kind == CareHomeRoomTypeMediaKind.Cover) is { } cover
+                    ? $"/api/v1/care-homes/inventory/mine/room-types/{x.Id:D}/media/{cover.Id:D}/file" : null)).ToArray(), coverUrl, galleryUrls, contactUserId));
     }
 }

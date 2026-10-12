@@ -72,7 +72,10 @@ one gallery photo. Until then, creating a checkout hold for its rooms is
 rejected with `400 CareHomes.Inventory.RoomMediaRequired`; the same
 restriction applies again if the photos are removed. Inventory readback
 (`GET /mine`) includes each room type's `amenities` and `media` arrays so
-owners can verify what is published.
+owners can verify what is published. Each room entry additionally carries the
+optional `arabicDisplayName`/`englishDisplayName` override, the client-facing
+`resolvedArabicName`/`resolvedEnglishName` (override falling back to the room
+type name), and its own `media` array with `coverUrl` on the cover.
 
 Create a room with `POST /mine/rooms`:
 
@@ -80,11 +83,32 @@ Create a room with `POST /mine/rooms`:
 { "expectedVersion": 2, "roomTypeId": "<room-type-id>", "roomNumber": "101" }
 ```
 
-Rename it with `PUT /mine/rooms/{id}` using the same request shape, and archive
-or restore it with `POST /mine/rooms/{id}/archive?expectedVersion=2&restore=false`.
-Room numbers are unique within a facility. A room number can be changed only
-when the room and its beds have no active hold or stay. Archiving retains the
-stable asset ID.
+Update it with `PUT /mine/rooms/{id}` using the same request shape; one call
+performs up to three changes: rename (`roomNumber`), the optional bilingual
+display-name override (`arabicDisplayName` + `englishDisplayName`), and a type
+change (`roomTypeId`). Display names are set together or cleared together:
+send blank strings for both to clear the override (reads fall back to the room
+type name), and sending only one language returns `400
+CareHomes.Inventory.Invalid`. An omitted or empty `roomTypeId` keeps the
+current type; a non-empty id must reference a non-archived room type of the
+same facility or the update returns `400 CareHomes.Inventory.InvalidTarget`.
+Archive or restore it with `POST /mine/rooms/{id}/archive?expectedVersion=2&restore=false`.
+Room numbers are unique within a facility. The active-hold/stay restriction
+applies to room number changes only: changing the number returns `409
+CareHomes.Inventory.ActiveOccupancy` while the room or one of its beds has an
+active hold or stay, while display-name and type updates remain allowed.
+Archiving retains the stable asset ID.
+
+Room photos upload like room type photos with `POST /mine/rooms/{id}/media`
+(multipart form): `expectedVersion`, `kind` (`1` cover, `2` gallery), and
+`file` — JPG or PNG up to 5 MB, bytes must match the declared content type,
+one cover plus up to 10 gallery photos. Success returns `201` with the media
+entry (`coverUrl` for the cover); remove a photo with
+`DELETE /mine/rooms/{id}/media/{mediaId}?expectedVersion=n` (`204`), which
+re-orders the remaining gallery positions. Bad content returns `400
+CareHomes.Inventory.MediaInvalid`; an unknown photo returns `404
+CareHomes.Inventory.MediaNotFound`. Per-room photos never affect the
+bookability gate — that rule stays on the room type's cover plus gallery.
 
 Create or rename a bed with `POST /mine/beds` or `PUT /mine/beds/{id}`:
 

@@ -12,7 +12,7 @@ namespace Sanad.API.Controllers;
 
 public sealed record RoomTypeRequest(int ExpectedVersion, string ArabicName, string EnglishName, decimal MonthlyPriceEgp, CareHomeAllocationMode AllocationMode, string? ArabicDescription, string? EnglishDescription, IReadOnlyList<BilingualCareHomeItem>? Amenities = null);
 public sealed record RoomTypeAmenityRequest(string Arabic, string English);
-public sealed record RoomRequest(int ExpectedVersion, Guid RoomTypeId, string RoomNumber);
+public sealed record RoomRequest(int ExpectedVersion, Guid RoomTypeId, string RoomNumber, string? ArabicDisplayName = null, string? EnglishDisplayName = null);
 public sealed record BedRequest(int ExpectedVersion, Guid RoomId, string Label);
 public sealed record MaintenanceRequest(int ExpectedVersion, CareHomeMaintenanceTarget Target, Guid TargetId, DateOnly StartDate, DateOnly EndDate, string? Reason);
 public sealed record MaintenanceAmendRequest(int ExpectedVersion, DateOnly StartDate, DateOnly EndDate, string? Reason);
@@ -56,7 +56,23 @@ public sealed class CareHomeInventoryController(ISender sender, IDateTimeProvide
     public Task<IActionResult> CreateRoom(RoomRequest r, CancellationToken ct) => Send(new CreateRoomCommand(Actor(), r.ExpectedVersion, r.RoomTypeId, r.RoomNumber), ct);
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpPut("mine/rooms/{id:guid}")]
-    public Task<IActionResult> RenameRoom(Guid id, RoomRequest r, CancellationToken ct) => Send(new RenameRoomCommand(Actor(), r.ExpectedVersion, id, r.RoomNumber), ct);
+    public Task<IActionResult> RenameRoom(Guid id, RoomRequest r, CancellationToken ct) => Send(new RenameRoomCommand(Actor(), r.ExpectedVersion, id, r.RoomNumber, r.RoomTypeId, r.ArabicDisplayName, r.EnglishDisplayName), ct);
+    [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
+    [HttpPost("mine/rooms/{id:guid}/media")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5_242_880 + 102_400)]
+    public async Task<IActionResult> UploadRoomMedia(Guid id, [FromForm] int expectedVersion, [FromForm] CareHomeRoomMediaKind kind, [FromForm] IFormFile? file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) return BadRequestWithCode("CareHomes.Inventory.MediaInvalid");
+        await using var content = new MemoryStream();
+        await file.CopyToAsync(content, ct);
+        content.Position = 0;
+        var result = await sender.Send(new UploadRoomMediaCommand(Actor(), expectedVersion, id, kind, content, file.ContentType.ToLowerInvariant(), file.Length), ct);
+        return result.IsFailure ? ToActionResult(result) : StatusCode(StatusCodes.Status201Created, result.Value);
+    }
+    [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
+    [HttpDelete("mine/rooms/{id:guid}/media/{mediaId:guid}")]
+    public Task<IActionResult> RemoveRoomMedia(Guid id, Guid mediaId, [FromQuery] int expectedVersion, CancellationToken ct) => Send(new RemoveRoomMediaCommand(Actor(), expectedVersion, id, mediaId), ct);
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpPost("mine/rooms/{id:guid}/archive")]
     public Task<IActionResult> ArchiveRoom(Guid id, int expectedVersion, bool restore, CancellationToken ct) => Send(new ArchiveRoomCommand(Actor(), expectedVersion, id, restore), ct);

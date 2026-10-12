@@ -14,6 +14,7 @@ public sealed class CareHomesDbContext(DbContextOptions<CareHomesDbContext> opti
     public DbSet<CareHomeRoomType> RoomTypes => Set<CareHomeRoomType>();
     public DbSet<CareHomeRoomTypeMedia> RoomTypeMedia => Set<CareHomeRoomTypeMedia>();
     public DbSet<CareHomeRoom> Rooms => Set<CareHomeRoom>();
+    public DbSet<CareHomeRoomMedia> RoomMedia => Set<CareHomeRoomMedia>();
     public DbSet<CareHomeBed> Beds => Set<CareHomeBed>();
     public DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => Set<CareHomeMaintenanceBlock>();
     public DbSet<CareHomeBooking> Bookings => Set<CareHomeBooking>();

@@ -32,7 +32,9 @@ area, and the minimum monthly EGP price among non-archived room types. Zero is
 a valid price; a facility with no active room types remains listed with a null
 minimum price. Detail adds the approved address, bilingual admission
 conditions, amenities, medical services, and active room-type cards (bilingual
-names/descriptions, allocation mode, and monthly EGP price).
+names/descriptions, allocation mode, and monthly EGP price, plus the type's
+bilingual marketing `amenities` and `coverImageUrl` when a cover photo is
+published).
 
 The public contract excludes contact details, owner identity, private
 documents/storage keys, review history, availability/capacity, room

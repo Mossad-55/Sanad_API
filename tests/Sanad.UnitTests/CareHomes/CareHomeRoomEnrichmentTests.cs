@@ -81,6 +81,47 @@ public sealed class CareHomeRoomEnrichmentTests
         Assert.Throws<DomainException>(() => CareHomeRoomTypeMedia.Create(Guid.NewGuid(), CareHomeRoomTypeMediaKind.Gallery, 10, "private/care-home-media/photo.jpg", "image/jpeg", 10, Now));
     }
 
+    // ---- domain: room display-name override -----------------------------------
+
+    [Fact]
+    public void Room_display_override_sets_bilingual_pair_clears_on_blank_and_rejects_mixed_or_overbound()
+    {
+        CareHomeRoom room = CareHomeRoom.Create(CareHomeId.New(), Guid.NewGuid(), "101", Now);
+
+        room.SetDisplayName("  غرفة مميزة  ", "  Premium room  ", Now);
+        Assert.Equal("غرفة مميزة", room.ArabicDisplayName);
+        Assert.Equal("Premium room", room.EnglishDisplayName);
+
+        // Blank on both languages clears the override (reads fall back to the type).
+        room.SetDisplayName("", "   ", Now);
+        Assert.Null(room.ArabicDisplayName);
+        Assert.Null(room.EnglishDisplayName);
+
+        Assert.Throws<ArgumentException>(() => room.SetDisplayName("عربي", "", Now));
+        Assert.Throws<ArgumentException>(() => room.SetDisplayName(null, "English", Now));
+        Assert.Throws<ArgumentException>(() => room.SetDisplayName(new string('ع', 201), "x", Now));
+        Assert.Throws<ArgumentException>(() => room.SetDisplayName("x", new string('E', 201), Now));
+    }
+
+    // ---- domain: per-room media rules -----------------------------------------
+
+    [Fact]
+    public void Room_media_entity_mirrors_the_type_media_rules()
+    {
+        CareHomeRoomMedia cover = CareHomeRoomMedia.Create(Guid.NewGuid(), CareHomeRoomMediaKind.Cover, 0, "private/care-home-media/cover.jpg", "image/jpeg", 5_242_880, Now);
+        CareHomeRoomMedia gallery = CareHomeRoomMedia.Create(Guid.NewGuid(), CareHomeRoomMediaKind.Gallery, 9, "private/care-home-media/photo.png", "image/png", 1, Now);
+
+        Assert.Equal(0, cover.Position);
+        Assert.Equal(9, gallery.Position);
+
+        Assert.Throws<DomainException>(() => CareHomeRoomMedia.Create(Guid.NewGuid(), CareHomeRoomMediaKind.Cover, 1, "private/care-home-media/cover.jpg", "image/jpeg", 10, Now));
+        Assert.Throws<DomainException>(() => CareHomeRoomMedia.Create(Guid.NewGuid(), CareHomeRoomMediaKind.Gallery, 10, "private/care-home-media/photo.jpg", "image/jpeg", 10, Now));
+        Assert.Throws<DomainException>(() => CareHomeRoomMedia.Create(Guid.NewGuid(), CareHomeRoomMediaKind.Gallery, 0, "care-home-media/photo.jpg", "image/jpeg", 100, Now));
+        Assert.Throws<DomainException>(() => CareHomeRoomMedia.Create(Guid.NewGuid(), CareHomeRoomMediaKind.Gallery, 0, "private/care-home-media/photo.gif", "image/gif", 100, Now));
+        Assert.Throws<DomainException>(() => CareHomeRoomMedia.Create(Guid.NewGuid(), CareHomeRoomMediaKind.Gallery, 0, "private/care-home-media/photo.jpg", "image/jpeg", 5_242_881, Now));
+        Assert.Throws<DomainException>(() => CareHomeRoomMedia.Create(Guid.Empty, CareHomeRoomMediaKind.Cover, 0, "private/care-home-media/cover.jpg", "image/jpeg", 10, Now));
+    }
+
     // ---- amenities through the update handler ---------------------------------
 
     [Fact]
@@ -230,6 +271,234 @@ public sealed class CareHomeRoomEnrichmentTests
         }
     }
 
+    // ---- endpoint 4: display override + type change ----------------------------
+
+    [Fact]
+    public async Task Update_room_sets_display_override_and_clears_back_to_the_type_name()
+    {
+        await using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = await AddFacility(db, owner);
+        CareHomeRoomType type = NewType(facility.Id);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "101", Now);
+        db.RoomTypes.Add(type);
+        db.Rooms.Add(room);
+        await db.SaveChangesAsync();
+        RenameRoomCommandHandler Handler() => new(db, new EmptyCareHomeOccupancyProvider());
+
+        var applied = await Handler().Handle(new RenameRoomCommand(owner, facility.Version, room.Id, "101", Guid.Empty, " غرفة مميزة ", " Premium room "), default);
+        Assert.True(applied.IsSuccess);
+        var overridden = await new GetMyInventoryQueryHandler(db).Handle(new GetMyInventoryQuery(owner), default);
+        CareHomeRoomDto dto = overridden.Value.Rooms.Single();
+        Assert.Equal("غرفة مميزة", dto.ArabicDisplayName);
+        Assert.Equal("Premium room", dto.EnglishDisplayName);
+        Assert.Equal("غرفة مميزة", dto.ResolvedArabicName);
+        Assert.Equal("Premium room", dto.ResolvedEnglishName);
+
+        // Blank pair clears the override; resolved names fall back to the type.
+        var cleared = await Handler().Handle(new RenameRoomCommand(owner, applied.Value.Version, room.Id, "101", Guid.Empty, "", "  "), default);
+        Assert.True(cleared.IsSuccess);
+        var fallback = await new GetMyInventoryQueryHandler(db).Handle(new GetMyInventoryQuery(owner), default);
+        CareHomeRoomDto reverted = fallback.Value.Rooms.Single();
+        Assert.Null(reverted.ArabicDisplayName);
+        Assert.Null(reverted.EnglishDisplayName);
+        Assert.Equal("غرفة", reverted.ResolvedArabicName);
+        Assert.Equal("Room", reverted.ResolvedEnglishName);
+
+        // Mixed pair and blank room number are rejected with 400 Inventory.Invalid.
+        var mixed = await Handler().Handle(new RenameRoomCommand(owner, fallback.Value.Version, room.Id, "101", Guid.Empty, "عربي", ""), default);
+        Assert.False(mixed.IsSuccess);
+        Assert.Equal("CareHomes.Inventory.Invalid", mixed.Error.Code);
+        var blankNumber = await Handler().Handle(new RenameRoomCommand(owner, fallback.Value.Version, room.Id, "   "), default);
+        Assert.False(blankNumber.IsSuccess);
+        Assert.Equal("CareHomes.Inventory.Invalid", blankNumber.Error.Code);
+    }
+
+    [Fact]
+    public async Task Update_room_changes_type_only_for_valid_targets_in_the_same_facility()
+    {
+        await using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = await AddFacility(db, owner);
+        CareHomeRoomType original = NewType(facility.Id);
+        CareHomeRoomType replacement = NewType(facility.Id);
+        CareHomeRoomType archived = NewType(facility.Id);
+        archived.Archive(Now);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, original.Id, "101", Now);
+        db.RoomTypes.AddRange(original, replacement, archived);
+        db.Rooms.Add(room);
+        UserId other = UserId.New();
+        CareHomeFacility otherFacility = await AddFacility(db, other);
+        CareHomeRoomType foreign = NewType(otherFacility.Id);
+        db.RoomTypes.Add(foreign);
+        await db.SaveChangesAsync();
+        RenameRoomCommandHandler Handler() => new(db, new EmptyCareHomeOccupancyProvider());
+
+        // Empty/omitted room type id keeps the current type (rename compatibility).
+        var untouched = await Handler().Handle(new RenameRoomCommand(owner, facility.Version, room.Id, "101"), default);
+        Assert.True(untouched.IsSuccess);
+        Assert.Equal(original.Id, untouched.Value.Rooms.Single().RoomTypeId);
+
+        var changed = await Handler().Handle(new RenameRoomCommand(owner, untouched.Value.Version, room.Id, "101", replacement.Id), default);
+        Assert.True(changed.IsSuccess);
+        Assert.Equal(replacement.Id, changed.Value.Rooms.Single().RoomTypeId);
+
+        var archivedTarget = await Handler().Handle(new RenameRoomCommand(owner, changed.Value.Version, room.Id, "101", archived.Id), default);
+        Assert.False(archivedTarget.IsSuccess);
+        Assert.Equal("CareHomes.Inventory.InvalidTarget", archivedTarget.Error.Code);
+
+        var foreignTarget = await Handler().Handle(new RenameRoomCommand(owner, changed.Value.Version, room.Id, "101", foreign.Id), default);
+        Assert.False(foreignTarget.IsSuccess);
+        Assert.Equal("CareHomes.Inventory.InvalidTarget", foreignTarget.Error.Code);
+    }
+
+    [Fact]
+    public async Task Display_name_update_succeeds_while_occupied_but_number_change_stays_blocked()
+    {
+        await using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = await AddFacility(db, owner);
+        CareHomeRoomType type = NewType(facility.Id);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "101", Now);
+        db.RoomTypes.Add(type);
+        db.Rooms.Add(room);
+        await db.SaveChangesAsync();
+        RenameRoomCommandHandler Handler() => new(db, new FixedOccupancy(
+            new CareHomeOccupancyInterval(room.Id, CareHomeResourceKind.Room, new DateOnly(2026, 10, 10), new DateOnly(2026, 10, 12))));
+
+        var displayOnly = await Handler().Handle(new RenameRoomCommand(owner, facility.Version, room.Id, "101", Guid.Empty, "غرفة", "Room"), default);
+        Assert.True(displayOnly.IsSuccess);
+
+        var renumber = await Handler().Handle(new RenameRoomCommand(owner, displayOnly.Value.Version, room.Id, "102"), default);
+        Assert.False(renumber.IsSuccess);
+        Assert.Equal("CareHomes.Inventory.ActiveOccupancy", renumber.Error.Code);
+    }
+
+    // ---- endpoints 5-6: room media upload / remove -----------------------------
+
+    [Fact]
+    public async Task Upload_then_remove_room_media_round_trips_through_private_storage()
+    {
+        string storageRoot = Path.Combine(Path.GetTempPath(), $"room-media-test-{Guid.NewGuid():N}");
+        try
+        {
+            await using CareHomesDbContext db = CreateDb();
+            UserId owner = UserId.New();
+            CareHomeFacility facility = await AddFacility(db, owner);
+            CareHomeRoomType type = NewType(facility.Id);
+            CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "101", Now);
+            db.RoomTypes.Add(type);
+            db.Rooms.Add(room);
+            await db.SaveChangesAsync();
+            IFileStorage storage = LocalDisk(storageRoot);
+            UploadRoomMediaCommandHandler upload = new(db, storage);
+            int version = facility.Version;
+
+            var cover = await upload.Handle(new UploadRoomMediaCommand(owner, version, room.Id, CareHomeRoomMediaKind.Cover, new MemoryStream(Jpeg), "image/jpeg", Jpeg.Length), default);
+            Assert.True(cover.IsSuccess);
+            Assert.NotNull(cover.Value.CoverUrl);
+            Assert.StartsWith("private/care-home-media/", (await db.RoomMedia.SingleAsync(x => x.Id == cover.Value.Id)).StorageKey);
+
+            var duplicateCover = await upload.Handle(new UploadRoomMediaCommand(owner, version + 1, room.Id, CareHomeRoomMediaKind.Cover, new MemoryStream(Jpeg), "image/jpeg", Jpeg.Length), default);
+            Assert.False(duplicateCover.IsSuccess);
+            Assert.Equal("CareHomes.Inventory.MediaInvalid", duplicateCover.Error.Code);
+
+            var gallery = await upload.Handle(new UploadRoomMediaCommand(owner, version + 1, room.Id, CareHomeRoomMediaKind.Gallery, new MemoryStream(Png), "image/png", Png.Length), default);
+            Assert.True(gallery.IsSuccess);
+            Assert.Null(gallery.Value.CoverUrl);
+
+            for (int i = 1; i < 10; i++)
+            {
+                var next = await upload.Handle(new UploadRoomMediaCommand(owner, version + 1 + i, room.Id, CareHomeRoomMediaKind.Gallery, new MemoryStream(Png), "image/png", Png.Length), default);
+                Assert.True(next.IsSuccess);
+            }
+            var eleventh = await upload.Handle(new UploadRoomMediaCommand(owner, version + 11, room.Id, CareHomeRoomMediaKind.Gallery, new MemoryStream(Png), "image/png", Png.Length), default);
+            Assert.False(eleventh.IsSuccess);
+            Assert.Equal("CareHomes.Inventory.MediaInvalid", eleventh.Error.Code);
+
+            var removed = await new RemoveRoomMediaCommandHandler(db, storage).Handle(
+                new RemoveRoomMediaCommand(owner, version + 11, room.Id, cover.Value.Id), default);
+            Assert.True(removed.IsSuccess);
+            Assert.Empty(db.RoomMedia.Where(x => x.Kind == CareHomeRoomMediaKind.Cover));
+            Assert.Equal(10, await db.RoomMedia.CountAsync(x => x.Kind == CareHomeRoomMediaKind.Gallery));
+
+            var missing = await new RemoveRoomMediaCommandHandler(db, storage).Handle(
+                new RemoveRoomMediaCommand(owner, version + 12, room.Id, Guid.NewGuid()), default);
+            Assert.False(missing.IsSuccess);
+            Assert.Equal("CareHomes.Inventory.MediaNotFound", missing.Error.Code);
+
+            // Owner readback carries the room's remaining photos.
+            var readback = await new GetMyInventoryQueryHandler(db).Handle(new GetMyInventoryQuery(owner), default);
+            Assert.Equal(10, readback.Value.Rooms.Single().Media.Count(x => x.Kind == CareHomeRoomMediaKind.Gallery));
+        }
+        finally
+        {
+            CleanupTemp(storageRoot);
+        }
+    }
+
+    [Theory]
+    [InlineData("image/gif")]
+    [InlineData("application/pdf")]
+    public async Task Room_media_upload_rejects_unsupported_content_types(string contentType)
+    {
+        await using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = await AddFacility(db, owner);
+        CareHomeRoomType type = NewType(facility.Id);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "101", Now);
+        db.RoomTypes.Add(type);
+        db.Rooms.Add(room);
+        await db.SaveChangesAsync();
+        string storageRoot = Path.Combine(Path.GetTempPath(), $"room-media-test-{Guid.NewGuid():N}");
+        try
+        {
+            IFileStorage storage = LocalDisk(storageRoot);
+            var rejected = await new UploadRoomMediaCommandHandler(db, storage).Handle(
+                new UploadRoomMediaCommand(owner, facility.Version, room.Id, CareHomeRoomMediaKind.Cover, new MemoryStream(Jpeg), contentType, Jpeg.Length), default);
+            Assert.False(rejected.IsSuccess);
+            Assert.Equal("CareHomes.Inventory.MediaInvalid", rejected.Error.Code);
+        }
+        finally
+        {
+            CleanupTemp(storageRoot);
+        }
+    }
+
+    [Fact]
+    public async Task Room_media_upload_rejects_mismatched_signatures_and_unknown_rooms()
+    {
+        await using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = await AddFacility(db, owner);
+        CareHomeRoomType type = NewType(facility.Id);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "101", Now);
+        db.RoomTypes.Add(type);
+        db.Rooms.Add(room);
+        await db.SaveChangesAsync();
+        string storageRoot = Path.Combine(Path.GetTempPath(), $"room-media-test-{Guid.NewGuid():N}");
+        try
+        {
+            IFileStorage storage = LocalDisk(storageRoot);
+            UploadRoomMediaCommandHandler upload = new(db, storage);
+            var mismatched = await upload.Handle(
+                new UploadRoomMediaCommand(owner, facility.Version, room.Id, CareHomeRoomMediaKind.Cover, new MemoryStream(Png), "image/jpeg", Png.Length), default);
+            Assert.False(mismatched.IsSuccess);
+            Assert.Equal("CareHomes.Inventory.MediaInvalid", mismatched.Error.Code);
+
+            var unknownRoom = await upload.Handle(
+                new UploadRoomMediaCommand(owner, facility.Version, Guid.NewGuid(), CareHomeRoomMediaKind.Cover, new MemoryStream(Jpeg), "image/jpeg", Jpeg.Length), default);
+            Assert.False(unknownRoom.IsSuccess);
+            Assert.Equal("CareHomes.Inventory.NotFound", unknownRoom.Error.Code);
+
+            Assert.Empty(await db.RoomMedia.ToListAsync());
+        }
+        finally
+        {
+            CleanupTemp(storageRoot);
+        }
+    }
+
     // ---- bookability gate at hold creation ------------------------------------
 
     [Fact]
@@ -350,6 +619,45 @@ public sealed class CareHomeRoomEnrichmentTests
         Assert.Null(readback.Value.RoomTypes.Single().Media.Single(x => x.Kind == CareHomeRoomTypeMediaKind.Gallery).CoverUrl);
     }
 
+    [Fact]
+    public async Task Room_media_and_display_names_translate_on_relational_store()
+    {
+        using Microsoft.Data.Sqlite.SqliteConnection connection = new("DataSource=:memory:");
+        await connection.OpenAsync();
+        await using CareHomesDbContext db = CreateDb(connection);
+        await db.Database.EnsureCreatedAsync();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = await AddFacility(db, owner);
+        CareHomeRoomType type = NewType(facility.Id);
+        CareHomeRoom room = CareHomeRoom.Create(facility.Id, type.Id, "101", Now);
+        db.RoomTypes.Add(type);
+        db.Rooms.Add(room);
+        db.RoomMedia.Add(CareHomeRoomMedia.Create(room.Id, CareHomeRoomMediaKind.Cover, 0, "private/care-home-media/cover.jpg", "image/jpeg", 10, Now));
+        db.RoomMedia.Add(CareHomeRoomMedia.Create(room.Id, CareHomeRoomMediaKind.Gallery, 0, "private/care-home-media/g1.jpg", "image/jpeg", 10, Now));
+        await db.SaveChangesAsync();
+
+        Assert.Equal(2, await db.RoomMedia.CountAsync(x => x.RoomId == room.Id));
+
+        db.RoomMedia.Add(CareHomeRoomMedia.Create(room.Id, CareHomeRoomMediaKind.Cover, 0, "private/care-home-media/dup.jpg", "image/jpeg", 10, Now));
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+        db.ChangeTracker.Clear();
+
+        var readback = await new GetMyInventoryQueryHandler(db).Handle(new GetMyInventoryQuery(owner), default);
+        Assert.True(readback.IsSuccess);
+        CareHomeRoomDto dto = readback.Value.Rooms.Single();
+        Assert.Equal(2, dto.Media.Count);
+        Assert.NotNull(dto.Media.Single(x => x.Kind == CareHomeRoomMediaKind.Cover).CoverUrl);
+        Assert.Null(dto.Media.Single(x => x.Kind == CareHomeRoomMediaKind.Gallery).CoverUrl);
+        Assert.Equal("غرفة", dto.ResolvedArabicName);
+
+        var renamed = await new RenameRoomCommandHandler(db, new EmptyCareHomeOccupancyProvider()).Handle(
+            new RenameRoomCommand(owner, readback.Value.Version, room.Id, "101", Guid.Empty, "غرفة خاصة", "Private room"), default);
+        Assert.True(renamed.IsSuccess);
+        Assert.Equal("غرفة خاصة", renamed.Value.Rooms.Single().ResolvedArabicName);
+        Assert.Equal("Private room", renamed.Value.Rooms.Single().ResolvedEnglishName);
+        Assert.Equal("غرفة خاصة", renamed.Value.Rooms.Single().ArabicDisplayName);
+    }
+
     // ---- helpers ---------------------------------------------------------------
 
     private static CareHomeRoomType NewType(CareHomeId? facilityId = null) =>
@@ -411,6 +719,11 @@ public sealed class CareHomeRoomEnrichmentTests
     private sealed class InlineReservationGuard : ICareHomeBookingReservationGuard
     {
         public Task<T> ExecuteAsync<T>(CareHomeId facilityId, Guid roomTypeId, DateOnly startDate, Func<Task<T>> action, CancellationToken cancellationToken) => action();
+    }
+
+    private sealed class FixedOccupancy(params CareHomeOccupancyInterval[] intervals) : ICareHomeOccupancyProvider
+    {
+        public Task<IReadOnlyList<CareHomeOccupancyInterval>> GetActiveAsync(CareHomeId facilityId, CancellationToken cancellationToken) => Task.FromResult<IReadOnlyList<CareHomeOccupancyInterval>>(intervals);
     }
 
     private sealed class EffectiveCharges : IPlatformChargeRuleReader

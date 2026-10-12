@@ -597,11 +597,11 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomTypeId\": \"{{inventoryRoomTypeId}}\",\n  \"roomNumber\": \"102\"\n}"
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomTypeId\": \"{{inventoryRoomTypeId}}\",\n  \"roomNumber\": \"102\",\n  \"arabicDisplayName\": \"غرفة مميزة\",\n  \"englishDisplayName\": \"Premium room\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}"
           },
-          "description": "Room number changes are rejected while an active hold or stay exists; room numbers remain facility-unique."
+          "description": "Owner only; one call renames the room (room number changes are rejected while an active hold or stay exists), sets or clears the bilingual display-name override (send blank strings for both to fall back to the room type name), and changes the type (roomTypeId omitted/empty keeps the current type; a non-archived type of the same facility is required). Room numbers remain facility-unique."
         },
         {
           "name": "Archive room",
@@ -611,6 +611,44 @@
             "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false"
           },
           "description": "Archives while retaining the stable ID; set restore=true to restore."
+        },
+        {
+          "name": "Upload room media",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "expectedVersion",
+                  "value": "{{careHomeFacilityVersion}}",
+                  "type": "text"
+                },
+                {
+                  "key": "kind",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/media"
+          },
+          "description": "Owner only; multipart upload. kind: 1=cover (one per room), 2=gallery (up to 10). JPG/PNG, max 5 MB; bytes must match the declared content type. Success returns 201 with the media entry. Room photos never affect the room type bookability gate."
+        },
+        {
+          "name": "Remove room media",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/media/{{roomMediaId}}?expectedVersion={{careHomeFacilityVersion}}"
+          },
+          "description": "Owner only. Removes the photo and re-orders remaining gallery positions; returns 204, 404 CareHomes.Inventory.MediaNotFound for an unknown photo."
         },
         {
           "name": "Create bed",

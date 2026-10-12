@@ -840,6 +840,7 @@ public sealed class CareHomeBookingLifecycleTests
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeRoomType> RoomTypes => inner.RoomTypes;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeRoomTypeMedia> RoomTypeMedia => inner.RoomTypeMedia;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeRoom> Rooms => inner.Rooms;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeRoomMedia> RoomMedia => inner.RoomMedia;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeBed> Beds => inner.Beds;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => inner.MaintenanceBlocks;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeBooking> Bookings => inner.Bookings;
