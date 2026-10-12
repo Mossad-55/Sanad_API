@@ -147,6 +147,7 @@ public sealed class SubmitMyCareHomeApplicationCommandHandler(ICareHomesDbContex
     private static readonly Error NotFound = new("CareHomes.Facility.NotFound", "Care-home facility was not found.");
     private static readonly Error Conflict = new("CareHomes.Facility.Conflict", "The care-home application changed; reload it before submitting.");
     private static readonly Error InvalidSubmission = new("CareHomes.Facility.InvalidSubmission", "The application requires a complete bilingual profile and all four required documents.");
+    private static readonly Error ProfileMediaRequired = new("CareHomes.Facility.ProfileMediaRequired", "At least two facility photos including the cover are required before submission.");
 
     public async Task<Result<CareHomeOwnerProfile>> Handle(SubmitMyCareHomeApplicationCommand request, CancellationToken ct)
     {
@@ -159,6 +160,16 @@ public sealed class SubmitMyCareHomeApplicationCommandHandler(ICareHomesDbContex
             return Result<CareHomeOwnerProfile>.Failure(NotFound);
         if (facility.Version != request.ExpectedVersion)
             return Result<CareHomeOwnerProfile>.Failure(Conflict);
+
+        CareHomeProfileRevision? openRevision = facility.Revisions.SingleOrDefault(revision => !revision.IsFrozen);
+        if (openRevision is not null)
+        {
+            int mediaCount = await db.ProfileMedia.CountAsync(x => x.ProfileRevisionId == openRevision.Id, ct);
+            bool hasCover = await db.ProfileMedia.AnyAsync(x => x.ProfileRevisionId == openRevision.Id
+                && x.Kind == CareHomeProfileMediaKind.Cover, ct);
+            if (mediaCount < CareHomeFacility.MinimumProfileMediaCount || !hasCover)
+                return Result<CareHomeOwnerProfile>.Failure(ProfileMediaRequired);
+        }
 
         try
         {

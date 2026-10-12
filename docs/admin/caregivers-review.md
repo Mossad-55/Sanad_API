@@ -1,6 +1,6 @@
 # Admin caregiver review
 
-Admin review routes live under `/api/v1/admin/caregivers/...` and require the **`CaregiversAdmin`** policy: authenticated, `access_type` = `Normal`, `account_type` = `SuperAdmin` or `ContentAdmin`.
+Admin review routes live under `/api/v1/admin/caregivers/...` and require the **`CaregiverReviewAdmin`** policy: authenticated, `access_type` = `Normal`, `account_type` = `SuperAdmin` or `SupportAdmin`. `ContentAdmin` receives `403` on these operational review routes (ContentAdmin stays limited to CMS plus caregiver lookups).
 
 Certificate file download lives here too — it is the **only** way to read a certificate scan (private storage, never served under `/files`).
 

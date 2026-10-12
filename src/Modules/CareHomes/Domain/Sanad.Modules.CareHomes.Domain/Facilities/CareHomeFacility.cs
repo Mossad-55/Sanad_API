@@ -26,6 +26,7 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
 
     public UserId OwnerUserId { get; private set; }
     public CareHomeStatus Status { get; private set; }
+    public const int MinimumProfileMediaCount = 2;
     public Guid? SubmittedRevisionId { get; private set; }
     public Guid? ApprovedRevisionId { get; private set; }
     public int Version { get; private set; }

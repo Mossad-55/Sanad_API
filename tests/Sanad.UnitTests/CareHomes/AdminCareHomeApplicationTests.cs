@@ -119,7 +119,7 @@ public sealed class AdminCareHomeApplicationTests
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
         _ = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
-        CareHomeFacility draft = await db.Facilities.Include(x => x.Documents)
+        CareHomeFacility draft = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents)
             .SingleAsync(x => x.Id == new CareHomeId(created.Value.Id));
         CareHomeDocument document = draft.UploadDocument(owner, CareHomeDocumentType.OperatingLicense,
             "private/license.pdf", "application/pdf", 100, null, DateTime.UtcNow);
@@ -134,6 +134,8 @@ public sealed class AdminCareHomeApplicationTests
         draft.SaveDraft(owner, draft.Version, CareHomeFacilityTests.Draft(), DateTime.UtcNow);
         await db.SaveChangesAsync();
         var submit = new SubmitMyCareHomeApplicationCommandHandler(db);
+        AddCoverAndGallery(db, draft);
+        await db.SaveChangesAsync();
         await submit.Handle(new SubmitMyCareHomeApplicationCommand(owner, draft.Version), default);
         var readable = await handler.Handle(new GetAdminCareHomeDocumentFileQuery(draft.Id.Value, document.Id), default);
 
@@ -154,9 +156,22 @@ public sealed class AdminCareHomeApplicationTests
         foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
             facility.UploadDocument(owner, type, $"private/{type}.pdf", "application/pdf", 100, null, DateTime.UtcNow);
         await db.SaveChangesAsync();
+        AddCoverAndGallery(db, facility);
+        await db.SaveChangesAsync();
         await new SubmitMyCareHomeApplicationCommandHandler(db)
             .Handle(new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
         return facility;
+    }
+
+    private static void AddCoverAndGallery(CareHomesDbContext db, CareHomeFacility facility)
+    {
+        Guid revisionId = facility.Revisions.Single(revision => !revision.IsFrozen).Id;
+        db.ProfileMedia.Add(CareHomeProfileMedia.Create(
+            revisionId, CareHomeProfileMediaKind.Cover, 0,
+            "private/care-home-media/cover.jpg", "image/jpeg", 100, DateTime.UtcNow));
+        db.ProfileMedia.Add(CareHomeProfileMedia.Create(
+            revisionId, CareHomeProfileMediaKind.Gallery, 0,
+            "private/care-home-media/gallery-0.jpg", "image/jpeg", 100, DateTime.UtcNow));
     }
 
     private static CareHomesDbContext CreateDb() => new(new DbContextOptionsBuilder<CareHomesDbContext>()
