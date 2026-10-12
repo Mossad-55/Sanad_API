@@ -824,7 +824,9 @@ public sealed class CareHomeStayLifecycleTests
 
         public DbSet<CareHomeFacility> Facilities => inner.Facilities;
         public DbSet<CareHomeRoomType> RoomTypes => inner.RoomTypes;
+        public DbSet<CareHomeRoomTypeMedia> RoomTypeMedia => inner.RoomTypeMedia;
         public DbSet<CareHomeRoom> Rooms => inner.Rooms;
+        public DbSet<CareHomeRoomMedia> RoomMedia => inner.RoomMedia;
         public DbSet<CareHomeBed> Beds => inner.Beds;
         public DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => inner.MaintenanceBlocks;
         public DbSet<CareHomeBooking> Bookings => inner.Bookings;
@@ -858,7 +860,9 @@ public sealed class CareHomeStayLifecycleTests
 
         public DbSet<CareHomeFacility> Facilities => inner.Facilities;
         public DbSet<CareHomeRoomType> RoomTypes => inner.RoomTypes;
+        public DbSet<CareHomeRoomTypeMedia> RoomTypeMedia => inner.RoomTypeMedia;
         public DbSet<CareHomeRoom> Rooms => inner.Rooms;
+        public DbSet<CareHomeRoomMedia> RoomMedia => inner.RoomMedia;
         public DbSet<CareHomeBed> Beds => inner.Beds;
         public DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => inner.MaintenanceBlocks;
         public DbSet<CareHomeBooking> Bookings => inner.Bookings;

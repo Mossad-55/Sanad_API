@@ -8,7 +8,9 @@ public interface ICareHomesDbContext
 {
     DbSet<CareHomeFacility> Facilities { get; }
     DbSet<CareHomeRoomType> RoomTypes { get; }
+    DbSet<CareHomeRoomTypeMedia> RoomTypeMedia { get; }
     DbSet<CareHomeRoom> Rooms { get; }
+    DbSet<CareHomeRoomMedia> RoomMedia { get; }
     DbSet<CareHomeBed> Beds { get; }
     DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks { get; }
     DbSet<CareHomeBooking> Bookings { get; }

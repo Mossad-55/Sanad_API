@@ -206,7 +206,7 @@ public sealed class CareHomeDiscoveryTests
         };
         CareHomeFacility approved = await AddApproved(db, now, "Public", draft: publicDraft);
         CareHomeRoomType active = await AddRoomType(db, approved, 125, now);
-        active.Update("غرفة خاصة", "Private room", 125, CareHomeAllocationMode.Private, "Active description", "Active description", now);
+        active.Update("غرفة خاصة", "Private room", 125, CareHomeAllocationMode.Private, "Active description", "Active description", [], now);
         CareHomeRoomType archived = await AddRoomType(db, approved, 75, now);
         archived.Archive(now);
         await db.SaveChangesAsync();

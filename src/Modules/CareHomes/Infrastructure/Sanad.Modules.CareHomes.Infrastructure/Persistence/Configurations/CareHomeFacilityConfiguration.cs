@@ -75,7 +75,7 @@ public sealed class CareHomeProfileRevisionConfiguration : IEntityTypeConfigurat
         property.HasColumnName(name).HasMaxLength(maxLength).IsRequired(required);
     }
 
-    private static void ConfigureJson(PropertyBuilder<IReadOnlyList<BilingualCareHomeItem>> property, string name)
+    internal static void ConfigureJson(PropertyBuilder<IReadOnlyList<BilingualCareHomeItem>> property, string name)
     {
         property.HasColumnName(name).HasConversion(
                 value => JsonSerializer.Serialize(value, (JsonSerializerOptions?)null),
@@ -165,13 +165,25 @@ internal static class CareHomeInventoryConfiguration
 public sealed class CareHomeRoomTypeConfiguration : IEntityTypeConfiguration<CareHomeRoomType>
 {
     public void Configure(EntityTypeBuilder<CareHomeRoomType> b)
-    { b.ToTable("room_types"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever(); CareHomeInventoryConfiguration.ConfigureFacility(b); b.HasOne<CareHomeFacility>().WithMany().HasForeignKey(nameof(CareHomeRoomType.FacilityId)).OnDelete(DeleteBehavior.Cascade); b.Property(x => x.ArabicName).HasMaxLength(200).IsRequired(); b.Property(x => x.EnglishName).HasMaxLength(200).IsRequired(); b.Property(x => x.ArabicDescription).HasMaxLength(4000); b.Property(x => x.EnglishDescription).HasMaxLength(4000); b.Property(x => x.MonthlyPriceEgp).HasPrecision(18, 2).IsRequired(); b.Property(x => x.AllocationMode).HasConversion<int>().IsRequired(); b.Property(x => x.IsArchived).IsRequired(); b.Property(x => x.CreatedOnUtc).IsRequired(); b.Property(x => x.UpdatedOnUtc).IsRequired(); b.HasIndex(nameof(CareHomeRoomType.FacilityId), nameof(CareHomeRoomType.EnglishName)); }
+    { b.ToTable("room_types"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever(); CareHomeInventoryConfiguration.ConfigureFacility(b); b.HasOne<CareHomeFacility>().WithMany().HasForeignKey(nameof(CareHomeRoomType.FacilityId)).OnDelete(DeleteBehavior.Cascade); b.Property(x => x.ArabicName).HasMaxLength(200).IsRequired(); b.Property(x => x.EnglishName).HasMaxLength(200).IsRequired(); b.Property(x => x.ArabicDescription).HasMaxLength(4000); b.Property(x => x.EnglishDescription).HasMaxLength(4000); b.Property(x => x.MonthlyPriceEgp).HasPrecision(18, 2).IsRequired(); b.Property(x => x.AllocationMode).HasConversion<int>().IsRequired(); CareHomeProfileRevisionConfiguration.ConfigureJson(b.Property(x => x.Amenities), "amenities_json"); b.Property(x => x.IsArchived).IsRequired(); b.Property(x => x.CreatedOnUtc).IsRequired(); b.Property(x => x.UpdatedOnUtc).IsRequired(); b.HasIndex(nameof(CareHomeRoomType.FacilityId), nameof(CareHomeRoomType.EnglishName)); }
+}
+
+public sealed class CareHomeRoomTypeMediaConfiguration : IEntityTypeConfiguration<CareHomeRoomTypeMedia>
+{
+    public void Configure(EntityTypeBuilder<CareHomeRoomTypeMedia> b)
+    { b.ToTable("room_type_media"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever(); b.Property(x => x.RoomTypeId).HasColumnName("room_type_id").IsRequired(); b.Property(x => x.Kind).HasColumnName("kind").HasConversion<int>().IsRequired(); b.Property(x => x.Position).HasColumnName("position").IsRequired(); b.Property(x => x.StorageKey).HasColumnName("storage_key").HasMaxLength(500).IsRequired(); b.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(100).IsRequired(); b.Property(x => x.Length).HasColumnName("length").IsRequired(); b.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired(); b.HasOne<CareHomeRoomType>().WithMany().HasForeignKey(x => x.RoomTypeId).OnDelete(DeleteBehavior.Cascade); b.HasIndex(x => new { x.RoomTypeId, x.Kind, x.Position }).IsUnique(); }
 }
 
 public sealed class CareHomeRoomConfiguration : IEntityTypeConfiguration<CareHomeRoom>
 {
     public void Configure(EntityTypeBuilder<CareHomeRoom> b)
-    { b.ToTable("rooms"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever(); CareHomeInventoryConfiguration.ConfigureFacility(b); b.HasOne<CareHomeFacility>().WithMany().HasForeignKey(nameof(CareHomeRoom.FacilityId)).OnDelete(DeleteBehavior.Cascade); b.HasOne<CareHomeRoomType>().WithMany().HasForeignKey(nameof(CareHomeRoom.RoomTypeId)).OnDelete(DeleteBehavior.Restrict); b.Property(x => x.RoomTypeId).HasColumnName("room_type_id").IsRequired(); b.Property(x => x.RoomNumber).HasMaxLength(64).IsRequired(); b.Property(x => x.IsArchived).IsRequired(); b.Property(x => x.CreatedOnUtc).IsRequired(); b.Property(x => x.UpdatedOnUtc).IsRequired(); b.HasIndex(nameof(CareHomeRoom.FacilityId), nameof(CareHomeRoom.RoomNumber)).IsUnique().HasDatabaseName("ux_care_homes_rooms_facility_room_number"); }
+    { b.ToTable("rooms"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever(); CareHomeInventoryConfiguration.ConfigureFacility(b); b.HasOne<CareHomeFacility>().WithMany().HasForeignKey(nameof(CareHomeRoom.FacilityId)).OnDelete(DeleteBehavior.Cascade); b.HasOne<CareHomeRoomType>().WithMany().HasForeignKey(nameof(CareHomeRoom.RoomTypeId)).OnDelete(DeleteBehavior.Restrict); b.Property(x => x.RoomTypeId).HasColumnName("room_type_id").IsRequired(); b.Property(x => x.RoomNumber).HasMaxLength(64).IsRequired(); b.Property(x => x.ArabicDisplayName).HasColumnName("arabic_display_name").HasMaxLength(200); b.Property(x => x.EnglishDisplayName).HasColumnName("english_display_name").HasMaxLength(200); b.Property(x => x.IsArchived).IsRequired(); b.Property(x => x.CreatedOnUtc).IsRequired(); b.Property(x => x.UpdatedOnUtc).IsRequired(); b.HasIndex(nameof(CareHomeRoom.FacilityId), nameof(CareHomeRoom.RoomNumber)).IsUnique().HasDatabaseName("ux_care_homes_rooms_facility_room_number"); }
+}
+
+public sealed class CareHomeRoomMediaConfiguration : IEntityTypeConfiguration<CareHomeRoomMedia>
+{
+    public void Configure(EntityTypeBuilder<CareHomeRoomMedia> b)
+    { b.ToTable("room_media"); b.HasKey(x => x.Id); b.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever(); b.Property(x => x.RoomId).HasColumnName("room_id").IsRequired(); b.Property(x => x.Kind).HasColumnName("kind").HasConversion<int>().IsRequired(); b.Property(x => x.Position).HasColumnName("position").IsRequired(); b.Property(x => x.StorageKey).HasColumnName("storage_key").HasMaxLength(500).IsRequired(); b.Property(x => x.ContentType).HasColumnName("content_type").HasMaxLength(100).IsRequired(); b.Property(x => x.Length).HasColumnName("length").IsRequired(); b.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired(); b.HasOne<CareHomeRoom>().WithMany().HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Cascade); b.HasIndex(x => new { x.RoomId, x.Kind, x.Position }).IsUnique(); }
 }
 
 public sealed class CareHomeBedConfiguration : IEntityTypeConfiguration<CareHomeBed>

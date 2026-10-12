@@ -7,17 +7,28 @@ using Sanad.Modules.CareHomes.Domain.Facilities;
 
 namespace Sanad.Modules.CareHomes.Application.Inventory;
 
-public sealed record CareHomeRoomTypeDto(Guid Id, Guid FacilityId, string ArabicName, string EnglishName, decimal MonthlyPriceEgp, CareHomeAllocationMode AllocationMode, bool IsArchived);
-public sealed record CareHomeRoomDto(Guid Id, Guid FacilityId, Guid RoomTypeId, string RoomNumber, bool IsArchived);
+public sealed record CareHomeRoomTypeAmenityDto(string Arabic, string English);
+public sealed record CareHomeRoomTypeMediaDto(Guid Id, CareHomeRoomTypeMediaKind Kind, int Position, string ContentType, long Length, string? CoverUrl);
+public sealed record CareHomeRoomTypeDto(Guid Id, Guid FacilityId, string ArabicName, string EnglishName, decimal MonthlyPriceEgp, CareHomeAllocationMode AllocationMode, bool IsArchived, IReadOnlyList<CareHomeRoomTypeAmenityDto> Amenities, IReadOnlyList<CareHomeRoomTypeMediaDto> Media);
+public sealed record CareHomeRoomMediaDto(Guid Id, CareHomeRoomMediaKind Kind, int Position, string ContentType, long Length, string? CoverUrl);
+public sealed record CareHomeRoomDto(Guid Id, Guid FacilityId, Guid RoomTypeId, string RoomNumber, bool IsArchived, string? ArabicDisplayName, string? EnglishDisplayName, string ResolvedArabicName, string ResolvedEnglishName, IReadOnlyList<CareHomeRoomMediaDto> Media);
 public sealed record CareHomeBedDto(Guid Id, Guid FacilityId, Guid RoomId, string Label, bool IsArchived);
 public sealed record CareHomeMaintenanceDto(Guid Id, Guid FacilityId, CareHomeMaintenanceTarget Target, Guid TargetId, DateOnly StartDate, DateOnly EndDate, string? Reason, bool IsCancelled = false, DateTime? CancelledOnUtc = null, Guid? CancelledBy = null);
 public sealed record CareHomeInventoryDto(Guid FacilityId, int Version, IReadOnlyList<CareHomeRoomTypeDto> RoomTypes, IReadOnlyList<CareHomeRoomDto> Rooms, IReadOnlyList<CareHomeBedDto> Beds, IReadOnlyList<CareHomeMaintenanceDto> Maintenance);
 
 public sealed record CreateRoomTypeCommand(UserId Actor, int ExpectedVersion, string ArabicName, string EnglishName, decimal MonthlyPriceEgp, CareHomeAllocationMode AllocationMode, string? ArabicDescription, string? EnglishDescription) : ICommand<CareHomeInventoryDto>;
-public sealed record UpdateRoomTypeCommand(UserId Actor, int ExpectedVersion, Guid RoomTypeId, string ArabicName, string EnglishName, decimal MonthlyPriceEgp, CareHomeAllocationMode AllocationMode, string? ArabicDescription, string? EnglishDescription) : ICommand<CareHomeInventoryDto>;
+public sealed record UpdateRoomTypeCommand(UserId Actor, int ExpectedVersion, Guid RoomTypeId, string ArabicName, string EnglishName, decimal MonthlyPriceEgp, CareHomeAllocationMode AllocationMode, string? ArabicDescription, string? EnglishDescription, IReadOnlyList<BilingualCareHomeItem> Amenities) : ICommand<CareHomeInventoryDto>;
+public sealed record UploadRoomTypeMediaCommand(UserId Actor, int ExpectedVersion, Guid RoomTypeId, CareHomeRoomTypeMediaKind Kind, Stream Content, string ContentType, long Length) : ICommand<CareHomeRoomTypeMediaDto>;
+public sealed record RemoveRoomTypeMediaCommand(UserId Actor, int ExpectedVersion, Guid RoomTypeId, Guid MediaId) : ICommand;
 public sealed record ArchiveRoomTypeCommand(UserId Actor, int ExpectedVersion, Guid RoomTypeId, bool Restore) : ICommand<CareHomeInventoryDto>;
 public sealed record CreateRoomCommand(UserId Actor, int ExpectedVersion, Guid RoomTypeId, string RoomNumber) : ICommand<CareHomeInventoryDto>;
-public sealed record RenameRoomCommand(UserId Actor, int ExpectedVersion, Guid RoomId, string RoomNumber) : ICommand<CareHomeInventoryDto>;
+// Endpoint 4 does triple duty: rename, bilingual display-name override and
+// type change. The added parameters default to "no change" so pre-Phase-2
+// rename callers keep their exact behavior (empty RoomTypeId skips the type
+// change, null display names skip the override).
+public sealed record RenameRoomCommand(UserId Actor, int ExpectedVersion, Guid RoomId, string RoomNumber, Guid RoomTypeId = default, string? ArabicDisplayName = null, string? EnglishDisplayName = null) : ICommand<CareHomeInventoryDto>;
+public sealed record UploadRoomMediaCommand(UserId Actor, int ExpectedVersion, Guid RoomId, CareHomeRoomMediaKind Kind, Stream Content, string ContentType, long Length) : ICommand<CareHomeRoomMediaDto>;
+public sealed record RemoveRoomMediaCommand(UserId Actor, int ExpectedVersion, Guid RoomId, Guid MediaId) : ICommand;
 public sealed record ArchiveRoomCommand(UserId Actor, int ExpectedVersion, Guid RoomId, bool Restore) : ICommand<CareHomeInventoryDto>;
 public sealed record CreateBedCommand(UserId Actor, int ExpectedVersion, Guid RoomId, string Label) : ICommand<CareHomeInventoryDto>;
 public sealed record RenameBedCommand(UserId Actor, int ExpectedVersion, Guid BedId, string Label) : ICommand<CareHomeInventoryDto>;
@@ -39,15 +50,21 @@ internal static class InventoryHandlerSupport
         var rooms = await db.Rooms.Where(x => x.FacilityId == facilityId).AsNoTracking().ToListAsync(ct);
         var beds = await db.Beds.Where(x => x.FacilityId == facilityId).AsNoTracking().ToListAsync(ct);
         var maintenance = await db.MaintenanceBlocks.Where(x => x.FacilityId == facilityId).AsNoTracking().ToListAsync(ct);
+        var media = await db.RoomTypeMedia.Where(x => types.Select(t => t.Id).Contains(x.RoomTypeId)).AsNoTracking().ToListAsync(ct);
+        var roomIds = rooms.Select(r => r.Id).ToList();
+        var roomMedia = await db.RoomMedia.Where(x => roomIds.Contains(x.RoomId)).AsNoTracking().ToListAsync(ct);
         var facility = await db.Facilities.AsNoTracking().SingleAsync(x => x.Id == facilityId, ct);
-        return new(facilityId.Value, facility.Version, types.Select(x => new CareHomeRoomTypeDto(x.Id, x.FacilityId.Value, x.ArabicName, x.EnglishName, x.MonthlyPriceEgp, x.AllocationMode, x.IsArchived)).ToArray(), rooms.Select(x => new CareHomeRoomDto(x.Id, x.FacilityId.Value, x.RoomTypeId, x.RoomNumber, x.IsArchived)).ToArray(), beds.Select(x => new CareHomeBedDto(x.Id, x.FacilityId.Value, x.RoomId, x.Label, x.IsArchived)).ToArray(), maintenance.Select(x => new CareHomeMaintenanceDto(x.Id, x.FacilityId.Value, x.Target, x.TargetId, x.StartDate, x.EndDate, x.Reason, x.IsCancelled, x.CancelledOnUtc, x.CancelledBy)).ToArray());
+        // Resolved display names: the optional per-room override wins, otherwise
+        // the owning room type's name (per language, independently).
+        var typeNames = types.ToDictionary(x => x.Id, x => (Arabic: x.ArabicName, English: x.EnglishName));
+        return new(facilityId.Value, facility.Version, types.Select(x => new CareHomeRoomTypeDto(x.Id, x.FacilityId.Value, x.ArabicName, x.EnglishName, x.MonthlyPriceEgp, x.AllocationMode, x.IsArchived, x.Amenities.Select(a => new CareHomeRoomTypeAmenityDto(a.Arabic, a.English)).ToArray(), media.Where(m => m.RoomTypeId == x.Id).OrderBy(m => m.Kind).ThenBy(m => m.Position).Select(m => new CareHomeRoomTypeMediaDto(m.Id, m.Kind, m.Position, m.ContentType, m.Length, m.Kind == CareHomeRoomTypeMediaKind.Cover ? $"/api/v1/care-homes/inventory/mine/room-types/{x.Id:D}/media/{m.Id:D}/file" : null)).ToArray())).ToArray(), rooms.Select(x => new CareHomeRoomDto(x.Id, x.FacilityId.Value, x.RoomTypeId, x.RoomNumber, x.IsArchived, x.ArabicDisplayName, x.EnglishDisplayName, x.ArabicDisplayName ?? typeNames[x.RoomTypeId].Arabic, x.EnglishDisplayName ?? typeNames[x.RoomTypeId].English, roomMedia.Where(m => m.RoomId == x.Id).OrderBy(m => m.Kind).ThenBy(m => m.Position).Select(m => new CareHomeRoomMediaDto(m.Id, m.Kind, m.Position, m.ContentType, m.Length, m.Kind == CareHomeRoomMediaKind.Cover ? $"/api/v1/care-homes/inventory/mine/rooms/{x.Id:D}/media/{m.Id:D}/file" : null)).ToArray())).ToArray(), beds.Select(x => new CareHomeBedDto(x.Id, x.FacilityId.Value, x.RoomId, x.Label, x.IsArchived)).ToArray(), maintenance.Select(x => new CareHomeMaintenanceDto(x.Id, x.FacilityId.Value, x.Target, x.TargetId, x.StartDate, x.EndDate, x.Reason, x.IsCancelled, x.CancelledOnUtc, x.CancelledBy)).ToArray());
     }
     internal static Error Error(string code, string message) => new(code, message);
 }
 
 public sealed class CreateRoomTypeCommandHandler(ICareHomesDbContext db) : ICommandHandler<CreateRoomTypeCommand, CareHomeInventoryDto>
 {
-    public async Task<Result<CareHomeInventoryDto>> Handle(CreateRoomTypeCommand r, CancellationToken ct) { var (f, fail) = await InventoryMutation.Load(db, r.Actor, r.ExpectedVersion, ct); if (fail is not null) return fail; try { var x = CareHomeRoomType.Create(f!.Id, r.ArabicName, r.EnglishName, r.MonthlyPriceEgp, r.AllocationMode, DateTime.UtcNow); x.Update(r.ArabicName, r.EnglishName, r.MonthlyPriceEgp, r.AllocationMode, r.ArabicDescription, r.EnglishDescription, DateTime.UtcNow); db.RoomTypes.Add(x); return await InventoryMutation.Save(db, f, ct); } catch (ArgumentException ex) { return Result<CareHomeInventoryDto>.Failure(InventoryHandlerSupport.Error("CareHomes.Inventory.Invalid", ex.Message)); } }
+    public async Task<Result<CareHomeInventoryDto>> Handle(CreateRoomTypeCommand r, CancellationToken ct) { var (f, fail) = await InventoryMutation.Load(db, r.Actor, r.ExpectedVersion, ct); if (fail is not null) return fail; try { var x = CareHomeRoomType.Create(f!.Id, r.ArabicName, r.EnglishName, r.MonthlyPriceEgp, r.AllocationMode, DateTime.UtcNow); x.Update(r.ArabicName, r.EnglishName, r.MonthlyPriceEgp, r.AllocationMode, r.ArabicDescription, r.EnglishDescription, [], DateTime.UtcNow); db.RoomTypes.Add(x); return await InventoryMutation.Save(db, f, ct); } catch (ArgumentException ex) { return Result<CareHomeInventoryDto>.Failure(InventoryHandlerSupport.Error("CareHomes.Inventory.Invalid", ex.Message)); } }
 }
 
 public sealed class GetMyInventoryQueryHandler(ICareHomesDbContext db) : IQueryHandler<GetMyInventoryQuery, CareHomeInventoryDto>
