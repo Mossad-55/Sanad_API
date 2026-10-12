@@ -3,7 +3,7 @@
 - Branch: `opencode/admin-users`
 - Base: `b0ac0d040adb314e0bfaa140becc14dd00d7cd31` (`main`)
 - Implementation began at Phase 1 tip `c7cfd48d0ada72e5f3e7261595fb55d5d59293c2`.
-- Implementation revision: recorded in the Phase 2 checkpoint commit.
+- Implementation revision: `4e79c48ef1fd5630d7f66a610fcc12770f9e882d`.
 - Phase status: implementation and automated/static gates complete; live-read gate remains pending. The task checklist remains In progress.
 
 ## Changed files
