@@ -11,7 +11,8 @@ owner decision. File manifests are exclusive (see plan §7).
 
 - [ ] Not started — **Phase 1. List/detail/sessions + SuperAdminOnly policy.**
   Owns: policy const + DI, `AdminUsersController` (endpoints 1–2, 15), list/detail/sessions
-  handlers + validators, tests, docs + Postman deltas.
+  handlers + validators, `ICareHomeOwnerFacilityLookup` port + API impl (plan §2.1),
+  tests, docs + Postman deltas.
 
 - [ ] Not started — **Phase 2. Suspend/reactivate/block + session revocation + notices.**
   Owns: status handlers reusing domain transitions, revoke-all wiring, status-change

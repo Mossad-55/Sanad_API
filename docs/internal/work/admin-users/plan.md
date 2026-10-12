@@ -34,7 +34,7 @@ account type on Normal access — same shape as `ChatSupportAdmin`).
 | # | Verb + route | Purpose | Success | Key failures |
 |---|---|---|---|---|
 | 1 | `GET /` | List/search/filter/sort/page users | 200 paged list | 400 invalid query |
-| 2 | `GET /{id}` | Detail: profile, status, account types, sessions, linked aggregates | 200 | 404 `Identity.User.NotFound` (no existence leak across types) |
+| 2 | `GET /{id}` | Detail: profile, status, account types, sessions, linked aggregates (§2.1) | 200 | 404 `Identity.User.NotFound` (no existence leak across types) |
 | 3 | `POST /{id}/suspend` | Suspend (login blocked, sessions revoked) | 200 | 404 / 409 already-suspended / 403 self / 403 seeded |
 | 4 | `POST /{id}/reactivate` | Suspended → Active | 200 | 404 / 409 not-suspended / 403 seeded |
 | 5 | `POST /{id}/block` | Block (stronger than suspend; matches domain `Block`) | 200 | 404 / 409 / 403 self / 403 seeded |
@@ -49,7 +49,25 @@ account type on Normal access — same shape as `ChatSupportAdmin`).
 | 14 | `GET /export` | CSV export mirroring #1 filters (owner-ordered, §3.5) | 200 CSV | 400 filter too broad / 403 non-SuperAdmin |
 | 15 | `GET /sessions` | Cross-admin active-session overview with filters (owner-ordered, §3.6) | 200 | 400 invalid query / 403 non-SuperAdmin |
 
-List supports: `search` (name/email/phone, case-insensitive), `accountType`, `status`, `sort` (`Newest|Oldest|Name`), `page`/`pageSize` (1–100 clamp). Invalid sort/range → 400 `Identity.Admin.InvalidQuery`.
+List supports: `search` (name/email/phone, case-insensitive), `accountType`, `status`, `sort` (`Newest|Oldest|Name`, §2.2), `page`/`pageSize` (1–100 clamp). Invalid sort/range → 400 `Identity.Admin.InvalidQuery`.
+
+### 2.1 Detail shape (Amendment A, 2026-10-12 — resolves "linked aggregates" gap)
+
+`AdminUserDetail`: id, arabic/english names, email, phone, status, accountTypes[],
+createdOnUtc, verifiedOnUtc (null until verified), sessions[] (same item shape as
+#15: deviceId, deviceName, platform, appVersion, createdOnUtc, expiresOnUtc,
+lastSeenUtc), `linked` object: for CareHomeOwner — `{ facilityId, facilityStatus }`
+resolved through one small API-layer `ICareHomeOwnerFacilityLookup` port over
+CareHomes (mirrors the approved `ApiChatUserLookup` precedent); for all other
+types — `{}` (their aggregates stay behind their dedicated endpoints; no
+cross-module joins are introduced in v1).
+
+### 2.2 Sort + session-field semantics (Amendments B–C, 2026-10-12)
+
+- `sort=Name` orders by ArabicName ASC, then EnglishName ASC (Arabic-first product).
+- There is no request-tracking infrastructure, so `lastSeenUtc` is defined as the
+  session's `LastRotatedOnUtc` (last token rotation), documented as such in the
+  operator guide. Adding true last-request tracking is explicitly out of scope.
 
 ## 3. Business rules and full case matrix
 
