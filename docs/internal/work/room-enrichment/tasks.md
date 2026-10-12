@@ -49,9 +49,9 @@ Mergeable only if ALL hold: box checked, report
 base/final SHAs + gate evidence, deps in `main`, tip matches. Otherwise skipped
 as blocked (never force-merged). Workers never merge or push.
 
-- [x] phase-1-types — report: `docs/internal/work/room-enrichment/reports/phase-1-types.md`
-- [x] phase-2-rooms — report: `docs/internal/work/room-enrichment/reports/phase-2-rooms.md`
-- [x] phase-3-guides-gates — report: `docs/internal/work/room-enrichment/reports/phase-3-guides-gates.md`
+- [x] phase-1-types — report: `docs/internal/work/room-enrichment/reports/phase-1-types.md` (merged into `main` via `b3c4fba`)
+- [x] phase-2-rooms — report: `docs/internal/work/room-enrichment/reports/phase-2-rooms.md` (merged via `b3c4fba`)
+- [x] phase-3-guides-gates — report: `docs/internal/work/room-enrichment/reports/phase-3-guides-gates.md` (merged via `b3c4fba`)
 
 ## Gapfix slice (`opencode/room-enrichment-gapfix`, base `4e7f956`, from `88a4777`)
 
