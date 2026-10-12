@@ -43,6 +43,45 @@ GET /api/v1/landing/sections
 `faq`, `contact-form`, `footer`. (`stats` is virtual and never listed.)
 Nullable fields serialize as `null` when empty.
 
+## Testimonials and FAQ (resolved refs)
+
+`testimonials` and `faq` sections carry curated references in `contentJson`:
+
+```json
+{ "refs": [{ "kind": "caregiver", "id": "<guid>" }, { "kind": "family", "id": "<guid>" }] }
+{ "refs": [{ "id": "<faq-guid>" }] }
+```
+
+The public read resolves them live, in ref order:
+
+- Testimonials resolve to `{kind, refId, stars (1–5), text, arabicName,
+  englishName}` from real caregiver/family ratings. Names come from the
+  rater's family; anonymous or unresolvable names fall back to
+  “عائلة موثقة” / “Verified family”. Refs may carry `"hidden": true` to
+  suppress them without deleting.
+- FAQ refs resolve live from HelpCenter entries (active entries only),
+  returning `{refId, arabicQuestion, englishQuestion, arabicAnswer,
+  englishAnswer}` — never copied text.
+
+Dangling refs (missing/inactive targets, unknown kinds, malformed JSON)
+resolve as skipped — never `500`. The section still returns `200` with the
+resolved items only. Admins see a per-section dangling-ref warning count on
+the admin list.
+
+## Contact form (shared support flow)
+
+`contact-form` sections carry field configuration in `contentJson`
+(`requiredFields`, inbox note). Submission uses the real, shared flow —
+there is no separate landing ticket table:
+
+```http
+POST /api/v1/support/contact
+```
+
+Authenticated (app JWT). Body `{subject (3–150 chars), message (10–2000
+chars)}`. Success `200` with the ticket receipt; validation `400`,
+unauthenticated `401`. See the request in the Postman “04. Landing” folder.
+
 ## Get live stats
 
 **Route:** `GET /api/v1/landing/stats`

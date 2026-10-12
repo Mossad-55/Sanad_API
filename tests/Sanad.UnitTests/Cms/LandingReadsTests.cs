@@ -31,7 +31,7 @@ public sealed class LandingReadsTests
     {
         await using CmsDbContext db = CreateCmsContext();
 
-        var result = await new GetPublishedLandingSectionsQueryHandler(db).Handle(
+        var result = await new GetPublishedLandingSectionsQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new GetPublishedLandingSectionsQuery(), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -74,7 +74,7 @@ public sealed class LandingReadsTests
         db.LandingSections.AddRange(hero, about, draft, hidden);
         await db.SaveChangesAsync();
 
-        var result = await new GetPublishedLandingSectionsQueryHandler(db).Handle(
+        var result = await new GetPublishedLandingSectionsQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new GetPublishedLandingSectionsQuery(), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -114,7 +114,7 @@ public sealed class LandingReadsTests
         db.LandingSections.Add(about);
         await db.SaveChangesAsync();
 
-        var result = await new GetPublishedLandingSectionsQueryHandler(db).Handle(
+        var result = await new GetPublishedLandingSectionsQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new GetPublishedLandingSectionsQuery(), CancellationToken.None);
 
         Assert.True(result.IsSuccess);

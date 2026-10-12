@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Domain.Landing;
+using Sanad.Modules.Families.Application.Abstractions.Data;
 
 namespace Sanad.Modules.Cms.Application.Landing;
 
@@ -10,10 +12,17 @@ public sealed class GetPublishedLandingSectionsQueryHandler :
     IQueryHandler<GetPublishedLandingSectionsQuery, IReadOnlyList<LandingSectionPublicItem>>
 {
     private readonly ICmsDbContext _dbContext;
+    private readonly IFamiliesDbContext _familiesDb;
+    private readonly ICaregiversDbContext _caregiversDb;
 
-    public GetPublishedLandingSectionsQueryHandler(ICmsDbContext dbContext)
+    public GetPublishedLandingSectionsQueryHandler(
+        ICmsDbContext dbContext,
+        IFamiliesDbContext familiesDb,
+        ICaregiversDbContext caregiversDb)
     {
         _dbContext = dbContext;
+        _familiesDb = familiesDb;
+        _caregiversDb = caregiversDb;
     }
 
     public async Task<Result<IReadOnlyList<LandingSectionPublicItem>>> Handle(
@@ -31,8 +40,15 @@ public sealed class GetPublishedLandingSectionsQueryHandler :
             .ThenBy(section => section.Id)
             .ToListAsync(cancellationToken);
 
+        Dictionary<Guid, ResolvedSectionRefs> resolved = await LandingRefResolver.ResolveAsync(
+            _dbContext, _familiesDb, _caregiversDb, sections, cancellationToken);
+
         IReadOnlyList<LandingSectionPublicItem> items = sections
-            .Select(section => section.ToPublicItem())
+            .Select(section =>
+            {
+                resolved.TryGetValue(section.Id.Value, out ResolvedSectionRefs? refs);
+                return section.ToPublicItem(refs?.Testimonials, refs?.Faqs);
+            })
             .ToList();
 
         return Result<IReadOnlyList<LandingSectionPublicItem>>.Success(items);

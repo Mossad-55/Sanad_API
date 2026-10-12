@@ -1,7 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 using Sanad.Modules.Cms.Application.Landing;
 using Sanad.Modules.Cms.Domain.Landing;
 using Sanad.Modules.Cms.Infrastructure.Persistence;
+using Sanad.Modules.Families.Infrastructure.Persistence;
 
 namespace Sanad.UnitTests.Cms;
 
@@ -18,18 +20,18 @@ public sealed class LandingAdminTests
         db.LandingSections.AddRange(hero, about);
         await db.SaveChangesAsync();
 
-        var all = await new GetLandingAdminListQueryHandler(db).Handle(
+        var all = await new GetLandingAdminListQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new GetLandingAdminListQuery(), CancellationToken.None);
         Assert.True(all.IsSuccess);
         Assert.Equal(2, all.Value.TotalCount);
 
-        var drafts = await new GetLandingAdminListQueryHandler(db).Handle(
+        var drafts = await new GetLandingAdminListQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new GetLandingAdminListQuery(Status: LandingSectionStatus.Draft), CancellationToken.None);
         Assert.True(drafts.IsSuccess);
         var draft = Assert.Single(drafts.Value.Items);
         Assert.Equal("hero", draft.Type);
 
-        var page = await new GetLandingAdminListQueryHandler(db).Handle(
+        var page = await new GetLandingAdminListQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new GetLandingAdminListQuery(Page: 2, PageSize: 1), CancellationToken.None);
         Assert.True(page.IsSuccess);
         Assert.Equal(2, page.Value.TotalCount);
@@ -41,30 +43,30 @@ public sealed class LandingAdminTests
     {
         await using CmsDbContext db = CreateCmsContext();
 
-        var created = await new CreateLandingSectionCommandHandler(db).Handle(
+        var created = await new CreateLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new CreateLandingSectionCommand(
                 LandingSectionType.Footer, null, null, null, null, null, null, 0, true),
             CancellationToken.None);
         Assert.True(created.IsSuccess);
         Assert.Equal("Draft", created.Value.Status);
 
-        var incomplete = await new PublishLandingSectionCommandHandler(db).Handle(
+        var incomplete = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new PublishLandingSectionCommand(created.Value.Id), CancellationToken.None);
         Assert.True(incomplete.IsFailure);
         Assert.Equal("Cms.LandingSection.Incomplete", incomplete.Error.Code);
 
-        var hero = await new CreateLandingSectionCommandHandler(db).Handle(
+        var hero = await new CreateLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new CreateLandingSectionCommand(
                 LandingSectionType.Hero, "بطل", "Hero", null, null, null, null, 0, true),
             CancellationToken.None);
         Assert.True(hero.IsSuccess);
 
-        var heroIncomplete = await new PublishLandingSectionCommandHandler(db).Handle(
+        var heroIncomplete = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new PublishLandingSectionCommand(hero.Value.Id), CancellationToken.None);
         Assert.True(heroIncomplete.IsFailure);
         Assert.Contains("cover", heroIncomplete.Error.Message, StringComparison.OrdinalIgnoreCase);
 
-        var missing = await new PublishLandingSectionCommandHandler(db).Handle(
+        var missing = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new PublishLandingSectionCommand(Guid.NewGuid()), CancellationToken.None);
         Assert.True(missing.IsFailure);
         Assert.Equal("Cms.LandingSection.NotFound", missing.Error.Code);
@@ -80,7 +82,7 @@ public sealed class LandingAdminTests
         db.LandingSections.Add(about);
         await db.SaveChangesAsync();
 
-        var first = await new UpdateLandingSectionCommandHandler(db).Handle(
+        var first = await new UpdateLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new UpdateLandingSectionCommand(
                 about.Id.Value, "من نحن 2", "About 2", null, null, null, null, 0, true),
             CancellationToken.None);
@@ -89,7 +91,7 @@ public sealed class LandingAdminTests
         Assert.Equal("Draft", first.Value.Status);
         Assert.Equal(about.Id.Value, first.Value.SourceId);
 
-        var second = await new UpdateLandingSectionCommandHandler(db).Handle(
+        var second = await new UpdateLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new UpdateLandingSectionCommand(
                 about.Id.Value, "من نحن 3", "About 3", null, null, null, null, 0, true),
             CancellationToken.None);
@@ -110,7 +112,7 @@ public sealed class LandingAdminTests
         db.LandingSections.AddRange(live, twin);
         await db.SaveChangesAsync();
 
-        var published = await new PublishLandingSectionCommandHandler(db).Handle(
+        var published = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new PublishLandingSectionCommand(twin.Id.Value), CancellationToken.None);
         Assert.True(published.IsSuccess);
 
@@ -118,7 +120,7 @@ public sealed class LandingAdminTests
         Assert.Equal(LandingSectionStatus.Archived, rows.Single(row => row.Id == live.Id).Status);
         Assert.Equal(LandingSectionStatus.Published, rows.Single(row => row.Id == twin.Id).Status);
 
-        var reads = await new GetPublishedLandingSectionsQueryHandler(db).Handle(
+        var reads = await new GetPublishedLandingSectionsQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new GetPublishedLandingSectionsQuery(), CancellationToken.None);
         Assert.True(reads.IsSuccess);
         var single = Assert.Single(reads.Value);
@@ -165,7 +167,7 @@ public sealed class LandingAdminTests
             new SetLandingSectionVisibilityCommand(live.Id.Value, false), CancellationToken.None);
         Assert.True(hidden.IsSuccess);
 
-        var reads = await new GetPublishedLandingSectionsQueryHandler(db).Handle(
+        var reads = await new GetPublishedLandingSectionsQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new GetPublishedLandingSectionsQuery(), CancellationToken.None);
         Assert.True(reads.IsSuccess);
         Assert.Empty(reads.Value);
@@ -195,7 +197,7 @@ public sealed class LandingAdminTests
             CancellationToken.None);
         Assert.True(reordered.IsSuccess);
 
-        var reads = await new GetPublishedLandingSectionsQueryHandler(db).Handle(
+        var reads = await new GetPublishedLandingSectionsQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new GetPublishedLandingSectionsQuery(), CancellationToken.None);
         Assert.True(reads.IsSuccess);
         Assert.Equal("about", reads.Value[0].Type);
@@ -231,7 +233,7 @@ public sealed class LandingAdminTests
         db.LandingSections.Add(about);
         await db.SaveChangesAsync();
 
-        var result = await new GetLandingAdminListQueryHandler(db).Handle(
+        var result = await new GetLandingAdminListQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new GetLandingAdminListQuery(), CancellationToken.None);
 
         Assert.True(result.IsSuccess);
@@ -247,24 +249,24 @@ public sealed class LandingAdminTests
             new DbContextOptionsBuilder<CmsDbContext>().UseSqlite(connection).Options);
         await db.Database.EnsureCreatedAsync();
 
-        var created = await new CreateLandingSectionCommandHandler(db).Handle(
+        var created = await new CreateLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new CreateLandingSectionCommand(
                 LandingSectionType.Footer, "تذييل", "Footer", null, null, null, null, 0, true),
             CancellationToken.None);
         Assert.True(created.IsSuccess);
 
-        var published = await new PublishLandingSectionCommandHandler(db).Handle(
+        var published = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new PublishLandingSectionCommand(created.Value.Id), CancellationToken.None);
         Assert.True(published.IsSuccess);
 
-        var twin = await new UpdateLandingSectionCommandHandler(db).Handle(
+        var twin = await new UpdateLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new UpdateLandingSectionCommand(
                 created.Value.Id, "تذييل 2", "Footer 2", null, null, null, null, 0, true),
             CancellationToken.None);
         Assert.True(twin.IsSuccess);
         Assert.Equal("Draft", twin.Value.Status);
 
-        var republished = await new PublishLandingSectionCommandHandler(db).Handle(
+        var republished = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
             new PublishLandingSectionCommand(twin.Value.Id), CancellationToken.None);
         Assert.True(republished.IsSuccess);
 
@@ -288,6 +290,26 @@ public sealed class LandingAdminTests
             .UseInMemoryDatabase(Guid.NewGuid().ToString())
             .Options;
         var db = new CmsDbContext(options);
+        db.Database.EnsureCreated();
+        return db;
+    }
+
+    private static FamiliesDbContext CreateFamiliesContext()
+    {
+        var options = new DbContextOptionsBuilder<FamiliesDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var db = new FamiliesDbContext(options);
+        db.Database.EnsureCreated();
+        return db;
+    }
+
+    private static CaregiversDbContext CreateCaregiversContext()
+    {
+        var options = new DbContextOptionsBuilder<CaregiversDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        var db = new CaregiversDbContext(options);
         db.Database.EnsureCreated();
         return db;
     }

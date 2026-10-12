@@ -57,3 +57,24 @@ return `400 Cms.Landing.ReorderInvalid`.
 
 Media accepts `multipart/form-data` with a single `file` (jpeg/png/webp,
 signature-checked, 5 MB cap); invalid content or size returns `400`.
+
+## Curated refs (testimonials, FAQ, contact config)
+
+`testimonials` and `faq` sections store ordered ref arrays in `contentJson`:
+
+```json
+{ "refs": [{ "kind": "caregiver", "id": "<rating-guid>", "hidden": false }] }
+{ "refs": [{ "id": "<faq-guid>", "hidden": false }] }
+{ "requiredFields": ["name", "phone", "message"], "inboxNote": "Riyadh intake" }
+```
+
+- Testimonial `kind` is `caregiver` (a `CaregiverRating` id) or `family`
+  (a family `BookingReview` id). Resolution is live: stars/text from the
+  rating, names from the rater's family (fallback “Verified family”).
+- FAQ `id` is a `HelpFaq` id; only active entries resolve (audience is
+  ignored — explicit curation wins). Bodies always come from HelpCenter.
+- `hidden: true` suppresses a ref without deleting it. Dangling refs
+  (missing/inactive/unknown) are skipped in public reads and counted in the
+  admin list `danglingRefCount` — fix or remove them; they never `500`.
+- `contact-form` sections carry field config only; submissions go to the
+  shared authenticated `POST /api/v1/support/contact` flow.

@@ -11,7 +11,24 @@ public sealed record LandingSectionPublicItem(
     string? EnglishBody,
     string? ContentJson,
     string? ImagePath,
-    int DisplayOrder);
+    int DisplayOrder,
+    IReadOnlyList<TestimonialItem>? Testimonials = null,
+    IReadOnlyList<LandingFaqItem>? Faqs = null);
+
+public sealed record TestimonialItem(
+    string Kind,
+    Guid RefId,
+    int Stars,
+    string? Text,
+    string ArabicName,
+    string EnglishName);
+
+public sealed record LandingFaqItem(
+    Guid RefId,
+    string ArabicQuestion,
+    string EnglishQuestion,
+    string ArabicAnswer,
+    string EnglishAnswer);
 
 public sealed record LandingStatsResponse(
     int FamiliesCount,

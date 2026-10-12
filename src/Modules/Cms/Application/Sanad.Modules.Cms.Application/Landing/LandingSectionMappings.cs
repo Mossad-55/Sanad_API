@@ -21,7 +21,10 @@ internal static class LandingSectionMappings
         _ => throw new InvalidOperationException($"Unknown landing section type {(int)type}.")
     };
 
-    public static LandingSectionPublicItem ToPublicItem(this LandingSection section) =>
+    public static LandingSectionPublicItem ToPublicItem(
+        this LandingSection section,
+        IReadOnlyList<TestimonialItem>? testimonials = null,
+        IReadOnlyList<LandingFaqItem>? faqs = null) =>
         new(
             section.Id,
             section.Type.ToTypeKey(),
@@ -31,9 +34,12 @@ internal static class LandingSectionMappings
             string.IsNullOrWhiteSpace(section.EnglishBody) ? null : section.EnglishBody,
             string.IsNullOrWhiteSpace(section.ContentJson) ? null : section.ContentJson,
             string.IsNullOrWhiteSpace(section.ImagePath) ? null : section.ImagePath,
-            section.DisplayOrder);
+            section.DisplayOrder,
+            testimonials,
+            faqs);
 
-    public static LandingAdminSectionResponse ToAdminResponse(this LandingSection section) =>
+    public static LandingAdminSectionResponse ToAdminResponse(
+        this LandingSection section, int danglingRefCount = 0) =>
         new(
             section.Id.Value,
             section.Type.ToTypeKey(),
@@ -47,6 +53,7 @@ internal static class LandingSectionMappings
             section.DisplayOrder,
             section.IsVisible,
             section.SourceId?.Value,
+            danglingRefCount,
             section.CreatedOnUtc,
             section.UpdatedOnUtc,
             section.PublishedOnUtc);

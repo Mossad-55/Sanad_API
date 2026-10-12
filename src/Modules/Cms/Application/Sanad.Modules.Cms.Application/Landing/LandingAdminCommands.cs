@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
+using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Domain.Landing;
+using Sanad.Modules.Families.Application.Abstractions.Data;
 
 namespace Sanad.Modules.Cms.Application.Landing;
 
@@ -19,7 +21,10 @@ public sealed record CreateLandingSectionCommand(
     bool IsVisible)
     : ICommand<LandingAdminSectionResponse>;
 
-public sealed class CreateLandingSectionCommandHandler(ICmsDbContext db)
+public sealed class CreateLandingSectionCommandHandler(
+    ICmsDbContext db,
+    IFamiliesDbContext familiesDb,
+    ICaregiversDbContext caregiversDb)
     : ICommandHandler<CreateLandingSectionCommand, LandingAdminSectionResponse>
 {
     public async Task<Result<LandingAdminSectionResponse>> Handle(
@@ -43,7 +48,8 @@ public sealed class CreateLandingSectionCommandHandler(ICmsDbContext db)
             db.LandingSections.Add(section);
             await db.SaveChangesAsync(cancellationToken);
 
-            return section.ToAdminResponse();
+            return section.ToAdminResponse(
+                await LandingAdminWarnings.CountAsync(db, familiesDb, caregiversDb, section, cancellationToken));
         }
         catch (DomainException)
         {
@@ -64,7 +70,10 @@ public sealed record UpdateLandingSectionCommand(
     bool IsVisible)
     : ICommand<LandingAdminSectionResponse>;
 
-public sealed class UpdateLandingSectionCommandHandler(ICmsDbContext db)
+public sealed class UpdateLandingSectionCommandHandler(
+    ICmsDbContext db,
+    IFamiliesDbContext familiesDb,
+    ICaregiversDbContext caregiversDb)
     : ICommandHandler<UpdateLandingSectionCommand, LandingAdminSectionResponse>
 {
     public async Task<Result<LandingAdminSectionResponse>> Handle(
@@ -90,7 +99,8 @@ public sealed class UpdateLandingSectionCommandHandler(ICmsDbContext db)
                     request.DisplayOrder,
                     request.IsVisible);
                 await db.SaveChangesAsync(cancellationToken);
-                return section.ToAdminResponse();
+                return section.ToAdminResponse(
+                    await LandingAdminWarnings.CountAsync(db, familiesDb, caregiversDb, section, cancellationToken));
             }
 
             if (section.Status == LandingSectionStatus.Archived)
@@ -131,7 +141,8 @@ public sealed class UpdateLandingSectionCommandHandler(ICmsDbContext db)
             }
 
             await db.SaveChangesAsync(cancellationToken);
-            return twin.ToAdminResponse();
+            return twin.ToAdminResponse(
+                await LandingAdminWarnings.CountAsync(db, familiesDb, caregiversDb, twin, cancellationToken));
         }
         catch (DomainException)
         {
@@ -143,7 +154,10 @@ public sealed class UpdateLandingSectionCommandHandler(ICmsDbContext db)
 public sealed record PublishLandingSectionCommand(Guid Id)
     : ICommand<LandingAdminSectionResponse>;
 
-public sealed class PublishLandingSectionCommandHandler(ICmsDbContext db)
+public sealed class PublishLandingSectionCommandHandler(
+    ICmsDbContext db,
+    IFamiliesDbContext familiesDb,
+    ICaregiversDbContext caregiversDb)
     : ICommandHandler<PublishLandingSectionCommand, LandingAdminSectionResponse>
 {
     public async Task<Result<LandingAdminSectionResponse>> Handle(
@@ -178,7 +192,8 @@ public sealed class PublishLandingSectionCommandHandler(ICmsDbContext db)
 
         await db.SaveChangesAsync(cancellationToken);
 
-        return section.ToAdminResponse();
+        return section.ToAdminResponse(
+            await LandingAdminWarnings.CountAsync(db, familiesDb, caregiversDb, section, cancellationToken));
     }
 }
 
@@ -256,6 +271,23 @@ public sealed class ReorderLandingSectionsCommandHandler(ICmsDbContext db)
         await db.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
+    }
+}
+
+internal static class LandingAdminWarnings
+{
+    public static async Task<int> CountAsync(
+        ICmsDbContext db,
+        IFamiliesDbContext familiesDb,
+        ICaregiversDbContext caregiversDb,
+        LandingSection section,
+        CancellationToken cancellationToken)
+    {
+        Dictionary<Guid, ResolvedSectionRefs> resolved = await LandingRefResolver.ResolveAsync(
+            db, familiesDb, caregiversDb, [section], cancellationToken);
+        return resolved.TryGetValue(section.Id.Value, out ResolvedSectionRefs? refs)
+            ? refs.DanglingRefCount
+            : 0;
     }
 }
 

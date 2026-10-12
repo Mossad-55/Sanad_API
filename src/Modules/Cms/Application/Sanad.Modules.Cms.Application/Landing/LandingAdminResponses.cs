@@ -13,6 +13,7 @@ public sealed record LandingAdminSectionResponse(
     int DisplayOrder,
     bool IsVisible,
     Guid? SourceId,
+    int DanglingRefCount,
     DateTime CreatedOnUtc,
     DateTime UpdatedOnUtc,
     DateTime? PublishedOnUtc);

@@ -1,8 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Domain.Landing;
+using Sanad.Modules.Families.Application.Abstractions.Data;
 
 namespace Sanad.Modules.Cms.Application.Landing;
 
@@ -14,7 +16,10 @@ public sealed record GetLandingAdminListQuery(
     int PageSize = 20)
     : IQuery<LandingAdminPageResponse>;
 
-public sealed class GetLandingAdminListQueryHandler(ICmsDbContext db)
+public sealed class GetLandingAdminListQueryHandler(
+    ICmsDbContext db,
+    IFamiliesDbContext familiesDb,
+    ICaregiversDbContext caregiversDb)
     : IQueryHandler<GetLandingAdminListQuery, LandingAdminPageResponse>
 {
     public async Task<Result<LandingAdminPageResponse>> Handle(
@@ -51,9 +56,18 @@ public sealed class GetLandingAdminListQueryHandler(ICmsDbContext db)
             .Take(pageSize)
             .ToListAsync(cancellationToken);
 
+        Dictionary<Guid, ResolvedSectionRefs> resolved = await LandingRefResolver.ResolveAsync(
+            db, familiesDb, caregiversDb, sections, cancellationToken);
+
         return Result<LandingAdminPageResponse>.Success(
             new LandingAdminPageResponse(
-                sections.Select(section => section.ToAdminResponse()).ToList(),
+                sections
+                    .Select(section =>
+                    {
+                        resolved.TryGetValue(section.Id.Value, out ResolvedSectionRefs? refs);
+                        return section.ToAdminResponse(refs?.DanglingRefCount ?? 0);
+                    })
+                    .ToList(),
                 page,
                 pageSize,
                 totalCount));
