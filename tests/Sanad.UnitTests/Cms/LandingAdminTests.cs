@@ -51,7 +51,7 @@ public sealed class LandingAdminTests
         Assert.Equal("Draft", created.Value.Status);
 
         var incomplete = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
-            new PublishLandingSectionCommand(created.Value.Id), CancellationToken.None);
+            new PublishLandingSectionCommand(created.Value.Id, ActorId), CancellationToken.None);
         Assert.True(incomplete.IsFailure);
         Assert.Equal("Cms.LandingSection.Incomplete", incomplete.Error.Code);
 
@@ -62,12 +62,12 @@ public sealed class LandingAdminTests
         Assert.True(hero.IsSuccess);
 
         var heroIncomplete = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
-            new PublishLandingSectionCommand(hero.Value.Id), CancellationToken.None);
+            new PublishLandingSectionCommand(hero.Value.Id, ActorId), CancellationToken.None);
         Assert.True(heroIncomplete.IsFailure);
         Assert.Contains("cover", heroIncomplete.Error.Message, StringComparison.OrdinalIgnoreCase);
 
         var missing = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
-            new PublishLandingSectionCommand(Guid.NewGuid()), CancellationToken.None);
+            new PublishLandingSectionCommand(Guid.NewGuid(), ActorId), CancellationToken.None);
         Assert.True(missing.IsFailure);
         Assert.Equal("Cms.LandingSection.NotFound", missing.Error.Code);
     }
@@ -113,7 +113,7 @@ public sealed class LandingAdminTests
         await db.SaveChangesAsync();
 
         var published = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
-            new PublishLandingSectionCommand(twin.Id.Value), CancellationToken.None);
+            new PublishLandingSectionCommand(twin.Id.Value, ActorId), CancellationToken.None);
         Assert.True(published.IsSuccess);
 
         var rows = await db.LandingSections.AsNoTracking().ToListAsync();
@@ -139,16 +139,16 @@ public sealed class LandingAdminTests
         await db.SaveChangesAsync();
 
         var deleted = await new DeleteLandingSectionCommandHandler(db).Handle(
-            new DeleteLandingSectionCommand(draft.Id.Value), CancellationToken.None);
+            new DeleteLandingSectionCommand(draft.Id.Value, ActorId), CancellationToken.None);
         Assert.True(deleted.IsSuccess);
 
         var published = await new DeleteLandingSectionCommandHandler(db).Handle(
-            new DeleteLandingSectionCommand(live.Id.Value), CancellationToken.None);
+            new DeleteLandingSectionCommand(live.Id.Value, ActorId), CancellationToken.None);
         Assert.True(published.IsFailure);
         Assert.Equal("Cms.LandingSection.PublishedHistory", published.Error.Code);
 
         var missing = await new DeleteLandingSectionCommandHandler(db).Handle(
-            new DeleteLandingSectionCommand(Guid.NewGuid()), CancellationToken.None);
+            new DeleteLandingSectionCommand(Guid.NewGuid(), ActorId), CancellationToken.None);
         Assert.True(missing.IsFailure);
         Assert.Equal("Cms.LandingSection.NotFound", missing.Error.Code);
     }
@@ -164,7 +164,7 @@ public sealed class LandingAdminTests
         await db.SaveChangesAsync();
 
         var hidden = await new SetLandingSectionVisibilityCommandHandler(db).Handle(
-            new SetLandingSectionVisibilityCommand(live.Id.Value, false), CancellationToken.None);
+            new SetLandingSectionVisibilityCommand(live.Id.Value, false, ActorId), CancellationToken.None);
         Assert.True(hidden.IsSuccess);
 
         var reads = await new GetPublishedLandingSectionsQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
@@ -173,7 +173,7 @@ public sealed class LandingAdminTests
         Assert.Empty(reads.Value);
 
         var missing = await new SetLandingSectionVisibilityCommandHandler(db).Handle(
-            new SetLandingSectionVisibilityCommand(Guid.NewGuid(), true), CancellationToken.None);
+            new SetLandingSectionVisibilityCommand(Guid.NewGuid(), true, ActorId), CancellationToken.None);
         Assert.True(missing.IsFailure);
     }
 
@@ -256,7 +256,7 @@ public sealed class LandingAdminTests
         Assert.True(created.IsSuccess);
 
         var published = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
-            new PublishLandingSectionCommand(created.Value.Id), CancellationToken.None);
+            new PublishLandingSectionCommand(created.Value.Id, ActorId), CancellationToken.None);
         Assert.True(published.IsSuccess);
 
         var twin = await new UpdateLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
@@ -267,11 +267,11 @@ public sealed class LandingAdminTests
         Assert.Equal("Draft", twin.Value.Status);
 
         var republished = await new PublishLandingSectionCommandHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
-            new PublishLandingSectionCommand(twin.Value.Id), CancellationToken.None);
+            new PublishLandingSectionCommand(twin.Value.Id, ActorId), CancellationToken.None);
         Assert.True(republished.IsSuccess);
 
         var deleted = await new DeleteLandingSectionCommandHandler(db).Handle(
-            new DeleteLandingSectionCommand(created.Value.Id), CancellationToken.None);
+            new DeleteLandingSectionCommand(created.Value.Id, ActorId), CancellationToken.None);
         Assert.True(deleted.IsFailure);
 
         var reordered = await new ReorderLandingSectionsCommandHandler(db).Handle(
@@ -279,6 +279,8 @@ public sealed class LandingAdminTests
             CancellationToken.None);
         Assert.True(reordered.IsSuccess);
     }
+
+    private static readonly Guid ActorId = Guid.NewGuid();
 
     private static LandingSection DraftOf(
         LandingSectionType type, string arabicTitle, string englishTitle, int displayOrder = 0) =>

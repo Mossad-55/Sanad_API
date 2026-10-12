@@ -28,6 +28,11 @@ updates) its draft twin (linked by `sourceId`) and returns the twin with
 reads. Only drafts can be deleted (`204`); deleting published/archived
 history returns `409 Cms.LandingSection.PublishedHistory`.
 
+Every publish, visibility change, and delete writes an immutable audit row
+(actor, section, action, UTC; visibility also records the value, deletes
+record the type key). Audit rows survive section deletion and have no
+update/delete paths; there is no history read endpoint in v1.
+
 ## Endpoints summary
 
 ```text

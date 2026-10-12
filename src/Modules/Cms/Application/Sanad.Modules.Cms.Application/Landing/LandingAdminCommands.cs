@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Domain.Landing;
@@ -151,7 +152,7 @@ public sealed class UpdateLandingSectionCommandHandler(
     }
 }
 
-public sealed record PublishLandingSectionCommand(Guid Id)
+public sealed record PublishLandingSectionCommand(Guid Id, Guid ActorUserId)
     : ICommand<LandingAdminSectionResponse>;
 
 public sealed class PublishLandingSectionCommandHandler(
@@ -172,6 +173,8 @@ public sealed class PublishLandingSectionCommandHandler(
             return LandingErrors.SectionInvalid;
         if (section.Type == LandingSectionType.Hero && string.IsNullOrWhiteSpace(section.ImagePath))
             return LandingErrors.Incomplete("Hero section requires a cover image.");
+        if (request.ActorUserId == Guid.Empty)
+            return LandingErrors.SectionInvalid;
 
         try
         {
@@ -190,6 +193,13 @@ public sealed class PublishLandingSectionCommandHandler(
         foreach (LandingSection previous in superseded)
             previous.Archive();
 
+        db.LandingSectionHistory.Add(
+            LandingSectionHistory.Create(
+                section.Id,
+                LandingHistoryAction.Published,
+                new UserId(request.ActorUserId),
+                createdOnUtc: DateTime.UtcNow));
+
         await db.SaveChangesAsync(cancellationToken);
 
         return section.ToAdminResponse(
@@ -197,7 +207,7 @@ public sealed class PublishLandingSectionCommandHandler(
     }
 }
 
-public sealed record SetLandingSectionVisibilityCommand(Guid Id, bool IsVisible)
+public sealed record SetLandingSectionVisibilityCommand(Guid Id, bool IsVisible, Guid ActorUserId)
     : ICommand;
 
 public sealed class SetLandingSectionVisibilityCommandHandler(ICmsDbContext db)
@@ -211,15 +221,24 @@ public sealed class SetLandingSectionVisibilityCommandHandler(ICmsDbContext db)
                 item => item.Id == new LandingSectionId(request.Id), cancellationToken);
         if (section is null)
             return Result.Failure(LandingErrors.SectionNotFound);
+        if (request.ActorUserId == Guid.Empty)
+            return Result.Failure(LandingErrors.SectionInvalid);
 
         section.SetVisibility(request.IsVisible);
+        db.LandingSectionHistory.Add(
+            LandingSectionHistory.Create(
+                section.Id,
+                LandingHistoryAction.VisibilityChanged,
+                new UserId(request.ActorUserId),
+                $"IsVisible={request.IsVisible}",
+                DateTime.UtcNow));
         await db.SaveChangesAsync(cancellationToken);
 
         return Result.Success();
     }
 }
 
-public sealed record DeleteLandingSectionCommand(Guid Id)
+public sealed record DeleteLandingSectionCommand(Guid Id, Guid ActorUserId)
     : ICommand;
 
 public sealed class DeleteLandingSectionCommandHandler(ICmsDbContext db)
@@ -235,8 +254,18 @@ public sealed class DeleteLandingSectionCommandHandler(ICmsDbContext db)
             return Result.Failure(LandingErrors.SectionNotFound);
         if (section.Status != LandingSectionStatus.Draft)
             return Result.Failure(LandingErrors.PublishedHistoryConflict);
+        if (request.ActorUserId == Guid.Empty)
+            return Result.Failure(LandingErrors.SectionInvalid);
 
+        string typeKey = section.Type.ToTypeKey();
         db.LandingSections.Remove(section);
+        db.LandingSectionHistory.Add(
+            LandingSectionHistory.Create(
+                section.Id,
+                LandingHistoryAction.Deleted,
+                new UserId(request.ActorUserId),
+                $"Type={typeKey}",
+                DateTime.UtcNow));
         await db.SaveChangesAsync(cancellationToken);
 
         return Result.Success();

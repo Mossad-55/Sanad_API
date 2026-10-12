@@ -36,6 +36,8 @@ public interface ICmsDbContext
 
     DbSet<LandingSection> LandingSections { get; }
 
+    DbSet<LandingSectionHistory> LandingSectionHistory { get; }
+
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }

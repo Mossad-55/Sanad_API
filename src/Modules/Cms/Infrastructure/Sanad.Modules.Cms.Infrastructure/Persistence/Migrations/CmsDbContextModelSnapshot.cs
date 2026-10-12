@@ -191,6 +191,40 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                     b.ToTable("landing_sections", "cms");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Landing.LandingSectionHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("details");
+
+                    b.Property<Guid>("SectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("section_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SectionId", "CreatedOnUtc");
+
+                    b.ToTable("landing_section_history", "cms");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Cms.Domain.Legal.LegalDocument", b =>
                 {
                     b.Property<Guid>("Id")

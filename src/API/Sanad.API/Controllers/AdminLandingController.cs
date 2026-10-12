@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Cms.Application.Landing;
 using Sanad.Modules.Cms.Domain.Landing;
 
@@ -96,8 +97,14 @@ public sealed class AdminLandingController(ISender sender, IFileStorage fileStor
 
     [HttpPost("sections/{id:guid}/publish")]
     [ProducesResponseType(typeof(LandingAdminSectionResponse), StatusCodes.Status200OK)]
-    public async Task<IActionResult> PublishSection(Guid id, CancellationToken cancellationToken = default) =>
-        ToActionResult(await sender.Send(new PublishLandingSectionCommand(id), cancellationToken));
+    public async Task<IActionResult> PublishSection(Guid id, CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId))
+            return Unauthorized();
+
+        return ToActionResult(
+            await sender.Send(new PublishLandingSectionCommand(id, actorUserId.Value), cancellationToken));
+    }
 
     [HttpPost("sections/{id:guid}/visibility")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
@@ -106,8 +113,11 @@ public sealed class AdminLandingController(ISender sender, IFileStorage fileStor
         [FromBody] SetLandingSectionVisibilityRequest request,
         CancellationToken cancellationToken = default)
     {
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId))
+            return Unauthorized();
+
         var result = await sender.Send(
-            new SetLandingSectionVisibilityCommand(id, request.Value), cancellationToken);
+            new SetLandingSectionVisibilityCommand(id, request.Value, actorUserId.Value), cancellationToken);
         return result.IsSuccess ? NoContent() : ToActionResult(result);
     }
 
@@ -115,7 +125,11 @@ public sealed class AdminLandingController(ISender sender, IFileStorage fileStor
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> DeleteSection(Guid id, CancellationToken cancellationToken = default)
     {
-        var result = await sender.Send(new DeleteLandingSectionCommand(id), cancellationToken);
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId))
+            return Unauthorized();
+
+        var result = await sender.Send(
+            new DeleteLandingSectionCommand(id, actorUserId.Value), cancellationToken);
         return result.IsSuccess ? NoContent() : ToActionResult(result);
     }
 

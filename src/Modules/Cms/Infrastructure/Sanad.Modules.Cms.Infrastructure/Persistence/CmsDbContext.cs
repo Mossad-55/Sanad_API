@@ -46,6 +46,7 @@ public sealed class CmsDbContext :
     public DbSet<LibraryContent> LibraryContents => Set<LibraryContent>();
     public DbSet<LibraryContentInteraction> LibraryContentInteractions => Set<LibraryContentInteraction>();
     public DbSet<LandingSection> LandingSections => Set<LandingSection>();
+    public DbSet<LandingSectionHistory> LandingSectionHistory => Set<LandingSectionHistory>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
