@@ -6,6 +6,11 @@
   },
   "variable": [
     {
+      "key": "adminUserId",
+      "value": "REPLACE_WITH_USER_ID",
+      "description": "User UUID for the SuperAdmin user detail read."
+    },
+    {
       "key": "subscriptionPlanVersionId",
       "value": "",
       "description": "Paste a published, available-for-new-sales plan version UUID before manually creating a coupon."
@@ -132,6 +137,39 @@
     }
   ],
   "item": [
+    {
+      "name": "00. SuperAdmin User Management (read-only)",
+      "description": "Requires a Normal-access SuperAdmin token. Read-only Phase 1 endpoints.",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/users?page=1&pageSize=20&sort=Newest",
+            "description": "Optional query filters: search (Arabic/English name, email, phone), accountType, status; sort is Newest, Oldest, or Name. Page and pageSize are clamped to 1–100. Name sorts Arabic then English ascending."
+          }
+        },
+        {
+          "name": "User detail",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}",
+            "description": "Set adminUserId to a user UUID. Includes active device sessions and a facility link for CareHomeOwner only."
+          }
+        },
+        {
+          "name": "Admin active sessions overview",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/users/sessions?page=1&pageSize=20&sort=Newest",
+            "description": "Optional filters: accountType (SuperAdmin, SupportAdmin, ContentAdmin, FinanceAdmin) and userId. Returns only unrevoked, unexpired admin sessions. lastSeenUtc represents the session's LastRotatedOnUtc token-rotation time."
+          }
+        }
+      ]
+    },
     {
       "name": "01. Auth",
       "item": [

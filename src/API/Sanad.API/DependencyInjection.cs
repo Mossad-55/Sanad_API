@@ -51,6 +51,7 @@ using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.Finance.Infrastructure;
 using Sanad.Modules.Finance.Application;
+using Sanad.Modules.Identity.Application.Users.Admin;
 
 namespace Sanad.API;
 
@@ -411,6 +412,13 @@ public static class DependencyInjection
                 policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
                 policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
             });
+
+            options.AddPolicy(AuthorizationPolicies.SuperAdminOnly, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString());
+            });
         });
 
         services.AddMediatR(configuration =>
@@ -492,6 +500,7 @@ public static class DependencyInjection
         services.AddScoped<IChatEligibilityChecker, ApiChatEligibilityChecker>();
         services.AddScoped<IChatBookingGateway, ApiChatBookingGateway>();
         services.AddScoped<IChatFacilityLookup, ApiChatFacilityLookup>();
+        services.AddScoped<ICareHomeOwnerFacilityLookup, ApiCareHomeOwnerFacilityLookup>();
 
         return services;
     }
