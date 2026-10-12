@@ -51,6 +51,10 @@ using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.Finance.Infrastructure;
 using Sanad.Modules.Finance.Application;
+using Sanad.Modules.Identity.Application.Users.Admin;
+using Microsoft.Extensions.Options;
+using Sanad.Modules.Notifications.Application.Abstractions.Data;
+using Sanad.Modules.Notifications.Domain.Notifications;
 
 namespace Sanad.API;
 
@@ -130,6 +134,8 @@ public static class DependencyInjection
         services.AddScoped<IMedicationLatenessSettingGateway, MedicationLatenessSettingGateway>();
         services.AddScoped<IMedicationLateAlertGateway, MedicationLateAlertGateway>();
         services.AddScoped<IElderlyIntakeResolver, FamilyElderlyIntakeResolver>();
+        services.AddSingleton<IAdminUserSeedProtection, AdminUserSeedProtection>();
+        services.AddScoped<IAdminUserStatusNoticePublisher, AdminUserStatusNoticePublisher>();
 
         services.AddOptions<LocalStorageOptions>()
             .Bind(
@@ -411,6 +417,13 @@ public static class DependencyInjection
                 policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
                 policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
             });
+
+            options.AddPolicy(AuthorizationPolicies.SuperAdminOnly, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString());
+            });
         });
 
         services.AddMediatR(configuration =>
@@ -492,6 +505,7 @@ public static class DependencyInjection
         services.AddScoped<IChatEligibilityChecker, ApiChatEligibilityChecker>();
         services.AddScoped<IChatBookingGateway, ApiChatBookingGateway>();
         services.AddScoped<IChatFacilityLookup, ApiChatFacilityLookup>();
+        services.AddScoped<ICareHomeOwnerFacilityLookup, ApiCareHomeOwnerFacilityLookup>();
 
         return services;
     }
@@ -520,5 +534,36 @@ public static class DependencyInjection
             Read("CheckoutHoldDuration", CareHomeBookingTiming.Default.CheckoutHoldDuration),
             Read("DecisionHoldDuration", CareHomeBookingTiming.Default.DecisionHoldDuration),
             Read("ExpirySweepInterval", CareHomeBookingTiming.Default.ExpirySweepInterval));
+    }
+}
+
+internal sealed class AdminUserSeedProtection(IOptions<AdminSeedOptions> options) : IAdminUserSeedProtection
+{
+    public bool IsSeeded(Sanad.Modules.Identity.Domain.Users.User user) =>
+        !string.IsNullOrWhiteSpace(options.Value.Email) &&
+        user.Email is not null &&
+        string.Equals(user.Email.Value, options.Value.Email, StringComparison.OrdinalIgnoreCase);
+}
+
+internal sealed class AdminUserStatusNoticePublisher(
+    INotificationsDbContext db,
+    ILogger<AdminUserStatusNoticePublisher> logger) : IAdminUserStatusNoticePublisher
+{
+    public async Task PublishAsync(AdminUserStatusNotice notice, CancellationToken cancellationToken)
+    {
+        try
+        {
+            string title = notice.EventType == "PasswordReset" ? "Your account password was reset" : "Account status changed";
+            string message = notice.EventType == "PasswordReset" ? "Your account password was reset by an administrator. Contact support if you did not expect this." : $"Your account status is now {notice.Status}.";
+            string notificationType = notice.EventType == "PasswordReset" ? "AdminUserPasswordReset" : $"AdminUser{notice.Status}";
+            db.Notifications.Add(Notification.Create(notice.UserId.Value, "Identity", notificationType, title, message, "IdentityUser", notice.UserId.Value, notice.CreatedOnUtc));
+            if (!string.IsNullOrWhiteSpace(notice.Email))
+                db.EmailOutboxMessages.Add(EmailOutboxMessage.Create(notice.Email!, title, message, $"admin-user-{notice.EventType.ToLowerInvariant()}:{notice.UserId.Value:N}:{notice.Status}:{notice.CreatedOnUtc.Ticks}", notice.CreatedOnUtc));
+            await db.SaveChangesAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            logger.LogWarning(ex, "Could not enqueue the status-change notice for admin-managed user {UserId}.", notice.UserId.Value);
+        }
     }
 }

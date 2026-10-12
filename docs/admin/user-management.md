@@ -1,0 +1,101 @@
+# SuperAdmin user management
+
+Phase 1 provides read-only user and active-session views. All routes require a
+Normal-access `SuperAdmin` account. SupportAdmin, ContentAdmin, and FinanceAdmin
+accounts are denied.
+
+## List users
+
+`GET /api/v1/admin/users`
+
+Query parameters: `search` (Arabic or English name, email, or phone; case
+insensitive), `accountType`, `status`, `sort` (`Newest`, `Oldest`, or `Name`),
+`page`, and `pageSize`. Page and pageSize are clamped to 1–100. Invalid enum
+filters or sort values return 400 `Identity.Admin.InvalidQuery`. Name sorting is
+Arabic name ascending, then English name ascending.
+
+The response is `{ items, page, pageSize, totalCount }`. Each item includes the
+user id, names, email, phone, status, account types, creation time, and
+`isVerified`. `isVerified` is false only while status is
+`PendingVerification`.
+
+## User detail
+
+`GET /api/v1/admin/users/{id}`
+
+Returns profile fields, status, account types, creation time, `isVerified`,
+active sessions, and `linked`. Unknown ids return 404 `Identity.User.NotFound`
+without revealing account type. For CareHomeOwner, `linked` contains
+`facilityId` and `facilityStatus`; for every other account type it is `{}`.
+
+## Admin active sessions
+
+`GET /api/v1/admin/users/sessions`
+
+Returns paged active sessions belonging to SuperAdmin, SupportAdmin,
+ContentAdmin, and FinanceAdmin accounts. Optional filters are `accountType` and
+`userId`; sort supports `Newest`, `Oldest`, and `Name`, with the same page and
+pageSize clamping as the user list. Revoked or expired sessions are excluded.
+Session fields include `deviceId`, device name, platform, app version, creation
+and expiration times, and `lastSeenUtc`.
+
+There is no request-tracking timestamp in Identity. `lastSeenUtc` is therefore
+the device session's `LastRotatedOnUtc` value (the last refresh-token rotation),
+not the time of the user's last API request. It is null if that session has
+never rotated its token.
+
+## Suspend, reactivate, and block
+
+`POST /api/v1/admin/users/{id}/suspend` and
+`POST /api/v1/admin/users/{id}/block` require `{ "reason": "..." }` and
+return the updated status plus the number of sessions revoked. Suspension and
+blocking revoke every active device session. `POST
+/api/v1/admin/users/{id}/reactivate` changes a suspended or blocked account to
+Active; no sessions are restored. Status notices are queued as best-effort
+in-app and email notifications after the identity mutation succeeds.
+
+The seeded SuperAdmin and the acting SuperAdmin cannot be suspended or blocked.
+The final active SuperAdmin cannot be blocked. Repeated or invalid transitions
+return the documented `Identity.Admin.*` conflict codes; unknown users return
+`Identity.User.NotFound`.
+
+## Session revocation
+
+`POST /api/v1/admin/users/{id}/sessions/revoke` returns 204 and revokes all
+active sessions. To revoke one session, send `{ "sessionId": "..." }`.
+Unknown users and sessions return `Identity.User.NotFound`.
+
+## Password reset, account type, and admin creation
+
+`POST /api/v1/admin/users/{id}/password-reset` returns a temporary password
+exactly once and revokes all active sessions. Treat the response as a secret;
+do not store or log it. The seeded SuperAdmin cannot be reset through this API.
+
+`PUT /api/v1/admin/users/{id}/account-type` accepts an `accountType` and an
+optional `reason` of up to 1000 characters. It accepts an account type of
+`SuperAdmin`, `SupportAdmin`, `ContentAdmin`, or `FinanceAdmin`. Only
+administrative-to-administrative changes are allowed. The seeded SuperAdmin
+cannot be changed, and demoting the final active SuperAdmin is rejected.
+
+`POST /api/v1/admin/users` accepts the existing registration fields
+(`arabicFullName`, `englishFullName`, `email`, `phoneNumber`, `password`, and
+`accountType`) and returns the existing registration response containing the
+user id and email/phone verification request ids. Only administrative account
+types are accepted. Verification codes are delivered through the existing
+email/SMS OTP flow; the new account stays `PendingVerification` and cannot be
+used as an administrator until the normal verification flow completes. Admins
+cannot force-verify the account.
+
+## Anonymization and audit
+
+`POST /api/v1/admin/users/{id}/anonymize` requires a non-empty `reason` and
+scrubs names, email, phone, and avatar data, blocks the account, and revokes
+active sessions while retaining account aggregates. The seeded SuperAdmin,
+the acting SuperAdmin, and the final active SuperAdmin are protected. Repeating
+anonymization returns `409 Identity.Admin.AlreadyAnonymized`.
+
+`GET /api/v1/admin/users/audit` returns a paged append-only admin-action feed.
+Filters: `actorUserId`, `targetUserId`, `action`, `fromUtc`, and `toUtc`.
+Sorting supports `Newest`, `Oldest`, and `Name`; Name sorts by the acting
+administrator's Arabic name then English name. Mutations record actor, target,
+action, optional reason, and UTC timestamp. Reads do not create audit entries.

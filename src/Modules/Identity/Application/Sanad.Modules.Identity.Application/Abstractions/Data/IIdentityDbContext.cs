@@ -20,6 +20,8 @@ public interface IIdentityDbContext
 
     DbSet<FeedbackEntity> Feedbacks { get; }
 
+    DbSet<AdminUserAction> AdminUserActions { get; }
+
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }

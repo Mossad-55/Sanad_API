@@ -47,4 +47,6 @@ public static class AuthorizationPolicies
     /// <summary>Chat support routes (endpoints 12–15): SuperAdmin +
     /// SupportAdmin, mirroring the elderly-ops operational policies.</summary>
     public const string ChatSupportAdmin = "ChatSupportAdmin";
+
+    public const string SuperAdminOnly = "SuperAdminOnly";
 }
