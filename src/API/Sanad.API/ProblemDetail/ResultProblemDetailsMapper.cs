@@ -323,6 +323,12 @@ public static class ResultProblemDetailsMapper
             , ["Cms.LibraryContent.InvalidOperation"] = 409
             , ["Cms.Library.InvalidCategory"] = 400
             , ["Cms.Library.CategoryInactive"] = 409
+            , ["Cms.LandingSection.NotFound"] = 404
+            , ["Cms.LandingSection.Invalid"] = 400
+            , ["Cms.Landing.InvalidType"] = 400
+            , ["Cms.LandingSection.Incomplete"] = 400
+            , ["Cms.LandingSection.PublishedHistory"] = 409
+            , ["Cms.Landing.ReorderInvalid"] = 400
             , ["Feedback.InvalidRating"] = 400
             , ["Community.PostNotFound"] = 404
             , ["Community.InvalidModerationOperation"] = 409

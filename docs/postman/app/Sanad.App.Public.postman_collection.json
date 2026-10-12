@@ -85,6 +85,42 @@
       ]
     },
     {
+      "name": "04. Landing",
+      "item": [
+        {
+          "name": "Get published landing sections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/landing/sections",
+            "description": "Anonymous. Returns published visible sections ordered by displayOrder, virtual stats key excluded. Empty list is 200 []."
+          }
+        },
+        {
+          "name": "Get landing stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/landing/stats",
+            "description": "Anonymous. Live counters computed per request: families (excluding soft-deleted), Active caregivers by type, Approved facilities."
+          }
+        },
+        {
+          "name": "Submit landing contact form (shared support flow)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"subject\": \"Landing enquiry\",\n  \"message\": \"I would like to know more about your services.\"\n}"},
+            "url": "{{baseUrl}}/api/v1/support/contact",
+            "description": "Authenticated app JWT. The landing contact-form section configures fields; submission enters the real shared support flow (no separate landing ticket table). Subject 3-150 chars, message 10-2000 chars. Success 200 with ticket receipt."
+          }
+        }
+      ]
+    },
+    {
       "name": "02. Public Lookups",
       "item": [
         {
