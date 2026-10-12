@@ -34,10 +34,13 @@ public sealed class AdminUserManagementTests
         User arabic = AddUser(contexts.Identity, AccountType.Family, "أحمد", "Zed", "ahmed@example.test", "+201000000001", UserStatus.Active);
         User english = AddUser(contexts.Identity, AccountType.SuperAdmin, "يوسف", "Adam", "admin@example.test", "+201000000002", UserStatus.Active);
         User pending = AddUser(contexts.Identity, AccountType.CareHomeOwner, "أحمد", "Adam", "owner@example.test", "+201000000003", UserStatus.PendingVerification);
+        CareHomeFacility ownerFacility = CareHomeFacility.CreateDraft(pending.Id, Now);
+        contexts.CareHomes.Facilities.Add(ownerFacility);
         DeviceSession active = AddSession(contexts.Identity, english.Id, Now.AddDays(-2), Now.AddDays(1), Now.AddHours(-1));
         AddSession(contexts.Identity, english.Id, Now.AddDays(-3), Now.AddDays(1), null, revoked: true);
         AddSession(contexts.Identity, arabic.Id, Now.AddDays(-3), Now.AddDays(-1), null);
         await contexts.Identity.SaveChangesAsync();
+        await contexts.CareHomes.SaveChangesAsync();
 
         var listHandler = new AdminUserListQueryHandler(contexts.Identity);
         AdminUserListResponse namePage = (await listHandler.Handle(new(null, null, null, "Name", 1, 100), default)).Value;
@@ -59,7 +62,10 @@ public sealed class AdminUserManagementTests
         Assert.Equal(new[] { active.Id.Value }, detail.Sessions.Select(x => x.DeviceId));
         Assert.Equal(Now.AddHours(-1), detail.Sessions[0].LastSeenUtc);
         Assert.Null(detail.Linked.FacilityId);
-        Assert.False((await detailHandler.Handle(new(pending.Id), default)).Value.IsVerified);
+        AdminUserDetailResponse ownerDetail = (await detailHandler.Handle(new(pending.Id), default)).Value;
+        Assert.False(ownerDetail.IsVerified);
+        Assert.Equal(ownerFacility.Id.Value, ownerDetail.Linked.FacilityId);
+        Assert.Equal(CareHomeStatus.Draft.ToString(), ownerDetail.Linked.FacilityStatus);
         Assert.Equal(AdminUserErrors.NotFound.Code, (await detailHandler.Handle(new(UserId.New()), default)).Error.Code);
 
         var overviewHandler = new AdminSessionOverviewQueryHandler(contexts.Identity, new FixedClock(Now));
@@ -68,6 +74,7 @@ public sealed class AdminUserManagementTests
         Assert.Equal(active.Id.Value, overview.Items[0].Session.DeviceId);
         AdminSessionOverviewResponse nameOrderedOverview = (await overviewHandler.Handle(new(null, null, "Name", 1, 20), default)).Value;
         Assert.Equal(active.Id.Value, nameOrderedOverview.Items[0].Session.DeviceId);
+        Assert.Equal(new[] { AccountType.SuperAdmin }, nameOrderedOverview.Items[0].AccountTypes);
 
         Assert.True(AdminQueryParsing.TryPage(0, 101, out int normalizedPage, out int normalizedSize));
         Assert.Equal(1, normalizedPage);

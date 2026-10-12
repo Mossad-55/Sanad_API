@@ -26,7 +26,7 @@
 - Postman collection JSON parse — passed; exactly 3 requests added.
 - `docs/internal/tools/Verify-ApiContractMapping.ps1` — Postman: 522 controller signatures, 582 requests, 0 missing, 0 orphan. Existing Bruno census: 115 missing and 0 orphan; no Bruno files are in this phase's owned manifest.
 - `git diff --check` — clean.
-- Live API: pinned module connections to `localhost:5432/SanadBrunoTestDb`; Development; startup migrations and seeders disabled; existing SuperAdmin login 200; list 200; detail 200; sessions overview 200. Five temporary sessions created by verification retries were found by the verification device name and revoked with 204. API process stopped; port 5235 verified free.
+- Live API: pinned module connections to `localhost:5432/SanadBrunoTestDb`; Development; startup migrations and seeders disabled; existing SuperAdmin login 200; list 200; detail 200; sessions overview 200. Five temporary sessions from initial verification attempts and one from the final rerun were found by the verification device name and revoked with 204. API process stopped; port 5235 verified free.
 
 ## Notes and limitations
 

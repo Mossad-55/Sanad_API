@@ -211,7 +211,8 @@ public sealed class AdminUserDetailQueryHandler(IIdentityDbContext db, ICareHome
     public async Task<Result<AdminUserDetailResponse>> Handle(AdminUserDetailQuery request, CancellationToken ct)
     {
         if (request.UserId == UserId.Empty) return AdminUserErrors.NotFound;
-        User? user = await db.Users.AsNoTracking().SingleOrDefaultAsync(x => x.Id == request.UserId, ct);
+        User? user = await db.Users.AsNoTracking().Include(x => x.Accounts)
+            .SingleOrDefaultAsync(x => x.Id == request.UserId, ct);
         if (user is null) return AdminUserErrors.NotFound;
         DateTime now = clock.UtcNow;
         List<AdminSessionItem> sessions = await db.DeviceSessions.AsNoTracking()
@@ -243,7 +244,8 @@ public sealed class AdminSessionOverviewQueryHandler(IIdentityDbContext db, IDat
             return AdminUserErrors.InvalidQuery;
         DateTime now = clock.UtcNow;
         Guid? userId = string.IsNullOrWhiteSpace(request.UserId) ? null : Guid.Parse(request.UserId);
-        IQueryable<User> users = db.Users.AsNoTracking().Where(user => user.Accounts.Any(a => AdminTypes.Contains(a.AccountType)));
+        IQueryable<User> users = db.Users.AsNoTracking().Include(user => user.Accounts)
+            .Where(user => user.Accounts.Any(a => AdminTypes.Contains(a.AccountType)));
         if (accountType is not null) users = users.Where(user => user.Accounts.Any(a => a.AccountType == accountType));
         if (userId is not null) users = users.Where(user => user.Id == new UserId(userId.Value));
         IQueryable<DeviceSession> sessions = db.DeviceSessions.AsNoTracking().Where(session => session.RevokedOnUtc == null && session.ExpiresOnUtc > now && users.Select(user => user.Id).Contains(session.UserId));
