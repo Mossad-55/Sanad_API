@@ -54,7 +54,7 @@ List supports: `search` (name/email/phone, case-insensitive), `accountType`, `st
 ### 2.1 Detail shape (Amendment A, 2026-10-12 — resolves "linked aggregates" gap)
 
 `AdminUserDetail`: id, arabic/english names, email, phone, status, accountTypes[],
-createdOnUtc, verifiedOnUtc (null until verified), sessions[] (same item shape as
+createdOnUtc, isVerified, sessions[] (same item shape as
 #15: deviceId, deviceName, platform, appVersion, createdOnUtc, expiresOnUtc,
 lastSeenUtc), `linked` object: for CareHomeOwner — `{ facilityId, facilityStatus }`
 resolved through one small API-layer `ICareHomeOwnerFacilityLookup` port over
@@ -68,6 +68,10 @@ cross-module joins are introduced in v1).
 - There is no request-tracking infrastructure, so `lastSeenUtc` is defined as the
   session's `LastRotatedOnUtc` (last token rotation), documented as such in the
   operator guide. Adding true last-request tracking is explicitly out of scope.
+- There is no verification timestamp on `User` (only status/booleans, and OTP
+  timestamps don't cover seeded or bypass paths), so the detail carries
+  `isVerified` (true unless `PendingVerification`) instead of a fabricated
+  `verifiedOnUtc`. Backfilling timestamps would invent history — forbidden.
 
 ## 3. Business rules and full case matrix
 
