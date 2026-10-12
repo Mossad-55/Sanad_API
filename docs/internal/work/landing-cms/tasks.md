@@ -4,10 +4,11 @@ Statuses: Not started, In progress, Blocked, Done. Contract in `plan.md` is
 frozen; changing it needs a new explicit owner decision. File manifests are
 exclusive (plan §4).
 
-- [ ] Not started — **Phase 0.** Branch `opencode/landing-cms` from latest `main`; verify clean base.
-- [ ] Not started — **Phase 1. Section registry + public reads + stats.**
-  Owns: domain entity + typed ids, `LandingController` (1–3), stats aggregation,
-  tests, docs + Postman deltas.
+- [x] Done — **Phase 0.** Branch `opencode/landing-cms` from latest `main`; verify clean base.
+- [x] Done — **Phase 1. Section registry + public reads + stats.**
+  Owns: domain entity + typed ids, `LandingController` (1+3; preview deferred
+  to Phase 2 by owner decision), stats aggregation, tests, docs + Postman
+  deltas. Report: `reports/phase-1-reads.md`.
 - [ ] Not started — **Phase 2. Admin CRUD + lifecycle + media (+migration).**
   Owns: admin handlers (4–11), `AdminLandingController`, config + additive
   migration (authored only), upload handling, tests, docs + Postman.
