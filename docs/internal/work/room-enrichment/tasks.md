@@ -52,3 +52,25 @@ as blocked (never force-merged). Workers never merge or push.
 - [x] phase-1-types — report: `docs/internal/work/room-enrichment/reports/phase-1-types.md`
 - [x] phase-2-rooms — report: `docs/internal/work/room-enrichment/reports/phase-2-rooms.md`
 - [x] phase-3-guides-gates — report: `docs/internal/work/room-enrichment/reports/phase-3-guides-gates.md`
+
+## Gapfix slice (`opencode/room-enrichment-gapfix`, base `4e7f956`, from `88a4777`)
+
+- [x] gapfix-cosmetic-evidence — Phase 1 report corrected (Bruno baseline 135,
+  refresh 400-logout vs 401-SessionRevoked paths); HC-023 undescribed Postman
+  requests left untouched. Report: `reports/gapfix-cosmetic-evidence.md`.
+- [x] gapfix-manifest-hygiene — 7 supporting files + 3 fakes verified;
+  BookingCommands checkout gate (lines 54–56) found non-mechanical and
+  STOPPED for owner decision (3c), not fixed. Report:
+  `reports/gapfix-manifest-hygiene.md`.
+- [x] gapfix-decision-requests — drafts for all six gap items authored.
+  Report: `reports/gapfix-decision-requests.md`.
+- [ ] **Blocked** — cover serving route (3a): needs explicit owner order
+  approving the draft discovery-scoped file route(s) (frozen decision 5).
+- [ ] **Blocked** — webp acceptance (3b): needs owner ruling on truth
+  (plan jpeg/png/webp vs code jpeg/png).
+- [ ] **Blocked** — gate point (3c): needs owner ruling on truth
+  (plan publish-transition vs code hold-creation at BookingCommands:54–56).
+- [ ] **Blocked** — Bruno +4 manifests (3d): waiver A stands; needs explicit
+  waiver lift + disposable fixture approval before any authoring.
+- [ ] **Blocked** — HC-013 processor fixes (3e): out of slice; needs a
+  separate owner-ordered slice.
