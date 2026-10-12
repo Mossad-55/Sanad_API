@@ -39,7 +39,7 @@ Prove ignore-status before every release: `git check-ignore -v .env deploy/publi
 1. Confirm the startup log shows each context's pending/applied counts (9 contexts) and the listen URL.
 2. Run the verifier from the build machine:
    ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\tools\Verify-SanadDeployment.ps1 `
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Verify-SanadDeployment.ps1 `
      -ManifestPath .\deploy\publish-out\sanad-deployment-manifest.json `
      -BaseUrl https://your-authorized-host `
      -ExpectedRevision <pushed-sha>

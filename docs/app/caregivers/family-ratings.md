@@ -30,7 +30,7 @@ legacy rating ownership returns 409. Repeated edits are safe and no booking or
 The caregiver summary (`averageRating`, `reviewsCount`) is recalculated from
 stored ratings on each write. SMS is not used. The Care homes rating endpoint
 and ranking remain separate and are tracked in the
-[Care homes task checklist](../../operations/care-homes/Care_Homes_Tasks.md).
+[Care homes task checklist](../../internal/operations/care-homes/Care_Homes_Tasks.md).
 
 Runnable Bruno coverage: `tests/Bruno/collections/Sanad/caregiver-ratings`,
 using only the guarded Development fixture database. The Postman requests are

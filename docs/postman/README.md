@@ -24,4 +24,4 @@ only through the guarded Bruno flow on disposable targets.
   `4xx` examples document the stable error codes from the feature guides.
 - Never commit real credentials, tokens, or `local-fixtures.bru` (git-ignored,
   generated per run). Bodies under `multipartForm` follow the Bruno rule in
-  `docs/operations/bruno-failure-first.md`.
+  `docs/internal/operations/bruno-failure-first.md`.

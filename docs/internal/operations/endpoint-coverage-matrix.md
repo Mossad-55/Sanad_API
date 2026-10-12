@@ -37,7 +37,7 @@ Latest two-way checker result (2026-10-08): 418 controller route-method signatur
 
 ## Care Homes audience collections
 
-Care Homes requests are separated by their server authorization boundary: [Facility Owner](../postman/care-homes/Sanad.CareHomes.Owner.postman_collection.json), [Family app](../postman/app/Sanad.App.Family.CareHomes.postman_collection.json), and [Admin Care Homes](../postman/admins/Sanad.Admin.CareHomes.postman_collection.json). Public discovery GETs are included in the Family collection and explicitly disable authentication. The prior combined collection is an empty index. Static mapping confirms all 418 controller route-method signatures have Postman mappings with no orphan requests.
+Care Homes requests are separated by their server authorization boundary: [Facility Owner](../../postman/care-homes/Sanad.CareHomes.Owner.postman_collection.json), [Family app](../../postman/app/Sanad.App.Family.CareHomes.postman_collection.json), and [Admin Care Homes](../../postman/admins/Sanad.Admin.CareHomes.postman_collection.json). Public discovery GETs are included in the Family collection and explicitly disable authentication. The prior combined collection is an empty index. Static mapping confirms all 418 controller route-method signatures have Postman mappings with no orphan requests.
 
 The 11 current Bruno mapping gaps are Care Homes requests: three payout routes; three owner profile-media routes; Admin and public profile-media reads; the paid extension route; and both Family rating routes. This records file coverage only and does not claim those routes were runtime-tested.
 

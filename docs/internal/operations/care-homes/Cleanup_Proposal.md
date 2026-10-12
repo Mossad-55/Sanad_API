@@ -157,6 +157,6 @@ Before removal, each exact file was rechecked as an unchanged generated draft or
 
 ## Historical Batch B comparison and retained exclusions
 
-The 21-file historical list in [migration evidence](../slices/documentation/Documentation_Migration_Tasks.md) was reconciled before deletion. The 16 unchanged legacy sources in the confirmed manifest were removed; current audits, coverage evidence, and the modified fixture helper were retained. No private source contents were republished.
+The 21-file historical list in [migration evidence](../../slices/documentation/Documentation_Migration_Tasks.md) was reconciled before deletion. The 16 unchanged legacy sources in the confirmed manifest were removed; current audits, coverage evidence, and the modified fixture helper were retained. No private source contents were republished.
 
 UI screenshots, tests, Bruno/Postman collections, protected fixtures, existing API/reference documentation, deployment/configuration files, docs/tools and the root AGENTS.md discovery pointer are excluded from cleanup.

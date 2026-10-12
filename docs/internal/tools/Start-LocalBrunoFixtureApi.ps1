@@ -8,7 +8,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$repoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
 $apiProject = Join-Path $repoRoot 'src/API/Sanad.API/Sanad.API.csproj'
 $localEnvironment = Join-Path $repoRoot 'tests/Bruno/environments/local.bru'
 $fixtureEnvironment = Join-Path $repoRoot 'tests/Bruno/environments/local-fixtures.bru'

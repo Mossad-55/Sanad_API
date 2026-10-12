@@ -1,7 +1,7 @@
 # Sanad API instructions
 
-Read and follow [docs/governance/AGENTS.md](docs/governance/AGENTS.md) for all work in this repository.
+Read and follow [docs/internal/governance/AGENTS.md](docs/internal/governance/AGENTS.md) for all work in this repository.
 
-Start with [docs/Mastermind_Handoff.md](docs/Mastermind_Handoff.md), then its active slice. The project index is [docs/Project_Main_Goal.md](docs/Project_Main_Goal.md).
+Start with [docs/internal/Mastermind_Handoff.md](docs/internal/Mastermind_Handoff.md), then its active slice. The project index is [docs/internal/Project_Main_Goal.md](docs/internal/Project_Main_Goal.md).
 
 This root file is the repository-wide entry point. Substantive handoff, task-management, and workflow content lives under docs/.

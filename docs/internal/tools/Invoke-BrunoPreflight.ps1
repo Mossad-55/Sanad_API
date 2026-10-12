@@ -52,7 +52,7 @@ function Assert-NoReparsePointBetween([string]$Path, [string]$Root) {
     throw "Request path is not rooted beneath tests/Bruno/collections: $Path"
 }
 
-$scriptRoot = Resolve-FullPath (Join-Path $PSScriptRoot '../..')
+$scriptRoot = Resolve-FullPath (Join-Path $PSScriptRoot '../../..')
 $expectedRoot = Resolve-FullPath $ExpectedWorktreeRoot
 if (-not $scriptRoot.Equals($expectedRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
     throw "ExpectedWorktreeRoot does not match this script's worktree root."
