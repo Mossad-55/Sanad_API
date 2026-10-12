@@ -6,15 +6,15 @@ owner decision. File manifests are exclusive (see plan §7).
 
 ## Order (dependency-ordered, commit per phase locally, no push/merge/deploy)
 
-- [ ] Not started — **Phase 0.** Branch `opencode/admin-users` from latest `main`; verify clean base.
+- [x] Done — **Phase 0.** Branch `opencode/admin-users` from latest `main`; clean base verified at `b0ac0d0`.
   Owns: new branch only.
 
-- [ ] Not started — **Phase 1. List/detail/sessions + SuperAdminOnly policy.**
+- [x] Done — **Phase 1. List/detail/sessions + SuperAdminOnly policy.** Commit `c7cfd48`; report: `reports/phase-1-list.md`.
   Owns: policy const + DI, `AdminUsersController` (endpoints 1–2, 15), list/detail/sessions
   handlers + validators, `ICareHomeOwnerFacilityLookup` port + API impl (plan §2.1),
   tests, docs + Postman deltas.
 
-- [ ] Not started — **Phase 2. Suspend/reactivate/block + session revocation + notices.**
+- [ ] In progress — **Phase 2. Suspend/reactivate/block + session revocation + notices.**
   Owns: status handlers reusing domain transitions, revoke-all wiring, status-change
   notice enqueue, tests (incl. self/seeded/last-superadmin cases), docs + Postman deltas.
 

@@ -472,9 +472,11 @@ public sealed class User : AggregateRoot<UserId>
         string reason,
         DateTime utcNow)
     {
-        EnsureStatus(
-            UserStatus.Active,
-            "Only an Active User can be suspended.");
+        if (Status == UserStatus.Blocked)
+        {
+            throw new DomainException(
+                "Blocked User cannot be suspended.");
+        }
 
         ValidateUtc(utcNow);
 
@@ -533,9 +535,11 @@ public sealed class User : AggregateRoot<UserId>
     public void Reactivate(
         DateTime utcNow)
     {
-        EnsureStatus(
-            UserStatus.Suspended,
-            "Only a Suspended User can be reactivated.");
+        if (Status is not UserStatus.Suspended and not UserStatus.Blocked)
+        {
+            throw new DomainException(
+                "Only a Suspended or Blocked User can be reactivated.");
+        }
 
         ValidateUtc(utcNow);
         ValidateActivationReadiness();

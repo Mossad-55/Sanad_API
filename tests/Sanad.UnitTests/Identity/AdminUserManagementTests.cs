@@ -11,6 +11,7 @@ using Sanad.API.CareHomesIntegration;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Application.Users.Admin;
@@ -98,6 +99,109 @@ public sealed class AdminUserManagementTests
         Assert.Equal(CareHomeStatus.Draft.ToString(), result.FacilityStatus);
     }
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Suspend_RevokesSessionsAndPublishesNotice(bool sqlite)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.SuperAdmin, "مدير", "Admin", "admin@example.test", "+201000000011", UserStatus.Active);
+        User target = AddUser(contexts.Identity, AccountType.Family, "مستخدم", "User", "user@example.test", "+201000000012", UserStatus.Active);
+        DeviceSession session = AddSession(contexts.Identity, target.Id, Now, Now.AddDays(1), null);
+        await contexts.Identity.SaveChangesAsync();
+        var notices = new RecordingNoticePublisher();
+
+        var handler = new SuspendAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), notices);
+        Result<AdminUserStatusResponse> result = await handler.Handle(new(actor.Id, target.Id, "Security review"), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(UserStatus.Suspended, target.Status);
+        Assert.Equal(1, result.Value.RevokedSessionCount);
+        Assert.Equal(Now, session.RevokedOnUtc);
+        Assert.Single(notices.Items);
+        Assert.Equal(UserStatus.Suspended, notices.Items[0].Status);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task StatusCommands_EnforceSelfSeededAndLastSuperAdminGuards(bool sqlite)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.Family, "مدير", "Admin", "admin@example.test", "+201000000013", UserStatus.Active);
+        User operatorUser = AddUser(contexts.Identity, AccountType.SuperAdmin, "مشغل", "Operator", "operator@example.test", "+201000000014", UserStatus.Active);
+        User seeded = AddUser(contexts.Identity, AccountType.Family, "أساسي", "Seeded", "seed@example.test", "+201000000015", UserStatus.Active);
+        await contexts.Identity.SaveChangesAsync();
+        var notices = new RecordingNoticePublisher();
+        var block = new BlockAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new EmailSeedProtection("seed@example.test"), notices);
+
+        Assert.Equal(AdminUserErrors.SelfAction.Code, (await block.Handle(new(operatorUser.Id, operatorUser.Id, "self"), default)).Error.Code);
+        Assert.Equal(AdminUserErrors.SeededProtected.Code, (await block.Handle(new(actor.Id, seeded.Id, "seed"), default)).Error.Code);
+        Assert.Equal(AdminUserErrors.LastSuperAdmin.Code, (await block.Handle(new(actor.Id, operatorUser.Id, "last"), default)).Error.Code);
+        Assert.Equal(AdminUserErrors.SeededProtected.Code, (await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new EmailSeedProtection("seed@example.test"), notices).Handle(new(actor.Id, seeded.Id), default)).Error.Code);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task ReactivateAndRevokeSessionCommands_UseFrozenContract(bool sqlite)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.SuperAdmin, "مدير", "Admin", "admin2@example.test", "+201000000016", UserStatus.Active);
+        User target = AddUser(contexts.Identity, AccountType.Family, "مستخدم", "User", "user2@example.test", "+201000000017", UserStatus.Active);
+        target.Suspend("Temporary", Now);
+        DeviceSession session = AddSession(contexts.Identity, target.Id, Now, Now.AddDays(1), null);
+        await contexts.Identity.SaveChangesAsync();
+        var notices = new RecordingNoticePublisher();
+
+        Result<AdminUserStatusResponse> reactivated = await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(1)), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id), default);
+        Assert.Equal(UserStatus.Active, reactivated.Value.Status);
+        Assert.Contains(notices.Items, notice => notice.Status == UserStatus.Active);
+        Assert.Equal(AdminUserErrors.NotSuspended.Code, (await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(1)), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id), default)).Error.Code);
+
+        var revokeHandler = new RevokeAdminUserSessionsCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(2)));
+        Result invalidSpecificSession = await revokeHandler.Handle(new(target.Id, new DeviceSessionId(Guid.Empty)), default);
+        Assert.Equal(AdminUserErrors.NotFound.Code, invalidSpecificSession.Error.Code);
+        Assert.Null(session.RevokedOnUtc);
+
+        Result revoke = await revokeHandler.Handle(new(target.Id, session.Id), default);
+        Assert.True(revoke.IsSuccess);
+        Assert.NotNull(session.RevokedOnUtc);
+
+        DeviceSession secondSession = AddSession(contexts.Identity, target.Id, Now, Now.AddDays(1), null);
+        await contexts.Identity.SaveChangesAsync();
+        Result revokeAll = await new RevokeAdminUserSessionsCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(3))).Handle(new(target.Id, null), default);
+        Assert.True(revokeAll.IsSuccess);
+        Assert.NotNull(secondSession.RevokedOnUtc);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Block_RevokesSessionsAndPublishesNotice_AndRepeatedTransitionsConflict(bool sqlite)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.SuperAdmin, "مدير", "Admin", "admin3@example.test", "+201000000018", UserStatus.Active);
+        User target = AddUser(contexts.Identity, AccountType.Family, "مستخدم", "User", "user3@example.test", "+201000000019", UserStatus.Active);
+        DeviceSession session = AddSession(contexts.Identity, target.Id, Now, Now.AddDays(1), null);
+        await contexts.Identity.SaveChangesAsync();
+        var notices = new RecordingNoticePublisher();
+        var handler = new BlockAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), notices);
+
+        Result<AdminUserStatusResponse> result = await handler.Handle(new(actor.Id, target.Id, "Security incident"), default);
+        Assert.True(result.IsSuccess);
+        Assert.Equal(UserStatus.Blocked, result.Value.Status);
+        Assert.Equal(1, result.Value.RevokedSessionCount);
+        Assert.NotNull(session.RevokedOnUtc);
+        Assert.Contains(notices.Items, notice => notice.Status == UserStatus.Blocked);
+        Assert.Equal(AdminUserErrors.AlreadyBlocked.Code, (await handler.Handle(new(actor.Id, target.Id, "Repeated"), default)).Error.Code);
+
+        User suspended = AddUser(contexts.Identity, AccountType.Family, "موقوف", "Suspended", "suspended@example.test", "+201000000020", UserStatus.Active);
+        suspended.Suspend("Existing suspension", Now);
+        await contexts.Identity.SaveChangesAsync();
+        Assert.Equal(AdminUserErrors.AlreadySuspended.Code, (await new SuspendAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), notices).Handle(new(actor.Id, suspended.Id, "Repeated"), default)).Error.Code);
+    }
+
     [Fact]
     public async Task SuperAdminOnly_RequiresNormalAccessAndSuperAdminAccount()
     {
@@ -140,6 +244,26 @@ public sealed class AdminUserManagementTests
             session.Revoke("test", Now);
         db.DeviceSessions.Add(session);
         return session;
+    }
+
+    private sealed class NeverSeededProtection : IAdminUserSeedProtection
+    {
+        public bool IsSeeded(User user) => false;
+    }
+
+    private sealed class EmailSeedProtection(string email) : IAdminUserSeedProtection
+    {
+        public bool IsSeeded(User user) => string.Equals(user.Email?.Value, email, StringComparison.OrdinalIgnoreCase);
+    }
+
+    private sealed class RecordingNoticePublisher : IAdminUserStatusNoticePublisher
+    {
+        public List<AdminUserStatusNotice> Items { get; } = [];
+        public Task PublishAsync(AdminUserStatusNotice notice, CancellationToken cancellationToken)
+        {
+            Items.Add(notice);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class FixedClock(DateTime utcNow) : IDateTimeProvider

@@ -11,7 +11,7 @@ using Sanad.Modules.Identity.Domain.Users;
 
 namespace Sanad.Modules.Identity.Application.Users.Admin;
 
-public static class AdminUserErrors
+public static partial class AdminUserErrors
 {
     public static Error InvalidQuery => new("Identity.Admin.InvalidQuery", "The admin user query is invalid.");
     public static Error NotFound => new("Identity.User.NotFound", "The user was not found.");

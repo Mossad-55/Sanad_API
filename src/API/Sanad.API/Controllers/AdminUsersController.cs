@@ -6,6 +6,7 @@ using Sanad.API.Controllers.Requests;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Application.Users.Admin;
 
 namespace Sanad.API.Controllers;
@@ -25,6 +26,25 @@ public sealed class AdminUsersController(ISender sender) : ApiControllerBase
     [HttpGet("sessions")]
     public Task<IActionResult> Sessions([FromQuery] AdminUserSessionsRequest request, CancellationToken ct) =>
         SendQuery(new AdminSessionOverviewQuery(request.AccountType, request.UserId, request.Sort, request.Page, request.PageSize), ct);
+
+    [HttpPost("{userId:guid}/suspend")]
+    public Task<IActionResult> Suspend(Guid userId, AdminUserStatusRequest request, CancellationToken ct) =>
+        SendStatus(new SuspendAdminUserCommand(CurrentUserId(), new UserId(userId), request.Reason ?? string.Empty), ct);
+
+    [HttpPost("{userId:guid}/reactivate")]
+    public Task<IActionResult> Reactivate(Guid userId, CancellationToken ct) =>
+        SendStatus(new ReactivateAdminUserCommand(CurrentUserId(), new UserId(userId)), ct);
+
+    [HttpPost("{userId:guid}/block")]
+    public Task<IActionResult> Block(Guid userId, AdminUserStatusRequest request, CancellationToken ct) =>
+        SendStatus(new BlockAdminUserCommand(CurrentUserId(), new UserId(userId), request.Reason ?? string.Empty), ct);
+
+    [HttpPost("{userId:guid}/sessions/revoke")]
+    public async Task<IActionResult> RevokeSessions(Guid userId, AdminUserSessionRevokeRequest? request, CancellationToken ct)
+    {
+        Result result = await sender.Send(new RevokeAdminUserSessionsCommand(new UserId(userId), request?.SessionId is Guid sessionId ? new DeviceSessionId(sessionId) : null), ct);
+        return ToCommandResult(result);
+    }
 
     private async Task<IActionResult> SendQuery<T>(IQuery<T> query, CancellationToken ct)
     {
@@ -53,4 +73,25 @@ public sealed class AdminUsersController(ISender sender) : ApiControllerBase
 
     private IActionResult NotFoundProblem(string code) =>
         StatusCode(StatusCodes.Status404NotFound, new ProblemDetails { Status = 404, Title = "Not Found", Detail = "The user was not found.", Extensions = { ["code"] = code, ["traceId"] = HttpContext.TraceIdentifier } });
+
+    private async Task<IActionResult> SendStatus<T>(ICommand<T> command, CancellationToken ct)
+    {
+        Result<T> result = await sender.Send(command, ct);
+        return result.IsSuccess ? Ok(result.Value) : ToCommandResult(result);
+    }
+
+    private IActionResult ToCommandResult(Result result)
+    {
+        if (result.IsSuccess) return NoContent();
+        int status = result.Error.Code switch
+        {
+            "Identity.User.NotFound" => 404,
+            "Identity.Admin.SeededProtected" or "Identity.Admin.SelfAction" => 403,
+            "Identity.Admin.AlreadySuspended" or "Identity.Admin.NotSuspended" or "Identity.Admin.AlreadyBlocked" or "Identity.Admin.LastSuperAdmin" => 409,
+            _ => 400
+        };
+        return StatusCode(status, new ProblemDetails { Status = status, Title = status == 404 ? "Not Found" : status == 403 ? "Forbidden" : status == 409 ? "Conflict" : "Bad Request", Extensions = { ["code"] = result.Error.Code, ["traceId"] = HttpContext.TraceIdentifier } });
+    }
+
+    private UserId CurrentUserId() => TryGetAuthenticatedUserId(out UserId userId) ? userId : UserId.Empty;
 }

@@ -43,3 +43,24 @@ There is no request-tracking timestamp in Identity. `lastSeenUtc` is therefore
 the device session's `LastRotatedOnUtc` value (the last refresh-token rotation),
 not the time of the user's last API request. It is null if that session has
 never rotated its token.
+
+## Suspend, reactivate, and block
+
+`POST /api/v1/admin/users/{id}/suspend` and
+`POST /api/v1/admin/users/{id}/block` require `{ "reason": "..." }` and
+return the updated status plus the number of sessions revoked. Suspension and
+blocking revoke every active device session. `POST
+/api/v1/admin/users/{id}/reactivate` changes a suspended or blocked account to
+Active; no sessions are restored. Status notices are queued as best-effort
+in-app and email notifications after the identity mutation succeeds.
+
+The seeded SuperAdmin and the acting SuperAdmin cannot be suspended or blocked.
+The final active SuperAdmin cannot be blocked. Repeated or invalid transitions
+return the documented `Identity.Admin.*` conflict codes; unknown users return
+`Identity.User.NotFound`.
+
+## Session revocation
+
+`POST /api/v1/admin/users/{id}/sessions/revoke` returns 204 and revokes all
+active sessions. To revoke one session, send `{ "sessionId": "..." }`.
+Unknown users and sessions return `Identity.User.NotFound`.

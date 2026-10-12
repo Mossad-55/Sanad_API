@@ -170,8 +170,19 @@
         }
       ]
     },
-    {
-      "name": "01. Auth",
+      {
+        "name": "00.1. SuperAdmin User Management (status and sessions)",
+        "description": "Phase 2 mutations. Use a disposable target only; suspend/block/revoke change state. Status requests require a reason.",
+        "item": [
+          { "name": "Suspend user", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Operator action\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/suspend" } },
+          { "name": "Reactivate user", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/reactivate" } },
+          { "name": "Block user", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Operator action\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/block" } },
+          { "name": "Revoke all sessions", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/sessions/revoke" } },
+          { "name": "Revoke one session", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"sessionId\": \"REPLACE_WITH_SESSION_ID\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/sessions/revoke" } }
+        ]
+      },
+      {
+        "name": "01. Auth",
       "item": [
         {
           "name": "Login Super Admin",
