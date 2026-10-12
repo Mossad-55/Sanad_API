@@ -31,6 +31,7 @@ public sealed class LandingSection : AggregateRoot<LandingSectionId>
         string? imagePath,
         int displayOrder,
         bool isVisible,
+        LandingSectionId? sourceId,
         DateTime createdOnUtc)
         : base(id)
     {
@@ -52,6 +53,7 @@ public sealed class LandingSection : AggregateRoot<LandingSectionId>
         ImagePath = NormalizeOptionalText(imagePath, nameof(imagePath), MaximumImagePathLength);
         DisplayOrder = displayOrder;
         IsVisible = isVisible;
+        SourceId = sourceId;
         Status = LandingSectionStatus.Draft;
         CreatedOnUtc = createdOnUtc;
         UpdatedOnUtc = createdOnUtc;
@@ -66,6 +68,7 @@ public sealed class LandingSection : AggregateRoot<LandingSectionId>
     public string? ImagePath { get; private set; }
     public int DisplayOrder { get; private set; }
     public bool IsVisible { get; private set; }
+    public LandingSectionId? SourceId { get; private set; }
     public LandingSectionStatus Status { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
@@ -81,6 +84,7 @@ public sealed class LandingSection : AggregateRoot<LandingSectionId>
         string? imagePath = null,
         int displayOrder = 0,
         bool isVisible = true,
+        LandingSectionId? sourceId = null,
         DateTime? createdOnUtc = null) =>
         new(
             LandingSectionId.New(),
@@ -93,12 +97,16 @@ public sealed class LandingSection : AggregateRoot<LandingSectionId>
             imagePath,
             displayOrder,
             isVisible,
+            sourceId,
             createdOnUtc ?? DateTime.UtcNow);
 
     public void Publish()
     {
         if (Status == LandingSectionStatus.Published)
             return;
+
+        if (Status == LandingSectionStatus.Archived)
+            throw new DomainException("Archived landing sections cannot be published.");
 
         if (string.IsNullOrWhiteSpace(ArabicTitle) || string.IsNullOrWhiteSpace(EnglishTitle))
             throw new DomainException("Publishing a landing section requires Arabic and English titles.");
@@ -113,7 +121,45 @@ public sealed class LandingSection : AggregateRoot<LandingSectionId>
         if (Status == LandingSectionStatus.Draft)
             return;
 
+        if (Status == LandingSectionStatus.Archived)
+            throw new DomainException("Archived landing sections cannot be unpublished.");
+
         Status = LandingSectionStatus.Draft;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void Archive()
+    {
+        if (Status == LandingSectionStatus.Archived)
+            return;
+
+        Status = LandingSectionStatus.Archived;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void UpdateDraft(
+        string? arabicTitle,
+        string? englishTitle,
+        string? arabicBody,
+        string? englishBody,
+        string? contentJson,
+        string? imagePath,
+        int displayOrder,
+        bool isVisible)
+    {
+        if (Status != LandingSectionStatus.Draft)
+            throw new DomainException("Only draft landing sections can be modified.");
+        if (displayOrder < 0)
+            throw new DomainException("Display order cannot be negative.");
+
+        ArabicTitle = NormalizeOptionalText(arabicTitle, nameof(arabicTitle), MaximumTitleLength);
+        EnglishTitle = NormalizeOptionalText(englishTitle, nameof(englishTitle), MaximumTitleLength);
+        ArabicBody = NormalizeOptionalText(arabicBody, nameof(arabicBody), MaximumBodyLength);
+        EnglishBody = NormalizeOptionalText(englishBody, nameof(englishBody), MaximumBodyLength);
+        ContentJson = NormalizeOptionalText(contentJson, nameof(contentJson), MaximumContentJsonLength);
+        ImagePath = NormalizeOptionalText(imagePath, nameof(imagePath), MaximumImagePathLength);
+        DisplayOrder = displayOrder;
+        IsVisible = isVisible;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 

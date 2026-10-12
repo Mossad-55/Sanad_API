@@ -32,4 +32,22 @@ internal static class LandingSectionMappings
             string.IsNullOrWhiteSpace(section.ContentJson) ? null : section.ContentJson,
             string.IsNullOrWhiteSpace(section.ImagePath) ? null : section.ImagePath,
             section.DisplayOrder);
+
+    public static LandingAdminSectionResponse ToAdminResponse(this LandingSection section) =>
+        new(
+            section.Id.Value,
+            section.Type.ToTypeKey(),
+            section.Status.ToString(),
+            section.ArabicTitle,
+            section.EnglishTitle,
+            string.IsNullOrWhiteSpace(section.ArabicBody) ? null : section.ArabicBody,
+            string.IsNullOrWhiteSpace(section.EnglishBody) ? null : section.EnglishBody,
+            string.IsNullOrWhiteSpace(section.ContentJson) ? null : section.ContentJson,
+            string.IsNullOrWhiteSpace(section.ImagePath) ? null : section.ImagePath,
+            section.DisplayOrder,
+            section.IsVisible,
+            section.SourceId?.Value,
+            section.CreatedOnUtc,
+            section.UpdatedOnUtc,
+            section.PublishedOnUtc);
 }

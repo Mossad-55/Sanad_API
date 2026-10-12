@@ -59,6 +59,12 @@ public sealed class LandingSectionConfiguration :
             .HasColumnName("is_visible")
             .IsRequired();
 
+        builder.Property(section => section.SourceId)
+            .HasColumnName("source_id")
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? new LandingSectionId(value.Value) : null);
+
         builder.Property(section => section.Status)
             .HasColumnName("status")
             .HasConversion<int>()
