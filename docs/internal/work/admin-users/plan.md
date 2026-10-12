@@ -128,8 +128,8 @@ conventions as #1. Migration authored only, never applied by workers.
 - `Sanad.API/Controllers/AdminUsersController.cs` + `Requests/AdminUser*Request.cs` (endpoints 1–11).
 - `AuthorizationPolicies.cs` (+`SuperAdminOnly`) + DI registration.
 - `tests/.../Identity/AdminUserManagementTests.cs` (+ SQLite translation twins for every new query).
-- `docs/admin/user-management.md` (full operator guide) + Postman additions (admin folder, endpoints 1–11) + `docs/postman` JSON validation.
-- `docs/admin/user-management/{tasks.md,handoff.md,reports/}` tracking.
+- `docs/admin/user-management.md` (full operator guide, new consumer file) + Postman additions (admin folder, endpoints 1–11) + `docs/postman` JSON validation.
+- `docs/internal/work/admin-users/{tasks.md,handoff.md,reports/}` tracking.
 
 ## 8. Decisions needed from the owner (blocking only their items)
 

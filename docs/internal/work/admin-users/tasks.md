@@ -26,7 +26,7 @@ owner decision. File manifests are exclusive (see plan §7).
   additive migration (authored only), audit list handler, tests, docs + Postman.
 
 - [ ] Not started — **Phase 5. Docs + Postman sync, guides, gates.**
-  Owns: `docs/admin/user-management.md` operator guide, collection polish,
+  Owns: `docs/admin/user-management.md` operator guide (new consumer file — the planning package stays here under `docs/internal/work/admin-users/`), collection polish,
   full solution build (0 warnings) + full unit + architecture suites once,
   `git diff --check`, Postman JSON validation, contract-map 0/0. No provider
   calls, no migration applies, no seed data.
@@ -39,13 +39,13 @@ mutating live checks only with per-run approval.
 ## Ready for integration (Integrator-owned discovery)
 
 A phase is mergeable only if ALL hold: its box below is checked, its report
-file `docs/admin/user-management/reports/<slug>.md` exists with branch +
+file `docs/internal/work/admin-users/reports/<slug>.md` exists with branch +
 base/final SHAs + gate evidence, its dependencies are already in `main`, and
 the branch tip equals the reported final SHA (docs-only follow-ups per the
 Chat/Opus convention, verified before merge). Otherwise skipped as blocked
 (never force-merged). Workers never merge or push.
 
-- [ ] phase-1-list — report: `docs/admin/user-management/reports/phase-1-list.md`
-- [ ] phase-2-status — report: `docs/admin/user-management/reports/phase-2-status.md`
-- [ ] phase-3-accounts — report: `docs/admin/user-management/reports/phase-3-accounts.md`
-- [ ] phase-4-audit — report: `docs/admin/user-management/reports/phase-4-audit.md`
+- [ ] phase-1-list — report: `docs/internal/work/admin-users/reports/phase-1-list.md`
+- [ ] phase-2-status — report: `docs/internal/work/admin-users/reports/phase-2-status.md`
+- [ ] phase-3-accounts — report: `docs/internal/work/admin-users/reports/phase-3-accounts.md`
+- [ ] phase-4-audit — report: `docs/internal/work/admin-users/reports/phase-4-audit.md`

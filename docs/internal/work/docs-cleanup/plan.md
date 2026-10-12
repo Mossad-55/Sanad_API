@@ -43,10 +43,10 @@ guides under package dirs; new top-level doc folders without approval.
 | # | From | To | Status |
 |---|---|---|---|
 | 0 | `docs/{chat,governance,notifications,operations,opus,slices,tools,work}` + root `Mastermind_Handoff.md` + `Project_Main_Goal.md` | `docs/internal/…` (same leaf names) | Done — `git mv`, links + script `../..`→`../../..` paths fixed, link audit 0 broken |
-| 1 | `docs/admin/user-management/plan.md` | `docs/internal/work/admin-users/plan.md` | Open — Plan 2 on hold per owner order |
-| 2 | `docs/admin/user-management/tasks.md` | `docs/internal/work/admin-users/tasks.md` | Open — same |
-| 3 | `docs/admin/user-management/handoff.md` | `docs/internal/work/admin-users/handoff.md` | Open — same (leaves `docs/admin/` for the future operator guide `user-management.md`) |
-| 4 | `docs/admin/elderly/README.md` | merged into `docs/app/elderly/` index content | Open — consumer content in admin space |
+| 1 | `docs/admin/user-management/plan.md` | `docs/internal/work/admin-users/plan.md` | Done 2026-10-12 — package moved as a unit, self-references fixed |
+| 2 | `docs/admin/user-management/tasks.md` | `docs/internal/work/admin-users/tasks.md` | Done — same commit |
+| 3 | `docs/admin/user-management/handoff.md` | `docs/internal/work/admin-users/handoff.md` | Done — same commit (leaves `docs/admin/` for the future operator guide `user-management.md`) |
+| 4 | `docs/admin/elderly/README.md` | — | Dropped: inspection proved it is an *admin* route index (correctly placed), not consumer content. My original move was a misjudgment, recorded here so it is not re-proposed. |
 
 ## 2. Conflict resolutions (no blind deletions)
 
