@@ -67,7 +67,7 @@ the branch tip equals the reported final SHA (docs-only follow-ups per the
 Chat/Opus convention, verified before merge). Otherwise skipped as blocked
 (never force-merged). Workers never merge or push.
 
-- [ ] phase-1-list — report: `docs/internal/work/admin-users/reports/phase-1-list.md`
-- [ ] phase-2-status — report: `docs/internal/work/admin-users/reports/phase-2-status.md`
-- [ ] phase-3-accounts — report: `docs/internal/work/admin-users/reports/phase-3-accounts.md`
-- [ ] phase-4-audit — report: `docs/internal/work/admin-users/reports/phase-4-audit.md`
+- [x] phase-1-list — report: `docs/internal/work/admin-users/reports/phase-1-list.md` (merged into `main` via `5023dac`)
+- [x] phase-2-status — report: `docs/internal/work/admin-users/reports/phase-2-status.md` (merged via `5023dac`)
+- [x] phase-3-accounts — report: `docs/internal/work/admin-users/reports/phase-3-accounts.md` (merged via `5023dac`)
+- [x] phase-4-audit — report: `docs/internal/work/admin-users/reports/phase-4-audit.md` (merged via `5023dac`)
