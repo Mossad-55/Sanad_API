@@ -42,7 +42,8 @@ public sealed class CareHomeInventoryController(ISender sender, IDateTimeProvide
         await using var content = new MemoryStream();
         await file.CopyToAsync(content, ct);
         content.Position = 0;
-        return ToActionResult(await sender.Send(new UploadRoomTypeMediaCommand(Actor(), expectedVersion, id, kind, content, file.ContentType.ToLowerInvariant(), file.Length), ct));
+        var result = await sender.Send(new UploadRoomTypeMediaCommand(Actor(), expectedVersion, id, kind, content, file.ContentType.ToLowerInvariant(), file.Length), ct);
+        return result.IsFailure ? ToActionResult(result) : StatusCode(StatusCodes.Status201Created, result.Value);
     }
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpDelete("mine/room-types/{id:guid}/media/{mediaId:guid}")]

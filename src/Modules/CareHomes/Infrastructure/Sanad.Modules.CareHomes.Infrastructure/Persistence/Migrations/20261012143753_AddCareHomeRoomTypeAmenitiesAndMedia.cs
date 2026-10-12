@@ -17,7 +17,12 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                 table: "room_types",
                 type: "text",
                 nullable: false,
-                defaultValue: "");
+                defaultValue: "[]");
+
+            // Pre-existing room types materialize through the JSON amenities converter,
+            // which requires a JSON array; the column addition above would otherwise
+            // backfill an empty string and make inventory reads fail to deserialize.
+            migrationBuilder.Sql("UPDATE care_homes.room_types SET amenities_json = '[]' WHERE amenities_json = '';");
 
             migrationBuilder.CreateTable(
                 name: "room_type_media",
