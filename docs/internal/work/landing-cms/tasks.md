@@ -9,9 +9,10 @@ exclusive (plan §4).
   Owns: domain entity + typed ids, `LandingController` (1+3; preview deferred
   to Phase 2 by owner decision), stats aggregation, tests, docs + Postman
   deltas. Report: `reports/phase-1-reads.md`.
-- [ ] Not started — **Phase 2. Admin CRUD + lifecycle + media (+migration).**
+- [x] Done — **Phase 2. Admin CRUD + lifecycle + media (+migration).**
   Owns: admin handlers (4–11), `AdminLandingController`, config + additive
   migration (authored only), upload handling, tests, docs + Postman.
+  Report: `reports/phase-2-admin.md`.
 - [ ] Not started — **Phase 3. Testimonial refs + FAQ refs + contact flow.**
   Owns: ref resolution + skip-missing semantics, contact intake wiring, tests,
   docs + Postman.
