@@ -4,11 +4,18 @@ Statuses: Not started, In progress, Blocked, Done. Contract in `plan.md` is
 frozen; changing it needs a new explicit owner decision. File manifests are
 exclusive (plan §4).
 
-- [ ] Not started — **Phase 0.** Isolated worktree at `origin/main` (never the
+- [x] Done — **Phase 0.** Isolated worktree at `origin/main` (never the
   dirty `opencode/admin-users` checkout); verify clean base. Owns: worktree only.
-- [ ] Not started — **Phase 1. Type amenities + photos + bookability gate.**
+  Committed as `6f31bbf`, rebased to `759a5d2` on `4e7f956`.
+- [ ] In progress — **Phase 1. Type amenities + photos + bookability gate.**
   Owns: domain entities, type handlers + gate check, migration (authored only),
   `CareHomeInventoryController` (1–3), tests, docs + Postman deltas.
+  Delivered and verified: `cea3300` + live-gate fixes `a861763`; build 0/0,
+  CareHomes 194/194, Postman contract-map 0/0 absolute (Bruno +2 waived for
+  live multipart proof, owner ruling A); live gate passed on the authorized
+  5235/SanadBrunoTestDb target (gates 400↔200, uploads 201, 204/404/400
+  negatives, sessions revoked, API stopped). Report
+  `reports/phase-1-types.md` written; awaiting integration.
 - [ ] Not started — **Phase 2. Room override + photos + readback.**
   Owns: room handlers (4–6), resolved names/covers on reads, tests, docs + Postman.
 - [ ] Not started — **Phase 3. Guides + gates.**
@@ -29,5 +36,5 @@ Mergeable only if ALL hold: box checked, report
 base/final SHAs + gate evidence, deps in `main`, tip matches. Otherwise skipped
 as blocked (never force-merged). Workers never merge or push.
 
-- [ ] phase-1-types — report: `docs/internal/work/room-enrichment/reports/phase-1-types.md`
+- [x] phase-1-types — report: `docs/internal/work/room-enrichment/reports/phase-1-types.md`
 - [ ] phase-2-rooms — report: `docs/internal/work/room-enrichment/reports/phase-2-rooms.md`
