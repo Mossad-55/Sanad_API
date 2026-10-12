@@ -85,6 +85,29 @@
       ]
     },
     {
+      "name": "04. Landing",
+      "item": [
+        {
+          "name": "Get published landing sections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/landing/sections",
+            "description": "Anonymous. Returns published visible sections ordered by displayOrder, virtual stats key excluded. Empty list is 200 []."
+          }
+        },
+        {
+          "name": "Get landing stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/landing/stats",
+            "description": "Anonymous. Live counters computed per request: families (excluding soft-deleted), Active caregivers by type, Approved facilities."
+          }
+        }
+      ]
+    },
+    {
       "name": "02. Public Lookups",
       "item": [
         {

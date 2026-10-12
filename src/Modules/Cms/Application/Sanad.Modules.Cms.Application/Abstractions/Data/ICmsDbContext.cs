@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Cms.Domain.Help;
+using Sanad.Modules.Cms.Domain.Landing;
 using Sanad.Modules.Cms.Domain.Legal;
 using Sanad.Modules.Cms.Domain.Library;
 using Sanad.Modules.Cms.Domain.Splash;
@@ -32,6 +33,8 @@ public interface ICmsDbContext
     DbSet<LibraryContent> LibraryContents { get; }
 
     DbSet<LibraryContentInteraction> LibraryContentInteractions { get; }
+
+    DbSet<LandingSection> LandingSections { get; }
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

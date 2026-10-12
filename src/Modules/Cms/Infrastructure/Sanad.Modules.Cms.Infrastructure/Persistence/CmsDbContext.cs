@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Cms.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Domain.Help;
+using Sanad.Modules.Cms.Domain.Landing;
 using Sanad.Modules.Cms.Domain.Legal;
 using Sanad.Modules.Cms.Domain.Library;
 using Sanad.Modules.Cms.Domain.Splash;
@@ -44,6 +45,7 @@ public sealed class CmsDbContext :
     public DbSet<LibraryCategory> LibraryCategories => Set<LibraryCategory>();
     public DbSet<LibraryContent> LibraryContents => Set<LibraryContent>();
     public DbSet<LibraryContentInteraction> LibraryContentInteractions => Set<LibraryContentInteraction>();
+    public DbSet<LandingSection> LandingSections => Set<LandingSection>();
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

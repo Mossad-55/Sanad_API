@@ -1,0 +1,35 @@
+using Sanad.Modules.Cms.Domain.Landing;
+
+namespace Sanad.Modules.Cms.Application.Landing;
+
+internal static class LandingSectionMappings
+{
+    public static string ToTypeKey(this LandingSectionType type) => type switch
+    {
+        LandingSectionType.Hero => "hero",
+        LandingSectionType.PartnerLogos => "partner-logos",
+        LandingSectionType.About => "about",
+        LandingSectionType.Features => "features",
+        LandingSectionType.ActivityCards => "activity-cards",
+        LandingSectionType.Steps => "steps",
+        LandingSectionType.DashboardPromo => "dashboard-promo",
+        LandingSectionType.Testimonials => "testimonials",
+        LandingSectionType.Faq => "faq",
+        LandingSectionType.ContactForm => "contact-form",
+        LandingSectionType.Footer => "footer",
+        LandingSectionType.Stats => "stats",
+        _ => throw new InvalidOperationException($"Unknown landing section type {(int)type}.")
+    };
+
+    public static LandingSectionPublicItem ToPublicItem(this LandingSection section) =>
+        new(
+            section.Id,
+            section.Type.ToTypeKey(),
+            section.ArabicTitle,
+            section.EnglishTitle,
+            string.IsNullOrWhiteSpace(section.ArabicBody) ? null : section.ArabicBody,
+            string.IsNullOrWhiteSpace(section.EnglishBody) ? null : section.EnglishBody,
+            string.IsNullOrWhiteSpace(section.ContentJson) ? null : section.ContentJson,
+            string.IsNullOrWhiteSpace(section.ImagePath) ? null : section.ImagePath,
+            section.DisplayOrder);
+}
