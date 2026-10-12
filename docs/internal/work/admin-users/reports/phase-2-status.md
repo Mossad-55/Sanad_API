@@ -27,7 +27,7 @@
 - Postman Admin collection JSON parse — passed. Phase 2's suspend, reactivate, block, and session-revoke routes are represented; no missing or orphaned Admin user routes.
 - Repository contract map — 2 missing Postman mappings are for unowned Landing routes present in concurrent workspace changes; 0 Postman orphans. No unrelated Postman/CMS edits were made. Existing Bruno gaps are outside this phase's owned manifest.
 - `git diff --check` — clean.
-- Live API read check — not run pending per-run authorization for seeded-SuperAdmin login/session cleanup on `SanadBrunoTestDb` at localhost:5235. No login, fixture mutation, or API start was performed for this phase.
+- Live API read check — not run pending per-run authorization for seeded-SuperAdmin login/session cleanup on `SanadBrunoTestDb` at localhost:5235. Read-only preflight verified localhost:5432 and the exact database; it found 1 processor-eligible care-home booking-notification outbox row, and 0 eligible transfer, email, or push outbox rows. API startup would retry the booking row, so no login, outbox processing, fixture mutation, or API start was performed for this phase.
 - Mutating live status checks — not run; require separate per-run approval.
 
 ## Notes and limitations
