@@ -34,6 +34,46 @@ Room types use `POST /mine/room-types` and `PUT /mine/room-types/{id}`:
 is in EGP. Archive or restore a room type with
 `POST /mine/room-types/{id}/archive?expectedVersion=1&restore=false`.
 
+Room type updates also set the bilingual marketing amenities. `amenities`
+replaces the whole set (it is not merged): each item carries `arabic` and
+`english`, both required, with at most 50 items per room type:
+
+```json
+{
+  "expectedVersion": 1,
+  "arabicName": "غرفة مشتركة",
+  "englishName": "Shared room",
+  "monthlyPriceEgp": 10000,
+  "allocationMode": 1,
+  "arabicDescription": "",
+  "englishDescription": "Shared accommodation",
+  "amenities": [
+    { "arabic": "تكييف", "english": "Air conditioning" },
+    { "arabic": "حمام خاص", "english": "Private bathroom" }
+  ]
+}
+```
+
+Room type photos are uploaded with
+`POST /mine/room-types/{id}/media` (multipart form): `expectedVersion`, `kind`
+(`1` cover, `2` gallery), and `file`. Accepted images are JPG or PNG up to
+5 MB, stored privately; the bytes must match the declared content type.
+A room type accepts one cover and up to 10 gallery photos. Success returns
+`201` with the media entry (`id`, `kind`, `position`, `contentType`,
+`length`, and `coverUrl` for the cover). Remove a photo with
+`DELETE /mine/room-types/{id}/media/{mediaId}?expectedVersion=n` (`204`);
+removing a gallery photo re-orders the remaining gallery positions.
+Out-of-bound content types or sizes return
+`400 CareHomes.Inventory.MediaInvalid`; an unknown photo returns
+`404 CareHomes.Inventory.MediaNotFound`.
+
+A room type is bookable only once it publishes a cover photo plus at least
+one gallery photo. Until then, creating a checkout hold for its rooms is
+rejected with `400 CareHomes.Inventory.RoomMediaRequired`; the same
+restriction applies again if the photos are removed. Inventory readback
+(`GET /mine`) includes each room type's `amenities` and `media` arrays so
+owners can verify what is published.
+
 Create a room with `POST /mine/rooms`:
 
 ```json

@@ -1323,6 +1323,11 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.Property<int>("AllocationMode")
                         .HasColumnType("integer");
 
+                    b.Property<string>("Amenities")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("amenities_json");
+
                     b.Property<string>("ArabicDescription")
                         .HasMaxLength(4000)
                         .HasColumnType("character varying(4000)");
@@ -1363,6 +1368,52 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.HasIndex("FacilityId", "EnglishName");
 
                     b.ToTable("room_types", "care_homes");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeRoomTypeMedia", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ContentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("content_type");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<long>("Length")
+                        .HasColumnType("bigint")
+                        .HasColumnName("length");
+
+                    b.Property<int>("Position")
+                        .HasColumnType("integer")
+                        .HasColumnName("position");
+
+                    b.Property<Guid>("RoomTypeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("room_type_id");
+
+                    b.Property<string>("StorageKey")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("storage_key");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RoomTypeId", "Kind", "Position")
+                        .IsUnique();
+
+                    b.ToTable("room_type_media", "care_homes");
                 });
 
             modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeBooking", b =>
@@ -1541,6 +1592,15 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeFacility", null)
                         .WithMany()
                         .HasForeignKey("FacilityId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeRoomTypeMedia", b =>
+                {
+                    b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeRoomType", null)
+                        .WithMany()
+                        .HasForeignKey("RoomTypeId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
                 });

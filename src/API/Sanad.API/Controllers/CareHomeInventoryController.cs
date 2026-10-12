@@ -10,7 +10,8 @@ using Sanad.Modules.CareHomes.Domain.Facilities;
 
 namespace Sanad.API.Controllers;
 
-public sealed record RoomTypeRequest(int ExpectedVersion, string ArabicName, string EnglishName, decimal MonthlyPriceEgp, CareHomeAllocationMode AllocationMode, string? ArabicDescription, string? EnglishDescription);
+public sealed record RoomTypeRequest(int ExpectedVersion, string ArabicName, string EnglishName, decimal MonthlyPriceEgp, CareHomeAllocationMode AllocationMode, string? ArabicDescription, string? EnglishDescription, IReadOnlyList<BilingualCareHomeItem>? Amenities = null);
+public sealed record RoomTypeAmenityRequest(string Arabic, string English);
 public sealed record RoomRequest(int ExpectedVersion, Guid RoomTypeId, string RoomNumber);
 public sealed record BedRequest(int ExpectedVersion, Guid RoomId, string Label);
 public sealed record MaintenanceRequest(int ExpectedVersion, CareHomeMaintenanceTarget Target, Guid TargetId, DateOnly StartDate, DateOnly EndDate, string? Reason);
@@ -30,7 +31,22 @@ public sealed class CareHomeInventoryController(ISender sender, IDateTimeProvide
     public Task<IActionResult> CreateType(RoomTypeRequest r, CancellationToken ct) => Send(new CreateRoomTypeCommand(Actor(), r.ExpectedVersion, r.ArabicName, r.EnglishName, r.MonthlyPriceEgp, r.AllocationMode, r.ArabicDescription, r.EnglishDescription), ct);
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpPut("mine/room-types/{id:guid}")]
-    public Task<IActionResult> UpdateType(Guid id, RoomTypeRequest r, CancellationToken ct) => Send(new UpdateRoomTypeCommand(Actor(), r.ExpectedVersion, id, r.ArabicName, r.EnglishName, r.MonthlyPriceEgp, r.AllocationMode, r.ArabicDescription, r.EnglishDescription), ct);
+    public Task<IActionResult> UpdateType(Guid id, RoomTypeRequest r, CancellationToken ct) => Send(new UpdateRoomTypeCommand(Actor(), r.ExpectedVersion, id, r.ArabicName, r.EnglishName, r.MonthlyPriceEgp, r.AllocationMode, r.ArabicDescription, r.EnglishDescription, r.Amenities ?? []), ct);
+    [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
+    [HttpPost("mine/room-types/{id:guid}/media")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(5_242_880 + 102_400)]
+    public async Task<IActionResult> UploadTypeMedia(Guid id, [FromForm] int expectedVersion, [FromForm] CareHomeRoomTypeMediaKind kind, [FromForm] IFormFile? file, CancellationToken ct)
+    {
+        if (file is null || file.Length == 0) return BadRequestWithCode("CareHomes.Inventory.MediaInvalid");
+        await using var content = new MemoryStream();
+        await file.CopyToAsync(content, ct);
+        content.Position = 0;
+        return ToActionResult(await sender.Send(new UploadRoomTypeMediaCommand(Actor(), expectedVersion, id, kind, content, file.ContentType.ToLowerInvariant(), file.Length), ct));
+    }
+    [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
+    [HttpDelete("mine/room-types/{id:guid}/media/{mediaId:guid}")]
+    public Task<IActionResult> RemoveTypeMedia(Guid id, Guid mediaId, [FromQuery] int expectedVersion, CancellationToken ct) => Send(new RemoveRoomTypeMediaCommand(Actor(), expectedVersion, id, mediaId), ct);
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpPost("mine/room-types/{id:guid}/archive")]
     public Task<IActionResult> ArchiveType(Guid id, int expectedVersion, bool restore, CancellationToken ct) => Send(new ArchiveRoomTypeCommand(Actor(), expectedVersion, id, restore), ct);
@@ -72,4 +88,5 @@ public sealed class CareHomeInventoryController(ISender sender, IDateTimeProvide
     public Task<IActionResult> Availability(Guid facilityId, AvailabilityRequest r, CancellationToken ct) => Send(new GetAvailabilityQuery(facilityId, r.StartDate, r.EndDate), ct);
     private UserId Actor() => new(Guid.Parse(User.FindFirst(JwtRegisteredClaimNames.Sub)!.Value));
     private async Task<IActionResult> Send<T>(IRequest<Sanad.BuildingBlocks.Application.Results.Result<T>> command, CancellationToken ct) => ToActionResult(await sender.Send(command, ct));
+    private async Task<IActionResult> Send(IRequest<Sanad.BuildingBlocks.Application.Results.Result> command, CancellationToken ct) => ToActionResult(await sender.Send(command, ct));
 }

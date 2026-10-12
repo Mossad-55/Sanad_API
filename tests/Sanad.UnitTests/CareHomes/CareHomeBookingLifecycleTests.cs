@@ -44,6 +44,7 @@ public sealed class CareHomeBookingLifecycleTests
         CareHomeBed.Create(facility.Id, room.Id, "A", Now);
         db.RoomTypes.Add(type);
         db.Rooms.Add(room);
+        PublishRoomMedia(db, type);
         await db.SaveChangesAsync();
 
         var result = await new CheckoutHandler(
@@ -677,6 +678,7 @@ public sealed class CareHomeBookingLifecycleTests
         CareHomeBed.Create(facility.Id, room.Id, "A", Now);
         db.RoomTypes.Add(type);
         db.Rooms.Add(room);
+        PublishRoomMedia(db, type);
         await db.SaveChangesAsync();
 
         var result = await new CheckoutHandler(db, new NoCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard())
@@ -703,6 +705,7 @@ public sealed class CareHomeBookingLifecycleTests
         CareHomeBed.Create(facility.Id, room.Id, "A", Now);
         db.RoomTypes.Add(type);
         db.Rooms.Add(room);
+        PublishRoomMedia(db, type);
         await db.SaveChangesAsync();
 
         var result = await new CheckoutHandler(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new ConflictReservationGuard())
@@ -739,8 +742,15 @@ public sealed class CareHomeBookingLifecycleTests
         CareHomeBed.Create(facility.Id, room.Id, "A", Now);
         db.RoomTypes.Add(type);
         db.Rooms.Add(room);
+        PublishRoomMedia(db, type);
         await db.SaveChangesAsync();
         return type;
+    }
+
+    private static void PublishRoomMedia(CareHomesDbContext db, CareHomeRoomType type)
+    {
+        db.RoomTypeMedia.Add(CareHomeRoomTypeMedia.Create(type.Id, CareHomeRoomTypeMediaKind.Cover, 0, "private/care-home-media/cover.jpg", "image/jpeg", 10, Now));
+        db.RoomTypeMedia.Add(CareHomeRoomTypeMedia.Create(type.Id, CareHomeRoomTypeMediaKind.Gallery, 0, "private/care-home-media/gallery.jpg", "image/jpeg", 10, Now));
     }
 
     private static CareHomeFacility AddApprovedFacility(CareHomesDbContext db, DateOnly? licenseExpiry = null)
@@ -828,6 +838,7 @@ public sealed class CareHomeBookingLifecycleTests
 
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeFacility> Facilities => inner.Facilities;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeRoomType> RoomTypes => inner.RoomTypes;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeRoomTypeMedia> RoomTypeMedia => inner.RoomTypeMedia;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeRoom> Rooms => inner.Rooms;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeBed> Beds => inner.Beds;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => inner.MaintenanceBlocks;

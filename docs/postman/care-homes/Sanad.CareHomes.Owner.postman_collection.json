@@ -514,11 +514,11 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"arabicName\": \"غرفة مشتركة محدثة\",\n  \"englishName\": \"Shared room updated\",\n  \"monthlyPriceEgp\": 11000,\n  \"allocationMode\": 1,\n  \"arabicDescription\": null,\n  \"englishDescription\": null\n}"
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"arabicName\": \"غرفة مشتركة محدثة\",\n  \"englishName\": \"Shared room updated\",\n  \"monthlyPriceEgp\": 11000,\n  \"allocationMode\": 1,\n  \"arabicDescription\": null,\n  \"englishDescription\": null,\n  \"amenities\": [\n    { \"arabic\": \"تكييف\", \"english\": \"Air conditioning\" },\n    { \"arabic\": \"حمام خاص\", \"english\": \"Private bathroom\" }\n  ]\n}"
             },
             "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}"
           },
-          "description": "Owner only; expectedVersion is required."
+          "description": "Owner only; expectedVersion is required. amenities replaces the whole bilingual set (max 50 items, each Arabic and English required)."
         },
         {
           "name": "Archive room type",
@@ -528,6 +528,44 @@
             "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false"
           },
           "description": "Archives while retaining the stable ID; set restore=true to restore."
+        },
+        {
+          "name": "Upload room type media",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "expectedVersion",
+                  "value": "{{careHomeFacilityVersion}}",
+                  "type": "text"
+                },
+                {
+                  "key": "kind",
+                  "value": "1",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": ""
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/media"
+          },
+          "description": "Owner only; multipart upload. kind: 1=cover (one per room type), 2=gallery (up to 10). JPG/PNG, max 5 MB. Success returns 201 with the media entry; a room type becomes bookable only with a cover plus at least one gallery photo."
+        },
+        {
+          "name": "Remove room type media",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/media/{{roomTypeMediaId}}?expectedVersion={{careHomeFacilityVersion}}"
+          },
+          "description": "Owner only. Removes the photo and re-orders remaining gallery positions; returns 204. Removing the last photos un-publishes the room type and holds are rejected with 400 CareHomes.Inventory.RoomMediaRequired until cover plus gallery exist again."
         },
         {
           "name": "Create room",

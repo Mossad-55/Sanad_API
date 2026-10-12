@@ -51,6 +51,9 @@ public sealed class CheckoutHandler(ICareHomesDbContext db, IPlatformChargeRuleR
         var type = await db.RoomTypes.AsNoTracking().SingleOrDefaultAsync(x => x.Id == r.RoomTypeId && x.FacilityId == new CareHomeId(r.FacilityId) && !x.IsArchived, ct);
         if (facility is null || type is null || !CareHomePublicEligibility.IsEligible(facility, CareHomePublicEligibility.CairoDate(r.UtcNow)))
             return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.NotFound", "The selected care home or room type was not found."));
+        var typeMedia = await db.RoomTypeMedia.AsNoTracking().Where(x => x.RoomTypeId == r.RoomTypeId).ToListAsync(ct);
+        if (!RoomTypeBookability.HasRequiredMedia(typeMedia, r.RoomTypeId))
+            return Result<CareHomeBookingResponse>.Failure(RoomTypeBookability.RoomMediaRequired);
         DateOnly end = r.StartDate.AddMonths(1);
         try { return await reservationGuard.ExecuteAsync(facility.Id, type.Id, r.StartDate, async () =>
         {

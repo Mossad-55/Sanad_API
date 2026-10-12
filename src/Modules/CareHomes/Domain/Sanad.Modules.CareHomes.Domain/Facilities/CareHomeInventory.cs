@@ -1,4 +1,5 @@
 using Sanad.BuildingBlocks.Domain.Abstractions;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
 namespace Sanad.Modules.CareHomes.Domain.Facilities;
@@ -15,21 +16,71 @@ public sealed class CareHomeRoomType : Entity<Guid>
     public string? EnglishDescription { get; private set; }
     public decimal MonthlyPriceEgp { get; private set; }
     public CareHomeAllocationMode AllocationMode { get; private set; }
+    public IReadOnlyList<BilingualCareHomeItem> Amenities { get; private set; } = [];
     public bool IsArchived { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
     public static CareHomeRoomType Create(CareHomeId facilityId, string arabicName, string englishName, decimal monthlyPriceEgp, CareHomeAllocationMode allocationMode, DateTime utcNow)
     { Ensure(facilityId, arabicName, englishName, monthlyPriceEgp, allocationMode, utcNow); var result = new CareHomeRoomType(Guid.CreateVersion7(), facilityId, arabicName.Trim(), englishName.Trim(), monthlyPriceEgp, utcNow) { AllocationMode = allocationMode }; return result; }
-    public void Update(string arabicName, string englishName, decimal monthlyPriceEgp, CareHomeAllocationMode allocationMode, string? arabicDescription, string? englishDescription, DateTime utcNow)
-    { Ensure(FacilityId, arabicName, englishName, monthlyPriceEgp, allocationMode, utcNow); ArabicName = arabicName.Trim(); EnglishName = englishName.Trim(); MonthlyPriceEgp = monthlyPriceEgp; AllocationMode = allocationMode; ArabicDescription = Trim(arabicDescription); EnglishDescription = Trim(englishDescription); UpdatedOnUtc = utcNow; }
+    public void Update(string arabicName, string englishName, decimal monthlyPriceEgp, CareHomeAllocationMode allocationMode, string? arabicDescription, string? englishDescription, IReadOnlyList<BilingualCareHomeItem> amenities, DateTime utcNow)
+    { Ensure(FacilityId, arabicName, englishName, monthlyPriceEgp, allocationMode, utcNow); ArabicName = arabicName.Trim(); EnglishName = englishName.Trim(); MonthlyPriceEgp = monthlyPriceEgp; AllocationMode = allocationMode; ArabicDescription = Trim(arabicDescription); EnglishDescription = Trim(englishDescription); Amenities = NormalizeAmenities(amenities); UpdatedOnUtc = utcNow; }
+    // Room types are bookable only once they publish a cover photo plus at least one
+    // gallery photo, mirroring the facility profile media completeness rule.
+    public bool HasRequiredMedia(IReadOnlyList<CareHomeRoomTypeMedia> media) =>
+        media.Any(x => x.RoomTypeId == Id && x.Kind == CareHomeRoomTypeMediaKind.Cover) &&
+        media.Any(x => x.RoomTypeId == Id && x.Kind == CareHomeRoomTypeMediaKind.Gallery);
     public void Archive(DateTime utcNow) { EnsureUtc(utcNow); IsArchived = true; UpdatedOnUtc = utcNow; }
     public void Restore(DateTime utcNow) { EnsureUtc(utcNow); IsArchived = false; UpdatedOnUtc = utcNow; }
     private static string? Trim(string? value) => string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+    private static IReadOnlyList<BilingualCareHomeItem> NormalizeAmenities(IReadOnlyList<BilingualCareHomeItem> amenities)
+    {
+        ArgumentNullException.ThrowIfNull(amenities);
+        if (amenities.Count > 50) throw new ArgumentException("Room type amenities are limited to 50 items.");
+        if (amenities.Any(item => item is null)) throw new ArgumentException("Room type amenities cannot contain null entries.");
+        return amenities.Select(item => new BilingualCareHomeItem(Require(item?.Arabic, 200, nameof(item.Arabic)), Require(item?.English, 200, nameof(item.English)))).ToArray();
+    }
+    private static string Require(string? value, int maximumLength, string field)
+    {
+        if (string.IsNullOrWhiteSpace(value)) throw new ArgumentException($"{field} is required.");
+        string trimmed = value.Trim();
+        if (trimmed.Length > maximumLength) throw new ArgumentException($"{field} exceeds {maximumLength} characters.");
+        return trimmed;
+    }
     private static void Ensure(CareHomeId facilityId, string ar, string en, decimal price, CareHomeAllocationMode mode, DateTime utcNow) { if (facilityId == CareHomeId.Empty) throw new ArgumentException("Facility is required."); if (string.IsNullOrWhiteSpace(ar) || string.IsNullOrWhiteSpace(en)) throw new ArgumentException("Arabic and English names are required."); if (price < 0) throw new ArgumentOutOfRangeException(nameof(price)); if (!Enum.IsDefined(mode)) throw new ArgumentOutOfRangeException(nameof(mode)); EnsureUtc(utcNow); }
     private static void EnsureUtc(DateTime value) { if (value.Kind != DateTimeKind.Utc) throw new ArgumentException("Timestamp must be UTC."); }
 }
 
 public enum CareHomeAllocationMode { Shared = 1, Private = 2, Suite = 3 }
+
+public enum CareHomeRoomTypeMediaKind { Cover = 1, Gallery = 2 }
+
+public sealed class CareHomeRoomTypeMedia : Entity<Guid>
+{
+    private CareHomeRoomTypeMedia() { }
+    private CareHomeRoomTypeMedia(Guid id, Guid roomTypeId, CareHomeRoomTypeMediaKind kind, int position, string storageKey, string contentType, long length, DateTime created) : base(id)
+    { RoomTypeId = roomTypeId; Kind = kind; Position = position; StorageKey = storageKey; ContentType = contentType; Length = length; CreatedOnUtc = created; }
+    public Guid RoomTypeId { get; private set; }
+    public CareHomeRoomTypeMediaKind Kind { get; private set; }
+    public int Position { get; private set; }
+    public string StorageKey { get; private set; } = string.Empty;
+    public string ContentType { get; private set; } = string.Empty;
+    public long Length { get; private set; }
+    public DateTime CreatedOnUtc { get; private set; }
+    public void SetPosition(int position)
+    {
+        if (position < 0 || position > 9) throw new DomainException("Room type gallery position is invalid.");
+        Position = position;
+    }
+    public static CareHomeRoomTypeMedia Create(Guid roomTypeId, CareHomeRoomTypeMediaKind kind, int position, string storageKey, string contentType, long length, DateTime utcNow)
+    {
+        if (roomTypeId == Guid.Empty || !Enum.IsDefined(kind)) throw new DomainException("Room type media target is invalid.");
+        if (position < 0 || kind == CareHomeRoomTypeMediaKind.Cover && position != 0 || kind == CareHomeRoomTypeMediaKind.Gallery && position > 9) throw new DomainException("Room type media position is invalid.");
+        if (string.IsNullOrWhiteSpace(storageKey) || !storageKey.StartsWith("private/care-home-media/", StringComparison.Ordinal)) throw new DomainException("Room type media must use private storage.");
+        if (contentType is not ("image/jpeg" or "image/png") || length is <= 0 or > 5_242_880) throw new DomainException("Room type images must be JPG or PNG and no larger than 5 MB.");
+        if (utcNow.Kind != DateTimeKind.Utc) throw new DomainException("Room type media timestamps must be UTC.");
+        return new CareHomeRoomTypeMedia(Guid.CreateVersion7(), roomTypeId, kind, position, storageKey.Trim(), contentType, length, utcNow);
+    }
+}
 
 public sealed class CareHomeRoom : Entity<Guid>
 {
