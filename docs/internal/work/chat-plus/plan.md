@@ -237,7 +237,9 @@ unchecked group broadcast after an earlier membership check. Serialize local
 permission invalidation with dispatch selection; define the boundary as no
 new dispatch after committed invalidation is observed, since already-sent
 network frames cannot be recalled. Remove stale connections and suppress hints.
-Require exact origin allowlists; CORS alone does not protect WebSocket upgrades.
+Owner confirmed current AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader unchanged
+for now. No API/proxy origin restriction is required by this package unless
+the owner changes that decision; it is intentional configuration, not a gap.
 
 Proposed privacy settings: independent showOnlineStatus and shareLastSeen,
 both default false for new and legacy users, managed by the authenticated owner.
@@ -335,7 +337,7 @@ Multi-instance without a verified backplane is unsupported: realtime messages,
 receipts, typing, and presence all split, although REST persistence remains safe.
 Fail validation for a declared multi-instance topology lacking configured support.
 
-Record reverse-proxy WebSocket upgrade/timeout/TLS settings, origin allowlist,
+Record reverse-proxy WebSocket upgrade/timeout/TLS settings, unchanged CORS,
 query-token redaction, request/upload limits, health and secret configuration,
 migration ordering, graceful shutdown, and rollback compatibility. Monitor
 dispatch backlog age, retries/failures, sync latency, query costs, active

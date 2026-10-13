@@ -68,6 +68,11 @@ public static class DependencyInjection
         services.AddControllers();
         services.AddTransient<PrivateStorageRequestGuard>();
 
+        // The reviewed nginx template connects over loopback HTTP after TLS
+        // termination. Keep the framework's loopback-only proxy trust defaults.
+        services.Configure<Microsoft.AspNetCore.Builder.ForwardedHeadersOptions>(
+            Options.SanadProxyConfiguration.Configure);
+
         // Safe remote release evidence (revision + applied migrations).
         services.AddSingleton<
             Deployment.IDeploymentManifestReader,

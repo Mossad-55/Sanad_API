@@ -29,6 +29,7 @@ tracked templates live in this directory.
    least-privilege ownership (commands are templates — run on the host):
    `install -d -o sanad -g sanad -m 700 /var/sanad/keys`
    `install -d -o sanad -g sanad -m 750 /var/sanad/files`
+   `install -d -o sanad -g sanad -m 750 /var/sanad/files-private`
 6. Host-local environment injected by systemd (`EnvironmentFile=`), never
    assumed from a `.env` file beside the binaries (ASP.NET Core never loads
    `.env` automatically).
@@ -84,8 +85,18 @@ before accepting traffic; each is a real database/host write:
 3. Repoint `/opt/sanad/api/current` to the new directory (never delete or
    move files under `/var/sanad/files` or `/var/sanad/keys`).
 4. `systemctl daemon-reload`, then `systemctl restart sanad-api`.
+   The service uses Type=simple: process start does not prove API/migration
+   readiness. Wait for successful startup evidence and HTTP verification.
 5. Capture the FULL startup log (`journalctl -u sanad-api`) — it is the
    9-context migration evidence. Save it with the release record.
+
+The API processes forwarded scheme/address from the template's loopback nginx
+only, before HTTPS redirection. This prevents an HTTP-upstream redirect loop;
+it does not change the owner's CORS policy. If moving the proxy off loopback,
+review the explicit proxy trust configuration before deploying. The template's
+access log omits query/header values; stock nginx request-error output is sent
+to /dev/null because it can contain tokens. Use sanitized access metrics and
+application logs for diagnosis; do not enable full-request logging on this API.
 
 ## 4. Verify (build machine)
 

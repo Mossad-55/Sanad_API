@@ -16,7 +16,7 @@ upstream sanad_api {
 # This format logs the queryless $uri (never $request) and no headers/body.
 log_format sanad_safe '$remote_addr - $remote_user [$time_local] '
                       '"$request_method $uri $server_protocol" $status '
-                      '$body_bytes_sent "$http_referer" "$http_user_agent" '
+                      '$body_bytes_sent '
                       'rt=$request_time uct=$upstream_connect_time '
                       'urt=$upstream_response_time';
 
@@ -27,7 +27,9 @@ server {
     server_name api-staging.__FILL__;
 
     access_log /var/log/nginx/sanad-api-access.log sanad_safe;
-    error_log /var/log/nginx/sanad-api-error.log warn;
+    # Stock nginx errors can include full requests/query tokens. Discard them
+    # for this API; use sanitized access metrics and application errors instead.
+    error_log /dev/null crit;
 
     location / {
         return 301 https://$host$request_uri;
@@ -46,7 +48,7 @@ server {
     ssl_session_timeout 10m;
 
     access_log /var/log/nginx/sanad-api-access.log sanad_safe;
-    error_log /var/log/nginx/sanad-api-error.log warn;
+    error_log /dev/null crit;
 
     # 52 MiB total multipart budget (matches Kestrel limit in the service
     # template and the chat upload contract). Larger bodies get 413 here.

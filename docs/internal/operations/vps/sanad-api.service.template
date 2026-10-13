@@ -14,9 +14,13 @@
 Description=Sanad API (.NET 10, single instance)
 After=network.target postgresql.service
 Wants=postgresql.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
 
 [Service]
-Type=notify
+# No SystemdLifetime/READY notification integration is installed. Health and
+# migration readiness must be checked separately after this process starts.
+Type=simple
 User=sanad
 Group=sanad
 # Versioned release folder; each publish lands in a NEW directory and the
@@ -45,6 +49,7 @@ Environment=DOTNET_CLI_TELEMETRY_OPTOUT=true
 # directories OUTSIDE the release folder, created with least privilege:
 #   install -d -o sanad -g sanad -m 700 /var/sanad/keys
 #   install -d -o sanad -g sanad -m 750 /var/sanad/files
+#   install -d -o sanad -g sanad -m 750 /var/sanad/files-private
 # Key XML files are host secrets: back them up with the database, never
 # commit, print, or paste them. Deploy/rollback must never delete or move
 # shared files under these paths.
@@ -53,8 +58,6 @@ Restart=on-failure
 RestartSec=5
 # Bounded restart loop: sustained crash-loops page the operator instead of
 # spinning forever against a bad migration or config.
-StartLimitIntervalSec=300
-StartLimitBurst=5
 TimeoutStopSec=30
 KillSignal=SIGTERM
 
@@ -66,7 +69,7 @@ PrivateTmp=true
 # Durable read/write paths (keys + uploads). The release folder itself is
 # mounted read-only at runtime; publishes happen OUTSIDE the running service
 # (new directory + repoint + restart).
-ReadWritePaths=/var/sanad/keys /var/sanad/files
+ReadWritePaths=/var/sanad/keys /var/sanad/files /var/sanad/files-private
 ReadOnlyPaths=/opt/sanad/api/current
 
 # Console log carries the startup migration report (per-context

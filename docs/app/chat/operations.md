@@ -96,8 +96,8 @@ production from this evidence.
 
 - WebSocket upgrade support with timeouts that tolerate long-lived hub
   connections; TLS required end to end.
-- Exact origin allowlist for the hub (CORS alone does not protect WebSocket
-  upgrades); query-token redaction in proxy logs.
+- Keep AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader unchanged by owner confirmation;
+  query-token redaction in proxy logs remains required.
 - Request/upload limits aligned with the table above (52 MiB multipart total).
 - Health endpoint, secret injection (no secrets in config files/images), and
   the single-instance placement rule above.

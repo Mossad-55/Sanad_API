@@ -25,7 +25,8 @@ Final verification and merge/push evidence belong to
 - Owner/mobile team: Firebase/APNs Android + physical iPhone proof.
 - Backend verifier: five paid/completed attributed Hourly and five EightHour
   fixtures on an authorized disposable payment path; API-versus-SQL equality.
-- Operator: actual edge TLS/WebSocket/origin/redaction/limits validation.
+- Operator: actual edge TLS/WebSocket/redaction/limits validation. CORS stays
+  AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader by owner confirmation, not a gap.
 - Backend planner: JWTs are not bound to device sessions. Token expiry now
   closes hub connections and disabled users are denied on hub calls/dispatch;
   immediate server-side per-session logout/revocation remains unimplemented.

@@ -25,8 +25,8 @@ never executed against a live API or database. No voice.
   Current access tokens do not contain a device-session claim, so server-side
   per-session logout/revocation is not immediate. Mobile logout must close the
   socket; session-bound auth invalidation remains a release hardening item.
-  Exact origin allowlists are required at the actual deployment edge;
-  CORS alone does not protect WebSocket upgrades.
+  CORS remains AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader by owner confirmation;
+  no new API/proxy origin restrictions are part of this package.
 
 ## Methods
 

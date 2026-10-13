@@ -25,6 +25,8 @@ public static class ApplicationBuilderExtensions
             app.Configuration,
             app.Environment);
 
+        app.UseForwardedHeaders();
+
         app.UseExceptionHandler();
 
         app.UseStatusCodePages();

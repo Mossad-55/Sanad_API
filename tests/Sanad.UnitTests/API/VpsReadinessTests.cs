@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
+using System.Net;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Sanad.API.Controllers;
@@ -259,6 +262,48 @@ public sealed class VpsReadinessTests : IDisposable
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<DeploymentInfoResponse>(ok.Value);
         Assert.False(response.DatabaseReachable);
+    }
+
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public void Manifest_reader_accepts_publish_UTF8_with_or_without_BOM(bool emitBom)
+    {
+        string path = Path.Combine(_tempDir, "sanad-deployment-manifest.json");
+        File.WriteAllText(path,
+            "{\"revision\":\"test-revision\",\"requiredMigrations\":{\"Chat\":\"test-migration\"}}",
+            new System.Text.UTF8Encoding(emitBom));
+
+        DeploymentManifestInfo manifest = new FileDeploymentManifestReader(_tempDir).Read();
+        Assert.Equal("test-revision", manifest.Revision);
+        Assert.Equal("test-migration", manifest.RequiredMigrations["Chat"]);
+    }
+
+    [Theory]
+    [InlineData("127.0.0.1", "https")]
+    [InlineData("203.0.113.10", "http")]
+    public async Task Forwarded_scheme_trusts_loopback_proxy_only(string remoteAddress, string expectedScheme)
+    {
+        using ServiceProvider provider = new ServiceCollection().AddLogging().BuildServiceProvider();
+        var options = new ForwardedHeadersOptions();
+        SanadProxyConfiguration.Configure(options);
+        var app = new ApplicationBuilder(provider);
+        app.UseForwardedHeaders(options);
+        string? observed = null;
+        app.Run(context =>
+        {
+            observed = context.Request.Scheme;
+            return Task.CompletedTask;
+        });
+        var context = new DefaultHttpContext();
+        context.Request.Scheme = "http";
+        context.Connection.RemoteIpAddress = IPAddress.Parse(remoteAddress);
+        context.Request.Headers["X-Forwarded-Proto"] = "https";
+        context.Request.Headers["X-Forwarded-For"] = "203.0.113.20";
+
+        await app.Build()(context);
+
+        Assert.Equal(expectedScheme, observed);
     }
 
     private static IDataProtectionProvider CreatePersistentProvider(string keyRing)

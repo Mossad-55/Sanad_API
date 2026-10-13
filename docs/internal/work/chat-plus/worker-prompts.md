@@ -5,6 +5,10 @@ collections, or treat Bruno coverage as a blocker. Preserve historical evidence
 as history; this work uses automated tests, Postman mapping, an optional browser
 harness, and developer/device reports.
 
+Owner confirmation: keep AllowAnyOrigin, AllowAnyMethod and AllowAnyHeader
+unchanged for now. This is intentional configuration, not an open gap. No worker
+may add API/proxy origin restrictions without a new owner instruction.
+
 Planning baseline: integrated main be8896e (code correction 9ca63b3), clean and
 synced at intake. Existing deploy/publish-out manifest is 41f9c91: stale and
 not a Chat Plus release artifact. No VPS inspection, package build, provider
@@ -201,16 +205,16 @@ publication, main push and separately authorized deployment. Preserve others' ed
 Create worker/chat-plus-vps-readiness from latest main; pin SHA/owned manifest.
 
 Own the bounded release verifier/publish workflow corrections, production-style
-origin/DataProtection/storage configuration, sanitized Linux service/proxy templates
+DataProtection/storage configuration, sanitized Linux service/proxy templates
 and deployment readiness report. No live VPS changes or credentials in this task.
 
 Resolve these evidenced gaps:
 1. Existing deploy/publish-out manifest is 41f9c91 (before Chat Plus). Treat it as
    stale, not as a release. After your branch is integrated, the mastermind publishes
    the exact clean pushed main revision with all nine current migration IDs.
-2. API default CORS is AllowAnyOrigin. Add configurable explicit REST origins and
-   enforce WebSocket origin policy too. Preserve legitimate native clients without
-   Origin headers; reject unknown browser origins. No wildcard credential policy.
+2. Preserve the owner's confirmed AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader
+   policy exactly. Do not add origin restrictions in the API or proxy, and do
+   not list the confirmed configuration as a readiness gap.
 3. Chat sync cursors use DataProtection; fixtures enable ephemeral keys. Pin a
    persistent Linux key ring/application discriminator outside versioned releases,
    permissions/protection and restart behavior. Never use fixture seeding or
@@ -226,7 +230,7 @@ Resolve these evidenced gaps:
    active publish/runbook instructions accordingly; do not invent passing exits.
 
 Prepare single-instance .NET 10 Linux service and reverse-proxy templates for TLS,
-WebSocket/SSE/Long Polling, idle timeouts, 52 MiB multipart, specific origins,
+WebSocket/SSE/Long Polling, idle timeouts, 52 MiB multipart, unchanged CORS,
 no query-token/body/header logging, health, restart and durable volume permissions.
 Specify all commands as reviewable templates, not shell commands containing secrets.
 
@@ -240,7 +244,7 @@ ASP.NET automatically; systemd/host must inject its actual environment.
 Require backup, exact host/database/service/revision, migration ordering, restore
 procedure and rollback compatibility before deployment. Application rollback alone
 cannot undo database changes. Do not perform lossy down-migrations on populated
-production data. Validate templates/scripts and origin/key persistence controls
+production data. Validate templates/scripts and proxy/key persistence controls
 with focused tests; zero-warning build if code changes.
 
 Report READY or NOT READY for isolated staging and production separately, naming
@@ -266,7 +270,7 @@ Verify actual remote SHA, all nine migration histories, anonymous lookup smoke,
 Normal/auth/eligibility rules, two-party send/read/file/location, unread, blocks,
 hide/report moderation, >100-message + receipt-only sync, typing/privacy/multi-
 device presence, server restart, persistent cursor keys, token expiry/revocation,
-allowed/rejected origins and WebSocket/REST fallback. Respect rate limits.
+owner-confirmed unchanged CORS and WebSocket/REST fallback. Respect rate limits.
 
 On a separately authorized payment fixture, compare pricing API with direct SQL
 for >=5 Hourly and >=5 EightHour attributed completed/paid samples, thin pools,

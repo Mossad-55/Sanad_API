@@ -37,12 +37,12 @@ public interface IDeploymentManifestReader
     DeploymentManifestInfo Read();
 }
 
-public sealed class FileDeploymentManifestReader : IDeploymentManifestReader
+public sealed class FileDeploymentManifestReader(string? manifestDirectory = null) : IDeploymentManifestReader
 {
     public DeploymentManifestInfo Read()
     {
         string manifestPath = Path.Combine(
-            AppContext.BaseDirectory,
+            manifestDirectory ?? AppContext.BaseDirectory,
             "sanad-deployment-manifest.json");
 
         if (!File.Exists(manifestPath))
@@ -53,7 +53,11 @@ public sealed class FileDeploymentManifestReader : IDeploymentManifestReader
         }
 
         using FileStream stream = File.OpenRead(manifestPath);
-        using JsonDocument document = JsonDocument.Parse(stream);
+        // Windows PowerShell's Set-Content -Encoding utf8 writes a BOM.
+        // StreamReader consumes it; JsonDocument's UTF-8 stream parser does not.
+        using var reader = new StreamReader(stream, System.Text.Encoding.UTF8,
+            detectEncodingFromByteOrderMarks: true);
+        using JsonDocument document = JsonDocument.Parse(reader.ReadToEnd());
 
         string? revision = null;
         if (document.RootElement.TryGetProperty("revision", out JsonElement revisionElement) &&
@@ -132,10 +136,10 @@ public sealed class EfDeploymentMigrationProbe(IServiceProvider serviceProvider)
             using IServiceScope scope = serviceProvider.CreateScope();
             TContext dbContext = scope.ServiceProvider.GetRequiredService<TContext>();
             IEnumerable<string> appliedMigrations =
-                await Task.Run(() => dbContext.Database.GetAppliedMigrations(), cancellationToken);
+                await dbContext.Database.GetAppliedMigrationsAsync(cancellationToken);
             applied[name] = appliedMigrations.LastOrDefault();
         }
-        catch
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
             // Report only unreachability; exception text may carry host
             // details and must never leave the machine.

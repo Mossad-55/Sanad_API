@@ -103,7 +103,7 @@ Copy-ready remaining worker briefs: [worker-prompts.md](worker-prompts.md).
   no token material in logs; sessions cleaned. Remaining release gates include
   owner-run Android + physical iPhone delivery proof, satisfied-pool (N≥5)
   live aggregate equality using an authorized payment fixture, actual edge
-  TLS/origins/redaction checks, integration-change runtime checks, JWT session
+  TLS/redaction checks, integration-change runtime checks, JWT session
   revocation binding, and physical orphan cleanup. The live socket recovery
   used five missed messages, not >100. See integration report/handoff for
   ownership. Never claim production readiness until required gates close.
@@ -141,8 +141,9 @@ Mastermind owns planning/review/integration/main push. Run workers sequentially
 on their own branches; integrate each before dependent work. No VPS deployment
 is authorized by issuing a code/documentation brief.
 
-- [ ] Not started — Priority VPS readiness (Prompt 5): fresh-artifact workflow,
-  Postman-only release mapping, origins/WebSocket policy, persistent keys/files,
+- [ ] In progress — Priority VPS readiness (Prompt 5): delivered worker tip
+  3c9918d from base 1120434; mastermind review/integration underway.
+  Postman-only release mapping, unchanged owner-confirmed CORS, persistent keys/files,
   trustworthy remote revision/migration verification, Staging/test-target setup.
   Existing package manifest is 41f9c91, before Chat Plus; never deploy it as Chat Plus.
 - [ ] Not started — Session-bound access and final-send push privacy (Prompt 1).
