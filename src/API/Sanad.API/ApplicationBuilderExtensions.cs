@@ -44,7 +44,8 @@ public static class ApplicationBuilderExtensions
         // Chat Plus realtime hub. Requires the reverse proxy to forward
         // WebSocket upgrades with TLS (see the operating guide); REST
         // remains authoritative and sync is the fallback.
-        app.MapHub<Hubs.ChatHub>("/hubs/chat");
+        app.MapHub<Hubs.ChatHub>("/hubs/chat", options =>
+            options.CloseOnAuthenticationExpiration = true);
 
         app.MapOpenApi();
 

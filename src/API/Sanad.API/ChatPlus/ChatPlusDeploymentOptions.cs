@@ -13,4 +13,14 @@ public sealed record ChatPlusDeploymentOptions
     public int InstanceCount { get; init; } = 1;
 
     public bool BackplaneConfigured { get; init; } = false;
+
+    public void Validate()
+    {
+        // A flag cannot enable a backplane that is not implemented.
+        if (InstanceCount != 1 || BackplaneConfigured)
+        {
+            throw new InvalidOperationException(
+                "ChatPlus supports exactly one API instance and no backplane in this release.");
+        }
+    }
 }

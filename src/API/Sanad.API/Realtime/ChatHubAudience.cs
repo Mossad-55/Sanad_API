@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
 using Sanad.Modules.Chat.Application.Realtime;
+using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Domain.Conversations;
 
 namespace Sanad.API.Realtime;
@@ -14,7 +15,8 @@ namespace Sanad.API.Realtime;
 /// all realtime between the pair (REST history is untouched).
 /// </summary>
 public sealed class ChatHubAudience(
-    IChatDbContext dbContext) : IChatHubAudience
+    IChatDbContext dbContext,
+    IChatUserLookup? userLookup = null) : IChatHubAudience
 {
     /// <summary>Bounded presence-subscriber scan per broadcast.</summary>
     public const int MaxSubscriberConversations = 200;
@@ -32,6 +34,17 @@ public sealed class ChatHubAudience(
         if (conversation is null)
         {
             return null;
+        }
+
+        if (userLookup is not null)
+        {
+            var profiles = await userLookup.GetProfilesAsync(
+                [conversation.ParticipantOne, conversation.ParticipantTwo], cancellationToken);
+            if (!profiles.TryGetValue(conversation.ParticipantOne, out var first) || first is null ||
+                !profiles.TryGetValue(conversation.ParticipantTwo, out var second) || second is null)
+            {
+                return null;
+            }
         }
 
         bool blocked = await HasBlockingPairAsync(
@@ -81,6 +94,11 @@ public sealed class ChatHubAudience(
         UserId subjectUserId,
         CancellationToken cancellationToken)
     {
+        if (userLookup is not null &&
+            await userLookup.GetProfileAsync(subjectUserId, cancellationToken) is null)
+        {
+            return [];
+        }
         // Provider-safe ordering (whole-struct ordering and member access
         // do not translate on Npgsql); the scan is bounded either way.
         List<Conversation> shared = await dbContext.Conversations
@@ -113,6 +131,13 @@ public sealed class ChatHubAudience(
             {
                 subscribers.Add(other);
             }
+        }
+
+        if (userLookup is not null && subscribers.Count > 0)
+        {
+            var profiles = await userLookup.GetProfilesAsync(subscribers.ToArray(), cancellationToken);
+            subscribers.RemoveWhere(user =>
+                !profiles.TryGetValue(user, out var profile) || profile is null);
         }
 
         return subscribers.ToArray();

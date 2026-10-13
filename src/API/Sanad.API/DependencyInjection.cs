@@ -531,6 +531,8 @@ public static class DependencyInjection
         services.AddScoped<ICareHomeOwnerFacilityLookup, ApiCareHomeOwnerFacilityLookup>();
         services.AddSingleton<IChatSyncCursorProtector, DataProtectionChatSyncCursorProtector>();
         services.AddHostedService<ChatPlus.ChatPlusDispatchService>();
+        services.Configure<Sanad.Modules.Chat.Application.Dispatch.ChatDispatchOptions>(
+            configuration.GetSection("ChatPlus:Dispatch"));
 
         // Chat Plus realtime (single-instance topology): in-memory
         // connection/presence/typing registries behind seams, durable
@@ -567,12 +569,7 @@ public static class DependencyInjection
                 .Get<ChatPlus.ChatPlusDeploymentOptions>()
             ?? new ChatPlus.ChatPlusDeploymentOptions();
 
-        if (deployment.InstanceCount > 1 && !deployment.BackplaneConfigured)
-        {
-            throw new InvalidOperationException(
-                "ChatPlus multi-instance deployment requires a verified backplane; " +
-                "single-instance is the only supported topology without one.");
-        }
+        deployment.Validate();
 
         return services;
     }

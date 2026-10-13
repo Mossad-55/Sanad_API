@@ -6,6 +6,7 @@ using Sanad.API.Hubs;
 using Sanad.API.Realtime;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.RateLimiting;
+using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Application.Realtime;
 using Sanad.Modules.Chat.Domain.Blocks;
 using Sanad.Modules.Chat.Domain.Conversations;
@@ -478,6 +479,73 @@ public sealed class ChatPlusRealtimeTests
     // Helpers.
     // ------------------------------------------------------------------
 
+    [Fact]
+    public async Task Hub_AccountDisabledAfterConnectStopsHeartbeatAndRemovesConnection()
+    {
+        await using ChatDbContext db = CreateDb();
+        UserId user = UserId.New();
+        var lookup = new ActiveLookup(user);
+        var registry = new ChatConnectionRegistry();
+        var presence = new PresenceTracker();
+        var hub = CreateHub(registry: registry, presence: presence,
+            audience: new ChatHubAudience(db, lookup),
+            userId: user, userLookup: lookup);
+        await hub.OnConnectedAsync();
+        await hub.Heartbeat();
+        Assert.True(presence.IsOnline(user, DateTime.UtcNow));
+
+        lookup.Disabled = user;
+        await hub.Heartbeat();
+
+        Assert.True(((TestContext)hub.Context).Aborted);
+        Assert.Empty(registry.GetConnections(user));
+        Assert.False(presence.IsOnline(user, DateTime.UtcNow));
+    }
+
+    [Fact]
+    public async Task Audience_DisabledAccountsReceiveNoEventsOrPresence()
+    {
+        await using ChatDbContext db = CreateDb();
+        UserId me = UserId.New();
+        UserId peer = UserId.New();
+        Conversation conversation = await AddConversationAsync(db, me, peer);
+        var lookup = new ActiveLookup(me, peer);
+        var audience = new ChatHubAudience(db, lookup);
+        Assert.Equal(2, (await audience.GetEventRecipientsAsync(conversation.Id, null, default)).Count);
+        Assert.Contains(peer, await audience.GetPresenceSubscribersAsync(me, default));
+
+        lookup.Disabled = peer;
+        Assert.Empty(await audience.GetEventRecipientsAsync(conversation.Id, null, default));
+        Assert.Empty(await audience.GetPresenceSubscribersAsync(me, default));
+        Assert.Empty(await audience.GetPresenceSubscribersAsync(peer, default));
+    }
+
+    [Theory]
+    [InlineData(2, false)]
+    [InlineData(2, true)]
+    [InlineData(1, true)]
+    [InlineData(0, false)]
+    public void Deployment_UnimplementedBackplaneCannotBypassSingleInstance(int count, bool backplane)
+    {
+        var options = new Sanad.API.ChatPlus.ChatPlusDeploymentOptions
+        {
+            InstanceCount = count,
+            BackplaneConfigured = backplane
+        };
+        Assert.Throws<InvalidOperationException>(options.Validate);
+        new Sanad.API.ChatPlus.ChatPlusDeploymentOptions().Validate();
+    }
+
+    private sealed class ActiveLookup(params UserId[] active) : IChatUserLookup
+    {
+        public UserId? Disabled { get; set; }
+
+        public Task<UserProfile?> GetProfileAsync(UserId userId, CancellationToken cancellationToken = default) =>
+            Task.FromResult<UserProfile?>(active.Contains(userId) && userId != Disabled
+                ? new UserProfile(userId, "Test", null, 1)
+                : null);
+    }
+
     private static ChatHub CreateHub(
         ChatConnectionRegistry? registry = null,
         TypingTracker? typing = null,
@@ -485,7 +553,8 @@ public sealed class ChatPlusRealtimeTests
         ChatHubAudience? audience = null,
         RecordingPublisher? publisher = null,
         UserId? userId = null,
-        string connectionId = "test-connection")
+        string connectionId = "test-connection",
+        IChatUserLookup? userLookup = null)
     {
         registry ??= new ChatConnectionRegistry();
         typing ??= new TypingTracker();
@@ -496,7 +565,7 @@ public sealed class ChatPlusRealtimeTests
             presence,
             audience!,
             publisher ?? new RecordingPublisher(),
-            new InMemoryChatRateGate())
+            new InMemoryChatRateGate(), userLookup)
         {
             Context = new TestContext(connectionId, userId),
             Clients = new RecordingClients()

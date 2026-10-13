@@ -1,9 +1,10 @@
 # Chat Plus — implementation checklist, revision 2
 
 Single status/evidence checklist for [plan.md](plan.md). Updated 2026-10-13
-from [frontend input](frontend-report.md). Owner implements/commits/pushes;
-mastermind prepared this package and will review the resulting SHA.
-No production code or live verification was performed in this planning turn.
+from [frontend input](frontend-report.md). Builder implementation is committed
+on builder/chat-plus-production; owner authorized mastermind review, integration
+into main, push, and documentation sync. Integration status/evidence:
+[reports/integration.md](reports/integration.md).
 
 Phase 0 uses the concrete proposed defaults and wire shapes in
 [contracts.md](contracts.md); changes require synchronized plan/test updates.
@@ -95,11 +96,13 @@ unit evidence. Voice remains excluded.
   (matrix, typing expiry, durable publish, receipts, privacy, cursors,
   kill/reconnect convergence, 429s, attributed checkout, insights nulls +
   InvalidFilter, SQL agreement, inbox alerts, restart recovery, logouts);
-  no token material in logs; sessions cleaned. Blocked only on the
-  owner-run Android + physical iPhone delivery proof (operations.md
-  matrix) and, separately, satisfied-pool (N≥5) live aggregate equality,
-  which needs an authorized payment-path fixture. Never claim production
-  readiness until those close.
+  no token material in logs; sessions cleaned. Remaining release gates include
+  owner-run Android + physical iPhone delivery proof, satisfied-pool (N≥5)
+  live aggregate equality using an authorized payment fixture, actual edge
+  TLS/origins/redaction checks, integration-change runtime checks, JWT session
+  revocation binding, and physical orphan cleanup. The live socket recovery
+  used five missed messages, not >100. See integration report/handoff for
+  ownership. Never claim production readiness until required gates close.
 
 ## Evidence per phase
 
@@ -117,6 +120,13 @@ Reports expected after implementation:
 - reports/phase-5-push.md
 - reports/phase-6-gates.md
 - reports/phase-7-release.md
+
+## Mastermind integration
+
+- [ ] In progress — Review delivered tip ded4dd1, correct evidenced runtime
+  wiring defects, run final gates, integrate main, synchronize docs and push.
+  Evidence: reports/integration.md. Builder's completed bounded review is reused;
+  no duplicate whole-feature review or unapproved live run.
 
 ## Final review
 

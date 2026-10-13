@@ -6,8 +6,9 @@ Read with the [Chat Plus plan](../../internal/work/chat-plus/plan.md)
 and release owners. It contains no credentials, tokens, keys, connection
 strings, or device identifiers — secret values are injected through host
 configuration only and must never appear in source, docs, Postman, database
-fixtures, or logs. Statically authored from the implementation; rollout,
-migration application, and provider delivery proof remain Phase 7 gates.
+fixtures, or logs. Builder disposable-target runtime and migration apply/rollback evidence is
+recorded in the Phase 7 report. Production rollout, actual edge verification,
+and provider/device delivery proof remain open; see the integration handoff.
 
 ## Topology
 
@@ -15,8 +16,8 @@ migration application, and provider delivery proof remain Phase 7 gates.
   `InstanceCount = 1`, `BackplaneConfigured = false`). Connection, typing, and
   presence registries are in-memory behind seams; durable change/outbox state
   is in the Chat database behind a separate transport seam.
-- Declaring more than one instance without a verified backplane **fails
-  startup validation**: realtime (messages, receipts, typing, presence) would
+- Declaring anything other than one instance, or setting BackplaneConfigured
+  to true, **fails startup validation**: realtime (messages, receipts, typing, presence) would
   split across instances while REST persistence stays safe. Multi-instance is
   unsupported until a backplane is implemented and verified — do not conflate
   the local registry with a Redis backplane (none exists).
@@ -71,8 +72,10 @@ exposed by the push outbox. Application, proxy, and APM logs must redact
 `access_token`, connection tokens, `Authorization` headers, and message
 payloads. Push data, metrics, and logs never carry message text or location.
 
-## Migrations (authored-only until Phase 7)
+## Migrations (disposable-target verified; production unapplied)
 
+The builder applied and rollback-tested these migrations only on the authorized
+SanadBrunoTestDb target; this does not authorize production application.
 Three additive migrations ship with this package and must be applied in order
 (application startup order is unchanged: Identity → … → Chat):
 
@@ -80,14 +83,14 @@ Three additive migrations ship with this package and must be applied in order
    backfill from `messagesFromFamilies` → non-null, default enabled.
 2. Families `AddBookingAreaServiceAttribution` — nullable
    `bookingAreaId`/`bookingServiceId` + pair index.
-3. Chat `AddChatPlusChanges` — `chat_changes`, `chat_outbox`,
-   `chat_privacy_settings`, `conversations.change_revision`,
-   `reports.version`, unique `messages.attachment_id`.
+3. Chat `AddChatPlusChanges` — Chat-schema `ChatChanges`, `ChatOutbox`, `ChatPrivacySettings`,
+   `Conversations.ChangeRevision`, `Reports.Version`, unique `Messages.AttachmentId`.
 
-Each is additive/nullable; rollback drops only the new objects. Before any
-Phase 7 target run, `docs/operations/publish.md` `requiredMigrations` must
-list the three new migration IDs, and rollback compatibility must be verified
-on the exact disposable target — never against production.
+Each is additive/nullable; rollback drops only the new objects. The publish script's requiredMigrations now lists the three new IDs.
+See [publish instructions](../../internal/operations/publish.md). Rollback
+was verified on the disposable target with empty Chat tables; it does not prove
+lossless rollback after real Chat Plus data exists. Never run rollback against
+production from this evidence.
 
 ## Reverse proxy and client-facing requirements (Phase 7 verify)
 

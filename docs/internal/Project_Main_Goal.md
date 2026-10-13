@@ -10,6 +10,16 @@ Care Homes checkpoint: all HC tasks complete through HC-TASK-062 (guide/Postman/
 
 Cross-slice note: the caregiver-money chain (T0 FinanceAdmin role, T1 bank catalogue, T2 payout account with IBAN encryption, T3 payout timing policy, T4 payout ledger with review workflow) and the community lane (T5 image upload with gated serving, T6 recommendations, T7 medical recipients) are implemented, merged, and gated green.
 
+## Chat Plus integration — 2026-10-13
+
+Builder delivered `ded4dd1` from `41f9c91`; mastermind integration into main
+and final corrections/gates are in progress. [Chat Plus tasks](work/chat-plus/tasks.md)
+owns status; [handoff](work/chat-plus/handoff.md) owns the next action and release
+gaps; [integration evidence](work/chat-plus/reports/integration.md) records the
+result. The historical baseline HEAD/gates above do not describe current main.
+Production release readiness remains unproven until the listed external/runtime
+and security/storage requirements close. Voice remains excluded.
+
 ## Canonical files
 
 - [Mastermind handoff](Mastermind_Handoff.md): current state and next action.

@@ -19,11 +19,13 @@ never executed against a live API or database. No voice.
 - Restricted-verification tokens are rejected; Normal access plus a valid JWT
   user id is required. User routing uses the validated JWT `sub`, never a
   client-supplied user id.
-- `CloseOnAuthenticationExpiration` has no corresponding server option, so it is
-  enforced equivalently: the hub requires the `NormalAccess` policy with
-  per-call authorization, access tokens are short-lived (15 minutes), and
-  clients refresh and reconnect. Logout/revoke/block/hide/account-disable
-  closes or evicts affected connections. Exact origin allowlists are required;
+- The hub mapping enables `CloseOnAuthenticationExpiration`: the server closes
+  connections when the access token expires; clients refresh and reconnect.
+  Hub calls and realtime dispatch re-check active users; block/hide evicts joins.
+  Current access tokens do not contain a device-session claim, so server-side
+  per-session logout/revocation is not immediate. Mobile logout must close the
+  socket; session-bound auth invalidation remains a release hardening item.
+  Exact origin allowlists are required at the actual deployment edge;
   CORS alone does not protect WebSocket upgrades.
 
 ## Methods

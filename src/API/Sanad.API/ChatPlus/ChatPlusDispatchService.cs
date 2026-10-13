@@ -1,4 +1,6 @@
 using MediatR;
+using Microsoft.Extensions.Options;
+using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
 using Sanad.Modules.Chat.Application.Dispatch;
 using Sanad.Modules.Chat.Application.Realtime;
@@ -51,7 +53,10 @@ public sealed class ChatPlusDispatchService(
         var sender = scope.ServiceProvider.GetRequiredService<ISender>();
         var publisher = scope.ServiceProvider.GetService<IChatRealtimePublisher>();
 
-        var dispatcher = new ChatOutboxDispatcher(db, sender, publisher);
+        var dispatcher = new ChatOutboxDispatcher(
+            db, sender, publisher,
+            scope.ServiceProvider.GetRequiredService<IOptions<ChatDispatchOptions>>().Value,
+            userLookup: scope.ServiceProvider.GetRequiredService<IChatUserLookup>());
         (int changes, int intents) = await dispatcher.DispatchAsync(cancellationToken);
 
         // Typing-expiry sweep: server-expired hints broadcast stops while

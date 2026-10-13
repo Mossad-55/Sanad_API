@@ -5,6 +5,7 @@ using Sanad.API.Authorization;
 using Sanad.API.Realtime;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.RateLimiting;
+using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Application.Realtime;
 using Sanad.Modules.Chat.Domain.Conversations;
 
@@ -29,7 +30,8 @@ public sealed class ChatHub(
     IPresenceTracker presence,
     IChatHubAudience audience,
     IChatRealtimePublisher publisher,
-    IChatRateGate rateGate) : Hub
+    IChatRateGate rateGate,
+    IChatUserLookup? userLookup = null) : Hub
 {
     /// <summary>Hub connection budget per user (multi-device OR).</summary>
     public const int MaxConnectionsPerUser = 5;
@@ -39,7 +41,7 @@ public sealed class ChatHub(
 
     public override async Task OnConnectedAsync()
     {
-        UserId? userId = CurrentUserId();
+        UserId? userId = await CurrentActiveUserIdAsync();
 
         if (userId is null ||
             !rateGate.TryAcquireNegotiate(userId.Value, out _) ||
@@ -84,7 +86,7 @@ public sealed class ChatHub(
     /// </summary>
     public async Task<object> JoinConversation(Guid conversationId)
     {
-        UserId? userId = CurrentUserId();
+        UserId? userId = await CurrentActiveUserIdAsync();
         var conversation = new ConversationId(conversationId);
 
         if (userId is null ||
@@ -129,7 +131,7 @@ public sealed class ChatHub(
     /// <summary>Idempotent leave; stops this connection's typing state.</summary>
     public async Task<object> LeaveConversation(Guid conversationId)
     {
-        UserId? userId = CurrentUserId();
+        UserId? userId = await CurrentActiveUserIdAsync();
         var conversation = new ConversationId(conversationId);
 
         registry.Leave(Context.ConnectionId, conversation);
@@ -155,7 +157,7 @@ public sealed class ChatHub(
     /// </summary>
     public async Task SetTyping(Guid conversationId, bool isTyping)
     {
-        UserId? userId = CurrentUserId();
+        UserId? userId = await CurrentActiveUserIdAsync();
         var conversation = new ConversationId(conversationId);
 
         if (userId is null ||
@@ -187,7 +189,7 @@ public sealed class ChatHub(
     /// </summary>
     public async Task Heartbeat()
     {
-        UserId? userId = CurrentUserId();
+        UserId? userId = await CurrentActiveUserIdAsync();
 
         if (userId is null)
         {
@@ -252,7 +254,7 @@ public sealed class ChatHub(
             CancellationToken.None);
     }
 
-    private UserId? CurrentUserId()
+    private async Task<UserId?> CurrentActiveUserIdAsync()
     {
         string? sub = Context.User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 
@@ -261,6 +263,19 @@ public sealed class ChatHub(
             return null;
         }
 
-        return new UserId(id);
+        var userId = new UserId(id);
+        // Production DI always supplies the active-user lookup. Optional
+        // only for the existing isolated hub tests.
+        if (userLookup is not null &&
+            await userLookup.GetProfileAsync(userId, Context.ConnectionAborted) is null)
+        {
+            registry.RemoveConnection(Context.ConnectionId, out _);
+            typing.ClearConnection(Context.ConnectionId);
+            presence.RemoveConnection(Context.ConnectionId, DateTime.UtcNow);
+            Context.Abort();
+            return null;
+        }
+
+        return userId;
     }
 }
