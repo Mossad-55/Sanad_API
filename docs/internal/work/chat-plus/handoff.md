@@ -45,5 +45,11 @@ Voice excluded; single API instance only; do not claim production release-ready.
 
 ## Next action
 
-Plan the bounded remaining security/storage work, then execute the remaining
-release checklist with the named owners and exact-target authorizations.
+Owner wants VPS development shipping prioritized and Bruno ignored entirely.
+[Worker prompts](worker-prompts.md) are ready: start the VPS-readiness worker
+(Prompt 5), integrate its branch, and prepare a fresh package from clean pushed
+main. Existing publish-out manifest is 41f9c91 (pre-Chat-Plus), not current main.
+Development VPS means isolated Staging/test database, not public Development.
+The testing page (Prompt 4) is optional; direct developer testing/reporting is
+acceptable. Deploy only after exact host/database/startup-side-effect approval;
+security/storage and production-device gates retain their documented owners.

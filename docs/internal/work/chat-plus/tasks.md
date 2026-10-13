@@ -13,6 +13,10 @@ Statuses: Not started, In progress, Blocked, Done. Implementation readiness
 and release readiness are distinct; do not mark external gates complete from
 unit evidence. Voice remains excluded.
 
+Owner update: ignore Bruno entirely for all subsequent work. Historical mapping
+counts below remain evidence only; Bruno is not a task, test path or blocker.
+Copy-ready remaining worker briefs: [worker-prompts.md](worker-prompts.md).
+
 - [x] Done — Planning revision: capture frontend report, correct authentication/
   replay/scale assumptions, add prerequisite hardening and external release gates.
 - [x] Done — **Phase 0: execution contract and scout.**
@@ -130,6 +134,25 @@ Reports expected after implementation:
   final user handoff.
   Evidence: reports/integration.md. Builder's completed bounded review is reused;
   no duplicate whole-feature review or unapproved live run.
+
+## Remaining shipping tasks — owner direction
+
+Mastermind owns planning/review/integration/main push. Run workers sequentially
+on their own branches; integrate each before dependent work. No VPS deployment
+is authorized by issuing a code/documentation brief.
+
+- [ ] Not started — Priority VPS readiness (Prompt 5): fresh-artifact workflow,
+  Postman-only release mapping, origins/WebSocket policy, persistent keys/files,
+  trustworthy remote revision/migration verification, Staging/test-target setup.
+  Existing package manifest is 41f9c91, before Chat Plus; never deploy it as Chat Plus.
+- [ ] Not started — Session-bound access and final-send push privacy (Prompt 1).
+- [ ] Not started — Race-safe physical orphan cleanup/storage bounds (Prompt 2).
+- [ ] Not started — Bounded Care Homes processor translation correction (Prompt 3).
+- [ ] Not started — Optional tester page or manual developer pack (Prompt 4).
+  Page absence is not a staging-shipping blocker.
+- [ ] Blocked — Authorized VPS/runtime/device verification (Prompt 6): needs
+  exact target/deployed artifact and permitted fixtures/provider tests. Physical
+  mobile push proof remains separate from development REST-chat testing.
 
 ## Final review
 

@@ -14,9 +14,14 @@ See [Chat Plus checklist](work/chat-plus/tasks.md),
 [integration evidence](work/chat-plus/reports/integration.md), and
 [current handoff](work/chat-plus/handoff.md) for exact status and remaining work.
 No production operation or provider send is authorized by integration.
-**Next action:** plan the remaining security/storage work and complete the
-release requirements with exact-target authorization. Voice excluded;
-single-instance only. Final closeout commit/main push belongs to this turn.
+Owner's latest direction prioritizes development VPS shipping and excludes
+Bruno entirely. [Copy-ready worker prompts](work/chat-plus/worker-prompts.md)
+cover security, storage, processor correction, optional test page, priority VPS
+readiness and target/device verification. Existing package manifest is 41f9c91,
+before Chat Plus; it must be rebuilt from the reviewed pushed main revision.
+**Next action:** execute Prompt 5 on its own branch, then mastermind integrates
+and publishes; deploy only with exact VPS/test-database/startup authorization.
+Voice excluded; single-instance only; public Development environment forbidden.
 
 ## Previous integration evidence — 2026-10-11 (baseline slices)
 
