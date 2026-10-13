@@ -17,7 +17,8 @@ namespace Sanad.API.Realtime;
 public sealed class ChatRealtimePublisher(
     IHubContext<ChatHub> hub,
     IChatHubAudience audience,
-    IChatConnectionRegistry registry) : IChatRealtimePublisher
+    IChatConnectionRegistry registry,
+    Security.IIdentitySessionValidator? sessionValidator = null) : IChatRealtimePublisher
 {
     public async Task PublishMessageCreatedAsync(
         Guid conversationId,
@@ -100,7 +101,10 @@ public sealed class ChatRealtimePublisher(
         {
             foreach (string connection in registry.GetConnections(subscriber))
             {
-                connections.Add(connection);
+                if (await IsConnectionEligibleAsync(subscriber, connection, cancellationToken))
+                {
+                    connections.Add(connection);
+                }
             }
         }
 
@@ -129,7 +133,8 @@ public sealed class ChatRealtimePublisher(
         {
             foreach (string connection in registry.GetConnections(recipient))
             {
-                if (registry.GetJoined(connection).Contains(conversationId))
+                if (registry.GetJoined(connection).Contains(conversationId) &&
+                    await IsConnectionEligibleAsync(recipient, connection, cancellationToken))
                 {
                     connections.Add(connection);
                 }
@@ -137,5 +142,48 @@ public sealed class ChatRealtimePublisher(
         }
 
         return connections.ToArray();
+    }
+
+    /// <summary>
+    /// Per-dispatch session liveness: when the validator is wired, a
+    /// connection whose verified session is revoked/expired or whose user
+    /// is disabled receives no message/receipt/typing/presence frames.
+    /// Isolated tests omit the validator and keep audience-only behavior.
+    /// </summary>
+    private async Task<bool> IsConnectionEligibleAsync(
+        UserId recipient,
+        string connectionId,
+        CancellationToken cancellationToken)
+    {
+        if (sessionValidator is null)
+        {
+            return true;
+        }
+
+        DeviceSessionId? sessionId;
+
+        try
+        {
+            sessionId = registry.GetSession(connectionId);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
+
+        if (sessionId is null || sessionId == DeviceSessionId.Empty)
+        {
+            return false;
+        }
+
+        try
+        {
+            return await sessionValidator.IsSessionActiveAsync(
+                recipient, sessionId.Value, cancellationToken);
+        }
+        catch (Exception)
+        {
+            return false;
+        }
     }
 }

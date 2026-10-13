@@ -48,5 +48,12 @@ public static class AuthorizationPolicies
     /// SupportAdmin, mirroring the elderly-ops operational policies.</summary>
     public const string ChatSupportAdmin = "ChatSupportAdmin";
 
+    /// <summary>
+    /// Sensitive Chat access: Normal access plus a verified session-bound
+    /// token (<c>sid</c> claim). Legacy unbound Normal tokens are rejected
+    /// here while other surfaces keep the documented rollout window.
+    /// </summary>
+    public const string SessionBoundAccess = "SessionBoundAccess";
+
     public const string SuperAdminOnly = "SuperAdminOnly";
 }

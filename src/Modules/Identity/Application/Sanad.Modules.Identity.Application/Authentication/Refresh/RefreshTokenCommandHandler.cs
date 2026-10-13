@@ -133,7 +133,8 @@ public sealed class RefreshTokenCommandHandler :
         GeneratedAccessToken accessToken =
             _tokenService.GenerateAccessToken(
                 user,
-                utcNow);
+                utcNow,
+                session.Id);
 
         GeneratedRefreshToken refreshToken =
             _tokenService.GenerateRefreshToken(

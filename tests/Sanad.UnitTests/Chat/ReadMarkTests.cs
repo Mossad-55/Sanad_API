@@ -344,7 +344,7 @@ public sealed class ReadMarkTests
         var authorize = Assert.Single(typeof(ChatController)
             .GetCustomAttributes(typeof(AuthorizeAttribute), true)
             .Cast<AuthorizeAttribute>());
-        Assert.Equal(Sanad.API.Authorization.AuthorizationPolicies.NormalAccess, authorize.Policy);
+        Assert.Equal(Sanad.API.Authorization.AuthorizationPolicies.SessionBoundAccess, authorize.Policy);
 
         System.Reflection.MethodInfo mark =
             typeof(ChatController).GetMethod(nameof(ChatController.MarkConversationRead))!;

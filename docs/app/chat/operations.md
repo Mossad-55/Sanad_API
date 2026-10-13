@@ -119,8 +119,10 @@ its exact-target authorization before any test send.
       cancellation (propagates). `InvalidArgument` never retires a token.
 - [ ] Confirm chat pushes stay ids-only (conversation/message ids, notification
       id, inbox deep link) — no text/location in notification, data, metrics,
-      or logs — and consult `chatMessages` with block/visibility/account
-      eligibility re-checked at dispatch.
+      or logs — and consult `chatMessages` with session/device ownership,
+      account status, chat visibility, directional block policy, and
+      preference re-checked immediately before each provider send; ineligible
+      work is suppressed durably (never retried as a provider failure).
 
 ### Firebase console (owner)
 

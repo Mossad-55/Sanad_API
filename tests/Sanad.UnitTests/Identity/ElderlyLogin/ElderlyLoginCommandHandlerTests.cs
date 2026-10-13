@@ -902,7 +902,8 @@ public sealed class ElderlyLoginCommandHandlerTests
 
         public GeneratedAccessToken GenerateAccessToken(
             User user,
-            DateTime utcNow)
+            DateTime utcNow,
+            DeviceSessionId? deviceSessionId = null)
         {
             AccessTokenCalls++;
 

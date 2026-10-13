@@ -23,13 +23,16 @@ public sealed class AuthController :
 {
     private readonly ISender _sender;
     private readonly IFileStorage _fileStorage;
+    private readonly Realtime.ChatConnectionEvictor? _sessionEvictor;
 
     public AuthController(
         ISender sender,
-        IFileStorage fileStorage)
+        IFileStorage fileStorage,
+        Realtime.ChatConnectionEvictor? sessionEvictor = null)
     {
         _sender = sender;
         _fileStorage = fileStorage;
+        _sessionEvictor = sessionEvictor;
     }
 
     [AllowAnonymous]
@@ -358,6 +361,21 @@ public sealed class AuthController :
                     userId),
                 cancellationToken);
 
+        // Session revocation takes effect through the shared validator on
+        // the next hub call/dispatch; evict this device's joins/hints now
+        // so no new realtime dispatch observes stale eligibility.
+        if (result.IsSuccess && _sessionEvictor is not null)
+        {
+            try
+            {
+                await _sessionEvictor.EvictSessionAsync(
+                    userId, deviceSessionId, cancellationToken);
+            }
+            catch (Exception)
+            {
+            }
+        }
+
         return ToActionResult(
             result);
     }
@@ -382,6 +400,18 @@ public sealed class AuthController :
                 new LogoutAllSessionsCommand(
                     userId),
                 cancellationToken);
+
+        if (result.IsSuccess && _sessionEvictor is not null)
+        {
+            try
+            {
+                await _sessionEvictor.EvictUserSessionsAsync(
+                    userId, cancellationToken);
+            }
+            catch (Exception)
+            {
+            }
+        }
 
         return ToActionResult(
             result);
@@ -439,6 +469,20 @@ public sealed class AuthController :
                         sessionId),
                     userId),
                 cancellationToken);
+
+        if (result.IsSuccess && _sessionEvictor is not null)
+        {
+            try
+            {
+                await _sessionEvictor.EvictSessionAsync(
+                    userId,
+                    new DeviceSessionId(sessionId),
+                    cancellationToken);
+            }
+            catch (Exception)
+            {
+            }
+        }
 
         return ToActionResult(
             result);

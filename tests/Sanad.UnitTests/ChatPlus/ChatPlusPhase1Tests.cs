@@ -529,8 +529,9 @@ public sealed class ChatPlusPhase1Tests
                 .GetCustomAttributes(typeof(Microsoft.AspNetCore.Authorization.AuthorizeAttribute), true)
                 .Single());
 
+        // Sensitive Chat access requires session-bound Normal tokens (sid).
         Assert.Equal(
-            Sanad.API.Authorization.AuthorizationPolicies.NormalAccess,
+            Sanad.API.Authorization.AuthorizationPolicies.SessionBoundAccess,
             attribute.Policy);
     }
 

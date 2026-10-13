@@ -4,6 +4,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Domain.Users;
@@ -31,12 +32,14 @@ public sealed class JwtAuthTokenService :
 
     public GeneratedAccessToken GenerateAccessToken(
         User user,
-        DateTime utcNow)
+        DateTime utcNow,
+        DeviceSessionId? deviceSessionId = null)
     {
         return GenerateToken(
             user,
             AuthAccessType.Normal,
-            utcNow);
+            utcNow,
+            deviceSessionId);
     }
 
     public GeneratedAccessToken
@@ -110,7 +113,8 @@ public sealed class JwtAuthTokenService :
     private GeneratedAccessToken GenerateToken(
         User user,
         AuthAccessType accessType,
-        DateTime utcNow)
+        DateTime utcNow,
+        DeviceSessionId? deviceSessionId = null)
     {
         DateTime expiresOnUtc =
             utcNow.Add(
@@ -154,6 +158,20 @@ public sealed class JwtAuthTokenService :
                         AuthClaimNames.AccountType,
                         account.AccountType
                             .ToString()));
+            }
+
+            // Session-bound Normal tokens are issued after the device
+            // session row exists and carry its id. Restricted tokens never
+            // carry a session. A null/empty session preserves the legacy
+            // unbound shape for the documented rollout window only.
+            if (deviceSessionId.HasValue &&
+                deviceSessionId.Value != DeviceSessionId.Empty)
+            {
+                claims.Add(
+                    new Claim(
+                        AuthClaimNames.SessionId,
+                        deviceSessionId.Value.Value.ToString(
+                            "D")));
             }
         }
 

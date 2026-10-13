@@ -762,7 +762,7 @@ public sealed class ConversationTests
         var authorize = Assert.Single(typeof(ChatController)
             .GetCustomAttributes(typeof(AuthorizeAttribute), true)
             .Cast<AuthorizeAttribute>());
-        Assert.Equal(Sanad.API.Authorization.AuthorizationPolicies.NormalAccess, authorize.Policy);
+        Assert.Equal(Sanad.API.Authorization.AuthorizationPolicies.SessionBoundAccess, authorize.Policy);
 
         System.Reflection.MethodInfo list =
             typeof(ChatController).GetMethod(nameof(ChatController.GetConversations))!;

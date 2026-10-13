@@ -30,9 +30,12 @@ namespace Sanad.API.Controllers;
 /// report flow (endpoints 12–15) lives in
 /// <see cref="AdminChatReportsController"/>.
 /// Normal access only: restricted-verification tokens are rejected for Chat
-/// (401/403 by the policy before any handler runs).
+/// (401/403 by the policy before any handler runs). Sensitive Chat access
+/// additionally requires a session-bound token (sid claim) so logout/revoke
+/// invalidates Chat; legacy unbound Normal tokens are rejected here with
+/// 401/403 while other surfaces keep the documented rollout window.
 /// </summary>
-[Authorize(Policy = AuthorizationPolicies.NormalAccess)]
+[Authorize(Policy = AuthorizationPolicies.SessionBoundAccess)]
 [Route("api/v1/chat")]
 public sealed class ChatController : ApiControllerBase
 {

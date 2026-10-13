@@ -12,7 +12,11 @@ public interface IChatConnectionRegistry
 {
     void AddConnection(UserId userId, string connectionId);
 
+    void AddConnection(UserId userId, string connectionId, DeviceSessionId? sessionId);
+
     void RemoveConnection(string connectionId, out UserId? userId);
+
+    DeviceSessionId? GetSession(string connectionId);
 
     IReadOnlyList<string> GetConnections(UserId userId);
 
@@ -27,6 +31,15 @@ public interface IChatConnectionRegistry
     IReadOnlyList<ConversationId> GetJoined(string connectionId);
 
     int CountJoined(string connectionId);
+
+    /// <summary>
+    /// Evicts every connection bound to a revoked session: leaves all
+    /// joins. The socket itself closes on the next hub call (abort) or
+    /// access-token expiry; no new dispatch observes the evicted joins.
+    /// </summary>
+    void EvictSession(DeviceSessionId sessionId);
+
+    void EvictUser(UserId userId);
 }
 
 /// <summary>

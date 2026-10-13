@@ -173,11 +173,6 @@ public sealed class LoginCommandHandler :
                 .SessionLimitReached;
         }
 
-        GeneratedAccessToken accessToken =
-            _tokenService.GenerateAccessToken(
-                user,
-                utcNow);
-
         GeneratedRefreshToken refreshToken =
             _tokenService.GenerateRefreshToken(
                 utcNow);
@@ -191,6 +186,15 @@ public sealed class LoginCommandHandler :
                 refreshToken.Hash,
                 utcNow,
                 refreshToken.ExpiresOnUtc);
+
+        // Session-bound Normal access: the token is issued after the
+        // session row exists and carries its id. Multi-device isolation
+        // follows from distinct session ids per device.
+        GeneratedAccessToken accessToken =
+            _tokenService.GenerateAccessToken(
+                user,
+                utcNow,
+                deviceSession.Id);
 
         _dbContext.DeviceSessions.Add(
             deviceSession);

@@ -766,7 +766,8 @@ public sealed class LoginCommandHandlerTests
 
         public GeneratedAccessToken GenerateAccessToken(
             User user,
-            DateTime utcNow)
+            DateTime utcNow,
+            DeviceSessionId? deviceSessionId = null)
         {
             AccessTokenCalls++;
 

@@ -450,7 +450,8 @@ public sealed class RefreshTokenCommandHandlerTests
 
         public GeneratedAccessToken GenerateAccessToken(
             User user,
-            DateTime utcNow)
+            DateTime utcNow,
+            DeviceSessionId? deviceSessionId = null)
         {
             AccessTokenCalls++;
 

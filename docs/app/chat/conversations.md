@@ -1,10 +1,12 @@
 # Chat API — conversations, attachments, read marks, blocks, hiding
 
-All Chat app routes require Normal access and live under `/api/v1/chat`. The
-routes carry `[Authorize(Policy = NormalAccess)]`, so restricted-verification
-tokens are rejected before any handler runs; the acting participant always
-comes from the JWT `sub` claim and can never be supplied by the client.
-Anonymous callers receive `401`.
+All Chat app routes require session-bound Normal access and live under
+`/api/v1/chat`. The routes carry
+`[Authorize(Policy = SessionBoundAccess)]`, so restricted-verification tokens
+and legacy unbound Normal tokens (no `sid`) are rejected before any handler
+runs; the acting participant always comes from the JWT `sub` claim and the
+verified session always comes from the JWT `sid` claim — never a
+client-selected session header. Anonymous callers receive `401`.
 
 > **Chat Plus deltas (2026-10).** Open/send/read/report/upload/sync routes are
 > additionally bounded by sliding-window rate limits (`429` + `Retry-After`,

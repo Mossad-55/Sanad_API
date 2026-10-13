@@ -21,6 +21,7 @@ Inbound JWT claim remapping is disabled. `sub` stays `sub`.
 | `sub` | User id |
 | `access_type` | `Normal` or `RestrictedVerification` |
 | `account_type` | Present on Normal tokens for the user's account roles |
+| `sid` | Session-bound Normal tokens only: the issuing `DeviceSessionId` (GUID `D`). Absent on legacy Normal tokens and never present on Restricted tokens |
 
 JSON login `accessType` is the enum number: `1` Normal, `2` RestrictedVerification. The JWT claim is the enum name.
 
@@ -49,6 +50,31 @@ Applied to:
 A restricted verification token calling those routes receives `403`.
 
 A missing or invalid bearer token receives `401`.
+
+Session-bound Normal tokens (`sid`) are validated on every authenticated
+request: a revoked/expired session, a session owned by another user, or a
+non-Active account fails authentication (`401`) even before expiry. Legacy
+Normal tokens without `sid` still pass `NormalAccess` until their natural
+15-minute expiry; sensitive Chat surfaces reject them (see below).
+
+## Policy `SessionBoundAccess`
+
+Defined in `AuthorizationPolicies.SessionBoundAccess`.
+
+Requires:
+
+- Authenticated user
+- Claim `access_type` = `Normal`
+- Claim `sid` present (verified by JWT validation against the live session row)
+
+Applied to:
+
+- All `/api/v1/chat/...` app routes (`ChatController`)
+- `/hubs/chat` (`ChatHub`)
+
+A legacy unbound Normal token calling Chat receives `401/403`; refresh to a
+session-bound token. Other `NormalAccess` surfaces keep the documented rollout
+window and do not require `sid` yet.
 
 National ID upload additionally rejects Elderly and admin-only identities with `409 Identity.IdentityDocument.UnsupportedAccountType`. Family, Medical Caregiver, and Companion Caregiver may call it.
 
@@ -123,8 +149,8 @@ Elderly cannot self-register and cannot share an identity with another account t
 | | Restricted | Normal |
 |---|---|---|
 | When | PendingVerification email or phone/password login | Active user |
-| Access token | 15 minutes | 15 minutes |
-| Refresh token | No | Yes, 30 days |
+| Access token | 15 minutes | 15 minutes, session-bound (`sid`) after session creation |
+| Refresh token | No | Yes, 30 days, bound rotation per device session |
 | DeviceSession | No | Yes |
 | Password change / sessions | No | Yes |
 | National ID (`/auth/identity-document`) | No (403) | Yes, for Family / Medical / Companion |
@@ -133,10 +159,12 @@ Elderly cannot self-register and cannot share an identity with another account t
 
 ## Header
 
-Current-session logout also requires:
+Current-session logout accepts the verified JWT `sid` first and falls back to:
 
 ```text
 X-Device-Session-Id: <guid>
 ```
 
-The user id always comes from JWT `sub`, never from the request body.
+The user id always comes from JWT `sub`, never from the request body. Chat hub
+connections never read this header: they carry the verified JWT `sid` in
+connection metadata.

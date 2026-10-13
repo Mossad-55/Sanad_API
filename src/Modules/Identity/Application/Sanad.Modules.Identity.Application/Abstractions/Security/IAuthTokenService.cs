@@ -1,3 +1,4 @@
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Domain.Users;
 
@@ -7,7 +8,8 @@ public interface IAuthTokenService
 {
     GeneratedAccessToken GenerateAccessToken(
         User user,
-        DateTime utcNow);
+        DateTime utcNow,
+        DeviceSessionId? deviceSessionId = null);
 
     GeneratedAccessToken GenerateRestrictedVerificationToken(
             User user,

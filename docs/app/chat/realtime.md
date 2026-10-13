@@ -16,15 +16,20 @@ never executed against a live API or database. No voice.
   only**; headers where supported. TLS required. `access_token`, connection
   tokens, `Authorization`, and payloads are redacted in application/proxy/APM
   logs. A SignalR connection token is not an authentication credential.
-- Restricted-verification tokens are rejected; Normal access plus a valid JWT
-  user id is required. User routing uses the validated JWT `sub`, never a
-  client-supplied user id.
+- Restricted-verification tokens and legacy unbound Normal tokens (no `sid`)
+  are rejected; session-bound Normal access plus a valid JWT user id is
+  required. User routing uses the validated JWT `sub`, never a
+  client-supplied user id. Connection metadata carries the verified JWT `sid`,
+  never a client-selected session header.
 - The hub mapping enables `CloseOnAuthenticationExpiration`: the server closes
   connections when the access token expires; clients refresh and reconnect.
-  Hub calls and realtime dispatch re-check active users; block/hide evicts joins.
-  Current access tokens do not contain a device-session claim, so server-side
-  per-session logout/revocation is not immediate. Mobile logout must close the
-  socket; session-bound auth invalidation remains a release hardening item.
+  Hub calls and realtime dispatch re-check active users and the verified
+  session on every join, hint, message/receipt/presence dispatch; block/hide
+  evicts joins. Logout-current/revoke-one evict only that device session;
+  logout-all/password-reset/reuse/disable invalidate all sessions. Evicted
+  joins stop receiving dispatch immediately; sockets abort on their next hub
+  call and close on token expiry (bounded invalidation: hub calls immediate,
+  realtime dispatch within the 5s cycle). Expiry closure stays enabled.
   CORS remains AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader by owner confirmation;
   no new API/proxy origin restrictions are part of this package.
 

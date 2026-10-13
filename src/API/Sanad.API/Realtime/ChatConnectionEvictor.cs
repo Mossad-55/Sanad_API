@@ -81,4 +81,73 @@ public sealed class ChatConnectionEvictor(
 
         return Task.CompletedTask;
     }
+
+    /// <summary>
+    /// Session revocation: logout-current/revoke-one evict only that
+    /// device session; logout-all/reset/reuse/disable evict every session
+    /// of the user via <see cref="EvictUserSessionsAsync"/>. Joins are
+    /// evicted and hints cleared so no new dispatch observes stale
+    /// eligibility; sockets abort on their next hub call and close on
+    /// token expiry (CloseOnAuthenticationExpiration stays enabled).
+    /// Bounded invalidation: hub calls immediate, realtime dispatch drops
+    /// revoked connections on its next 5s cycle.
+    /// </summary>
+    public async Task EvictSessionAsync(
+        UserId userId,
+        DeviceSessionId sessionId,
+        CancellationToken cancellationToken = default)
+    {
+        registry.EvictSession(sessionId);
+
+        foreach (string connection in registry.GetConnections(userId))
+        {
+            // Only the revoked session's connections lost joins above;
+            // clear hints held by this user's connections so a stale hint
+            // cannot outlive the revocation. Connections still joined keep
+            // working; revoked ones receive nothing further.
+            DeviceSessionId? bound = null;
+
+            try
+            {
+                bound = registry.GetSession(connection);
+            }
+            catch (Exception)
+            {
+                bound = null;
+            }
+
+            if (bound.HasValue && bound.Value == sessionId)
+            {
+                foreach (var cleared in typing.ClearConnection(connection))
+                {
+                    await publisher.PublishTypingChangedAsync(
+                        cleared.ConversationId.Value,
+                        cleared.UserId.Value,
+                        false,
+                        DateTime.UtcNow,
+                        cancellationToken);
+                }
+            }
+        }
+    }
+
+    public async Task EvictUserSessionsAsync(
+        UserId userId,
+        CancellationToken cancellationToken = default)
+    {
+        registry.EvictUser(userId);
+
+        foreach (string connection in registry.GetConnections(userId))
+        {
+            foreach (var cleared in typing.ClearConnection(connection))
+            {
+                await publisher.PublishTypingChangedAsync(
+                    cleared.ConversationId.Value,
+                    cleared.UserId.Value,
+                    false,
+                    DateTime.UtcNow,
+                    cancellationToken);
+            }
+        }
+    }
 }

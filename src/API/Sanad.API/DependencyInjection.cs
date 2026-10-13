@@ -208,6 +208,77 @@ public static class DependencyInjection
                         }
 
                         return Task.CompletedTask;
+                    },
+                    OnTokenValidated = async context =>
+                    {
+                        // Shared session ownership/revocation check for
+                        // session-bound Normal tokens. Legacy Normal tokens
+                        // without sid pass here and are rejected only on
+                        // sensitive Chat surfaces by SessionBoundAccess.
+                        // Restricted tokens never carry sid and are preserved.
+                        string? accessType =
+                            context.Principal?.FindFirst(
+                                AuthClaimNames.AccessType)?.Value;
+
+                        if (!string.Equals(
+                                accessType,
+                                AuthAccessType.Normal.ToString(),
+                                StringComparison.Ordinal))
+                        {
+                            return;
+                        }
+
+                        string? sessionClaim =
+                            context.Principal?.FindFirst(
+                                AuthClaimNames.SessionId)?.Value;
+
+                        if (string.IsNullOrWhiteSpace(sessionClaim))
+                        {
+                            return;
+                        }
+
+                        string? subject =
+                            context.Principal?.FindFirst(
+                                JwtRegisteredClaimNames.Sub)?.Value;
+
+                        if (!Guid.TryParse(subject, out Guid userGuid) ||
+                            userGuid == Guid.Empty ||
+                            !Guid.TryParse(sessionClaim, out Guid sessionGuid) ||
+                            sessionGuid == Guid.Empty)
+                        {
+                            context.Fail("Invalid session binding.");
+                            return;
+                        }
+
+                        try
+                        {
+                            var validator =
+                                context.HttpContext.RequestServices
+                                    .GetRequiredService<
+                                        Security.IIdentitySessionValidator>();
+
+                            var userId =
+                                new Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId(
+                                    userGuid);
+                            var sessionId =
+                                new Sanad.BuildingBlocks.Domain.Primitives.Ids.DeviceSessionId(
+                                    sessionGuid);
+
+                            bool active =
+                                await validator.IsSessionActiveAsync(
+                                    userId,
+                                    sessionId,
+                                    context.HttpContext.RequestAborted);
+
+                            if (!active)
+                            {
+                                context.Fail("Session revoked or expired.");
+                            }
+                        }
+                        catch (Exception)
+                        {
+                            context.Fail("Session validation unavailable.");
+                        }
                     }
                 };
 
@@ -458,6 +529,17 @@ public static class DependencyInjection
                 policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
                 policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString());
             });
+
+            // Sensitive Chat access: Normal plus a verified session-bound
+            // sid claim. The JWT OnTokenValidated step above already
+            // verifies session ownership/revocation; this policy rejects
+            // legacy unbound tokens at the Chat boundary.
+            options.AddPolicy(AuthorizationPolicies.SessionBoundAccess, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.SessionId);
+            });
         });
 
         services.AddMediatR(configuration =>
@@ -537,6 +619,7 @@ public static class DependencyInjection
 
         // Chat outbound ports (interfaces live in Chat Application,
         // implementations here — same gateway pattern as FamilyIdentityGateway).
+        services.AddScoped<Security.IIdentitySessionValidator, Security.IdentitySessionValidator>();
         services.AddScoped<IChatUserLookup, ApiChatUserLookup>();
         services.AddScoped<IChatEligibilityChecker, ApiChatEligibilityChecker>();
         services.AddScoped<IChatBookingGateway, ApiChatBookingGateway>();
@@ -575,6 +658,7 @@ public static class DependencyInjection
         services.AddScoped<
             Sanad.Modules.Chat.Application.Realtime.IChatAuthorizationChangedNotifier,
             Realtime.ChatConnectionEvictor>();
+        services.AddScoped<Realtime.ChatConnectionEvictor>();
 
         ChatPlus.ChatPlusDeploymentOptions deployment =
             configuration

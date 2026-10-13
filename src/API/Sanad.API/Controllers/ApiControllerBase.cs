@@ -134,6 +134,22 @@ public abstract class ApiControllerBase :
     {
         deviceSessionId = DeviceSessionId.Empty;
 
+        // Verified session binding comes from the JWT sid claim, never from
+        // a client-selected header. The header remains only for the explicit
+        // logout-current flow that names the device session to revoke.
+        string? claim =
+            User.FindFirst(
+                AuthClaimNames.SessionId)?.Value;
+
+        if (Guid.TryParse(
+                claim,
+                out Guid claimValue) &&
+            claimValue != Guid.Empty)
+        {
+            deviceSessionId = new DeviceSessionId(claimValue);
+            return true;
+        }
+
         if (!Request.Headers.TryGetValue(
                 DeviceSessionHeaderName,
                 out var headerValue))
@@ -143,6 +159,23 @@ public abstract class ApiControllerBase :
 
         return Guid.TryParse(
             headerValue.ToString(),
+            out Guid value) &&
+            value != Guid.Empty &&
+            (deviceSessionId = new DeviceSessionId(value)) !=
+                DeviceSessionId.Empty;
+    }
+
+    protected bool TryGetVerifiedSessionId(
+        out DeviceSessionId deviceSessionId)
+    {
+        deviceSessionId = DeviceSessionId.Empty;
+
+        string? claim =
+            User.FindFirst(
+                AuthClaimNames.SessionId)?.Value;
+
+        return Guid.TryParse(
+            claim,
             out Guid value) &&
             value != Guid.Empty &&
             (deviceSessionId = new DeviceSessionId(value)) !=

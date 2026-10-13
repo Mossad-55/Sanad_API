@@ -1,6 +1,11 @@
 # Refresh and sessions
 
-Active users receive a DeviceSession plus an opaque refresh token. Restricted verification tokens have neither.
+Active users receive a DeviceSession plus an opaque refresh token, then a
+session-bound Normal access token carrying that session's `sid`.
+Restricted verification tokens have neither. Login/Elderly OTP create the
+refresh token and session row first and issue the access token afterwards;
+refresh rotates the refresh hash and issues a new access token bound to the
+same session. Response shapes are unchanged.
 
 Development base URL:
 
@@ -69,8 +74,11 @@ Rules:
 - Replace the stored refresh token after every success
 - Reuse of an old refresh token revokes every session for that user
 - Only Active users can refresh
-- Access token is 15 minutes
-- Refresh/device session is 30 days
+- Access token is 15 minutes and carries `sid`; refresh/device session is 30 days
+- Logout-current/revoke-one affect only that device; logout-all,
+  password-reset/change, reuse detection, and disable affect all sessions
+- Legacy Normal tokens without `sid` remain valid on non-Chat routes until
+  their 15-minute expiry; Chat requires `sid` immediately
 
 | HTTP | `code` |
 |---|---|

@@ -23,7 +23,7 @@ namespace Sanad.API.Hubs;
 /// `?access_token=` on this hub path only (see JWT configuration);
 /// tokens, connection tokens, and payloads are redacted from logs.
 /// </summary>
-[Authorize(Policy = AuthorizationPolicies.NormalAccess)]
+[Authorize(Policy = AuthorizationPolicies.SessionBoundAccess)]
 public sealed class ChatHub(
     IChatConnectionRegistry registry,
     ITypingTracker typing,
@@ -31,7 +31,8 @@ public sealed class ChatHub(
     IChatHubAudience audience,
     IChatRealtimePublisher publisher,
     IChatRateGate rateGate,
-    IChatUserLookup? userLookup = null) : Hub
+    IChatUserLookup? userLookup = null,
+    Security.IIdentitySessionValidator? sessionValidator = null) : Hub
 {
     /// <summary>Hub connection budget per user (multi-device OR).</summary>
     public const int MaxConnectionsPerUser = 5;
@@ -41,17 +42,23 @@ public sealed class ChatHub(
 
     public override async Task OnConnectedAsync()
     {
-        UserId? userId = await CurrentActiveUserIdAsync();
+        var session = await CurrentActiveSessionAsync();
 
-        if (userId is null ||
-            !rateGate.TryAcquireNegotiate(userId.Value, out _) ||
-            registry.CountConnections(userId.Value) >= MaxConnectionsPerUser)
+        if (session is null ||
+            !rateGate.TryAcquireNegotiate(session.Value.UserId, out _) ||
+            registry.CountConnections(session.Value.UserId) >= MaxConnectionsPerUser)
         {
             Context.Abort();
             return;
         }
 
-        registry.AddConnection(userId.Value, Context.ConnectionId);
+        // Verified session from the JWT sid claim, never a client-selected
+        // session header. Multi-device isolation follows from distinct
+        // session ids per device.
+        registry.AddConnection(
+            session.Value.UserId,
+            Context.ConnectionId,
+            session.Value.SessionId);
         await base.OnConnectedAsync();
     }
 
@@ -86,11 +93,11 @@ public sealed class ChatHub(
     /// </summary>
     public async Task<object> JoinConversation(Guid conversationId)
     {
-        UserId? userId = await CurrentActiveUserIdAsync();
+        var session = await CurrentActiveSessionAsync();
         var conversation = new ConversationId(conversationId);
 
-        if (userId is null ||
-            !await IsEligibleAsync(conversation, userId.Value))
+        if (session is null ||
+            !await IsEligibleAsync(conversation, session.Value.UserId))
         {
             throw new HubException("Chat.Conversation.NotFound");
         }
@@ -106,8 +113,9 @@ public sealed class ChatHub(
         ConversationAudience? audienceState = await audience.GetAudienceAsync(
             conversation, CancellationToken.None);
 
+        UserId userId = session.Value.UserId;
         UserId counterpart = audienceState is not null &&
-            audienceState.ParticipantOne == userId.Value
+            audienceState.ParticipantOne == userId
             ? audienceState.ParticipantTwo
             : audienceState?.ParticipantOne ?? UserId.Empty;
 
@@ -131,17 +139,17 @@ public sealed class ChatHub(
     /// <summary>Idempotent leave; stops this connection's typing state.</summary>
     public async Task<object> LeaveConversation(Guid conversationId)
     {
-        UserId? userId = await CurrentActiveUserIdAsync();
+        var session = await CurrentActiveSessionAsync();
         var conversation = new ConversationId(conversationId);
 
         registry.Leave(Context.ConnectionId, conversation);
 
-        if (userId is not null)
+        if (session is not null)
         {
-            typing.ClearUser(userId.Value, conversation);
+            typing.ClearUser(session.Value.UserId, conversation);
             await publisher.PublishTypingChangedAsync(
                 conversationId,
-                userId.Value.Value,
+                session.Value.UserId.Value,
                 false,
                 DateTime.UtcNow,
                 CancellationToken.None);
@@ -157,18 +165,18 @@ public sealed class ChatHub(
     /// </summary>
     public async Task SetTyping(Guid conversationId, bool isTyping)
     {
-        UserId? userId = await CurrentActiveUserIdAsync();
+        var session = await CurrentActiveSessionAsync();
         var conversation = new ConversationId(conversationId);
 
-        if (userId is null ||
+        if (session is null ||
             !registry.GetJoined(Context.ConnectionId).Contains(conversation) ||
-            !await IsEligibleAsync(conversation, userId.Value))
+            !await IsEligibleAsync(conversation, session.Value.UserId))
         {
             return;
         }
 
         if (!typing.Refresh(
-                userId.Value, conversation, Context.ConnectionId,
+                session.Value.UserId, conversation, Context.ConnectionId,
                 isTyping, DateTime.UtcNow, out DateTime expiresOnUtc))
         {
             return;
@@ -176,7 +184,7 @@ public sealed class ChatHub(
 
         await publisher.PublishTypingChangedAsync(
             conversationId,
-            userId.Value.Value,
+            session.Value.UserId.Value,
             isTyping,
             expiresOnUtc,
             CancellationToken.None);
@@ -189,20 +197,20 @@ public sealed class ChatHub(
     /// </summary>
     public async Task Heartbeat()
     {
-        UserId? userId = await CurrentActiveUserIdAsync();
+        var session = await CurrentActiveSessionAsync();
 
-        if (userId is null)
+        if (session is null)
         {
             Context.Abort();
             return;
         }
 
-        if (!presence.Heartbeat(userId.Value, Context.ConnectionId, DateTime.UtcNow))
+        if (!presence.Heartbeat(session.Value.UserId, Context.ConnectionId, DateTime.UtcNow))
         {
             return;
         }
 
-        await BroadcastPresenceAsync(userId.Value);
+        await BroadcastPresenceAsync(session.Value.UserId);
     }
 
     private async Task<bool> IsEligibleAsync(ConversationId conversation, UserId userId)
@@ -254,7 +262,7 @@ public sealed class ChatHub(
             CancellationToken.None);
     }
 
-    private async Task<UserId?> CurrentActiveUserIdAsync()
+    private async Task<(UserId UserId, DeviceSessionId SessionId)?> CurrentActiveSessionAsync()
     {
         string? sub = Context.User?.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
 
@@ -276,6 +284,96 @@ public sealed class ChatHub(
             return null;
         }
 
-        return userId;
+        // Verified session from the JWT sid claim. When the session
+        // validator is wired (production), a missing/inactive session
+        // evicts joins/hints and aborts: logout-current/revoke-one affect
+        // only that device, while logout-all/reset/reuse/disable fail every
+        // session. Isolated hub tests omit the validator and keep the
+        // user-only behavior.
+        string? sid = Context.User?.FindFirst(
+            Sanad.Modules.Identity.Application.Authentication.Tokens.AuthClaimNames.SessionId)?.Value;
+
+        if (sessionValidator is null)
+        {
+            DeviceSessionId? stored = null;
+
+            try
+            {
+                stored = registry.GetSession(Context.ConnectionId);
+            }
+            catch (Exception)
+            {
+                stored = null;
+            }
+
+            DeviceSessionId effective = stored ?? DeviceSessionId.Empty;
+
+            if (Guid.TryParse(sid, out Guid claimSession) && claimSession != Guid.Empty)
+            {
+                effective = new DeviceSessionId(claimSession);
+            }
+
+            return (userId, effective);
+        }
+
+        if (!Guid.TryParse(sid, out Guid sessionGuid) || sessionGuid == Guid.Empty)
+        {
+            EvictConnection();
+            return null;
+        }
+
+        var sessionId = new DeviceSessionId(sessionGuid);
+
+        bool active;
+
+        try
+        {
+            active = await sessionValidator.IsSessionActiveAsync(
+                userId, sessionId, Context.ConnectionAborted);
+        }
+        catch (Exception)
+        {
+            EvictConnection();
+            return null;
+        }
+
+        if (!active)
+        {
+            // Stop dispatch to revoked sockets: evict joins/hints now; the
+            // socket aborts here and also closes on token expiry (CloseOn
+            // AuthenticationExpiration stays enabled). Bounded invalidation:
+            // hub calls fail immediately, realtime dispatch re-resolves per
+            // 5s cycle and drops revoked connections.
+            registry.EvictSession(sessionId);
+            foreach (var cleared in typing.ClearConnection(Context.ConnectionId))
+            {
+                await publisher.PublishTypingChangedAsync(
+                    cleared.ConversationId.Value,
+                    cleared.UserId.Value,
+                    false,
+                    DateTime.UtcNow,
+                    CancellationToken.None);
+            }
+
+            EvictConnection();
+            return null;
+        }
+
+        return (userId, sessionId);
+    }
+
+    private async Task<UserId?> CurrentActiveUserIdAsync()
+    {
+        var session = await CurrentActiveSessionAsync();
+        return session?.UserId;
+    }
+
+    private void EvictConnection()
+    {
+        registry.RemoveConnection(Context.ConnectionId, out _);
+        registry.LeaveAll(Context.ConnectionId);
+        typing.ClearConnection(Context.ConnectionId);
+        presence.RemoveConnection(Context.ConnectionId, DateTime.UtcNow);
+        Context.Abort();
     }
 }

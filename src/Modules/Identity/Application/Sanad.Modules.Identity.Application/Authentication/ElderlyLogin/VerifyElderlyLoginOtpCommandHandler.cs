@@ -134,11 +134,6 @@ public sealed class VerifyElderlyLoginOtpCommandHandler :
                 .SessionLimitReached;
         }
 
-        GeneratedAccessToken accessToken =
-            _tokenService.GenerateAccessToken(
-                user,
-                utcNow);
-
         GeneratedRefreshToken refreshToken =
             _tokenService.GenerateRefreshToken(
                 utcNow);
@@ -165,6 +160,13 @@ public sealed class VerifyElderlyLoginOtpCommandHandler :
                 refreshToken.Hash,
                 utcNow,
                 refreshToken.ExpiresOnUtc);
+
+        // Session-bound Normal access issued after session creation.
+        GeneratedAccessToken accessToken =
+            _tokenService.GenerateAccessToken(
+                user,
+                utcNow,
+                deviceSession.Id);
 
         verificationRequest.Verify(
             utcNow);
