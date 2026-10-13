@@ -52,11 +52,38 @@ builds zero warnings/errors. Working tree committed; branch unpushed —
 mastermind owns review, integration into main, and pushing main.
 See `tasks.md` for the checklist and `reports/` for evidence.
 
+## Current state — 2026-10-13 (Phase 6 closeout)
+
+Branch `builder/chat-plus-production` (from `41f9c91`). Phases 0–6 Done
+with evidence reports (`reports/phase-0-contract.md` through
+`reports/phase-6-gates.md`); Phase 7 blocked on exact-target
+authorizations. Phase 6 commit `896c46b`: operating instructions +
+secret-free Firebase/APNs checklist (`docs/app/chat/operations.md`),
+guide/Postman-to-implementation verification with stale-path repairs, one
+bounded independent review (6 concrete findings, all resolved with locking
+facts — ChatPlus 58/58). Joint gates at `896c46b`: solution build 0
+warnings/0 errors; full unit 3070 passed / 0 failed / 3 PostgreSQL-only
+skips; architecture 1/1; mapping 555 signatures with 0 missing / 0 orphan
+Postman routes (Bruno risk-based, 0 orphans); Postman parse 22/22; diff
+clean; EF alignment clean (Chat/Families/Identity). Migrations
+authored-only, never applied: Chat `20261013000659_AddChatPlusChanges`,
+Families `20261013005844_AddBookingAreaServiceAttribution`, Identity
+`20261013104759_AddChatMessagesPreference`. Voice excluded. No API/DB/
+provider/production operation performed — unit gates only (InMemory).
+Working tree committed; branch unpushed — mastermind owns review,
+integration into main, and pushing main. This closeout (report +
+checklist/handoff sync) follows as the final commit; its SHA is recorded
+below. See `tasks.md` for the checklist and `reports/` for evidence.
+
+Final Phase 6 commits: `896c46b` (operations guide, doc verification,
+review resolutions, locking facts — all gates in §4 run at this revision)
+plus the closeout commit carrying this handoff and `reports/phase-6-gates.md`
+(tip of `builder/chat-plus-production`; base `41f9c91`).
+
 ## Next action
 
-Phase 6 on this branch: operating instructions + Firebase/APNs
-checklist, guide/Postman-to-implementation verification pass, one
-bounded independent review with findings resolved, full solution
-build + unit/architecture gates + contract mapping + Postman parse +
-diff check, final report and handoff. Then mastermind review and
-integration. Do not merge, push main, or deploy.
+Mastermind review of the final pushed revision, then integration into
+main. Phase 7 needs separate exact-target authorizations (migration/
+runtime, proxy/TLS/origins, Android + physical iPhone delivery proof).
+Do not merge, push main, or deploy from this handoff. Never claim
+production readiness while Phase 7 is open.

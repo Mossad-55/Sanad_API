@@ -37,11 +37,10 @@ unit evidence. Voice remains excluded.
   activity, stable receipts, concurrent report resolution, SQL unread/latest,
   batch profiles, Support history pagination, upload/resource controls.
   Author reviewed additive migrations; never apply automatically for a gate.
-- [ ] In progress — **Phase 2: pricing insights.**
-  Code-complete on the branch (attribution on checkout, immutable pair,
-  insights query/route, Families migration authored, 9 focused facts
-  green). Remaining: frontend guide + Postman examples (may ride Phase 6),
-  then mark Done.
+- [x] Done — **Phase 2: pricing insights.**
+  Code + focused tests (9 facts) green; frontend guide + Postman examples
+  verified in the Phase 6 pass (report `reports/phase-6-gates.md` §2).
+  Live PostgreSQL aggregate equality stays a Phase 7 gate.
   Depends on accepted attributable booking data contract from Phase 0.
   Owns scoped caregiver/booking gateway and immutable attribution addition,
   query/route/DTO, aggregate/provider tests, frontend guide and Postman.
@@ -65,23 +64,28 @@ unit evidence. Voice remains excluded.
   expiry/rate controls, single-instance topology validation, client harness
   and realtime guide. Prove token/logout/block/hide/role behavior, multi-device
   OR, restart, fallback and event/polling convergence. No assumed Redis support.
-- [ ] In progress — **Phase 5: chat push integration and operating instructions.**
-  Code + focused tests complete (report `reports/phase-5-push.md`).
-  Remaining: operating instructions + secret-free Firebase/APNs
-  checklist (rides Phase 6); live delivery stays a Phase 7 gate.
+- [x] Done — **Phase 5: chat push integration and operating instructions.**
+  Code + focused tests (report `reports/phase-5-push.md`); operating
+  instructions + secret-free Firebase/APNs checklist delivered as
+  `docs/app/chat/operations.md` in the Phase 6 pass. Live delivery stays a
+  Phase 7 gate.
   Depends on durable intent and accepted preference compatibility.
   Owns existing Chat producer/PushFanoutPolicy/outbox processor/provider
   classification corrections, preference compatibility, fake-provider tests,
   ids-only navigation payloads, secret-free Firebase/APNs checklist.
   Prove an actual Chat/NewMessage producer enqueues eligible push and survives
   crash/retries. Android/iOS external setup remains owner-operated.
-- [ ] Not started — **Phase 6: documentation, review, joint gates.**
-  Sync app/admin guides and Postman to actual implementation, clarify Normal
-  access/reopen/read behavior and additive sync/privacy contracts, repair
-  touched stale paths/stub claims. One bounded independent review; resolve
-  concrete defects. Build zero warnings/errors; focused checks then full unit/
-  architecture once; mapping/Postman/diff validation. Record SHA, actual
-  commands/results/skips, migration status, and client harness evidence.
+- [x] Done — **Phase 6: documentation, review, joint gates.**
+  App/admin guides synced to the implementation (Normal access, enforced
+  matrix + retained-history reopen, monotonic reads, durable outbox,
+  paged history + 409 compat, preference compat, attribution, mapping);
+  CloseOnAuthenticationExpiration and orphan-cleanup claims corrected.
+  One bounded independent review: 6 concrete findings, all resolved with
+  locking facts. Gates at `896c46b`: solution build 0 warnings/0 errors;
+  full unit 3070 passed / 0 failed / 3 PG-only skips; architecture 1/1;
+  mapping 555 signatures with 0 missing / 0 orphan Postman routes (Bruno
+  risk-based, 0 orphans); Postman parse 22/22; diff clean; EF alignment
+  clean (Chat/Families/Identity). Report: `reports/phase-6-gates.md`.
 - [ ] Not started — **Phase 7: release verification (separate authorization).**
   Exact disposable target migration/fixture/runtime checks and two-client socket
   tests incl. socket-kill/REST fallback, expiry and privacy. Verify deployed
