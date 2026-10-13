@@ -16,7 +16,9 @@ public sealed class FanoutTests
     [InlineData("ElderlySos", "SosCreated", true, "HelpRequestAlerts")]
     [InlineData("CommunityNotifications", "PostPublished", true, "CommunityNotifications")]
     [InlineData("CommunityNotifications", "PostLiked", false, "")]
-    [InlineData("MessagesFromFamilies", "NewMessage", true, "MessagesFromFamilies")]
+    [InlineData("MessagesFromFamilies", "NewMessage", true, "ChatMessages")]
+    [InlineData("MessagesFromFamilies", "ChatMessageReceived", true, "ChatMessages")]
+    [InlineData("Chat", "NewMessage", true, "ChatMessages")]
     [InlineData("Subscriptions", "Renewed", false, "")]
     [InlineData("Payouts", "PayoutRecorded", false, "")]
     public void FanoutPolicy_MapsOnlyPushEligibleEvents(string category, string type, bool expected, string expectedPreference)

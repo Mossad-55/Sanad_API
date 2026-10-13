@@ -104,6 +104,20 @@ public sealed class ChatPlusSyncTests
             delta.Items,
             item => item.Type == nameof(Sanad.Modules.Chat.Domain.Changes.ChatChangeType.MessageReceiptUpdated));
 
+        // Change-mode payloads are never double-wrapped: created items
+        // carry the message item, receipt items the receipt envelope.
+        foreach (SyncChangeItem item in delta.Items)
+        {
+            if (item.Type == nameof(Sanad.Modules.Chat.Domain.Changes.ChatChangeType.MessageCreated))
+            {
+                Assert.IsType<MessageItemResponse>(item.Payload);
+            }
+            else
+            {
+                Assert.IsType<SyncReceiptPayload>(item.Payload);
+            }
+        }
+
         // Every revision is a positive decimal string; change revisions are
         // strictly increasing within the poll.
         long[] revisions = delta.Items

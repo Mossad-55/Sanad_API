@@ -48,6 +48,22 @@ public sealed class UpdateMyNotificationPreferencesCommandHandler :
                 AccountErrors.InvalidOperation);
         }
 
+        // Backward-compatible full replacement: explicit chatMessages
+        // wins; if omitted and messagesFromFamilies changes from its stored
+        // value, mirror that legacy change to chatMessages; if neither
+        // changes, preserve chatMessages. Omission alone never resets an
+        // opt-out.
+        bool storedChatMessages =
+            user.NotificationPreferences.ChatMessages;
+        bool legacyChanged =
+            request.MessagesFromFamilies !=
+            user.NotificationPreferences.MessagesFromFamilies;
+        bool resolvedChatMessages =
+            request.ChatMessages
+            ?? (legacyChanged
+                ? request.MessagesFromFamilies
+                : storedChatMessages);
+
         user.ChangeNotificationPreferences(
             NotificationPreferences.Create(
                 request.CheckInAlerts,
@@ -58,7 +74,8 @@ public sealed class UpdateMyNotificationPreferencesCommandHandler :
                 request.NewOrders,
                 request.MessagesFromFamilies,
                 request.SystemNotifications,
-                request.HelpRequestAlerts ?? user.NotificationPreferences.HelpRequestAlerts),
+                request.HelpRequestAlerts ?? user.NotificationPreferences.HelpRequestAlerts,
+                resolvedChatMessages),
             _dateTimeProvider.UtcNow);
 
         await _dbContext.SaveChangesAsync(
@@ -73,6 +90,7 @@ public sealed class UpdateMyNotificationPreferencesCommandHandler :
             user.NotificationPreferences.NewOrders,
             user.NotificationPreferences.MessagesFromFamilies,
             user.NotificationPreferences.SystemNotifications,
-            user.NotificationPreferences.HelpRequestAlerts);
+            user.NotificationPreferences.HelpRequestAlerts,
+            user.NotificationPreferences.ChatMessages);
     }
 }

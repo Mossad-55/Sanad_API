@@ -398,6 +398,9 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                                 .HasDefaultValue(true)
                                 .HasColumnName("booking_updates");
 
+                            b1.Property<bool>("ChatMessages")
+                                .HasColumnType("boolean");
+
                             b1.Property<bool>("CheckInAlerts")
                                 .ValueGeneratedOnAdd()
                                 .HasColumnType("boolean")

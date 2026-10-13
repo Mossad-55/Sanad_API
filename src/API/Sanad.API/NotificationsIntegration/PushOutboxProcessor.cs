@@ -126,6 +126,10 @@ public sealed class PushOutboxProcessor(
         "CheckInAlerts" => preferences.CheckInAlerts,
         "CommunityNotifications" => preferences.CommunityNotifications,
         "MessagesFromFamilies" => preferences.MessagesFromFamilies,
+        // Chat Plus canonical key; legacy rows were re-mapped to it by the
+        // fan-out policy, so old opt-outs keep working through the
+        // preference compatibility rule.
+        "ChatMessages" => preferences.ChatMessages,
         "HelpRequestAlerts" => preferences.HelpRequestAlerts,
         "SystemNotifications" => preferences.SystemNotifications,
         _ => false

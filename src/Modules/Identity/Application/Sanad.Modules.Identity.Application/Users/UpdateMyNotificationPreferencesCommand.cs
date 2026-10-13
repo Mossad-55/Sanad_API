@@ -13,5 +13,6 @@ public sealed record UpdateMyNotificationPreferencesCommand(
     bool NewOrders,
     bool MessagesFromFamilies,
     bool SystemNotifications,
-    bool? HelpRequestAlerts)
+    bool? HelpRequestAlerts,
+    bool? ChatMessages = null)
     : ICommand<NotificationPreferencesResponse>;

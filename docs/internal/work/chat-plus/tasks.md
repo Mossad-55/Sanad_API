@@ -55,14 +55,20 @@ unit evidence. Voice remains excluded.
   commit-safe cursor/revisions, sync controller/query/DTO, dispatcher seam,
   crash/retry/dedupe/provider tests and sync guide. Prove snapshot handoff and
   >100-message plus receipt-only catch-up; preserve beforeId for older history.
-- [ ] Not started — **Phase 4: hub, typing, presence, and client recovery.**
+- [x] Done — **Phase 4: hub, typing, presence, and client recovery.**
+  Implemented + focused-tested incl. integrated reconnect recovery
+  (report `reports/phase-4-realtime.md`). One sync payload defect found
+  and fixed in-turn with a locking test.
   Depends on Phases 1/3 and accepted privacy contract.
   Owns thin hub, supported JWT transport config, validated sub routing,
   authorization eviction/dispatch, opt-in privacy settings, registries,
   expiry/rate controls, single-instance topology validation, client harness
   and realtime guide. Prove token/logout/block/hide/role behavior, multi-device
   OR, restart, fallback and event/polling convergence. No assumed Redis support.
-- [ ] Not started — **Phase 5: chat push integration and operating instructions.**
+- [ ] In progress — **Phase 5: chat push integration and operating instructions.**
+  Code + focused tests complete (report `reports/phase-5-push.md`).
+  Remaining: operating instructions + secret-free Firebase/APNs
+  checklist (rides Phase 6); live delivery stays a Phase 7 gate.
   Depends on durable intent and accepted preference compatibility.
   Owns existing Chat producer/PushFanoutPolicy/outbox processor/provider
   classification corrections, preference compatibility, fake-provider tests,

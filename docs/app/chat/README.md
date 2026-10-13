@@ -9,6 +9,9 @@ erased, and a blocked sender must never learn that a block exists.
 - [Conversations, attachments, read marks, blocks, and hiding (Lane A, endpoints 1–2, 5–7, 9–10)](conversations.md)
 - [Messages, unread counts, delivery and read ticks (Lane B, endpoints 3–4, 8)](messages.md)
 - [Reporting and the Support queue (Lane B, endpoints 11–15)](reports.md)
+- [Pricing insights (Chat Plus: market ranges, null semantics, attribution)](pricing-insights.md)
+- [Sync and recovery (Chat Plus: cursor lifecycle, polling, dedupe)](sync.md)
+- [Realtime hub, typing, and presence (Chat Plus: transport, events, budgets)](realtime.md)
 - [Postman Chat collection](../../postman/app/Sanad.App.Chat.postman_collection.json)
 - [Postman Admin Chat reports collection](../../postman/admins/Sanad.Admin.Chat.postman_collection.json)
 

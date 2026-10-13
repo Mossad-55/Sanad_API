@@ -24,6 +24,8 @@ public sealed record ChatRateOptions
 
     public int SyncPerMinutePerUser { get; init; } = 300;
 
+    public int NegotiatePerMinutePerUser { get; init; } = 30;
+
     public long UnboundQuotaBytesPerUser { get; init; } = 104_857_600;
 
     public TimeSpan UnboundAttachmentLifetime { get; init; } = TimeSpan.FromHours(24);

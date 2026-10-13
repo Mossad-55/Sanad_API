@@ -9,4 +9,5 @@ public sealed record UpdateNotificationPreferencesRequest(
     bool NewOrders,
     bool MessagesFromFamilies,
     bool SystemNotifications,
-    bool? HelpRequestAlerts = null);
+    bool? HelpRequestAlerts = null,
+    bool? ChatMessages = null);

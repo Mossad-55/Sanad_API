@@ -3,6 +3,7 @@ using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
+using Sanad.Modules.Chat.Application.Realtime;
 using Sanad.Modules.Chat.Domain.Privacy;
 
 namespace Sanad.Modules.Chat.Application.Privacy;
@@ -51,10 +52,14 @@ public sealed class UpdateChatPrivacyCommandHandler
     : ICommandHandler<UpdateChatPrivacyCommand, ChatPrivacyResponse>
 {
     private readonly IChatDbContext _dbContext;
+    private readonly IChatAuthorizationChangedNotifier? _notifier;
 
-    public UpdateChatPrivacyCommandHandler(IChatDbContext dbContext)
+    public UpdateChatPrivacyCommandHandler(
+        IChatDbContext dbContext,
+        IChatAuthorizationChangedNotifier? notifier = null)
     {
         _dbContext = dbContext;
+        _notifier = notifier;
     }
 
     public async Task<Result<ChatPrivacyResponse>> Handle(
@@ -92,6 +97,16 @@ public sealed class UpdateChatPrivacyCommandHandler
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // Disabling privacy withdraws previously shown state: evict
+        // ephemeral typing and let the next snapshot/dispatch re-resolve
+        // from these durable settings (documented client reset).
+        if (_notifier is not null)
+        {
+            await _notifier.PresenceSettingsChangedAsync(
+                request.Owner,
+                cancellationToken);
+        }
 
         return Result<ChatPrivacyResponse>.Success(
             new ChatPrivacyResponse(showOnlineStatus, shareLastSeen));

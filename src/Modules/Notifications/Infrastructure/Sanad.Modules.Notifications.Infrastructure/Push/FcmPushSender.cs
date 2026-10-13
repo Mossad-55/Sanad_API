@@ -55,9 +55,25 @@ public sealed class FcmPushSender : IPushSender, IDisposable
             }, cancellationToken);
             return new PushSendResult(PushSendOutcome.Sent, id);
         }
-        catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode is MessagingErrorCode.Unregistered or MessagingErrorCode.InvalidArgument)
+        catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode is MessagingErrorCode.Unregistered)
         {
+            // Proven token-specific failure: the token is dead, retire it.
             return new PushSendResult(PushSendOutcome.InvalidToken, ErrorCode: ex.MessagingErrorCode?.ToString() ?? "Push.InvalidToken");
+        }
+        catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode is MessagingErrorCode.InvalidArgument)
+        {
+            // InvalidArgument is NOT proven token-specific (it also covers
+            // rejected payloads): never retire tokens for it. Retry bounded
+            // with a payload-classified code; the outbox parks the item
+            // after 8 attempts for operator inspection instead.
+            return new PushSendResult(PushSendOutcome.RetryableFailure, ErrorCode: "Push.PayloadRejected");
+        }
+        catch (FirebaseMessagingException ex) when (ex.MessagingErrorCode is MessagingErrorCode.SenderIdMismatch or MessagingErrorCode.ThirdPartyAuthError)
+        {
+            // Configuration failure (wrong Firebase project/credentials):
+            // retryable so a corrected secret recovers without row surgery,
+            // surfaced to operators via the outbox error code.
+            return new PushSendResult(PushSendOutcome.RetryableFailure, ErrorCode: ex.MessagingErrorCode?.ToString() ?? "Push.ConfigurationFailure");
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

@@ -199,6 +199,21 @@ public sealed class ChatPlusDispatchTests
             Receipts.Add((conversationId, messageId));
             return Task.CompletedTask;
         }
+
+        public Task PublishTypingChangedAsync(
+            Guid conversationId,
+            Guid userId,
+            bool isTyping,
+            DateTime expiresOnUtc,
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
+
+        public Task PublishPresenceChangedAsync(
+            Guid userId,
+            bool isOnline,
+            DateTime? lastSeenOnUtc,
+            CancellationToken cancellationToken) =>
+            Task.CompletedTask;
     }
 
     private sealed class FakeSender : ISender

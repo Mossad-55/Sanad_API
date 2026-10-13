@@ -277,7 +277,8 @@ public sealed class AccountController :
                     request.NewOrders,
                     request.MessagesFromFamilies,
                     request.SystemNotifications,
-                    request.HelpRequestAlerts),
+                    request.HelpRequestAlerts,
+                    request.ChatMessages),
                 cancellationToken);
 
         return ToActionResult(

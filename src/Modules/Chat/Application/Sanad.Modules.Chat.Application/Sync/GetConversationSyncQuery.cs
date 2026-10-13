@@ -501,7 +501,7 @@ public sealed class GetConversationSyncQueryHandler
             return new SyncChangeItem(
                 row.Revision.ToString(System.Globalization.CultureInfo.InvariantCulture),
                 nameof(ChatChangeType.MessageCreated),
-                CreatedItem(message, conversation, requester, marks));
+                CreateMessagePayload(message, conversation, requester, marks));
         }
 
         return new SyncChangeItem(
@@ -514,6 +514,15 @@ public sealed class GetConversationSyncQueryHandler
         Message message,
         Conversation conversation,
         UserId requester,
+        IReadOnlyDictionary<UserId, ReadMark> marks) =>
+        new("0",
+            nameof(ChatChangeType.MessageCreated),
+            CreateMessagePayload(message, conversation, requester, marks));
+
+    private static MessageItemResponse CreateMessagePayload(
+        Message message,
+        Conversation conversation,
+        UserId requester,
         IReadOnlyDictionary<UserId, ReadMark> marks)
     {
         UserId reader = ReaderOf(message, conversation, requester);
@@ -521,12 +530,9 @@ public sealed class GetConversationSyncQueryHandler
             ? mark
             : ReadMark.None;
 
-        return new SyncChangeItem(
-            "0",
-            nameof(ChatChangeType.MessageCreated),
-            MessageItemFactory.Create(
-                message,
-                MessageReadRules.ReadStamp(message, readerMark)));
+        return MessageItemFactory.Create(
+            message,
+            MessageReadRules.ReadStamp(message, readerMark));
     }
 
     private static SyncReceiptPayload ReceiptPayload(

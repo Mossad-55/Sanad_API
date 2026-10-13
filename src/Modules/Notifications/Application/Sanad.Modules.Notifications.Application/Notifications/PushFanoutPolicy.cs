@@ -16,7 +16,12 @@ public static class PushFanoutPolicy
             "ElderlyHelpRequest" => "HelpRequestAlerts",
             "ElderlySos" => "HelpRequestAlerts",
             "CommunityNotifications" when notification.Type is "PostPublished" or "PostRejected" => "CommunityNotifications",
-            "MessagesFromFamilies" when notification.Type is "NewMessage" or "ChatMessageReceived" => "MessagesFromFamilies",
+            // Chat Plus canonical mapping: the Chat producer's NewMessage
+            // consults ChatMessages for all sender types. Legacy
+            // MessagesFromFamilies rows map to the same key so old
+            // consumers keep working through the compatibility rule.
+            "Chat" when notification.Type is "NewMessage" => "ChatMessages",
+            "MessagesFromFamilies" when notification.Type is "NewMessage" or "ChatMessageReceived" => "ChatMessages",
             _ => string.Empty
         };
         return preferenceKey.Length > 0;

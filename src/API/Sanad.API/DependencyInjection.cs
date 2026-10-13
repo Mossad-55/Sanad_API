@@ -178,6 +178,26 @@ public static class DependencyInjection
                         "Development",
                         StringComparison.OrdinalIgnoreCase);
 
+                // Supported SignalR transport auth: browser WebSocket/SSE
+                // clients cannot set headers, so this hub path alone accepts
+                // the existing access token as ?access_token=. Everywhere
+                // else the header stays mandatory; the token is redacted
+                // from application/proxy/APM logs by configuration (see the
+                // operating guide) and a connection token never replaces it.
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        if (context.Request.Path.StartsWithSegments("/hubs/chat") &&
+                            context.Request.Query.TryGetValue("access_token", out var token))
+                        {
+                            context.Token = token;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
+
                 options.TokenValidationParameters =
                     new TokenValidationParameters
                     {
@@ -511,6 +531,48 @@ public static class DependencyInjection
         services.AddScoped<ICareHomeOwnerFacilityLookup, ApiCareHomeOwnerFacilityLookup>();
         services.AddSingleton<IChatSyncCursorProtector, DataProtectionChatSyncCursorProtector>();
         services.AddHostedService<ChatPlus.ChatPlusDispatchService>();
+
+        // Chat Plus realtime (single-instance topology): in-memory
+        // connection/presence/typing registries behind seams, durable
+        // dispatch behind the publisher seam. No Redis backplane is
+        // assumed; multi-instance without one is unsupported.
+        services.AddSignalR(options =>
+        {
+            // Hub inbound frame budget (16 KiB): oversized frames are
+            // rejected/closed, never buffered unboundedly.
+            options.MaximumReceiveMessageSize = 16 * 1024;
+        });
+        services.AddSingleton<
+            Sanad.Modules.Chat.Application.Realtime.IChatConnectionRegistry,
+            Realtime.ChatConnectionRegistry>();
+        services.AddSingleton<
+            Sanad.Modules.Chat.Application.Realtime.IPresenceTracker,
+            Realtime.PresenceTracker>();
+        services.AddSingleton<
+            Sanad.Modules.Chat.Application.Realtime.ITypingTracker,
+            Realtime.TypingTracker>();
+        services.AddScoped<
+            Sanad.Modules.Chat.Application.Realtime.IChatHubAudience,
+            Realtime.ChatHubAudience>();
+        services.AddScoped<
+            Sanad.Modules.Chat.Application.Realtime.IChatRealtimePublisher,
+            Realtime.ChatRealtimePublisher>();
+        services.AddScoped<
+            Sanad.Modules.Chat.Application.Realtime.IChatAuthorizationChangedNotifier,
+            Realtime.ChatConnectionEvictor>();
+
+        ChatPlus.ChatPlusDeploymentOptions deployment =
+            configuration
+                .GetSection(ChatPlus.ChatPlusDeploymentOptions.SectionName)
+                .Get<ChatPlus.ChatPlusDeploymentOptions>()
+            ?? new ChatPlus.ChatPlusDeploymentOptions();
+
+        if (deployment.InstanceCount > 1 && !deployment.BackplaneConfigured)
+        {
+            throw new InvalidOperationException(
+                "ChatPlus multi-instance deployment requires a verified backplane; " +
+                "single-instance is the only supported topology without one.");
+        }
 
         return services;
     }

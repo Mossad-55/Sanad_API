@@ -54,12 +54,49 @@ public sealed class ChatPlusDispatchService(
         var dispatcher = new ChatOutboxDispatcher(db, sender, publisher);
         (int changes, int intents) = await dispatcher.DispatchAsync(cancellationToken);
 
-        if (changes > 0 || intents > 0)
+        // Typing-expiry sweep: server-expired hints broadcast stops while
+        // the pair is still eligible (the publisher re-resolves per
+        // dispatch; ineligible pairs simply receive nothing).
+        int stops = 0;
+
+        if (publisher is not null)
+        {
+            var typing = scope.ServiceProvider
+                .GetRequiredService<
+                    Sanad.Modules.Chat.Application.Realtime.ITypingTracker>();
+            var audience = scope.ServiceProvider
+                .GetRequiredService<
+                    Sanad.Modules.Chat.Application.Realtime.IChatHubAudience>();
+
+            foreach (var expired in typing.SweepExpired(DateTime.UtcNow))
+            {
+                IReadOnlyList<Guid> recipients = (await audience.GetEventRecipientsAsync(
+                        expired.ConversationId, expired.UserId, cancellationToken))
+                    .Select(user => user.Value)
+                    .ToArray();
+
+                if (recipients.Count == 0)
+                {
+                    continue;
+                }
+
+                await publisher.PublishTypingChangedAsync(
+                    expired.ConversationId.Value,
+                    expired.UserId.Value,
+                    false,
+                    DateTime.UtcNow,
+                    cancellationToken);
+                stops++;
+            }
+        }
+
+        if (changes > 0 || intents > 0 || stops > 0)
         {
             logger.LogInformation(
-                "Chat dispatch published {Changes} changes and {Intents} intents.",
+                "Chat dispatch published {Changes} changes, {Intents} intents and {Stops} typing stops.",
                 changes,
-                intents);
+                intents,
+                stops);
         }
     }
 }

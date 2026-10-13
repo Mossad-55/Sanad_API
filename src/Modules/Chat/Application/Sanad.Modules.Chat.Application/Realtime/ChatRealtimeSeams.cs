@@ -40,16 +40,16 @@ public interface ITypingTracker
     bool Refresh(
         UserId userId,
         ConversationId conversationId,
+        string connectionId,
         bool isTyping,
         DateTime now,
         out DateTime expiresOnUtc);
 
-    void ClearUser(UserId userId, ConversationId conversationId);
+    /// <summary>Clears all hints held by a connection (disconnect).</summary>
+    IReadOnlyList<(UserId UserId, ConversationId ConversationId)> ClearConnection(
+        string connectionId);
 
-    void ClearConnection(
-        string connectionId,
-        Func<string, UserId?> resolveUser,
-        Action<UserId, ConversationId> onCleared);
+    void ClearUser(UserId userId, ConversationId conversationId);
 
     IReadOnlyList<(UserId UserId, ConversationId ConversationId)> SweepExpired(
         DateTime now);
@@ -93,4 +93,86 @@ public interface IChatRealtimePublisher
         DateTime? deliveredOnUtc,
         DateTime? readOnUtc,
         CancellationToken cancellationToken);
+
+    Task PublishTypingChangedAsync(
+        Guid conversationId,
+        Guid userId,
+        bool isTyping,
+        DateTime expiresOnUtc,
+        CancellationToken cancellationToken);
+
+    Task PublishPresenceChangedAsync(
+        Guid userId,
+        bool isOnline,
+        DateTime? lastSeenOnUtc,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Per-dispatch authorization resolution for realtime fan-out. Groups are
+/// routing only: every dispatch resolves currently authorized recipients
+/// (participant, visible, unblocked, privacy-gated) first — never an
+/// unchecked broadcast on an earlier membership check.
+/// </summary>
+public sealed record ConversationAudience(
+    UserId ParticipantOne,
+    UserId ParticipantTwo,
+    bool HiddenForParticipantOne,
+    bool HiddenForParticipantTwo,
+    bool BlockedPair);
+
+public interface IChatHubAudience
+{
+    Task<ConversationAudience?> GetAudienceAsync(
+        ConversationId conversationId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Users eligible to receive realtime events for a conversation,
+    /// optionally excluding one user (e.g. the typing sender). Empty when
+    /// the pair is blocked (either direction) — REST history is unaffected.
+    /// </summary>
+    Task<IReadOnlyList<UserId>> GetEventRecipientsAsync(
+        ConversationId conversationId,
+        UserId? excludeUserId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Users eligible to observe the subject's presence: participants of
+    /// shared visible unblocked conversations. Bounded scan.
+    /// </summary>
+    Task<IReadOnlyList<UserId>> GetPresenceSubscribersAsync(
+        UserId subjectUserId,
+        CancellationToken cancellationToken);
+
+    /// <summary>
+    /// The subject's durable presence-privacy gate (defaults false/false
+    /// when no row exists — absence of a policy is never consent).
+    /// </summary>
+    Task<(bool ShowOnlineStatus, bool ShareLastSeen)> GetPresenceGateAsync(
+        UserId subjectUserId,
+        CancellationToken cancellationToken);
+}
+
+/// <summary>
+/// Authorization-invalidation seam: committed block/hide/privacy changes
+/// evict affected realtime state (joins, typing) before further dispatch.
+/// No-op default keeps pre-existing handler constructions compiling;
+/// production wires the hub-backed evictor.
+/// </summary>
+public interface IChatAuthorizationChangedNotifier
+{
+    Task PairInvalidatedAsync(
+        UserId firstUserId,
+        UserId secondUserId,
+        CancellationToken cancellationToken = default);
+
+    Task ConversationHiddenAsync(
+        ConversationId conversationId,
+        UserId hiddenForUserId,
+        CancellationToken cancellationToken = default);
+
+    Task PresenceSettingsChangedAsync(
+        UserId ownerUserId,
+        CancellationToken cancellationToken = default);
 }

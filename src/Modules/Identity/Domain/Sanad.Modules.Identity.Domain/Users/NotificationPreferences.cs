@@ -18,7 +18,8 @@ public sealed class NotificationPreferences :
         bool newOrders,
         bool messagesFromFamilies,
         bool systemNotifications,
-        bool helpRequestAlerts = true)
+        bool helpRequestAlerts = true,
+        bool? chatMessages = null)
     {
         CheckInAlerts = checkInAlerts;
         MedicationReminders = medicationReminders;
@@ -29,6 +30,9 @@ public sealed class NotificationPreferences :
         MessagesFromFamilies = messagesFromFamilies;
         SystemNotifications = systemNotifications;
         HelpRequestAlerts = helpRequestAlerts;
+        // Backward-compatible rollout: legacy rows adopt the existing
+        // MessagesFromFamilies opt-out; new users start enabled.
+        ChatMessages = chatMessages ?? messagesFromFamilies;
     }
 
     public bool CheckInAlerts { get; private set; }
@@ -48,6 +52,15 @@ public sealed class NotificationPreferences :
     public bool SystemNotifications { get; private set; }
     public bool HelpRequestAlerts { get; private set; }
 
+    /// <summary>
+    /// Chat Plus canonical chat-push preference for all sender types
+    /// (default enabled). Consulted by chat push dispatch; the legacy
+    /// <see cref="MessagesFromFamilies"/> field is preserved for its
+    /// existing consumers and mirrored only through the documented
+    /// compatibility rule.
+    /// </summary>
+    public bool ChatMessages { get; private set; }
+
     public static NotificationPreferences Create(
         bool checkInAlerts,
         bool medicationReminders,
@@ -57,7 +70,8 @@ public sealed class NotificationPreferences :
         bool newOrders,
         bool messagesFromFamilies,
         bool systemNotifications,
-        bool helpRequestAlerts = true)
+        bool helpRequestAlerts = true,
+        bool? chatMessages = null)
     {
         return new NotificationPreferences(
             checkInAlerts,
@@ -67,7 +81,7 @@ public sealed class NotificationPreferences :
             familyActivityAlerts,
             newOrders,
             messagesFromFamilies,
-            systemNotifications, helpRequestAlerts);
+            systemNotifications, helpRequestAlerts, chatMessages);
     }
 
     public static NotificationPreferences CreateDefault()
@@ -102,5 +116,6 @@ public sealed class NotificationPreferences :
 
         yield return SystemNotifications;
         yield return HelpRequestAlerts;
+        yield return ChatMessages;
     }
 }

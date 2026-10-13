@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
 using Sanad.Modules.Chat.Application.Conversations;
+using Sanad.Modules.Chat.Application.Realtime;
 using Sanad.Modules.Chat.Domain.Blocks;
 
 namespace Sanad.Modules.Chat.Application.Blocks;
@@ -13,13 +14,16 @@ public sealed class BlockUserCommandHandler
 {
     private readonly IChatDbContext _dbContext;
     private readonly IChatUserLookup _userLookup;
+    private readonly IChatAuthorizationChangedNotifier? _notifier;
 
     public BlockUserCommandHandler(
         IChatDbContext dbContext,
-        IChatUserLookup userLookup)
+        IChatUserLookup userLookup,
+        IChatAuthorizationChangedNotifier? notifier = null)
     {
         _dbContext = dbContext;
         _userLookup = userLookup;
+        _notifier = notifier;
     }
 
     public async Task<Result> Handle(
@@ -80,6 +84,16 @@ public sealed class BlockUserCommandHandler
 
         _dbContext.Blocks.Add(block);
         await _dbContext.SaveChangesAsync(cancellationToken);
+
+        // A committed block suppresses all realtime between the pair from
+        // now on; evict their joins/typing before further dispatch.
+        if (_notifier is not null)
+        {
+            await _notifier.PairInvalidatedAsync(
+                request.Blocker,
+                request.Blocked,
+                cancellationToken);
+        }
 
         return Result.Success();
     }

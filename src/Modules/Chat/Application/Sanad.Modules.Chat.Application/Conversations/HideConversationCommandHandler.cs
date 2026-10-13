@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
+using Sanad.Modules.Chat.Application.Realtime;
 using Sanad.Modules.Chat.Domain.Conversations;
 
 namespace Sanad.Modules.Chat.Application.Conversations;
@@ -10,10 +11,14 @@ public sealed class HideConversationCommandHandler
     : ICommandHandler<HideConversationCommand>
 {
     private readonly IChatDbContext _dbContext;
+    private readonly IChatAuthorizationChangedNotifier? _notifier;
 
-    public HideConversationCommandHandler(IChatDbContext dbContext)
+    public HideConversationCommandHandler(
+        IChatDbContext dbContext,
+        IChatAuthorizationChangedNotifier? notifier = null)
     {
         _dbContext = dbContext;
+        _notifier = notifier;
     }
 
     public async Task<Result> Handle(
@@ -37,6 +42,16 @@ public sealed class HideConversationCommandHandler
         {
             conversation.Hide(request.Requester);
             await _dbContext.SaveChangesAsync(cancellationToken);
+
+            // Hidden conversations contribute no realtime events for the
+            // hider; evict their joins before further dispatch.
+            if (_notifier is not null)
+            {
+                await _notifier.ConversationHiddenAsync(
+                    request.ConversationId,
+                    request.Requester,
+                    cancellationToken);
+            }
         }
 
         // Already hidden (or hidden again) still succeeds — 204 idempotent.

@@ -29,6 +29,9 @@ public interface IChatRateGate
         UserId userId,
         ConversationId conversationId,
         out TimeSpan retryAfter);
+
+    /// <summary>Hub negotiation budget (30/min/user default).</summary>
+    bool TryAcquireNegotiate(UserId userId, out TimeSpan retryAfter);
 }
 
 /// <summary>
@@ -204,6 +207,19 @@ public sealed class InMemoryChatRateGate : IChatRateGate
 
             retryAfter = TimeSpan.Zero;
             return true;
+        }
+    }
+
+    public bool TryAcquireNegotiate(UserId userId, out TimeSpan retryAfter)
+    {
+        lock (_sync)
+        {
+            return TryAcquireLocked(
+                $"negotiate:user:{userId.Value:N}",
+                _options.NegotiatePerMinutePerUser,
+                TimeSpan.FromMinutes(1),
+                _utcNow(),
+                out retryAfter);
         }
     }
 

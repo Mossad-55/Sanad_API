@@ -37,19 +37,26 @@ explicit authorization eviction and single-instance limits. Reviewed additive
 schema changes are permitted to be authored; no migration application, seed,
 provider send, runtime startup, or deployment is authorized by planning.
 
-## Current state — 2026-10-13 (builder, end of day)
+## Current state — 2026-10-13 (mastermind, stable point)
 
-Branch `builder/chat-plus-production` (from `41f9c91`) holds the
-implementation. Phases 0, 1, 3 Done with evidence reports; Phase 2
-code-complete (pricing guide/Postman pending, may ride Phase 6); Phases
-4–6 not started; Phase 7 blocked on exact-target authorizations. All
-migrations authored-only, never applied. Voice excluded. No API/DB/
+Branch `builder/chat-plus-production` (from `41f9c91`). Phases 0, 1, 3,
+4 Done with evidence reports; Phase 2 code-complete (guide + Postman
+authored by documenter — verify in Phase 6 review); Phase 5 code-complete
+with tests (operating instructions + Firebase/APNs checklist pending);
+Phase 6 not started; Phase 7 blocked on exact-target authorizations.
+All migrations authored-only, never applied. Voice excluded. No API/DB/
 provider/production operation performed — unit gates only (InMemory).
-See `tasks.md` for the phase checklist and `reports/` for evidence.
+`ChatPlus` filter 52/52 green; affected suites (Chat incl. ChatPlus,
+Notifications, Identity account/users, Families, Caregivers) green;
+builds zero warnings/errors. Working tree committed; branch unpushed —
+mastermind owns review, integration into main, and pushing main.
+See `tasks.md` for the checklist and `reports/` for evidence.
 
 ## Next action
 
-Continue on `builder/chat-plus-production`: finish Phase 2 docs,
-then implement Phases 4 → 5 → 6 in order; do not merge, push main,
-or deploy — hand the branch to the planning mastermind for review
-and integration.
+Phase 6 on this branch: operating instructions + Firebase/APNs
+checklist, guide/Postman-to-implementation verification pass, one
+bounded independent review with findings resolved, full solution
+build + unit/architecture gates + contract mapping + Postman parse +
+diff check, final report and handoff. Then mastermind review and
+integration. Do not merge, push main, or deploy.
