@@ -14,6 +14,7 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Domain.Conversations;
+using Sanad.Modules.Chat.Domain.Messages;
 using Sanad.Modules.Chat.Infrastructure.Persistence;
 
 namespace Sanad.UnitTests.Chat;
@@ -80,11 +81,13 @@ public sealed class ReadMarkTests
     {
         await using ChatDbContext db = CreateDb();
         UserId reader = UserId.New();
-        Conversation conversation = CreateDirect(reader, UserId.New());
+        UserId peer = UserId.New();
+        Conversation conversation = CreateDirect(reader, peer);
         db.Conversations.Add(conversation);
+        Message message = SeedMessage(db, conversation, peer, "read-1", UtcStamp);
         await db.SaveChangesAsync();
         var handler = new MarkConversationReadCommandHandler(db);
-        Guid messageId = Guid.NewGuid();
+        Guid messageId = message.Id.Value;
 
         var result = await handler.Handle(
             new MarkConversationReadCommand(reader, conversation.Id, messageId),
@@ -110,11 +113,13 @@ public sealed class ReadMarkTests
     {
         await using ChatDbContext db = CreateDb();
         UserId reader = UserId.New();
-        Conversation conversation = CreateDirect(reader, UserId.New());
+        UserId peer = UserId.New();
+        Conversation conversation = CreateDirect(reader, peer);
         db.Conversations.Add(conversation);
+        Message message = SeedMessage(db, conversation, peer, "read-repeat", UtcStamp);
         await db.SaveChangesAsync();
         var handler = new MarkConversationReadCommandHandler(db);
-        Guid messageId = Guid.NewGuid();
+        Guid messageId = message.Id.Value;
         var mark = new MarkConversationReadCommand(reader, conversation.Id, messageId);
 
         Assert.True((await handler.Handle(mark, default)).IsSuccess);
@@ -134,12 +139,15 @@ public sealed class ReadMarkTests
     {
         await using ChatDbContext db = CreateDb();
         UserId reader = UserId.New();
-        Conversation conversation = CreateDirect(reader, UserId.New());
+        UserId peer = UserId.New();
+        Conversation conversation = CreateDirect(reader, peer);
         db.Conversations.Add(conversation);
+        Message older = SeedMessage(db, conversation, peer, "read-old", UtcStamp);
+        Message newer = SeedMessage(db, conversation, peer, "read-new", UtcStamp.AddMinutes(1));
         await db.SaveChangesAsync();
         var handler = new MarkConversationReadCommandHandler(db);
-        Guid first = Guid.NewGuid();
-        Guid second = Guid.NewGuid();
+        Guid first = older.Id.Value;
+        Guid second = newer.Id.Value;
 
         Assert.True((await handler.Handle(
             new MarkConversationReadCommand(reader, conversation.Id, first),
@@ -161,10 +169,12 @@ public sealed class ReadMarkTests
         UserId readerB = UserId.New();
         Conversation conversation = CreateDirect(readerA, readerB);
         db.Conversations.Add(conversation);
+        Message messageA = SeedMessage(db, conversation, readerB, "read-a", UtcStamp);
+        Message messageB = SeedMessage(db, conversation, readerA, "read-b", UtcStamp.AddMinutes(1));
         await db.SaveChangesAsync();
         var handler = new MarkConversationReadCommandHandler(db);
-        Guid fromA = Guid.NewGuid();
-        Guid fromB = Guid.NewGuid();
+        Guid fromA = messageA.Id.Value;
+        Guid fromB = messageB.Id.Value;
 
         Assert.True((await handler.Handle(
             new MarkConversationReadCommand(readerA, conversation.Id, fromA),
@@ -277,7 +287,10 @@ public sealed class ReadMarkTests
             db, new ApiChatEligibilityChecker(lookup), new FakeChatBookingGateway());
         var hideHandler = new HideConversationCommandHandler(db);
         var markHandler = new MarkConversationReadCommandHandler(db);
-        Guid messageId = Guid.NewGuid();
+        Message firstMessage = SeedMessage(db, conversation, peer, "read-hide-1", UtcStamp);
+        Message laterMessage = SeedMessage(db, conversation, peer, "read-hide-2", UtcStamp.AddMinutes(1));
+        await db.SaveChangesAsync();
+        Guid messageId = firstMessage.Id.Value;
 
         Assert.True((await markHandler.Handle(
             new MarkConversationReadCommand(reader, conversation.Id, messageId),
@@ -309,7 +322,7 @@ public sealed class ReadMarkTests
         Assert.Equal(reader, stored.UserId);
 
         // Marking again after the reopen is still the same single row.
-        Guid later = Guid.NewGuid();
+        Guid later = laterMessage.Id.Value;
         Assert.True((await markHandler.Handle(
             new MarkConversationReadCommand(reader, conversation.Id, later),
             default)).IsSuccess);
@@ -331,7 +344,7 @@ public sealed class ReadMarkTests
         var authorize = Assert.Single(typeof(ChatController)
             .GetCustomAttributes(typeof(AuthorizeAttribute), true)
             .Cast<AuthorizeAttribute>());
-        Assert.Null(authorize.Policy);
+        Assert.Equal(Sanad.API.Authorization.AuthorizationPolicies.NormalAccess, authorize.Policy);
 
         System.Reflection.MethodInfo mark =
             typeof(ChatController).GetMethod(nameof(ChatController.MarkConversationRead))!;
@@ -426,6 +439,25 @@ public sealed class ReadMarkTests
             ConversationScope.Direct,
             null,
             UtcStamp);
+
+    private static Message SeedMessage(
+        ChatDbContext db,
+        Conversation conversation,
+        UserId sender,
+        string clientMessageId,
+        DateTime sentOnUtc)
+    {
+        Message message = Message.Create(
+            conversation.Id,
+            sender,
+            MessageType.Text,
+            "seeded body",
+            null,
+            clientMessageId,
+            sentOnUtc);
+        db.Messages.Add(message);
+        return message;
+    }
 
     private static ChatController CreateController(ISender sender, UserId? actor = null)
     {

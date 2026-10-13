@@ -1356,13 +1356,15 @@ public sealed class MessageTests
         Conversation conversation,
         UserId uploader)
     {
+        // Live upload instant: unbound uploads expire 24h after upload, so
+        // fixtures pin the current time rather than the historical UtcStamp.
         Attachment attachment = Attachment.Create(
             conversation.Id,
             uploader,
             "storage/key.jpg",
             "image/jpeg",
             1024,
-            UtcStamp);
+            DateTime.UtcNow);
 
         db.Attachments.Add(attachment);
         return attachment;

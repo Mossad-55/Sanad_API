@@ -81,4 +81,112 @@ public sealed class ApiChatFacilityLookup : IChatFacilityLookup
 
         return new FacilityPresentation(displayName, coverUrl);
     }
+
+    /// <summary>
+    /// True batch: one facility round-trip plus one cover round-trip per
+    /// conversation-list page instead of per conversation.
+    /// </summary>
+    public async Task<IReadOnlyDictionary<UserId, FacilityPresentation>> GetForOwnersAsync(
+        IReadOnlyCollection<UserId> ownerUserIds,
+        CancellationToken cancellationToken = default)
+    {
+        UserId[] distinct = ownerUserIds
+            .Where(id => id != UserId.Empty)
+            .Distinct()
+            .ToArray();
+
+        var presentations = new Dictionary<UserId, FacilityPresentation>();
+
+        if (distinct.Length == 0)
+        {
+            return presentations;
+        }
+
+        List<CareHomeFacility> facilities = await _careHomes.Facilities
+            .AsNoTracking()
+            .Where(item => distinct.Contains(item.OwnerUserId))
+            .Include(item => item.Revisions)
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
+
+        var revisionIds = new List<Guid>();
+
+        foreach (CareHomeFacility facility in facilities)
+        {
+            if (facility.ApprovedRevisionId is not Guid approvedRevisionId)
+            {
+                continue;
+            }
+
+            CareHomeProfileRevision? revision =
+                facility.Revisions.FirstOrDefault(item =>
+                    item.Id == approvedRevisionId &&
+                    item.ApprovedOnUtc is not null);
+
+            if (revision is null)
+            {
+                continue;
+            }
+
+            string displayName =
+                string.IsNullOrWhiteSpace(revision.EnglishName)
+                    ? revision.ArabicName
+                    : revision.EnglishName;
+
+            if (string.IsNullOrWhiteSpace(displayName))
+            {
+                continue;
+            }
+
+            presentations[facility.OwnerUserId] = new FacilityPresentation(displayName, null);
+            revisionIds.Add(revision.Id);
+        }
+
+        if (revisionIds.Count == 0)
+        {
+            return presentations;
+        }
+
+        var covers = await _careHomes.ProfileMedia
+            .AsNoTracking()
+            .Where(item =>
+                revisionIds.Contains(item.ProfileRevisionId) &&
+                item.Kind == CareHomeProfileMediaKind.Cover)
+            .GroupBy(item => item.ProfileRevisionId)
+            .Select(group => new
+            {
+                RevisionId = group.Key,
+                MediaId = group.OrderBy(item => item.Position).Select(item => item.Id).FirstOrDefault()
+            })
+            .ToListAsync(cancellationToken);
+
+        // Re-resolve facility ids for cover URLs (in memory; page-bounded).
+        foreach (var cover in covers)
+        {
+            if (cover.MediaId == Guid.Empty)
+            {
+                continue;
+            }
+
+            foreach (CareHomeFacility facility in facilities)
+            {
+                if (facility.ApprovedRevisionId != cover.RevisionId)
+                {
+                    continue;
+                }
+
+                if (!presentations.TryGetValue(facility.OwnerUserId, out FacilityPresentation? current))
+                {
+                    continue;
+                }
+
+                presentations[facility.OwnerUserId] = current with
+                {
+                    CoverImageUrl = $"/api/v1/care-homes/discovery/{facility.Id.Value:D}/media/{cover.MediaId:D}"
+                };
+            }
+        }
+
+        return presentations;
+    }
 }

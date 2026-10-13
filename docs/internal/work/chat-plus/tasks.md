@@ -1,41 +1,109 @@
-# Chat-plus — task checklist
+# Chat Plus — implementation checklist, revision 2
 
-Statuses: Not started, In progress, Blocked, Done. Contract in `plan.md` is
-frozen; changing it needs a new explicit owner decision. File manifests are
-exclusive (plan §7). Voice messages are out of scope — any voice work arriving
-here is rejected back to the owner.
+Single status/evidence checklist for [plan.md](plan.md). Updated 2026-10-13
+from [frontend input](frontend-report.md). Owner implements/commits/pushes;
+mastermind prepared this package and will review the resulting SHA.
+No production code or live verification was performed in this planning turn.
 
-- [ ] Not started — **Phase 0.** Branch `opencode/chat-plus` from latest `main`; verify clean base.
-- [ ] Not started — **Phase 1. Pricing insights.**
-  Owns: insights query/handler, caregiver read route (per plan §2.1),
-  tests, docs + Postman deltas.
-- [ ] Not started — **Phase 2. Hub core + events + fallback protocol.**
-  Owns: `Hubs/ChatHub.cs`, group auth + re-verification, message/receipt
-  emission, typing with expiry + spam guard, transport config, reconnect
-  replay via existing list endpoint, hub unit tests, realtime guide draft.
-- [ ] Not started — **Phase 3. Presence + bus seam.**
-  Owns: heartbeat/timeout presence honoring privacy, `IMessageBus` seam +
-  in-memory implementation + flag + contract tests, multi-device OR logic.
-- [ ] Not started — **Phase 4. Guides + gates (incl. socket-kill proof).**
-  Owns: `pricing-insights.md` + `realtime.md` (protocol + fallback levels +
-  reconnect flow), collection polish, full solution build (0 warnings) + full
-  unit + architecture suites once, `git diff --check`, Postman JSON
-  validation, contract-map 0/0. No provider calls, no migration applies, no
-  seed data.
+Phase 0 uses the concrete proposed defaults and wire shapes in
+[contracts.md](contracts.md); changes require synchronized plan/test updates.
 
-Done criteria per phase: zero-warning build, focused tests green (InMemory +
-SQLite twins for queries; hub scoping/expiry/privacy/replay unit tests), docs +
-Postman synced, branch + SHA reported. Live gates per plan §8 on the authorized
-disposable target — including the socket-kill → polling-convergence proof.
-Mutating live checks only with per-run approval.
+Statuses: Not started, In progress, Blocked, Done. Implementation readiness
+and release readiness are distinct; do not mark external gates complete from
+unit evidence. Voice remains excluded.
 
-## Ready for integration (Integrator-owned discovery)
+- [x] Done — Planning revision: capture frontend report, correct authentication/
+  replay/scale assumptions, add prerequisite hardening and external release gates.
+- [x] Done — **Phase 0: execution contract and scout.**
+  Base `41f9c91` pinned; branch `builder/chat-plus-production` owns the work.
+  Report: `reports/phase-0-contract.md` (manifest, booking paths, migration
+  order, DTOs, limits, verification, Phase 7 gates).
+  Original scope (retained): confirm current main SHA/clean tree and preserve
+  unrelated edits; accept/adjust plan section 11 with owner; pin exact manifest,
+  actor matrix, area/service attribution write path and sample formula,
+  snapshot/change DTOs, preference backward compatibility, privacy API,
+  clock/revision ordering, numeric rate/quota limits, unbound-upload policy,
+  migration sequence, and runnable client harness; pin live fixtures/actors
+  and exact authorization separately; block only dependent tasks if a choice
+  is unresolved.
+- [x] Done — **Phase 1: REST correctness, privacy, and resource bounds.**
+  Implemented + focused-tested (report `reports/phase-1-hardening.md`).
+  Pre-existing Chat tests pinning superseded behavior were updated;
+  none weakened.
+  Owns approved Chat application/domain/configuration/controller changes,
+  eligibility/booking/Identity gateways, private-upload path, focused tests.
+  Implement actor matrix, Normal access, retained-history reopening, concurrent
+  open/send/replay sender check, atomic single attachment bind, monotonic reads/
+  activity, stable receipts, concurrent report resolution, SQL unread/latest,
+  batch profiles, Support history pagination, upload/resource controls.
+  Author reviewed additive migrations; never apply automatically for a gate.
+- [ ] In progress — **Phase 2: pricing insights.**
+  Code-complete on the branch (attribution on checkout, immutable pair,
+  insights query/route, Families migration authored, 9 focused facts
+  green). Remaining: frontend guide + Postman examples (may ride Phase 6),
+  then mark Done.
+  Depends on accepted attributable booking data contract from Phase 0.
+  Owns scoped caregiver/booking gateway and immutable attribution addition,
+  query/route/DTO, aggregate/provider tests, frontend guide and Postman.
+  Preserve exact frontend response and independent null-range semantics.
+  Validate distinct-booking pools and same-data direct PostgreSQL aggregates.
+- [x] Done — **Phase 3: durable changes, sync, and notification intent.**
+  Change/outbox persistence, sync endpoint, dispatcher + hosted service,
+  crash/retry/dedupe proofs (report `reports/phase-3-sync.md`). Hub
+  fan-out implementation belongs to Phase 4; the publisher seam is ready.
+  Depends on Phase 1. Owns Chat transactional change/outbox persistence,
+  commit-safe cursor/revisions, sync controller/query/DTO, dispatcher seam,
+  crash/retry/dedupe/provider tests and sync guide. Prove snapshot handoff and
+  >100-message plus receipt-only catch-up; preserve beforeId for older history.
+- [ ] Not started — **Phase 4: hub, typing, presence, and client recovery.**
+  Depends on Phases 1/3 and accepted privacy contract.
+  Owns thin hub, supported JWT transport config, validated sub routing,
+  authorization eviction/dispatch, opt-in privacy settings, registries,
+  expiry/rate controls, single-instance topology validation, client harness
+  and realtime guide. Prove token/logout/block/hide/role behavior, multi-device
+  OR, restart, fallback and event/polling convergence. No assumed Redis support.
+- [ ] Not started — **Phase 5: chat push integration and operating instructions.**
+  Depends on durable intent and accepted preference compatibility.
+  Owns existing Chat producer/PushFanoutPolicy/outbox processor/provider
+  classification corrections, preference compatibility, fake-provider tests,
+  ids-only navigation payloads, secret-free Firebase/APNs checklist.
+  Prove an actual Chat/NewMessage producer enqueues eligible push and survives
+  crash/retries. Android/iOS external setup remains owner-operated.
+- [ ] Not started — **Phase 6: documentation, review, joint gates.**
+  Sync app/admin guides and Postman to actual implementation, clarify Normal
+  access/reopen/read behavior and additive sync/privacy contracts, repair
+  touched stale paths/stub claims. One bounded independent review; resolve
+  concrete defects. Build zero warnings/errors; focused checks then full unit/
+  architecture once; mapping/Postman/diff validation. Record SHA, actual
+  commands/results/skips, migration status, and client harness evidence.
+- [ ] Not started — **Phase 7: release verification (separate authorization).**
+  Exact disposable target migration/fixture/runtime checks and two-client socket
+  tests incl. socket-kill/REST fallback, expiry and privacy. Verify deployed
+  proxy/origins/redaction/resource limits and migration rollback compatibility.
+  Authorized Android/physical iPhone Firebase/APNs proof including taps/token
+  refresh/logout/preferences/block. Sessions cleaned, API stopped; no broad
+  DB reset/manual cleanup. Deferred/unauthorized provider proof remains open.
 
-Mergeable only if ALL hold: box checked, report
-`docs/internal/work/chat-plus/reports/<slug>.md` exists with branch +
-base/final SHAs + gate evidence, deps in `main`, tip matches. Otherwise skipped
-as blocked (never force-merged). Workers never merge or push.
+## Evidence per phase
 
-- [ ] phase-1-pricing — report: `docs/internal/work/chat-plus/reports/phase-1-pricing.md`
-- [ ] phase-2-hub — report: `docs/internal/work/chat-plus/reports/phase-2-hub.md`
-- [ ] phase-3-presence — report: `docs/internal/work/chat-plus/reports/phase-3-presence.md`
+Write reports/phase-N-<slug>.md with base/final SHA, accepted contracts, exact
+changed manifest, checks actually run, warnings/skips, authored/applied migration
+distinction, findings resolved, client ownership and remaining release gates.
+Reports describe evidence, not substitutes for unchecked acceptance criteria.
+
+Reports expected after implementation:
+- reports/phase-0-contract.md
+- reports/phase-1-hardening.md
+- reports/phase-2-pricing.md
+- reports/phase-3-sync.md
+- reports/phase-4-realtime.md
+- reports/phase-5-push.md
+- reports/phase-6-gates.md
+- reports/phase-7-release.md
+
+## Final review
+
+Owner supplies pushed commit SHA and implementation reports. Mastermind reviews
+that exact revision against plan/frontend contracts and accepted Phase 0 choices.
+Do not reopen unrelated Care Homes/UI slices, overwrite owner edits, claim
+unrun gates passed, or call deployment production-ready while Phase 7 is open.

@@ -33,6 +33,13 @@ public class ConversationConfiguration : IEntityTypeConfiguration<Conversation>
             .HasColumnType("timestamp with time zone");
         builder.Property(e => e.LastActivityOnUtc)
             .HasColumnType("timestamp with time zone");
+        // Chat Plus commit-safe cursor: gapless per-conversation revision
+        // assigned in the writer's transaction. Concurrency token so
+        // concurrent writers collide and retry instead of duplicating a
+        // revision.
+        builder.Property(e => e.ChangeRevision)
+            .IsConcurrencyToken()
+            .IsRequired();
         builder.Ignore(e => e.DomainEvents);
 
         // Open-or-get idempotency: one row per normalized pair per booking

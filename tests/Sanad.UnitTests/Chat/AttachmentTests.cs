@@ -413,7 +413,7 @@ public sealed class AttachmentTests : IDisposable
         var authorize = Assert.Single(typeof(ChatController)
             .GetCustomAttributes(typeof(AuthorizeAttribute), true)
             .Cast<AuthorizeAttribute>());
-        Assert.Null(authorize.Policy);
+        Assert.Equal(Sanad.API.Authorization.AuthorizationPolicies.NormalAccess, authorize.Policy);
 
         System.Reflection.MethodInfo upload =
             typeof(ChatController).GetMethod(nameof(ChatController.UploadAttachment))!;
@@ -653,6 +653,15 @@ public sealed class AttachmentTests : IDisposable
         public DbSet<Message> Messages => inner.Messages;
 
         public DbSet<Report> Reports => inner.Reports;
+
+        // Chat Plus extended IChatDbContext with the change/outbox/privacy
+        // tables; forwarded for the same reason as above.
+        public DbSet<Sanad.Modules.Chat.Domain.Changes.ChatChange> Changes => inner.Changes;
+
+        public DbSet<Sanad.Modules.Chat.Domain.Outbox.ChatOutboxItem> Outbox => inner.Outbox;
+
+        public DbSet<Sanad.Modules.Chat.Domain.Privacy.ChatPrivacySettings> PrivacySettings =>
+            inner.PrivacySettings;
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
             throw new DbUpdateException(

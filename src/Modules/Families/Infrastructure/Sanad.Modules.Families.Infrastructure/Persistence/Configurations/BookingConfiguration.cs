@@ -109,6 +109,17 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasColumnName("paymob_refund_transaction_id")
             .HasMaxLength(100);
 
+        // Chat Plus immutable pricing attribution (nullable for legacy
+        // bookings, which contribute no sample).
+        builder.Property(b => b.BookingAreaId)
+            .HasColumnName("booking_area_id")
+            .IsRequired(false);
+        builder.Property(b => b.BookingServiceId)
+            .HasColumnName("booking_service_id")
+            .IsRequired(false);
+        builder.HasIndex(b => new { b.BookingAreaId, b.BookingServiceId })
+            .HasDatabaseName("IX_Bookings_BookingAreaId_BookingServiceId");
+
         builder.OwnsMany(b => b.PaymentTransactions, transaction =>
         {
             transaction.ToTable("payment_transactions");

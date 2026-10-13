@@ -66,7 +66,23 @@ public sealed class DismissReportCommandHandler
             return Result.Failure(ReportErrors.InvalidState);
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A concurrent resolve won the version token first: exactly one
+            // conditional Open-to-Dismissed transition wins, the loser is
+            // the 409. Stale tracking is cleared so the scoped context is
+            // never reused with a half-resolved aggregate.
+            if (_dbContext is DbContext context)
+            {
+                context.ChangeTracker.Clear();
+            }
+
+            return Result.Failure(ReportErrors.InvalidState);
+        }
 
         return Result.Success();
     }

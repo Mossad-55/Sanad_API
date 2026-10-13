@@ -51,7 +51,9 @@ public sealed record CreateBookingCheckoutCommand(
     string ServiceAddress,
     string? SpecialInstructions,
     DateOnly CurrentDate,
-    DateTime UtcNow) : ICommand<BookingCheckoutResponse>;
+    DateTime UtcNow,
+    Guid? BookingAreaId = null,
+    Guid? BookingServiceId = null) : ICommand<BookingCheckoutResponse>;
 
 public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<CreateBookingCheckoutCommand, BookingCheckoutResponse>
 {
@@ -60,15 +62,18 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
     private readonly IFamiliesDbContext _dbContext;
     private readonly ICaregiverBookingPricing _caregiverBookingPricing;
     private readonly IPlatformChargeRuleReader _chargeRules;
+    private readonly ICaregiverCatalogLookup? _catalogLookup;
 
     public CreateBookingCheckoutCommandHandler(
         IFamiliesDbContext dbContext,
         ICaregiverBookingPricing caregiverBookingPricing,
-        IPlatformChargeRuleReader chargeRules)
+        IPlatformChargeRuleReader chargeRules,
+        ICaregiverCatalogLookup? catalogLookup = null)
     {
         _dbContext = dbContext;
         _caregiverBookingPricing = caregiverBookingPricing;
         _chargeRules = chargeRules;
+        _catalogLookup = catalogLookup;
     }
 
     public async Task<Result<BookingCheckoutResponse>> Handle(
@@ -123,6 +128,44 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
                     new Error("Bookings.ScheduleConflict", "Caregiver is already booked for this time slot."));
             }
 
+            // 3b. Pricing attribution (Chat Plus): both booked dimensions
+            // together or neither; both must be active catalogue entries
+            // selected by the booked caregiver at creation. Shape violations
+            // and unknown/inactive/unselected pairs are the owning booking
+            // vocabulary's 400, never a silent unattributed booking.
+            if (request.BookingAreaId.HasValue != request.BookingServiceId.HasValue)
+            {
+                return Result<BookingCheckoutResponse>.Failure(
+                    new Error("Bookings.AttributionInvalid", "Booked area and service must be supplied together."));
+            }
+
+            if (request.BookingAreaId.HasValue && request.BookingServiceId.HasValue)
+            {
+                Guid areaId = request.BookingAreaId.Value;
+                Guid serviceId = request.BookingServiceId.Value;
+
+                if (areaId == Guid.Empty || serviceId == Guid.Empty)
+                {
+                    return Result<BookingCheckoutResponse>.Failure(
+                        new Error("Bookings.AttributionInvalid", "Booked area and service cannot be empty."));
+                }
+
+                if (_catalogLookup is not null)
+                {
+                    bool selected = await _catalogLookup.IsSelectedPairAsync(
+                        request.CaregiverId,
+                        areaId,
+                        serviceId,
+                        cancellationToken);
+
+                    if (!selected)
+                    {
+                        return Result<BookingCheckoutResponse>.Failure(
+                            new Error("Bookings.AttributionInvalid", "Booked area and service must be active and selected by the caregiver."));
+                    }
+                }
+            }
+
             // 4. Server-side pricing — never trust a client-supplied fee (Section 13.1)
             Result<CaregiverBookingPrice> price = await _caregiverBookingPricing.GetBookingPriceAsync(
                 request.CaregiverId,
@@ -165,7 +208,9 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
                 priceSnapshot,
                 acceptanceDeadline,
                 request.CurrentDate,
-                request.UtcNow);
+                request.UtcNow,
+                request.BookingAreaId,
+                request.BookingServiceId);
 
             _dbContext.Bookings.Add(booking);
             await _dbContext.SaveChangesAsync(cancellationToken);

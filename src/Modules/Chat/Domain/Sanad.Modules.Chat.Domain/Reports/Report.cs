@@ -56,6 +56,16 @@ public sealed class Report : AggregateRoot<ReportId>
 
     public UserId? ResolvedBy { get; private set; }
 
+    /// <summary>
+    /// Chat Plus optimistic-resolution token: incremented by every
+    /// <see cref="Resolve"/> transition and configured as an EF concurrency
+    /// token, so two concurrent dismiss/uphold attempts collide in
+    /// persistence and the loser surfaces the 409 instead of resolving
+    /// twice. Exactly one conditional Open-to-Dismissed/Upheld transition
+    /// wins.
+    /// </summary>
+    public long Version { get; private set; }
+
     public static Report Create(
         ConversationId conversationId,
         MessageId? messageId,
@@ -138,5 +148,6 @@ public sealed class Report : AggregateRoot<ReportId>
         Status = status;
         ResolvedOnUtc = resolvedOnUtc;
         ResolvedBy = actor;
+        Version++;
     }
 }

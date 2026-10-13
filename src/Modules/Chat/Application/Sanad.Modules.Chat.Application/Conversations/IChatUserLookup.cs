@@ -8,13 +8,23 @@ namespace Sanad.Modules.Chat.Application.Conversations;
 /// IFamilyIdentityGateway): the Chat Application references no Identity
 /// types, so handlers and tests fake this port.
 /// <c>AccountType</c> is the Identity <c>AccountType</c> integer (Opus
-/// delta) — null only when the user row is gone.
+/// delta) — null only when the user row is gone. It is the
+/// first-registered account and exists for DISPLAY only: eligibility uses
+/// <c>CurrentAccountTypes</c> (every account on the current user row),
+/// never this display integer.
 /// </summary>
 public sealed record UserProfile(
     UserId UserId,
     string DisplayName,
     string? AvatarUrl,
-    int? AccountType);
+    int? AccountType,
+    IReadOnlyList<int>? CurrentAccountTypes = null)
+{
+    /// <summary>Every current account type; falls back to the display
+    /// integer when the lookup did not resolve the full set.</summary>
+    public IReadOnlyList<int> EffectiveAccountTypes =>
+        CurrentAccountTypes ?? (AccountType is { } single ? [single] : []);
+}
 
 public interface IChatUserLookup
 {
@@ -25,4 +35,25 @@ public interface IChatUserLookup
     Task<UserProfile?> GetProfileAsync(
         UserId userId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Batched profile resolution for conversation lists (one Identity
+    /// round-trip per page instead of per conversation). The default loops
+    /// the single lookup; implementations override with a true batch.
+    /// Every requested id gets an entry (null when unknown).
+    /// </summary>
+    async Task<IReadOnlyDictionary<UserId, UserProfile?>> GetProfilesAsync(
+        IReadOnlyCollection<UserId> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        var profiles = new Dictionary<UserId, UserProfile?>();
+
+        foreach (UserId userId in userIds.Distinct().ToArray())
+        {
+            profiles[userId] = await GetProfileAsync(userId, cancellationToken)
+                .ConfigureAwait(false);
+        }
+
+        return profiles;
+    }
 }

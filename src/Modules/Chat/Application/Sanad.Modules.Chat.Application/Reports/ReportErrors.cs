@@ -37,4 +37,16 @@ public static class ReportErrors
 
     public static readonly Error InvalidState =
         new("Chat.Report.InvalidState", "The report is already resolved.");
+
+    /// <summary>
+    /// Bounded-compatibility 409: the legacy array endpoint
+    /// (`GET reports/{id}/messages`) serves conversations with at most 1,000
+    /// messages; above that bound callers must use the paged endpoint
+    /// (`GET reports/{id}/messages/page`), which returns the existing
+    /// `MessageCursorPage` shape. Never a truncated-success array.
+    /// </summary>
+    public static readonly Error HistoryRequiresPagination =
+        new(
+            "Chat.Report.HistoryRequiresPagination",
+            "The reported conversation is too large for the legacy view; use the paged messages endpoint.");
 }

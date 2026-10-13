@@ -27,4 +27,12 @@ public static class AttachmentErrors
 
     public static readonly Error NotFound =
         new("Chat.Attachment.NotFound", "Attachment not found.");
+
+    /// <summary>
+    /// The caller's live unbound-upload quota (100 MiB default) is
+    /// exhausted. Expired (24 h, default) unbound uploads do not count;
+    /// bound history never counts and is never cleaned up.
+    /// </summary>
+    public static readonly Error QuotaExceeded =
+        new("Chat.Attachment.QuotaExceeded", "The upload quota was exceeded.");
 }

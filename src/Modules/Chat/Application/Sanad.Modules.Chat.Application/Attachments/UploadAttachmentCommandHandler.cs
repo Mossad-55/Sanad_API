@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
 using Sanad.Modules.Chat.Application.Conversations;
+using Sanad.Modules.Chat.Application.RateLimiting;
 using Sanad.Modules.Chat.Domain.Attachments;
 using Sanad.Modules.Chat.Domain.Conversations;
 
@@ -32,13 +33,19 @@ public sealed class UploadAttachmentCommandHandler
 
     private readonly IChatDbContext _dbContext;
     private readonly IFileStorage _storage;
+    private readonly IChatRateGate? _rateGate;
+    private readonly ChatRateOptions _rateOptions;
 
     public UploadAttachmentCommandHandler(
         IChatDbContext dbContext,
-        IFileStorage storage)
+        IFileStorage storage,
+        IChatRateGate? rateGate = null,
+        ChatRateOptions? rateOptions = null)
     {
         _dbContext = dbContext;
         _storage = storage;
+        _rateGate = rateGate;
+        _rateOptions = rateOptions ?? new ChatRateOptions();
     }
 
     public async Task<Result<AttachmentUploadResponse>> Handle(
@@ -65,6 +72,34 @@ public sealed class UploadAttachmentCommandHandler
         {
             return Result<AttachmentUploadResponse>.Failure(
                 AttachmentErrors.Invalid);
+        }
+
+        if (_rateGate is not null &&
+            !_rateGate.TryAcquireUploadRate(
+                request.Requester,
+                out TimeSpan retryAfter))
+        {
+            return Result<AttachmentUploadResponse>.Failure(
+                ChatRateErrors.Uploads(retryAfter));
+        }
+
+        // Unbound-upload quota: live (non-expired) unbound bytes per user.
+        // Expired unbound uploads and bound history never count.
+        DateTime quotaNow = DateTime.UtcNow;
+        DateTime liveCutoff = quotaNow - _rateOptions.UnboundAttachmentLifetime;
+
+        long liveUnboundBytes = await _dbContext.Attachments
+            .Where(item =>
+                item.UploadedBy == request.Requester &&
+                !item.IsBound &&
+                item.UploadedOnUtc > liveCutoff)
+            .SumAsync(item => (long?)item.SizeBytes, cancellationToken)
+            ?? 0;
+
+        if (liveUnboundBytes + request.Length > _rateOptions.UnboundQuotaBytesPerUser)
+        {
+            return Result<AttachmentUploadResponse>.Failure(
+                AttachmentErrors.QuotaExceeded);
         }
 
         string contentType =

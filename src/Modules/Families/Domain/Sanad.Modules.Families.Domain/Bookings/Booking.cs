@@ -34,7 +34,9 @@ public sealed class Booking : AggregateRoot<BookingId>
         string? specialInstructions,
         BookingPriceSnapshot priceSnapshot,
         DateTime acceptanceDeadlineUtc,
-        DateTime createdOnUtc)
+        DateTime createdOnUtc,
+        Guid? bookingAreaId = null,
+        Guid? bookingServiceId = null)
         : base(id)
     {
         FamilyId = familyId;
@@ -49,6 +51,8 @@ public sealed class Booking : AggregateRoot<BookingId>
         ServiceAddress = serviceAddress;
         SpecialInstructions = specialInstructions;
         PriceSnapshot = priceSnapshot;
+        BookingAreaId = bookingAreaId;
+        BookingServiceId = bookingServiceId;
         AcceptanceDeadlineUtc = acceptanceDeadlineUtc;
         Status = BookingStatus.PendingPayment;
 
@@ -67,6 +71,18 @@ public sealed class Booking : AggregateRoot<BookingId>
     public TimeOnly EndTime { get; private set; }
     public string ServiceAddress { get; private set; } = string.Empty;
     public string? SpecialInstructions { get; private set; }
+
+    /// <summary>
+    /// Chat Plus immutable pricing attribution: the caller-selected booked
+    /// area/service recorded together at creation. Nullable for legacy
+    /// bookings (which contribute no pricing sample); when supplied, both
+    /// are required together and never change afterwards. Never backfilled
+    /// from current caregiver coverage or free-text address.
+    /// </summary>
+    public Guid? BookingAreaId { get; private set; }
+
+    /// <summary>See <see cref="BookingAreaId"/>.</summary>
+    public Guid? BookingServiceId { get; private set; }
     public BookingPriceSnapshot PriceSnapshot { get; private set; } = default!;
     public DateTime AcceptanceDeadlineUtc { get; private set; }
     public BookingStatus Status { get; private set; }
@@ -103,7 +119,9 @@ public sealed class Booking : AggregateRoot<BookingId>
         BookingPriceSnapshot priceSnapshot,
         DateTime acceptanceDeadlineUtc,
         DateOnly currentDate,
-        DateTime createdOnUtc)
+        DateTime createdOnUtc,
+        Guid? bookingAreaId = null,
+        Guid? bookingServiceId = null)
     {
         if (familyId == FamilyId.Empty)
             throw new DomainException("Family ID is required.");
@@ -141,6 +159,15 @@ public sealed class Booking : AggregateRoot<BookingId>
         if (acceptanceDeadlineUtc <= createdOnUtc)
             throw new DomainException("Acceptance deadline must be after the creation time.");
 
+        // Pricing attribution: both booked dimensions together or neither;
+        // empties are malformed, not legacy omissions.
+        if (bookingAreaId.HasValue != bookingServiceId.HasValue)
+            throw new DomainException("Booked area and service must be supplied together.");
+
+        if ((bookingAreaId.HasValue && bookingAreaId.Value == Guid.Empty) ||
+            (bookingServiceId.HasValue && bookingServiceId.Value == Guid.Empty))
+            throw new DomainException("Booked area and service cannot be empty.");
+
         return new Booking(
             BookingId.New(),
             familyId,
@@ -156,7 +183,9 @@ public sealed class Booking : AggregateRoot<BookingId>
             normalizedInstructions,
             priceSnapshot,
             acceptanceDeadlineUtc,
-            createdOnUtc);
+            createdOnUtc,
+            bookingAreaId,
+            bookingServiceId);
     }
 
     public void MarkAsPaid(string paymobOrderId, string paymobTransactionId, DateTime utcNow)

@@ -841,7 +841,7 @@ public sealed class ReportTests
         var authorize = Assert.Single(typeof(ChatController)
             .GetCustomAttributes(typeof(AuthorizeAttribute), true)
             .Cast<AuthorizeAttribute>());
-        Assert.Null(authorize.Policy);
+        Assert.Equal(Sanad.API.Authorization.AuthorizationPolicies.NormalAccess, authorize.Policy);
 
         System.Reflection.MethodInfo submit =
             typeof(ChatController).GetMethod(nameof(ChatController.SubmitReport))!;
@@ -1020,8 +1020,12 @@ public sealed class ReportTests
         AdminChatReportsController messagesController =
             CreateAdminController(messaging, admin);
 
+        // The legacy array endpoint is deprecated (use MessagesPage); this
+        // assertion pins its preserved wire behavior, not new development.
+#pragma warning disable CS0618
         Assert.IsType<OkObjectResult>(
             await messagesController.Messages(reportId, default));
+#pragma warning restore CS0618
         GetReportMessagesQuery messagesQuery =
             Assert.IsType<GetReportMessagesQuery>(messaging.LastRequest);
         Assert.Equal(new ReportId(reportId), messagesQuery.ReportId);

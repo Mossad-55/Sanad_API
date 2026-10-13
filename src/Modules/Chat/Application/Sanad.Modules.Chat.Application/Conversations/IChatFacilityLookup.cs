@@ -23,4 +23,29 @@ public interface IChatFacilityLookup
     Task<FacilityPresentation?> GetForOwnerAsync(
         UserId ownerUserId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Batched facility resolution for conversation lists. The default loops
+    /// the single lookup; implementations override with a true batch. Only
+    /// owners with a presentable facility get an entry.
+    /// </summary>
+    async Task<IReadOnlyDictionary<UserId, FacilityPresentation>> GetForOwnersAsync(
+        IReadOnlyCollection<UserId> ownerUserIds,
+        CancellationToken cancellationToken = default)
+    {
+        var facilities = new Dictionary<UserId, FacilityPresentation>();
+
+        foreach (UserId ownerUserId in ownerUserIds.Distinct().ToArray())
+        {
+            FacilityPresentation? facility = await GetForOwnerAsync(ownerUserId, cancellationToken)
+                .ConfigureAwait(false);
+
+            if (facility is not null)
+            {
+                facilities[ownerUserId] = facility;
+            }
+        }
+
+        return facilities;
+    }
 }

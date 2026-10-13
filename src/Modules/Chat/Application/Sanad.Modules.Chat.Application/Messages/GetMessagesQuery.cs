@@ -4,6 +4,9 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
 using Sanad.Modules.Chat.Application.Conversations;
+using Sanad.Modules.Chat.Application.Events;
+using Sanad.Modules.Chat.Application.Persistence;
+using Sanad.Modules.Chat.Domain.Changes;
 using Sanad.Modules.Chat.Domain.Conversations;
 using Sanad.Modules.Chat.Domain.Messages;
 
@@ -30,18 +33,23 @@ public sealed class GetMessagesQueryHandler
     public const int MaximumLimit = 100;
 
     private readonly IChatDbContext _dbContext;
+    private readonly IChatEventRecorder _recorder;
 
-    public GetMessagesQueryHandler(IChatDbContext dbContext)
+    public GetMessagesQueryHandler(
+        IChatDbContext dbContext,
+        IChatEventRecorder? recorder = null)
     {
         _dbContext = dbContext;
+        _recorder = recorder ?? NullChatEventRecorder.Instance;
     }
 
     public async Task<Result<MessageCursorPage>> Handle(
         GetMessagesQuery request,
         CancellationToken cancellationToken)
     {
+        // Tracked: the delivery side effect below mutates rows and the
+        // conversation revision in the same commit.
         Conversation? conversation = await _dbContext.Conversations
-            .AsNoTracking()
             .SingleOrDefaultAsync(
                 item => item.Id == request.ConversationId,
                 cancellationToken);
@@ -84,9 +92,12 @@ public sealed class GetMessagesQueryHandler
 
         // Write side effect: the recipient's first fetch of a message stamps
         // delivery. Set-once, so later fetches no-op; the sender never
-        // stamps their own messages.
+        // stamps their own messages. First stamps also write durable
+        // receipt changes in the same commit, so sync and realtime observe
+        // exactly the transitions this fetch caused — and only those, so
+        // polling can never generate loops.
         DateTime deliveredOnUtc = DateTime.UtcNow;
-        bool deliveryChanged = false;
+        var stamped = new List<Message>(rows.Count);
 
         foreach (Message row in rows)
         {
@@ -97,13 +108,11 @@ public sealed class GetMessagesQueryHandler
             }
 
             row.MarkDelivered(deliveredOnUtc);
-            deliveryChanged = true;
+            _recorder.RecordReceiptUpdated(conversation, row, deliveredOnUtc);
+            stamped.Add(row);
         }
 
-        if (deliveryChanged)
-        {
-            await _dbContext.SaveChangesAsync(cancellationToken);
-        }
+        await SaveWithRevisionRetryAsync(conversation, stamped, deliveredOnUtc, cancellationToken);
 
         UserId otherParticipant =
             conversation.ParticipantOne == request.Requester
@@ -258,5 +267,46 @@ public sealed class GetMessagesQueryHandler
                  item.Id.Value.CompareTo(cursorId) < 0))
             .Take(limit + 1)
             .ToList();
+    }
+
+    /// <summary>
+    /// Commits delivery stamps with their receipt changes. A concurrent
+    /// writer wins the revision token instead of corrupting it: staged
+    /// rows are detached and the set-once stamps that survive the reload
+    /// are re-recorded (duplicate-safe), so no first stamp is ever lost.
+    /// </summary>
+    private async Task SaveWithRevisionRetryAsync(
+        Conversation conversation,
+        List<Message> stamped,
+        DateTime now,
+        CancellationToken cancellationToken)
+    {
+        DbContext? context = _dbContext as DbContext;
+
+        if (context is null)
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                return;
+            }
+            catch (DbUpdateConcurrencyException) when (
+                attempt + 1 < ChatPersistenceConflicts.MaxRevisionRetryAttempts)
+            {
+                ChatPersistenceConflicts.DetachAdded<ChatChange>(context);
+                await context.Entry(conversation).ReloadAsync(cancellationToken);
+
+                foreach (Message message in stamped)
+                {
+                    _recorder.RecordReceiptUpdated(conversation, message, now);
+                }
+            }
+        }
     }
 }

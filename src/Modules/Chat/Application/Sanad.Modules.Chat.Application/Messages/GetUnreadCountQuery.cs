@@ -21,6 +21,13 @@ public sealed record GetUnreadCountQuery(UserId Requester)
 public sealed class GetUnreadCountQueryHandler
     : IQueryHandler<GetUnreadCountQuery, UnreadCountResponse>
 {
+    /// <summary>
+    /// Bounded scan: visible conversations are aggregated in fixed pages so
+    /// retained histories and large fleets never load unbounded state into
+    /// memory. Totals stay exact — every page uses the same read rule.
+    /// </summary>
+    private const int ScanPageSize = 200;
+
     private readonly IChatDbContext _dbContext;
 
     public GetUnreadCountQueryHandler(IChatDbContext dbContext)
@@ -32,38 +39,57 @@ public sealed class GetUnreadCountQueryHandler
         GetUnreadCountQuery request,
         CancellationToken cancellationToken)
     {
-        // Participant authorization, not a 404 path: a requester with no
-        // visible conversations simply answers 0/0.
-        List<Conversation> conversations = await _dbContext.Conversations
-            .AsNoTracking()
-            .Where(conversation =>
-                (conversation.ParticipantOne == request.Requester ||
-                 conversation.ParticipantTwo == request.Requester) &&
-                (conversation.ParticipantOne != request.Requester ||
-                 !conversation.HiddenForParticipantOne) &&
-                (conversation.ParticipantTwo != request.Requester ||
-                 !conversation.HiddenForParticipantTwo))
-            .ToListAsync(cancellationToken);
-
-        MessageFacts facts = await MessageReadRules.LoadAsync(
-            _dbContext,
-            request.Requester,
-            conversations,
-            cancellationToken);
-
         int unreadMessages = 0;
         int unreadConversations = 0;
+        int skip = 0;
 
-        foreach (Conversation conversation in conversations)
+        while (true)
         {
-            int unread = facts.UnreadCounts[conversation.Id];
+            // Participant authorization, not a 404 path: a requester with no
+            // visible conversations simply answers 0/0.
+            List<Conversation> page = await _dbContext.Conversations
+                .AsNoTracking()
+                .Where(conversation =>
+                    (conversation.ParticipantOne == request.Requester ||
+                     conversation.ParticipantTwo == request.Requester) &&
+                    (conversation.ParticipantOne != request.Requester ||
+                     !conversation.HiddenForParticipantOne) &&
+                    (conversation.ParticipantTwo != request.Requester ||
+                     !conversation.HiddenForParticipantTwo))
+                .OrderBy(conversation => conversation.Id)
+                .Skip(skip)
+                .Take(ScanPageSize)
+                .ToListAsync(cancellationToken);
 
-            unreadMessages += unread;
-
-            if (unread > 0)
+            if (page.Count == 0)
             {
-                unreadConversations++;
+                break;
             }
+
+            MessageFacts facts = await MessageReadRules.LoadAsync(
+                _dbContext,
+                request.Requester,
+                page,
+                cancellationToken);
+
+            foreach (Conversation conversation in page)
+            {
+                int unread = facts.UnreadCounts[conversation.Id];
+
+                unreadMessages += unread;
+
+                if (unread > 0)
+                {
+                    unreadConversations++;
+                }
+            }
+
+            if (page.Count < ScanPageSize)
+            {
+                break;
+            }
+
+            skip += page.Count;
         }
 
         return Result<UnreadCountResponse>.Success(

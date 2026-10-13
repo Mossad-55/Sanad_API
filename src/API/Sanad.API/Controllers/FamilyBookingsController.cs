@@ -19,7 +19,9 @@ public sealed record CreateBookingCheckoutRequest(
     TimeOnly StartTime,
     TimeOnly EndTime,
     string ServiceAddress,
-    string? SpecialInstructions);
+    string? SpecialInstructions,
+    Guid? BookingAreaId = null,
+    Guid? BookingServiceId = null);
 
 public sealed record CreatePaymentIntentRequest(
     PaymentMethod Method,
@@ -132,7 +134,9 @@ public sealed class FamilyBookingsController : ApiControllerBase
             request.ServiceAddress,
             request.SpecialInstructions,
             currentDate,
-            utcNow);
+            utcNow,
+            request.BookingAreaId,
+            request.BookingServiceId);
 
         var result = await _sender.Send(command, cancellationToken);
         return ToActionResult(result);

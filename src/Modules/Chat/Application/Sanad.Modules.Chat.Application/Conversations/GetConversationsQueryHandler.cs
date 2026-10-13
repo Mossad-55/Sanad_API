@@ -51,11 +51,20 @@ public sealed class GetConversationsQueryHandler
 
         int totalCount = await visible.CountAsync(cancellationToken);
 
-        List<Conversation> conversations = await visible
+        // Stable total order: last activity first, conversation id as the
+        // tie-break so equal-activity pages never shift or duplicate rows.
+        // The id tie-break is applied in memory: whole-struct ordering does
+        // not evaluate on every provider. (A tie split across a page
+        // boundary keeps activity order; the id order restarts per page —
+        // cosmetic only, since activity stamps are server-set per send.)
+        List<Conversation> conversations = (await visible
             .OrderByDescending(conversation => conversation.LastActivityOnUtc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .ToListAsync(cancellationToken);
+            .ToListAsync(cancellationToken))
+            .OrderByDescending(conversation => conversation.LastActivityOnUtc)
+            .ThenByDescending(conversation => conversation.Id.Value)
+            .ToList();
 
         // Lane B: one pass over the message facts for this page (last
         // message + not-read count per conversation), computed by the same
@@ -65,6 +74,22 @@ public sealed class GetConversationsQueryHandler
             request.Requester,
             conversations,
             cancellationToken);
+
+        // Batched enrichment: one Identity round-trip and one facility
+        // round-trip per page instead of per conversation.
+        UserId[] counterparts = conversations
+            .Select(conversation =>
+                conversation.ParticipantOne == request.Requester
+                    ? conversation.ParticipantTwo
+                    : conversation.ParticipantOne)
+            .Distinct()
+            .ToArray();
+
+        IReadOnlyDictionary<UserId, UserProfile?> profiles =
+            await _userLookup.GetProfilesAsync(counterparts, cancellationToken);
+
+        IReadOnlyDictionary<UserId, FacilityPresentation> facilities =
+            await _facilityLookup.GetForOwnersAsync(counterparts, cancellationToken);
 
         var items = new List<ConversationListItemResponse>(
             conversations.Count);
@@ -76,9 +101,7 @@ public sealed class GetConversationsQueryHandler
                     ? conversation.ParticipantTwo
                     : conversation.ParticipantOne;
 
-            UserProfile? profile = await _userLookup.GetProfileAsync(
-                otherParticipant,
-                cancellationToken);
+            profiles.TryGetValue(otherParticipant, out UserProfile? profile);
 
             // Opus delta: a care-home owner participant presents as the
             // facility — name and cover resolve over the owner's user id.
@@ -86,10 +109,9 @@ public sealed class GetConversationsQueryHandler
             string displayName = profile?.DisplayName ?? string.Empty;
             string? avatarUrl = profile?.AvatarUrl;
 
-            FacilityPresentation? facility = await _facilityLookup
-                .GetForOwnerAsync(otherParticipant, cancellationToken);
-
-            if (facility is not null)
+            if (facilities.TryGetValue(
+                    otherParticipant,
+                    out FacilityPresentation? facility))
             {
                 displayName = facility.DisplayName;
                 avatarUrl = facility.CoverImageUrl;

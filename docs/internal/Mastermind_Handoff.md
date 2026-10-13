@@ -1,5 +1,19 @@
 # Mastermind handoff
 
+## Current planning checkpoint — 2026-10-13 (Chat Plus)
+
+Owner requested frontend-report reconciliation and production hardening in
+`docs/internal/work/chat-plus/`. Revision 2 of its plan/checklist/handoff is
+prepared against clean `main` `41f9c91`; the frontend report is retained there.
+This is documentation only, not implemented or runtime-verified Chat Plus.
+Owner will implement, commit, and push; mastermind will review the final SHA.
+Voice remains excluded. Firebase/APNs live proof remains a separate release gate.
+New proposed business rules and real pricing/privacy/client dependencies are
+explicit in [Chat Plus plan](work/chat-plus/plan.md), section 11; the old
+blocker-free/no-migration/replay-ticket assumptions are superseded.
+**Next action:** owner accepts/adjusts Phase 0 contracts and implements
+[Chat Plus tasks](work/chat-plus/tasks.md), then supplies the pushed SHA/evidence.
+
 ## Current state — 2026-10-11 (all slices integrated)
 
 `main` = `origin/main` = `5edd341`, tree clean. Landed in order: Chat Lane A (`5d26f9f`) + Lane B (`4864a93`), Notifications Lanes A+B (`9005f14`, Codex-owned), Opus phases 1–6 (`2db70cc`), care-home finance translation fix (`5edd341`, live-verified on PostgreSQL: owner `dashboard/mine` + `revenue/mine` and admin filtered/unfiltered reads all 200). Gates on merged `main`: solution build 0 warnings/0 errors, full unit 2907 passed / 0 failed / 3 PostgreSQL-only skips, architecture 1/1, contract mapping 519 signatures with 0 missing / 0 orphan Postman routes (Bruno risk-based, 0 orphans). All task branches pruned; only `main` exists locally and on origin. Opus/Chat migrations remain authored-only, never applied. No API/DB/production operation beyond the authorized disposable-target live verification (port 5235, `SanadBrunoTestDb`, stopped afterwards).

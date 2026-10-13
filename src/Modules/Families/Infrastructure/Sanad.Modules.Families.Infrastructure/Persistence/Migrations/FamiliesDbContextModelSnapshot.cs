@@ -244,9 +244,17 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("acceptance_deadline_utc");
 
+                    b.Property<Guid?>("BookingAreaId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_area_id");
+
                     b.Property<DateOnly>("BookingDate")
                         .HasColumnType("date")
                         .HasColumnName("booking_date");
+
+                    b.Property<Guid?>("BookingServiceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("booking_service_id");
 
                     b.Property<string>("CancellationReason")
                         .HasMaxLength(500)
@@ -365,6 +373,9 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.HasIndex("FamilyId");
 
                     b.HasIndex("Status");
+
+                    b.HasIndex("BookingAreaId", "BookingServiceId")
+                        .HasDatabaseName("IX_Bookings_BookingAreaId_BookingServiceId");
 
                     b.ToTable("bookings", "families");
                 });

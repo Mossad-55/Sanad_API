@@ -65,14 +65,42 @@ public sealed class AdminChatReportsController(ISender sender) : ApiControllerBa
     /// Endpoint 13 — the reported conversation's messages, newest first,
     /// endpoint 3 item shape. The only non-participant read path; read-only
     /// (no delivery/read stamping). Unknown report → 404.
+    /// Bounded compatibility (deprecated): conversations with more than
+    /// 1,000 messages answer 409
+    /// <see cref="ReportErrors.HistoryRequiresPagination"/> — use
+    /// <see cref="MessagesPage"/> instead. Never a truncated array.
     /// </summary>
     [HttpGet("{reportId:guid}/messages")]
     [ProducesResponseType(typeof(MessageItemResponse[]), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [Obsolete("Use GET reports/{id}/messages/page for bounded history reads.")]
     public async Task<IActionResult> Messages(
         Guid reportId,
         CancellationToken cancellationToken) =>
         await Send(new GetReportMessagesQuery(new ReportId(reportId)), cancellationToken);
+
+    /// <summary>
+    /// Endpoint 13 (paged) — the reported conversation's messages in the
+    /// existing <c>MessageCursorPage</c> shape, newest first with
+    /// <c>beforeId</c> pagination (opaque cursor or raw message id of this
+    /// conversation). Read-only like the array endpoint. Unknown report or
+    /// unresolvable cursor → 404.
+    /// </summary>
+    [HttpGet("{reportId:guid}/messages/page")]
+    [ProducesResponseType(typeof(MessageCursorPage), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> MessagesPage(
+        Guid reportId,
+        [FromQuery] string? beforeId = null,
+        [FromQuery] int pageSize = GetReportMessagesPageQueryHandler.DefaultLimit,
+        CancellationToken cancellationToken = default) =>
+        await Send(
+            new GetReportMessagesPageQuery(
+                new ReportId(reportId),
+                beforeId,
+                pageSize),
+            cancellationToken);
 
     /// <summary>
     /// Endpoint 14 — close the report with history retained (204). Unknown
@@ -122,11 +150,11 @@ public sealed class AdminChatReportsController(ISender sender) : ApiControllerBa
         result.IsSuccess ? NoContent() : ToError(result.Error);
 
     /// <summary>
-    /// The two forced statuses (404 unknown report, 409 double resolve);
-    /// everything else falls through to the shared mapper, where the
-    /// unmapped Chat.Report.Invalid correctly lands on 400. The code and
-    /// traceId extensions survive the rewrite, so a client can still key on
-    /// <c>Chat.Report.*</c>.
+    /// The forced statuses (404 unknown report, 409 double resolve or
+    /// oversized legacy history); everything else falls through to the
+    /// shared mapper, where the unmapped Chat.Report.Invalid correctly lands
+    /// on 400. The code and traceId extensions survive the rewrite, so a
+    /// client can still key on <c>Chat.Report.*</c>.
     /// </summary>
     private IActionResult ToError(Error error)
     {
@@ -146,6 +174,15 @@ public sealed class AdminChatReportsController(ISender sender) : ApiControllerBa
                 StatusCodes.Status409Conflict,
                 "Conflict",
                 "The request conflicts with the current state.");
+        }
+
+        if (error.Code == ReportErrors.HistoryRequiresPagination.Code)
+        {
+            return ForcedProblem(
+                error,
+                StatusCodes.Status409Conflict,
+                "Conflict",
+                "The reported conversation is too large for the legacy view; use the paged messages endpoint.");
         }
 
         return ToActionResult(Result.Failure(error));

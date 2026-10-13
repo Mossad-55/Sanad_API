@@ -7,7 +7,11 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
 using Sanad.Modules.Chat.Application.Attachments;
 using Sanad.Modules.Chat.Application.Conversations;
+using Sanad.Modules.Chat.Application.Events;
+using Sanad.Modules.Chat.Application.Persistence;
+using Sanad.Modules.Chat.Application.RateLimiting;
 using Sanad.Modules.Chat.Domain.Attachments;
+using Sanad.Modules.Chat.Domain.Changes;
 using Sanad.Modules.Chat.Domain.Conversations;
 using Sanad.Modules.Chat.Domain.Messages;
 using Sanad.Modules.Notifications.Application.Notifications;
@@ -44,23 +48,43 @@ public sealed class SendMessageCommandHandler
     /// Seam to the Notifications module (the same <c>ISender</c> every
     /// controller already uses). Optional only so the pre-existing focused
     /// tests that construct this handler with the bare context keep
-    /// compiling; the container always injects it, so every send in the
-    /// running app fires the new-message alert.
+    /// compiling; the container always injects it. Used only when no durable
+    /// recorder is wired (legacy path); with a recorder the dispatcher
+    /// publishes the staged intent after commit instead.
     /// </summary>
     private readonly ISender? _notificationSender;
+    private readonly IChatRateGate? _rateGate;
+    private readonly IChatEventRecorder _recorder;
+    private readonly TimeSpan _unboundLifetime;
 
     public SendMessageCommandHandler(
         IChatDbContext dbContext,
-        ISender? notificationSender = null)
+        ISender? notificationSender = null,
+        IChatRateGate? rateGate = null,
+        IChatEventRecorder? recorder = null,
+        ChatRateOptions? rateOptions = null)
     {
         _dbContext = dbContext;
         _notificationSender = notificationSender;
+        _rateGate = rateGate;
+        _recorder = recorder ?? NullChatEventRecorder.Instance;
+        _unboundLifetime = (rateOptions ?? new ChatRateOptions()).UnboundAttachmentLifetime;
     }
 
     public async Task<Result<SendMessageResponse>> Handle(
         SendMessageCommand request,
         CancellationToken cancellationToken)
     {
+        if (_rateGate is not null &&
+            !_rateGate.TryAcquireSend(
+                request.Requester,
+                request.ConversationId,
+                out TimeSpan retryAfter))
+        {
+            return Result<SendMessageResponse>.Failure(
+                ChatRateErrors.Sends(retryAfter));
+        }
+
         Conversation? conversation = await _dbContext.Conversations
             .SingleOrDefaultAsync(
                 item => item.Id == request.ConversationId,
@@ -140,6 +164,8 @@ public sealed class SendMessageCommandHandler
                     MessageErrors.Invalid);
             }
 
+            // Finite-number coordinate hygiene also applies to text: NaN and
+            // infinities are never valid payloads anywhere on this route.
             string candidate = (request.Text ?? string.Empty).Trim();
 
             if (candidate.Length == 0 ||
@@ -158,10 +184,15 @@ public sealed class SendMessageCommandHandler
         {
             // A Location message carries exactly the coordinate pair plus
             // an optional label — no body, no attachment reference.
+            // Coordinates must be finite numbers inside the valid ranges.
             if (request.Text is not null ||
                 request.AttachmentId is not null ||
                 request.Latitude is null ||
                 request.Longitude is null ||
+                double.IsNaN(request.Latitude.Value) ||
+                double.IsInfinity(request.Latitude.Value) ||
+                double.IsNaN(request.Longitude.Value) ||
+                double.IsInfinity(request.Longitude.Value) ||
                 request.Latitude is < -90 or > 90 ||
                 request.Longitude is < -180 or > 180)
             {
@@ -211,6 +242,9 @@ public sealed class SendMessageCommandHandler
         // Idempotency runs BEFORE the attachment is resolved: an exact
         // replay must return the original even though its attachment is
         // already bound by that very message, and must never re-bind it.
+        // Sender-bound: another participant cannot claim someone else's
+        // message by reusing its key — a key owned by the other sender with
+        // any content is the 409, never a 200 of their message.
         Message? existing = await _dbContext.Messages
             .SingleOrDefaultAsync(
                 item =>
@@ -220,7 +254,8 @@ public sealed class SendMessageCommandHandler
 
         if (existing is not null)
         {
-            return IsExactReplay(
+            return existing.SenderUserId == request.Requester &&
+                IsExactReplay(
                     existing,
                     type,
                     text,
@@ -254,12 +289,15 @@ public sealed class SendMessageCommandHandler
                         item.ConversationId == conversation.Id,
                     cancellationToken);
 
-            // Unknown id, another conversation's attachment, or another
-            // participant's upload are indistinguishable 404s — the sender
-            // may only ever bind an attachment of this conversation that
-            // they uploaded themselves.
+            // Unknown id, another conversation's attachment, another
+            // participant's upload, or an EXPIRED unbound upload are
+            // indistinguishable 404s — the sender may only ever bind a live
+            // attachment of this conversation that they uploaded themselves.
+            // Expiry affects unbound uploads only; bound history is never
+            // expired away.
             if (attachment is null ||
-                attachment.UploadedBy != request.Requester)
+                attachment.UploadedBy != request.Requester ||
+                IsExpiredUnbound(attachment, DateTime.UtcNow, _unboundLifetime))
             {
                 return Result<SendMessageResponse>.Failure(
                     AttachmentErrors.NotFound);
@@ -307,35 +345,104 @@ public sealed class SendMessageCommandHandler
                 MessageErrors.Invalid);
         }
 
-        // Sending is the only thing that moves conversation activity.
+        // Sending is the only thing that moves conversation activity
+        // (monotonic — a delayed retry can never regress it).
         conversation.UpdateLastActivity(now);
 
-        _dbContext.Messages.Add(message);
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        bool durable = _recorder is not NullChatEventRecorder;
+        DbContext? context = _dbContext as DbContext;
 
-        // Lane B — new-message in-app alert through the existing
-        // notification seam (frozen contract: conversation id + message id
-        // only, never the text, which this call does not carry at all).
-        // The producer is awaited, not fire-and-forget, and its failure is
-        // deliberately NOT swallowed: the message row is already committed,
-        // so a caller's retry with the same clientMessageId takes the exact
-        // replay path above — 200, no duplicate message, no second producer
-        // attempt — exactly the idempotent contract the send itself
-        // follows. The residual is documented: a producer failure can leave
-        // the message delivered without an alert (no retry loop exists for
-        // this seam in V1). The replay path never re-fires the producer
-        // because an existing message means its alert was already produced,
-        // and the producer's per-(message, recipient) idempotency key would
-        // dedupe it anyway.
-        if (_notificationSender is not null)
+        if (!durable)
         {
-            await _notificationSender.Send(
-                new CreateChatMessageNotificationCommand(
-                    recipient.Value,
-                    conversation.Id.Value,
-                    message.Id.Value,
-                    now),
-                cancellationToken);
+            _dbContext.Messages.Add(message);
+
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateException exception) when (
+                ChatPersistenceConflicts.IsUniqueViolation(exception))
+            {
+                return await ResolveKeyRaceAsync(
+                    conversation,
+                    request,
+                    type,
+                    text,
+                    latitude,
+                    longitude,
+                    label,
+                    recipient,
+                    cancellationToken);
+            }
+
+            // Legacy (non-durable) alert path: awaited, not fire-and-forget,
+            // failure NOT swallowed — the retry takes the exact replay path.
+            if (_notificationSender is not null)
+            {
+                await _notificationSender.Send(
+                    new CreateChatMessageNotificationCommand(
+                        recipient.Value,
+                        conversation.Id.Value,
+                        message.Id.Value,
+                        now),
+                    cancellationToken);
+            }
+
+            return Result<SendMessageResponse>.Success(
+                new SendMessageResponse(
+                    MessageItemFactory.Create(message, readOnUtc: null),
+                    Created: true));
+        }
+
+        // Durable path: the message, its change-log row, and the
+        // notification intent commit atomically. The dispatcher publishes
+        // after commit with retries; a crash between commit and publish
+        // loses nothing, and a replay never produces a second intent.
+        _dbContext.Messages.Add(message);
+        _recorder.RecordMessageCreated(conversation, message, recipient, now);
+
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                break;
+            }
+            catch (DbUpdateConcurrencyException) when (
+                context is not null &&
+                attempt + 1 < ChatPersistenceConflicts.MaxRevisionRetryAttempts)
+            {
+                // A concurrent writer consumed the revision first. Detach
+                // staged rows, reload the authoritative revision, and
+                // re-stage (recorder is duplicate-safe); the message and the
+                // bound attachment stay tracked exactly once.
+                ChatPersistenceConflicts.DetachAdded<ChatChange>(context);
+                ChatPersistenceConflicts.DetachAdded<Domain.Outbox.ChatOutboxItem>(context);
+                await context.Entry(conversation).ReloadAsync(cancellationToken);
+                conversation.UpdateLastActivity(now);
+                _recorder.RecordMessageCreated(conversation, message, recipient, now);
+            }
+            catch (DbUpdateException exception) when (
+                ChatPersistenceConflicts.IsUniqueViolation(exception))
+            {
+                if (context is not null)
+                {
+                    context.Entry(message).State = EntityState.Detached;
+                    ChatPersistenceConflicts.DetachAdded<ChatChange>(context);
+                    ChatPersistenceConflicts.DetachAdded<Domain.Outbox.ChatOutboxItem>(context);
+                }
+
+                return await ResolveKeyRaceAsync(
+                    conversation,
+                    request,
+                    type,
+                    text,
+                    latitude,
+                    longitude,
+                    label,
+                    recipient,
+                    cancellationToken);
+            }
         }
 
         // A message can never come back read on its own create: no existing
@@ -346,6 +453,68 @@ public sealed class SendMessageCommandHandler
                 MessageItemFactory.Create(message, readOnUtc: null),
                 Created: true));
     }
+
+    /// <summary>
+    /// Check-then-insert race: the unique backstop fired, so re-read the
+    /// scoped authoritative row. Same key + same sender + same content is
+    /// the 200 replay; anything else with the key (including the other
+    /// participant's key) is the frozen 409. An attachment-only collision
+    /// (no key row) is the single-use 400.
+    /// </summary>
+    private async Task<Result<SendMessageResponse>> ResolveKeyRaceAsync(
+        Conversation conversation,
+        SendMessageCommand request,
+        MessageType type,
+        string? text,
+        double? latitude,
+        double? longitude,
+        string? label,
+        UserId recipient,
+        CancellationToken cancellationToken)
+    {
+        string? clientMessageId = request.ClientMessageId?.Trim();
+
+        Message? winner = await _dbContext.Messages
+            .SingleOrDefaultAsync(
+                item =>
+                    item.ConversationId == conversation.Id &&
+                    item.ClientMessageId == clientMessageId,
+                cancellationToken);
+
+        if (winner is null)
+        {
+            return Result<SendMessageResponse>.Failure(
+                MessageErrors.Invalid);
+        }
+
+        return winner.SenderUserId == request.Requester &&
+            IsExactReplay(
+                winner,
+                type,
+                text,
+                request.AttachmentId,
+                latitude,
+                longitude,
+                label)
+            ? Result<SendMessageResponse>.Success(
+                new SendMessageResponse(
+                    await CreateItemAsync(
+                        winner,
+                        conversation,
+                        request.Requester,
+                        recipient,
+                        cancellationToken),
+                    Created: false))
+            : Result<SendMessageResponse>.Failure(
+                MessageErrors.IdempotencyConflict);
+    }
+
+    internal static bool IsExpiredUnbound(
+        Attachment attachment,
+        DateTime now,
+        TimeSpan? lifetime = null) =>
+        !attachment.IsBound &&
+        attachment.UploadedOnUtc + (lifetime ?? TimeSpan.FromHours(24)) <= now;
 
     /// <summary>
     /// Exact replay means the same key with the same content: type, body

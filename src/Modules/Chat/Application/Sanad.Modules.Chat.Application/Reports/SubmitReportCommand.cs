@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
+using Sanad.Modules.Chat.Application.RateLimiting;
 using Sanad.Modules.Chat.Domain.Conversations;
 using Sanad.Modules.Chat.Domain.Messages;
 using Sanad.Modules.Chat.Domain.Reports;
@@ -30,16 +31,28 @@ public sealed class SubmitReportCommandHandler
     : ICommandHandler<SubmitReportCommand, SubmitReportResponse>
 {
     private readonly IChatDbContext _dbContext;
+    private readonly IChatRateGate? _rateGate;
 
-    public SubmitReportCommandHandler(IChatDbContext dbContext)
+    public SubmitReportCommandHandler(
+        IChatDbContext dbContext,
+        IChatRateGate? rateGate = null)
     {
         _dbContext = dbContext;
+        _rateGate = rateGate;
     }
 
     public async Task<Result<SubmitReportResponse>> Handle(
         SubmitReportCommand request,
         CancellationToken cancellationToken)
     {
+        if (_rateGate is not null &&
+            !_rateGate.TryAcquireReport(
+                request.Reporter,
+                out TimeSpan retryAfter))
+        {
+            return Result<SubmitReportResponse>.Failure(
+                ChatRateErrors.Reports(retryAfter));
+        }
         // Gate 1 — only a participant may report. Unknown and foreign
         // conversations are one generic privacy 404, so this endpoint can
         // never be used to probe which conversation ids exist. Hiding does

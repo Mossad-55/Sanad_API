@@ -11,15 +11,19 @@ namespace Sanad.API.ChatIntegration;
 
 /// <summary>
 /// Open-time booking resolution for endpoint 2's booking-only mode (Opus
-/// delta). Tries the Families booking store first, then CareHomes, and
-/// answers with the counterpart's user id only when the booking exists, the
-/// opener is a party to it, and it is not cancelled/expired/refunded —
-/// every other outcome is the same null, which the handler serves as the
+/// delta, Chat Plus reopen). Tries the Families booking store first, then
+/// CareHomes. Active-only resolution answers with the counterpart's user id
+/// only when the booking exists, the opener is a party to it, and it is not
+/// cancelled/expired/refunded; the reopen resolution additionally resolves
+/// terminal bookings (flagged inactive) so retained history can reopen, and
+/// resolves elderly openers through their elderly identity. Every other
+/// outcome is the same null, which the handler serves as the
 /// privacy-preserving 404 so a caller can never probe booking ids.
 ///
 /// Party rules: a Families booking maps family owner/members ↔ the booked
-/// caregiver (counterpart from the caregiver side is the booking creator);
-/// a CareHome booking maps <c>FamilyUserId</c> ↔ the facility owner.
+/// caregiver (counterpart from the caregiver side is the booking creator;
+/// the booking's elderly maps to the caregiver); a CareHome booking maps
+/// <c>FamilyUserId</c> (or an elderly of its family) ↔ the facility owner.
 /// </summary>
 public sealed class ApiChatBookingGateway : IChatBookingGateway
 {
@@ -42,6 +46,29 @@ public sealed class ApiChatBookingGateway : IChatBookingGateway
         UserId openerUserId,
         CancellationToken cancellationToken = default)
     {
+        BookingOpenTarget? target = await ResolveForReopenAsync(
+            bookingId,
+            openerUserId,
+            cancellationToken);
+
+        return target is not null && target.IsActive
+            ? target.Counterpart
+            : null;
+    }
+
+    /// <summary>
+    /// Reopen-capable resolution: unknown bookings and bookings the opener
+    /// was never a party to are null; terminal bookings still resolve their
+    /// parties (with <c>IsActive: false</c>) so retained history can reopen.
+    /// Elderly openers resolve explicitly through their elderly identity
+    /// (Families booking's elderly row, or membership of the care-home
+    /// booking's family).
+    /// </summary>
+    public async Task<BookingOpenTarget?> ResolveForReopenAsync(
+        BookingId bookingId,
+        UserId openerUserId,
+        CancellationToken cancellationToken = default)
+    {
         Booking? booking = await _families.Bookings
             .AsNoTracking()
             .SingleOrDefaultAsync(
@@ -50,7 +77,7 @@ public sealed class ApiChatBookingGateway : IChatBookingGateway
 
         if (booking is not null)
         {
-            return await ResolveFamilyBookingCounterpartAsync(
+            return await ResolveFamilyBookingTargetAsync(
                 booking,
                 openerUserId,
                 cancellationToken);
@@ -64,13 +91,13 @@ public sealed class ApiChatBookingGateway : IChatBookingGateway
 
         return careHomeBooking is null
             ? null
-            : await ResolveCareHomeBookingCounterpartAsync(
+            : await ResolveCareHomeBookingTargetAsync(
                 careHomeBooking,
                 openerUserId,
                 cancellationToken);
     }
 
-    private async Task<UserId?> ResolveFamilyBookingCounterpartAsync(
+    private async Task<BookingOpenTarget?> ResolveFamilyBookingTargetAsync(
         Booking booking,
         UserId openerUserId,
         CancellationToken cancellationToken)
@@ -78,13 +105,11 @@ public sealed class ApiChatBookingGateway : IChatBookingGateway
         // The contract's terminal set: cancelled, expired, refunded.
         // (DeclinedByCaregiver is deliberately NOT rejected — the frozen
         // delta lists only cancelled/expired/refunded.)
-        if (booking.Status is BookingStatus.CancelledByFamily or
+        bool isActive = booking.Status is not (
+            BookingStatus.CancelledByFamily or
             BookingStatus.CancelledByCaregiver or
             BookingStatus.Refunded or
-            BookingStatus.Expired)
-        {
-            return null;
-        }
+            BookingStatus.Expired);
 
         var caregiver = await _caregivers.Caregivers
             .AsNoTracking()
@@ -104,32 +129,45 @@ public sealed class ApiChatBookingGateway : IChatBookingGateway
                     family.Id == booking.FamilyId &&
                     family.DeletedOnUtc == null &&
                     (family.OwnerUserId == openerUserId ||
-                     family.Members.Any(member =>
-                         member.Id == openerUserId)),
+                      family.Members.Any(member =>
+                          member.Id == openerUserId)),
                 cancellationToken);
 
         if (openerOnFamily)
         {
-            return caregiver.UserId;
+            return new BookingOpenTarget(caregiver.UserId, isActive);
         }
 
-        return openerUserId == caregiver.UserId
-            ? booking.CreatedByUserId
+        if (openerUserId == caregiver.UserId)
+        {
+            return new BookingOpenTarget(booking.CreatedByUserId, isActive);
+        }
+
+        // Elderly opener: resolves explicitly through the booking's elderly
+        // identity — the opener must be this booking's elderly.
+        bool openerIsElderly = await _families.Elderlies
+            .AsNoTracking()
+            .AnyAsync(
+                elderly =>
+                    elderly.Id == booking.ElderlyId &&
+                    elderly.IdentityUserId == openerUserId,
+                cancellationToken);
+
+        return openerIsElderly
+            ? new BookingOpenTarget(caregiver.UserId, isActive)
             : null;
     }
 
-    private async Task<UserId?> ResolveCareHomeBookingCounterpartAsync(
+    private async Task<BookingOpenTarget?> ResolveCareHomeBookingTargetAsync(
         CareHomeBooking booking,
         UserId openerUserId,
         CancellationToken cancellationToken)
     {
         // Same terminal set as above, in CareHomes vocabulary.
-        if (booking.Status is CareHomeBookingStatus.Expired or
+        bool isActive = booking.Status is not (
+            CareHomeBookingStatus.Expired or
             CareHomeBookingStatus.Cancelled or
-            CareHomeBookingStatus.Refunded)
-        {
-            return null;
-        }
+            CareHomeBookingStatus.Refunded);
 
         var facility = await _careHomes.Facilities
             .AsNoTracking()
@@ -144,11 +182,26 @@ public sealed class ApiChatBookingGateway : IChatBookingGateway
 
         if (openerUserId == booking.FamilyUserId)
         {
-            return facility.OwnerUserId;
+            return new BookingOpenTarget(facility.OwnerUserId, isActive);
         }
 
-        return openerUserId == facility.OwnerUserId
-            ? booking.FamilyUserId
+        if (openerUserId == facility.OwnerUserId)
+        {
+            return new BookingOpenTarget(booking.FamilyUserId, isActive);
+        }
+
+        // Elderly opener: a member of the booking's family through their
+        // elderly identity.
+        bool openerIsElderly = await _families.Elderlies
+            .AsNoTracking()
+            .AnyAsync(
+                elderly =>
+                    elderly.FamilyId == booking.FamilyId &&
+                    elderly.IdentityUserId == openerUserId,
+                cancellationToken);
+
+        return openerIsElderly
+            ? new BookingOpenTarget(facility.OwnerUserId, isActive)
             : null;
     }
 }

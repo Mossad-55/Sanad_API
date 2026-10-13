@@ -70,6 +70,21 @@ public sealed class GetReportMessagesQueryHandler
                 ReportErrors.NotFound);
         }
 
+        // Bounded compatibility: the legacy array endpoint serves
+        // conversations with at most 1,000 messages; above that bound the
+        // caller must use the paged endpoint (never a truncated array).
+        int messageCount = await _dbContext.Messages
+            .AsNoTracking()
+            .Where(message =>
+                message.ConversationId == conversation.Id)
+            .CountAsync(cancellationToken);
+
+        if (messageCount > 1000)
+        {
+            return Result<IReadOnlyList<MessageItemResponse>>.Failure(
+                ReportErrors.HistoryRequiresPagination);
+        }
+
         List<Message> rows = await _dbContext.Messages
             .AsNoTracking()
             .Where(message =>

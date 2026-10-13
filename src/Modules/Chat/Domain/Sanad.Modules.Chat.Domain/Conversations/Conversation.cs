@@ -48,6 +48,18 @@ public sealed class Conversation : AggregateRoot<ConversationId>
 
     public DateTime LastActivityOnUtc { get; private set; }
 
+    /// <summary>
+    /// Chat Plus commit-safe change cursor: every durable message/receipt
+    /// change in this conversation consumes the next value inside the same
+    /// transaction that writes the change, so a sync reader that captured
+    /// revision N sees exactly the changes committed up to N and nothing
+    /// committed later can hide below a returned cursor. The property is an
+    /// EF concurrency token: concurrent writers collide on it and retry,
+    /// which serializes revision assignment per conversation. A rolled-back
+    /// transaction rolls its increment back too, so revisions never skip.
+    /// </summary>
+    public long ChangeRevision { get; private set; }
+
     public static Conversation Create(
         UserId participantA,
         UserId participantB,
@@ -186,6 +198,8 @@ public sealed class Conversation : AggregateRoot<ConversationId>
 
     /// <summary>
     /// Last-activity stamp, updated by the message flow once messages exist.
+    /// Monotonic: a concurrent delayed save can never regress it — an older
+    /// stamp is ignored rather than applied.
     /// </summary>
     public void UpdateLastActivity(DateTime lastActivityOnUtc)
     {
@@ -195,7 +209,24 @@ public sealed class Conversation : AggregateRoot<ConversationId>
                 "Conversation timestamps must be UTC.");
         }
 
+        if (lastActivityOnUtc <= LastActivityOnUtc)
+        {
+            return;
+        }
+
         LastActivityOnUtc = lastActivityOnUtc;
+    }
+
+    /// <summary>
+    /// Consumes the next change revision for one durable change. Called once
+    /// per change row inside the writer's transaction; the concurrency token
+    /// on <see cref="ChangeRevision"/> turns a lost race into a retryable
+    /// persistence conflict instead of a duplicated revision.
+    /// </summary>
+    public long TakeNextRevision()
+    {
+        ChangeRevision++;
+        return ChangeRevision;
     }
 
     private static (UserId First, UserId Second) NormalizePair(

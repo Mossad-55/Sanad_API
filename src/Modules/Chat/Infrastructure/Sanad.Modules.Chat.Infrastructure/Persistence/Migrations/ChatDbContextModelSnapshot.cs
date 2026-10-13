@@ -87,6 +87,43 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
                     b.ToTable("Blocks", "chat");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Chat.Domain.Changes.ChatChange", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("PublishedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Revision")
+                        .HasColumnType("bigint");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.HasIndex("PublishedOnUtc", "ConversationId", "Revision");
+
+                    b.HasIndex("ConversationId", "Revision")
+                        .IsUnique();
+
+                    b.HasIndex("ConversationId", "MessageId", "Type");
+
+                    b.ToTable("ChatChanges", "chat");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Chat.Domain.Conversations.Conversation", b =>
                 {
                     b.Property<Guid>("Id")
@@ -94,6 +131,10 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
 
                     b.Property<Guid?>("BookingId")
                         .HasColumnType("uuid");
+
+                    b.Property<long>("ChangeRevision")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
 
                     b.Property<DateTime>("CreatedOnUtc")
                         .HasColumnType("timestamp with time zone");
@@ -206,6 +247,9 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("AttachmentId")
+                        .IsUnique();
+
                     b.HasIndex("ConversationId", "ClientMessageId")
                         .IsUnique();
 
@@ -215,6 +259,79 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
                         .IsDescending(false, true, true);
 
                     b.ToTable("Messages", "chat");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Chat.Domain.Outbox.ChatOutboxItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("AttemptCount")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid?>("ClaimToken")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("ClaimedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("ConversationId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<string>("LastErrorCode")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("NextAttemptOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateTime?>("PublishedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid>("RecipientUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConversationId");
+
+                    b.HasIndex("MessageId", "RecipientUserId")
+                        .IsUnique();
+
+                    b.HasIndex("PublishedOnUtc", "NextAttemptOnUtc");
+
+                    b.ToTable("ChatOutbox", "chat");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Chat.Domain.Privacy.ChatPrivacySettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<bool>("ShareLastSeen")
+                        .HasColumnType("boolean");
+
+                    b.Property<bool>("ShowOnlineStatus")
+                        .HasColumnType("boolean");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OwnerUserId")
+                        .IsUnique();
+
+                    b.ToTable("ChatPrivacySettings", "chat");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Chat.Domain.Reports.Report", b =>
@@ -248,6 +365,10 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
+
                     b.HasKey("Id");
 
                     b.HasIndex("ConversationId");
@@ -268,6 +389,21 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
                         .IsRequired();
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Chat.Domain.Changes.ChatChange", b =>
+                {
+                    b.HasOne("Sanad.Modules.Chat.Domain.Conversations.Conversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("Sanad.Modules.Chat.Domain.Messages.Message", null)
+                        .WithMany()
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("Sanad.Modules.Chat.Domain.Conversations.ConversationReadState", b =>
                 {
                     b.HasOne("Sanad.Modules.Chat.Domain.Conversations.Conversation", null)
@@ -278,6 +414,15 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
                 });
 
             modelBuilder.Entity("Sanad.Modules.Chat.Domain.Messages.Message", b =>
+                {
+                    b.HasOne("Sanad.Modules.Chat.Domain.Conversations.Conversation", null)
+                        .WithMany()
+                        .HasForeignKey("ConversationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Chat.Domain.Outbox.ChatOutboxItem", b =>
                 {
                     b.HasOne("Sanad.Modules.Chat.Domain.Conversations.Conversation", null)
                         .WithMany()

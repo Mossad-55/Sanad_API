@@ -2,7 +2,8 @@ namespace Sanad.BuildingBlocks.Application.Results;
 
 public sealed record Error(
     string Code,
-    string Message
+    string Message,
+    TimeSpan? RetryAfter = null
 )
 {
     public static readonly Error None = 

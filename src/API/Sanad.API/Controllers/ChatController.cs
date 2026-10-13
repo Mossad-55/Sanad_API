@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sanad.API.Authorization;
 using Sanad.API.Controllers.Requests;
 using Sanad.API.ProblemDetail;
 using Sanad.BuildingBlocks.Application.Results;
@@ -9,7 +10,11 @@ using Sanad.Modules.Chat.Application.Attachments;
 using Sanad.Modules.Chat.Application.Blocks;
 using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Application.Messages;
+using Sanad.Modules.Chat.Application.Presence;
+using Sanad.Modules.Chat.Application.Privacy;
+using Sanad.Modules.Chat.Application.RateLimiting;
 using Sanad.Modules.Chat.Application.Reports;
+using Sanad.Modules.Chat.Application.Sync;
 using Sanad.Modules.Chat.Domain.Attachments;
 using Sanad.Modules.Chat.Domain.Conversations;
 using Sanad.Modules.Chat.Domain.Messages;
@@ -17,20 +22,28 @@ using Sanad.Modules.Chat.Domain.Messages;
 namespace Sanad.API.Controllers;
 
 /// <summary>
-/// Chat app routes (endpoints 1–4, 5–11 of the frozen contract). All routes
-/// resolve the participant from the JWT; unknown or foreign conversations,
+/// Chat app routes (endpoints 1–4, 5–11 of the frozen contract, plus the
+/// Chat Plus sync/privacy/presence additions). All routes resolve the
+/// participant from the JWT; unknown or foreign conversations,
 /// messages, attachments, files, block targets, and reports answer with a
 /// privacy-preserving 404 that never reveals why. The support side of the
 /// report flow (endpoints 12–15) lives in
 /// <see cref="AdminChatReportsController"/>.
+/// Normal access only: restricted-verification tokens are rejected for Chat
+/// (401/403 by the policy before any handler runs).
 /// </summary>
-[Authorize]
+[Authorize(Policy = AuthorizationPolicies.NormalAccess)]
 [Route("api/v1/chat")]
 public sealed class ChatController : ApiControllerBase
 {
     private readonly ISender _sender;
+    private readonly IChatRateGate _rateGate;
 
-    public ChatController(ISender sender) => _sender = sender;
+    public ChatController(ISender sender, IChatRateGate? rateGate = null)
+    {
+        _sender = sender;
+        _rateGate = rateGate ?? new InMemoryChatRateGate();
+    }
 
     /// <summary>Endpoint 1 — conversation list, last activity first.</summary>
     [HttpGet("conversations")]
@@ -286,6 +299,8 @@ public sealed class ChatController : ApiControllerBase
     /// as endpoints 1/2/10. Validation failures (invalid/oversize/unsupported
     /// type) answer 400 with the specific Chat.Attachment.* code — the
     /// uploader is entitled to know why their own file failed.
+    /// Abuse control: at most 2 concurrent uploads per user (rejected before
+    /// buffering) plus 10/min; both answer 429 with Retry-After.
     /// </summary>
     [HttpPost("conversations/{conversationId:guid}/attachments")]
     [Consumes("multipart/form-data")]
@@ -295,6 +310,7 @@ public sealed class ChatController : ApiControllerBase
         StatusCodes.Status201Created)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
     public async Task<IActionResult> UploadAttachment(
         Guid conversationId,
         IFormFile? file,
@@ -305,31 +321,43 @@ public sealed class ChatController : ApiControllerBase
             return Unauthorized();
         }
 
-        if (file is null)
+        if (!_rateGate.TryEnterUpload(userId, out TimeSpan slotRetry))
         {
-            return BadRequestWithCode(AttachmentErrors.Invalid.Code);
+            return RateLimited(ChatRateErrors.Uploads(slotRetry));
         }
 
-        await using var content = new MemoryStream();
-        await file.CopyToAsync(content, cancellationToken);
-        content.Position = 0;
-
-        var result = await _sender.Send(
-            new UploadAttachmentCommand(
-                userId,
-                new ConversationId(conversationId),
-                file.FileName,
-                file.ContentType,
-                file.Length,
-                content),
-            cancellationToken);
-
-        if (!result.IsSuccess)
+        try
         {
-            return ToChatActionResult(result);
-        }
+            if (file is null)
+            {
+                return BadRequestWithCode(AttachmentErrors.Invalid.Code);
+            }
 
-        return StatusCode(StatusCodes.Status201Created, result.Value);
+            await using var content = new MemoryStream();
+            await file.CopyToAsync(content, cancellationToken);
+            content.Position = 0;
+
+            var result = await _sender.Send(
+                new UploadAttachmentCommand(
+                    userId,
+                    new ConversationId(conversationId),
+                    file.FileName,
+                    file.ContentType,
+                    file.Length,
+                    content),
+                cancellationToken);
+
+            if (!result.IsSuccess)
+            {
+                return ToChatActionResult(result);
+            }
+
+            return StatusCode(StatusCodes.Status201Created, result.Value);
+        }
+        finally
+        {
+            _rateGate.ExitUpload(userId);
+        }
     }
 
     /// <summary>
@@ -488,19 +516,143 @@ public sealed class ChatController : ApiControllerBase
             result.Value);
     }
 
+    /// <summary>
+    /// Chat Plus sync — commit-safe REST recovery for sockets, degraded
+    /// polling, app foreground, and restart. Same participant/visibility
+    /// authorization as history; page size clamps 1–100 (default 100).
+    /// An empty cursor starts the authoritative snapshot; subsequent reads
+    /// consume committed changes. Malformed/foreign cursors are the privacy
+    /// 404; an unsupported cursor version returns an empty page with
+    /// `resetRequired: true`.
+    /// </summary>
+    [HttpGet("conversations/{conversationId:guid}/sync")]
+    [ProducesResponseType(
+        typeof(ConversationSyncPage),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status429TooManyRequests)]
+    public async Task<IActionResult> SyncConversation(
+        Guid conversationId,
+        [FromQuery] string? cursor = null,
+        [FromQuery] int pageSize = GetConversationSyncQueryHandler.DefaultLimit,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new GetConversationSyncQuery(
+                userId,
+                new ConversationId(conversationId),
+                cursor,
+                pageSize),
+            cancellationToken);
+
+        return ToChatActionResult(result);
+    }
+
+    /// <summary>
+    /// Chat Plus presence privacy — the caller's own settings. Absence of a
+    /// row means undisclosed (both false for new and legacy users).
+    /// </summary>
+    [HttpGet("privacy")]
+    [ProducesResponseType(
+        typeof(ChatPrivacyResponse),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetPrivacy(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new GetChatPrivacyQuery(userId),
+            cancellationToken);
+
+        return ToChatActionResult(result);
+    }
+
+    /// <summary>
+    /// Chat Plus presence privacy — full replacement; both booleans are
+    /// required and never defaulted from omitted fields. A change evicts
+    /// affected presence subscriptions before further dispatch (the realtime
+    /// layer re-resolves eligibility per dispatch).
+    /// </summary>
+    [HttpPut("privacy")]
+    [ProducesResponseType(
+        typeof(ChatPrivacyResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> UpdatePrivacy(
+        [FromBody] ChatUpdatePrivacyRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new UpdateChatPrivacyCommand(
+                userId,
+                request.ShowOnlineStatus,
+                request.ShareLastSeen),
+            cancellationToken);
+
+        return ToChatActionResult(result);
+    }
+
+    /// <summary>
+    /// Chat Plus authorized presence snapshot for a conversation's
+    /// counterpart. `isOnline` null means undisclosed/unknown (not offline);
+    /// either-direction block suppresses both fields without removing REST
+    /// history access. Clients apply the snapshot after privacy changes,
+    /// authorization changes, foreground, and reconnect.
+    /// </summary>
+    [HttpGet("conversations/{conversationId:guid}/presence")]
+    [ProducesResponseType(
+        typeof(ConversationPresenceResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPresence(
+        Guid conversationId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new GetConversationPresenceQuery(
+                userId,
+                new ConversationId(conversationId)),
+            cancellationToken);
+
+        return ToChatActionResult(result);
+    }
+
     private IActionResult ToChatActionResult(Result result) =>
         IsPrivacyFailure(result)
             ? PrivacyNotFound(result.Error)
-            : IsConflict(result)
-                ? SendConflict(result.Error)
-                : ToActionResult(result);
+            : IsRateLimited(result)
+                ? RateLimited(result.Error)
+                : IsConflict(result)
+                    ? SendConflict(result.Error)
+                    : ToActionResult(result);
 
     private IActionResult ToChatActionResult<T>(Result<T> result) =>
         IsPrivacyFailure(result)
             ? PrivacyNotFound(result.Error)
-            : IsConflict(result)
-                ? SendConflict(result.Error)
-                : ToActionResult(result);
+            : IsRateLimited(result)
+                ? RateLimited(result.Error)
+                : IsConflict(result)
+                    ? SendConflict(result.Error)
+                    : ToActionResult(result);
 
     /// <summary>
     /// The conversation code (endpoints 1/2/7/10, and upload scope
@@ -525,6 +677,38 @@ public sealed class ChatController : ApiControllerBase
          result.Error.Code == BlockErrors.NotFound.Code ||
          result.Error.Code == MessageErrors.NotFound.Code ||
          result.Error.Code == ReportErrors.NotFound.Code);
+
+    /// <summary>
+    /// Chat Plus 429: abuse-control failures answer Too Many Requests with
+    /// the earliest retry delay and never reveal account/resource details.
+    /// </summary>
+    private static bool IsRateLimited(Result result) =>
+        result.IsFailure &&
+        result.Error.Code.StartsWith(
+            "Chat.RateLimited.",
+            StringComparison.Ordinal);
+
+    private IActionResult RateLimited(Error error)
+    {
+        ProblemDetails problemDetails =
+            ResultProblemDetailsMapper.Create(error, HttpContext);
+
+        problemDetails.Type = "https://httpstatuses.com/429";
+        problemDetails.Title = "Too Many Requests";
+        problemDetails.Status = StatusCodes.Status429TooManyRequests;
+        problemDetails.Detail = "The rate limit was reached. Retry after the indicated delay.";
+
+        if (error.RetryAfter is { } retryAfter)
+        {
+            Response.Headers.RetryAfter = Math
+                .Max(1, (int)Math.Ceiling(retryAfter.TotalSeconds))
+                .ToString(System.Globalization.CultureInfo.InvariantCulture);
+        }
+
+        return StatusCode(
+            StatusCodes.Status429TooManyRequests,
+            problemDetails);
+    }
 
     /// <summary>
     /// Endpoint 4's idempotency 409. Like the privacy failures, Chat forces

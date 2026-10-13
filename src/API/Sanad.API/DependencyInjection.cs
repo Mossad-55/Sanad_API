@@ -47,6 +47,7 @@ using Sanad.Modules.Community.Application.Posts;
 using Sanad.Modules.Chat.Infrastructure;
 using Sanad.API.ChatIntegration;
 using Sanad.Modules.Chat.Application.Conversations;
+using Sanad.Modules.Chat.Application.Sync;
 using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.Finance.Infrastructure;
@@ -498,6 +499,8 @@ public static class DependencyInjection
 
         services.AddScoped<
             ICaregiverBookingPricing, CaregiverBookingPricingGateway>();
+        services.AddScoped<
+            ICaregiverCatalogLookup, CaregiverCatalogLookup>();
 
         // Chat outbound ports (interfaces live in Chat Application,
         // implementations here — same gateway pattern as FamilyIdentityGateway).
@@ -506,6 +509,8 @@ public static class DependencyInjection
         services.AddScoped<IChatBookingGateway, ApiChatBookingGateway>();
         services.AddScoped<IChatFacilityLookup, ApiChatFacilityLookup>();
         services.AddScoped<ICareHomeOwnerFacilityLookup, ApiCareHomeOwnerFacilityLookup>();
+        services.AddSingleton<IChatSyncCursorProtector, DataProtectionChatSyncCursorProtector>();
+        services.AddHostedService<ChatPlus.ChatPlusDispatchService>();
 
         return services;
     }

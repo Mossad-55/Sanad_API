@@ -13,10 +13,46 @@ namespace Sanad.Modules.Chat.Application.Conversations;
 /// (<see cref="ConversationErrors.NotFound"/>) and never reveal which check
 /// failed.
 /// </summary>
+/// <summary>
+/// A booking open target resolved for either creation or reopening:
+/// <see cref="Counterpart"/> is the backend-resolved other party, and
+/// <see cref="IsActive"/> tells whether the booking is currently eligible
+/// for a NEW conversation (non-terminal). A terminal booking still resolves
+/// its parties so an existing conversation's retained history can reopen;
+/// creating a new conversation on it stays denied.
+/// </summary>
+public sealed record BookingOpenTarget(
+    UserId Counterpart,
+    bool IsActive);
+
 public interface IChatBookingGateway
 {
     Task<UserId?> ResolveCounterpartAsync(
         BookingId bookingId,
         UserId openerUserId,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Resolves the counterpart even when the booking is terminal
+    /// (cancelled/expired/refunded), so retained-history reopening does not
+    /// depend on current booking state. Null only when the booking is
+    /// unknown or the opener was never a party to it. The default derives
+    /// from the active-only resolution (terminal bookings report null);
+    /// implementations override with a true reopen path.
+    /// </summary>
+    async Task<BookingOpenTarget?> ResolveForReopenAsync(
+        BookingId bookingId,
+        UserId openerUserId,
+        CancellationToken cancellationToken = default)
+    {
+        UserId? counterpart = await ResolveCounterpartAsync(
+                bookingId,
+                openerUserId,
+                cancellationToken)
+            .ConfigureAwait(false);
+
+        return counterpart is null
+            ? null
+            : new BookingOpenTarget(counterpart.Value, IsActive: true);
+    }
 }

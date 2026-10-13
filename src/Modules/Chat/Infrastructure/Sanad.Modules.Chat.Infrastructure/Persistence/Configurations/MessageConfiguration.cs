@@ -70,6 +70,14 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         builder.HasIndex(e => new { e.ConversationId, e.ClientMessageId })
             .IsUnique();
 
+        // Single-use attachment binding backstop: one message per
+        // attachment, so a concurrent double-bind of the same upload fails
+        // at the database. Nullable references stay peripheral: PostgreSQL
+        // treats NULLs as distinct, so text/location messages (NULL
+        // attachment) never collide with each other.
+        builder.HasIndex(e => e.AttachmentId)
+            .IsUnique();
+
         // Cursor page of endpoint 3: keyset order (SentOnUtc desc, Id desc)
         // restricted to one conversation, oldest pages last.
         builder.HasIndex(e => new { e.ConversationId, e.SentOnUtc, e.Id })

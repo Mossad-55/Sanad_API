@@ -34,6 +34,12 @@ public class ReportConfiguration : IEntityTypeConfiguration<Report>
         builder.Property(e => e.Status)
             .HasConversion<int>()
             .IsRequired();
+        // Chat Plus optimistic-resolution token: exactly one conditional
+        // Open-to-Dismissed/Upheld transition wins; concurrent losers
+        // collide here and surface the 409.
+        builder.Property(e => e.Version)
+            .IsConcurrencyToken()
+            .IsRequired();
         builder.Property(e => e.CreatedOnUtc)
             .HasColumnType("timestamp with time zone");
         builder.Property(e => e.ResolvedOnUtc)

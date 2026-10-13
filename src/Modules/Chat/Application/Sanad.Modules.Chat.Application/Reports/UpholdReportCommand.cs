@@ -94,7 +94,49 @@ public sealed class UpholdReportCommandHandler
 
         // One save: the upheld status and both block rows land together or
         // not at all.
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            // A concurrent resolve won the version token first: exactly one
+            // conditional Open-to-Upheld transition wins with its atomic
+            // status/audit/mutual-block commit; the loser is the 409 and
+            // leaves no partial block behind (the save never committed).
+            // Stale tracking is cleared so the scoped context is never
+            // reused with a half-resolved aggregate.
+            if (_dbContext is DbContext context)
+            {
+                context.ChangeTracker.Clear();
+            }
+
+            return Result.Failure(ReportErrors.InvalidState);
+        }
+        catch (DbUpdateException exception) when (
+            Persistence.ChatPersistenceConflicts.IsUniqueViolation(exception))
+        {
+            // A concurrent block insert won the pair race while this
+            // resolution was still open: re-read the authoritative state —
+            // an open report retries the idempotent block pre-check, a
+            // resolved one is the 409.
+            if (_dbContext is DbContext context)
+            {
+                context.ChangeTracker.Clear();
+            }
+
+            Report? current = await _dbContext.Reports
+                .SingleOrDefaultAsync(
+                    item => item.Id == request.ReportId,
+                    cancellationToken);
+
+            if (current is null || current.Status != ReportStatus.Open)
+            {
+                return Result.Failure(ReportErrors.InvalidState);
+            }
+
+            return await Handle(request, cancellationToken);
+        }
 
         return Result.Success();
     }
