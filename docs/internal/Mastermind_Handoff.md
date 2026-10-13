@@ -13,8 +13,15 @@ confirmation and are not gaps; active plan/prompts reflect that. Bruno excluded.
 Code/templates are integrated; Staging and production environment readiness
 remain unverified (exact target/secrets/backup/fresh package/runtime required).
 No package build, VPS/database/provider changes or deployment occurred.
-**Next action:** send Prompt 1 to a worker on its own branch from updated main;
-mastermind reviews/integrates each result in the agreed sequence.
+Prompt 1 session-security work from `worker/chat-plus-session-security` is
+integrated at `2d8af5a` (fast-forwarded). The mastermind selected the Chat-first
+rollout: Chat REST/SignalR require a live session-bound token; legacy Normal
+tokens continue on non-Chat APIs until their 15-minute expiry. Mobile clients
+refresh once and retry the first legacy-token Chat 401 once; if refresh/retry
+fails, require sign-in without looping. Automated security evidence is recorded
+in [session-security integration](work/chat-plus/reports/session-security-integration.md);
+live verification remains for Prompt 6.
+**Next action:** start Prompt 2 on its own branch from updated clean main.
 
 ## Previous Chat Plus integrated checkpoint — 2026-10-13
 

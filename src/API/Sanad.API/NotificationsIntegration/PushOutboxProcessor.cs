@@ -76,29 +76,16 @@ public sealed class PushOutboxProcessor(
         CancellationToken cancellationToken)
     {
         PushOutboxMessage row = await notifications.PushOutboxMessages.SingleAsync(x => x.Id == id, cancellationToken);
-        var preference = await identity.Users.AsNoTracking().Where(x => x.Id.Value == row.RecipientUserId)
-            .Select(x => x.NotificationPreferences).SingleOrDefaultAsync(cancellationToken);
-        if (preference is null || !IsEnabled(preference, row.PreferenceKey))
+        bool isChatPush = string.Equals(
+            row.PreferenceKey, "ChatMessages", StringComparison.Ordinal);
+        if (!isChatPush)
         {
-            row.MarkSuppressed(claimToken);
-            await notifications.SaveChangesAsync(cancellationToken);
-            return;
-        }
-
-        // Final-send chat gate: recheck current eligibility immediately
-        // before any provider send. Preserves the established directional
-        // message/block rule (suppress only when the recipient blocked the
-        // sender); never invents a different recipient policy. Ineligible
-        // work is suppressed durably, never retried as a provider failure.
-        if (string.Equals(row.PreferenceKey, "ChatMessages", StringComparison.Ordinal))
-        {
-            bool eligible = await IsChatPushEligibleAsync(
-                notifications, identity, chat, sessionValidator, row, cancellationToken);
-
-            if (!eligible)
+            var preference = await identity.Users.AsNoTracking()
+                .Where(x => x.Id.Value == row.RecipientUserId)
+                .Select(x => x.NotificationPreferences)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (preference is null || !IsEnabled(preference, row.PreferenceKey))
             {
-                // Re-read the row in this context before suppressing: the
-                // earlier SingleAsync entity is still tracked.
                 row.MarkSuppressed(claimToken);
                 await notifications.SaveChangesAsync(cancellationToken);
                 return;
@@ -114,15 +101,42 @@ public sealed class PushOutboxProcessor(
         }
 
         bool retry = false;
+        bool deliveredAny = false;
         string? firstMessageId = null;
         string retryCode = "Push.SendFailed";
         IReadOnlyDictionary<string, string> data = row.ReadData();
         foreach (DeviceToken device in devices)
         {
+            // Recheck after device enumeration and immediately before every
+            // provider call. This includes the current ChatMessages setting,
+            // so a preference change during earlier eligibility queries
+            // cannot leak a queued chat push.
+            if (isChatPush &&
+                !await IsChatPushEligibleAsync(
+                    notifications, identity, chat, sessionValidator, row,
+                    cancellationToken))
+            {
+                if (deliveredAny)
+                {
+                    // Some devices already received this outbox item. Mark it
+                    // complete to avoid retrying and duplicating those sends;
+                    // do not send to any remaining devices.
+                    row.MarkSent(DateTime.UtcNow, claimToken, firstMessageId);
+                }
+                else
+                {
+                    row.MarkSuppressed(claimToken);
+                }
+
+                await notifications.SaveChangesAsync(cancellationToken);
+                return;
+            }
+
             PushSendResult result = await sender.SendAsync(device.Token, row.Title, row.Body, data, cancellationToken);
             switch (result.Outcome)
             {
                 case PushSendOutcome.Sent:
+                    deliveredAny = true;
                     firstMessageId ??= result.MessageId;
                     break;
                 case PushSendOutcome.InvalidToken:
@@ -202,117 +216,116 @@ public sealed class PushOutboxProcessor(
 
         // Chat visibility/block/message sender: requires the Chat store.
         // When unavailable (isolated notification tests), preserve the
-        // existing preference/device behavior.
-        if (chat is null)
+        // existing preference/device behavior. Preference is intentionally
+        // read last, immediately before returning eligibility to the send loop.
+        if (chat is not null)
         {
-            return true;
-        }
-
-        IReadOnlyDictionary<string, string> data;
-        try
-        {
-            data = row.ReadData();
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-
-        if (!data.TryGetValue("conversationId", out string? conversationValue) ||
-            !Guid.TryParse(conversationValue, out Guid conversationGuid) ||
-            conversationGuid == Guid.Empty)
-        {
-            return false;
-        }
-
-        var conversationId =
-            new Sanad.Modules.Chat.Domain.Conversations.ConversationId(
-                conversationGuid);
-        var recipientId =
-            new Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId(
-                row.RecipientUserId);
-
-        Sanad.Modules.Chat.Domain.Conversations.Conversation? conversation;
-
-        try
-        {
-            conversation = await chat.Conversations
-                .AsNoTracking()
-                .SingleOrDefaultAsync(
-                    entity => entity.Id == conversationId,
-                    cancellationToken);
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-
-        if (conversation is null ||
-            !conversation.IsParticipant(recipientId) ||
-            conversation.IsHiddenFor(recipientId))
-        {
-            return false;
-        }
-
-        Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId counterpart =
-            conversation.ParticipantOne == recipientId
-                ? conversation.ParticipantTwo
-                : conversation.ParticipantOne;
-
-        // Sender for the directional block check: prefer the stored message
-        // sender when the message id is available; otherwise the counterpart.
-        Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId senderId = counterpart;
-
-        if (data.TryGetValue("messageId", out string? messageValue) &&
-            Guid.TryParse(messageValue, out Guid messageGuid) &&
-            messageGuid != Guid.Empty)
-        {
+            IReadOnlyDictionary<string, string> data;
             try
             {
-                var messageId =
-                    new Sanad.Modules.Chat.Domain.Messages.MessageId(
-                        messageGuid);
-
-                Guid? storedSender = await chat.Messages
-                    .AsNoTracking()
-                    .Where(message => message.Id == messageId)
-                    .Select(message => (Guid?)message.SenderUserId.Value)
-                    .SingleOrDefaultAsync(cancellationToken);
-
-                if (storedSender.HasValue && storedSender.Value != Guid.Empty)
-                {
-                    senderId =
-                        new Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId(
-                            storedSender.Value);
-                }
+                data = row.ReadData();
             }
             catch (Exception)
             {
                 return false;
             }
+
+            if (!data.TryGetValue("conversationId", out string? conversationValue) ||
+                !Guid.TryParse(conversationValue, out Guid conversationGuid) ||
+                conversationGuid == Guid.Empty)
+            {
+                return false;
+            }
+
+            var conversationId =
+                new Sanad.Modules.Chat.Domain.Conversations.ConversationId(
+                    conversationGuid);
+            var recipientId =
+                new Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId(
+                    row.RecipientUserId);
+
+            Sanad.Modules.Chat.Domain.Conversations.Conversation? conversation;
+            try
+            {
+                conversation = await chat.Conversations
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(
+                        entity => entity.Id == conversationId,
+                        cancellationToken);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+
+            if (conversation is null ||
+                !conversation.IsParticipant(recipientId) ||
+                conversation.IsHiddenFor(recipientId))
+            {
+                return false;
+            }
+
+            Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId counterpart =
+                conversation.ParticipantOne == recipientId
+                    ? conversation.ParticipantTwo
+                    : conversation.ParticipantOne;
+            Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId senderId = counterpart;
+
+            if (data.TryGetValue("messageId", out string? messageValue) &&
+                Guid.TryParse(messageValue, out Guid messageGuid) &&
+                messageGuid != Guid.Empty)
+            {
+                try
+                {
+                    var messageId =
+                        new Sanad.Modules.Chat.Domain.Messages.MessageId(
+                            messageGuid);
+                    Guid? storedSender = await chat.Messages
+                        .AsNoTracking()
+                        .Where(message => message.Id == messageId)
+                        .Select(message => (Guid?)message.SenderUserId.Value)
+                        .SingleOrDefaultAsync(cancellationToken);
+                    if (storedSender.HasValue && storedSender.Value != Guid.Empty)
+                    {
+                        senderId =
+                            new Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId(
+                                storedSender.Value);
+                    }
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+
+            bool blockedByRecipient;
+            try
+            {
+                blockedByRecipient = await chat.Blocks
+                    .AsNoTracking()
+                    .AnyAsync(
+                        block =>
+                            block.BlockerUserId == recipientId &&
+                            block.BlockedUserId == senderId,
+                        cancellationToken);
+            }
+            catch (Exception)
+            {
+                return false;
+            }
+
+            if (blockedByRecipient)
+            {
+                return false;
+            }
         }
 
-        // Established directional rule only: suppress when the recipient
-        // blocked the sender. A sender-side block does not suppress delivery
-        // to the recipient (blocker may still send).
-        bool blockedByRecipient;
-
-        try
-        {
-            blockedByRecipient = await chat.Blocks
-                .AsNoTracking()
-                .AnyAsync(
-                    block =>
-                        block.BlockerUserId == recipientId &&
-                        block.BlockedUserId == senderId,
-                    cancellationToken);
-        }
-        catch (Exception)
-        {
-            return false;
-        }
-
-        return !blockedByRecipient;
+        var currentPreference = await identity.Users.AsNoTracking()
+            .Where(user => user.Id.Value == row.RecipientUserId)
+            .Select(user => user.NotificationPreferences)
+            .SingleOrDefaultAsync(cancellationToken);
+        return currentPreference is not null &&
+            IsEnabled(currentPreference, row.PreferenceKey);
     }
 
     private static bool IsEnabled(NotificationPreferences preferences, string key) => key switch

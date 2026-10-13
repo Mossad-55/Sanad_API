@@ -12,10 +12,18 @@ Owner explicitly keeps AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader unchanged;
 this is intentional configuration, not a gap. No CORS or proxy-origin restriction
 was introduced. Bruno is entirely excluded from subsequent work.
 
+Prompt 1 session-security work is integrated in main at `2d8af5a` (owner
+branch tip, fast-forwarded). The mastermind selected the Chat-first rollout:
+legacy Normal tokens remain valid for non-Chat APIs until their 15-minute
+expiry; Chat REST/SignalR require a live session-bound token. Mobile behavior:
+on the first Chat 401 from a legacy token, refresh once and retry once; if
+refresh/retry fails, require sign-in without looping. See
+[session-security integration](reports/session-security-integration.md).
+
 Staging/production environment verdict remains NOT READY: exact host/URL/service/
 test DB, secrets, backup/restore, fresh package and actual verification are still
 required. No package/VPS/database/provider action occurred in this integration.
-Next worker: Prompt 1 from the updated clean main; mastermind integrates its result.
+Next worker: Prompt 2 from the updated clean main; mastermind integrates its result.
 
 ## Prior Chat Plus implementation integration — 2026-10-13
 
@@ -44,10 +52,9 @@ Final verification and merge/push evidence belong to
   fixtures on an authorized disposable payment path; API-versus-SQL equality.
 - Operator: actual edge TLS/WebSocket/redaction/limits validation. CORS stays
   AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader by owner confirmation, not a gap.
-- Backend planner: JWTs are not bound to device sessions. Token expiry now
-  closes hub connections and disabled users are denied on hub calls/dispatch;
-  immediate server-side per-session logout/revocation remains unimplemented.
-  Define session-bound token/auth invalidation in a separately bounded task.
+- Runtime verifier: session-bound token/auth invalidation and final-send push
+  privacy have automated evidence, but no live API/DB/socket/device run has
+  verified them. Prompt 6 owns runtime verification.
 - Backend planner: physical orphan cleanup worker and bounded storage proof
   remain open. Lazy expiry does not reclaim disk or prove quota sustainability.
 - Runtime verifier: builder socket-kill proof recovered five missed messages;
@@ -64,8 +71,8 @@ Voice excluded; single API instance only; do not claim production release-ready.
 ## Next action
 
 Owner wants VPS development shipping prioritized and Bruno ignored entirely.
-[Worker prompts](worker-prompts.md) are ready: Prompt 5 is integrated; start
-Prompt 1 from updated main, then 2, 3, optional 4, deployment and 6.
+[Worker prompts](worker-prompts.md) are ready: Prompts 5 and 1 are integrated;
+start Prompt 2 from updated main, then 3, optional 4, deployment and 6.
 Prepare a fresh package from clean pushed main at release time. Existing
 publish-out manifest is 41f9c91 (pre-Chat-Plus), not current main.
 Development VPS means isolated Staging/test database, not public Development.

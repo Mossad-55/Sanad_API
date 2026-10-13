@@ -428,6 +428,30 @@ public sealed class ChatPlusSessionSecurityTests
         conversation.Unhide(recipient.Id);
         await chat.SaveChangesAsync();
 
+        // Preference is read at the end of the final-send eligibility check,
+        // after the session/device/chat queries, so queued work observes a
+        // change made while those checks are running.
+        DateTime preferenceChangedOn = DateTime.UtcNow;
+        recipient.ChangeNotificationPreferences(
+            NotificationPreferences.Create(
+                checkInAlerts: true,
+                medicationReminders: true,
+                bookingUpdates: true,
+                communityNotifications: true,
+                familyActivityAlerts: true,
+                newOrders: true,
+                messagesFromFamilies: true,
+                systemNotifications: true,
+                chatMessages: false),
+            preferenceChangedOn);
+        await identity.SaveChangesAsync();
+        Assert.False(await PushOutboxProcessor.IsChatPushEligibleAsync(
+            notifications, identity, chat, validator, row, CancellationToken.None));
+        recipient.ChangeNotificationPreferences(
+            NotificationPreferences.CreateDefault(),
+            preferenceChangedOn.AddTicks(1));
+        await identity.SaveChangesAsync();
+
         // Logout (revoke the only session) suppresses without any provider send.
         recipientSession.Revoke("User logged out.", now);
         await identity.SaveChangesAsync();

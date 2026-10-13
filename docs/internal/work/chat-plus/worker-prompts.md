@@ -9,10 +9,11 @@ Owner confirmation: keep AllowAnyOrigin, AllowAnyMethod and AllowAnyHeader
 unchanged for now. This is intentional configuration, not an open gap. No worker
 may add API/proxy origin restrictions without a new owner instruction.
 
-Planning baseline: integrated main be8896e (code correction 9ca63b3), clean and
-synced at intake. Existing deploy/publish-out manifest is 41f9c91: stale and
-not a Chat Plus release artifact. No VPS inspection, package build, provider
-send, database write, migration application, or deployment occurred here.
+Planning baseline: current main includes VPS-readiness integration and Prompt 1
+session-security integration; see the current internal handoff for its SHA and
+verification. Existing deploy/publish-out manifest is 41f9c91: stale and not a
+Chat Plus release artifact. No VPS inspection, package build, provider send,
+database write, migration application, or deployment occurred here.
 
 ## Shipping decision
 
@@ -23,8 +24,8 @@ provider-safe configuration. Never set public VPS environment to Development.
 Staging startup applies all pending module migrations including Finance, so
 host/database/backup authorization is necessary even for a test deployment.
 
-Prompt 5 is the priority deployment-preparation work and can start now. Prompt 1
-closes the major session/push security gap. Prompt 2 controls storage growth;
+Prompt 5 deployment-preparation and Prompt 1 session/push security work are
+integrated. Prompt 2 controls storage growth;
 Prompt 3 fixes the observed adjacent processor failure. Integrate each delivered
 branch before the next worker consumes its changes. Prompt 4 is optional: a
 browser testing page must not delay a safe staging deployment. Prompt 6 follows
@@ -35,7 +36,12 @@ The mastermind owns planning, review, integration, main push, final package
 publication and any separately authorized VPS deployment. Workers never merge
 or push main. Do not start all branches concurrently across shared auth/API/docs.
 
-## Prompt 1 — session authorization and final-send push privacy
+## Prompt 1 — session authorization and final-send push privacy (completed)
+
+This prompt is complete and integrated. Do not rerun it. The selected rollout
+is Chat-first: on the first Chat 401 from a legacy unbound token, mobile clients
+refresh once and retry once; if that fails, require sign-in without looping.
+See `reports/session-security-integration.md`. Continue with Prompt 2.
 
 ```text
 Work in D:\Sanad_API. Read AGENTS.md, docs/internal/governance/AGENTS.md,

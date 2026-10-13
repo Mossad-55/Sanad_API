@@ -17,6 +17,14 @@ Owner update: ignore Bruno entirely for all subsequent work. Historical mapping
 counts below remain evidence only; Bruno is not a task, test path or blocker.
 Copy-ready remaining worker briefs: [worker-prompts.md](worker-prompts.md).
 
+Session security (Prompt 1) is integrated at main `2d8af5a`. Rollout decision:
+Chat-first session binding. Existing Normal tokens remain usable on non-Chat APIs
+until their 15-minute expiry; Chat REST and SignalR reject unbound tokens. Mobile
+clients must attempt one refresh on the first Chat 401 caused by a legacy token,
+then retry that request once. If refresh fails or the retry is unauthorized,
+require sign-in and do not loop. New login and refresh tokens are session-bound.
+This compatibility policy is selected; it is not a release gap.
+
 - [x] Done — Planning revision: capture frontend report, correct authentication/
   replay/scale assumptions, add prerequisite hardening and external release gates.
 - [x] Done — **Phase 0: execution contract and scout.**
@@ -103,8 +111,8 @@ Copy-ready remaining worker briefs: [worker-prompts.md](worker-prompts.md).
   no token material in logs; sessions cleaned. Remaining release gates include
   owner-run Android + physical iPhone delivery proof, satisfied-pool (N≥5)
   live aggregate equality using an authorized payment fixture, actual edge
-  TLS/redaction checks, integration-change runtime checks, JWT session
-  revocation binding, and physical orphan cleanup. The live socket recovery
+  TLS/redaction checks, session-revocation live verification, and physical
+  orphan cleanup. The live socket recovery
   used five missed messages, not >100. See integration report/handoff for
   ownership. Never claim production readiness until required gates close.
 
@@ -151,14 +159,18 @@ is authorized by issuing a code/documentation brief.
   Postman-only release mapping, unchanged owner-confirmed CORS, persistent keys/files,
   trustworthy remote revision/migration verification, Staging/test-target setup.
   Existing package manifest is 41f9c91, before Chat Plus; never deploy it as Chat Plus.
-- [ ] Not started — Session-bound access and final-send push privacy (Prompt 1).
+- [x] Done — Session-bound access and final-send push privacy (Prompt 1),
+  integrated at `2d8af5a`; mastermind closeout and security evidence:
+  [reports/session-security-integration.md](reports/session-security-integration.md).
+  Selected rollout: Chat-first; mobile refresh-once behavior is specified above.
 - [ ] Not started — Race-safe physical orphan cleanup/storage bounds (Prompt 2).
 - [ ] Not started — Bounded Care Homes processor translation correction (Prompt 3).
 - [ ] Not started — Optional tester page or manual developer pack (Prompt 4).
   Page absence is not a staging-shipping blocker.
 - [ ] Blocked — Authorized VPS/runtime/device verification (Prompt 6): needs
   exact target/deployed artifact and permitted fixtures/provider tests. Physical
-  mobile push proof remains separate from development REST-chat testing.
+  mobile push proof remains separate from development REST-chat testing. This
+  includes live session-revocation checks; automated evidence is not runtime proof.
 
 ## Final review
 
