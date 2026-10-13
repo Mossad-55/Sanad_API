@@ -1,18 +1,22 @@
 # Mastermind handoff
 
-## Current integration checkpoint — 2026-10-13 (Chat Plus)
+## Current integrated checkpoint — 2026-10-13 (Chat Plus)
 
 Owner authorized mastermind integration of `builder/chat-plus-production`
 (delivered `ded4dd1`, base `41f9c91`) into main, push, and docs sync.
 Builder Phases 0–6 are complete; disposable-target runtime/migration evidence
-is recorded, with release gaps retained. Integration corrections address actual
-expiry/liveness/dispatcher/topology/publish-manifest defects; gates in progress.
+is recorded, with release gaps retained. Main fast-forwarded without conflict
+to correction commit 9ca63b3 (expiry/liveness/dispatcher/topology/publish manifest).
+Final gates: build zero warnings/errors; Chat Plus 64/64; unit 3076 passed,
+0 failed, 3 existing PG skips; architecture 1/1. Postman mapping 0 missing/
+orphans. Script exit 1 comes only from 148 optional Bruno gaps (documented).
 See [Chat Plus checklist](work/chat-plus/tasks.md),
 [integration evidence](work/chat-plus/reports/integration.md), and
 [current handoff](work/chat-plus/handoff.md) for exact status and remaining work.
 No production operation or provider send is authorized by integration.
-**Next action:** finish integration gates and main push, then hand off the
-remaining release requirements. Voice excluded; single-instance only.
+**Next action:** plan the remaining security/storage work and complete the
+release requirements with exact-target authorization. Voice excluded;
+single-instance only. Final closeout commit/main push belongs to this turn.
 
 ## Previous integration evidence — 2026-10-11 (baseline slices)
 

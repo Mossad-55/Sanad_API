@@ -4,7 +4,7 @@
 
 Sanad is an Arabic/English elderly-care platform. Agreed backend scope: Care homes (operator onboarding/review, inventory, Family discovery/stays/visits, payments/refunds/fees, ratings, Admin operations, in-app/email notifications), Chat (1:1 conversations, files, blocks, messages, reads, reports, alerts), Notifications (push delivery + email overhaul), and the Opus package (community categories/search/favorites, rating unification, CMS library, caregiver payout reads, chat deltas).
 
-Care Homes, Chat, Notifications, and Opus are all implemented, merged to `main`, and gated green. Current head is `5edd341` (`origin/main` in sync): Chat Lane A (`5d26f9f`) + Lane B (`4864a93`), Notifications Lanes A+B (`9005f14`), Opus phases 1–6 (`2db70cc`), plus the care-home finance translation fix (`5edd341`, live-verified). Full unit suite passes 2907/0 with 3 PostgreSQL-only skips; architecture 1/1; contract mapping shows 519 controller signatures with 0 missing / 0 orphan Postman routes (Bruno stays risk-based, 0 orphans). Opus/Chat migrations remain authored-only and unapplied anywhere. Family/Elderly inputs are supplied; broader caregiver requirements will be discussed separately.
+Baseline evidence from 2026-10-11: Care Homes, Chat, Notifications, and Opus were implemented and merged at `5edd341`: Chat Lane A (`5d26f9f`) + Lane B (`4864a93`), Notifications Lanes A+B (`9005f14`), Opus phases 1–6 (`2db70cc`), plus the care-home finance translation fix (`5edd341`, live-verified). Then-current gates were unit 2907/0 with 3 PostgreSQL-only skips, architecture 1/1, and 519 controller signatures with 0 missing/orphan Postman routes. The migration-unapplied claim from that checkpoint is superseded for Chat Plus by the disposable-target Phase 7 evidence. Family/Elderly inputs are supplied; broader caregiver requirements will be discussed separately.
 
 Care Homes checkpoint: all HC tasks complete through HC-TASK-062 (guide/Postman/evidence closeout, pushed). Later integrations landed on top: caregiver-money chain, community lane, Chat, Notifications, Opus, and the finance-read translation fix — see [Mastermind handoff](Mastermind_Handoff.md) for the current state. HC-TASK-052 is consolidated into HC-TASK-053.
 
@@ -12,8 +12,10 @@ Cross-slice note: the caregiver-money chain (T0 FinanceAdmin role, T1 bank catal
 
 ## Chat Plus integration — 2026-10-13
 
-Builder delivered `ded4dd1` from `41f9c91`; mastermind integration into main
-and final corrections/gates are in progress. [Chat Plus tasks](work/chat-plus/tasks.md)
+Builder delivered `ded4dd1` from `41f9c91`; mastermind corrections are committed
+in `9ca63b3`, integrated into main without conflicts. Build zero warnings/errors,
+Chat Plus 64/64, unit 3076 passed with 3 existing PG skips, architecture 1/1.
+[Chat Plus tasks](work/chat-plus/tasks.md)
 owns status; [handoff](work/chat-plus/handoff.md) owns the next action and release
 gaps; [integration evidence](work/chat-plus/reports/integration.md) records the
 result. The historical baseline HEAD/gates above do not describe current main.

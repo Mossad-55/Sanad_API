@@ -87,7 +87,7 @@ unit evidence. Voice remains excluded.
   mapping 555 signatures with 0 missing / 0 orphan Postman routes (Bruno
   risk-based, 0 orphans); Postman parse 22/22; diff clean; EF alignment
   clean (Chat/Families/Identity). Report: `reports/phase-6-gates.md`.
-- [ ] Blocked — **Phase 7: release verification (backend gates Done; owner device proof outstanding).**
+- [ ] Blocked — **Phase 7: release verification (disposable backend evidence recorded; release requirements outstanding).**
   Backend evidence in `reports/phase-7-release.md`: exact disposable target
   `localhost:5432/SanadBrunoTestDb`, API Development `:5235` (stopped, port
   free); 3/3 migrations applied live + rollback cycles proven (down/up per
@@ -123,8 +123,11 @@ Reports expected after implementation:
 
 ## Mastermind integration
 
-- [ ] In progress — Review delivered tip ded4dd1, correct evidenced runtime
-  wiring defects, run final gates, integrate main, synchronize docs and push.
+- [x] Done — Reviewed delivered tip ded4dd1, corrected evidenced runtime
+  wiring defects in 9ca63b3, ran final gates, fast-forwarded main from 41f9c91
+  to 9ca63b3 without conflicts, and synchronized current docs. Final closeout
+  commit is published by the mastermind; its SHA/remote match is in the
+  final user handoff.
   Evidence: reports/integration.md. Builder's completed bounded review is reused;
   no duplicate whole-feature review or unapproved live run.
 

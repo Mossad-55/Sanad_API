@@ -1,17 +1,21 @@
 # Chat Plus — production implementation plan, revision 2
 
 Updated 2026-10-13 from the [frontend report](frontend-report.md) and the
-mastermind review at main `41f9c91`. Owner will implement, commit, and push;
-this turn changes planning documents only. This revision supersedes the
+mastermind review at main `41f9c91`. Owner approved builder execution on a
+dedicated branch and mastermind integration. Implementation is now integrated
+at correction commit `9ca63b3`; [integration evidence](reports/integration.md)
+and [handoff](handoff.md) distinguish delivered work from open release/security/
+storage requirements. This revision supersedes the
 2026-10-12 transport/replay design and its no-migration restriction.
 
 Existing decisions retained: one-to-one chat, REST sends, indefinite message
 retention, N=5 completed paid bookings / 90 days, no voice, single-instance
 initial deployment, Firebase/APNs live verification deferred until authorized.
 
-This is a concrete production proposal. New product choices are explicitly
-listed in section 11 for the implementer/owner to accept before code work;
-they are not represented as previously approved business rules. Do not silently
+This is the owner-accepted execution contract (Phase 0 evidence records the
+approval). Section 11 retains the new rules introduced by this package.
+It is a target contract, not a claim that every release gate is complete.
+Do not silently
 substitute different formulas or privacy behavior. [tasks.md](tasks.md) owns
 execution evidence; [handoff.md](handoff.md) owns the next action.
 

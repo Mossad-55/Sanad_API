@@ -1,10 +1,15 @@
 # Chat Plus — integration handoff
 
-## Current integration — 2026-10-13
+## Integrated implementation — 2026-10-13
 
 Owner authorized mastermind integration into main and documentation sync.
 Builder branch: `builder/chat-plus-production`, base `41f9c91`, delivered
 tip `ded4dd1`. Main/origin main were `41f9c91` at intake; tree clean.
+Correction commit `9ca63b3` is integrated into main by conflict-free fast-forward.
+Final code gates: build 0 warnings/errors; Chat Plus 64/64; full unit 3076
+passed, 0 failed, 3 existing PostgreSQL skips; architecture 1/1. Postman
+mapping 555 signatures, 0 missing/orphans; mapping script exits 1 because
+148 optional Bruno mappings are absent (risk-based exemption documented).
 Phases 0–6 and the disposable-target Phase 7 evidence are in [tasks.md](tasks.md)
 and [reports/phase-7-release.md](reports/phase-7-release.md).
 
@@ -40,5 +45,5 @@ Voice excluded; single API instance only; do not claim production release-ready.
 
 ## Next action
 
-Complete integration gates and main push, then execute the remaining release
-checklist with the named owners and exact-target authorizations.
+Plan the bounded remaining security/storage work, then execute the remaining
+release checklist with the named owners and exact-target authorizations.

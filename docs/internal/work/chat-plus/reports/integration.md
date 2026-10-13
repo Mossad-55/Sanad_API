@@ -45,8 +45,13 @@ Executed on delivered ded4dd1 plus the scoped integration correction delta:
   resolve; git diff --check clean. Publish manifest latest identifiers match
   all registered module migration inventories.
 
-No new API/database/provider/deploy run. Final main merge/push evidence follows
-in the integration closeout, after this verified correction commit.
+No new API/database/provider/deploy run. Correction commit: 9ca63b3.
+Executed git switch main and git merge --ff-only builder/chat-plus-production;
+both exit 0. Main advanced from 41f9c91 to 9ca63b3 without conflicts and
+contains delivered ded4dd1 plus the verified corrections. Gates are reused
+because the fast-forward changes no tested code. This documentation closeout
+follows on main; its final SHA and origin synchronization are verified after
+push and reported in the user handoff.
 
 ## Remaining work and owners
 
