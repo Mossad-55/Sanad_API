@@ -2,7 +2,7 @@
 
 Branch: `worker/chat-plus-session-security`.
 Base: `436973f2678e028f564dbe970e98f7b2142ee004` (clean `main`, synced with `origin/main` at intake).
-Final SHA: filled at commit time (see closeout commit on this branch; code gates below ran on the final tree before commit).
+Final SHA: `4a97485e77a38bfb854f5c83372e6eac22f3d515` (this branch tip; gates below ran on this tree; `main` untouched, not merged/pushed).
 
 Owner direction: Bruno ignored entirely; no Bruno authored/run/read. No provider send occurred in tests (fake senders only). No migration applied; no VPS/DB/provider/deploy action. No live credentials altered. Unrelated auth requirements unchanged.
 
