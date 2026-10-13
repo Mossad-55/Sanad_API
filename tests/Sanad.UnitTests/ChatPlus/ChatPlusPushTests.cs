@@ -59,6 +59,37 @@ public sealed class ChatPlusPushTests
     }
 
     [Fact]
+    public void FanOut_ChatPayloadCarriesConversationAndMessageIds()
+    {
+        Guid conversationId = Guid.CreateVersion7();
+        Guid messageId = Guid.CreateVersion7();
+        Guid recipientId = Guid.CreateVersion7();
+
+        Notification chat = Notification.Create(
+            recipientId, "Chat", "NewMessage",
+            "New chat message",
+            $"Conversation: {conversationId}. Message: {messageId}.",
+            "ChatConversation", conversationId, Now,
+            CreateChatMessageNotificationCommandHandler.BuildIdempotencyKey(messageId, recipientId));
+
+        IReadOnlyDictionary<string, string> data = PushFanoutPolicy.BuildData(chat);
+
+        Assert.Equal(conversationId.ToString("D"), data["conversationId"]);
+        Assert.Equal(messageId.ToString("D"), data["messageId"]);
+        Assert.Equal(conversationId.ToString("D"), data["entityId"]);
+        Assert.DoesNotContain(messageId.ToString("D"), data["deepLink"], StringComparison.Ordinal);
+
+        // Non-chat rows never gain chat keys.
+        Notification booking = Notification.Create(
+            recipientId, "CareHomes", "BookingConfirmed",
+            "t", "b", "CareHomeBooking", Guid.CreateVersion7(), Now, null);
+
+        IReadOnlyDictionary<string, string> bookingData = PushFanoutPolicy.BuildData(booking);
+        Assert.DoesNotContain("conversationId", string.Join(",", bookingData.Keys), StringComparison.Ordinal);
+        Assert.DoesNotContain("messageId", string.Join(",", bookingData.Keys), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Preferences_DefaultsEnableChatAndMirrorLegacyOptOut()
     {
         NotificationPreferences @default = NotificationPreferences.CreateDefault();

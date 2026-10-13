@@ -2,10 +2,12 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Application.Dispatch;
 using Sanad.Modules.Chat.Application.Events;
 using Sanad.Modules.Chat.Application.Messages;
 using Sanad.Modules.Chat.Application.Realtime;
+using Sanad.Modules.Chat.Domain.Blocks;
 using Sanad.Modules.Chat.Domain.Changes;
 using Sanad.Modules.Chat.Domain.Conversations;
 using Sanad.Modules.Chat.Domain.Messages;
@@ -150,6 +152,94 @@ public sealed class ChatPlusDispatchTests
     }
 
     [Fact]
+    public async Task Dispatch_SuppressesIntentWhenRecipientHidConversation()
+    {
+        await using ChatDbContext db = CreateDb();
+        UserId alice = UserId.New();
+        UserId bob = UserId.New();
+        Conversation conversation = await AddConversationAsync(db, alice, bob);
+
+        var recorder = new ChatEventRecorder(db);
+        var sender = new SendMessageCommandHandler(db, null, null, recorder);
+        Assert.True((await sender.Handle(
+            new SendMessageCommand(alice, conversation.Id, "k-h", "Text", "hi", null),
+            default)).IsSuccess);
+
+        conversation.Hide(bob);
+        await db.SaveChangesAsync();
+
+        var notifications = new FakeSender();
+        var dispatcher = new ChatOutboxDispatcher(
+            db, notifications, new FakePublisher(), null, () => DateTime.UtcNow, () => 0);
+
+        (int _, int intents) = await dispatcher.DispatchAsync(default);
+
+        Assert.Equal(0, intents);
+        Assert.Empty(notifications.Sent);
+        var item = await db.Outbox.SingleAsync();
+        Assert.NotNull(item.PublishedOnUtc);
+        Assert.Equal("Chat.Outbox.RecipientIneligible", item.LastErrorCode);
+    }
+
+    [Fact]
+    public async Task Dispatch_SuppressesIntentWhenRecipientBlockedSender()
+    {
+        await using ChatDbContext db = CreateDb();
+        UserId alice = UserId.New();
+        UserId bob = UserId.New();
+        Conversation conversation = await AddConversationAsync(db, alice, bob);
+
+        var recorder = new ChatEventRecorder(db);
+        var sender = new SendMessageCommandHandler(db, null, null, recorder);
+        Assert.True((await sender.Handle(
+            new SendMessageCommand(alice, conversation.Id, "k-b", "Text", "hi", null),
+            default)).IsSuccess);
+
+        db.Blocks.Add(Block.Create(bob, alice, DateTime.UtcNow));
+        await db.SaveChangesAsync();
+
+        var notifications = new FakeSender();
+        var dispatcher = new ChatOutboxDispatcher(
+            db, notifications, new FakePublisher(), null, () => DateTime.UtcNow, () => 0);
+
+        (int _, int intents) = await dispatcher.DispatchAsync(default);
+
+        Assert.Equal(0, intents);
+        Assert.Empty(notifications.Sent);
+        Assert.Equal(
+            "Chat.Outbox.RecipientIneligible",
+            (await db.Outbox.SingleAsync()).LastErrorCode);
+    }
+
+    [Fact]
+    public async Task Dispatch_SuppressesIntentWhenRecipientAccountDeactivated()
+    {
+        await using ChatDbContext db = CreateDb();
+        UserId alice = UserId.New();
+        UserId bob = UserId.New();
+        Conversation conversation = await AddConversationAsync(db, alice, bob);
+
+        var recorder = new ChatEventRecorder(db);
+        var sender = new SendMessageCommandHandler(db, null, null, recorder);
+        Assert.True((await sender.Handle(
+            new SendMessageCommand(alice, conversation.Id, "k-d", "Text", "hi", null),
+            default)).IsSuccess);
+
+        var notifications = new FakeSender();
+        var dispatcher = new ChatOutboxDispatcher(
+            db, notifications, new FakePublisher(), null, () => DateTime.UtcNow, () => 0,
+            new NullProfileLookup());
+
+        (int _, int intents) = await dispatcher.DispatchAsync(default);
+
+        Assert.Equal(0, intents);
+        Assert.Empty(notifications.Sent);
+        Assert.Equal(
+            "Chat.Outbox.RecipientIneligible",
+            (await db.Outbox.SingleAsync()).LastErrorCode);
+    }
+
+    [Fact]
     public void Backoff_DoublesFromFiveSecondsCappedAtSixtyMinutes()
     {
         Assert.Equal(TimeSpan.FromSeconds(5), ChatOutboxItem.DelayForAttempt(1, 0));
@@ -214,6 +304,14 @@ public sealed class ChatPlusDispatchTests
             DateTime? lastSeenOnUtc,
             CancellationToken cancellationToken) =>
             Task.CompletedTask;
+    }
+
+    private sealed class NullProfileLookup : IChatUserLookup
+    {
+        public Task<UserProfile?> GetProfileAsync(
+            UserId userId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<UserProfile?>(null);
     }
 
     private sealed class FakeSender : ISender

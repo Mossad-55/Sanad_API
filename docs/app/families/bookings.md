@@ -75,7 +75,9 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
   "startTime": "10:00",
   "endTime": "12:00",
   "serviceAddress": "14 شارع الكورنيش، الإسكندرية",
-  "specialInstructions": "المريض يعاني من ضغط الدم"
+  "specialInstructions": "المريض يعاني من ضغط الدم",
+  "bookingAreaId": null,
+  "bookingServiceId": null
 }
 ```
 
@@ -88,6 +90,7 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
 | `startTime` / `endTime` | `HH:mm` | Must not overlap an existing pending/active booking of that caregiver. |
 | `serviceAddress` | string ≤ 500 | Where the care takes place. |
 | `specialInstructions` | string? ≤ 1000 | Optional family notes shown on the caregiver's request card. |
+| `bookingAreaId` + `bookingServiceId` | UUID? | Optional immutable pricing attribution (Chat Plus): both together or neither. When supplied, both must be nonempty GUIDs naming active catalogue entries selected by the booked caregiver, else `400` through the owning booking vocabulary. Omission preserves legacy checkout and contributes no pricing sample; retained after catalogue/profile changes, never backfilled. See `docs/app/chat/pricing-insights.md`. |
 
 **`200` response**
 

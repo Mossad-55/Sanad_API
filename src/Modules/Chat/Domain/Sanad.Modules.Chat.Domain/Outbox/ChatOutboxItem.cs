@@ -111,6 +111,30 @@ public sealed class ChatOutboxItem : AggregateRoot<ChatOutboxItemId>
         LastErrorCode = null;
     }
 
+    /// <summary>
+    /// Drop a pending intent that is no longer eligible (recipient left,
+    /// hid, blocked, or deactivated between send-commit and dispatch).
+    /// Suppressed rows leave the due set like published rows, but keep the
+    /// reason in <see cref="LastErrorCode"/> for operator visibility.
+    /// </summary>
+    public void MarkSuppressed(string errorCode, DateTime suppressedOnUtc, Guid claimToken)
+    {
+        if (ClaimToken != claimToken)
+        {
+            throw new DomainException(
+                "Chat outbox claim does not match.");
+        }
+
+        if (string.IsNullOrWhiteSpace(errorCode))
+        {
+            throw new DomainException(
+                "Chat outbox suppression reason is required.");
+        }
+
+        PublishedOnUtc = suppressedOnUtc;
+        LastErrorCode = errorCode;
+    }
+
     public void MarkAttemptFailed(
         string errorCode,
         DateTime now,

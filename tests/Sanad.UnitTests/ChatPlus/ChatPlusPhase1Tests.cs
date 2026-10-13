@@ -288,6 +288,30 @@ public sealed class ChatPlusPhase1Tests
     }
 
     [Fact]
+    public async Task Read_HiddenConversationIsPrivacy404()
+    {
+        await using ChatDbContext db = CreateDb();
+        UserId reader = UserId.New();
+        UserId peer = UserId.New();
+        Conversation conversation = await AddConversationAsync(db, reader, peer);
+
+        Message message = Message.Create(
+            conversation.Id, peer, MessageType.Text, "x", null, "fk", UtcStamp);
+        db.Messages.Add(message);
+        conversation.Hide(reader);
+        await db.SaveChangesAsync();
+
+        var handler = new MarkConversationReadCommandHandler(db);
+
+        Result hidden = await handler.Handle(
+            new MarkConversationReadCommand(reader, conversation.Id, message.Id.Value),
+            default);
+
+        Assert.Equal(ConversationErrors.NotFound, ((Result)hidden).Error);
+        Assert.Equal(0, await db.ReadStates.CountAsync());
+    }
+
+    [Fact]
     public async Task Read_OlderMarkSucceedsWithoutRegressionAndKeepsFirstStamps()
     {
         await using ChatDbContext db = CreateDb();

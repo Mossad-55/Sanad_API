@@ -12,6 +12,7 @@ erased, and a blocked sender must never learn that a block exists.
 - [Pricing insights (Chat Plus: market ranges, null semantics, attribution)](pricing-insights.md)
 - [Sync and recovery (Chat Plus: cursor lifecycle, polling, dedupe)](sync.md)
 - [Realtime hub, typing, and presence (Chat Plus: transport, events, budgets)](realtime.md)
+- [Operations (Chat Plus: topology, config, dispatch, migrations, Firebase/APNs checklist)](operations.md)
 - [Postman Chat collection](../../postman/app/Sanad.App.Chat.postman_collection.json)
 - [Postman Admin Chat reports collection](../../postman/admins/Sanad.Admin.Chat.postman_collection.json)
 

@@ -123,4 +123,4 @@ Detailed documents:
 | GET | `/api/v1/account/language` | Normal JWT |
 | PUT | `/api/v1/account/language` | Normal JWT, body `uiLanguage`: `1` Arabic / `2` English |
 | GET | `/api/v1/account/notification-preferences` | Normal JWT |
-| PUT | `/api/v1/account/notification-preferences` | Normal JWT, full-replacement body with all eight bools: `checkInAlerts` / `medicationReminders` / `bookingUpdates` / `communityNotifications` / `familyActivityAlerts` / `newOrders` / `messagesFromFamilies` / `systemNotifications` |
+| PUT | `/api/v1/account/notification-preferences` | Normal JWT, full-replacement body with the eight required bools: `checkInAlerts` / `medicationReminders` / `bookingUpdates` / `communityNotifications` / `familyActivityAlerts` / `newOrders` / `messagesFromFamilies` / `systemNotifications`, plus optional `helpRequestAlerts` / `chatMessages` (explicit wins; legacy-mirror compat, see `docs/auth/account.md`) |

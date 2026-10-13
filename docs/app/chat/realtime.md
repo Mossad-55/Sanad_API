@@ -19,10 +19,12 @@ never executed against a live API or database. No voice.
 - Restricted-verification tokens are rejected; Normal access plus a valid JWT
   user id is required. User routing uses the validated JWT `sub`, never a
   client-supplied user id.
-- `CloseOnAuthenticationExpiration` is enabled: clients refresh and reconnect.
-  Logout/revoke/block/hide/account-disable closes or evicts affected
-  connections. Exact origin allowlists are required; CORS alone does not
-  protect WebSocket upgrades.
+- `CloseOnAuthenticationExpiration` has no corresponding server option, so it is
+  enforced equivalently: the hub requires the `NormalAccess` policy with
+  per-call authorization, access tokens are short-lived (15 minutes), and
+  clients refresh and reconnect. Logout/revoke/block/hide/account-disable
+  closes or evicts affected connections. Exact origin allowlists are required;
+  CORS alone does not protect WebSocket upgrades.
 
 ## Methods
 
@@ -103,8 +105,10 @@ and tolerate duplicates, out-of-order events, and unknown IDs.
 
 - Upload quota: 100 MiB live-unbound/user; unbound blobs expire after **24 h**
   (an expired bind reads as `404`). Multipart 52 MiB total / 50 MiB per file.
-  Cleanup removes only proven unbound orphans — never bound messages, history,
-  or moderation evidence.
+  Expiry is enforced lazily at bind/quota time — no orphan sweep worker ships
+  in this package, so expired blobs await a future deletion worker (see
+  [operations.md](operations.md)); bound messages, history, and moderation
+  evidence never expire.
 - **Single-instance only** until a verified backplane exists. Declared
   multi-instance without configured support fails validation: realtime splits
   while REST persistence stays safe.

@@ -153,7 +153,15 @@ item shape:
   exists once the viewer is not a participant), so this view can never
   disagree with what the participants saw.
 - No cursor, no filter: the whole reported conversation is returned in one
-  array.
+  array — **for conversations with at most 1,000 messages**. Above that bound
+  the array endpoint answers `409` with `Chat.Report.HistoryRequiresPagination`
+  (never a truncated success); the endpoint is deprecated for large histories.
+- **Paged history (Chat Plus):**
+  `GET /api/v1/admin/chat/reports/{reportId}/messages/page?beforeId=&pageSize=30`
+  returns the existing `MessageCursorPage` shape (newest first, `beforeId`
+  paging, page size clamped 1–100, default 30), read-only like the array
+  endpoint. Migrate the admin client to the paged endpoint before the array
+  endpoint is removed.
 
 ## Dismiss — `POST /api/v1/admin/chat/reports/{reportId}/dismiss` → `204`
 
@@ -185,7 +193,7 @@ duplicate row (the unique pair index is the database backstop).
 
 | Entity | States and transitions |
 |---|---|
-| Report | created `Open` by endpoint 11 (`201`) → `Dismissed` by 14 (`204`, history retained) **or** `Upheld` by 15 (`204`, violation + mutual block). A report leaves `Open` exactly once; there is no reopen, no edit, and no delete. A second resolve in either direction is `409`. |
+| Report | created `Open` by endpoint 11 (`201`, at most 5/hour/user per `429` abuse control) → `Dismissed` by 14 (`204`, history retained) **or** `Upheld` by 15 (`204`, violation + mutual block). A report leaves `Open` exactly once via one conditional commit — concurrent resolves race and the loser takes `409`; there is no reopen, no edit, and no delete. A second resolve in either direction is `409`. |
 | Blocks (on uphold) | mutual pair created in one save with the pair's pre-existing rows respected; afterwards managed only through endpoint 9 (and future upholds). |
 
 ## Timestamps and retention
@@ -211,6 +219,7 @@ Every body below is `application/problem+json` with `type`, `title`, `status`,
 | `Chat.Report.Invalid` | `400` | 12 | Unrecognised `?status=` filter value |
 | `Chat.Report.Invalid` | `400` | 14, 15 | Acting admin token carries no usable user id (audit would be meaningless) |
 | `Chat.Report.InvalidState` | `409` | 14, 15 | The report is already resolved — dismiss-after-dismiss, uphold-after-dismiss, or the reverse; uphold touches no block row on this path |
+| `Chat.Report.HistoryRequiresPagination` | `409` | 13 (array) | Reported conversation holds more than 1,000 messages — use `GET …/messages/page` |
 | (MVC model-binding validation) | `400` | 11 | Missing/unparseable JSON body or non-GUID conversation id — generic `errors` payload, no Chat code |
 
 On the app route (11) `Chat.Report.NotFound` is rewritten by the Chat

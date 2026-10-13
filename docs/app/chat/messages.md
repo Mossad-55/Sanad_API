@@ -1,9 +1,11 @@
 # Chat API — messages, unread counts, delivery and read ticks
 
-All Chat app routes require an authenticated account and live under
+All Chat app routes require Normal access and live under
 `/api/v1/chat`. As on [conversations.md](conversations.md), every route carries
-`[Authorize]` with no policy, the acting participant always comes from the JWT
-`sub` claim, and anonymous callers receive `401`.
+`[Authorize(Policy = NormalAccess)]`, the acting participant always comes from the JWT
+`sub` claim, and anonymous callers receive `401`. Sends, opens, uploads, reports,
+and sync are additionally bounded by sliding-window rate limits (`429` +
+`Retry-After`, see [realtime.md](realtime.md#budgets)).
 
 This page specifies Lane B of the frozen contract in `docs/chat/plan.md`:
 endpoints 3 (message cursor list), 4 (send), and 8 (unread totals), plus the
@@ -175,8 +177,9 @@ conversation list ordering fresh.
   message is participant-only exactly like text — the message list never
   widens who can see it.
 
-**Idempotency in detail.** Replay matching compares the stored (trimmed) type,
-text, location payload, and `attachmentId`; any difference is the frozen
+**Idempotency in detail.** Replay matching compares the sender id plus the stored (trimmed) type,
+text, location payload, and `attachmentId`; a different sender reusing a key,
+or any content difference, is the frozen
 `409`. Idempotency runs *before* attachment resolution, so an exact replay of
 a File message returns the original without re-binding or re-validating the
 attachment. A newly created message always shows `readOnUtc: null` — no
@@ -209,12 +212,12 @@ recipient is alerted at most once per message. Honest seams:
 
 - The producer fires on the **create path only**. An exact replay (`200`)
   never produces a second alert.
-- The producer is awaited, not fire-and-forget, and its failure is not
-  swallowed: the message row is already committed, so the client sees an error
-  but the message exists. A client retry with the same `clientMessageId` takes
-  the exact-replay path — `200`, no duplicate message, no second producer
-  attempt. Residual (documented, V1): a producer failure can leave a delivered
-  message with no alert, and no retry loop exists for this seam in V1.
+- The producer stages durable notification intent in the **same Chat
+  transaction** as the message/change rows; a hosted dispatcher delivers it
+  after commit with bounded retries (8 attempts, 5 s → 60 min jittered
+  backoff), idempotency, and crash recovery (see [operations.md](operations.md)).
+  A replay never loses outstanding intent, and a dispatcher restart reclaims
+  stale claims — the V1 "no retry loop" residual is closed.
 - The sender is never alerted.
 
 ## Unread totals — `GET /api/v1/chat/unread-count`
@@ -283,10 +286,11 @@ Marking read (endpoint 7) never stamps message rows and never changes
 - **Attachments (endpoints 5/6)**: a send of `type: "File"` is what binds an
   uploaded attachment to exactly one message (`Bind()` is single-use); serving
   stays participant-only with `no-store`.
-- **Eligibility open seam now wired (Opus delta).** Booking opens resolve and
-  validate through the backend booking gateway (see conversations.md); only
-  the direct-chat role/participant matrix stays an open seam at open time.
-  The send path itself only enforces participant + visibility + block.
+- **Eligibility open seam now wired (Opus delta + Chat Plus).** Booking opens resolve and
+  validate through the backend booking gateway (see conversations.md), and the
+  direct-chat role/participant matrix is enforced at open time with
+  retained-history reopening after terminal bookings. The send path itself only
+  enforces participant + visibility + block.
 
 ## Timestamps, ordering, retention
 

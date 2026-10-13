@@ -35,12 +35,15 @@ public sealed class MarkConversationReadCommandHandler
                 item => item.Id == request.ConversationId,
                 cancellationToken);
 
-        // The privacy gate runs FIRST and answers identically for unknown
-        // and foreign conversations, so a non-participant can never tell
-        // whether a conversation id exists — not even by sending a
-        // malformed body (that still ends here as a 404, never a 400).
+        // The privacy gate runs FIRST and answers identically for unknown,
+        // foreign, and hidden-for-requester conversations, so a caller can
+        // never tell whether a conversation id exists, belongs to someone
+        // else, or was hidden from them — not even by sending a malformed
+        // body (that still ends here as a 404, never a 400). Reopening
+        // (endpoint 2) restores visibility.
         if (conversation is null ||
-            !conversation.IsParticipant(request.Requester))
+            !conversation.IsParticipant(request.Requester) ||
+            conversation.IsHiddenFor(request.Requester))
         {
             return Result.Failure(ConversationErrors.NotFound);
         }

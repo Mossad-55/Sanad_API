@@ -156,19 +156,22 @@ switch immediately before sending. The current mapping is:
 | Help request (`ElderlyHelpRequest`) | `helpRequestAlerts` | inbox fallback |
 | SOS (`ElderlySos`) | `helpRequestAlerts` (current recipient lookup) | inbox fallback |
 | Own community post published/rejected (`CommunityNotifications`) | `communityNotifications` | inbox fallback |
-| New chat message (`MessagesFromFamilies`, `NewMessage` / `ChatMessageReceived`) | `messagesFromFamilies` | inbox fallback |
+| New chat message (canonical `Chat` / `NewMessage`, plus legacy `MessagesFromFamilies` / `NewMessage` / `ChatMessageReceived` rows) | `chatMessages` (legacy `messagesFromFamilies` opt-out preserved via migration/mirror; field retained for existing consumers) | inbox fallback |
 
 Payload data contains notification/entity IDs, entity kind, and the deep link; it
 does not include message text. Push title/body use the in-app notification's
 own title/body. Likes, favorites, comments, money/payout events, and OTP are not
-pushed by this policy. Chat has no notification producer on the current main
-base; its event will use this mapping when the chat seam creates the in-app row.
+pushed by this policy. Chat produces its in-app row through the durable Chat
+Plus outbox/dispatcher (staged in the Chat transaction, delivered after commit
+with bounded retries) — the mapping above applies when that seam creates the row.
 The `sanad://inbox` scheme is centralized in `PushFanoutPolicy.BuildData` so the
 mobile team can confirm or change it in one place.
 
 Transient provider errors use capped exponential backoff (maximum 60 minutes,
-up to eight attempts). FCM `Unregistered` and `InvalidArgument` responses retire
-the token immediately. A user with no device or a disabled topic preference is
+up to eight attempts). FCM `Unregistered` retires that token only (proven
+token-specific failure); `InvalidArgument` no longer retires — it retries
+bounded as `Push.PayloadRejected` for operator action, as do sender/auth
+mismatches (configuration failures). Cancellation propagates. A user with no device or a disabled topic preference is
 suppressed. No live Firebase verification was run for this implementation.
 
 ## Email notifications

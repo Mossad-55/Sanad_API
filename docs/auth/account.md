@@ -218,11 +218,17 @@ curl -sS https://localhost:7296/api/v1/account/notification-preferences \
   "familyActivityAlerts": true,
   "newOrders": true,
   "messagesFromFamilies": true,
-  "systemNotifications": true
+  "systemNotifications": true,
+  "helpRequestAlerts": true,
+  "chatMessages": true
 }
 ```
 
-- All eight toggles default to ON for existing and new users
+- All ten toggles default to ON for new users. For legacy rows `chatMessages`
+  adopts the stored `messagesFromFamilies` value (existing opt-outs are
+  preserved); `messagesFromFamilies` itself is retained for its existing
+  consumers. Chat pushes consult `chatMessages` (see
+  `docs/app/chat/realtime.md` and `docs/app/notifications.md`).
 - One superset object holds every toggle; each client surfaces the subset relevant to the signed-in role
 - This endpoint only stores preferences; a delivery channel is not implied by a toggle
 - For the separately approved negative daily check-in event, enabled linked Family members receive a durable in-app alert, push may be added when a provider exists, and SMS is not used. Other event channels remain **Needs Owner Verification**
@@ -248,7 +254,9 @@ curl -sS -X PUT https://localhost:7296/api/v1/account/notification-preferences \
     "familyActivityAlerts": true,
     "newOrders": false,
     "messagesFromFamilies": true,
-    "systemNotifications": false
+    "systemNotifications": false,
+    "helpRequestAlerts": true,
+    "chatMessages": true
   }'
 ```
 
@@ -263,13 +271,21 @@ curl -sS -X PUT https://localhost:7296/api/v1/account/notification-preferences \
   "familyActivityAlerts": true,
   "newOrders": false,
   "messagesFromFamilies": true,
-  "systemNotifications": false
+  "systemNotifications": false,
+  "helpRequestAlerts": true,
+  "chatMessages": true
 }
 ```
 
 Rules:
 
-- All eight fields are required; omitting any field fails validation (full replace, not partial update)
+- The eight original fields are required (full replace, not partial update);
+  omitting any of them fails validation. `helpRequestAlerts` and
+  `chatMessages` are optional during the compatibility rollout: an explicit
+  `chatMessages` wins; if it is omitted and `messagesFromFamilies` changes
+  from its stored value, that legacy change is mirrored to `chatMessages`;
+  if neither changes, `chatMessages` is preserved. Omission alone never
+  resets an opt-out.
 - Submitting the current combination is a no-op
 - The preference is persisted per user and applies to the caller only (`UserId` comes from the JWT, never from the body)
 - Blocked users cannot update their preference

@@ -1,10 +1,21 @@
 # Chat API — conversations, attachments, read marks, blocks, hiding
 
-All Chat app routes require an authenticated account and live under
-`/api/v1/chat`. The routes carry `[Authorize]` with no policy, so any
-signed-in account may call them; the acting participant always comes from the
-JWT `sub` claim and can never be supplied by the client. Anonymous callers
-receive `401`.
+All Chat app routes require Normal access and live under `/api/v1/chat`. The
+routes carry `[Authorize(Policy = NormalAccess)]`, so restricted-verification
+tokens are rejected before any handler runs; the acting participant always
+comes from the JWT `sub` claim and can never be supplied by the client.
+Anonymous callers receive `401`.
+
+> **Chat Plus deltas (2026-10).** Open/send/read/report/upload/sync routes are
+> additionally bounded by sliding-window rate limits (`429` + `Retry-After`,
+> see [realtime.md](realtime.md#budgets)); the direct-chat role matrix in the
+> open section below is now enforced with retained-history reopening after
+> terminal bookings; list ordering has a stable id tie-break; read marks are
+> validated and monotonic (see [messages.md](messages.md)); unbound uploads
+> expire after 24 h under a 100 MiB/user quota; reports resolve through the
+> paged history endpoint (see [reports.md](reports.md)). Privacy, sync, hub,
+> pricing, and operations live in [sync.md](sync.md), [realtime.md](realtime.md),
+> [pricing-insights.md](pricing-insights.md), and [operations.md](operations.md).
 
 This page specifies Lane A of the frozen contract in `docs/chat/plan.md`:
 endpoints 1 (list), 2 (open-or-get), 5 (attachment upload), 6 (attachment
@@ -44,8 +55,8 @@ GET /api/v1/chat/conversations?page=1&pageSize=20
 
 - `page` is clamped up to a minimum of 1; `pageSize` is clamped to 1–100
   (default 20, values above 100 return 100 rows).
-- Ordering is `LastActivityOnUtc` descending. No secondary sort key is
-  defined for equal timestamps.
+- Ordering is `LastActivityOnUtc` descending with a stable conversation-id
+  tie-break. No two pages can disagree on equal timestamps.
 - `totalCount` counts all visible rows; `totalPages` is
   `ceil(totalCount / pageSize)`.
 
@@ -74,15 +85,14 @@ GET /api/v1/chat/conversations?page=1&pageSize=20
 `participant` is always the *other* side of the 1:1 pair, resolved through the
 Identity profile lookup: `displayName` prefers the English full name and falls
 back to Arabic (an unresolvable profile yields an empty string, and
-`avatarUrl` stays `null`). `accountType` is the Identity `AccountType`
-integer of the counterpart's first-registered account (`null` only when their
-Identity row is gone). A care-home owner presents as the facility instead of
+`avatarUrl` stays `null`). `accountType` is the counterpart's current effective account set (active
+accounts only; non-active users resolve as unknown — the first-registered
+account integer is display-only). A care-home owner presents as the facility instead of
 the owner: `displayName` is the facility name (English preferred, Arabic
 fallback) and `avatarUrl` is its approved cover image, while `userId` stays
-the owner's id so messaging and blocking keep working. **Lane A stub:**
-`lastMessage` is always `null` and `unreadCount` is always `0` — the Messages
-module does not exist in this lane. Both field names are already frozen by the
-contract and are wired to `Message` when Lane B lands.
+the owner's id so messaging and blocking keep working. `lastMessage` and
+`unreadCount` are computed by the Messages module (see [messages.md](messages.md));
+hidden conversations contribute no badge.
 
 ### Open-or-get — `POST /api/v1/chat/conversations`
 
@@ -146,17 +156,14 @@ anonymous visitors) — then open with `{ "recipientUserId": "<contactUserId>"
 }`. The counterpart then presents as the facility (name/cover) in the
 conversation list.
 
-**Eligibility not yet enforced (remaining gap).** The following locked rule
-from `docs/chat/plan.md` is *not* checked and must not be assumed by clients
-or tests:
-
-- The direct-chat role/participant matrix (family → any caregiver, booked
-  caregivers, any care home; elderly → own family members and booking-linked
-  caregivers; support → everyone; caregiver initiation limited to booking
-  families plus replies; all family roles including Viewer participate).
-  Consequence today: any two distinct registered users can open a direct
-  conversation with each other, including pairings the plan restricts (e.g.
-  elderly ↔ caregiver without a linking booking).
+**Enforced direct-chat role matrix (Chat Plus).** The locked rule from
+`docs/chat/plan.md` is now checked at open time: family owners and all members
+(including Viewer) may initiate with caregivers and approved care homes;
+elderly may initiate with their own family members and booking-linked
+caregivers; caregivers may initiate with booking families and reply to existing
+eligible conversations (never arbitrary direct chats); Support may initiate
+with everyone (other admin types inherit nothing). Every denial collapses into
+the same generic privacy `404`, so no pairing can be probed.
 
 **Duplication and reopening (matches the frozen rules).** The conversation key
 is the normalized (ordered) participant pair plus the booking reference:
@@ -166,8 +173,12 @@ is the normalized (ordered) participant pair plus the booking reference:
 - Same pair without a booking → one direct conversation.
 - A booking-scoped row and a direct row between the same pair are *different*
   conversations, and so are two rows carrying two different booking ids.
-- Eligibility never applies retroactively: there is no close operation at all,
-  so a cancelled booking can never retro-close an existing chat.
+- Eligibility never applies retroactively to history: there is no close
+  operation at all, so a cancelled booking can never retro-close an existing
+  chat. Reopening an existing visible/hidden conversation checks membership
+  and the caller's entitlement to its retained history; only creating a *new*
+  conversation checks current initiation eligibility — a terminal booking
+  reopens retained history but never creates a new row.
 
 **Reopen restores visibility for the opener only.** If the caller had hidden
 the conversation, a successful open un-hides it for the caller alone: the
@@ -246,12 +257,13 @@ before the handler runs (`413`/connection reset depending on server), which is
 slightly stricter than the per-type `TooLarge` check because multipart
 overhead counts toward the cap.
 
-**Binding and retention.** An upload is conversation-scoped and
+**Binding, quota, and retention.** An upload is conversation-scoped and
 uploader-bound, and is created *unbound*: it binds to exactly one message when
-Lane B's send path runs the single-use domain `Bind()` (a second bind throws).
+the send path runs the single-use domain `Bind()` (a second bind throws).
 Files live under private storage with generated keys and are never served by
-the static `/files` host. There is no cleanup subsystem, so uploads that are
-never sent remain stored.
+the static `/files` host. Unbound uploads expire after 24 h under a 100 MiB
+per-user live quota (an expired bind reads as `404`); no orphan sweep worker
+ships in this package (see [operations.md](operations.md)).
 
 ### Serve — `GET /api/v1/chat/attachments/{attachmentId}/file`
 
@@ -278,11 +290,10 @@ Success is `204`, idempotent: one row per (conversation, user), so repeating
 the call updates the same row and refreshes its `ReadOnUtc` stamp — never a
 duplicate row, never a failure.
 
-**Marks are recorded verbatim (Lane B seam).** Lane A has no `Message` table,
-so it cannot and does not validate the message id: any non-empty GUID is
-accepted, even one that never existed. Unread counts, read ticks, and any
-"must be the newest message" rule are Lane B's to interpret from the stored
-`ConversationReadState`. Consequences:
+**Marks are validated and monotonic (Chat Plus).** The message id must exist
+in the same conversation (invalid/foreign reference is the privacy `404`);
+watermarks advance only in server total order — an older/same mark succeeds
+without regression or changed first-read timestamps. Consequences:
 
 - `400 Chat.ConversationRead.Invalid` is returned *only* to a participant who
   sent an empty/missing `lastReadMessageId`.
@@ -352,7 +363,8 @@ asserted as state (the predicate is queryable, unblock clears it).
   `LastActivityOnUtc` is bumped only by the message flow (Lane B's
   `UpdateLastActivity` seam); read marks, hides, reopens, and blocks never
   touch it — this is what keeps list ordering stable.
-- List ordering: `LastActivityOnUtc` descending; blocked-user list ordering:
+- List ordering: `LastActivityOnUtc` descending + stable conversation-id
+  tie-break; blocked-user list ordering:
   `CreatedOnUtc` descending (most recent first).
 - `ConversationReadState.ReadOnUtc` is the server time of the latest mark.
 - `Attachment.UploadedOnUtc` is the upload time (not echoed in the `201`
@@ -360,10 +372,10 @@ asserted as state (the predicate is queryable, unblock clears it).
 - Display ticks for messages (sent time, delivered grey, read blue) are Lane B
   presentation over `createdOnUtc`/`deliveredOnUtc`/`readOnUtc`; Lane A exposes
   no message timestamps.
-- **Retention is indefinite** (locked). Nothing in Lane A deletes a
+- **Retention is indefinite** (locked). Nothing deletes a
   conversation, message, attachment, read mark, or block row; hiding and
-  unblocking only flip visibility/state, and orphaned uploads are retained
-  because no cleanup subsystem exists.
+  unblocking only flip visibility/state. Unbound uploads expire after 24 h
+  under quota but await a future deletion worker (see [operations.md](operations.md)).
 
 ## Error reference (Lane A)
 
@@ -373,7 +385,7 @@ Every body below is `application/problem+json` with `type`, `title`, `status`,
 | Code / condition | HTTP | Routes | Trigger |
 |---|---|---|---|
 | (no token or no usable `sub` claim) | `401` | 1, 2, 5, 6, 7, 9, 10 | Anonymous or unusable JWT |
-| `Chat.Conversation.NotFound` | `404` generic privacy | 2, 5, 7, 10 | Self-open; unknown/deleted/empty recipient; `bookingId` = `Guid.Empty`; unknown booking, caller not a party to the booking, or cancelled/expired/refunded booking; unknown conversation id; caller not a participant (upload, read, hide) |
+| `Chat.Conversation.NotFound` | `404` generic privacy | 2, 5, 7, 10 | Self-open; unknown/deleted/empty recipient; ineligible pairing under the enforced role matrix; `bookingId` = `Guid.Empty`; unknown booking, caller not a party to the booking, or cancelled/expired/refunded booking (new creates only — retained history reopens); unknown conversation id; caller not a participant (upload, read, hide) |
 | `Chat.Conversation.OpenTargetInvalid` | `400` | 2 | Both or neither of `recipientUserId`/`bookingId` supplied |
 | `Chat.Attachment.NotFound` | `404` generic privacy | 6 | Unknown attachment id, foreign requester, missing blob |
 | `Chat.Block.NotFound` | `404` generic privacy | 9 (POST) | Target user id is not registered |

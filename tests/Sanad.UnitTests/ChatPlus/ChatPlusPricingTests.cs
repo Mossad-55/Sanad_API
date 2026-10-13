@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.Abstractions;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
@@ -8,9 +9,13 @@ using Sanad.Modules.Caregivers.Application.Discovery;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 using Sanad.Modules.Families.Application.Abstractions.Caregivers;
+using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Domain.Bookings;
+using Sanad.Modules.Families.Domain.Elderlies;
+using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.UnitTests.Finance;
 
 namespace Sanad.UnitTests.ChatPlus;
 
@@ -360,9 +365,97 @@ public sealed class ChatPlusPricingTests
         Assert.Null(legacy.BookingServiceId);
     }
 
+    [Fact]
+    public async Task Checkout_AttributedWithoutCatalogLookupFailsClosed()
+    {
+        await using FamiliesDbContext families = CreateFamiliesDb();
+        (Family family, Elderly elderly) = await SeedCheckoutFamilyAsync(families);
+
+        // catalogLookup omitted (null): an attributed checkout must fail
+        // closed instead of silently persisting unverified dimensions.
+        var handler = new CreateBookingCheckoutCommandHandler(
+            families,
+            new FakeCheckoutPricing(),
+            new FixedPlatformChargeRules(15m, 0m));
+
+        var attributed = await handler.Handle(
+            new CreateBookingCheckoutCommand(
+                family.OwnerUserId,
+                elderly.Id,
+                CaregiverId.New(),
+                BookingShiftType.HomeVisit,
+                DateOnly.FromDateTime(Now).AddDays(2),
+                new TimeOnly(10, 0),
+                new TimeOnly(12, 0),
+                "123 Nile St, Cairo",
+                null,
+                DateOnly.FromDateTime(Now),
+                Now,
+                Guid.CreateVersion7(),
+                Guid.CreateVersion7()),
+            default);
+
+        Assert.True(attributed.IsFailure);
+        Assert.Equal("Bookings.AttributionInvalid", attributed.Error.Code);
+        Assert.Equal(0, await families.Bookings.CountAsync());
+
+        // Legacy omission still checks out without the seam.
+        var legacy = await handler.Handle(
+            new CreateBookingCheckoutCommand(
+                family.OwnerUserId,
+                elderly.Id,
+                CaregiverId.New(),
+                BookingShiftType.HomeVisit,
+                DateOnly.FromDateTime(Now).AddDays(2),
+                new TimeOnly(10, 0),
+                new TimeOnly(12, 0),
+                "123 Nile St, Cairo",
+                null,
+                DateOnly.FromDateTime(Now),
+                Now),
+            default);
+
+        Assert.True(legacy.IsSuccess);
+    }
+
     // ------------------------------------------------------------------
     // Helpers.
     // ------------------------------------------------------------------
+
+    private static async Task<(Family, Elderly)> SeedCheckoutFamilyAsync(
+        FamiliesDbContext families)
+    {
+        var family = Family.Create(UserId.New(), "Pricing Family");
+        var elderly = Elderly.Create(
+            family.OwnerUserId,
+            UserId.New(),
+            family.Id,
+            FamilyRelationshipType.Grandfather,
+            FullName.Create("مسن تجريبي"),
+            FullName.Create("Elderly Test"),
+            Gender.Male,
+            DateOnly.FromDateTime(Now.AddYears(-70)),
+            DateOnly.FromDateTime(Now));
+
+        families.Families.Add(family);
+        families.Elderlies.Add(elderly);
+        await families.SaveChangesAsync();
+
+        return (family, elderly);
+    }
+
+    private sealed class FakeCheckoutPricing : ICaregiverBookingPricing
+    {
+        public Task<Result<CaregiverBookingPrice>> GetBookingPriceAsync(
+            CaregiverId caregiverId,
+            BookingShiftType shiftType,
+            TimeOnly startTime,
+            TimeOnly endTime,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(
+                Result<CaregiverBookingPrice>.Success(
+                    new CaregiverBookingPrice(BookingCaregiverType.Medical, 500m)));
+    }
 
     private static void SeedCompleted(
         FamiliesDbContext families,

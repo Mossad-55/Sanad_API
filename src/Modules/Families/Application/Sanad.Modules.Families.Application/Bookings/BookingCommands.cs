@@ -150,19 +150,25 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
                         new Error("Bookings.AttributionInvalid", "Booked area and service cannot be empty."));
                 }
 
-                if (_catalogLookup is not null)
+                // Fail closed: without the catalogue seam there is no way
+                // to prove the pair is active and selected by the booked
+                // caregiver, so an attributed checkout cannot be accepted.
+                if (_catalogLookup is null)
                 {
-                    bool selected = await _catalogLookup.IsSelectedPairAsync(
-                        request.CaregiverId,
-                        areaId,
-                        serviceId,
-                        cancellationToken);
+                    return Result<BookingCheckoutResponse>.Failure(
+                        new Error("Bookings.AttributionInvalid", "Booked area and service cannot be verified."));
+                }
 
-                    if (!selected)
-                    {
-                        return Result<BookingCheckoutResponse>.Failure(
-                            new Error("Bookings.AttributionInvalid", "Booked area and service must be active and selected by the caregiver."));
-                    }
+                bool selected = await _catalogLookup.IsSelectedPairAsync(
+                    request.CaregiverId,
+                    areaId,
+                    serviceId,
+                    cancellationToken);
+
+                if (!selected)
+                {
+                    return Result<BookingCheckoutResponse>.Failure(
+                        new Error("Bookings.AttributionInvalid", "Booked area and service must be active and selected by the caregiver."));
                 }
             }
 

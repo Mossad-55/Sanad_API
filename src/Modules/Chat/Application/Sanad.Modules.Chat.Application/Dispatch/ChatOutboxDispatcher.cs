@@ -1,9 +1,12 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Abstractions.Data;
+using Sanad.Modules.Chat.Application.Conversations;
 using Sanad.Modules.Chat.Application.Messages;
 using Sanad.Modules.Chat.Application.Realtime;
 using Sanad.Modules.Chat.Domain.Changes;
+using Sanad.Modules.Chat.Domain.Conversations;
 using Sanad.Modules.Chat.Domain.Messages;
 using Sanad.Modules.Chat.Domain.Outbox;
 using Sanad.Modules.Notifications.Application.Notifications;
@@ -46,6 +49,7 @@ public sealed class ChatOutboxDispatcher
     private readonly IChatDbContext _dbContext;
     private readonly ISender _sender;
     private readonly IChatRealtimePublisher? _publisher;
+    private readonly IChatUserLookup? _userLookup;
     private readonly ChatDispatchOptions _options;
     private readonly Func<DateTime> _utcNow;
     private readonly Func<int> _jitterMilliseconds;
@@ -56,7 +60,8 @@ public sealed class ChatOutboxDispatcher
         IChatRealtimePublisher? publisher = null,
         ChatDispatchOptions? options = null,
         Func<DateTime>? utcNow = null,
-        Func<int>? jitterMilliseconds = null)
+        Func<int>? jitterMilliseconds = null,
+        IChatUserLookup? userLookup = null)
     {
         _dbContext = dbContext;
         _sender = sender;
@@ -64,6 +69,7 @@ public sealed class ChatOutboxDispatcher
         _options = options ?? new ChatDispatchOptions();
         _utcNow = utcNow ?? (() => DateTime.UtcNow);
         _jitterMilliseconds = jitterMilliseconds ?? (() => Random.Shared.Next(0, 1000));
+        _userLookup = userLookup;
     }
 
     /// <returns>Published change count + delivered intent count.</returns>
@@ -180,6 +186,22 @@ public sealed class ChatOutboxDispatcher
                 continue;
             }
 
+            // Dispatch-time eligibility: block/visibility/account state may
+            // have changed between send-commit and this cycle. Mirror the
+            // send-time direction — suppress when the intent recipient is no
+            // longer an eligible visible participant, or blocked this
+            // counterpart (the sender). The account liveness check runs only
+            // when a lookup is wired (production); unit fakes omit it.
+            if (!await IsIntentRecipientEligibleAsync(item, cancellationToken))
+            {
+                item.MarkSuppressed(
+                    "Chat.Outbox.RecipientIneligible",
+                    _utcNow(),
+                    claim);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                continue;
+            }
+
             try
             {
                 await _sender.Send(
@@ -216,6 +238,53 @@ public sealed class ChatOutboxDispatcher
         }
 
         return delivered;
+    }
+
+    private async Task<bool> IsIntentRecipientEligibleAsync(
+        ChatOutboxItem item,
+        CancellationToken cancellationToken)
+    {
+        Conversation? conversation = await _dbContext.Conversations
+            .SingleOrDefaultAsync(
+                entity => entity.Id == item.ConversationId,
+                cancellationToken);
+
+        if (conversation is null ||
+            !conversation.IsParticipant(item.RecipientUserId) ||
+            conversation.IsHiddenFor(item.RecipientUserId))
+        {
+            return false;
+        }
+
+        UserId counterpart =
+            conversation.ParticipantOne == item.RecipientUserId
+                ? conversation.ParticipantTwo
+                : conversation.ParticipantOne;
+
+        bool blockedByRecipient = await _dbContext.Blocks.AnyAsync(
+            block =>
+                block.BlockedUserId == counterpart &&
+                block.BlockerUserId == item.RecipientUserId,
+            cancellationToken);
+
+        if (blockedByRecipient)
+        {
+            return false;
+        }
+
+        if (_userLookup is not null)
+        {
+            UserProfile? profile = await _userLookup.GetProfileAsync(
+                item.RecipientUserId,
+                cancellationToken);
+
+            if (profile is null)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     internal TimeSpan RetryDelay(int attempt) =>

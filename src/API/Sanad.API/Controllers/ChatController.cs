@@ -658,7 +658,9 @@ public sealed class ChatController : ApiControllerBase
     /// The conversation code (endpoints 1/2/7/10, and upload scope
     /// failures), the attachment code (endpoint 6 serve denials), the block
     /// code (endpoint 9's unknown target user), the message code
-    /// (endpoint 3's unresolvable <c>beforeMessageId</c>), and the report
+    /// (endpoint 3's unresolvable <c>beforeMessageId</c>), the sync code
+    /// (Chat Plus endpoint's unknown/foreign/hidden conversation and
+    /// malformed/foreign/requester-mismatched cursor), and the report
     /// code (endpoint 11's unknown/foreign conversation and unknown/
     /// cross-conversation messageId) are privacy failures: one
     /// indistinguishable generic 404 each. Upload validation codes,
@@ -673,10 +675,11 @@ public sealed class ChatController : ApiControllerBase
     private static bool IsPrivacyFailure(Result result) =>
         result.IsFailure &&
         (result.Error.Code == ConversationErrors.NotFound.Code ||
-         result.Error.Code == AttachmentErrors.NotFound.Code ||
-         result.Error.Code == BlockErrors.NotFound.Code ||
-         result.Error.Code == MessageErrors.NotFound.Code ||
-         result.Error.Code == ReportErrors.NotFound.Code);
+          result.Error.Code == AttachmentErrors.NotFound.Code ||
+          result.Error.Code == BlockErrors.NotFound.Code ||
+          result.Error.Code == MessageErrors.NotFound.Code ||
+          result.Error.Code == ChatSyncErrors.NotFound.Code ||
+          result.Error.Code == ReportErrors.NotFound.Code);
 
     /// <summary>
     /// Chat Plus 429: abuse-control failures answer Too Many Requests with

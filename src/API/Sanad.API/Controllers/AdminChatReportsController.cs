@@ -112,10 +112,17 @@ public sealed class AdminChatReportsController(ISender sender) : ApiControllerBa
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Dismiss(
         Guid reportId,
-        CancellationToken cancellationToken) =>
-        await Send(
-            new DismissReportCommand(Actor(), new ReportId(reportId)),
+        CancellationToken cancellationToken)
+    {
+        if (!TryActor(out UserId actor))
+        {
+            return Unauthorized();
+        }
+
+        return await Send(
+            new DismissReportCommand(actor, new ReportId(reportId)),
             cancellationToken);
+    }
 
     /// <summary>
     /// Endpoint 15 — record the violation and apply the mutual chat-block
@@ -128,10 +135,17 @@ public sealed class AdminChatReportsController(ISender sender) : ApiControllerBa
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     public async Task<IActionResult> Uphold(
         Guid reportId,
-        CancellationToken cancellationToken) =>
-        await Send(
-            new UpholdReportCommand(Actor(), new ReportId(reportId)),
+        CancellationToken cancellationToken)
+    {
+        if (!TryActor(out UserId actor))
+        {
+            return Unauthorized();
+        }
+
+        return await Send(
+            new UpholdReportCommand(actor, new ReportId(reportId)),
             cancellationToken);
+    }
 
     private async Task<IActionResult> Send<T>(
         IQuery<T> query,
@@ -211,8 +225,22 @@ public sealed class AdminChatReportsController(ISender sender) : ApiControllerBa
     /// controllers also carry (Account type, correlation id) are omitted
     /// here: the Chat application commands take the actor alone — no Chat
     /// command or query consumes an account type or a correlation id, so
-    /// those helpers would be dead code.
+    /// those helpers would be dead code. A missing or malformed <c>sub</c>
+    /// answers 401 instead of throwing (review hardening: never a 500 from
+    /// claim parsing).
     /// </summary>
-    private UserId Actor() =>
-        new(Guid.Parse(User.FindFirst(JwtRegisteredClaimNames.Sub)!.Value));
+    private bool TryActor(out UserId actor)
+    {
+        actor = UserId.Empty;
+
+        string? sub = User.FindFirst(JwtRegisteredClaimNames.Sub)?.Value;
+
+        if (!Guid.TryParse(sub, out Guid actorId) || actorId == Guid.Empty)
+        {
+            return false;
+        }
+
+        actor = new UserId(actorId);
+        return true;
+    }
 }
