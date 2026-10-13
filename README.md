@@ -148,13 +148,13 @@ Caregivers, CMS, and Families fall back to `ConnectionStrings__IdentityDatabase`
 
 ### CORS
 
-A single default CORS policy currently allows any origin, header, and method (mobile development). Lock it down to known origins before production launch. It is registered in `AddSanadApi` (`AddCors`) and applied in `UseSanadApi` (`UseCors`, between authentication and authorization).
+A single default CORS policy allows any origin, header, and method. This is owner-confirmed intentional configuration (native mobile clients send no `Origin` header), not a backlog item; do not "fix" it without a new explicit owner order. It is registered in `AddSanadApi` (`AddCors`) and applied in `UseSanadApi` (`UseCors`, between authentication and authorization).
 
 ### Local file storage
 
 Public uploads (splash images, service icons) and private uploads (caregiver certificate scans, National ID front/back) are stored on local disk:
 
-- Public root: `{AppContext.BaseDirectory}/sanad-files`; override with `Storage__Local__RootPath="/var/sanad/files"`. Served anonymously at `GET /files/{key}`. Limit 2 MB; jpeg/png/webp.
+- Public root: `{AppContext.BaseDirectory}/sanad-files` (Development default only); outside Development configure a durable absolute path with `Storage__Local__RootPath="/var/sanad/files"` — the host refuses to start when the root sits inside the versioned release folder. Served anonymously at `GET /files/{key}`. Limit 2 MB; jpeg/png/webp.
 - Private root: a sibling directory (`<root>-private`) that is **not** served statically. Certificate scans (pdf/jpeg/png/webp, 5 MB limit) are only reachable through the admin download endpoint `GET /api/v1/admin/caregivers/{id}/certificates/{certId}/file`. National ID images (jpeg/png/webp, 5 MB per side) are stored under folder `identity-documents` and are not downloadable in this slice.
 
 ### Optional SMTP

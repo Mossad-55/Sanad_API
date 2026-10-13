@@ -1,4 +1,5 @@
 using Sanad.API;
+using Sanad.API.Options;
 using Sanad.API.Seeding;
 using Microsoft.AspNetCore.DataProtection;
 using Sanad.Modules.Families.Infrastructure;
@@ -23,8 +24,41 @@ TestUserSeedTargetGuard.PinToApprovedDatabase(
 
 if (builder.Configuration.GetValue<bool>($"{TestUserSeedOptions.SectionName}:Enabled"))
 {
+    // Fixture-seeding runs only (guarded to Development + the disposable
+    // local target by TestUserSeedTargetGuard). Ephemeral keys are
+    // acceptable here and must never be used on a publicly reachable host.
     builder.Services.AddDataProtection()
         .UseEphemeralDataProtectionProvider();
+}
+else
+{
+    // Persistent key ring for every other host, including Staging and
+    // Production. Chat sync cursors are DataProtection-protected, so old
+    // cursor tokens only survive restarts/redeploys with stable keys and a
+    // stable application discriminator. Validation refuses ephemeral or
+    // release-folder keys outside Development.
+    SanadDataProtectionOptions dataProtectionOptions =
+        builder.Configuration
+            .GetSection(SanadDataProtectionOptions.SectionName)
+            .Get<SanadDataProtectionOptions>()
+        ?? new SanadDataProtectionOptions();
+
+    dataProtectionOptions.Validate(
+        builder.Environment.IsDevelopment(),
+        builder.Environment.ContentRootPath);
+
+    IDataProtectionBuilder dataProtectionBuilder =
+        builder.Services.AddDataProtection();
+
+    dataProtectionBuilder.SetApplicationName(
+        dataProtectionOptions.ApplicationName);
+
+    if (!string.IsNullOrWhiteSpace(dataProtectionOptions.KeyRingPath))
+    {
+        Directory.CreateDirectory(dataProtectionOptions.KeyRingPath);
+        dataProtectionBuilder.PersistKeysToFileSystem(
+            new DirectoryInfo(dataProtectionOptions.KeyRingPath));
+    }
 }
 
 builder.Logging.ClearProviders();

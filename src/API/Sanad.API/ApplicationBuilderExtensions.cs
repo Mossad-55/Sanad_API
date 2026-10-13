@@ -183,6 +183,15 @@ public static class ApplicationBuilderExtensions
         string root =
             storageOptions.GetEffectiveRootPath();
 
+        // Release folders are replaced on deploy and restored on rollback:
+        // outside Development uploads must live in a durable directory
+        // outside them. Deploy/rollback procedures must never delete or
+        // move shared files.
+        Sanad.API.Options.StorageRootPolicy.Validate(
+            app.Environment.IsDevelopment(),
+            root,
+            AppContext.BaseDirectory);
+
         Directory.CreateDirectory(root);
 
         app.UseMiddleware<PrivateStorageRequestGuard>();

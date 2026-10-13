@@ -21,10 +21,30 @@ EF design-time migrations also read `ConnectionStrings__IdentityDatabase`.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `Storage__Local__RootPath` | `{appBase}/sanad-files` | Disk root for uploaded files |
+| `Storage__Local__RootPath` | `{appBase}/sanad-files` (Development only) | Disk root for uploaded files |
 
-On Hostinger use `/var/sanad/files`.  
+Outside Development the host refuses to start when the effective root sits
+inside the versioned release folder. On the VPS use a durable absolute
+path such as `/var/sanad/files` (see the VPS templates in
+`docs/internal/operations/vps/`). Deploy and rollback procedures must never
+delete or move shared files.
 Public URL path is `/files/{key}`. Do not commit uploaded files.
+
+## DataProtection key ring (sync cursors)
+
+Chat sync cursors are DataProtection-protected: old cursor tokens survive
+restarts and redeploys only with a persistent key ring and a stable
+application discriminator.
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `DataProtection__KeyRingPath` | (framework default; Development only) | Absolute persistent key-ring directory outside the release folder, e.g. `/var/sanad/keys`. Required outside Development; the host refuses to start without it. Never use fixture seeding or ephemeral keys on a publicly reachable host. |
+| `DataProtection__ApplicationName` | `Sanad.API` | Discriminator isolating this API's protected payloads. Must stay stable across deploys or previously issued cursors stop decrypting. |
+
+The service user needs exclusive access to the key directory (mode `700`,
+keys `600`); see the VPS templates for the exact ownership/permission
+commands. Key XML files are host secrets: back them up with the database,
+never commit, print, or paste them.
 
 ## Optional SMTP
 

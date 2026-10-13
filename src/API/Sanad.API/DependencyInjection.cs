@@ -68,6 +68,14 @@ public static class DependencyInjection
         services.AddControllers();
         services.AddTransient<PrivateStorageRequestGuard>();
 
+        // Safe remote release evidence (revision + applied migrations).
+        services.AddSingleton<
+            Deployment.IDeploymentManifestReader,
+            Deployment.FileDeploymentManifestReader>();
+        services.AddScoped<
+            Deployment.IDeploymentMigrationProbe,
+            Deployment.EfDeploymentMigrationProbe>();
+
         services.AddOptions<TestUserSeedOptions>()
             .Bind(configuration.GetSection(TestUserSeedOptions.SectionName));
 

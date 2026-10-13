@@ -257,6 +257,20 @@
           }
         }
       ]
+    },
+    {
+      "name": "05. Deployment info",
+      "item": [
+        {
+          "name": "Get deployment info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/deployment/info",
+            "description": "Anonymous. Safe release evidence only: application, environment, manifest revision, required migrations and actually applied latest migration per module context. Carries no connection strings, tokens, or payloads. Used by Verify-SanadDeployment.ps1 to prove remote revision and 9-context migration coverage."
+          }
+        }
+      ]
     }
   ],
   "variable": [

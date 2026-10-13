@@ -13,6 +13,11 @@ Deployment is never implied by `publish`, a merge, or a passing gate battery. It
 
 Copy `.env.example` (tracked, keys only, zero secrets) to `.env` on the **target host only** and fill real values there. `.env`, `deploy/*.local.json`, `*.pem`, `*.key`, and `*.publishsettings` are git-ignored and must never be committed, printed, or pasted into chat/docs/logs.
 
+ASP.NET Core never loads a `.env` file automatically. The host (systemd
+`EnvironmentFile=` / `Environment=` or the container/host secret store)
+must inject the actual environment; placing a `.env` beside the binaries
+without host wiring has no effect. Prefer the host secret store.
+
 | Variable | Purpose | Production rule |
 |---|---|---|
 | `ConnectionStrings__IdentityDatabase` | Fallback for all modules | Loopback or private host only; least-privilege user with migration rights at deploy time |
@@ -36,15 +41,22 @@ Prove ignore-status before every release: `git check-ignore -v .env deploy/publi
 
 ## 4. Verify on the target
 
-1. Confirm the startup log shows each context's pending/applied counts (9 contexts) and the listen URL.
+1. Confirm the startup log shows each context's pending/applied counts (9 contexts) and the listen URL. Pass the captured log to the verifier via `-StartupLogPath` so the 9-context startup evidence is checked mechanically.
 2. Run the verifier from the build machine:
    ```powershell
    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Verify-SanadDeployment.ps1 `
      -ManifestPath .\deploy\publish-out\sanad-deployment-manifest.json `
      -BaseUrl https://your-authorized-host `
-     -ExpectedRevision <pushed-sha>
+     -ExpectedRevision <pushed-sha> `
+     -StartupLogPath <captured-startup-log-path>
    ```
-   Anonymous smoke `GET /api/v1/lookups/services` must return 200.
+   The verifier proves the remote revision through the safe anonymous
+   `GET /api/v1/deployment/info` endpoint (revision match, no DB details
+   exposed), requires actually applied latest migrations for all 9 contexts
+   to equal the manifest's required identifiers, checks the optional
+   startup-log 9-context evidence when supplied, and keeps the anonymous
+   smoke `GET /api/v1/lookups/services` at HTTP 200. A local-manifest-only
+   check or a single lookup response alone is not release evidence.
 3. Confirm the caregiver completion path including the allowance-exhausted `409` contract (see [deployment.md](deployment.md)).
 
 ## 5. Record evidence (no secrets)
