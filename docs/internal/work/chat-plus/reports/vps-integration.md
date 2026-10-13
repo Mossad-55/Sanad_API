@@ -41,7 +41,11 @@ signatures, 620 requests, zero missing/orphans.
 Full Sanad.UnitTests (--no-build --no-restore): exit 0, 3093 passed, 0 failed,
 3 existing PostgreSQL subscription skips, total 3096. Architecture suite:
 exit 0, 1/1. All tracked Postman collections parse; current doc links and
-git diff --check pass. Final merge evidence follows in the main closeout.
+git diff --check pass. Correction commit 64d372e fast-forwarded into main from
+1120434 without conflict (switch and merge --ff-only both exit 0). This
+documentation-only closeout follows on main; its final pushed SHA and remote
+equality are reported to the owner after push. Gates are reused unchanged
+because the fast-forward did not alter tested code.
 
 No new API/database/provider/package/VPS operation. Templates are reviewed
 statically, not claimed nginx/systemd-validated on Linux. Persistent-key recovery
@@ -49,7 +53,7 @@ and proxy behavior are automated in-process tests, not a live VPS run.
 
 ## Handoff
 
-Prompt 5 implementation can integrate after gates. Actual isolated Staging
+Prompt 5 implementation is integrated. Actual isolated Staging
 environment remains NOT READY until host/URL/service/test DB, secrets, backup/
 restore/startup effects and a fresh package are named/prepared and tested.
 Production remains NOT READY. CORS is excluded from both gap lists.

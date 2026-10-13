@@ -1,6 +1,22 @@
 # Mastermind handoff
 
-## Current integrated checkpoint — 2026-10-13 (Chat Plus)
+## Current VPS-readiness checkpoint
+
+Owner returned worker/chat-plus-vps-readiness tip 3c9918d (base 1120434).
+Mastermind corrections in 64d372e are integrated into main without conflicts.
+Final gates: build zero warnings/errors, VPS 17/17, full unit 3093 passed/
+0 failed/3 existing PG skips, architecture 1/1, Postman-only mapping exit 0
+(556 signatures, 620 requests, zero missing/orphans). Evidence:
+[VPS integration](work/chat-plus/reports/vps-integration.md).
+AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader remain unchanged by explicit owner
+confirmation and are not gaps; active plan/prompts reflect that. Bruno excluded.
+Code/templates are integrated; Staging and production environment readiness
+remain unverified (exact target/secrets/backup/fresh package/runtime required).
+No package build, VPS/database/provider changes or deployment occurred.
+**Next action:** send Prompt 1 to a worker on its own branch from updated main;
+mastermind reviews/integrates each result in the agreed sequence.
+
+## Previous Chat Plus integrated checkpoint — 2026-10-13
 
 Owner authorized mastermind integration of `builder/chat-plus-production`
 (delivered `ded4dd1`, base `41f9c91`) into main, push, and docs sync.

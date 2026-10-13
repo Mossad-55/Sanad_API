@@ -141,8 +141,13 @@ Mastermind owns planning/review/integration/main push. Run workers sequentially
 on their own branches; integrate each before dependent work. No VPS deployment
 is authorized by issuing a code/documentation brief.
 
-- [ ] In progress — Priority VPS readiness (Prompt 5): delivered worker tip
-  3c9918d from base 1120434; mastermind review/integration underway.
+- [x] Done — Priority VPS preparation implementation (Prompt 5): delivered tip
+  3c9918d from base 1120434, corrected in 64d372e and integrated into main
+  without conflicts. Build zero warnings/errors, VPS 17/17, full unit 3093
+  passed with 3 existing PG skips, architecture 1/1, mapping 556/620/0/0.
+  Evidence: reports/vps-integration.md; worker report: ../../../../reports/
+  remaining-vps-readiness.md. Actual target/environment and deployment proof
+  remain open, separately from completed code/templates.
   Postman-only release mapping, unchanged owner-confirmed CORS, persistent keys/files,
   trustworthy remote revision/migration verification, Staging/test-target setup.
   Existing package manifest is 41f9c91, before Chat Plus; never deploy it as Chat Plus.

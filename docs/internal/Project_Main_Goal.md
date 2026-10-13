@@ -1,5 +1,14 @@
 # Project main goal
 
+## Current VPS-readiness checkpoint
+
+Prompt 5 delivered 3c9918d from 1120434; mastermind correction 64d372e is
+integrated into main. Build zero warnings/errors; VPS 17/17; full unit 3093
+passed with 3 existing PG skips; architecture 1/1; Postman mapping zero gaps.
+[Tasks](work/chat-plus/tasks.md) and [handoff](work/chat-plus/handoff.md) own
+status/next action. Owner-confirmed CORS stays unchanged and is not a gap.
+Actual Staging/production deployment readiness remains open. Next: Prompt 1.
+
 ## Goal and priority
 
 Sanad is an Arabic/English elderly-care platform. Agreed backend scope: Care homes (operator onboarding/review, inventory, Family discovery/stays/visits, payments/refunds/fees, ratings, Admin operations, in-app/email notifications), Chat (1:1 conversations, files, blocks, messages, reads, reports, alerts), Notifications (push delivery + email overhaul), and the Opus package (community categories/search/favorites, rating unification, CMS library, caregiver payout reads, chat deltas).

@@ -1,6 +1,23 @@
 # Chat Plus — integration handoff
 
-## Integrated implementation — 2026-10-13
+## Current VPS-readiness integration
+
+Prompt 5 worker delivered 3c9918d from 1120434; corrected implementation
+64d372e is fast-forwarded into main without conflicts. Build zero warnings/
+errors; VPS-readiness 17/17; full unit 3093 passed, 0 failed, 3 existing PG
+skips; architecture 1/1; Postman-only mapping 556 signatures/620 requests,
+zero gaps, exit 0. Evidence: [VPS integration](reports/vps-integration.md).
+
+Owner explicitly keeps AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader unchanged;
+this is intentional configuration, not a gap. No CORS or proxy-origin restriction
+was introduced. Bruno is entirely excluded from subsequent work.
+
+Staging/production environment verdict remains NOT READY: exact host/URL/service/
+test DB, secrets, backup/restore, fresh package and actual verification are still
+required. No package/VPS/database/provider action occurred in this integration.
+Next worker: Prompt 1 from the updated clean main; mastermind integrates its result.
+
+## Prior Chat Plus implementation integration — 2026-10-13
 
 Owner authorized mastermind integration into main and documentation sync.
 Builder branch: `builder/chat-plus-production`, base `41f9c91`, delivered
@@ -47,9 +64,10 @@ Voice excluded; single API instance only; do not claim production release-ready.
 ## Next action
 
 Owner wants VPS development shipping prioritized and Bruno ignored entirely.
-[Worker prompts](worker-prompts.md) are ready: start the VPS-readiness worker
-(Prompt 5), integrate its branch, and prepare a fresh package from clean pushed
-main. Existing publish-out manifest is 41f9c91 (pre-Chat-Plus), not current main.
+[Worker prompts](worker-prompts.md) are ready: Prompt 5 is integrated; start
+Prompt 1 from updated main, then 2, 3, optional 4, deployment and 6.
+Prepare a fresh package from clean pushed main at release time. Existing
+publish-out manifest is 41f9c91 (pre-Chat-Plus), not current main.
 Development VPS means isolated Staging/test database, not public Development.
 The testing page (Prompt 4) is optional; direct developer testing/reporting is
 acceptable. Deploy only after exact host/database/startup-side-effect approval;
