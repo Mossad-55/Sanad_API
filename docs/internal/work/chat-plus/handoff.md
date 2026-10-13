@@ -80,6 +80,20 @@ review resolutions, locking facts — all gates in §4 run at this revision)
 plus the closeout commit carrying this handoff and `reports/phase-6-gates.md`
 (tip of `builder/chat-plus-production`; base `41f9c91`).
 
+## Current state — 2026-10-13 (Phase 7 backend gates)
+
+Authorizations consumed exactly as granted (disposable DB, :5235 Dev run +
+stop, apply + rollback, minimal fixtures, owner-run push proof). Report:
+`reports/phase-7-release.md`. 3/3 migrations applied live and rollback-
+proven; the live apply caught and fixed one real defect (Identity backfill
+referenced never-existing columns — `has-pending-model-changes` is blind
+to hand-tuned SQL drift). Runtime manifest 47/47 green on the disposable
+target; sessions logged out, API stopped, port free. Re-greened gates on
+the final tree: build 0/0, unit 3070/0/3-skips, arch 1/1, diff clean.
+Phase 7 is Blocked solely on the owner-run Android + physical iPhone
+delivery proof (plus the authorized-payment-fixture satisfied-pool
+equality). No production readiness claimed.
+
 ## Next action
 
 Mastermind review of the final pushed revision, then integration into

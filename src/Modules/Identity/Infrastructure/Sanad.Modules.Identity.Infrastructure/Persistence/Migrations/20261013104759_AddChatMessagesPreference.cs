@@ -11,11 +11,11 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             // Backward-compatible rollout: legacy rows adopt the existing
-            // MessagesFromFamilies opt-out; the column defaults true for
+            // messages_from_families opt-out; the column defaults true for
             // rows inserted without an explicit value (new users start
             // enabled via the domain default as well).
             migrationBuilder.AddColumn<bool>(
-                name: "NotificationPreferences_ChatMessages",
+                name: "chat_messages",
                 schema: "identity",
                 table: "users",
                 type: "boolean",
@@ -24,11 +24,11 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
             migrationBuilder.Sql(
                 """
                 UPDATE "identity"."users"
-                SET "NotificationPreferences_ChatMessages" = "NotificationPreferences_MessagesFromFamilies";
+                SET "chat_messages" = "messages_from_families";
                 """);
 
             migrationBuilder.AlterColumn<bool>(
-                name: "NotificationPreferences_ChatMessages",
+                name: "chat_messages",
                 schema: "identity",
                 table: "users",
                 type: "boolean",
@@ -43,7 +43,7 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "NotificationPreferences_ChatMessages",
+                name: "chat_messages",
                 schema: "identity",
                 table: "users");
         }

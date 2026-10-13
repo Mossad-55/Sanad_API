@@ -155,6 +155,12 @@ public sealed class UserConfiguration :
                     .HasColumnName("system_notifications")
                     .HasDefaultValue(true)
                     .IsRequired();
+
+                preferences.Property(value =>
+                        value.ChatMessages)
+                    .HasColumnName("chat_messages")
+                    .HasDefaultValue(true)
+                    .IsRequired();
             });
 
         builder.Property(user => user.StatusReason)

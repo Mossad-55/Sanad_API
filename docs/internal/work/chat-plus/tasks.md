@@ -86,13 +86,20 @@ unit evidence. Voice remains excluded.
   mapping 555 signatures with 0 missing / 0 orphan Postman routes (Bruno
   risk-based, 0 orphans); Postman parse 22/22; diff clean; EF alignment
   clean (Chat/Families/Identity). Report: `reports/phase-6-gates.md`.
-- [ ] Not started — **Phase 7: release verification (separate authorization).**
-  Exact disposable target migration/fixture/runtime checks and two-client socket
-  tests incl. socket-kill/REST fallback, expiry and privacy. Verify deployed
-  proxy/origins/redaction/resource limits and migration rollback compatibility.
-  Authorized Android/physical iPhone Firebase/APNs proof including taps/token
-  refresh/logout/preferences/block. Sessions cleaned, API stopped; no broad
-  DB reset/manual cleanup. Deferred/unauthorized provider proof remains open.
+- [ ] Blocked — **Phase 7: release verification (backend gates Done; owner device proof outstanding).**
+  Backend evidence in `reports/phase-7-release.md`: exact disposable target
+  `localhost:5432/SanadBrunoTestDb`, API Development `:5235` (stopped, port
+  free); 3/3 migrations applied live + rollback cycles proven (down/up per
+  context); one real migration defect found and fixed by the live apply
+  (Identity backfill column names); two-client socket manifest 47/47 green
+  (matrix, typing expiry, durable publish, receipts, privacy, cursors,
+  kill/reconnect convergence, 429s, attributed checkout, insights nulls +
+  InvalidFilter, SQL agreement, inbox alerts, restart recovery, logouts);
+  no token material in logs; sessions cleaned. Blocked only on the
+  owner-run Android + physical iPhone delivery proof (operations.md
+  matrix) and, separately, satisfied-pool (N≥5) live aggregate equality,
+  which needs an authorized payment-path fixture. Never claim production
+  readiness until those close.
 
 ## Evidence per phase
 

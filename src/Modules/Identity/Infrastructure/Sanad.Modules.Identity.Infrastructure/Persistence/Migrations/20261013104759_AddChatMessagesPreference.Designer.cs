@@ -402,7 +402,10 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                                 .HasColumnName("booking_updates");
 
                             b1.Property<bool>("ChatMessages")
-                                .HasColumnType("boolean");
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("boolean")
+                                .HasDefaultValue(true)
+                                .HasColumnName("chat_messages");
 
                             b1.Property<bool>("CheckInAlerts")
                                 .ValueGeneratedOnAdd()
