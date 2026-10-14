@@ -169,7 +169,16 @@ is authorized by issuing a code/documentation brief.
   worker report: `../../../../reports/remaining-storage.md`. Migration
   `20261013171755_AddAttachmentCleanupIndex` is authored only, not applied.
   VPS filesystem, hourly soak, and operator alerting remain runtime work.
-- [ ] Not started — Bounded Care Homes processor translation correction (Prompt 3).
+- [x] Done — Bounded Care Homes processor translation correction (Prompt 3),
+  integrated from `worker/care-home-review-processor-fix` at `a869bb0`.
+  Typed `UserId` comparison avoids the Npgsql-untranslatable `.Value` predicate;
+  Npgsql SQL-generation regression facts cover both production recipient queries.
+  The integration centrally pins transitive Pkcs to patched 10.0.13 and clears
+  the reported audit advisories. Build 0 warnings/errors; new facts 5/5;
+  CareHomes 209/209; Notifications+Identity excluding destructive PG fixtures
+  663/663; architecture 1/1; NuGet audit no vulnerable API packages. No live
+  PostgreSQL/API run. See [processor integration](reports/processor-integration.md)
+  and worker report `reports/remaining-care-home-processor.md`.
 - [ ] Not started — Optional tester page or manual developer pack (Prompt 4).
   Page absence is not a staging-shipping blocker.
 - [ ] Blocked — Authorized VPS/runtime/device verification (Prompt 6): needs

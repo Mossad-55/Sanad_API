@@ -9,8 +9,11 @@ passed with 3 existing PG skips; architecture 1/1; Postman mapping zero gaps.
 status/next action. Owner-confirmed CORS stays unchanged and is not a gap.
 Prompts 1 (session security) and 2 (physical orphan cleanup/storage bounds) are
 integrated; see the Chat Plus handoff for current main SHA and evidence. The
-Chat cleanup index migration is authored only. Actual Staging/production
-deployment readiness remains open. Next: Prompt 3.
+Chat cleanup index migration is authored only. Prompt 3's Care Homes processor
+translation fix is integrated at `a869bb0`; the Pkcs transitive dependency is
+pinned to patched `10.0.13` and the security audit is clear. Actual Staging/
+production deployment readiness remains open. Next: optional Prompt 4, then
+authorized Prompt 6.
 
 ## Goal and priority
 

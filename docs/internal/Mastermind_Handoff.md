@@ -31,7 +31,21 @@ PostgreSQL race tests on its separate disposable database, which were not rerun
 here. Migration `20261013171755_AddAttachmentCleanupIndex` remains authored only.
 No VPS or production database operation occurred. See
 [storage integration](work/chat-plus/reports/storage-integration.md).
-**Next action:** start Prompt 3 on its own branch from updated clean main.
+
+Prompt 3 is now integrated from `worker/care-home-review-processor-fix`
+(base `329186d`, worker tip `dc3d43c`) by conflict-free fast-forward through
+`a869bb0`. The owner-lookup query now compares typed `UserId` values and maps
+typed recipient rows client-side; Npgsql translation facts cover both
+production query shapes. The integration also centrally pins transitive
+`System.Security.Cryptography.Pkcs` to patched `10.0.13`, clearing two audit
+advisories instead of suppressing them. Gates: full build 0 warnings/errors,
+CareHomes 209/209, Notifications+Identity non-destructive tests 663/663,
+translation regression 5/5, architecture 1/1, NuGet audit reports no vulnerable
+API packages. The configured identity PostgreSQL fixture calls `EnsureDeleted`;
+it was not run. No live PostgreSQL/API, migration, provider, VPS, or deployment
+action occurred. Evidence: [processor integration](work/chat-plus/reports/processor-integration.md).
+Sibling processors with similar typed-ID predicates remain separately scoped.
+**Next:** optional Prompt 4 (may be skipped), then authorized Prompt 6.
 
 ## Previous Chat Plus integrated checkpoint — 2026-10-13
 

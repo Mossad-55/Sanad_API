@@ -33,11 +33,17 @@ the PostgreSQL destructive fixture 238/238, cleanup tests 9/9, architecture 1/1.
 No VPS, production DB, migration, or provider operation occurred. See
 [storage integration](reports/storage-integration.md).
 
+Prompt 3 (Care Homes processor translation fix) is integrated into main at
+`a869bb0`; see [processor integration](reports/processor-integration.md). The
+owner-lookup predicate now uses typed `UserId` comparison, proven by Npgsql SQL
+generation; recipient mapping and focused suites pass. Integration also pins
+transitive `System.Security.Cryptography.Pkcs` to patched `10.0.13`, clearing
+the NU1902/NU1903 audit warnings without suppression. Sibling typed-ID query
+defects noted in the worker report remain separately scoped.
+
 Staging/production environment verdict remains NOT READY: exact host/URL/service/
-test DB, secrets, backup/restore, fresh package and actual verification are still
-required. No package/VPS/production-database/provider action occurred in this
-integration. Next worker: Prompt 3 from updated clean main; mastermind integrates
-its result.
+test DB, secrets, backup/restore, fresh release package and actual verification
+are still required. No VPS/production-database/provider action occurred.
 
 ## Prior Chat Plus implementation integration — 2026-10-13
 
@@ -76,8 +82,8 @@ Final verification and merge/push evidence belong to
 - Runtime verifier: builder socket-kill proof recovered five missed messages;
   >100-message/receipt-only recovery is automated evidence, not live proof.
   Rerun live transport/auth checks for the integration corrections before release.
-- Adjacent slice: recurring CareHomeReviewNotificationProcessor SQL translation
-  failure observed by the builder; not modified by this integration.
+- Adjacent processors with similar typed-ID query risks remain as separately
+  scoped follow-up; see the processor integration report.
 
 Three migrations were applied/rollback-tested only on the builder-authorized
 disposable DB. No production migration/deploy/provider send is implied.
@@ -87,8 +93,9 @@ Voice excluded; single API instance only; do not claim production release-ready.
 ## Next action
 
 Owner wants VPS development shipping prioritized and Bruno ignored entirely.
-[Worker prompts](worker-prompts.md) are ready: Prompts 5, 1 and 2 are integrated;
-start Prompt 3 from updated main, then optional 4, deployment and 6.
+[Worker prompts](worker-prompts.md) are ready: Prompts 5, 1, 2 and 3 are
+integrated; Prompt 4 is optional, then authorized deployment/runtime verification
+(Prompt 6).
 Prepare a fresh package from clean pushed main at release time. Existing
 publish-out manifest is 41f9c91 (pre-Chat-Plus), not current main.
 Development VPS means isolated Staging/test database, not public Development.

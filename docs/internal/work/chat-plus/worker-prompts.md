@@ -25,9 +25,9 @@ Staging startup applies all pending module migrations including Finance, so
 host/database/backup authorization is necessary even for a test deployment.
 
 Prompts 5 deployment-preparation, 1 session/push security, and 2 storage cleanup
-work are integrated. Prompt 3 fixes the observed adjacent processor failure.
-Integrate each delivered
-branch before the next worker consumes its changes. Prompt 4 is optional: a
+work are integrated. Prompt 3's Care Homes processor translation correction is
+also integrated. Integrate each delivered branch before the next worker consumes
+its changes. Prompt 4 is optional: a
 browser testing page must not delay a safe staging deployment. Prompt 6 follows
 the authorized VPS release. Physical-device push proof is mandatory for the
 production push claim, not for testing REST chat on an isolated staging VPS.
@@ -41,7 +41,8 @@ or push main. Do not start all branches concurrently across shared auth/API/docs
 This prompt is complete and integrated. Do not rerun it. The selected rollout
 is Chat-first: on the first Chat 401 from a legacy unbound token, mobile clients
 refresh once and retry once; if that fails, require sign-in without looping.
-See `reports/session-security-integration.md`. Continue with Prompt 3.
+See `reports/session-security-integration.md`. Prompt 3 is integrated; Prompt 4
+is optional and may be skipped.
 
 ```text
 Work in D:\Sanad_API. Read AGENTS.md, docs/internal/governance/AGENTS.md,
@@ -97,7 +98,7 @@ This prompt is complete and integrated. Do not rerun it. The code includes a
 mastermind correction for production DI, validated sweep limits and path safety.
 The authored migration has not been applied. Staging filesystem/soak verification
 remains a Prompt 6/operator task. See `reports/storage-integration.md` and the
-worker report at `../../../../reports/remaining-storage.md`. Continue with Prompt 3.
+worker report at `../../../../reports/remaining-storage.md`. Prompt 3 is integrated.
 
 ```text
 Work in D:\Sanad_API; read repository governance and the current Chat Plus plan,
@@ -133,7 +134,12 @@ and remaining limitations in reports/remaining-storage.md. Commit your branch;
 no main merge/push or deployment.
 ```
 
-## Prompt 3 — bounded Care Homes processor correction
+## Prompt 3 — bounded Care Homes processor correction (completed)
+
+Delivered on `worker/care-home-review-processor-fix` and integrated into main at
+`a869bb0`; see [integration evidence](reports/processor-integration.md) and
+[worker findings](reports/remaining-care-home-processor.md). The worker brief
+below is retained as the historical scope record; do not rerun it.
 
 ```text
 Work in D:\Sanad_API. Read AGENTS.md/governance, current handoff and
