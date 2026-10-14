@@ -24,9 +24,9 @@ provider-safe configuration. Never set public VPS environment to Development.
 Staging startup applies all pending module migrations including Finance, so
 host/database/backup authorization is necessary even for a test deployment.
 
-Prompt 5 deployment-preparation and Prompt 1 session/push security work are
-integrated. Prompt 2 controls storage growth;
-Prompt 3 fixes the observed adjacent processor failure. Integrate each delivered
+Prompts 5 deployment-preparation, 1 session/push security, and 2 storage cleanup
+work are integrated. Prompt 3 fixes the observed adjacent processor failure.
+Integrate each delivered
 branch before the next worker consumes its changes. Prompt 4 is optional: a
 browser testing page must not delay a safe staging deployment. Prompt 6 follows
 the authorized VPS release. Physical-device push proof is mandatory for the
@@ -41,7 +41,7 @@ or push main. Do not start all branches concurrently across shared auth/API/docs
 This prompt is complete and integrated. Do not rerun it. The selected rollout
 is Chat-first: on the first Chat 401 from a legacy unbound token, mobile clients
 refresh once and retry once; if that fails, require sign-in without looping.
-See `reports/session-security-integration.md`. Continue with Prompt 2.
+See `reports/session-security-integration.md`. Continue with Prompt 3.
 
 ```text
 Work in D:\Sanad_API. Read AGENTS.md, docs/internal/governance/AGENTS.md,
@@ -91,7 +91,13 @@ deploy, alter live credentials or widen unrelated auth requirements. Bring a
 concrete unresolved product/compatibility decision to the planning mastermind.
 ```
 
-## Prompt 2 — race-safe orphan cleanup and storage bounds
+## Prompt 2 — race-safe orphan cleanup and storage bounds (completed)
+
+This prompt is complete and integrated. Do not rerun it. The code includes a
+mastermind correction for production DI, validated sweep limits and path safety.
+The authored migration has not been applied. Staging filesystem/soak verification
+remains a Prompt 6/operator task. See `reports/storage-integration.md` and the
+worker report at `../../../../reports/remaining-storage.md`. Continue with Prompt 3.
 
 ```text
 Work in D:\Sanad_API; read repository governance and the current Chat Plus plan,

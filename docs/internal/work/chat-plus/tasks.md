@@ -112,7 +112,7 @@ This compatibility policy is selected; it is not a release gap.
   owner-run Android + physical iPhone delivery proof, satisfied-pool (N≥5)
   live aggregate equality using an authorized payment fixture, actual edge
   TLS/redaction checks, session-revocation live verification, and physical
-  orphan cleanup. The live socket recovery
+  orphan-cleanup runtime verification/soak. The live socket recovery
   used five missed messages, not >100. See integration report/handoff for
   ownership. Never claim production readiness until required gates close.
 
@@ -163,7 +163,12 @@ is authorized by issuing a code/documentation brief.
   integrated at `2d8af5a`; mastermind closeout and security evidence:
   [reports/session-security-integration.md](reports/session-security-integration.md).
   Selected rollout: Chat-first; mobile refresh-once behavior is specified above.
-- [ ] Not started — Race-safe physical orphan cleanup/storage bounds (Prompt 2).
+- [x] Done — Race-safe physical orphan cleanup/storage bounds (Prompt 2),
+  integrated at the storage worker tip plus mastermind DI/path/options fixes.
+  Evidence: [storage integration](reports/storage-integration.md) and
+  worker report: `../../../../reports/remaining-storage.md`. Migration
+  `20261013171755_AddAttachmentCleanupIndex` is authored only, not applied.
+  VPS filesystem, hourly soak, and operator alerting remain runtime work.
 - [ ] Not started — Bounded Care Homes processor translation correction (Prompt 3).
 - [ ] Not started — Optional tester page or manual developer pack (Prompt 4).
   Page absence is not a staging-shipping blocker.

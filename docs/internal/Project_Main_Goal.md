@@ -7,9 +7,10 @@ integrated into main. Build zero warnings/errors; VPS 17/17; full unit 3093
 passed with 3 existing PG skips; architecture 1/1; Postman mapping zero gaps.
 [Tasks](work/chat-plus/tasks.md) and [handoff](work/chat-plus/handoff.md) own
 status/next action. Owner-confirmed CORS stays unchanged and is not a gap.
-Prompt 1 session-security implementation is integrated at `2d8af5a` with the
-Chat-first legacy-token rollout selected. Actual Staging/production deployment
-readiness remains open. Next: Prompt 2.
+Prompts 1 (session security) and 2 (physical orphan cleanup/storage bounds) are
+integrated; see the Chat Plus handoff for current main SHA and evidence. The
+Chat cleanup index migration is authored only. Actual Staging/production
+deployment readiness remains open. Next: Prompt 3.
 
 ## Goal and priority
 

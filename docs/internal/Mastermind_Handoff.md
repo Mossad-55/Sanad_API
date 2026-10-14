@@ -21,7 +21,17 @@ refresh once and retry the first legacy-token Chat 401 once; if refresh/retry
 fails, require sign-in without looping. Automated security evidence is recorded
 in [session-security integration](work/chat-plus/reports/session-security-integration.md);
 live verification remains for Prompt 6.
-**Next action:** start Prompt 2 on its own branch from updated clean main.
+Prompt 2 (race-safe attachment cleanup/storage bounds) is integrated from
+`worker/chat-plus-storage`; current main implementation tip before this docs
+closeout is `8097edb`. Mastermind fixes cover required clock DI, cleanup option
+validation, safe path handling and sanitized logs. Strict build passed with zero
+warnings/errors; Chat tests excluding the destructive PostgreSQL fixture passed
+238/238; cleanup tests passed 9/9; architecture 1/1. The worker reports 3/3
+PostgreSQL race tests on its separate disposable database, which were not rerun
+here. Migration `20261013171755_AddAttachmentCleanupIndex` remains authored only.
+No VPS or production database operation occurred. See
+[storage integration](work/chat-plus/reports/storage-integration.md).
+**Next action:** start Prompt 3 on its own branch from updated clean main.
 
 ## Previous Chat Plus integrated checkpoint — 2026-10-13
 
