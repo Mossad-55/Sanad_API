@@ -7,7 +7,8 @@ implementation `2a9387b`, report tip `dc3d43c`. The branch was reviewed and
 fast-forwarded without conflict into local `main` through `a869bb0`; the
 integration commit adds a central transitive pin for the patched Pkcs dependency.
 No unrelated worker files were included. At integration, `main` was based on
-`origin/main` `329186d`; publication status is recorded in the final handoff.
+`origin/main` `329186d`. Documentation closeout `aee2490` was pushed to
+`origin/main`; local and remote main were verified to match at that revision.
 
 ## Change and review
 
