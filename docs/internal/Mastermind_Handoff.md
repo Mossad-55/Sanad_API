@@ -2,62 +2,30 @@
 
 ## Current VPS-readiness checkpoint
 
-Owner returned worker/chat-plus-vps-readiness tip 3c9918d (base 1120434).
-Mastermind corrections in 64d372e are integrated into main without conflicts.
-Final gates: build zero warnings/errors, VPS 17/17, full unit 3093 passed/
-0 failed/3 existing PG skips, architecture 1/1, Postman-only mapping exit 0
-(556 signatures, 620 requests, zero missing/orphans). Evidence:
-[VPS integration](work/chat-plus/reports/vps-integration.md).
-AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader remain unchanged by explicit owner
-confirmation and are not gaps; active plan/prompts reflect that. Bruno excluded.
-Code/templates are integrated; Staging and production environment readiness
-remain unverified (exact target/secrets/backup/fresh package/runtime required).
-No package build, VPS/database/provider changes or deployment occurred.
-Prompt 1 session-security work from `worker/chat-plus-session-security` is
-integrated at `2d8af5a` (fast-forwarded). The mastermind selected the Chat-first
-rollout: Chat REST/SignalR require a live session-bound token; legacy Normal
-tokens continue on non-Chat APIs until their 15-minute expiry. Mobile clients
-refresh once and retry the first legacy-token Chat 401 once; if refresh/retry
-fails, require sign-in without looping. Automated security evidence is recorded
-in [session-security integration](work/chat-plus/reports/session-security-integration.md);
-live verification remains for Prompt 7.
-Prompt 2 (race-safe attachment cleanup/storage bounds) is integrated from
-`worker/chat-plus-storage`; current main implementation tip before this docs
-closeout is `8097edb`. Mastermind fixes cover required clock DI, cleanup option
-validation, safe path handling and sanitized logs. Strict build passed with zero
-warnings/errors; Chat tests excluding the destructive PostgreSQL fixture passed
-238/238; cleanup tests passed 9/9; architecture 1/1. The worker reports 3/3
-PostgreSQL race tests on its separate disposable database, which were not rerun
-here. Migration `20261013171755_AddAttachmentCleanupIndex` remains authored only.
-No VPS or production database operation occurred. See
-[storage integration](work/chat-plus/reports/storage-integration.md).
+Chat Plus Prompts 1–6 and VPS-readiness implementation are integrated. Prompt 4
+is optional; Prompt 7 remains the authorized deployment/runtime/device
+verification step. Owner-confirmed CORS (`AllowAnyOrigin`, `AllowAnyMethod`,
+`AllowAnyHeader`) is unchanged and is not a gap; Bruno is excluded. Code and
+automated gates are recorded in the linked integration reports. Staging and
+production environment/runtime readiness are not claimed: target configuration,
+secrets, backup/restore, device delivery, edge behavior, and soak evidence remain
+external gates. The Chat cleanup-index migration is authored, included in the
+release manifest, and unapplied until deployment authorization.
 
-Prompt 3 is now integrated from `worker/care-home-review-processor-fix`
-(base `329186d`, worker tip `dc3d43c`) by conflict-free fast-forward through
-`a869bb0`. The owner-lookup query now compares typed `UserId` values and maps
-typed recipient rows client-side; Npgsql translation facts cover both
-production query shapes. The integration also centrally pins transitive
-`System.Security.Cryptography.Pkcs` to patched `10.0.13`, clearing two audit
-advisories instead of suppressing them. Gates: full build 0 warnings/errors,
-CareHomes 209/209, Notifications+Identity non-destructive tests 663/663,
-translation regression 5/5, architecture 1/1, NuGet audit reports no vulnerable
-API packages. The configured identity PostgreSQL fixture calls `EnsureDeleted`;
-it was not run. No live PostgreSQL/API, migration, provider, VPS, or deployment
-action occurred. Evidence: [processor integration](work/chat-plus/reports/processor-integration.md).
-Prompt 6 is complete at pushed `c29339b`: the two sibling predicates were
-proven untranslatable by
-Npgsql and fixed with typed ID comparisons; focused regressions pass. The
-license-expiry monitor has a projection only, not a confirmed defect. Final
-mastermind gates on the `c29339b` tree plus a test-fixture null-dispose fix:
-build zero warnings/errors; Unit 3,120 passed, 0 failed, 8 skipped (5 PG
-integration cases; 3 existing Families skips); Architecture 1/1. The configured DB variables
-were blanked for that test process; no DB/API/VPS/provider operation occurred.
-The skip-path fixture null-dispose issue was corrected in the test harness.
-Documentation/current release gaps are in
-[processor integration](work/chat-plus/reports/processor-integration.md).
-**Next:** obtain owner-approved exact staging target and backup/restore boundary,
-then build and deploy a fresh package from clean pushed main. Prompt 4 is optional;
-Prompt 7 verifies the deployed target after authorization.
+The release gate battery passed on clean pushed `main`: strict build 0 warnings/
+errors; Unit 3,120 passed, 0 failed, 8 skipped (5 PostgreSQL integration cases
+intentionally skipped with database targets blank for that process; 3
+pre-declared Families skips); Architecture 1/1; Postman mapping 556 signatures /
+620 requests / 0 missing / 0 orphan. A stale Chat migration identifier in the
+package script was corrected before publication. The Release package is generated
+only from the final pushed `main`; its manifest is the source of the exact
+revision and nine required migration IDs. No VPS, database, provider, or
+deployment action is included. See [Chat Plus handoff](work/chat-plus/handoff.md)
+for remaining owner/runtime gates.
+
+**Next:** owner deploys the supplied artifact. After the owner reports deployment
+and supplies the exact authorized target details, resume Prompt 7 verification.
+Do not deploy or access the VPS on the owner's behalf.
 
 ## Previous Chat Plus integrated checkpoint — 2026-10-13
 

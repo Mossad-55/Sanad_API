@@ -60,7 +60,7 @@ $manifest = [ordered]@{
         Notifications = '20261010010618_AddEmailHtmlSnapshots'
         Community = '20261010004134_AddCommunityCategories'
         Finance = '20261010143327_AddCaregiverPayoutPolicyDescriptions'
-        Chat = '20261013000659_AddChatPlusChanges'
+        Chat = '20261013171755_AddAttachmentCleanupIndex'
     }
     startupMigrationPolicy = 'All registered module migrations run before API startup outside Development; production cannot disable them.'
 }

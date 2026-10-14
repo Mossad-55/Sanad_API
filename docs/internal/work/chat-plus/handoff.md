@@ -1,5 +1,19 @@
 # Chat Plus — integration handoff
 
+## Current release checkpoint — 2026-10-14
+
+The current Release artifact is `deploy/publish-out/`, built from the final
+clean, pushed `main`. Its `sanad-deployment-manifest.json` records the exact
+revision and all nine current migration IDs. Gates: strict solution build 0
+warnings/errors; Unit 3,120 passed, 0 failed, 8 skipped (5 PostgreSQL cases
+disabled for this non-destructive run, plus 3 pre-declared Families skips);
+Architecture 1/1; Postman mapping 556 signatures / 620 requests / zero missing
+or orphan. The Chat manifest points to
+`20261013171755_AddAttachmentCleanupIndex`; this migration is authored but
+unapplied. No VPS, database, provider, or deployment action was performed.
+The owner deploys; Prompt 7 waits for the owner's deployment report and exact
+authorized target.
+
 ## Current VPS-readiness integration
 
 Prompt 5 worker delivered 3c9918d from 1120434; corrected implementation
@@ -20,7 +34,7 @@ on the first Chat 401 from a legacy token, refresh once and retry once; if
 refresh/retry fails, require sign-in without looping. See
 [session-security integration](reports/session-security-integration.md).
 
-Prompt 2 storage cleanup is integrated at current main `8097edb` from worker
+Prompt 2 storage cleanup is integrated on main from worker
 base `b46728a`, plus mastermind integration fixes. The hourly bounded sweep,
 bind exclusion, physical quota accounting, sanitized backlog logging and
 authored-only index migration are now implemented. Mastermind corrected the
@@ -47,8 +61,8 @@ pass. `CareHomeLicenseExpiryMonitor` has a `.Value` projection only, not a
 confirmed predicate defect, and was deliberately untouched.
 
 Staging/production environment verdict remains NOT READY: exact host/URL/service/
-test DB, secrets, backup/restore, fresh release package and actual verification
-are still required. No VPS/production-database/provider action occurred.
+test DB, secrets, backup/restore and actual runtime verification are still
+required. No VPS/production-database/provider action occurred.
 
 ## Prior Chat Plus implementation integration — 2026-10-13
 
@@ -99,9 +113,9 @@ Voice excluded; single API instance only; do not claim production release-ready.
 
 Owner wants VPS development shipping prioritized and Bruno ignored entirely.
 [Worker prompts](worker-prompts.md) are ready: Prompts 5, 1, 2, 3 and 6 are
-integrated; Prompt 4 is optional, then authorized deployment/runtime verification
-(Prompt 7). Prepare a fresh package from clean pushed main at release time. Existing
-publish-out manifest is 41f9c91 (pre-Chat-Plus), not current main.
+integrated; Prompt 4 is optional, then owner deployment and authorized
+runtime verification (Prompt 7). A fresh package has been generated from clean
+pushed main; use the manifest in that artifact to identify the exact revision.
 Development VPS means isolated Staging/test database, not public Development.
 The testing page (Prompt 4) is optional; direct developer testing/reporting is
 acceptable. Deploy only after exact host/database/startup-side-effect approval;

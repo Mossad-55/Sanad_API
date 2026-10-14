@@ -2,22 +2,19 @@
 
 ## Current VPS-readiness checkpoint
 
-Prompt 5 delivered 3c9918d from 1120434; mastermind correction 64d372e is
-integrated into main. Build zero warnings/errors; VPS 17/17; full unit 3093
-passed with 3 existing PG skips; architecture 1/1; Postman mapping zero gaps.
-[Tasks](work/chat-plus/tasks.md) and [handoff](work/chat-plus/handoff.md) own
-status/next action. Owner-confirmed CORS stays unchanged and is not a gap.
-Prompts 1 (session security) and 2 (physical orphan cleanup/storage bounds) are
-integrated; see the Chat Plus handoff for current main SHA and evidence. The
-Chat cleanup index migration is authored only. Prompt 3's Care Homes processor
-translation fixes are integrated through Prompt 6 on pushed main; the Pkcs
-transitive dependency is pinned to patched `10.0.13` and the security audit is
-clear. Final automated gates: build 0 warnings/errors; Unit 3,120 passed,
-8 skipped (5 PG integration cases, 3 existing Families skips); Architecture 1/1.
-Actual Staging/production environment
-readiness remains open. Prompt 4 is optional. Next: name/authorize the isolated
-staging target and backup boundary, publish a fresh package from final main,
-deploy only after approval, then run Prompt 7.
+Chat Plus Prompts 1–6 and VPS-readiness implementation are integrated; Prompt 4
+is optional, and Prompt 7 owns authorized post-deploy/runtime/device checks.
+Owner-confirmed CORS stays unchanged and is not a gap. The Chat cleanup-index
+migration is authored and included as the latest Chat migration in the release
+manifest; deployment applies it only under the approved startup/migration policy.
+Release gates passed on clean pushed `main`: strict build 0 warnings/errors;
+Unit 3,120 passed, 0 failed, 8 skipped (5 PostgreSQL integration cases disabled
+for this non-destructive run and 3 pre-declared Families skips); Architecture
+1/1; Postman mapping 556 signatures / 620 requests / zero missing/orphans.
+The Release package is generated from pushed `main`; see [Chat Plus tasks](work/chat-plus/tasks.md)
+and [handoff](work/chat-plus/handoff.md) for remaining owner/runtime gates.
+Staging and production runtime readiness are not claimed. The owner deploys;
+Prompt 7 must wait for the exact authorized target and deployment report.
 
 ## Goal and priority
 
