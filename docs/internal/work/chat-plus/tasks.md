@@ -185,10 +185,15 @@ is authorized by issuing a code/documentation brief.
   projection alone as a proven defect.
 - [ ] Not started — Optional tester page or manual developer pack (Prompt 4).
   Page absence is not a staging-shipping blocker.
-- [ ] Not started — Provider-safe recipient-query hardening (Prompt 6): verify
-  and fix the two known `.Value` EF predicates in CareHomeBookingNotificationProcessor
-  and PushOutboxProcessor with Npgsql translation regressions. No live DB needed;
-  see the copy-ready Prompt 6 in `worker-prompts.md`.
+- [x] Done — Provider-safe recipient-query hardening (Prompt 6): both proven
+  `.Value` EF predicates fixed (`targets.Contains(x.Id)` over `UserId[]` in
+  CareHomeBookingNotificationProcessor; shared typed `RecipientUsers` composition
+  for both PushOutboxProcessor preference reads) with Npgsql SQL-generation
+  regressions over the exact production compositions (no live DB). Build 0
+  warnings/errors; new facts 7/7; CareHomes 214/214; Notifications+Identity
+  excluding the destructive PG fixture 704/704; ChatPlus 72/72; architecture 1/1;
+  NuGet audit clear; diff clean. `CareHomeLicenseExpiryMonitor` projection-only
+  smell deliberately untouched. See [processor integration](reports/processor-integration.md).
 - [ ] Blocked — Authorized VPS/runtime/device verification (Prompt 7): needs
   exact target/deployed artifact and permitted fixtures/provider tests. Physical
   mobile push proof remains separate from development REST-chat testing. This

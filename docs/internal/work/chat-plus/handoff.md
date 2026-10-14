@@ -38,13 +38,13 @@ Prompt 3 (Care Homes processor translation fix) is integrated into main at
 owner-lookup predicate now uses typed `UserId` comparison, proven by Npgsql SQL
 generation; recipient mapping and focused suites pass. Integration also pins
 transitive `System.Security.Cryptography.Pkcs` to patched `10.0.13`, clearing
-the NU1902/NU1903 audit warnings without suppression. Sibling typed-ID query
-risks remain: `CareHomeBookingNotificationProcessor` uses
-`targets.Contains(x.Id.Value)` and `PushOutboxProcessor` uses
-`user.Id.Value == row.RecipientUserId` inside EF predicates. These are not yet
-provider-probed; resolve with focused translation tests before production.
-`CareHomeLicenseExpiryMonitor` has a `.Value` projection only, not a confirmed
-predicate defect.
+the NU1902/NU1903 audit warnings without suppression. Prompt 6 (recipient-query hardening) is complete on current main; see
+[processor integration](reports/processor-integration.md). Both proven `.Value`
+predicates now use typed `UserId` comparison (`targets.Contains(x.Id)` and the
+shared `RecipientUsers` composition for both push preference reads), covered by
+Npgsql SQL-generation regressions; recipient selection/mapping and focused suites
+pass. `CareHomeLicenseExpiryMonitor` has a `.Value` projection only, not a
+confirmed predicate defect, and was deliberately untouched.
 
 Staging/production environment verdict remains NOT READY: exact host/URL/service/
 test DB, secrets, backup/restore, fresh release package and actual verification
@@ -87,8 +87,8 @@ Final verification and merge/push evidence belong to
 - Runtime verifier: builder socket-kill proof recovered five missed messages;
   >100-message/receipt-only recovery is automated evidence, not live proof.
   Rerun live transport/auth checks for the integration corrections before release.
-- Adjacent processors with similar typed-ID query risks remain as separately
-  scoped follow-up; see the processor integration report.
+- Adjacent processor recipient predicates are hardened (Prompt 6); live dispatch
+  proof remains separately scoped follow-up; see the processor integration report.
 
 Three migrations were applied/rollback-tested only on the builder-authorized
 disposable DB. No production migration/deploy/provider send is implied.
@@ -98,10 +98,9 @@ Voice excluded; single API instance only; do not claim production release-ready.
 ## Next action
 
 Owner wants VPS development shipping prioritized and Bruno ignored entirely.
-[Worker prompts](worker-prompts.md) are ready: Prompts 5, 1, 2 and 3 are
+[Worker prompts](worker-prompts.md) are ready: Prompts 5, 1, 2, 3 and 6 are
 integrated; Prompt 4 is optional, then authorized deployment/runtime verification
-(Prompt 7), after Prompt 6 closes the two recipient query risks.
-Prepare a fresh package from clean pushed main at release time. Existing
+(Prompt 7). Prepare a fresh package from clean pushed main at release time. Existing
 publish-out manifest is 41f9c91 (pre-Chat-Plus), not current main.
 Development VPS means isolated Staging/test database, not public Development.
 The testing page (Prompt 4) is optional; direct developer testing/reporting is

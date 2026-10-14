@@ -273,7 +273,12 @@ reports/remaining-vps-readiness.md, give base/final SHA and manifest. No merge/p
 main, VPS login/write, package deployment, migrations, seeding or provider sends.
 ```
 
-## Prompt 6 — recipient-query PostgreSQL translation hardening
+## Prompt 6 — recipient-query PostgreSQL translation hardening (completed)
+
+This prompt is complete and integrated on current main. Both predicates were
+proven untranslatable by Npgsql SQL generation, fixed with typed `UserId`
+comparison, and covered by translation regressions; see
+`reports/processor-integration.md`. Continue with Prompt 7 authorization.
 
 ```text
 Work in D:\Sanad_API. Read AGENTS.md, docs/internal/governance/AGENTS.md,

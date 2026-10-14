@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Notifications.Application.Abstractions.Push;
@@ -80,8 +81,7 @@ public sealed class PushOutboxProcessor(
             row.PreferenceKey, "ChatMessages", StringComparison.Ordinal);
         if (!isChatPush)
         {
-            var preference = await identity.Users.AsNoTracking()
-                .Where(x => x.Id.Value == row.RecipientUserId)
+            var preference = await RecipientUsers(identity, new UserId(row.RecipientUserId))
                 .Select(x => x.NotificationPreferences)
                 .SingleOrDefaultAsync(cancellationToken);
             if (preference is null || !IsEnabled(preference, row.PreferenceKey))
@@ -320,13 +320,23 @@ public sealed class PushOutboxProcessor(
             }
         }
 
-        var currentPreference = await identity.Users.AsNoTracking()
-            .Where(user => user.Id.Value == row.RecipientUserId)
+        var currentPreference = await RecipientUsers(identity, new UserId(row.RecipientUserId))
             .Select(user => user.NotificationPreferences)
             .SingleOrDefaultAsync(cancellationToken);
         return currentPreference is not null &&
             IsEnabled(currentPreference, row.PreferenceKey);
     }
+
+    /// <summary>
+    /// Provider-safe recipient lookup. The strongly-typed <c>UserId</c> is
+    /// compared directly so the EF value-converter translates on PostgreSQL.
+    /// Member access such as <c>user.Id.Value</c> inside the query predicate is
+    /// not translatable and must not be reintroduced here. Both preference
+    /// reads (<see cref="DeliverAsync"/> and <see cref="IsChatPushEligibleAsync"/>)
+    /// compose this single query.
+    /// </summary>
+    public static IQueryable<User> RecipientUsers(IdentityDbContext identity, UserId recipientId) =>
+        identity.Users.AsNoTracking().Where(user => user.Id == recipientId);
 
     private static bool IsEnabled(NotificationPreferences preferences, string key) => key switch
     {

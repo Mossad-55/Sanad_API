@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Sanad.BuildingBlocks.Domain.Enums;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Domain.Users;
@@ -99,22 +101,45 @@ public sealed class CareHomeBookingNotificationProcessor(
         }
     }
 
-    private static async Task<List<Recipient>> ResolveRecipientsAsync(IdentityDbContext identity,
+    public static async Task<List<BookingRecipient>> ResolveRecipientsAsync(IdentityDbContext identity,
         CareHomeNotificationEvent eventType, Guid familyId, Guid ownerId, CancellationToken ct)
     {
         bool adminsOnly = eventType is CareHomeNotificationEvent.RefundFailed or CareHomeNotificationEvent.DisputeOpened;
         bool ownerOnly = eventType is CareHomeNotificationEvent.OwnerDecisionNeeded or CareHomeNotificationEvent.FamilyCancelledPaidBooking;
         if (adminsOnly)
-            return await identity.Users.AsNoTracking().Where(x => x.Status == UserStatus.Active &&
-                    x.Accounts.Any(a => a.AccountType == AccountType.SuperAdmin || a.AccountType == AccountType.SupportAdmin))
-                .Select(x => new Recipient(x.Id.Value, x.Email == null ? null : x.Email.Value, x.UiLanguage)).ToListAsync(ct);
+        {
+            var adminRows = await OperationalAdminRecipientRows(identity).ToListAsync(ct);
+            return adminRows.Select(x => new BookingRecipient(x.Id.Value, x.Email == null ? null : x.Email.Value, x.UiLanguage)).ToList();
+        }
 
-        Guid[] targets = eventType == CareHomeNotificationEvent.DisputeResolved
-            ? [familyId, ownerId]
-            : [ownerOnly ? ownerId : familyId];
-        return await identity.Users.AsNoTracking().Where(x => targets.Contains(x.Id.Value))
-            .Select(x => new Recipient(x.Id.Value, x.Email == null ? null : x.Email.Value, x.UiLanguage)).ToListAsync(ct);
+        UserId[] targets = eventType == CareHomeNotificationEvent.DisputeResolved
+            ? [new UserId(familyId), new UserId(ownerId)]
+            : [new UserId(ownerOnly ? ownerId : familyId)];
+        var rows = await TargetRecipientRows(identity, targets).ToListAsync(ct);
+        return rows.Select(x => new BookingRecipient(x.Id.Value, x.Email == null ? null : x.Email.Value, x.UiLanguage)).ToList();
     }
+
+    /// <summary>Recipient resolved for booking notifications.</summary>
+    public sealed record BookingRecipient(Guid Id, string? Email, UiLanguage UiLanguage);
+
+    /// <summary>Server-side recipient row with strongly-typed IDs.</summary>
+    public sealed record BookingRecipientRow(UserId Id, Email? Email, UiLanguage UiLanguage);
+
+    /// <summary>
+    /// Provider-safe recipient lookups. Strongly-typed IDs are compared and
+    /// projected directly so the EF value-converter translates on PostgreSQL;
+    /// the <c>.Value</c> unwrap happens client-side after materialization.
+    /// Member access such as <c>x.Id.Value</c> inside the query predicate is
+    /// not translatable and must not be reintroduced here.
+    /// </summary>
+    public static IQueryable<BookingRecipientRow> TargetRecipientRows(IdentityDbContext identity, UserId[] targets) =>
+        identity.Users.AsNoTracking().Where(x => targets.Contains(x.Id))
+            .Select(x => new BookingRecipientRow(x.Id, x.Email, x.UiLanguage));
+
+    public static IQueryable<BookingRecipientRow> OperationalAdminRecipientRows(IdentityDbContext identity) =>
+        identity.Users.AsNoTracking().Where(x => x.Status == UserStatus.Active &&
+                x.Accounts.Any(a => a.AccountType == AccountType.SuperAdmin || a.AccountType == AccountType.SupportAdmin))
+            .Select(x => new BookingRecipientRow(x.Id, x.Email, x.UiLanguage));
 
     private static (string Type, string TitleEn, string TitleAr, string BodyEn, string BodyAr) Copy(CareHomeNotificationEvent eventType, Guid bookingId) => eventType switch
     {
@@ -156,6 +181,4 @@ public sealed class CareHomeBookingNotificationProcessor(
         catch (DbUpdateException ex) when (ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation })
         { db.Entry(item).State = EntityState.Detached; }
     }
-
-    private sealed record Recipient(Guid Id, string? Email, UiLanguage UiLanguage);
 }
