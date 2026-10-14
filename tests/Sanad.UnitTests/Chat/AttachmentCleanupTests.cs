@@ -58,6 +58,27 @@ public sealed class AttachmentCleanupTests : IDisposable
             .GetRequiredService<ChatAttachmentCleanupService>());
     }
 
+    [Fact]
+    public async Task CleanupStorage_RejectsForeignAndEscapingKeys()
+    {
+        string foreignKey = $"private/medical-reports/{Guid.NewGuid():N}.pdf";
+        string foreignPath = ResolvePrivatePath(foreignKey);
+        Directory.CreateDirectory(Path.GetDirectoryName(foreignPath)!);
+        await File.WriteAllBytesAsync(foreignPath, [0x01, 0x02]);
+
+        IChatAttachmentCleanupStorage storage = CreateCleanupStorage();
+
+        Assert.Equal(
+            ChatAttachmentDeletionOutcome.Failed,
+            await storage.DeleteExpiredUnboundAsync(foreignKey, default));
+        Assert.Equal(
+            ChatAttachmentDeletionOutcome.Failed,
+            await storage.DeleteExpiredUnboundAsync(
+                "private/chat-attachments/../../private/medical-reports/protected.pdf",
+                default));
+        Assert.True(File.Exists(foreignPath));
+    }
+
     // ------------------------------------------------------------------
     // Sweep deletes expired unbound blobs + rows; keeps live/bound.
     // ------------------------------------------------------------------

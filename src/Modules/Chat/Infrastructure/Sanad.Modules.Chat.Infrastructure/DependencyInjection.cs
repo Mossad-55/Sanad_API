@@ -43,8 +43,15 @@ public static class ChatInfrastructure
                 serviceProvider.GetRequiredService<
                     ChatDbContext>());
 
-        services.Configure<ChatRateOptions>(
-            configuration.GetSection("ChatPlus:RateLimits"));
+        services.AddOptions<ChatRateOptions>()
+            .Bind(configuration.GetSection("ChatPlus:RateLimits"))
+            .Validate(
+                options => options.UnboundAttachmentLifetime > TimeSpan.Zero,
+                "ChatPlus:RateLimits:UnboundAttachmentLifetime must be positive.")
+            .Validate(
+                options => options.UnboundQuotaBytesPerUser > 0,
+                "ChatPlus:RateLimits:UnboundQuotaBytesPerUser must be positive.")
+            .ValidateOnStart();
 
         services.AddSingleton<IChatRateGate>(serviceProvider =>
             new InMemoryChatRateGate(
