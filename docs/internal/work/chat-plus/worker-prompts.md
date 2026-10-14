@@ -28,13 +28,15 @@ Prompts 5 deployment-preparation, 1 session/push security, and 2 storage cleanup
 work are integrated. Prompt 3's Care Homes processor translation correction is
 also integrated. Integrate each delivered branch before the next worker consumes
 its changes. Prompt 4 is optional: a
-browser testing page must not delay a safe staging deployment. Prompt 6 follows
-the authorized VPS release. Physical-device push proof is mandatory for the
+browser testing page must not delay a safe staging deployment. Prompt 6 hardens
+remaining pre-production processor predicates; Prompt 7 follows authorized VPS
+deployment. Physical-device push proof is mandatory for the
 production push claim, not for testing REST chat on an isolated staging VPS.
 
-The mastermind owns planning, review, integration, main push, final package
-publication and any separately authorized VPS deployment. Workers never merge
-or push main. Do not start all branches concurrently across shared auth/API/docs.
+The mastermind owns planning/review and any separately authorized VPS deployment.
+Workers do not make VPS changes. Follow the root governance's current main-branch
+instruction for worker tasks. Do not start overlapping changes across shared
+auth/API/docs.
 
 ## Prompt 1 — session authorization and final-send push privacy (completed)
 
@@ -97,7 +99,7 @@ concrete unresolved product/compatibility decision to the planning mastermind.
 This prompt is complete and integrated. Do not rerun it. The code includes a
 mastermind correction for production DI, validated sweep limits and path safety.
 The authored migration has not been applied. Staging filesystem/soak verification
-remains a Prompt 6/operator task. See `reports/storage-integration.md` and the
+remains a Prompt 7/operator task. See `reports/storage-integration.md` and the
 worker report at `../../../../reports/remaining-storage.md`. Prompt 3 is integrated.
 
 ```text
@@ -271,7 +273,55 @@ reports/remaining-vps-readiness.md, give base/final SHA and manifest. No merge/p
 main, VPS login/write, package deployment, migrations, seeding or provider sends.
 ```
 
-## Prompt 6 — post-deploy verification and developer/device handoff
+## Prompt 6 — recipient-query PostgreSQL translation hardening
+
+```text
+Work in D:\Sanad_API. Read AGENTS.md, docs/internal/governance/AGENTS.md,
+docs/internal/Mastermind_Handoff.md, Chat Plus tasks/handoff, and
+docs/internal/work/chat-plus/reports/processor-integration.md. Ignore Bruno
+entirely. Preserve all other changes. Work directly on current `main` per the
+repository's standing instruction; record the starting SHA and owned manifest.
+
+Goal: resolve and prevent the two concrete, unverified EF/Npgsql recipient
+predicate risks reported after Prompt 3:
+1. CareHomeBookingNotificationProcessor: targets.Contains(x.Id.Value)
+2. PushOutboxProcessor: user.Id.Value == row.RecipientUserId (both known sites)
+
+First inspect each exact production query and its callers. Reproduce current
+Npgsql SQL-generation behavior with ToQueryString() without opening a connection.
+Do not assume every .Value is defective: Prompt 3 established that typed-value
+projections can translate; the concern is member access inside the predicate.
+Correct only predicates proven untranslatable, using provider-safe strongly typed
+comparison/query composition and client-side unwrapping after materialization
+where needed. Preserve recipient selection, active/role rules, token eligibility,
+notification/push content, idempotency, ordering, batching, retries, privacy and
+failure behavior exactly. Do not touch CareHomeLicenseExpiryMonitor solely for
+its recipient projection; it is not a confirmed defect.
+
+Own only the two processor files, directly relevant focused tests, and a concise
+report/handoff update. Add Npgsql-provider translation regressions over the exact
+production query composition for every changed predicate (including both
+PushOutboxProcessor sites if both use it). These tests must generate SQL without
+connecting to PostgreSQL. Add focused mapping/selection tests for any changed
+client-side mapping; label InMemory as mapping coverage only, never PG proof.
+Do not run a test fixture that calls EnsureDeleted against the configured target.
+No API startup, live DB, migrations, provider sends, VPS work or deployment.
+
+Acceptance: query translation tests fail on the old query and pass on the fixed
+query; focused semantics tests preserve recipients and behavior; full solution
+build succeeds with zero warnings/errors; relevant focused tests and architecture
+tests pass; NuGet audit remains clear; git diff --check is clean. If a provider
+query cannot be proven, report the precise blocker rather than claiming it fixed.
+
+Update processor-integration.md, Chat Plus tasks/handoff, and this prompt status
+with exact base/final SHA, changed manifest, commands/counts, and limits. Work
+on current main per repository instructions, commit and push only the scoped
+implementation/docs, and report the exact pushed SHA. Do not deploy or perform
+live runtime verification. The mastermind reviews the change and owns the next
+release handoff.
+```
+
+## Prompt 7 — post-deploy verification and developer/device handoff
 
 ```text
 Read repository governance, the current Chat Plus plan/contracts/operations,
@@ -307,17 +357,18 @@ only created sessions and stopping only processes explicitly owned by the test.
 
 Return deployed SHA, exact scenarios/statuses, pass/fail/skip counts, fixture
 effects, device evidence, blockers and proposed correction manifest. If adding
-repo evidence use worker/chat-plus-vps-verification and commit only sanitized
-reports/remaining-vps-verification.md. No main merge/push or automatic code fixes.
+repo evidence, update only sanitized `reports/remaining-vps-verification.md` on
+current main per repository instructions. No automatic code fixes or unapproved
+runtime changes; return defects to the mastermind for a separate scope.
 ```
 
 ## Final mastermind deployment order (not authorized by these prompts)
 
-After reviewed branches are integrated, publish the exact clean pushed main
-using the corrected workflow. Confirm package SHA/migrations/no secrets. Obtain
+After Prompt 6 is reviewed and its clean main revision is pushed, publish that
+exact revision using the corrected workflow. Confirm package SHA/migrations/no secrets. Obtain
 the exact authorized VPS host, URL, service/port, environment, database and
 backup/restore boundary, plus startup migration/seed permission. Deploy only
-that artifact, verify remote revision/health/migration counts, then run Prompt 6.
+that artifact, verify remote revision/health/migration counts, then run Prompt 7.
 No default inference that the current live VPS/database is disposable.
 
 Do not describe this as gap-free until the readiness report and corresponding

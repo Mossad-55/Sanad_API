@@ -185,7 +185,11 @@ is authorized by issuing a code/documentation brief.
   projection alone as a proven defect.
 - [ ] Not started — Optional tester page or manual developer pack (Prompt 4).
   Page absence is not a staging-shipping blocker.
-- [ ] Blocked — Authorized VPS/runtime/device verification (Prompt 6): needs
+- [ ] Not started — Provider-safe recipient-query hardening (Prompt 6): verify
+  and fix the two known `.Value` EF predicates in CareHomeBookingNotificationProcessor
+  and PushOutboxProcessor with Npgsql translation regressions. No live DB needed;
+  see the copy-ready Prompt 6 in `worker-prompts.md`.
+- [ ] Blocked — Authorized VPS/runtime/device verification (Prompt 7): needs
   exact target/deployed artifact and permitted fixtures/provider tests. Physical
   mobile push proof remains separate from development REST-chat testing. This
   includes live session-revocation checks; automated evidence is not runtime proof.

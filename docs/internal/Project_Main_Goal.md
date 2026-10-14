@@ -12,8 +12,9 @@ integrated; see the Chat Plus handoff for current main SHA and evidence. The
 Chat cleanup index migration is authored only. Prompt 3's Care Homes processor
 translation fix is integrated at `a869bb0`; the Pkcs transitive dependency is
 pinned to patched `10.0.13` and the security audit is clear. Actual Staging/
-production deployment readiness remains open. Next: optional Prompt 4, then
-authorized Prompt 6.
+production deployment readiness remains open. Next: Prompt 6 recipient-query
+hardening; optional Prompt 4 may be skipped; authorized runtime verification is
+Prompt 7.
 
 ## Goal and priority
 

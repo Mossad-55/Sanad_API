@@ -20,7 +20,7 @@ tokens continue on non-Chat APIs until their 15-minute expiry. Mobile clients
 refresh once and retry the first legacy-token Chat 401 once; if refresh/retry
 fails, require sign-in without looping. Automated security evidence is recorded
 in [session-security integration](work/chat-plus/reports/session-security-integration.md);
-live verification remains for Prompt 6.
+live verification remains for Prompt 7.
 Prompt 2 (race-safe attachment cleanup/storage bounds) is integrated from
 `worker/chat-plus-storage`; current main implementation tip before this docs
 closeout is `8097edb`. Mastermind fixes cover required clock DI, cleanup option
@@ -50,7 +50,8 @@ Two sibling predicates remain a high-priority pre-production follow-up:
 translation is not yet proven. The license-expiry monitor has only a projection
 in the noted location, not a confirmed defect.
 Documentation closeout `aee2490` is pushed; local `main` and `origin/main` match.
-**Next:** optional Prompt 4 (may be skipped), then authorized Prompt 6.
+**Next:** Prompt 6 fixes/proves the two sibling recipient predicates; optional
+Prompt 4 may be skipped. Authorized deployment/runtime verification is Prompt 7.
 
 ## Previous Chat Plus integrated checkpoint — 2026-10-13
 

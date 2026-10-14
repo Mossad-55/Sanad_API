@@ -58,7 +58,8 @@ environment remains NOT READY until host/URL/service/test DB, secrets, backup/
 restore/startup effects and a fresh package are named/prepared and tested.
 Production remains NOT READY. CORS is excluded from both gap lists.
 Next worker: Prompt 1 on updated main. Prompts 2/3, optional Prompt 4, authorized
-deployment and Prompt 6 follow the previously agreed order.
+deployment and Prompt 7 follow the previously agreed order, after Prompt 6
+closes the remaining sibling query translation risks.
 
 References: [Microsoft proxy guidance](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-10.0),
 [systemd hosting](https://devblogs.microsoft.com/dotnet/net-core-and-systemd/).

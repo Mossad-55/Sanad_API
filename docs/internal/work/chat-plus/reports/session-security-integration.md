@@ -46,7 +46,7 @@ last database read and an external provider accepting a send.
 
 ## Still open
 
-Automated tests establish the code paths but not deployed behavior. Prompt 6 must
+Automated tests establish the code paths but not deployed behavior. Prompt 7 must
 verify session revocation through REST/hub, reconnect and dispatch behavior,
 push suppression with a safe test device/provider path, plus prior VPS/TLS,
 pricing-pool, mobile-device and other release gates. The worker noted that

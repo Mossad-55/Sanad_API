@@ -79,7 +79,7 @@ Final verification and merge/push evidence belong to
   AllowAnyOrigin/AllowAnyMethod/AllowAnyHeader by owner confirmation, not a gap.
 - Runtime verifier: session-bound token/auth invalidation and final-send push
   privacy have automated evidence, but no live API/DB/socket/device run has
-  verified them. Prompt 6 owns runtime verification.
+  verified them. Prompt 7 owns runtime verification.
 - Runtime verifier/operator: run the integrated cleanup against the authorized
   Staging filesystem, observe hourly sweep/permission behavior and backlog
   metrics, and complete a soak. The Chat index migration remains authored only
@@ -100,7 +100,7 @@ Voice excluded; single API instance only; do not claim production release-ready.
 Owner wants VPS development shipping prioritized and Bruno ignored entirely.
 [Worker prompts](worker-prompts.md) are ready: Prompts 5, 1, 2 and 3 are
 integrated; Prompt 4 is optional, then authorized deployment/runtime verification
-(Prompt 6).
+(Prompt 7), after Prompt 6 closes the two recipient query risks.
 Prepare a fresh package from clean pushed main at release time. Existing
 publish-out manifest is 41f9c91 (pre-Chat-Plus), not current main.
 Development VPS means isolated Staging/test database, not public Development.

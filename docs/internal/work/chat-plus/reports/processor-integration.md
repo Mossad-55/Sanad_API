@@ -63,7 +63,7 @@ was entirely ignored.
 
 - Optional Prompt 4 tester page/manual developer pack may be skipped; it is not
   a staging prerequisite.
-- Prompt 6 requires an explicitly authorized isolated VPS/test database,
+- Prompt 7 requires an explicitly authorized isolated VPS/test database,
   exact deployed artifact, backup/restore readiness and permitted fixture/provider
   checks. Staging and production remain NOT READY until their gates are evidenced.
 - High priority before production: resolve the confirmed predicate translation
