@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\Application\Sanad.Modules.Chat.Application\Sanad.Modules.Chat.Application.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Infrastructure\Sanad.BuildingBlocks.Infrastructure\Sanad.BuildingBlocks.Infrastructure.csproj" />
   </ItemGroup>
 
   <ItemGroup>

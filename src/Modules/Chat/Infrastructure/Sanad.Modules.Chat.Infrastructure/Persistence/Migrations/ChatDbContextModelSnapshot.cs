@@ -37,6 +37,7 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid");
 
                     b.Property<bool>("IsBound")
+                        .IsConcurrencyToken()
                         .HasColumnType("boolean");
 
                     b.Property<long>("SizeBytes")
@@ -59,6 +60,8 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("StorageKey")
                         .IsUnique();
+
+                    b.HasIndex("IsBound", "UploadedOnUtc");
 
                     b.ToTable("Attachments", "chat");
                 });
@@ -114,12 +117,12 @@ namespace Sanad.Modules.Chat.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("MessageId");
 
-                    b.HasIndex("PublishedOnUtc", "ConversationId", "Revision");
-
                     b.HasIndex("ConversationId", "Revision")
                         .IsUnique();
 
                     b.HasIndex("ConversationId", "MessageId", "Type");
+
+                    b.HasIndex("PublishedOnUtc", "ConversationId", "Revision");
 
                     b.ToTable("ChatChanges", "chat");
                 });

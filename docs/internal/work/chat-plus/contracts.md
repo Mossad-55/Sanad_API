@@ -132,7 +132,7 @@ boundary and renewal behavior. Expensive writes rejected before full buffering.
 | Hub inbound frame | 16 KiB | Reject/close oversized frame |
 | Typing refresh | 1/2s/user/conversation | Drop excessive hints |
 | Accepted heartbeat | 1/30s/connection | Drop excessive refresh |
-| Unbound attachments | 100 MiB/user; expires after 24h | Reject over quota; safe cleanup |
+| Unbound attachments | 100 MiB/user (all unbound bytes, expired or not, while their rows exist); expires after 24h | Reject over quota; safe cleanup |
 | Cleanup sweep | Every hour, max 100 objects/pass | Retry failures; never bound files |
 | Multipart request | 52 MiB total, one file; MP4 remains <=50 MiB | HTTP 413 over request limit |
 | Outbox attempts | 8; exponential 5s to 60min with jitter | Durable Failed + operator retry |
@@ -144,8 +144,14 @@ use a sliding 60-second/hour window (as indicated above), no reset burst at
 clock-minute boundaries; Retry-After is the earliest token/window release.
 Preserve Retry-After and avoid hidden-account/resource details. Quota binding
 and cleanup claims must be serialized with send: cleanup cannot delete a file
-that a concurrent transaction has bound. Expiry affects unbound uploads only;
-expired attachment sends return the generic attachment-not-found response.
+that a concurrent transaction has bound (implemented as a conditional
+`UPDATE … WHERE IsBound = FALSE` bind via the IsBound concurrency token plus a
+`SELECT … FOR UPDATE SKIP LOCKED` sweep claim and conditional delete).
+Expiry affects unbound uploads only; expired attachment sends return the
+generic attachment-not-found response. The quota counts every unbound row
+because a row exists exactly while its blob is physically occupied — expired
+bytes still count until the sweep physically deletes them, so successive
+logical expiry cycles cannot grow disk without bound.
 
 For compatibility retain the existing Support history array endpoint for
 conversations with at most 1,000 messages. Above that bound return 409 with

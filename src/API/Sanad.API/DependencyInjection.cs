@@ -627,6 +627,7 @@ public static class DependencyInjection
         services.AddScoped<ICareHomeOwnerFacilityLookup, ApiCareHomeOwnerFacilityLookup>();
         services.AddSingleton<IChatSyncCursorProtector, DataProtectionChatSyncCursorProtector>();
         services.AddHostedService<ChatPlus.ChatPlusDispatchService>();
+        services.AddHostedService<ChatPlus.ChatAttachmentCleanupHostedService>();
         services.Configure<Sanad.Modules.Chat.Application.Dispatch.ChatDispatchOptions>(
             configuration.GetSection("ChatPlus:Dispatch"));
 

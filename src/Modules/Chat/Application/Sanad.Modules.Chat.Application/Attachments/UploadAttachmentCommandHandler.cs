@@ -83,20 +83,20 @@ public sealed class UploadAttachmentCommandHandler
                 ChatRateErrors.Uploads(retryAfter));
         }
 
-        // Unbound-upload quota: live (non-expired) unbound bytes per user.
-        // Expired unbound uploads and bound history never count.
-        DateTime quotaNow = DateTime.UtcNow;
-        DateTime liveCutoff = quotaNow - _rateOptions.UnboundAttachmentLifetime;
-
-        long liveUnboundBytes = await _dbContext.Attachments
+        // Unbound-upload quota: ALL unbound bytes per user, expired or not.
+        // A DB row exists exactly while its blob is physically occupied (the
+        // orphan sweep deletes the row only after the blob is gone), so
+        // counting every unbound row bounds physical growth while deletion is
+        // pending or failing — successive logical expiry cycles cannot grow
+        // disk without bound. Bound history never counts.
+        long unboundBytes = await _dbContext.Attachments
             .Where(item =>
                 item.UploadedBy == request.Requester &&
-                !item.IsBound &&
-                item.UploadedOnUtc > liveCutoff)
+                !item.IsBound)
             .SumAsync(item => (long?)item.SizeBytes, cancellationToken)
             ?? 0;
 
-        if (liveUnboundBytes + request.Length > _rateOptions.UnboundQuotaBytesPerUser)
+        if (unboundBytes + request.Length > _rateOptions.UnboundQuotaBytesPerUser)
         {
             return Result<AttachmentUploadResponse>.Failure(
                 AttachmentErrors.QuotaExceeded);

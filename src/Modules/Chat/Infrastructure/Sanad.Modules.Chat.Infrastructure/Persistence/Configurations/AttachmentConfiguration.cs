@@ -26,12 +26,24 @@ public class AttachmentConfiguration : IEntityTypeConfiguration<Attachment>
         builder.Property(e => e.SizeBytes).IsRequired();
         builder.Property(e => e.UploadedOnUtc)
             .HasColumnType("timestamp with time zone");
-        builder.Property(e => e.IsBound).IsRequired();
+        // Bind-vs-cleanup exclusion: the send's change-tracking UPDATE only
+        // matches while the row is still unbound, so a racing orphan sweep
+        // that claimed (locked) the row first makes this UPDATE affect 0 rows
+        // and surface DbUpdateConcurrencyException instead of silently leaving
+        // a message bound to a deleted blob. InMemory ignores the token (no
+        // race to prove there); PostgreSQL enforces it.
+        builder.Property(e => e.IsBound)
+            .IsConcurrencyToken()
+            .IsRequired();
         builder.Ignore(e => e.DomainEvents);
         builder.HasOne<Conversation>()
             .WithMany()
             .HasForeignKey(e => e.ConversationId)
             .OnDelete(DeleteBehavior.Cascade);
         builder.HasIndex(e => e.StorageKey).IsUnique();
+
+        // Orphan-sweep claim query: (IsBound, UploadedOnUtc) with the
+        // StorageKey/SizeBytes payload covered by the row.
+        builder.HasIndex(e => new { e.IsBound, e.UploadedOnUtc });
     }
 }

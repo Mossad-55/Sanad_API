@@ -360,6 +360,15 @@ public sealed class SendMessageCommandHandler
             {
                 await _dbContext.SaveChangesAsync(cancellationToken);
             }
+            catch (DbUpdateConcurrencyException exception) when (
+                exception.Entries.Any(entry => entry.Entity is Attachment))
+            {
+                // A racing orphan sweep claimed (locked) the attachment first:
+                // the conditional UPDATE matched 0 rows and the message insert
+                // rolled back with it. No message references a deleted blob.
+                return Result<SendMessageResponse>.Failure(
+                    AttachmentErrors.NotFound);
+            }
             catch (DbUpdateException exception) when (
                 ChatPersistenceConflicts.IsUniqueViolation(exception))
             {
@@ -408,19 +417,34 @@ public sealed class SendMessageCommandHandler
                 await _dbContext.SaveChangesAsync(cancellationToken);
                 break;
             }
-            catch (DbUpdateConcurrencyException) when (
-                context is not null &&
-                attempt + 1 < ChatPersistenceConflicts.MaxRevisionRetryAttempts)
+            catch (DbUpdateConcurrencyException exception) when (context is not null)
             {
-                // A concurrent writer consumed the revision first. Detach
-                // staged rows, reload the authoritative revision, and
-                // re-stage (recorder is duplicate-safe); the message and the
-                // bound attachment stay tracked exactly once.
-                ChatPersistenceConflicts.DetachAdded<ChatChange>(context);
-                ChatPersistenceConflicts.DetachAdded<Domain.Outbox.ChatOutboxItem>(context);
-                await context.Entry(conversation).ReloadAsync(cancellationToken);
-                conversation.UpdateLastActivity(now);
-                _recorder.RecordMessageCreated(conversation, message, recipient, now);
+                // A racing orphan sweep claimed (locked) the attachment first,
+                // or a concurrent send bound it: the conditional UPDATE matched
+                // 0 rows and the message insert rolled back with it. No message
+                // references a blob the sweep deleted.
+                if (exception.Entries.Any(entry => entry.Entity is Attachment))
+                {
+                    return Result<SendMessageResponse>.Failure(
+                        AttachmentErrors.NotFound);
+                }
+
+                if (attempt + 1 < ChatPersistenceConflicts.MaxRevisionRetryAttempts)
+                {
+                    // A concurrent writer consumed the revision first. Detach
+                    // staged rows, reload the authoritative revision, and
+                    // re-stage (recorder is duplicate-safe); the message and the
+                    // bound attachment stay tracked exactly once.
+                    ChatPersistenceConflicts.DetachAdded<ChatChange>(context);
+                    ChatPersistenceConflicts.DetachAdded<Domain.Outbox.ChatOutboxItem>(context);
+                    await context.Entry(conversation).ReloadAsync(cancellationToken);
+                    conversation.UpdateLastActivity(now);
+                    _recorder.RecordMessageCreated(conversation, message, recipient, now);
+                }
+                else
+                {
+                    throw;
+                }
             }
             catch (DbUpdateException exception) when (
                 ChatPersistenceConflicts.IsUniqueViolation(exception))

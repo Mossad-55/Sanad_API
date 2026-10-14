@@ -32,7 +32,8 @@ without a code change.
 
 | Section | Selected keys (defaults) |
 |---|---|
-| `ChatPlus:RateLimits` | Sends 60/min/user + 30/min/user/conversation; opens 30/min/user; uploads 10/min/user + 2 concurrent/user; reports 5/hour/user; sync 60/min/conversation + 300/min/user; negotiate 30/min/user; unbound quota 100 MiB/user; unbound lifetime 24 h |
+| `ChatPlus:RateLimits` | Sends 60/min/user + 30/min/user/conversation; opens 30/min/user; uploads 10/min/user + 2 concurrent/user; reports 5/hour/user; sync 60/min/conversation + 300/min/user; negotiate 30/min/user; unbound quota 100 MiB/user (all unbound bytes, expired or not); unbound lifetime 24 h |
+| `ChatPlus:AttachmentCleanup` | Sweep every 1 h; max 100 objects/pass |
 | `ChatPlus:Dispatch` | Batch 100; 8 attempts; base delay 5 s, max 60 min, jittered; stale claim 5 min |
 | `ChatPlus:Deployment` | `InstanceCount = 1`, `BackplaneConfigured = false` |
 | SignalR | Inbound frame budget 16 KiB; JWT `?access_token=` accepted on `/hubs/chat` only |
@@ -55,20 +56,37 @@ account/resource details.
   rows park **unpublished with their error code** for operator retry: reset
   `NextAttemptOnUtc` to requeue. Stale claims (> 5 min) are reclaimed after a
   crash — no manual cleanup is needed for dispatcher recovery.
-- There is **no attachment orphan sweep worker** in this package. Expiry is
-  enforced lazily: expired unbound uploads are excluded from the 100 MiB quota
-  and a send binding an expired unbound upload reads as `404`. Bound messages,
-  history, and moderation evidence never expire. Physical deletion of expired
-  blobs needs a future worker (open item — see plan section 4); until it
-  exists, monitor unbound storage growth per user.
+- `ChatAttachmentCleanupHostedService` runs the orphan sweep every **hour**
+  (`ChatPlus:AttachmentCleanup:SweepInterval`, default 1 h) in a fresh scope.
+  Each pass claims at most **100 objects** (`ChatPlus:AttachmentCleanup:BatchSize`)
+  that are unbound and older than the 24 h unbound lifetime
+  (`ChatPlus:RateLimits:UnboundAttachmentLifetime`), deletes their blobs below
+  the private Chat-attachment root, then deletes the rows. A crash between the
+  blob delete and the row delete is recovered on the next pass (the row is
+  still there; the blob is already gone and treated as missing). A failed blob
+  delete keeps its row for the next pass; bound files, messages, reports,
+  general uploads, and directories are never touched.
+- Bind-vs-cleanup exclusion is atomic: the sweep claims rows with
+  `SELECT … FOR UPDATE SKIP LOCKED` and deletes them with a conditional
+  `DELETE … WHERE IsBound = FALSE`; the send binds with a conditional
+  `UPDATE … WHERE IsBound = FALSE` (IsBound concurrency token). A file bound
+  to a message is never deleted by a racing sweep, and a file the sweep
+  claimed is never silently bound (the send fails with the generic
+  attachment-not-found 404).
+- Unbound-upload quota counts **all** unbound bytes per user (expired or not)
+  against the 100 MiB limit (`ChatPlus:RateLimits:UnboundQuotaBytesPerUser`).
+  A DB row exists exactly while its blob is physically occupied, so the quota
+  bounds physical growth while deletion is pending or failing. Bound history
+  never counts. Expired unbound uploads still read as `404` on send.
 
 ## Health and monitoring (no PII / no message payloads)
 
 Watch, at minimum: dispatch backlog age, unpublished/parked outbox counts and
 their error codes, retry/failure rates, sync latency and query cost, active
 SignalR connections, rejected joins, rate-limit hit counters (sanitized),
-unbound-upload bytes per user, and provider delivery/configuration health
-exposed by the push outbox. Application, proxy, and APM logs must redact
+unbound-upload bytes per user, orphan-sweep backlog (expired unbound count +
+bytes) and per-pass deleted/failure counts, and provider delivery/configuration
+health exposed by the push outbox. Application, proxy, and APM logs must redact
 `access_token`, connection tokens, `Authorization` headers, and message
 payloads. Push data, metrics, and logs never carry message text or location.
 
