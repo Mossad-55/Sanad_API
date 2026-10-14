@@ -1,6 +1,8 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Sanad.BuildingBlocks.Domain.Enums;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Domain.Users;
@@ -56,19 +58,48 @@ public sealed class CareHomeReviewNotificationProcessor(
         Guid facilityId, Guid ownerId, string eventKey, string action, DateTime occurredOnUtc,
         bool notifyAdmins, CancellationToken ct)
     {
-        var owners = await identity.Users.AsNoTracking().Where(x => x.Id.Value == ownerId)
-            .Select(x => new { Id = x.Id.Value, Email = x.Email == null ? null : x.Email.Value, x.UiLanguage }).ToListAsync(ct);
-        foreach (var owner in owners)
+        foreach (var owner in await FindOwnerRecipientsAsync(identity, new UserId(ownerId), ct))
             await WriteRecipientAsync(notifications, owner.Id, owner.Email, owner.UiLanguage,
                 facilityId, eventKey, action, occurredOnUtc, ct);
 
         if (!notifyAdmins) return;
-        var admins = await identity.Users.AsNoTracking().Where(x => x.Status == UserStatus.Active &&
-                x.Accounts.Any(a => a.AccountType == AccountType.SuperAdmin || a.AccountType == AccountType.SupportAdmin))
-            .Select(x => new { Id = x.Id.Value, Email = x.Email == null ? null : x.Email.Value, x.UiLanguage }).ToListAsync(ct);
-        foreach (var admin in admins)
+        foreach (var admin in await FindOperationalAdminRecipientsAsync(identity, ct))
             await WriteRecipientAsync(notifications, admin.Id, admin.Email, admin.UiLanguage,
                 facilityId, eventKey, action, occurredOnUtc, ct);
+    }
+
+    /// <summary>Recipient resolved for review notifications.</summary>
+    public sealed record ReviewRecipient(Guid Id, string? Email, UiLanguage UiLanguage);
+
+    /// <summary>Server-side recipient row with strongly-typed IDs.</summary>
+    public sealed record ReviewRecipientRow(UserId Id, Email? Email, UiLanguage UiLanguage);
+
+    /// <summary>
+    /// Provider-safe recipient lookups. Strongly-typed IDs are compared and
+    /// projected directly so the EF value-converter translates on PostgreSQL;
+    /// the <c>.Value</c> unwrap happens client-side after materialization.
+    /// Member access such as <c>x.Id.Value</c> inside the query predicate is
+    /// not translatable and must not be reintroduced here.
+    /// </summary>
+    public static IQueryable<ReviewRecipientRow> OwnerRecipientRows(IdentityDbContext identity, UserId ownerId) =>
+        identity.Users.AsNoTracking().Where(x => x.Id == ownerId)
+            .Select(x => new ReviewRecipientRow(x.Id, x.Email, x.UiLanguage));
+
+    public static IQueryable<ReviewRecipientRow> OperationalAdminRecipientRows(IdentityDbContext identity) =>
+        identity.Users.AsNoTracking().Where(x => x.Status == UserStatus.Active &&
+                x.Accounts.Any(a => a.AccountType == AccountType.SuperAdmin || a.AccountType == AccountType.SupportAdmin))
+            .Select(x => new ReviewRecipientRow(x.Id, x.Email, x.UiLanguage));
+
+    public static async Task<List<ReviewRecipient>> FindOwnerRecipientsAsync(IdentityDbContext identity, UserId ownerId, CancellationToken ct)
+    {
+        var rows = await OwnerRecipientRows(identity, ownerId).ToListAsync(ct);
+        return rows.Select(x => new ReviewRecipient(x.Id.Value, x.Email == null ? null : x.Email.Value, x.UiLanguage)).ToList();
+    }
+
+    public static async Task<List<ReviewRecipient>> FindOperationalAdminRecipientsAsync(IdentityDbContext identity, CancellationToken ct)
+    {
+        var rows = await OperationalAdminRecipientRows(identity).ToListAsync(ct);
+        return rows.Select(x => new ReviewRecipient(x.Id.Value, x.Email == null ? null : x.Email.Value, x.UiLanguage)).ToList();
     }
 
     private static async Task WriteRecipientAsync(NotificationsDbContext db, Guid userId, string? email,
