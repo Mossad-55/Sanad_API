@@ -58,7 +58,8 @@ unchanged per the owner's explicit instruction; Bruno was entirely ignored.
 ## Prompt 6 — recipient-query hardening — 2026-10-14
 
 Worked directly on `main` per the standing instruction. Starting SHA `0f625e6`
-(clean tree, matching `origin/main`); final pushed SHA recorded at closeout below.
+(clean tree, matching `origin/main`); implementation commit `ba48afb`, pushed to
+`origin/main` as `0f625e6..ba48afb` (this SHA-record commit follows docs-only).
 
 Owned manifest (only these files changed):
 
