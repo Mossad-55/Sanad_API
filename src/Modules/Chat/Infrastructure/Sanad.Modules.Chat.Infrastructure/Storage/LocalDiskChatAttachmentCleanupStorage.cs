@@ -51,10 +51,10 @@ public sealed class LocalDiskChatAttachmentCleanupStorage
             return Task.FromResult(ChatAttachmentDeletionOutcome.Failed);
         }
 
-        string fullPath = ResolvePrivatePath(normalizedKey);
-
         try
         {
+            string fullPath = ResolvePrivatePath(normalizedKey);
+
             if (!File.Exists(fullPath))
             {
                 return Task.FromResult(ChatAttachmentDeletionOutcome.Missing);
@@ -72,13 +72,26 @@ public sealed class LocalDiskChatAttachmentCleanupStorage
 
     private string ResolvePrivatePath(string normalizedKey)
     {
-        string root = _options.GetEffectiveRootPath()
-            .TrimEnd(
-                Path.DirectorySeparatorChar,
-                Path.AltDirectorySeparatorChar) + "-private";
-
-        return Path.Combine(
+        string root = Path.GetFullPath(
+            _options.GetEffectiveRootPath()
+                .TrimEnd(
+                    Path.DirectorySeparatorChar,
+                    Path.AltDirectorySeparatorChar) + "-private");
+        string fullPath = Path.GetFullPath(Path.Combine(
             root,
-            normalizedKey.Replace('/', Path.DirectorySeparatorChar));
+            normalizedKey.Replace('/', Path.DirectorySeparatorChar)));
+        string relativePath = Path.GetRelativePath(root, fullPath);
+
+        if (Path.IsPathRooted(relativePath) ||
+            relativePath == ".." ||
+            relativePath.StartsWith(
+                ".." + Path.DirectorySeparatorChar,
+                StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException(
+                "Chat attachment cleanup key resolves outside private storage.");
+        }
+
+        return fullPath;
     }
 }

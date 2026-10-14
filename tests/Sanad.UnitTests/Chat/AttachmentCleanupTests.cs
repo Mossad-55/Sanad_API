@@ -1,10 +1,15 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Sanad.BuildingBlocks.Infrastructure.Storage;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Attachments;
 using Sanad.Modules.Chat.Application.RateLimiting;
 using Sanad.Modules.Chat.Domain.Attachments;
 using Sanad.Modules.Chat.Domain.Conversations;
+using Sanad.Modules.Chat.Infrastructure;
 using Sanad.Modules.Chat.Infrastructure.Attachments;
 using Sanad.Modules.Chat.Infrastructure.Persistence;
 using Sanad.Modules.Chat.Infrastructure.Storage;
@@ -28,6 +33,30 @@ public sealed class AttachmentCleanupTests : IDisposable
     private readonly string _storageRoot = Path.Combine(
         Path.GetTempPath(),
         $"chat-cleanup-test-{Guid.NewGuid():N}");
+
+    [Fact]
+    public void CleanupService_ResolvesFromProductionChatInfrastructureRegistration()
+    {
+        IConfiguration configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:ChatDatabase"] =
+                    "Host=localhost;Database=chat_cleanup_di_test;Username=test;Password=test"
+            })
+            .Build();
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.Configure<LocalStorageOptions>(
+            configuration.GetSection(LocalStorageOptions.SectionName));
+        services.AddChatInfrastructure(configuration);
+
+        using ServiceProvider provider = services.BuildServiceProvider(
+            validateScopes: true);
+        using IServiceScope scope = provider.CreateScope();
+
+        Assert.NotNull(scope.ServiceProvider
+            .GetRequiredService<ChatAttachmentCleanupService>());
+    }
 
     // ------------------------------------------------------------------
     // Sweep deletes expired unbound blobs + rows; keeps live/bound.

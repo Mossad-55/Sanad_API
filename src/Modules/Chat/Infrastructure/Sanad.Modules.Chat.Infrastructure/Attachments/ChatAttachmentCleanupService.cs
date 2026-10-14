@@ -123,8 +123,7 @@ public sealed class ChatAttachmentCleanupService
                 if (outcome == ChatAttachmentDeletionOutcome.Failed)
                 {
                     _logger.LogWarning(
-                        "Chat attachment orphan sweep failed to delete blob for attachment {AttachmentId}; the row is kept for the next pass.",
-                        row.Id);
+                        "Chat attachment orphan sweep could not delete one blob; its row is kept for the next pass.");
                 }
 
                 blobResults.Add((row, outcome));
@@ -243,7 +242,7 @@ public sealed class ChatAttachmentCleanupService
             return await _dbContext.SaveChangesAsync(cancellationToken);
         }
 
-        object?[] parameters = [ids.ToArray()];
+        object[] parameters = [ids.ToArray()];
 
         return await relational.Database.ExecuteSqlRawAsync(
             """

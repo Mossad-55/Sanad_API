@@ -19,6 +19,7 @@ namespace Sanad.API.ChatPlus;
 /// </summary>
 public sealed class ChatAttachmentCleanupHostedService(
     IServiceScopeFactory scopeFactory,
+    IOptions<ChatAttachmentCleanupOptions> cleanupOptions,
     ILogger<ChatAttachmentCleanupHostedService> logger) : BackgroundService
 {
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -38,13 +39,7 @@ public sealed class ChatAttachmentCleanupHostedService(
 
             try
             {
-                ChatAttachmentCleanupOptions options = scopeFactory
-                    .CreateAsyncScope()
-                    .ServiceProvider
-                    .GetRequiredService<IOptions<ChatAttachmentCleanupOptions>>()
-                    .Value;
-
-                await Task.Delay(options.SweepInterval, stoppingToken);
+                await Task.Delay(cleanupOptions.Value.SweepInterval, stoppingToken);
             }
             catch (OperationCanceledException)
             {

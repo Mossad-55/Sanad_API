@@ -62,8 +62,20 @@ public static class ChatInfrastructure
         services.AddScoped<ChatAttachmentCleanupService>();
         services.AddScoped<IChatAttachmentCleanupMetrics,
             ChatAttachmentCleanupMetrics>();
-        services.Configure<ChatAttachmentCleanupOptions>(
-            configuration.GetSection(ChatAttachmentCleanupOptions.SectionName));
+        services.AddOptions<ChatAttachmentCleanupOptions>()
+            .Bind(configuration.GetSection(ChatAttachmentCleanupOptions.SectionName))
+            .Validate(
+                options => options.SweepInterval > TimeSpan.Zero,
+                "ChatPlus:AttachmentCleanup:SweepInterval must be positive.")
+            .Validate(
+                options => options.BatchSize is >= 1 and <= 100,
+                "ChatPlus:AttachmentCleanup:BatchSize must be between 1 and 100.")
+            .ValidateOnStart();
+
+        // Required by the cleanup service's pinned-clock seam. Register the
+        // production clock explicitly; Microsoft DI does not synthesize
+        // Func<T> registrations for required constructor parameters.
+        services.AddSingleton<Func<DateTime>>(() => DateTime.UtcNow);
 
         return services;
     }
