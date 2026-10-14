@@ -44,14 +44,20 @@ translation regression 5/5, architecture 1/1, NuGet audit reports no vulnerable
 API packages. The configured identity PostgreSQL fixture calls `EnsureDeleted`;
 it was not run. No live PostgreSQL/API, migration, provider, VPS, or deployment
 action occurred. Evidence: [processor integration](work/chat-plus/reports/processor-integration.md).
-Two sibling predicates remain a high-priority pre-production follow-up:
-`CareHomeBookingNotificationProcessor` uses `targets.Contains(x.Id.Value)` and
-`PushOutboxProcessor` uses `user.Id.Value == row.RecipientUserId`; exact Npgsql
-translation is not yet proven. The license-expiry monitor has only a projection
-in the noted location, not a confirmed defect.
-Documentation closeout `aee2490` is pushed; local `main` and `origin/main` match.
-**Next:** Prompt 6 fixes/proves the two sibling recipient predicates; optional
-Prompt 4 may be skipped. Authorized deployment/runtime verification is Prompt 7.
+Prompt 6 is complete at pushed `c29339b`: the two sibling predicates were
+proven untranslatable by
+Npgsql and fixed with typed ID comparisons; focused regressions pass. The
+license-expiry monitor has a projection only, not a confirmed defect. Final
+mastermind gates on the `c29339b` tree plus a test-fixture null-dispose fix:
+build zero warnings/errors; Unit 3,120 passed, 0 failed, 8 skipped (5 PG
+integration cases; 3 existing Families skips); Architecture 1/1. The configured DB variables
+were blanked for that test process; no DB/API/VPS/provider operation occurred.
+The skip-path fixture null-dispose issue was corrected in the test harness.
+Documentation/current release gaps are in
+[processor integration](work/chat-plus/reports/processor-integration.md).
+**Next:** obtain owner-approved exact staging target and backup/restore boundary,
+then build and deploy a fresh package from clean pushed main. Prompt 4 is optional;
+Prompt 7 verifies the deployed target after authorization.
 
 ## Previous Chat Plus integrated checkpoint — 2026-10-13
 

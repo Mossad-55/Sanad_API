@@ -25,12 +25,10 @@ Staging startup applies all pending module migrations including Finance, so
 host/database/backup authorization is necessary even for a test deployment.
 
 Prompts 5 deployment-preparation, 1 session/push security, and 2 storage cleanup
-work are integrated. Prompt 3's Care Homes processor translation correction is
-also integrated. Integrate each delivered branch before the next worker consumes
-its changes. Prompt 4 is optional: a
-browser testing page must not delay a safe staging deployment. Prompt 6 hardens
-remaining pre-production processor predicates; Prompt 7 follows authorized VPS
-deployment. Physical-device push proof is mandatory for the
+work are integrated. Prompt 3's Care Homes processor translation correction and
+Prompt 6's sibling query hardening are also complete. Prompt 4 is optional: a
+browser testing page must not delay a safe staging deployment. Prompt 7 follows
+authorized VPS deployment. Physical-device push proof is mandatory for the
 production push claim, not for testing REST chat on an isolated staging VPS.
 
 The mastermind owns planning/review and any separately authorized VPS deployment.
@@ -369,8 +367,8 @@ runtime changes; return defects to the mastermind for a separate scope.
 
 ## Final mastermind deployment order (not authorized by these prompts)
 
-After Prompt 6 is reviewed and its clean main revision is pushed, publish that
-exact revision using the corrected workflow. Confirm package SHA/migrations/no secrets. Obtain
+With Prompt 6 complete, publish a fresh package from the exact clean pushed main
+revision using the corrected workflow. Confirm package SHA/migrations/no secrets. Obtain
 the exact authorized VPS host, URL, service/port, environment, database and
 backup/restore boundary, plus startup migration/seed permission. Deploy only
 that artifact, verify remote revision/health/migration counts, then run Prompt 7.

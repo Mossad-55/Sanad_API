@@ -128,5 +128,35 @@ Verification on `main` (no API startup, live DB, migration, provider send, VPS o
   PostgreSQL execution remains unauthenticated and unrun; do not claim live
   dispatch proof. Do not infer failure solely from
   `CareHomeLicenseExpiryMonitor`'s `.Value` projection.
-- Final handoff verifies the pushed `origin/main` revision after the Prompt 6
-  commit is pushed.
+- Prompt 6 report SHA `c29339b` was verified as the pushed `origin/main` before
+  this separate mastermind closeout commit.
+
+## Mastermind final audit — 2026-10-14
+
+Reviewed Prompt 6 on pushed `main` at `c29339b` (worker SHA-record commit;
+implementation is `ba48afb`). Starting from that tree, I fixed the identity
+test fixture's null-dispose when PostgreSQL tests skip. Re-ran the full solution build with
+`/p:TreatWarningsAsErrors=true`: 0 warnings, 0 errors. Ran the full Unit suite
+with `ConnectionStrings__IdentityIntegrationDatabase` and
+`ConnectionStrings__FamiliesIntegrationDatabase` blanked for the test process
+only, so all PostgreSQL integration cases were skipped and no configured
+database could be reset: 3,120 passed, 0 failed, 8 skipped. Of the skips, 5 are
+PostgreSQL integration cases (2 Identity, 3 Chat); 3 are existing Families
+skips (2 legacy conflict-mapping facts and 1 legacy concurrency fact). Architecture
+passed 1/1. `git diff --check` passed.
+
+The first full-suite run exposed a harness-only null-dispose error when the
+Identity PostgreSQL fixture correctly skipped initialization without a target.
+`LocalPostgresIdentityFixture.DisposeAsync` is now null-safe. The full suite was
+rerun after the fix and exited cleanly without fixture cleanup errors. This
+test-only correction does not change application behavior. No database
+connection, API startup, migration, provider, VPS or deployment action occurred.
+
+Code and automated test gates are green. Environment readiness remains open:
+there is no named/authorized staging host, URL/service/port, isolated DB,
+host-injected secrets/settings, verified backup/restore boundary, or fresh
+publish package from final `main`. Prompt 4 is optional. Prompt 7 is deployment
+runtime/device verification and must wait for exact-target authorization.
+Production-only evidence still open includes Android/iPhone push, paid-pool API
+versus SQL equality, edge TLS/WebSocket checks, live session revocation, and
+attachment-cleanup observation/soak. No production-ready claim is made.

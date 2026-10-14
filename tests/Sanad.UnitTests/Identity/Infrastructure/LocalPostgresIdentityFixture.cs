@@ -50,6 +50,9 @@ public sealed class LocalPostgresIdentityFixture :
 
     public async Task DisposeAsync()
     {
-        await DbContext.DisposeAsync();
+        if (DbContext is not null)
+        {
+            await DbContext.DisposeAsync();
+        }
     }
 }

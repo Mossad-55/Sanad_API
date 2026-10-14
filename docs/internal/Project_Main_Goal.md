@@ -10,11 +10,14 @@ status/next action. Owner-confirmed CORS stays unchanged and is not a gap.
 Prompts 1 (session security) and 2 (physical orphan cleanup/storage bounds) are
 integrated; see the Chat Plus handoff for current main SHA and evidence. The
 Chat cleanup index migration is authored only. Prompt 3's Care Homes processor
-translation fix is integrated at `a869bb0`; the Pkcs transitive dependency is
-pinned to patched `10.0.13` and the security audit is clear. Actual Staging/
-production deployment readiness remains open. Next: Prompt 6 recipient-query
-hardening; optional Prompt 4 may be skipped; authorized runtime verification is
-Prompt 7.
+translation fixes are integrated through Prompt 6 on pushed main; the Pkcs
+transitive dependency is pinned to patched `10.0.13` and the security audit is
+clear. Final automated gates: build 0 warnings/errors; Unit 3,120 passed,
+8 skipped (5 PG integration cases, 3 existing Families skips); Architecture 1/1.
+Actual Staging/production environment
+readiness remains open. Prompt 4 is optional. Next: name/authorize the isolated
+staging target and backup boundary, publish a fresh package from final main,
+deploy only after approval, then run Prompt 7.
 
 ## Goal and priority
 

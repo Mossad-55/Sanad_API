@@ -113,14 +113,15 @@ Every unresolved target/environment/secret/device dependency:
   recorded rollback-compatibility decision. Required before any deployment;
   application rollback alone cannot undo database changes; no lossy
   down-migrations on populated data.
-- Runtime proof (post-deploy, separate authorization): Prompt-6 verification
+- Runtime proof (post-deploy, separate authorization): Prompt-7 verification
   run; Firebase/APNs + physical Android/iPhone delivery matrix
   (owner/mobile team); N≥5 Hourly + N≥5 EightHour paid-pool API-vs-SQL
   equality (backend verifier); edge TLS/WebSocket/origin/limit validation
   (operator). None run here.
-- Session-bound tokens, physical orphan cleanup, and the Care Homes
-  processor fix remain with Prompts 1–3 and are not staging blockers per the
-  owner direction; device push proof is not a staging-REST-chat blocker.
+- Session-bound tokens, physical orphan cleanup, and both Care Homes processor
+  translation fixes are implemented in Prompts 1–3/6 with automated evidence;
+  deployed behavior is checked under Prompt 7. Device push proof is not a
+  staging REST-chat blocker, but is required before claiming production push.
 
 Staging startup will apply all pending module migrations including Finance
 and invoke the startup seeders per `docs/internal/operations/vps/staging.md`

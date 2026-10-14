@@ -145,9 +145,9 @@ Reports expected after implementation:
 
 ## Remaining shipping tasks — owner direction
 
-Mastermind owns planning/review/integration/main push. Run workers sequentially
-on their own branches; integrate each before dependent work. No VPS deployment
-is authorized by issuing a code/documentation brief.
+Mastermind owns planning/review and the release handoff. Work directly on `main`
+per current repository governance, one worker at a time. No VPS deployment is
+authorized by issuing a code/documentation brief.
 
 - [x] Done — Priority VPS preparation implementation (Prompt 5): delivered tip
   3c9918d from base 1120434, corrected in 64d372e and integrated into main
@@ -194,6 +194,10 @@ is authorized by issuing a code/documentation brief.
   excluding the destructive PG fixture 704/704; ChatPlus 72/72; architecture 1/1;
   NuGet audit clear; diff clean. `CareHomeLicenseExpiryMonitor` projection-only
   smell deliberately untouched. See [processor integration](reports/processor-integration.md).
+  Final full-suite closeout: solution build 0 warnings/errors; Unit 3,120 passed,
+  0 failed, 8 skipped (5 PG integration cases; 3 existing Families skips);
+  Architecture 1/1. DB target variables were blank only in the test process. A
+  skipped-fixture null-dispose was fixed in the test harness; rerun had no cleanup error.
 - [ ] Blocked — Authorized VPS/runtime/device verification (Prompt 7): needs
   exact target/deployed artifact and permitted fixtures/provider tests. Physical
   mobile push proof remains separate from development REST-chat testing. This
