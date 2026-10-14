@@ -50,9 +50,14 @@ second high-severity advisory is reported by NuGet as cleared at that version.
 No full unit suite, live PostgreSQL dispatch, API startup, migration, provider
 send, VPS operation or deployment was performed. This fix does not establish
 runtime delivery health. Sibling typed-ID query smells in `CareHomeBookingNotificationProcessor`,
-`PushOutboxProcessor`, and `CareHomeLicenseExpiryMonitor` remain out of scope and
-should be reviewed as a separate bounded slice. CORS remains unchanged per the
-owner's explicit instruction; Bruno was entirely ignored.
+and `PushOutboxProcessor` include `.Value` access inside recipient predicates
+(`targets.Contains(x.Id.Value)` and `user.Id.Value == row.RecipientUserId`);
+these are confirmed unverified Npgsql translation risks and should be fixed or
+provider-probed before production release. `CareHomeLicenseExpiryMonitor` has
+`.Value` in its recipient projection, not a predicate; the worker's report
+doesn't establish that as a defect, and projections translated in the repaired
+processor. CORS remains unchanged per the owner's explicit instruction; Bruno
+was entirely ignored.
 
 ## Remaining work / handoff
 
@@ -61,8 +66,10 @@ owner's explicit instruction; Bruno was entirely ignored.
 - Prompt 6 requires an explicitly authorized isolated VPS/test database,
   exact deployed artifact, backup/restore readiness and permitted fixture/provider
   checks. Staging and production remain NOT READY until their gates are evidenced.
-- Before closing the sibling processor risk, inspect exact Npgsql query shapes
-  and add provider translation regressions; do not infer failure solely from
-  `.Value` projections, which translated in this fix.
+- High priority before production: resolve the confirmed predicate translation
+  risks in `CareHomeBookingNotificationProcessor` and `PushOutboxProcessor` with
+  exact-query Npgsql SQL-generation regressions and, if separately authorized,
+  safe PostgreSQL execution. Do not infer failure solely from
+  `CareHomeLicenseExpiryMonitor`'s `.Value` projection.
 - Final handoff verifies the pushed `origin/main` revision after the documentation
   closeout is committed.

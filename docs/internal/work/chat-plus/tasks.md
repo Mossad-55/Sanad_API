@@ -179,6 +179,10 @@ is authorized by issuing a code/documentation brief.
   663/663; architecture 1/1; NuGet audit no vulnerable API packages. No live
   PostgreSQL/API run. See [processor integration](reports/processor-integration.md)
   and worker report `reports/remaining-care-home-processor.md`.
+  Pre-production follow-up: provider-probe/fix recipient predicates in
+  `CareHomeBookingNotificationProcessor` and `PushOutboxProcessor` that read
+  `UserId.Value` in the EF predicate. Do not treat `CareHomeLicenseExpiryMonitor`'s
+  projection alone as a proven defect.
 - [ ] Not started — Optional tester page or manual developer pack (Prompt 4).
   Page absence is not a staging-shipping blocker.
 - [ ] Blocked — Authorized VPS/runtime/device verification (Prompt 6): needs

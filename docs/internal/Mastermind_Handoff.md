@@ -44,7 +44,11 @@ translation regression 5/5, architecture 1/1, NuGet audit reports no vulnerable
 API packages. The configured identity PostgreSQL fixture calls `EnsureDeleted`;
 it was not run. No live PostgreSQL/API, migration, provider, VPS, or deployment
 action occurred. Evidence: [processor integration](work/chat-plus/reports/processor-integration.md).
-Sibling processors with similar typed-ID predicates remain separately scoped.
+Two sibling predicates remain a high-priority pre-production follow-up:
+`CareHomeBookingNotificationProcessor` uses `targets.Contains(x.Id.Value)` and
+`PushOutboxProcessor` uses `user.Id.Value == row.RecipientUserId`; exact Npgsql
+translation is not yet proven. The license-expiry monitor has only a projection
+in the noted location, not a confirmed defect.
 Documentation closeout `aee2490` is pushed; local `main` and `origin/main` match.
 **Next:** optional Prompt 4 (may be skipped), then authorized Prompt 6.
 

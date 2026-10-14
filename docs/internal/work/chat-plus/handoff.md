@@ -39,7 +39,12 @@ owner-lookup predicate now uses typed `UserId` comparison, proven by Npgsql SQL
 generation; recipient mapping and focused suites pass. Integration also pins
 transitive `System.Security.Cryptography.Pkcs` to patched `10.0.13`, clearing
 the NU1902/NU1903 audit warnings without suppression. Sibling typed-ID query
-defects noted in the worker report remain separately scoped.
+risks remain: `CareHomeBookingNotificationProcessor` uses
+`targets.Contains(x.Id.Value)` and `PushOutboxProcessor` uses
+`user.Id.Value == row.RecipientUserId` inside EF predicates. These are not yet
+provider-probed; resolve with focused translation tests before production.
+`CareHomeLicenseExpiryMonitor` has a `.Value` projection only, not a confirmed
+predicate defect.
 
 Staging/production environment verdict remains NOT READY: exact host/URL/service/
 test DB, secrets, backup/restore, fresh release package and actual verification
