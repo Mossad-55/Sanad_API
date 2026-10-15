@@ -16,6 +16,10 @@ units each holding a single customs-facility child) and the 4 shiyakhas
 beneath excluded districts. Zero included cities lack areas; zero
 duplicate keys; zero orphan parents.
 
+Owner approved 16 Area display-label cleanups for V1; see
+[before/after provenance](label-corrections.json). Counts and all parent links
+remain unchanged. This is not additional consumer/boundary verification.
+
 ## Per-governorate matrix (delivered / source)
 
 | Gov | Cities | Areas | Note |

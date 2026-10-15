@@ -9,8 +9,8 @@ No production IDs are invented here: keys are stable source IDs.
   pinned revision `76b47b22872288c0d8b0c757975980e6986945e8`
   (committed 2026-09-08), fetched 2026-10-15 into a task temp directory
   (read as data only; nothing executed; raw upstream bulk files not
-  committed — the 1,385,398-byte derived `candidate.json` below is
-  committed as the review artefact).
+  committed — the derived review artefact is in the repository; the approved
+  display cleanup is currently local and awaits final commit/push approval).
 - Input files and SHA-256:
   - `data/all-governorate.json` — 18,662 bytes —
     `EA86B0A7C7219D1DC7C79D6FAECF1C66325F78443277CC491D8D39A94CC9CA27`
@@ -19,9 +19,13 @@ No production IDs are invented here: keys are stable source IDs.
   - `data/all-shiyakha.json` — 6,015,612 bytes —
     `A4458361D556ADB1617C836D804FDE399757FA849D0ED7351A5C428E21A51002`
 - Hashes match the PORTAL-06A pins exactly: same upstream revision, no drift.
-- Candidate output: `candidate.json` — 1,385,398 bytes — SHA-256
-  `18AB3CB47FBDC34B1DFD77894ADA3B79DC27D22C3B2925B679291EDE45F79C09`
-  (re-hash after Armant/Esna re-parenting and Tiba reinstatement).
+- Current candidate output: `candidate.json` — 1,385,428 bytes — SHA-256
+  `E048767A00F5DE28B32E8F4E1E2B2BCBC4FA52C19BEA0C0D14D085DDB5AB8A8E`.
+  Owner-approved display cleanup changes 16 Area labels only; original names,
+  parents and approved replacements are preserved in [label-corrections.json](label-corrections.json).
+  Prior candidate (after Armant/Esna corrections and Tiba reinstatement) was
+  1,385,398 bytes, SHA-256
+  `18AB3CB47FBDC34B1DFD77894ADA3B79DC27D22C3B2925B679291EDE45F79C09`.
 
 ## Attribution and redistribution basis
 
@@ -62,7 +66,7 @@ No production IDs are invented here: keys are stable source IDs.
   genuine localities as `police-section-aggregate`, flagged
   `boundaryUnresolved`, with the return recorded in `reinstatements`.
   Source IDs preserved throughout; no production rows touched.
-- English names are otherwise source-verbatim transliterations of uneven
+- Except for approved Area display edits, English names are otherwise source-verbatim transliterations of uneven
   quality (e.g. Menia, Muharam Bik); they are not official translations.
 - `mappingKind` per city: `urban-district` (170), `rural-markaz` (164),
   `new-city` (9), `other-admin-unit` (3: Minshat Nasir, Misr Al-Qadima,
@@ -78,7 +82,10 @@ The publisher's [source note](https://openadmindata.org/eg/) identifies
 Direct HDX metadata attributes CAPMAS and states CC BY-IGO terms. Downloaded
 GeoJSON ZIP SHA-256:
 `259987BE0B7C5E367D52EADF3DFEA39802C7750CACE8498833E3212D61B9DBA9`.
-Every included candidate key and Arabic name matches that reference exactly.
+At the prior `18AB3CB4…C09` snapshot, every included candidate key and Arabic
+name matched that reference exactly. The current snapshot intentionally has the
+16 owner-approved display edits recorded in the correction manifest; these do
+not invalidate the preserved historical evidence or certify current geography.
 The 18 City English differences and two City parent differences are the
 documented disambiguations and Armant/Esna corrections; Area parents match.
 All 5712 included reference Area English values are blank, so this reference

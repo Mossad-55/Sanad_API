@@ -11,6 +11,10 @@ $ErrorActionPreference = 'Stop'
 if (-not $AllowNetwork) { throw 'Public network access requires -AllowNetwork.' }
 $candidatePath = Join-Path $PSScriptRoot 'candidate.json'
 $candidate = Get-Content -LiteralPath $candidatePath -Raw -Encoding utf8 | ConvertFrom-Json
+$corrections = Get-Content -LiteralPath (Join-Path $PSScriptRoot 'label-corrections.json') -Raw -Encoding utf8 | ConvertFrom-Json
+$approvedNames = New-Object 'System.Collections.Generic.Dictionary[string,object]' ([StringComparer]::Ordinal)
+foreach ($correction in $corrections.changes) { $approvedNames.Add($correction.key, $correction) }
+if ($approvedNames.Count -ne 16) { throw 'Expected exactly 16 approved display corrections.' }
 $revision = '76b47b22872288c0d8b0c757975980e6986945e8'
 $sources = @(
   @{ name = 'all-governorate.json'; collection = 'governorates'; hash = 'EA86B0A7C7219D1DC7C79D6FAECF1C66325F78443277CC491D8D39A94CC9CA27' },
@@ -35,9 +39,21 @@ try {
     $exactArabic = 0
     $exactEnglish = 0
     $documentedSuffix = 0
+    $approvedDisplayRows = 0
     foreach ($row in $candidate.($source.collection)) {
       if (-not $index.ContainsKey($row.key)) { $failures.Add("Missing key $($row.key)"); continue }
       $original = $index[$row.key]
+      if (($source.collection -ceq 'areas') -and $approvedNames.ContainsKey($row.key)) {
+        $correction = $approvedNames[$row.key]
+        if (($original.name.local -cne $correction.before.arabicName) -or
+            ($original.name.en -cne $correction.before.englishName) -or
+            ($row.arabicName -cne $correction.after.arabicName) -or
+            ($row.englishName -cne $correction.after.englishName) -or
+            ($row.cityKey -cne $correction.cityKey)) {
+          $failures.Add("Approved correction before/after/parent mismatch $($row.key)")
+        } else { $approvedDisplayRows++ }
+        continue
+      }
       if ($row.arabicName -ceq $original.name.local) { $exactArabic++ }
       else { $failures.Add("Arabic mismatch $($row.key)") }
       if ($row.englishName -ceq $original.name.en) { $exactEnglish++ }
@@ -45,11 +61,15 @@ try {
               ($row.englishName -ceq ($original.name.en + ' Markaz'))) { $documentedSuffix++ }
       else { $failures.Add("Undocumented English mismatch $($row.key)") }
     }
+    if (($source.collection -ceq 'areas') -and ($approvedDisplayRows -ne 16)) {
+      $failures.Add('Not all 16 approved display rows were checked successfully.')
+    }
     $results += [pscustomobject]@{
       collection = $source.collection; inputSha256 = $hash
       candidateCount = @($candidate.($source.collection)).Count
       exactArabic = $exactArabic; exactEnglish = $exactEnglish
       documentedEnglishSuffix = $documentedSuffix
+      approvedDisplayRows = $approvedDisplayRows
     }
   }
   [pscustomobject]@{

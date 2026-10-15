@@ -1,6 +1,7 @@
 # Current Egypt candidate — location names
 
 Generated from the committed [candidate](../reference-data/egypt/candidate.json).
+The local working copy includes the 16 [approved label corrections](../reference-data/egypt/label-corrections.json); final commit/push approval is pending.
 These are candidate records, not deployed database counts or a claim of complete/current Egyptian geography.
 The API calls the middle level City, but many records are districts/qism/markaz.
 Names and spelling are preserved; Area English labels remain unverified and all Areas are provisional.
@@ -503,12 +504,12 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 - أبوقيرالغربية — Abu Qir Al-Gharbiya (`EG020102`)
 - التوفيقية — El-Tawfiqiya (`EG020103`)
 - السيوف بحرى — Al-Siyouf Bahari (`EG020104`)
-- السيوف قبلى\_تشمل عزبة درباله — Al-Siyouf Qibli\_Tashmal Ezbet Dirbala (`EG020105`)
+- السيوف قبلى (تشمل عزبة درباله) — Al-Siyouf Qibli - Tashmal Ezbet Dirbala (`EG020105`)
 - العمراوي — El-Omrawy (`EG020106`)
 - القرداحي — Al-Qardahi (`EG020107`)
 - المعمورة — El-Ma'moura (`EG020108`)
 - المندرةبحري — Al-Mandara Bahari (`EG020109`)
-- المندره قبلى\_تشمل عزبة الجبل — Al-Mandara Qibli (`EG020110`)
+- المندره قبلى (تشمل عزبة الجبل) — Al-Mandara Qibli (`EG020110`)
 - المنشيةالبحرية — Al-Manshiya Al-Bahariya (`EG020111`)
 - المهاجرين — Al-Mohajireen (`EG020112`)
 - الناصريه — Al-Nasseriya (`EG020113`)
@@ -551,7 +552,7 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 - أمبروزومحمبك — Ambroz w Mohambak (`EG020504`)
 - بوالينووالاسكندراني — Bowalino wal Eskandarani (`EG020505`)
 - راغبباشا — Ragheb Basha (`EG020506`)
-- ابيس 7\_8\_9\_10 — Abis 7\_8\_9\_10 (`EG020507`)
+- ابيس 7 / 8 / 9 / 10 — Abis 7 / 8 / 9 / 10 (`EG020507`)
 
 ### قسم العطارين — Al Attarin (EG0206)
 
@@ -724,7 +725,7 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 
 ### قسم الجنوب — Al-Ganoub (EG0306)
 
-- قرى الجنوب - جزء\_ينبعه توابع تسمى الصديق — Qura El-Ganoub - Juz' Yanba'u Tawabe' Tusamma El-Siddiq (`EG030601`)
+- قرى الجنوب - جزء (ينبعه توابع تسمى الصديق) — Qura El-Ganoub - Juz' Yanba'u Tawabe' Tusamma El-Siddiq (`EG030601`)
 
 ### قسم الزهور — Al-Zohour (EG0307)
 
@@ -1488,7 +1489,7 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 - كفرالدكروري — Kafr El-Dakroury (`EG122116`)
 - كفربهوت — Kafr Bahout (`EG122117`)
 - ميتعياد — Mit Eiyad (`EG122118`)
-- نشا\_تشملكفرالبشابشةوكفرالحوارني — Nesha Tashmal Kafr El-Bashabsha wa Kafr El-Hawarni (`EG122119`)
+- نشا (تشمل كفر البشابشة وكفر الحوارني) — Nesha Tashmal Kafr El-Bashabsha wa Kafr El-Hawarni (`EG122119`)
 
 ## الشرقية — Sharkia (EG13)
 
@@ -2420,9 +2421,9 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 - البرج — El-Borg (`EG150302`)
 - البنائين — El-Bana'een (`EG150303`)
 - الحماد — El-Hammad (`EG150304`)
-- الربع\_سوق التلات — Al-Rob' Souq al-Talāt (`EG150305`)
-- الساحلالبحري\_بلوش — Al-Sahel Al-Bahari\_Baloush (`EG150306`)
-- الساحلالقبلي\_الوهابية — Al-Sahel Al-Qibli\_Al-Wahhabiya (`EG150307`)
+- الربع - سوق التلات — Al-Rob' Souq al-Talāt (`EG150305`)
+- الساحل البحري - بلوش — Al-Sahel Al-Bahari - Baloush (`EG150306`)
+- الساحل القبلي - الوهابية — Al-Sahel Al-Qibli - Al-Wahhabiya (`EG150307`)
 - الشهابية — El-Shahabiyah (`EG150308`)
 - الشيخمبارك — El-Sheikh Mubarak (`EG150309`)
 - العياش — El-Ayyash (`EG150310`)
@@ -2510,7 +2511,7 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 - دمرو — Damrou (`EG150718`)
 - سدخميس — Sadd Khamis (`EG150719`)
 - شالمة — Shalma (`EG150720`)
-- كومالذهب\_زبيدةالبحريةسابقا — Koum El Dahab - Zubeida El Bahariya Sabeqan (`EG150721`)
+- كوم الذهب - زبيدة البحرية سابقا — Koum El Dahab - Zubeida El Bahariya Sabeqan (`EG150721`)
 - كفرالمشارقة — Kafr al-Masharqa (`EG150722`)
 - كفرتيدة — Kafr Tida (`EG150723`)
 - منشأةأبوعلي — Manshaat Abu Ali (`EG150724`)
@@ -3047,7 +3048,7 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 - كفردقماق — Kafr Daqmaq (`EG170224`)
 - كفرشنوان — Kafr Shanwan (`EG170225`)
 - كفرطنبدي — Kafr Tanbadi (`EG170226`)
-- منشأةعصام\_طوخالبراغتةسابقا — Manshaat Essam Toukh El-Baraghta Sabeqan (`EG170227`)
+- منشأة عصام - طوخ البراغتة سابقا — Manshaat Essam Toukh El-Baraghta Sabeqan (`EG170227`)
 - مليج — Melig (`EG170228`)
 - منشأةالشريكين — Manshaat al-Sharikein (`EG170229`)
 - منشأة بخاتى — Manshaat Bakhaty (`EG170230`)
@@ -3127,7 +3128,7 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 - الأطارشة — El-Atarsha (`EG170407`)
 - البرانقة — El-Baranqa (`EG170408`)
 - الجزيرةالشرقية — El-Gezira El-Sharqiya (`EG170409`)
-- الخضرة\_قلتيالصغريسابقا — El-Khadra Qelti El-Saghira Sabeqan (`EG170410`)
+- الخضرة - قلتي الصغري سابقا — El-Khadra Qelti El-Saghira Sabeqan (`EG170410`)
 - العطف — El-Atf (`EG170411`)
 - القرينين — Al-Quraynin (`EG170412`)
 - الكتامية — Al-Kattamiya (`EG170413`)
@@ -3862,7 +3863,7 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 - مغنين — Maghanin (`EG181347`)
 - مليحة — Maliha (`EG181348`)
 - منشأةأبورية — Manshaat Abu Riya (`EG181349`)
-- منشأةالجوربجي\_الشوربجي — Manshaat al-Gourbagy\_al-Shourbagy (`EG181350`)
+- منشأة الجوربجي - الشوربجي — Manshaat al-Gourbagy - al-Shourbagy (`EG181350`)
 - منشأة أمين إسماعيل — Manshaat Amin Ismail (`EG181351`)
 - منشأةراضي — Manshaat Radi (`EG181352`)
 - منشأةعليمهنا — Manshaat Ali Mehana (`EG181353`)
@@ -4040,11 +4041,11 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 - التقدم — El-Taqaddom (`EG190803`)
 - جلبانة — Galbana (`EG190804`)
 - قريةميتأبوالكومالجديدة — Qaryet Mit Abu El-Koum El-Gedida (`EG190805`)
-- الاسماعيليةشرق?رقم?سابقا? — El-Ismailia Sharq? Raqm? Sabeqan? (`EG190806`)
+- الإسماعيلية شرق — Ismailia East (`EG190806`)
 - التلالأحمر — El-Telal El-Ahmar (`EG190807`)
 - العزبة — El-Ezba (`EG190808`)
-- السلامالجديدة?تشملالبحيراتالمرة? — Al-Salam Al-Jadida? Tashmal Al-Buhayrat Al-Murra? (`EG190809`)
-- بوابةالقنطرة?شرقالجمرك? — Bawabet El-Qantara Sharq El-Gomrok (`EG190810`)
+- السلام الجديدة (تشمل البحيرات المرة) — Al-Salam Al-Jadida (Tashmal Al-Buhayrat Al-Murra) (`EG190809`)
+- بوابة القنطرة (شرق الجمرك) — Bawabet El-Qantara Sharq El-Gomrok (`EG190810`)
 - بيرالعروق — Bir El-Orouq (`EG190811`)
 - بيرحبيطة — Bir Habita (`EG190812`)
 - بيرمدكور — Bir Madkour (`EG190813`)
@@ -6360,7 +6361,7 @@ Totals: 27 governorates / 347 City records / 5712 Area records.
 - الحمراوين — El-Hamrawein (`EG310202`)
 - واديكريموالدباح — Wadi Karim wal Dabbah (`EG310203`)
 - منجمالبيضا — Mangam al-Beida (`EG310204`)
-- منجمأبوتندب?قبليوبحري? — Mangam Abu Tandab? Qibli wa Bahari? (`EG310205`)
+- منجم أبو تندب (قبلي وبحري) — Mangam Abu Tandab (Qibli wa Bahari) (`EG310205`)
 - منجمالعدوة — Mangam al-Adwa (`EG310206`)
 - منجمالعطشانة — Mangam al-Atshana (`EG310207`)
 - منجمالعوينة — Mangam al-Oweina (`EG310208`)

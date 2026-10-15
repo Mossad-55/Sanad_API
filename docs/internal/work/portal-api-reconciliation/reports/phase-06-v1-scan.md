@@ -1,5 +1,9 @@
 # PORTAL-06 — full V1 candidate scan
 
+Historical scan at `18AB3CB4…C09`. The owner subsequently approved the exact
+16-label cleanup; see [cleanup closeout](phase-06-label-cleanup.md) for the
+current candidate and revalidation. Original results below remain historical.
+
 ## Outcome and owner decision
 
 Intake: clean main/origin `a65d648`. Owner is satisfied with the collected

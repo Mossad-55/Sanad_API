@@ -1,0 +1,221 @@
+{
+  "approval": {
+    "date": "2026-10-15",
+    "authority": "Owner approved the exact 16-label proposal in this chat; approval excludes commit/push/import/publish/deploy.",
+    "proposal": "../../reports/phase-06-label-cleanup-proposal.md"
+  },
+  "baseRevision": "f932c46d826f758837398242ea370b6521c75e0e",
+  "beforeCandidateSha256": "18AB3CB47FBDC34B1DFD77894ADA3B79DC27D22C3B2925B679291EDE45F79C09",
+  "sourceRevision": "76b47b22872288c0d8b0c757975980e6986945e8",
+  "scope": "Display labels only; original names retained here. No geography/identity certification, missing number invented, key/parent/count/verification change, database write, or activation change.",
+  "changes": [
+    {
+      "key": "EG190806",
+      "cityKey": "EG1908",
+      "before": {
+        "arabicName": "الاسماعيليةشرق?رقم?سابقا?",
+        "englishName": "El-Ismailia Sharq? Raqm? Sabeqan?"
+      },
+      "after": {
+        "arabicName": "الإسماعيلية شرق",
+        "englishName": "Ismailia East"
+      },
+      "reason": "approved-source-ambiguity-display-cleanup"
+    },
+    {
+      "key": "EG190809",
+      "cityKey": "EG1908",
+      "before": {
+        "arabicName": "السلامالجديدة?تشملالبحيراتالمرة?",
+        "englishName": "Al-Salam Al-Jadida? Tashmal Al-Buhayrat Al-Murra?"
+      },
+      "after": {
+        "arabicName": "السلام الجديدة (تشمل البحيرات المرة)",
+        "englishName": "Al-Salam Al-Jadida (Tashmal Al-Buhayrat Al-Murra)"
+      },
+      "reason": "approved-source-ambiguity-display-cleanup"
+    },
+    {
+      "key": "EG190810",
+      "cityKey": "EG1908",
+      "before": {
+        "arabicName": "بوابةالقنطرة?شرقالجمرك?",
+        "englishName": "Bawabet El-Qantara Sharq El-Gomrok"
+      },
+      "after": {
+        "arabicName": "بوابة القنطرة (شرق الجمرك)",
+        "englishName": "Bawabet El-Qantara Sharq El-Gomrok"
+      },
+      "reason": "approved-source-ambiguity-display-cleanup"
+    },
+    {
+      "key": "EG310205",
+      "cityKey": "EG3102",
+      "before": {
+        "arabicName": "منجمأبوتندب?قبليوبحري?",
+        "englishName": "Mangam Abu Tandab? Qibli wa Bahari?"
+      },
+      "after": {
+        "arabicName": "منجم أبو تندب (قبلي وبحري)",
+        "englishName": "Mangam Abu Tandab (Qibli wa Bahari)"
+      },
+      "reason": "approved-source-ambiguity-display-cleanup"
+    },
+    {
+      "key": "EG020507",
+      "cityKey": "EG0205",
+      "before": {
+        "arabicName": "ابيس 7_8_9_10",
+        "englishName": "Abis 7_8_9_10"
+      },
+      "after": {
+        "arabicName": "ابيس 7 / 8 / 9 / 10",
+        "englishName": "Abis 7 / 8 / 9 / 10"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG170410",
+      "cityKey": "EG1704",
+      "before": {
+        "arabicName": "الخضرة_قلتيالصغريسابقا",
+        "englishName": "El-Khadra Qelti El-Saghira Sabeqan"
+      },
+      "after": {
+        "arabicName": "الخضرة - قلتي الصغري سابقا",
+        "englishName": "El-Khadra Qelti El-Saghira Sabeqan"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG150305",
+      "cityKey": "EG1503",
+      "before": {
+        "arabicName": "الربع_سوق التلات",
+        "englishName": "Al-Rob' Souq al-Talāt"
+      },
+      "after": {
+        "arabicName": "الربع - سوق التلات",
+        "englishName": "Al-Rob' Souq al-Talāt"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG150306",
+      "cityKey": "EG1503",
+      "before": {
+        "arabicName": "الساحلالبحري_بلوش",
+        "englishName": "Al-Sahel Al-Bahari_Baloush"
+      },
+      "after": {
+        "arabicName": "الساحل البحري - بلوش",
+        "englishName": "Al-Sahel Al-Bahari - Baloush"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG150307",
+      "cityKey": "EG1503",
+      "before": {
+        "arabicName": "الساحلالقبلي_الوهابية",
+        "englishName": "Al-Sahel Al-Qibli_Al-Wahhabiya"
+      },
+      "after": {
+        "arabicName": "الساحل القبلي - الوهابية",
+        "englishName": "Al-Sahel Al-Qibli - Al-Wahhabiya"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG020105",
+      "cityKey": "EG0201",
+      "before": {
+        "arabicName": "السيوف قبلى_تشمل عزبة درباله",
+        "englishName": "Al-Siyouf Qibli_Tashmal Ezbet Dirbala"
+      },
+      "after": {
+        "arabicName": "السيوف قبلى (تشمل عزبة درباله)",
+        "englishName": "Al-Siyouf Qibli - Tashmal Ezbet Dirbala"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG020110",
+      "cityKey": "EG0201",
+      "before": {
+        "arabicName": "المندره قبلى_تشمل عزبة الجبل",
+        "englishName": "Al-Mandara Qibli"
+      },
+      "after": {
+        "arabicName": "المندره قبلى (تشمل عزبة الجبل)",
+        "englishName": "Al-Mandara Qibli"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG030601",
+      "cityKey": "EG0306",
+      "before": {
+        "arabicName": "قرى الجنوب - جزء_ينبعه توابع تسمى الصديق",
+        "englishName": "Qura El-Ganoub - Juz' Yanba'u Tawabe' Tusamma El-Siddiq"
+      },
+      "after": {
+        "arabicName": "قرى الجنوب - جزء (ينبعه توابع تسمى الصديق)",
+        "englishName": "Qura El-Ganoub - Juz' Yanba'u Tawabe' Tusamma El-Siddiq"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG150721",
+      "cityKey": "EG1507",
+      "before": {
+        "arabicName": "كومالذهب_زبيدةالبحريةسابقا",
+        "englishName": "Koum El Dahab - Zubeida El Bahariya Sabeqan"
+      },
+      "after": {
+        "arabicName": "كوم الذهب - زبيدة البحرية سابقا",
+        "englishName": "Koum El Dahab - Zubeida El Bahariya Sabeqan"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG181350",
+      "cityKey": "EG1813",
+      "before": {
+        "arabicName": "منشأةالجوربجي_الشوربجي",
+        "englishName": "Manshaat al-Gourbagy_al-Shourbagy"
+      },
+      "after": {
+        "arabicName": "منشأة الجوربجي - الشوربجي",
+        "englishName": "Manshaat al-Gourbagy - al-Shourbagy"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG170227",
+      "cityKey": "EG1702",
+      "before": {
+        "arabicName": "منشأةعصام_طوخالبراغتةسابقا",
+        "englishName": "Manshaat Essam Toukh El-Baraghta Sabeqan"
+      },
+      "after": {
+        "arabicName": "منشأة عصام - طوخ البراغتة سابقا",
+        "englishName": "Manshaat Essam Toukh El-Baraghta Sabeqan"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    },
+    {
+      "key": "EG122119",
+      "cityKey": "EG1221",
+      "before": {
+        "arabicName": "نشا_تشملكفرالبشابشةوكفرالحوارني",
+        "englishName": "Nesha Tashmal Kafr El-Bashabsha wa Kafr El-Hawarni"
+      },
+      "after": {
+        "arabicName": "نشا (تشمل كفر البشابشة وكفر الحوارني)",
+        "englishName": "Nesha Tashmal Kafr El-Bashabsha wa Kafr El-Hawarni"
+      },
+      "reason": "approved-delimiter-and-spacing-cleanup"
+    }
+  ]
+}

@@ -1,7 +1,17 @@
 # Admin and Care Homes portal API reconciliation
 
 Status: PORTAL-01 through 05 and PORTAL-07 accepted locally (2026-10-15).
-PORTAL-06: V1 scan Done with findings — collected coverage accepted; technical compatibility passes, four question-mark labels need a display decision. No import/deploy approval.
+PORTAL-06: Cleanup and 06B importer implementation Done locally (focused 113/113, architecture 1/1, strict build zero warnings/errors). Actual data provisioning remains In progress; no live preview/import, commit/push or deploy approval.
+Owner authorized the shortest route on 2026-10-15: one fresh disposable local
+PostgreSQL rehearsal, preserving existing local databases and the VPS. Rehearsal
+Done: actual CLI initial/repeat apply on a fresh PostgreSQL 18.4 cluster yielded
+27/347/5712, zero repeat inserts and zero orphans; server stopped. See the
+[06B report appendix](reports/phase-06-importer.md). No extra source research,
+production reset, commit/push or deployment was performed.
+Owner subsequently approved commit/push, publish and deploy. Release preparation
+In progress; SSH authentication denied, so no remote change. Lookup reset or
+replacement remains outside this approval. API runtime config is unchanged;
+the standalone importer alone needs temporary SANAD_GEOGRAPHY_CONNECTION.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
 The frontend report is input evidence, not an accepted defect list.
@@ -260,7 +270,7 @@ the standing repository branch instruction. Workers preserve others' edits.
   0 warnings/errors; mastermind combined 126/126 (19 owner + 107 related);
   mapping 556/620/0/0. Exact ID and Cairo-date assertions strengthened; no
   production-code change. Final integration is next; PORTAL-06 conditional.
-- [ ] In progress — **PORTAL-06: V1 coverage accepted; scan Done with display findings; importer not started.**
+- [ ] In progress — **PORTAL-06: V1 coverage accepted; display cleanup and importer Done locally; target data provisioning not performed.**
   Owner authorized starting preparation on 2026-10-15. [06A source
   qualification](worker-prompts/06a-geography-source-qualification.md)
   worker delivery `cdf8a2a` reviewed/accepted as research, not dataset approval:
@@ -272,8 +282,8 @@ the standing repository branch instruction. Workers preserve others' edits.
   (no license, untranslated level-3 English); the CAPMAS material inspected in
   06A was not a direct gazetteer (later V1 scan found a supplemental codebook).
   This was research/proposed design
-  only; 06B implementation requires source/mapping approval. No importer or
-  target-data change is authorized, and no national completeness is claimed.
+  only; at that stage 06B implementation required source/mapping approval.
+  No target-data change was authorized, and no national completeness claimed.
   Mastermind does not recommend that partial import as a solution to the
   three-level picker: Areas remain empty and provenance/locality semantics
   unresolved. Owner explicitly chose **All Egypt**: full three-level nationwide
@@ -304,11 +314,21 @@ the standing repository branch instruction. Workers preserve others' edits.
   Four question-mark labels and 12 delimiter flags are recorded, not silently
   edited. Current exhaustive national certification is no longer the immediate
   V1 scope requirement; legacy strict readiness flags remain honestly unchanged.
-  Next: agree a source-preserving display cleanup or activation hold for those
-  ambiguous labels before an importer brief. No data/import/deploy authorized.
+  Owner approved the [exact 16-label proposal](reports/phase-06-label-cleanup-proposal.md).
+  [Cleanup](reports/phase-06-label-cleanup.md) applied locally with original values
+  preserved and all IDs/parents/counts/verification flags unchanged. Owner then
+  authorized [06B implementation](worker-prompts/06b-geography-importer.md).
+  [Local importer closeout](reports/phase-06-importer.md): standalone CLI,
+  exact reviewed preview/hash/target, insert-only transaction, preserved manual
+  IDs and inactive state, stale/conflict refusal, mandatory backup/maintenance
+  references. Strict build zero warnings/errors; focused 113/113, architecture
+  1/1; all 6086 records imported/repeated in SQLite memory. No PostgreSQL
+  execution claimed. Next: owner review and explicit commit/push approval;
+  no live database write/import/publish/deploy authorized.
   No claim that another wrapper of the same records closes national gaps.
   `reference-data/egypt/candidate.json` corrected to 27/347/5712
-  (SHA-256 `18AB3CB4…C09`), `provenance.md`, `coverage.md` per-governorate
+  (pre-cleanup SHA-256 `18AB3CB4…C09`; current approved display baseline
+  `E048767A…8A8E`), `provenance.md`, `coverage.md` per-governorate
   matrix, new `boundary-checks.json`, hardened offline
   `Validate-Catalogue.ps1` + 12 fixtures (structural 0 failures, 12/12
   checks, exit 0; separate `-Readiness` gate fails closed with exit 2 on
@@ -316,8 +336,8 @@ the standing repository branch instruction. Workers preserve others' edits.
   gaps). Armant/Esna re-parented to Luxor on GOPP evidence; Tiba
   reinstated with its 6 localities (equivalence unresolved); Zemam/port
   exclusions evidenced by child counts; Marina/gaps-count/source-emptiness
-  documentation fixed. Areas stay provisional-census; no importer or data
-  write. The strict historical completeness findings stay explicit; owner now
+  documentation fixed. Areas stay provisional-census; no data write.
+  The strict historical completeness findings stay explicit; owner now
   accepts collected nationwide coverage for V1, not a claim of exhaustive current
   geography. Resolve the bounded display findings, then pin an implementation
   brief using that accepted baseline and its provenance. Design a previewable, idempotent import
@@ -457,3 +477,7 @@ The owner subsequently selected **All Egypt**. Coverage choice is resolved:
 national Governorate/City/Area catalogue preparation is issued as 06A2. Actual
 dataset/mapping acceptance, importer implementation and live application remain
 separate gates; no Production write or deployment is authorized.
+Subsequent owner decisions accepted the available V1 coverage, approved the
+exact 16-label cleanup, and authorized local 06B implementation/tests. These
+supersede the earlier preparation-only restrictions, not the separate release,
+live target/preview/import and deployment approval gates.

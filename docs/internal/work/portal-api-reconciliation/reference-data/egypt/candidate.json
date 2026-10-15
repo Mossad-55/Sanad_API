@@ -4590,8 +4590,8 @@
     {
       "key": "EG020507",
       "cityKey": "EG0205",
-      "arabicName": "ابيس 7_8_9_10",
-      "englishName": "Abis 7_8_9_10",
+      "arabicName": "ابيس 7 / 8 / 9 / 10",
+      "englishName": "Abis 7 / 8 / 9 / 10",
       "verification": "provisional-census",
       "sourceId": "EG020507"
     },
@@ -5678,8 +5678,8 @@
     {
       "key": "EG190806",
       "cityKey": "EG1908",
-      "arabicName": "الاسماعيليةشرق?رقم?سابقا?",
-      "englishName": "El-Ismailia Sharq? Raqm? Sabeqan?",
+      "arabicName": "الإسماعيلية شرق",
+      "englishName": "Ismailia East",
       "verification": "provisional-census",
       "sourceId": "EG190806"
     },
@@ -9398,7 +9398,7 @@
     {
       "key": "EG170410",
       "cityKey": "EG1704",
-      "arabicName": "الخضرة_قلتيالصغريسابقا",
+      "arabicName": "الخضرة - قلتي الصغري سابقا",
       "englishName": "El-Khadra Qelti El-Saghira Sabeqan",
       "verification": "provisional-census",
       "sourceId": "EG170410"
@@ -10134,7 +10134,7 @@
     {
       "key": "EG150305",
       "cityKey": "EG1503",
-      "arabicName": "الربع_سوق التلات",
+      "arabicName": "الربع - سوق التلات",
       "englishName": "Al-Rob' Souq al-Talāt",
       "verification": "provisional-census",
       "sourceId": "EG150305"
@@ -11294,16 +11294,16 @@
     {
       "key": "EG150306",
       "cityKey": "EG1503",
-      "arabicName": "الساحلالبحري_بلوش",
-      "englishName": "Al-Sahel Al-Bahari_Baloush",
+      "arabicName": "الساحل البحري - بلوش",
+      "englishName": "Al-Sahel Al-Bahari - Baloush",
       "verification": "provisional-census",
       "sourceId": "EG150306"
     },
     {
       "key": "EG150307",
       "cityKey": "EG1503",
-      "arabicName": "الساحلالقبلي_الوهابية",
-      "englishName": "Al-Sahel Al-Qibli_Al-Wahhabiya",
+      "arabicName": "الساحل القبلي - الوهابية",
+      "englishName": "Al-Sahel Al-Qibli - Al-Wahhabiya",
       "verification": "provisional-census",
       "sourceId": "EG150307"
     },
@@ -11910,8 +11910,8 @@
     {
       "key": "EG190809",
       "cityKey": "EG1908",
-      "arabicName": "السلامالجديدة?تشملالبحيراتالمرة?",
-      "englishName": "Al-Salam Al-Jadida? Tashmal Al-Buhayrat Al-Murra?",
+      "arabicName": "السلام الجديدة (تشمل البحيرات المرة)",
+      "englishName": "Al-Salam Al-Jadida (Tashmal Al-Buhayrat Al-Murra)",
       "verification": "provisional-census",
       "sourceId": "EG190809"
     },
@@ -12310,8 +12310,8 @@
     {
       "key": "EG020105",
       "cityKey": "EG0201",
-      "arabicName": "السيوف قبلى_تشمل عزبة درباله",
-      "englishName": "Al-Siyouf Qibli_Tashmal Ezbet Dirbala",
+      "arabicName": "السيوف قبلى (تشمل عزبة درباله)",
+      "englishName": "Al-Siyouf Qibli - Tashmal Ezbet Dirbala",
       "verification": "provisional-census",
       "sourceId": "EG020105"
     },
@@ -19078,7 +19078,7 @@
     {
       "key": "EG020110",
       "cityKey": "EG0201",
-      "arabicName": "المندره قبلى_تشمل عزبة الجبل",
+      "arabicName": "المندره قبلى (تشمل عزبة الجبل)",
       "englishName": "Al-Mandara Qibli",
       "verification": "provisional-census",
       "sourceId": "EG020110"
@@ -23782,7 +23782,7 @@
     {
       "key": "EG190810",
       "cityKey": "EG1908",
-      "arabicName": "بوابةالقنطرة?شرقالجمرك?",
+      "arabicName": "بوابة القنطرة (شرق الجمرك)",
       "englishName": "Bawabet El-Qantara Sharq El-Gomrok",
       "verification": "provisional-census",
       "sourceId": "EG190810"
@@ -34038,7 +34038,7 @@
     {
       "key": "EG030601",
       "cityKey": "EG0306",
-      "arabicName": "قرى الجنوب - جزء_ينبعه توابع تسمى الصديق",
+      "arabicName": "قرى الجنوب - جزء (ينبعه توابع تسمى الصديق)",
       "englishName": "Qura El-Ganoub - Juz' Yanba'u Tawabe' Tusamma El-Siddiq",
       "verification": "provisional-census",
       "sourceId": "EG030601"
@@ -40046,7 +40046,7 @@
     {
       "key": "EG150721",
       "cityKey": "EG1507",
-      "arabicName": "كومالذهب_زبيدةالبحريةسابقا",
+      "arabicName": "كوم الذهب - زبيدة البحرية سابقا",
       "englishName": "Koum El Dahab - Zubeida El Bahariya Sabeqan",
       "verification": "provisional-census",
       "sourceId": "EG150721"
@@ -43198,8 +43198,8 @@
     {
       "key": "EG310205",
       "cityKey": "EG3102",
-      "arabicName": "منجمأبوتندب?قبليوبحري?",
-      "englishName": "Mangam Abu Tandab? Qibli wa Bahari?",
+      "arabicName": "منجم أبو تندب (قبلي وبحري)",
+      "englishName": "Mangam Abu Tandab (Qibli wa Bahari)",
       "verification": "provisional-census",
       "sourceId": "EG310205"
     },
@@ -43678,8 +43678,8 @@
     {
       "key": "EG181350",
       "cityKey": "EG1813",
-      "arabicName": "منشأةالجوربجي_الشوربجي",
-      "englishName": "Manshaat al-Gourbagy_al-Shourbagy",
+      "arabicName": "منشأة الجوربجي - الشوربجي",
+      "englishName": "Manshaat al-Gourbagy - al-Shourbagy",
       "verification": "provisional-census",
       "sourceId": "EG181350"
     },
@@ -44670,7 +44670,7 @@
     {
       "key": "EG170227",
       "cityKey": "EG1702",
-      "arabicName": "منشأةعصام_طوخالبراغتةسابقا",
+      "arabicName": "منشأة عصام - طوخ البراغتة سابقا",
       "englishName": "Manshaat Essam Toukh El-Baraghta Sabeqan",
       "verification": "provisional-census",
       "sourceId": "EG170227"
@@ -47934,7 +47934,7 @@
     {
       "key": "EG122119",
       "cityKey": "EG1221",
-      "arabicName": "نشا_تشملكفرالبشابشةوكفرالحوارني",
+      "arabicName": "نشا (تشمل كفر البشابشة وكفر الحوارني)",
       "englishName": "Nesha Tashmal Kafr El-Bashabsha wa Kafr El-Hawarni",
       "verification": "provisional-census",
       "sourceId": "EG122119"

@@ -92,9 +92,14 @@ deployment. No publish or deploy is authorized by this handoff.
 - Deployed caregiver data: six reported Identity-mismatched rows remain
   **unverified** — see `diagnostics/caregiver-identity.sql` and
   `diagnostics/caregiver-identity-runbook.md`. No repair authorized yet.
-- Reference geography (PORTAL-06): no approved national dataset; current
-  lookup coverage is fixture-thin and `CareHomeProfileDraft` uses location
-  **strings**. National import needs a separate dataset/scope handoff.
+- Reference geography (PORTAL-06): owner accepted a provisional V1 catalogue
+  (27 governorates / 347 Cities / 5712 Areas); approved display cleanup and
+  standalone importer are locally tested, **not applied to the VPS**. Existing
+  deployed lookup coverage remains fixture-thin until an authorized import.
+  `CareHomeProfileDraft` still uses location **strings**; no wire change.
+  See [importer closeout](reports/phase-06-importer.md). Disposable local PostgreSQL
+  rehearsal passed (full import and zero-insert repeat); actual target
+  preview/reconciliation and backed-up maintenance-window apply remain.
 - Untested nested/detail/mobile endpoints; deferred landing-media cleanup.
 - Chat Plus runtime/device/soak gates remain separate (Prompt 7).
 
