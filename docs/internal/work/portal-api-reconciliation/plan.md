@@ -1,6 +1,6 @@
 # Admin and Care Homes portal API reconciliation
 
-Status: PORTAL-01 through 05 accepted; PORTAL-07 final gate brief issued (2026-10-15).
+Status: PORTAL-01 through 05 accepted; PORTAL-07 worker-complete, awaiting mastermind acceptance (2026-10-15).
 PORTAL-06 still requires an approved geography dataset and scope.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
@@ -269,18 +269,19 @@ the standing repository branch instruction. Workers preserve others' edits.
   an unreviewed nationwide dataset in a schema migration or enable Development
   seeding on the current VPS. A small owner-test fixture is not national coverage.
   Actual target data changes require an exact import/dataset handoff and backup.
-- [ ] Not started — **PORTAL-07: mastermind integration and frontend handoff.**
-  [Pinned final gate brief](worker-prompts/07-final-integration.md) prepared
-  after Phase 05 acceptance. External worker execution has not started.
-  One bounded independent review after implementation; correct concrete findings,
-  strict zero-warning build and focused tests per change, full unit/architecture
-  once for the integrated cross-cutting metadata change, Postman JSON parsing,
-  contract-map zero missing/orphans and diff-check. Document changed codes,
-  schema examples and frontend adaptations; publish only on an owner order.
-  Deployed verification after owner deployment starts with anonymous revision/
-  migration/smoke checks. Authenticated tests use a secure route (HTTPS or an
-  approved SSH tunnel) and designated test actors. Preserve the separate open
-  Chat Plus runtime/device/soak gates; this work does not close Prompt 7 by name.
+- [x] Done — **PORTAL-07: mastermind integration and frontend handoff.**
+  [Pinned final gate brief](worker-prompts/07-final-integration.md) executed
+  from base `5dff36c` (clean `main == origin/main` at intake). Worker delivery
+  (pending mastermind acceptance) adds `reports/phase-07-integration.md` and
+  `frontend-handoff.md`; no production/test code or Postman change was needed.
+  Valid safe gates: strict build 0 warnings/errors; full unit 3308 passed,
+  0 failed, 8 skipped (5 PostgreSQL integration via documented guards + 3
+  pre-declared Families legacy); architecture 1/1; 22 Postman JSONs parse;
+  mapping 556/620/0/0; diff-check clean; no new migration or runtime config.
+  One first-run deviation disclosed (inherited integration target briefly
+  enabled PG fixtures on local test DBs only; discarded, rerun clean).
+  External items stay open: deployed caregiver evidence, PORTAL-06 dataset,
+  untested nested/mobile routes, media cleanup, Chat runtime/soak gates.
 
 Landing media lifecycle is a separately proposed low-priority follow-up, not
 part of the core shipping sequence above. It needs a reference-safe design and
