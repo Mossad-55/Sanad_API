@@ -1,7 +1,7 @@
 # PORTAL-03 report — accurate OpenAPI contracts without a wire-format migration
 
-Status: In progress — worker implementation delivered; mastermind review
-requires the bounded corrections below before acceptance.
+Status: Done — implementation and correction delivery reviewed and accepted.
+Historical review findings and final acceptance evidence are retained below.
 Do not begin PORTAL-04 from this report. PORTAL-01/02 work untouched. Nothing
 is published or deployed here; deployed OpenAPI is not claimed fixed.
 
@@ -195,3 +195,39 @@ diff. The 28 declarations and route-owned category mapping otherwise align with
 the approved direction. No new build/test gate was claimed for this read-only
 review; the existing host was deliberately not rerun before isolation correction.
 PORTAL-04 remains not started. Nothing published/deployed.
+
+## Final mastermind acceptance — 2026-10-15
+
+Reviewed correction delivery `13a85cafcbbbccd26ed8728f930ab34c9e57202b`
+on clean pushed main against all three correction requests. The preceding
+acceptance hold is resolved, not an outstanding instruction.
+
+- R1: every module connection is overridden; all nine concrete contexts are
+  replaced with InMemory registrations, production hosted jobs removed,
+  migrations/seeders disabled, storage temporary and DataProtection ephemeral.
+  This structurally fixes eager connection-string capture as well as final
+  configuration. Scope remains test-only. No production startup redesign.
+- R2: real handler/HTTP tests cover empty `204` with no body/content-type and
+  populated `200` DTO. Added 204 metadata preserves existing behavior; guide
+  and conventions now match it. The original 200-null statement is retracted.
+- R3: nullable AccountType uses a null-or-constrained-enum union. The null
+  constraint defect was not reproduced; regression verifies the actual schema,
+  so no speculative transformer change was made.
+
+Mastermind reran the focused tests with `--no-build --no-restore --nologo
+-v minimal` on `tests/Sanad.UnitTests/Sanad.UnitTests.csproj`, filter:
+`FullyQualifiedName~PortalOpenApiContractTests|FullyQualifiedName~PortalResponseSerializationTests|FullyQualifiedName~PortalRequiredQueryRuntimeTests|FullyQualifiedName~PortalFinanceCurrentStateTests|FullyQualifiedName~PortalHostIsolationTests|FullyQualifiedName~AdminCommunityCategoryRequestTests|FullyQualifiedName~AdminResponseSchemaContractTests`.
+Exit 0: **85 passed, 0 failed, 0 skipped**, no warnings emitted.
+The host configuration/registrations were reviewed before that run. Test fixtures
+are synthetic and isolated; no PostgreSQL/reset/provider/VPS action.
+
+Reused correction worker's successful final strict solution build (exit 0,
+0 warnings/errors) and architecture 1/1; no code changed during mastermind
+review, so those inputs remain valid. Mastermind reran contract mapping:
+exit 0, **556 signatures / 620 requests / 0 missing / 0 orphan** and
+`git diff --check` clean. No Postman edits in correction/review. Full integrated
+suite remains PORTAL-07. Nothing published/deployed.
+
+No remaining blocking Phase 03 finding in this bounded review. PORTAL-04
+diagnostic brief is prepared for the next external worker. Deployed schema
+verification still requires a later owner publish/deploy order.

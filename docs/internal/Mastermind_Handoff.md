@@ -32,15 +32,17 @@ Mastermind added regression/literal example coverage: strict build 0 warnings/
 errors; Library/controller 56/56; architecture 1/1; Postman mapping 556/620/0/0.
 See [Phase 02 report](work/portal-api-reconciliation/reports/phase-02-library.md).
 Nothing published/deployed; source fixes remain separate from deployed code.
-PORTAL-03 delivery `57f9d3e` is reviewed but not accepted: test-host background
-jobs/module configuration are not isolated as reported, finance-current's
-first-run HTTP status/body needs proof and matching metadata, and nullable-enum
-constraints need focused coverage. No host was rerun before fixing isolation;
-no remote access or production change. See the Phase 03 report's review appendix.
-**Next action:** the same external worker executes the
-[PORTAL-03 correction brief](work/portal-api-reconciliation/worker-prompts/03-review-corrections.md)
+PORTAL-03 delivery `57f9d3e` plus correction `13a85ca` reviewed and accepted:
+test host isolated, finance-current empty HTTP proven 204 and documented,
+nullable-enum schema valid without a speculative transformer change. Mastermind
+rerun 85/85; mapping 556/620/0/0; reused valid correction strict build zero
+warnings/errors and architecture 1/1. See the Phase 03 report's final appendix.
+**Next action:** external worker executes the
+[PORTAL-04 diagnostic brief](work/portal-api-reconciliation/worker-prompts/04-caregiver-integrity.md)
 from the launch message's exact pushed SHA and returns its commit/report.
-PORTAL-04 remains not started; do not move ahead before Phase 03 acceptance.
+Phase 04 is diagnosis/local tests only: no production access/data repair.
+The six reported deployed records remain unverified without operator evidence;
+if unavailable, supply the read-only diagnostic/operator handoff explicitly.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.
