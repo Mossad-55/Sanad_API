@@ -11,9 +11,11 @@ strengthening (focused 57/57, Identity model 7/7, architecture 1/1, strict build
 zero warnings/errors). PORTAL-02 delivery `4962053` is accepted after a bounded
 mastermind parser-compatibility correction and added example/regression tests
 (Library/controller 56/56; strict build zero warnings/errors; architecture 1/1;
-contract mapping zero missing/orphans). The
-[PORTAL-03 metadata brief](work/portal-api-reconciliation/worker-prompts/03-api-metadata.md)
-is ready for the external worker; its implementation has not started.
+contract mapping zero missing/orphans). PORTAL-03 delivery `57f9d3e` is reviewed
+but acceptance awaits a bounded correction pass: safe test-host isolation,
+finance-current empty HTTP response/schema truth, and nullable-enum coverage.
+The [correction brief](work/portal-api-reconciliation/worker-prompts/03-review-corrections.md)
+is the next worker action; PORTAL-04 has not started.
 The current VPS runs Production and is used for developer testing by owner
 direction; a separately hardened VPS is future work. Existing public deployment
 smoke/revision/migration evidence does not establish complete portal or Chat Plus

@@ -1,6 +1,7 @@
 # PORTAL-03 report — accurate OpenAPI contracts without a wire-format migration
 
-Status: Done (worker implementation complete; mastermind review follows).
+Status: In progress — worker implementation delivered; mastermind review
+requires the bounded corrections below before acceptance.
 Do not begin PORTAL-04 from this report. PORTAL-01/02 work untouched. Nothing
 is published or deployed here; deployed OpenAPI is not claimed fixed.
 
@@ -129,3 +130,42 @@ welcome (+404), charge-rules current (nullable first run) and history
 (array), notifications list/detail (+404)/timeline/aggregate, sentence
 catalog, wellness-tips, inventory admin (+404); POST users (201), suspend,
 block, reactivate, password-reset (+404), PUT account-type.
+
+## Mastermind review — 2026-10-15 (acceptance held)
+
+Read-only source review at clean pushed main
+`57f9d3ed1beccbcef21fdec5c90ec7a33d28b97f`. The worker evidence above remains
+attributed to that delivery, not independently accepted execution evidence.
+No host, database, API, provider or VPS was invoked in this review. Required
+next action is the [bounded correction brief](../worker-prompts/03-review-corrections.md).
+
+1. **Test readiness/isolation is incomplete.** PortalApiMetadataHost overrides
+   only the Identity connection key and does not remove production hosted jobs.
+   DependencyInjection registers Care Homes notification processors, email/push
+   outboxes, Chat dispatch and attachment cleanup; several execute database work
+   without Development guards. Module-specific connection strings can override
+   the Identity fallback, and replacing a scenario's module interface does not
+   replace concrete contexts used by these jobs. The report's claim that real
+   background work is disabled is not supported. This establishes an isolation
+   defect, not proof that any real target was contacted. Correct the host before
+   running it again; isolate all connection/provider/storage/key settings.
+2. **Finance first-run HTTP behavior was not established.** The tests inspect
+   the populated 200 schema, not a null query result through HTTP. The action
+   returns Ok(null) in that state; the installed ASP.NET Core reference documents
+   HttpNoContentOutputFormatter as setting 204 for null content, and no production
+   formatter override was found. The claimed verified 200-null is unsupported
+   and likely incorrect. Prove both empty/populated outcomes through the safely
+   isolated production MVC pipeline, then correct metadata/docs without changing
+   runtime formatting. An omitted nullable schema is not accepted as a gap-free
+   contract if that is actually the HTTP representation.
+3. **Nullable-enum coverage needs a focused regression.** EnrichEnum unwraps
+   Nullable<T> and writes a numeric-only enum constraint. When that constraint
+   shares a nullable schema, null is still excluded. Verify the actual generated
+   MyProfileResponse.AccountType schema and null serialization; correct only if
+   reproduced. Existing nullable string/coordinate assertions do not cover this.
+
+No unrelated handler/domain/auth/CORS change identified in the bounded production
+diff. The 28 declarations and route-owned category mapping otherwise align with
+the approved direction. No new build/test gate was claimed for this read-only
+review; the existing host was deliberately not rerun before isolation correction.
+PORTAL-04 remains not started. Nothing published/deployed.

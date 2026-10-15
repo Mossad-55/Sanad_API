@@ -1,6 +1,6 @@
 # Admin and Care Homes portal API reconciliation
 
-Status: PORTAL-01/02 reviewed and accepted; PORTAL-03 brief issued (2026-10-15).
+Status: PORTAL-01/02 accepted; PORTAL-03 review corrections required (2026-10-15).
 PORTAL-06 still requires an approved geography dataset and scope.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
@@ -183,10 +183,13 @@ the standing repository branch instruction. Workers preserve others' edits.
   omission. Empty bullet arrays remain valid. Reject `[null]` as 400. Rejected
   requests must not change records or leave newly uploaded covers; preserve the
   old cover when an update fails. Examples must actually be exercised locally.
-- [x] Done — **PORTAL-03: publish accurate API metadata without a wire-format migration.**
+- [ ] In progress — **PORTAL-03: publish accurate API metadata without a wire-format migration.**
   [Pinned worker brief](worker-prompts/03-api-metadata.md) prepared after
-  Phase 02 acceptance. Worker implementation complete; evidence in
-  [phase-03 report](reports/phase-03-api-metadata.md), pending mastermind review.
+  Phase 02 acceptance. Worker delivery `57f9d3e` reviewed; acceptance held for
+  [bounded review corrections](worker-prompts/03-review-corrections.md): isolate
+  the test host before reruns, establish finance-current empty HTTP behavior and
+  metadata, and verify nullable-enum schema constraints. Evidence and exact
+  findings are in [phase-03 report](reports/phase-03-api-metadata.md).
   Own the controllers for the 28 listed actions, the five query declarations,
   OpenAPI configuration/transformer files, a dedicated community-update request
   DTO, API contract tests, affected guides/Postman entries. Use actual response
@@ -350,5 +353,5 @@ preserve current enum/ID wire formats; keep existing first-run 404 and audience
 403; diagnose caregiver integrity before repair. PORTAL-06 remains a separate
 data-provisioning task until an approved dataset/scope exists. Optional landing
 media cleanup is deferred. The mastermind supplies sequential, pinned worker
-prompts. PORTAL-01/02 are accepted; PORTAL-03 is issued. Later phases wait for
+prompts. PORTAL-01/02 are accepted; PORTAL-03 awaits review corrections. Later phases wait for
 the preceding review and closeout.
