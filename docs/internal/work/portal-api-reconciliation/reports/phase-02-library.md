@@ -1,7 +1,8 @@
 # PORTAL-02 report — library multipart parsing and actionable validation
 
-Status: Done (worker implementation complete; mastermind review follows).
-Do not begin PORTAL-03 from this report. PORTAL-01 Identity changes untouched.
+Status: Done — worker delivery reviewed and accepted after the bounded
+mastermind correction below. Start PORTAL-03 only from its pinned worker brief.
+PORTAL-01 Identity changes untouched.
 
 ## Intake
 
@@ -132,3 +133,44 @@ plus `traceId`.
   existed.
 - Mastermind review follows; PORTAL-03 is not started and nothing was
   deployed.
+
+## Mastermind review and acceptance — 2026-10-15
+
+Reviewed clean pushed main at worker delivery
+`496205363a6f7060d26c5e240b14b22747379de6` against the Phase 02 brief,
+controller diff, request helper, domain rules, fixture assertions and examples.
+The worker evidence above is historical; this appendix is the final disposition.
+
+One concrete compatibility defect was found: `JsonSerializerDefaults.Web`
+enables quoted-number coercion. The worker's claim that number handling was
+unchanged was therefore incorrect at its delivery revision. Added two controller
+regressions for camelCase/PascalCase `displayOrder: "1"`; before correction,
+both failed (expected 400, actual 201), while five other malformed-input cases
+passed. Replaced web defaults with only `PropertyNameCaseInsensitive = true`,
+preserving strict default numeric handling and both accepted key casings.
+
+Also added literal Article-create/Video-update examples matching Postman's form
+values (only synthetic category/file placeholders substituted), plus corresponding
+controller tests. Their category and Draft Video prerequisites are seeded and
+read back before actions. The guide now includes the exact examples and clarifies
+the unchanged legacy JSON-root `null` behavior (empty array, not omission).
+All additions use isolated InMemory contexts, real handlers, fake storage and
+method-level controller dispatch. No API host, PostgreSQL, providers or VPS.
+
+Final gates after the last code change:
+
+- `dotnet build Sanad.slnx --no-restore -m:1 --nologo /p:TreatWarningsAsErrors=true`:
+  exit 0, **0 warnings, 0 errors**.
+- `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-build --no-restore
+  --nologo -v minimal --filter
+  "FullyQualifiedName~Sanad.UnitTests.API.AdminLibraryControllerTests|FullyQualifiedName~Sanad.UnitTests.Cms.LibraryTests"`:
+  exit 0, **56 passed, 0 failed, 0 skipped** (43 controller + 13 existing Library).
+- Architecture `--no-build --no-restore`: exit 0, **1/1**, no warnings.
+- Admin Postman JSON parses; `Verify-ApiContractMapping.ps1`: exit 0,
+  **556 signatures / 620 requests / 0 missing / 0 orphan**.
+- `git diff --check`: clean. Git's CRLF normalization notices are not compiler
+  warnings or whitespace errors.
+
+No further blocking finding in this bounded review. Full-suite integration
+remains PORTAL-07. Nothing was published/deployed. PORTAL-03 brief is prepared;
+worker execution has not begun.

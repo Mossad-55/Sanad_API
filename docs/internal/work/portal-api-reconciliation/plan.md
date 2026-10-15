@@ -1,6 +1,6 @@
 # Admin and Care Homes portal API reconciliation
 
-Status: PORTAL-01 reviewed/accepted; PORTAL-02 worker brief issued (2026-10-15).
+Status: PORTAL-01/02 reviewed and accepted; PORTAL-03 brief issued (2026-10-15).
 PORTAL-06 still requires an approved geography dataset and scope.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
@@ -163,8 +163,12 @@ the standing repository branch instruction. Workers preserve others' edits.
   side effects with deterministic fixtures.
 - [x] Done — **PORTAL-02: repair library input contract and field validation.**
   [Worker brief](worker-prompts/02-library-validation.md) issued after Phase 01
-  acceptance. Worker implementation complete; evidence in
-  [phase-02 report](reports/phase-02-library.md), pending mastermind review.
+  acceptance. Worker delivery `4962053` reviewed and accepted after a bounded
+  mastermind correction preserving strict JSON number handling. Added quoted-
+  number regressions and literal documented/Postman example tests. Strict build
+  0 warnings/errors; focused Library/controller 56/56; architecture 1/1;
+  Postman mapping 556/620/0/0. Evidence in
+  [phase-02 report](reports/phase-02-library.md).
   Own AdminLibrary parser/request-validation helpers, bounded Library command/
   domain changes only if needed, Library tests, guide and Admin Postman Library
   folder. Accept existing PascalCase and documented camelCase section keys;
@@ -180,6 +184,8 @@ the standing repository branch instruction. Workers preserve others' edits.
   requests must not change records or leave newly uploaded covers; preserve the
   old cover when an update fails. Examples must actually be exercised locally.
 - [ ] Not started — **PORTAL-03: publish accurate API metadata without a wire-format migration.**
+  [Pinned worker brief](worker-prompts/03-api-metadata.md) prepared after
+  Phase 02 acceptance; implementation awaits the owner's external worker.
   Own the controllers for the 28 listed actions, the five query declarations,
   OpenAPI configuration/transformer files, a dedicated community-update request
   DTO, API contract tests, affected guides/Postman entries. Use actual response
@@ -343,5 +349,5 @@ preserve current enum/ID wire formats; keep existing first-run 404 and audience
 403; diagnose caregiver integrity before repair. PORTAL-06 remains a separate
 data-provisioning task until an approved dataset/scope exists. Optional landing
 media cleanup is deferred. The mastermind supplies sequential, pinned worker
-prompts. PORTAL-01 is accepted; PORTAL-02 is issued. Later phases wait for
+prompts. PORTAL-01/02 are accepted; PORTAL-03 is issued. Later phases wait for
 the preceding review and closeout.

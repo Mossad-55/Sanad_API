@@ -68,6 +68,60 @@ public sealed class AdminLibraryControllerTests
     }
 
     [Fact]
+    public async Task CanonicalPostmanArticleExample_Returns201()
+    {
+        await using CmsDbContext db = CreateDb();
+        LibraryCategory category = LibraryCategory.Create("صحة", "Health", true, DateTime.UtcNow);
+        db.LibraryCategories.Add(category);
+        await db.SaveChangesAsync();
+        Assert.True((await db.LibraryCategories.AsNoTracking().SingleAsync()).IsActive);
+        var controller = CreateController(db, new RecordingStorage(), "canonical-article");
+        // Literal documented/Postman form values; replace only the category/file placeholders.
+        var request = new CreateLibraryContentRequest(
+            "Article", category.Id.Value.ToString(), "نصيحة صحية", "Healthy tip", "ملخص قصير", "Short summary",
+            null, null, false,
+            "[{\"displayOrder\":1,\"arabicTitle\":\"الأول\",\"englishTitle\":\"First\",\"arabicBullets\":[\"نقطة\"],\"englishBullets\":[\"bullet\"]}]");
+
+        Assert.Equal(201, Assert.IsType<ObjectResult>(
+            await controller.CreateContent(request, PngFile(), CancellationToken.None)).StatusCode);
+        LibraryContent stored = Assert.Single(await ReadAllAsync(db));
+        Assert.Equal("Healthy tip", stored.EnglishTitle);
+        Assert.Equal(category.Id, stored.CategoryId);
+        Assert.Equal("bullet", Assert.Single(Assert.Single(stored.Sections).EnglishBullets));
+    }
+
+    [Fact]
+    public async Task CanonicalPostmanVideoUpdateExample_Returns200()
+    {
+        await using CmsDbContext db = CreateDb();
+        LibraryCategory category = LibraryCategory.Create("صحة", "Health", true, DateTime.UtcNow);
+        db.LibraryCategories.Add(category);
+        await db.SaveChangesAsync();
+        var seeded = await new CreateLibraryContentCommandHandler(db).Handle(
+            new CreateLibraryContentCommand(LibraryContentType.Video, category.Id.Value,
+                "فيديو", "Video", "ملخص", "Summary", "https://youtu.be/old", 60,
+                "library/old.png", false, null), CancellationToken.None);
+        Assert.True(seeded.IsSuccess);
+        LibraryContent ready = await ReadAsync(db, seeded.Value.Id);
+        Assert.Equal(LibraryContentType.Video, ready.Type);
+        Assert.Equal(LibraryContentStatus.Draft, ready.Status);
+        Assert.True((await db.LibraryCategories.AsNoTracking().SingleAsync()).IsActive);
+        var storage = new RecordingStorage();
+        var controller = CreateController(db, storage, "canonical-video");
+        var request = new UpdateLibraryContentRequest(
+            "Video", category.Id.Value.ToString(), "فيديو جديد", "New video", "ملخص قصير", "Short summary",
+            "https://youtu.be/abc123", 300, false, null);
+
+        Assert.IsType<OkObjectResult>(await controller.UpdateContent(ready.Id.Value, request, null, CancellationToken.None));
+        LibraryContent stored = await ReadAsync(db, ready.Id.Value);
+        Assert.Equal("New video", stored.EnglishTitle);
+        Assert.Equal("https://youtu.be/abc123", stored.VideoUrl);
+        Assert.Equal(300, stored.DurationSeconds);
+        Assert.Equal("library/old.png", stored.CoverImagePath);
+        Assert.Equal(0, storage.SaveCount);
+    }
+
+    [Fact]
     public async Task Create_NullSectionEntry_Returns400WithoutThrowing()
     {
         await using CmsDbContext db = CreateDb();
@@ -88,6 +142,8 @@ public sealed class AdminLibraryControllerTests
     [InlineData("{\"displayOrder\":1}")]
     [InlineData("\"just-a-string\"")]
     [InlineData("123")]
+    [InlineData("[{\"displayOrder\":\"1\",\"arabicTitle\":\"أ\",\"englishTitle\":\"E\",\"arabicBullets\":[],\"englishBullets\":[]}]")]
+    [InlineData("[{\"DisplayOrder\":\"1\",\"ArabicTitle\":\"أ\",\"EnglishTitle\":\"E\",\"ArabicBullets\":[],\"EnglishBullets\":[]}]")]
     [InlineData("[{\"displayOrder\":\"abc\",\"arabicTitle\":\"أ\",\"englishTitle\":\"E\",\"arabicBullets\":[],\"englishBullets\":[]}]")]
     public async Task Create_MalformedOrWrongShapeSections_Return400(string sectionsJson)
     {

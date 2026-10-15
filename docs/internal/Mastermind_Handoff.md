@@ -26,9 +26,16 @@ architecture 1/1; Postman mapping 556/620/0/0. See
 [Phase 01 report](work/portal-api-reconciliation/reports/phase-01-reactivation.md).
 Production application code remains at deployed `8cbeedd`; these fixes are
 committed source work awaiting a later owner publish/deploy order.
+PORTAL-02 worker delivery `4962053` is reviewed and accepted after correcting
+unintended quoted-number coercion while keeping case-insensitive section keys.
+Mastermind added regression/literal example coverage: strict build 0 warnings/
+errors; Library/controller 56/56; architecture 1/1; Postman mapping 556/620/0/0.
+See [Phase 02 report](work/portal-api-reconciliation/reports/phase-02-library.md).
+Nothing published/deployed; source fixes remain separate from deployed code.
 **Next action:** external worker executes the bounded
-[PORTAL-02 library brief](work/portal-api-reconciliation/worker-prompts/02-library-validation.md)
-and returns its exact commit/report. Phase 02 implementation is not yet reported.
+[PORTAL-03 metadata brief](work/portal-api-reconciliation/worker-prompts/03-api-metadata.md)
+from the launch message's exact pushed SHA and returns its commit/report.
+Phase 03 implementation has not started.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.

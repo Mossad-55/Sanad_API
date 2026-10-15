@@ -20,7 +20,10 @@ public sealed record LibraryContentSectionRequest(
 /// </summary>
 public static class LibraryContentValidation
 {
-    private static readonly JsonSerializerOptions SectionsOptions = new(JsonSerializerDefaults.Web);
+    private static readonly JsonSerializerOptions SectionsOptions = new()
+    {
+        PropertyNameCaseInsensitive = true
+    };
 
     public static bool TryParseSections(
         string json,

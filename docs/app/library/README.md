@@ -74,17 +74,42 @@ Create/update body is `multipart/form-data` (5 MB request cap):
 | `sectionsJson` | JSON string (Article only) | Array of `{displayOrder, arabicTitle, englishTitle, arabicBullets, englishBullets}`. ≥1 section, `displayOrder` positive and unique, ≤40 sections, ≤30 bullets each, bullet ≤500 chars. Videos must not send sections. |
 | `file` | multipart file (optional on update, required on create) | Cover image; JPEG/PNG/WebP signatures validated server-side, ≤5 MB. Stored under the `library` prefix. |
 
+Canonical form examples (also in Postman and exercised by controller tests):
+
+| Field | Create Article | Update an existing Draft Video |
+| --- | --- | --- |
+| `type` | `Article` | `Video` |
+| `categoryId` | Existing active category UUID | Existing active category UUID |
+| `arabicTitle` | `نصيحة صحية` | `فيديو جديد` |
+| `englishTitle` | `Healthy tip` | `New video` |
+| `arabicSummary` | `ملخص قصير` | `ملخص قصير` |
+| `englishSummary` | `Short summary` | `Short summary` |
+| `isPremium` | `false` | `false` |
+| `videoUrl` | Omit | `https://youtu.be/abc123` |
+| `durationSeconds` | Omit | `300` |
+| `sectionsJson` | See below | Omit |
+| `file` | Choose a valid cover image | Omit to keep the old cover |
+
+Article `sectionsJson` (send as one text form part, not a nested multipart object):
+
+```json
+[{"displayOrder":1,"arabicTitle":"الأول","englishTitle":"First","arabicBullets":["نقطة"],"englishBullets":["bullet"]}]
+```
+
 Invalid type combinations (article with `videoUrl`, video without duration,
 sections on a video, duplicate display orders, …) return
 `400 Cms.LibraryContent.Invalid` with a safe fixed detail, an `errors` map of
 field paths to messages, and a `traceId`. Section keys accept both the
 canonical camelCase (`displayOrder`, `arabicTitle`, `arabicBullets`, …) and
-the legacy PascalCase spellings; JSON number handling is unchanged. A
-`sectionsJson` value of `[null]`, malformed JSON, or a non-array root returns
+the legacy PascalCase spellings; JSON number handling is unchanged: section
+`displayOrder` must be a JSON number, not a quoted numeric string. A
+`sectionsJson` value of `[null]`, malformed JSON, or a non-null non-array root returns
 `400 Cms.Library.InvalidSections`; an unrecognized `type` returns `400
 Cms.Library.InvalidType`; a malformed `categoryId` returns `400
 Cms.Library.InvalidCategory`. Indexed section failures use paths such as
 `sectionsJson[0].displayOrder` and `sectionsJson[0].arabicBullets[0]`.
+The legacy JSON root `null` normalizes to an empty section array (so Article
+content rejects it); this differs from omitting the form field on update.
 
 On update, omitted `sectionsJson` preserves the existing sections while an
 explicit `[]` clears the requested array and fails for Article; an omitted

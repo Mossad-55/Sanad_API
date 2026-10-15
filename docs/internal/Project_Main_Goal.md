@@ -8,7 +8,12 @@ owns the finding verdicts, approved tasks, fixture strategy and audit evidence
 at `8cbeedd`. The owner approved core execution on 2026-10-15. PORTAL-01
 reactivation delivery `4f71493` is accepted after mastermind review/test
 strengthening (focused 57/57, Identity model 7/7, architecture 1/1, strict build
-zero warnings/errors). PORTAL-02 Library validation brief is issued next.
+zero warnings/errors). PORTAL-02 delivery `4962053` is accepted after a bounded
+mastermind parser-compatibility correction and added example/regression tests
+(Library/controller 56/56; strict build zero warnings/errors; architecture 1/1;
+contract mapping zero missing/orphans). The
+[PORTAL-03 metadata brief](work/portal-api-reconciliation/worker-prompts/03-api-metadata.md)
+is ready for the external worker; its implementation has not started.
 The current VPS runs Production and is used for developer testing by owner
 direction; a separately hardened VPS is future work. Existing public deployment
 smoke/revision/migration evidence does not establish complete portal or Chat Plus
