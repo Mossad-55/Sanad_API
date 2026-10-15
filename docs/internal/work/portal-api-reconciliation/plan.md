@@ -261,10 +261,16 @@ the standing repository branch instruction. Workers preserve others' edits.
   mapping 556/620/0/0. Exact ID and Cairo-date assertions strengthened; no
   production-code change. Final integration is next; PORTAL-06 conditional.
 - [ ] In progress — **PORTAL-06: reference-data provisioning, pending approved source.**
-  Owner authorized starting preparation on 2026-10-15. Execute
-  [06A source qualification](worker-prompts/06a-geography-source-qualification.md)
-  first; [intake](reports/phase-06-source-intake.md) records existing model
-  ambiguity and unqualified source candidates. This is research/proposed design
+  Owner authorized starting preparation on 2026-10-15. [06A source
+  qualification](worker-prompts/06a-geography-source-qualification.md)
+  worker delivery (pending mastermind review and owner dataset/mapping
+  approval): [qualification report](reports/phase-06-source-qualification.md)
+  with [reproducible diagnostics](diagnostics/geography-source-qualification.md).
+  Recommends pinned `open-admin-data` `76b47b2` levels 1–2 filtered (18
+  English-collision pairs + Zemam/police exclusions need per-pair decisions;
+  Smouha placement and manual-Areas policy open); `egypt-cities` disqualified
+  (no license, untranslated level-3 English); CAPMAS disqualified as a direct
+  source (microdata catalogue, no gazetteer). This is research/proposed design
   only; 06B implementation requires source/mapping approval. No importer or
   target-data change is authorized, and no national completeness is claimed.
   Propose an authoritative bilingual hierarchy/dataset with provenance and scope
