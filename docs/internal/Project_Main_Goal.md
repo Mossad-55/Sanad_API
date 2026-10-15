@@ -54,9 +54,12 @@ is implemented/tested locally: strict build zero warnings/errors, focused
 Owner-requested shortest-route rehearsal also passed on a new disposable local
 PostgreSQL 18.4 cluster: 6086 initial inserts, zero repeat inserts, final counts
 27/347/5712 with zero orphans; server stopped, existing databases untouched.
-Owner then approved commit/push, publication and deployment. Release preparation
-is In progress; SSH authentication is unavailable, no remote change occurred.
-Next is publication of the approved pushed revision and deployment handoff;
+Owner then approved commit/push, publication and deployment. Release `9167e71`
+is now deployed and externally verified after SSH setup: Production, 9/9 applied
+migration heads match, zero migrations applied at startup, services/OpenAPI/
+governorates HTTP 200. Config preserved and recoverable file backup retained;
+see [receipt](work/portal-api-reconciliation/reports/deployment-9167e71.md).
+Next is the separate owner decision on the geography data operation;
 not another exhaustive national-source prerequisite for the accepted V1 scope.
 No records were marked geographically/linguistically certified by the display cleanup.
 Production lookup replacement/reset is not authorized. Runtime/device and caregiver operator

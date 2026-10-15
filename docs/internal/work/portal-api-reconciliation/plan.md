@@ -9,8 +9,11 @@ Done: actual CLI initial/repeat apply on a fresh PostgreSQL 18.4 cluster yielded
 [06B report appendix](reports/phase-06-importer.md). No extra source research,
 production reset, commit/push or deployment was performed.
 Owner subsequently approved commit/push, publish and deploy. Release preparation
-In progress; SSH authentication denied, so no remote change. Lookup reset or
-replacement remains outside this approval. API runtime config is unchanged;
+Done: `9167e71` deployed after owner-enabled SSH access; external verifier passes
+with startup evidence, 9/9 migration heads match and zero applied. Services,
+OpenAPI and governorates HTTP 200; config unchanged, file/config backup retained.
+See [deployment receipt](reports/deployment-9167e71.md). Geography import was NOT
+run. Lookup reset or replacement remains outside this approval. API runtime config is unchanged;
 the standalone importer alone needs temporary SANAD_GEOGRAPHY_CONNECTION.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.

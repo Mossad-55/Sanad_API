@@ -6,9 +6,13 @@ Owner workflow override after `f932c46`: report findings, agree/apply cleanup,
 validate and present the final result BEFORE committing or pushing. No further
 commit/push without explicit owner approval; no publish/deploy/import approval.
 Update: owner explicitly approved commit/push, publication and deployment on
-2026-10-15 after the disposable PostgreSQL rehearsal. Release preparation is
-In progress. Noninteractive SSH to the existing VPS was denied; no remote
-mutation occurred. Production lookup replacement/reset remains excluded.
+2026-10-15 after the disposable PostgreSQL rehearsal. Release `9167e71` is now
+published and deployed following owner-enabled SSH key access. Service active,
+Production revision verified externally, all nine migration heads match with
+zero applied at startup; services/OpenAPI/governorates HTTP 200. Existing
+environment/service/appsettings checksums unchanged; private file/config backup
+retained. See [deployment receipt](work/portal-api-reconciliation/reports/deployment-9167e71.md).
+No geography import/replacement/reset occurred; API deployment does not load it.
 Current [16-label cleanup proposal](work/portal-api-reconciliation/reports/phase-06-label-cleanup-proposal.md)
 was approved on 2026-10-15 and applied locally. Original names preserved in the
 correction manifest; exactly 16 display rows changed, no IDs/parents/counts/flags.
@@ -123,9 +127,9 @@ build. Four question-mark labels need display review; 12 underscore delimiters
 are optional readability flags. No candidate edits or verification-flag flips.
 The stronger historical nationwide-certification gate is not claimed passed.
 The owner approved the exact 16 display edits; they are now applied locally.
-**Next action:** publish the approved pushed revision and hand off deployment
-if SSH access remains unavailable. Disposable PostgreSQL rehearsal passed;
-production lookup replacement/reset still needs exact target/data authority.
+**Next action:** owner decision on the separate backed-up geography data operation.
+API deployment is verified; disposable PostgreSQL rehearsal passed. Production
+lookup replacement/reset still needs exact target/data authority.
 Do not demand exhaustive national data again
 as the V1 scope choice, or treat scope acceptance as proof of name accuracy.
 06B local implementation/testing was authorized; no live import/write/deploy authorized.

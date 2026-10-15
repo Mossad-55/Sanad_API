@@ -105,6 +105,11 @@ deployment. No publish or deploy is authorized by this handoff.
 
 ## 7. Release handoff (owner order only)
 
+Update 2026-10-15: release `9167e71` is deployed to the owner-designated VPS.
+External revision/startup/migration verifier passed (9/9); OpenAPI, services and
+governorates anonymous GETs HTTP 200. This does not claim authenticated portal
+regressions or new geography data. See [receipt](reports/deployment-9167e71.md).
+
 1. Owner packages **only** the reviewed pushed `main` revision and deploys.
 2. After the deployment report: anonymous revision check
    (`/api/v1/deployment/info`), applied-migration check (nine required
