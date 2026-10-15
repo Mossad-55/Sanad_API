@@ -22,6 +22,7 @@ public sealed record ImportPlan(int Version, string CatalogueSha256, string Targ
     IReadOnlyList<ExistingLocation> PreservedExtras)
 {
     public bool HasConflicts => Rows.Any(row => row.Action == ImportAction.Conflict);
+    public string? Reconciliation { get; init; }
     public int InsertCount => Rows.Count(row => row.Action == ImportAction.Insert);
 }
 public sealed class ImportRejectedException(string code) : Exception(code);

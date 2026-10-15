@@ -2,6 +2,14 @@
 
 ## Current slice — Admin and Care Homes portal API reconciliation
 
+Current update: owner-approved V1 geography preserve-and-add provisioning is
+Done. Final 27 governorates / 349 Cities / 5714 Areas (legacy extras retained),
+all nine original lookup records and five selections unchanged, zero orphans.
+Private DB backup retained, API/public hierarchy verified; see
+[executed receipt](work/portal-api-reconciliation/reports/geography-import-preserve-add.md).
+Focused 119/119 and strict build zero warnings/errors. Earlier pending-import
+checkpoints below are historical. No new API binary/config change was needed.
+
 Owner supplied a frontend issue report for verification, planning and targeted
 worker tests. The [portal reconciliation plan](work/portal-api-reconciliation/plan.md)
 owns the finding verdicts, approved tasks, fixture strategy and audit evidence

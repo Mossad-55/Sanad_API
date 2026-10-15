@@ -1,7 +1,12 @@
 # Admin and Care Homes portal API reconciliation
 
 Status: PORTAL-01 through 05 and PORTAL-07 accepted locally (2026-10-15).
-PORTAL-06: Cleanup and 06B importer implementation Done locally (focused 113/113, architecture 1/1, strict build zero warnings/errors). Actual data provisioning remains In progress; no live preview/import, commit/push or deploy approval.
+PORTAL-06: **Done for owner-accepted V1 scope**. Approved preserve-and-add import
+executed: 6081 inserts, final 27/349/5714 including legacy extras; old nine lookup
+rows and five selections unchanged, zero orphans, repeat zero. Focused 119/119,
+strict build zero warnings/errors; API/lookup verification passes. See the
+[executed receipt](reports/geography-import-preserve-add.md). Chronology below
+retains earlier decisions; pending-import statements are historical, not active.
 Owner authorized the shortest route on 2026-10-15: one fresh disposable local
 PostgreSQL rehearsal, preserving existing local databases and the VPS. Rehearsal
 Done: actual CLI initial/repeat apply on a fresh PostgreSQL 18.4 cluster yielded
@@ -15,6 +20,19 @@ OpenAPI and governorates HTTP 200; config unchanged, file/config backup retained
 See [deployment receipt](reports/deployment-9167e71.md). Geography import was NOT
 run. Lookup reset or replacement remains outside this approval. API runtime config is unchanged;
 the standalone importer alone needs temporary SANAD_GEOGRAPHY_CONNECTION.
+Owner-approved read-only VPS replacement check is Done: old lookups 4/3/2,
+five saved area selections across five caregivers, zero booking Area IDs;
+one bilingual mismatch precludes guessed mapping. No data change. See
+[replacement impact/owner decision](reports/geography-replacement-preflight.md).
+Owner approved the four exact links, including Damanhur grouping. Narrow opt-in
+`sanad-vps-v1` importer profile In progress; pins existing IDs/names/parents and
+target, preserves legacy selections, requires fresh preview and backed-up apply.
+Owner chose preserve-and-add rather than clearing existing selections. In
+progress: preserve-and-add data operation. Actual read-only preview Done:
+two root spelling conflicts block 944 rows; explicit governorate aliases and
+Damanhur grouping need reconciliation. No apply or partial import. Preserve all
+existing IDs/names/selections; do not bypass name-conflict guards or silently
+perform a partial catalogue import. Any exact reconciliation is reported first.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
 The frontend report is input evidence, not an accepted defect list.
@@ -273,7 +291,7 @@ the standing repository branch instruction. Workers preserve others' edits.
   0 warnings/errors; mastermind combined 126/126 (19 owner + 107 related);
   mapping 556/620/0/0. Exact ID and Cairo-date assertions strengthened; no
   production-code change. Final integration is next; PORTAL-06 conditional.
-- [ ] In progress — **PORTAL-06: V1 coverage accepted; display cleanup and importer Done locally; target data provisioning not performed.**
+- [x] Done — **PORTAL-06: owner-accepted V1 coverage provisioned with approved links; legacy IDs and selections preserved.**
   Owner authorized starting preparation on 2026-10-15. [06A source
   qualification](worker-prompts/06a-geography-source-qualification.md)
   worker delivery `cdf8a2a` reviewed/accepted as research, not dataset approval:

@@ -292,6 +292,86 @@ public sealed class GeographyImportTests
         Assert.Equal("LOCK TABLE caregivers.governorates, caregivers.cities, caregivers.areas IN SHARE ROW EXCLUSIVE MODE", ImportStore.WriterLockSql);
     }
 
+    [Fact]
+    public async Task ApprovedLinks_FullImportAndRepeatPreserveLegacyRowsAndFiveSelections()
+    {
+        var catalogue = ImportCatalogue.Parse(File.ReadAllBytes(FindCatalogue()), ImportCatalogue.AcceptedV1Sha256);
+        await using var fixture = await Fixture.CreateAsync();
+        foreach (var row in LegacySnapshot())
+        {
+            LookupEntity entity = row.Level switch
+            {
+                LocationLevel.Governorate => new GovernorateEntity(),
+                LocationLevel.City => new CityEntity { GovernorateId = row.ParentId!.Value },
+                _ => new AreaEntity { CityId = row.ParentId!.Value }
+            };
+            entity.Id = row.Id; entity.ArabicName = row.ArabicName; entity.EnglishName = row.EnglishName;
+            entity.IsActive = row.IsActive; entity.CreatedOnUtc = row.CreatedOnUtc; entity.UpdatedOnUtc = row.UpdatedOnUtc;
+            fixture.Db.Add(entity);
+        }
+        await fixture.Db.SaveChangesAsync();
+        await fixture.Db.Database.ExecuteSqlRawAsync("CREATE TABLE preserved_selections (id INTEGER PRIMARY KEY, area_id TEXT NOT NULL)");
+        for (var index = 0; index < 5; index++)
+            await fixture.Db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO preserved_selections (id, area_id) VALUES ({index}, {(index < 4 ? "01a07c8a-0936-75fa-87e7-4a5b6f0a660b" : "01a07fc1-bd48-79b7-8c6d-2d3bfaeb18d1")})");
+        var before = await fixture.Store.ReadSnapshotAsync();
+        Assert.Equal(9, before.Count);
+        var store = new ImportStore(fixture.Db, ApprovedVpsLinks.Target, () => Now, useApprovedVpsLinks: true);
+        var plan = await store.PreviewAsync(catalogue);
+        Assert.False(plan.HasConflicts);
+        Assert.Equal(6081, plan.InsertCount);
+        Assert.Equal(4, plan.PreservedExtras.Count);
+        plan = JsonSerializer.Deserialize<ImportPlan>(ImportJson.Bytes(plan), ImportJson.Options)!;
+        await Assert.ThrowsAsync<ImportRejectedException>(() => store.ApplyAsync(catalogue, plan with { Reconciliation = null }, ApprovedVpsLinks.Target, "backup", "maintenance"));
+        Assert.Equal(6081, await store.ApplyAsync(catalogue, plan, ApprovedVpsLinks.Target, "backup", "maintenance"));
+        var after = await store.ReadSnapshotAsync();
+        Assert.Equal(ImportPlanner.Fingerprint(before), ImportPlanner.Fingerprint(after.Where(row => before.Any(old => old.Id == row.Id)).ToArray()));
+        Assert.Equal(27, after.Count(row => row.Level == LocationLevel.Governorate));
+        Assert.Equal(349, after.Count(row => row.Level == LocationLevel.City));
+        Assert.Equal(5714, after.Count(row => row.Level == LocationLevel.Area));
+        Assert.Equal(5, await fixture.Db.Database.SqlQueryRaw<int>("SELECT count(*) AS Value FROM preserved_selections s JOIN areas a ON lower(a.id) = s.area_id").SingleAsync());
+        var repeat = await store.PreviewAsync(catalogue);
+        Assert.False(repeat.HasConflicts);
+        Assert.Equal(0, repeat.InsertCount);
+        Assert.Equal(0, await store.ApplyAsync(catalogue, repeat, ApprovedVpsLinks.Target, "backup", "maintenance"));
+    }
+
+    [Theory]
+    [InlineData("target")]
+    [InlineData("catalogue")]
+    [InlineData("missing")]
+    [InlineData("renamed")]
+    [InlineData("parent")]
+    public void ApprovedLinks_RefuseUnapprovedTargetOrMappingDrift(string fault)
+    {
+        var catalogue = ImportCatalogue.Parse(File.ReadAllBytes(FindCatalogue()), ImportCatalogue.AcceptedV1Sha256);
+        var snapshot = LegacySnapshot();
+        if (fault == "missing") snapshot = snapshot.Skip(1).ToArray();
+        if (fault == "renamed") snapshot[0] = snapshot[0] with { EnglishName = "Changed" };
+        if (fault == "parent") snapshot[3] = snapshot[3] with { ParentId = Guid.NewGuid() };
+        Assert.Throws<ImportRejectedException>(() => ImportPlanner.Build(
+            fault == "catalogue" ? catalogue with { Sha256 = "different" } : catalogue, snapshot,
+            fault == "target" ? "wrong" : ApprovedVpsLinks.Target, Now, useApprovedVpsLinks: true));
+        Assert.Throws<ImportRejectedException>(() => ImportProgram.ParseArguments(["preview", "--catalogue", "a", "--report", "b", "--reconciliation", "unknown"]));
+    }
+
+    private static ExistingLocation[] LegacySnapshot()
+    {
+        ExistingLocation Row(LocationLevel level, string id, string? parent, string arabic, string english) =>
+            new(level, Guid.Parse(id), parent is null ? null : Guid.Parse(parent), arabic, english, true, Now.AddDays(-1), Now.AddDays(-1));
+        return
+        [
+            Row(LocationLevel.Governorate,"01a07c6a-6e2a-70cf-b63a-094d87a95777",null,"البحيرة","Beheira"),
+            Row(LocationLevel.Governorate,"01a07c7e-e825-7dfb-a7fb-5f7ce01d9845",null,"المنيا","Minya"),
+            Row(LocationLevel.Governorate,"01a07c28-9228-71f4-9717-ade72428ecf2",null,"اسيوط","Asyut"),
+            Row(LocationLevel.City,"01a07c6b-8664-7e17-b938-0ba33e950f75","01a07c6a-6e2a-70cf-b63a-094d87a95777","دمنهور","Damanhur"),
+            Row(LocationLevel.Governorate,"01a07fb6-f638-7fca-8cf1-aeb521b459cb",null,"الاسكندرية","Alexandria"),
+            Row(LocationLevel.City,"01a07c80-aa3e-7ad0-ae8e-76f06547a48c","01a07c7e-e825-7dfb-a7fb-5f7ce01d9845","دمنهور","Damanhur"),
+            Row(LocationLevel.City,"01a07c80-f0ae-759d-91fe-ec9d3c6e14b1","01a07c7e-e825-7dfb-a7fb-5f7ce01d9845","مطاي","Matay"),
+            Row(LocationLevel.Area,"01a07c8a-0936-75fa-87e7-4a5b6f0a660b","01a07c80-f0ae-759d-91fe-ec9d3c6e14b1","مركز مطاي","Damanhur Markaz"),
+            Row(LocationLevel.Area,"01a07fc1-bd48-79b7-8c6d-2d3bfaeb18d1","01a07c6b-8664-7e17-b938-0ba33e950f75","مركز دمنهور","Damanhur Markaz")
+        ];
+    }
+
     private static string FindCatalogue()
     {
         for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent)

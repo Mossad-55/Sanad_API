@@ -60,6 +60,16 @@ to apply; a conflict-free preview is not proof of complete modern geography.
 
 ## Apply — exact owner order, maintenance and backup required
 
+Owner-approved preserve-and-add links (2026-10-15): add
+`--reconciliation sanad-vps-v1` to **both** preview and apply. This opt-in profile
+is pinned to the approved VPS target fingerprint, exact candidate hash and four
+existing IDs/names/parents: Beheira/Behera, Minya/Menia, Asyut/Assiut and the
+explicit Damanhur city/district grouping. It never edits those records or the
+five existing caregiver selections. Unknown profiles, other targets and changed
+link records fail closed. The plan records the profile and apply recomputes it;
+do not hand-edit plan JSON. Other legacy entries stay as preserved extras, so
+final counts include those extras rather than exactly the candidate totals.
+
 Before apply:
 
 1. Obtain explicit approval of the target, reviewed report, candidate hash and

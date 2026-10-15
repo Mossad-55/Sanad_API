@@ -89,6 +89,12 @@ deployment. No publish or deploy is authorized by this handoff.
 
 ## 6. Open items (not complete, not waived)
 
+Update: PORTAL-06 provisioning is now complete. Live 27/349/5714 totals include
+two legacy Cities and two legacy Areas; original IDs/names and five selections
+are unchanged. Same API routes/wire formats, no frontend configuration change.
+See [receipt](reports/geography-import-preserve-add.md). Earlier pending-import
+wording below is historical and superseded; other open items remain.
+
 - Deployed caregiver data: six reported Identity-mismatched rows remain
   **unverified** — see `diagnostics/caregiver-identity.sql` and
   `diagnostics/caregiver-identity-runbook.md`. No repair authorized yet.

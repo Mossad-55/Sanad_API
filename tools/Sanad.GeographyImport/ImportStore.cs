@@ -3,7 +3,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Sanad.GeographyImport;
 
-public sealed class ImportStore(LocationDbContext db, string targetFingerprint, Func<DateTime>? clock = null)
+public sealed class ImportStore(LocationDbContext db, string targetFingerprint, Func<DateTime>? clock = null,
+    bool useApprovedVpsLinks = false)
 {
     public const string WriterLockSql = "LOCK TABLE caregivers.governorates, caregivers.cities, caregivers.areas IN SHARE ROW EXCLUSIVE MODE";
     private DateTime Now => (clock ?? (() => DateTime.UtcNow))();
@@ -25,7 +26,8 @@ public sealed class ImportStore(LocationDbContext db, string targetFingerprint, 
     {
         await using var transaction = await db.Database.BeginTransactionAsync(IsolationLevel.Serializable, cancellationToken);
         if (db.Database.IsNpgsql()) await db.Database.ExecuteSqlRawAsync("SET TRANSACTION READ ONLY", cancellationToken);
-        return ImportPlanner.Build(catalogue, await ReadSnapshotAsync(cancellationToken), targetFingerprint, Now);
+        return ImportPlanner.Build(catalogue, await ReadSnapshotAsync(cancellationToken), targetFingerprint, Now,
+            useApprovedVpsLinks: useApprovedVpsLinks);
         // Disposal rolls back the read-only transaction; no database write occurs.
     }
 
@@ -36,7 +38,8 @@ public sealed class ImportStore(LocationDbContext db, string targetFingerprint, 
             throw new ImportRejectedException("BackupReferenceRequired");
         if (string.IsNullOrWhiteSpace(maintenanceReference) || maintenanceReference.Length > 200)
             throw new ImportRejectedException("MaintenanceReferenceRequired");
-        if (reviewedPlan.Version != 1 || reviewedPlan.CatalogueSha256 != catalogue.Sha256 ||
+        if (reviewedPlan.Reconciliation != (useApprovedVpsLinks ? ApprovedVpsLinks.Profile : null) ||
+            reviewedPlan.Version != 1 || reviewedPlan.CatalogueSha256 != catalogue.Sha256 ||
             reviewedPlan.TargetFingerprint != targetFingerprint || confirmedTarget != targetFingerprint)
             throw new ImportRejectedException("PlanTargetOrCatalogue");
         if (reviewedPlan.CreatedOnUtc.Kind != DateTimeKind.Utc || reviewedPlan.CreatedOnUtc > Now ||
@@ -58,7 +61,8 @@ public sealed class ImportStore(LocationDbContext db, string targetFingerprint, 
             var proposedIds = reviewedPlan.Rows.Where(row => row.Action == ImportAction.Insert)
                 .ToDictionary(row => row.SourceKey, row => row.Id, StringComparer.Ordinal);
             var recomputed = ImportPlanner.Build(catalogue, snapshot, targetFingerprint, reviewedPlan.CreatedOnUtc,
-                row => proposedIds.TryGetValue(row.Key, out var id) ? id : throw new ImportRejectedException("MissingReviewedId"));
+                row => proposedIds.TryGetValue(row.Key, out var id) ? id : throw new ImportRejectedException("MissingReviewedId"),
+                useApprovedVpsLinks);
             if (!ImportJson.Bytes(recomputed).SequenceEqual(ImportJson.Bytes(reviewedPlan)))
                 throw new ImportRejectedException("PlanTampered");
 

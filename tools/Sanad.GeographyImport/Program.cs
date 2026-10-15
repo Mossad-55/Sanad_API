@@ -14,6 +14,7 @@ public static class Program
             Console.WriteLine("Sanad.GeographyImport preview --catalogue FILE --report NEW_FILE");
             Console.WriteLine("Sanad.GeographyImport apply --catalogue FILE --plan FILE --plan-sha SHA256 --confirm-target FINGERPRINT --backup-reference LABEL --maintenance-reference LABEL");
             Console.WriteLine("Connection: explicit SANAD_GEOGRAPHY_CONNECTION environment variable only. No automatic API/startup integration.");
+            Console.WriteLine("Optional exact owner-approved links: --reconciliation sanad-vps-v1 (same option required for preview/apply).");
             return 0;
         }
         try
@@ -46,7 +47,7 @@ public static class Program
             builder.Pooling = false;
             await using var db = new LocationDbContext(new DbContextOptionsBuilder<LocationDbContext>()
                 .UseNpgsql(builder.ConnectionString, provider => provider.CommandTimeout(30)).Options);
-            var store = new ImportStore(db, target);
+            var store = new ImportStore(db, target, useApprovedVpsLinks: options.ContainsKey("--reconciliation"));
             using var cancellation = new CancellationTokenSource(TimeSpan.FromMinutes(5));
             if (mode == "preview")
             {
@@ -85,9 +86,11 @@ public static class Program
             ["--catalogue", "--plan", "--plan-sha", "--confirm-target", "--backup-reference", "--maintenance-reference"];
         var options = new Dictionary<string, string>(StringComparer.Ordinal);
         for (var index = 1; index < args.Length; index += 2)
-            if (!required.Contains(args[index], StringComparer.Ordinal) || string.IsNullOrWhiteSpace(args[index + 1]) ||
+            if ((!required.Contains(args[index], StringComparer.Ordinal) && args[index] != "--reconciliation") || string.IsNullOrWhiteSpace(args[index + 1]) ||
                 !options.TryAdd(args[index], args[index + 1])) throw new ImportRejectedException("Arguments");
         if (required.Any(key => !options.ContainsKey(key))) throw new ImportRejectedException("Arguments");
+        if (options.TryGetValue("--reconciliation", out var profile) && profile != ApprovedVpsLinks.Profile)
+            throw new ImportRejectedException("ReconciliationProfile");
         return (args[0], options);
     }
 

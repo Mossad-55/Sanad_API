@@ -13,6 +13,29 @@ zero applied at startup; services/OpenAPI/governorates HTTP 200. Existing
 environment/service/appsettings checksums unchanged; private file/config backup
 retained. See [deployment receipt](work/portal-api-reconciliation/reports/deployment-9167e71.md).
 No geography import/replacement/reset occurred; API deployment does not load it.
+Subsequent owner-approved preserve-and-add import is now **Done**; see
+[executed receipt](work/portal-api-reconciliation/reports/geography-import-preserve-add.md).
+6081 inserted; final 27/349/5714, including intentional legacy extras. All nine
+old lookup records and five selections verified unchanged, seven profiles
+retained, zero orphans, repeat preview zero. Private full DB backup retained;
+API active, public lookup hierarchy and deployment verifier pass (9/9 heads).
+Opt-in four-link profile tested 119/119; strict build zero warnings/errors.
+No new API config/binary change. Earlier no-import/pending statements below
+are historical checkpoints, superseded by this receipt.
+Owner subsequently approved read-only replacement preflight. Done: actual
+lookups 4/3/2; five area-selection rows across five caregivers; no booking has
+an Area ID; no declared lookup FKs. One existing Area has conflicting bilingual
+names. See [exact impact/proposal](work/portal-api-reconciliation/reports/geography-replacement-preflight.md).
+No data changed. Await exact acceptance before clearing those five choices;
+never guess replacement mappings or delete profiles/accounts/bookings.
+Superseding owner choice: preserve-and-add, not clear/reset. Actual-target
+read-only importer preview In progress; existing IDs, names and all five choices
+must remain unchanged. Do not bypass reported conflicts or silently load only
+unblocked branches.
+Preview now Done: two root governorate spelling conflicts block 944 dependent
+rows; Asyut/Assiut would duplicate without explicit matching, and Damanhur needs
+an explicit grouping choice. No apply. Exact proposed links are in the preflight
+report; current CLI has no alias mechanism. Await owner reconciliation decision.
 Current [16-label cleanup proposal](work/portal-api-reconciliation/reports/phase-06-label-cleanup-proposal.md)
 was approved on 2026-10-15 and applied locally. Original names preserved in the
 correction manifest; exactly 16 display rows changed, no IDs/parents/counts/flags.
@@ -127,7 +150,8 @@ build. Four question-mark labels need display review; 12 underscore delimiters
 are optional readability flags. No candidate edits or verification-flag flips.
 The stronger historical nationwide-certification gate is not claimed passed.
 The owner approved the exact 16 display edits; they are now applied locally.
-**Next action:** owner decision on the separate backed-up geography data operation.
+**Next action:** hand off completed V1 geography provisioning; await owner tasks.
+No further data correction, deletion, runtime testing or deployment implied.
 API deployment is verified; disposable PostgreSQL rehearsal passed. Production
 lookup replacement/reset still needs exact target/data authority.
 Do not demand exhaustive national data again

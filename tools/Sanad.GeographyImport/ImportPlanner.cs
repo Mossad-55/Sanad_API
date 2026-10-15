@@ -6,9 +6,12 @@ public static class ImportPlanner
         snapshot.OrderBy(row => row.Level).ThenBy(row => row.Id).ToArray()));
 
     public static ImportPlan Build(ImportCatalogue catalogue, IReadOnlyList<ExistingLocation> snapshot,
-        string targetFingerprint, DateTime createdOnUtc, Func<SourceLocation, Guid>? newId = null)
+        string targetFingerprint, DateTime createdOnUtc, Func<SourceLocation, Guid>? newId = null,
+        bool useApprovedVpsLinks = false)
     {
         catalogue = ImportCatalogue.Create(catalogue.Sha256, catalogue.Rows);
+        var aliases = useApprovedVpsLinks ? ApprovedVpsLinks.Resolve(catalogue, snapshot, targetFingerprint) :
+            new Dictionary<string, ExistingLocation>(StringComparer.Ordinal);
         if (createdOnUtc.Kind != DateTimeKind.Utc) throw new ImportRejectedException("PlanClock");
         // PostgreSQL timestamps have microsecond precision. Pin plan/write/read
         // timestamps to that precision so post-insert verification is portable.
@@ -43,7 +46,14 @@ public static class ImportPlanner
             var matches = snapshot.Where(row => row.Level == source.Level && row.ParentId == parentId &&
                 (row.ArabicName == source.ArabicName || row.EnglishName == source.EnglishName)).ToArray();
             PlannedLocation result;
-            if (matches.Length > 1) result = Conflict("AmbiguousNames", matches);
+            if (aliases.TryGetValue(source.Key, out var approved))
+            {
+                if (approved.ParentId != parentId || matches.Any(row => row.Id != approved.Id) ||
+                    !used.Add((approved.Level, approved.Id))) result = Conflict("ReconciliationCollision", matches);
+                else result = new(source.Level, source.Key, approved.Id, parentId, approved.ArabicName, approved.EnglishName,
+                    approved.IsActive ? ImportAction.Keep : ImportAction.KeepInactive, approved.IsActive, null);
+            }
+            else if (matches.Length > 1) result = Conflict("AmbiguousNames", matches);
             else if (matches.Length == 1)
             {
                 var match = matches[0];
@@ -72,6 +82,7 @@ public static class ImportPlanner
         }
         return new(1, catalogue.Sha256, targetFingerprint, Fingerprint(snapshot), createdOnUtc,
             planned.Values.ToArray(), snapshot.Where(row => !used.Contains((row.Level, row.Id)))
-                .OrderBy(row => row.Level).ThenBy(row => row.Id).ToArray());
+                .OrderBy(row => row.Level).ThenBy(row => row.Id).ToArray())
+            { Reconciliation = useApprovedVpsLinks ? ApprovedVpsLinks.Profile : null };
     }
 }
