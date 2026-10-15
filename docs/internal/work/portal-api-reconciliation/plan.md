@@ -282,6 +282,13 @@ the standing repository branch instruction. Workers preserve others' edits.
   manifest before a 06B importer brief. This does not approve the rejected
   source, change locality semantics or authorize a target write. If data gaps
   remain, report them; no silent reduction to levels 1–2 or manual-Areas-only.
+  [06A2 worker delivery](reports/phase-06-national-catalogue.md) (pending
+  mastermind review): `reference-data/egypt/candidate.json` (27/346/5706,
+  SHA-256 `2ECB4808…BCF`), `provenance.md`, `coverage.md` per-governorate
+  matrix, offline `Validate-Catalogue.ps1` + fixtures (0 failures, 5/5
+  checks, exit 0). Areas flagged provisional-census; Smouha/NAC gaps,
+  18 disambiguated labels, and 19 exclusions recorded; no importer, data
+  write, or completeness overclaim.
   Propose an authoritative bilingual hierarchy/dataset with provenance and scope
   (what counts as a city and an area). Design a previewable, idempotent import
   that preserves existing IDs/links, detects ambiguous duplicate names under a

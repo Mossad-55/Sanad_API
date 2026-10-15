@@ -1,0 +1,55 @@
+{
+  "cases": [
+    {
+      "name": "missing-parent-city",
+      "expectValid": false,
+      "candidate": {
+        "governorates": [{ "key": "EG99", "arabicName": "اختبار", "englishName": "Test" }],
+        "cities": [{ "key": "EG9901", "governorateKey": "EG98", "arabicName": "مدينة", "englishName": "City" }],
+        "areas": []
+      }
+    },
+    {
+      "name": "duplicate-english-under-parent",
+      "expectValid": false,
+      "candidate": {
+        "governorates": [{ "key": "EG99", "arabicName": "اختبار", "englishName": "Test" }],
+        "cities": [
+          { "key": "EG9901", "governorateKey": "EG99", "arabicName": "قسم ألف", "englishName": "Same" },
+          { "key": "EG9902", "governorateKey": "EG99", "arabicName": "مركز ألف", "englishName": "Same" }
+        ],
+        "areas": [
+          { "key": "EG990101", "cityKey": "EG9901", "arabicName": "أ", "englishName": "A", "verification": "provisional-census" },
+          { "key": "EG990201", "cityKey": "EG9902", "arabicName": "ب", "englishName": "B", "verification": "provisional-census" }
+        ]
+      }
+    },
+    {
+      "name": "missing-english-area",
+      "expectValid": false,
+      "candidate": {
+        "governorates": [{ "key": "EG99", "arabicName": "اختبار", "englishName": "Test" }],
+        "cities": [{ "key": "EG9901", "governorateKey": "EG99", "arabicName": "مدينة", "englishName": "City" }],
+        "areas": [{ "key": "EG990101", "cityKey": "EG9901", "arabicName": "أ", "englishName": "", "verification": "provisional-census" }]
+      }
+    },
+    {
+      "name": "uncovered-area-branch",
+      "expectValid": false,
+      "candidate": {
+        "governorates": [{ "key": "EG99", "arabicName": "اختبار", "englishName": "Test" }],
+        "cities": [{ "key": "EG9901", "governorateKey": "EG99", "arabicName": "مدينة", "englishName": "City" }],
+        "areas": []
+      }
+    },
+    {
+      "name": "valid-mini-branch",
+      "expectValid": true,
+      "candidate": {
+        "governorates": [{ "key": "EG99", "arabicName": "اختبار", "englishName": "Test" }],
+        "cities": [{ "key": "EG9901", "governorateKey": "EG99", "arabicName": "مدينة", "englishName": "City" }],
+        "areas": [{ "key": "EG990101", "cityKey": "EG9901", "arabicName": "أ", "englishName": "A", "verification": "provisional-census" }]
+      }
+    }
+  ]
+}
