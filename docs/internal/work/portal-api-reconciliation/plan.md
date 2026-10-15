@@ -1,6 +1,6 @@
 # Admin and Care Homes portal API reconciliation
 
-Status: owner approved core execution on 2026-10-15; PORTAL-01 brief issued.
+Status: PORTAL-01 reviewed/accepted; PORTAL-02 worker brief issued (2026-10-15).
 PORTAL-06 still requires an approved geography dataset and scope.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
@@ -141,8 +141,11 @@ the standing repository branch instruction. Workers preserve others' edits.
   completed; verification details below. No authenticated live reproduction.
 - [x] Done — **PORTAL-01: prevent reactivation 500 without bypassing verification.**
   Owner approved execution; [worker brief](worker-prompts/01-reactivation.md)
-  issued. Worker implementation complete; evidence in
-  [phase-01 report](reports/phase-01-reactivation.md), pending mastermind review.
+  issued. Worker delivery `4f71493` reviewed and accepted; mastermind completed
+  missing partial-verification combinations and strengthened persistence/notice
+  assertions. Strict build 0 warnings/errors; focused tests 57/57, Identity model
+  7/7, architecture 1/1 and Postman mapping 556/620/0/0. Evidence in
+  [phase-01 report](reports/phase-01-reactivation.md).
   Own Identity admin status handler/errors, the AdminUsers controller's status
   mapping, focused domain/handler/controller tests, user-management guide and
   corresponding Postman examples. Accepted rule: missing activation readiness
@@ -158,7 +161,9 @@ the standing repository branch instruction. Workers preserve others' edits.
   Cover never-verified and partly-verified targets, both source statuses,
   verified controls, missing user, seeded target, repeat calls and audit/session
   side effects with deterministic fixtures.
-- [ ] Not started — **PORTAL-02: repair library input contract and field validation.**
+- [ ] In progress — **PORTAL-02: repair library input contract and field validation.**
+  [Worker brief](worker-prompts/02-library-validation.md) issued after Phase 01
+  acceptance. Worker implementation/results are not yet reported.
   Own AdminLibrary parser/request-validation helpers, bounded Library command/
   domain changes only if needed, Library tests, guide and Admin Postman Library
   folder. Accept existing PascalCase and documented camelCase section keys;
@@ -337,4 +342,5 @@ preserve current enum/ID wire formats; keep existing first-run 404 and audience
 403; diagnose caregiver integrity before repair. PORTAL-06 remains a separate
 data-provisioning task until an approved dataset/scope exists. Optional landing
 media cleanup is deferred. The mastermind supplies sequential, pinned worker
-prompts. PORTAL-01 is issued first; later phases wait for its review and closeout.
+prompts. PORTAL-01 is accepted; PORTAL-02 is issued. Later phases wait for
+the preceding review and closeout.

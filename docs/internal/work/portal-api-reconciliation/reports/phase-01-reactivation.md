@@ -1,7 +1,7 @@
 # PORTAL-01 report — admin user reactivation readiness failure
 
-Status: Done (worker implementation complete; mastermind review follows).
-Do not begin PORTAL-02 from this report.
+Status: Done (worker implementation and mastermind review complete).
+Continue only through the issued PORTAL-02 worker brief.
 
 ## Intake
 
@@ -127,4 +127,56 @@ preserved.
   duplicated `LastSuperAdmin` pattern and builds ProblemDetails without detail
   for older codes — left untouched per the minimal-scope instruction; any
   cleanup belongs to a future metadata pass, not PORTAL-01.
-- Mastermind review follows; PORTAL-02 is not started.
+- Worker closeout above preceded mastermind review. Its result and the next
+  handoff are recorded below.
+
+## Mastermind review and verification — 2026-10-15
+
+Reviewed worker delivery `4f714931ffd87f806c0e11d1b889629c3f6c083f` from base
+`44c0bebb887bb3e6145919f9928123a431e53f79`. Both local main and origin/main
+matched that delivery with a clean intake tree. Nine files changed, all within
+the brief; the tenth allowed manifest item, UserStatusTransitionTests, was
+intentionally untouched. No merge was needed because the worker used main.
+
+Production review found no blocking defect: IsActivationReady matches existing
+domain rules, readiness failures return before mutation/audit/persistence/notice,
+the controller maps only the new code to the new safe detail, and the handler
+does not catch infrastructure errors. The duplicated older LastSuperAdmin arm
+and older errors' absent detail are pre-existing and remain outside this phase.
+
+The original partial-verification theories tested phone-only Suspended and
+email-only Blocked cases on both providers. The worker's broad matrix wording
+was stronger than those cases. Mastermind completed the four missing
+combinations, changed negative persistence readbacks to AsNoTracking, added
+reason/timestamp/notice invariance checks for partly verified targets, and
+verified exactly one blocked-target success notice. Application code is
+unchanged from the worker delivery.
+
+Independent checks after the final test change:
+
+- Strict solution build using the command above: exit 0, **0 warnings/errors**.
+- Same focused Identity/domain/controller filter as above: exit 0,
+  **57 passed / 0 failed / 0 skipped** (previous worker count 53).
+- Additional `FullyQualifiedName~Sanad.UnitTests.Identity.Infrastructure.IdentityDbContextModelTests`
+  with `--no-build --no-restore`: exit 0, **7/7**, no skips or warnings.
+- Architecture tests with `--no-build --no-restore --nologo -v minimal`:
+  exit 0, **1/1**.
+- Scoped Postman JSON parse and mapping script: exit 0, **556 signatures /
+  620 requests / 0 missing / 0 orphan**. Diff-check passed.
+
+Fixture gate reused the reviewed isolated InMemory/SQLite helpers, fake clock/
+publishers and locally prepared states. No API, PostgreSQL, provider, VPS,
+migration or deployment operation occurred. These are method-level handler/
+controller and persistence tests, not a live HTTP reactivation proof. The
+Production server remains on the previously deployed revision until a later
+owner deployment. Full-suite integration remains PORTAL-07 work.
+
+Process note: the worker disclosed `git commit --no-verify`. At review there
+was no configured core.hooksPath or active default pre-commit hook, so no
+additional skipped hook gate was identified in this checkout. The next brief
+requires ordinary commits and explicit diagnosis of any hook failure; bypass
+is not a normal part of the workflow.
+
+PORTAL-01 is accepted. PORTAL-02 is issued via
+[the library worker brief](../worker-prompts/02-library-validation.md); its
+implementation has not started as part of this review.

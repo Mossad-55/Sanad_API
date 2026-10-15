@@ -252,7 +252,7 @@ public sealed class AdminUserManagementTests
 
         Assert.True(result.IsFailure);
         Assert.Equal(AdminUserErrors.ActivationNotReady.Code, result.Error.Code);
-        User reloaded = await contexts.Identity.Users.Include(x => x.Accounts).SingleAsync(x => x.Id == target.Id);
+        User reloaded = await contexts.Identity.Users.AsNoTracking().Include(x => x.Accounts).SingleAsync(x => x.Id == target.Id);
         Assert.Equal(sourceStatus, reloaded.Status);
         Assert.Equal(sourceReason, reloaded.StatusReason);
         Assert.Equal(sourceUpdated, reloaded.UpdatedOnUtc);
@@ -266,8 +266,12 @@ public sealed class AdminUserManagementTests
 
     [Theory]
     [InlineData(false, true, false)]
+    [InlineData(false, true, true)]
+    [InlineData(false, false, false)]
     [InlineData(false, false, true)]
     [InlineData(true, true, false)]
+    [InlineData(true, true, true)]
+    [InlineData(true, false, false)]
     [InlineData(true, false, true)]
     public async Task Reactivate_PartlyVerifiedAdmin_ReturnsActivationNotReady(bool sqlite, bool phoneOnly, bool block)
     {
@@ -286,15 +290,22 @@ public sealed class AdminUserManagementTests
         else
             Assert.True((await new SuspendAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id, "Security review"), default)).IsSuccess);
         int actionsBefore = await contexts.Identity.AdminUserActions.CountAsync(x => x.TargetUserId == target.Id);
+        int noticesBefore = notices.Items.Count;
+        string? sourceReason = target.StatusReason;
+        DateTime sourceUpdated = target.UpdatedOnUtc;
 
         Result<AdminUserStatusResponse> result = await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(1)), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id), default);
 
         Assert.True(result.IsFailure);
         Assert.Equal(AdminUserErrors.ActivationNotReady.Code, result.Error.Code);
-        Assert.Equal(block ? UserStatus.Blocked : UserStatus.Suspended, target.Status);
+        User reloaded = await contexts.Identity.Users.AsNoTracking().Include(x => x.Accounts).SingleAsync(x => x.Id == target.Id);
+        Assert.Equal(block ? UserStatus.Blocked : UserStatus.Suspended, reloaded.Status);
+        Assert.Equal(sourceReason, reloaded.StatusReason);
+        Assert.Equal(sourceUpdated, reloaded.UpdatedOnUtc);
         Assert.Equal(actionsBefore, await contexts.Identity.AdminUserActions.CountAsync(x => x.TargetUserId == target.Id));
-        Assert.Equal(phoneOnly, target.PhoneVerified);
-        Assert.Equal(!phoneOnly, target.EmailVerified);
+        Assert.Equal(noticesBefore, notices.Items.Count);
+        Assert.Equal(phoneOnly, reloaded.PhoneVerified);
+        Assert.Equal(!phoneOnly, reloaded.EmailVerified);
     }
 
     [Theory]
@@ -388,6 +399,8 @@ public sealed class AdminUserManagementTests
         Assert.Equal(UserStatus.Active, blocked.Status);
         Assert.Null(blocked.StatusReason);
         Assert.Equal(1, await contexts.Identity.AdminUserActions.CountAsync(x => x.TargetUserId == blocked.Id && x.Action == AdminUserActionType.Reactivated));
+        Assert.Single(notices.Items, notice => notice.UserId == blocked.Id && notice.Status == UserStatus.Active);
+        Assert.Equal(2, notices.Items.Count);
         Assert.NotNull(blockedSession.RevokedOnUtc);
     }
 

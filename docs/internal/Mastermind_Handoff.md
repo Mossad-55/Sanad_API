@@ -8,8 +8,9 @@ audit at code/deployment baseline `8cbeedd` is complete; approved tasks and
 evidence are in [portal reconciliation plan](work/portal-api-reconciliation/plan.md).
 Confirmed problems include reactivation error handling, library JSON casing/
 validation feedback, and OpenAPI metadata; caregiver data repair needs a
-diagnostic first. Existing relevant tests passed 257/257. Only anonymous live
-GETs were executed; no product code or remote data was changed.
+diagnostic first. Existing audit tests passed 257/257; its live checks were
+anonymous GETs. PORTAL-01 has since changed the scoped Identity implementation
+as recorded below. No remote data or deployment change occurred in this review.
 
 The current VPS is Production, used for production-mode developer testing by
 owner direction. The owner deployed the package; previous anonymous verification
@@ -18,12 +19,16 @@ database as disposable or enable Development seeding there. CORS is owner-
 confirmed unchanged, and Bruno is excluded. Chat Plus runtime/device/soak work
 remains separate; deployment smoke evidence does not complete its Prompt 7.
 
-Owner approved the core plan on 2026-10-15. PORTAL-01 is in progress at the
-handoff stage; implementation/results are not yet reported. The bounded
-[reactivation worker brief](work/portal-api-reconciliation/worker-prompts/01-reactivation.md)
-owns the next execution task. No product code has changed during planning.
-**Next action:** external worker executes PORTAL-01 and returns its exact commit
-SHA/report; mastermind reviews it before issuing PORTAL-02.
+Owner approved the core plan on 2026-10-15. PORTAL-01 worker delivery
+`4f71493` is reviewed and accepted on main. Mastermind strengthened test coverage:
+strict build 0 warnings/errors; focused tests 57/57; Identity model 7/7;
+architecture 1/1; Postman mapping 556/620/0/0. See
+[Phase 01 report](work/portal-api-reconciliation/reports/phase-01-reactivation.md).
+Production application code remains at deployed `8cbeedd`; these fixes are
+committed source work awaiting a later owner publish/deploy order.
+**Next action:** external worker executes the bounded
+[PORTAL-02 library brief](work/portal-api-reconciliation/worker-prompts/02-library-validation.md)
+and returns its exact commit/report. Phase 02 implementation is not yet reported.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.
