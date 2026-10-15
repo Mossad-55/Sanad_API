@@ -1,7 +1,7 @@
 # Admin and Care Homes portal API reconciliation
 
 Status: PORTAL-01 through 05 and PORTAL-07 accepted locally (2026-10-15).
-PORTAL-06: Blocked — historical backbone qualified; current nationwide locality/English evidence requires source/steward input. All Egypt required; no import approval.
+PORTAL-06: V1 scan Done with findings — collected coverage accepted; technical compatibility passes, four question-mark labels need a display decision. No import/deploy approval.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
 The frontend report is input evidence, not an accepted defect list.
@@ -260,7 +260,7 @@ the standing repository branch instruction. Workers preserve others' edits.
   0 warnings/errors; mastermind combined 126/126 (19 owner + 107 related);
   mapping 556/620/0/0. Exact ID and Cairo-date assertions strengthened; no
   production-code change. Final integration is next; PORTAL-06 conditional.
-- [ ] In progress — **PORTAL-06: reference-data provisioning, pending approved source.**
+- [ ] In progress — **PORTAL-06: V1 coverage accepted; scan Done with display findings; importer not started.**
   Owner authorized starting preparation on 2026-10-15. [06A source
   qualification](worker-prompts/06a-geography-source-qualification.md)
   worker delivery `cdf8a2a` reviewed/accepted as research, not dataset approval:
@@ -269,8 +269,9 @@ the standing repository branch instruction. Workers preserve others' edits.
   Worker proposed pinned `open-admin-data` `76b47b2` levels 1–2 filtered (18
   English-collision pairs + Zemam/police exclusions need per-pair decisions;
   Smouha placement and manual-Areas policy open); `egypt-cities` disqualified
-  (no license, untranslated level-3 English); CAPMAS disqualified as a direct
-  source (microdata catalogue, no gazetteer). This is research/proposed design
+  (no license, untranslated level-3 English); the CAPMAS material inspected in
+  06A was not a direct gazetteer (later V1 scan found a supplemental codebook).
+  This was research/proposed design
   only; 06B implementation requires source/mapping approval. No importer or
   target-data change is authorized, and no national completeness is claimed.
   Mastermind does not recommend that partial import as a solution to the
@@ -286,7 +287,7 @@ the standing repository branch instruction. Workers preserve others' edits.
   initially held for [bounded corrections](worker-prompts/06a2-review-corrections.md).
   Correction delivery `1b0527b` accepted as correction work after mastermind
   offline reruns (structural exit 0, 12/12 fixtures; readiness exit 2).
-  Catalogue acceptance remains blocked on data evidence, not backend tests.
+  At that review, catalogue acceptance remained blocked on data evidence.
   Owner requested completion on 2026-10-15. Mastermind completed a direct
   OCHA/HDX comparison: every included Arabic name/key matches the attributable
   historical reference, but its ADM3 coverage is explicitly partial and dated
@@ -295,6 +296,16 @@ the standing repository branch instruction. Workers preserve others' edits.
   Owner-requested inventory: [all 347 City names](reports/egypt-city-names.md)
   and [all 27/347/5712 names with parent hierarchy](reports/egypt-all-location-names.md).
   Derived verbatim from the candidate, not deployed database counts or acceptance.
+  Owner subsequently accepted this coverage for V1 subject to a full scan.
+  [Full V1 scan](reports/phase-06-v1-scan.md): all 6086 records checked, real
+  validators/create/read handlers exercised in 27 isolated governorate fixtures;
+  focused suite 90/90, strict build zero warnings/errors. All source Arabic names
+  and all unmodified English labels match literally; 18 Markaz suffixes checked.
+  Four question-mark labels and 12 delimiter flags are recorded, not silently
+  edited. Current exhaustive national certification is no longer the immediate
+  V1 scope requirement; legacy strict readiness flags remain honestly unchanged.
+  Next: agree a source-preserving display cleanup or activation hold for those
+  ambiguous labels before an importer brief. No data/import/deploy authorized.
   No claim that another wrapper of the same records closes national gaps.
   `reference-data/egypt/candidate.json` corrected to 27/347/5712
   (SHA-256 `18AB3CB4…C09`), `provenance.md`, `coverage.md` per-governorate
@@ -306,9 +317,10 @@ the standing repository branch instruction. Workers preserve others' edits.
   reinstated with its 6 localities (equivalence unresolved); Zemam/port
   exclusions evidenced by child counts; Marina/gaps-count/source-emptiness
   documentation fixed. Areas stay provisional-census; no importer or data
-  write. All-Egypt scope is not waived; readiness blockers stay explicit.
-  Propose an authoritative bilingual hierarchy/dataset with provenance and scope
-  (what counts as a city and an area). Design a previewable, idempotent import
+  write. The strict historical completeness findings stay explicit; owner now
+  accepts collected nationwide coverage for V1, not a claim of exhaustive current
+  geography. Resolve the bounded display findings, then pin an implementation
+  brief using that accepted baseline and its provenance. Design a previewable, idempotent import
   that preserves existing IDs/links, detects ambiguous duplicate names under a
   parent, checks hierarchy/active-state consistency, and reports counts/errors.
   Test an initial import and repeat import on a disposable target. Do not embed

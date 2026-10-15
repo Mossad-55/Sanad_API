@@ -1,5 +1,10 @@
 # PORTAL-06 — remaining data qualification attempt
 
+Historical qualification checkpoint. The owner subsequently accepted collected
+coverage for V1 subject to the [full V1 scan](phase-06-v1-scan.md); that newer
+report governs the immediate next step. Strict national-certification findings
+below remain evidence, not a renewed demand to change the accepted V1 scope.
+
 Owner requested completion on 2026-10-15. Intake: clean main/origin `4537af3`.
 Scope: offline candidate/evidence/scripts/docs only; public-source reads allowed.
 No importer, app change, database access, provider, Production, publish or deploy.

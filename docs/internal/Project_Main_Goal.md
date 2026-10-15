@@ -40,8 +40,13 @@ Owner then requested completion: direct OCHA/HDX comparison now qualifies the
 historical Arabic backbone, but the reference explicitly has partial Area
 coverage/2017 boundaries and no Area English names. See
 [remaining source dependency](work/portal-api-reconciliation/reports/phase-06-data-qualification.md).
-Current nationwide qualification needs source/steward evidence, not more
-backend tests. All Egypt remains required; catalogue acceptance precedes 06B.
+The owner subsequently accepted the collected coverage for V1 subject to a full
+scan. [V1 scan](work/portal-api-reconciliation/reports/phase-06-v1-scan.md) is Done
+with findings: real-handler compatibility over all 6086 records, focused 90/90,
+zero-warning/error strict build; four question-mark labels and 12 delimiter
+flags documented. Next is a bounded display decision, then an importer brief;
+not another exhaustive national-source prerequisite for the accepted V1 scope.
+No records were renamed or marked geographically/linguistically certified.
 No import/deployment is authorized. Runtime/device and caregiver operator
 evidence are not closed.
 The current VPS runs Production and is used for developer testing by owner

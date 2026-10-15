@@ -90,10 +90,17 @@ partial ADM3 coverage/2017 boundaries; all included Area English names are
 blank there. Current national readiness is therefore still Blocked, not fixed
 by matching the same old source. See the
 [data qualification report](work/portal-api-reconciliation/reports/phase-06-data-qualification.md).
-**Next action:** obtain a current reusable locality/change export or an owner-
-designated data steward's evidenced reconciliation, as specified in that report.
-Do not request a waiver of known gaps or mark provisional Areas verified by
-approval alone. All Egypt stays required; no 06B/import/write/deploy authorized.
+Owner subsequently accepted the collected coverage for V1, subject to a full
+name/application compatibility scan. [V1 scan](work/portal-api-reconciliation/reports/phase-06-v1-scan.md)
+is Done with findings: 6086 records structurally/source scanned; 27 real-handler
+branch scenarios plus existing regressions 90/90, zero-warning/error strict
+build. Four question-mark labels need display review; 12 underscore delimiters
+are optional readability flags. No candidate edits or verification-flag flips.
+The stronger historical nationwide-certification gate is not claimed passed.
+**Next action:** agree a source-preserving cleanup/activation hold for ambiguous
+labels before the importer brief. Do not demand exhaustive national data again
+as the V1 scope choice, or treat scope acceptance as proof of name accuracy.
+No 06B/import/write/deploy authorized.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.
