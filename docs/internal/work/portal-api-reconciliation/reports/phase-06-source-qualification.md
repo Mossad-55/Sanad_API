@@ -215,3 +215,12 @@ After that choice, qualify/approve the actual catalogue and issue bounded 06B.
 
 Documentation-only review: relative links/diff validated; no build, test host,
 database, importer, Production action or deployment was needed or performed.
+
+## Subsequent owner decision — All Egypt
+
+The owner explicitly selected **All Egypt**, resolving the launch-region versus
+national coverage question above. This is not approval of source A, its mapping,
+levels-1/2-only import or manual-Areas-only policy. The next step is
+[06A2 actual national catalogue preparation](../worker-prompts/06a2-national-catalogue.md),
+with provenance/coverage validation and review before a 06B importer brief.
+No target-data write, deployment or automatic change to existing IDs is approved.

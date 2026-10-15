@@ -29,8 +29,10 @@ Owner has now authorized Phase 06 preparation: the
 [06A source qualification brief](work/portal-api-reconciliation/worker-prompts/06a-geography-source-qualification.md)
 has delivered research (`cdf8a2a`), reviewed/accepted without approving a dataset.
 The partial levels-1/2 proposal does not close the three-level picker gap.
-Owner next chooses explicit launch-region coverage versus nationwide coverage
-required before release; actual catalogue/mapping approval still precedes 06B.
+Owner explicitly chose **All Egypt**. The
+[06A2 national catalogue brief](work/portal-api-reconciliation/worker-prompts/06a2-national-catalogue.md)
+now prepares actual bilingual Governorate/City/Area data, provenance, coverage
+and offline validation. Actual catalogue/mapping approval still precedes 06B.
 No import/deployment is authorized. Runtime/device and caregiver operator
 evidence are not closed.
 The current VPS runs Production and is used for developer testing by owner

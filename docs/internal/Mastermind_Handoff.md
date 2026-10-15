@@ -70,10 +70,14 @@ the pinned district hash/count (365), 18 English collisions and 365 empty source
 objects. Worker proposal to import only levels 1–2 and leave Areas manual is
 not recommended as closure of the three-level picker gap; locality semantics,
 upstream provenance and coverage remain unresolved. See report's final review.
-**Next action:** owner chooses reviewed three-level launch-region coverage
-versus nationwide coverage required before release. No catalogue/mapping/06B
-approved yet. Later importer implementation and target/backup/write permission
-are separate decisions. No import, seed migration, publish or deploy authorized.
+Owner explicitly chose **All Egypt**. Coverage choice is now resolved: prepare
+a national bilingual three-level catalogue, not selected launch regions or a
+levels-1/2 import with Areas manual. No specific dataset/mapping is approved.
+**Next action:** external worker executes
+[06A2 national catalogue preparation](work/portal-api-reconciliation/worker-prompts/06a2-national-catalogue.md)
+from the launch message's pinned pushed SHA, delivering actual candidate data,
+provenance, coverage and offline validation. Review before 06B importer work;
+later target/backup/write permission is separate. No import or deploy authorized.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.

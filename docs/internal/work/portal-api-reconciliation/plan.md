@@ -1,7 +1,7 @@
 # Admin and Care Homes portal API reconciliation
 
 Status: PORTAL-01 through 05 and PORTAL-07 accepted locally (2026-10-15).
-PORTAL-06A research accepted; source/coverage/mapping decision pending (no 06B approval).
+PORTAL-06: owner chose All Egypt; nationwide catalogue preparation issued (no import approval).
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
 The frontend report is input evidence, not an accepted defect list.
@@ -275,8 +275,13 @@ the standing repository branch instruction. Workers preserve others' edits.
   target-data change is authorized, and no national completeness is claimed.
   Mastermind does not recommend that partial import as a solution to the
   three-level picker: Areas remain empty and provenance/locality semantics
-  unresolved. Owner chooses reviewed three-level launch-region coverage versus
-  nationwide coverage required before release, then approves an actual catalogue.
+  unresolved. Owner explicitly chose **All Egypt**: full three-level nationwide
+  coverage, not selected launch regions. Execute
+  [06A2 national catalogue preparation](worker-prompts/06a2-national-catalogue.md)
+  to assemble/validate the actual sourced bilingual candidate and coverage
+  manifest before a 06B importer brief. This does not approve the rejected
+  source, change locality semantics or authorize a target write. If data gaps
+  remain, report them; no silent reduction to levels 1–2 or manual-Areas-only.
   Propose an authoritative bilingual hierarchy/dataset with provenance and scope
   (what counts as a city and an area). Design a previewable, idempotent import
   that preserves existing IDs/links, detects ambiguous duplicate names under a
@@ -411,3 +416,7 @@ evidence are separate owner decisions, not automatic next actions.
 On 2026-10-15 the owner authorized beginning Phase 06 preparation. A bounded
 read-only 06A source-qualification brief is issued; its report must return for
 dataset/coverage/mapping approval before a 06B implementation brief.
+The owner subsequently selected **All Egypt**. Coverage choice is resolved:
+national Governorate/City/Area catalogue preparation is issued as 06A2. Actual
+dataset/mapping acceptance, importer implementation and live application remain
+separate gates; no Production write or deployment is authorized.
