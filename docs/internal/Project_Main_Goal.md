@@ -4,8 +4,9 @@
 
 Owner supplied a frontend issue report for verification, planning and targeted
 worker tests. The [portal reconciliation plan](work/portal-api-reconciliation/plan.md)
-owns the finding verdicts, proposed tasks, fixture strategy and audit evidence
-at `8cbeedd`. Review is complete; implementation awaits scope/rule approval.
+owns the finding verdicts, approved tasks, fixture strategy and audit evidence
+at `8cbeedd`. The owner approved core execution on 2026-10-15; the PORTAL-01
+reactivation worker brief is issued and awaiting the worker's implementation report.
 The current VPS runs Production and is used for developer testing by owner
 direction; a separately hardened VPS is future work. Existing public deployment
 smoke/revision/migration evidence does not establish complete portal or Chat Plus

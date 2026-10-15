@@ -1,6 +1,7 @@
 # Admin and Care Homes portal API reconciliation
 
-Status: review complete; proposed implementation awaits owner approval.
+Status: owner approved core execution on 2026-10-15; PORTAL-01 brief issued.
+PORTAL-06 still requires an approved geography dataset and scope.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
 The frontend report is input evidence, not an accepted defect list.
@@ -10,8 +11,10 @@ The frontend report is input evidence, not an accepted defect list.
 Reconcile the supplied Admin/Care Homes portal report against implementation,
 published contracts, existing tests and selected anonymous HTTP checks. Reopen
 only the evidenced problems and the directly relevant owner-portal test gap.
-No implementation, database repair, provider send, deployment or fixture write
-is authorized by this proposed plan alone.
+The owner approved PORTAL-01 through PORTAL-05 and final integration. Execute
+one pinned worker brief at a time. Minimal isolated test fixtures are part of
+those tasks; production data repair, provider sends and deployment remain outside
+this approval.
 
 The owner clarified that the existing VPS runs **Production** and is currently
 used for production-mode developer testing; it is not a disposable Staging
@@ -124,22 +127,24 @@ required on both Admin and public location endpoints (five operations).
 Validate omitted, empty, malformed and nonexistent IDs separately; a supplied
 unknown parent need not have the same outcome as an omitted required parent.
 
-## Proposed execution checklist and acceptance
+## Execution checklist and acceptance
 
 The sequence is PORTAL-01 -> PORTAL-02 -> PORTAL-03 -> PORTAL-04 -> PORTAL-05
 -> final integration. PORTAL-06 waits only on its own dataset decision and
 does not block the earlier fixes or minimal owner test fixture. One worker at
-a time; prepare the copy-ready brief for each task after owner plan approval,
+a time; prepare the copy-ready brief for each task after the preceding review,
 pinning its then-current main SHA, exact owned files and dependencies. Follow
 the standing repository branch instruction. Workers preserve others' edits.
 
 - [x] Done — **PORTAL-00: reconcile report and prepare this proposed plan.**
   Source review, selected anonymous live checks and focused existing tests
   completed; verification details below. No authenticated live reproduction.
-- [ ] Not started — **PORTAL-01: prevent reactivation 500 without bypassing verification.**
+- [ ] In progress — **PORTAL-01: prevent reactivation 500 without bypassing verification.**
+  Owner approved execution; [worker brief](worker-prompts/01-reactivation.md)
+  issued. Implementation/results have not yet been reported by the worker.
   Own Identity admin status handler/errors, the AdminUsers controller's status
   mapping, focused domain/handler/controller tests, user-management guide and
-  corresponding Postman examples. Proposed rule: missing activation readiness
+  corresponding Postman examples. Accepted rule: missing activation readiness
   produces 409 `Identity.Admin.ActivationNotReady` with a useful safe message;
   keep the target status unchanged, create no success audit/notice, restore no
   sessions. Verified Suspended/Blocked users still reactivate to Active with
@@ -323,12 +328,12 @@ frontend's reported residual records or uploaded file is included.
   unchanged. Frontend's authenticated read/write observations remain attributed
   to that developer; no latency guarantee is inferred from its sample.
 
-## Decisions proposed for approval
+## Approved decisions — 2026-10-15
 
-Approve PORTAL-01 through PORTAL-05 and final integration with the behavior above:
+The owner approved PORTAL-01 through PORTAL-05 and final integration with the behavior above:
 409 for missing activation readiness; accept both library JSON casing styles;
 preserve current enum/ID wire formats; keep existing first-run 404 and audience
 403; diagnose caregiver integrity before repair. PORTAL-06 remains a separate
 data-provisioning task until an approved dataset/scope exists. Optional landing
-media cleanup is deferred. After approval, the mastermind supplies sequential,
-pinned worker prompts; no worker implementation starts from this draft alone.
+media cleanup is deferred. The mastermind supplies sequential, pinned worker
+prompts. PORTAL-01 is issued first; later phases wait for its review and closeout.

@@ -4,7 +4,7 @@
 
 The owner supplied an unverified frontend report on 2026-10-15 and requested
 an evidence-based audit and fix/test plan before worker implementation. The
-audit at code/deployment baseline `8cbeedd` is complete; proposed tasks and
+audit at code/deployment baseline `8cbeedd` is complete; approved tasks and
 evidence are in [portal reconciliation plan](work/portal-api-reconciliation/plan.md).
 Confirmed problems include reactivation error handling, library JSON casing/
 validation feedback, and OpenAPI metadata; caregiver data repair needs a
@@ -18,8 +18,12 @@ database as disposable or enable Development seeding there. CORS is owner-
 confirmed unchanged, and Bruno is excluded. Chat Plus runtime/device/soak work
 remains separate; deployment smoke evidence does not complete its Prompt 7.
 
-**Next action:** owner approves the proposed portal reconciliation scope/rules;
-then prepare the first pinned worker brief (PORTAL-01). No implementation yet.
+Owner approved the core plan on 2026-10-15. PORTAL-01 is in progress at the
+handoff stage; implementation/results are not yet reported. The bounded
+[reactivation worker brief](work/portal-api-reconciliation/worker-prompts/01-reactivation.md)
+owns the next execution task. No product code has changed during planning.
+**Next action:** external worker executes PORTAL-01 and returns its exact commit
+SHA/report; mastermind reviews it before issuing PORTAL-02.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.
