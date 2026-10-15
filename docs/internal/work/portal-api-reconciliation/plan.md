@@ -1,6 +1,6 @@
 # Admin and Care Homes portal API reconciliation
 
-Status: PORTAL-01 through 04 accepted; PORTAL-05 worker-complete, awaiting mastermind review (2026-10-15).
+Status: PORTAL-01 through 05 accepted; PORTAL-07 final gate brief issued (2026-10-15).
 PORTAL-06 still requires an approved geography dataset and scope.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
@@ -246,18 +246,20 @@ the standing repository branch instruction. Workers preserve others' edits.
 - [x] Done — **PORTAL-05: owner-portal endpoint verification with minimal fixtures.**
   [Pinned worker brief](worker-prompts/05-owner-portal-verification.md) executed
   from base `ddab615` (clean `main == origin/main` at intake). Worker delivery
-  (commit pending mastermind review) adds `tests/Sanad.UnitTests/API/
-  CareHomeOwnerPortalFixture.cs` + `CareHomeOwnerPortalTests.cs` (15/15 green
+  `6b32906` accepted after mastermind test strengthening. Added `tests/Sanad.UnitTests/API/
+  CareHomeOwnerPortalFixture.cs` + `CareHomeOwnerPortalTests.cs` (19/19 green
   over an isolated HTTP host with real handlers/policies; only the Postgres
   advisory-lock visit guard inlined), selected owner/Finance Postman
   descriptions, a `visits.md` numeric-day correction, and evidence in
   [phase-05 report](reports/phase-05-owner-portal.md). Verified: seven owner
   GETs + settings PUT with ownership isolation, populated/empty views,
-  Draft visibility, stale-version 409, range/invalid 400s, and 401/403 matrix;
+  Draft/Approved visibility, stale-version 409, range/invalid 400s, and 401/403 matrix;
   no-facility reads 404. One authored-example defect corrected (string
   `"day": "Monday"` rejected with 400; numeric `DayOfWeek` is the wire
   format); no production-code defect found and none changed. Strict build
-  0 warnings/errors; focused 15/15 + reused 107/107. Stop before PORTAL-06/07.
+  0 warnings/errors; mastermind combined 126/126 (19 owner + 107 related);
+  mapping 556/620/0/0. Exact ID and Cairo-date assertions strengthened; no
+  production-code change. Final integration is next; PORTAL-06 conditional.
 - [ ] Not started — **PORTAL-06: reference-data provisioning, pending approved source.**
   Propose an authoritative bilingual hierarchy/dataset with provenance and scope
   (what counts as a city and an area). Design a previewable, idempotent import
@@ -268,6 +270,8 @@ the standing repository branch instruction. Workers preserve others' edits.
   seeding on the current VPS. A small owner-test fixture is not national coverage.
   Actual target data changes require an exact import/dataset handoff and backup.
 - [ ] Not started — **PORTAL-07: mastermind integration and frontend handoff.**
+  [Pinned final gate brief](worker-prompts/07-final-integration.md) prepared
+  after Phase 05 acceptance. External worker execution has not started.
   One bounded independent review after implementation; correct concrete findings,
   strict zero-warning build and focused tests per change, full unit/architecture
   once for the integrated cross-cutting metadata change, Postman JSON parsing,
@@ -379,5 +383,5 @@ preserve current enum/ID wire formats; keep existing first-run 404 and audience
 403; diagnose caregiver integrity before repair. PORTAL-06 remains a separate
 data-provisioning task until an approved dataset/scope exists. Optional landing
 media cleanup is deferred. The mastermind supplies sequential, pinned worker
-prompts. PORTAL-01 through 04 are accepted; PORTAL-05 is issued. Later phases wait
+prompts. PORTAL-01 through 05 are accepted; PORTAL-07 is issued. Later phases wait
 for the preceding review and closeout.

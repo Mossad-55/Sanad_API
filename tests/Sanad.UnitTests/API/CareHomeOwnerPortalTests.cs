@@ -93,7 +93,8 @@ public sealed class CareHomeOwnerPortalTests : IClassFixture<PortalApiMetadataHo
         CareHomeFacility facilityB = CareHomeOwnerPortalFixture.SeedFacility(db, ownerB.Id, now, withProfile: false);
         CareHomeOwnerPortalFixture.InventorySeed seedA =
             CareHomeOwnerPortalFixture.SeedInventory(db, facilityA.Id, now, "101", "A");
-        CareHomeOwnerPortalFixture.SeedInventory(db, facilityB.Id, now, "201", "Z");
+        CareHomeOwnerPortalFixture.InventorySeed seedB =
+            CareHomeOwnerPortalFixture.SeedInventory(db, facilityB.Id, now, "201", "Z");
 
         Assert.Equal(2, await db.RoomTypes.CountAsync());
         Assert.Equal(facilityA.Id, (await db.Rooms.SingleAsync(x => x.Id == seedA.Room.Id)).FacilityId);
@@ -120,7 +121,9 @@ public sealed class CareHomeOwnerPortalTests : IClassFixture<PortalApiMetadataHo
         JsonElement bed = Assert.Single(body.RootElement.GetProperty("beds").EnumerateArray());
         Assert.Equal("A", bed.GetProperty("label").GetString());
         Assert.Equal(JsonValueKind.Array, body.RootElement.GetProperty("maintenance").ValueKind);
-        Assert.DoesNotContain("201", await response.Content.ReadAsStringAsync());
+        Assert.NotEqual(seedB.RoomType.Id.ToString("D"), type.GetProperty("id").GetString());
+        Assert.NotEqual(seedB.Room.Id.ToString("D"), room.GetProperty("id").GetString());
+        Assert.NotEqual(seedB.Bed.Id.ToString("D"), bed.GetProperty("id").GetString());
     }
 
     [Fact]
@@ -307,7 +310,8 @@ public sealed class CareHomeOwnerPortalTests : IClassFixture<PortalApiMetadataHo
             db, facilityA.Id, seedA.RoomType.Id, now, transactionId: 701);
         CareHomeOwnerPortalFixture.SeedPaidBooking(db, facilityB.Id, seedB.RoomType.Id, now, transactionId: 702);
 
-        DateOnly paymentDay = DateOnly.FromDateTime(now);
+        DateOnly paymentDay = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(
+            now, Sanad.Modules.CareHomes.Application.Bookings.CareHomeRevenueProjection.CairoZone()));
         string day = paymentDay.ToString("yyyy-MM-dd");
         string future = paymentDay.AddDays(30).ToString("yyyy-MM-dd");
 
@@ -371,17 +375,22 @@ public sealed class CareHomeOwnerPortalTests : IClassFixture<PortalApiMetadataHo
         Assert.Equal(0, revenueBody.RootElement.GetProperty("transactions").GetArrayLength());
     }
 
-    [Fact]
-    public async Task VisitSettings_Lifecycle_CreatesUpdatesConflictsAndValidates_WithIsolation()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task VisitSettings_Lifecycle_CreatesUpdatesConflictsAndValidates_WithIsolation(bool approved)
     {
         DateTime now = UtcNow();
         User ownerA = CareHomeOwnerPortalFixture.CreateUser(AccountType.CareHomeOwner, 71);
         User ownerB = CareHomeOwnerPortalFixture.CreateUser(AccountType.CareHomeOwner, 72);
         await using CareHomesDbContext db = CareHomeOwnerPortalFixture.CreateDb();
-        CareHomeFacility facilityA = CareHomeOwnerPortalFixture.SeedFacility(db, ownerA.Id, now, withProfile: false);
+        CareHomeFacility facilityA = CareHomeOwnerPortalFixture.SeedFacility(
+            db, ownerA.Id, now, withProfile: false, approved: approved);
         CareHomeFacility facilityB = CareHomeOwnerPortalFixture.SeedFacility(db, ownerB.Id, now, withProfile: false);
 
         Assert.Equal(0, await db.VisitSettings.CountAsync());
+        Assert.Equal(approved ? CareHomeStatus.Approved : CareHomeStatus.Draft,
+            (await db.Facilities.AsNoTracking().SingleAsync(x => x.Id == facilityA.Id)).Status);
 
         using var factory = CareHomeOwnerPortalFixture.OverrideCareHomes(_host, db);
         using HttpClient clientA = CareHomeOwnerPortalFixture.CreateClient(factory);
@@ -593,19 +602,27 @@ public sealed class CareHomeOwnerPortalTests : IClassFixture<PortalApiMetadataHo
         Assert.Equal(HttpStatusCode.Forbidden, familyPutResponse.StatusCode);
     }
 
-    [Fact]
-    public async Task DraftFacility_AllOwnerReads_Return200WithoutApprovalGate()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task FacilityState_AllOwnerReads_ReturnExpectedOwnedData(bool approved)
     {
         DateTime now = UtcNow();
         User owner = CareHomeOwnerPortalFixture.CreateUser(AccountType.CareHomeOwner, 91);
         await using CareHomesDbContext db = CareHomeOwnerPortalFixture.CreateDb();
-        CareHomeFacility facility = CareHomeOwnerPortalFixture.SeedFacility(db, owner.Id, now, withProfile: true);
+        CareHomeFacility facility = CareHomeOwnerPortalFixture.SeedFacility(
+            db, owner.Id, now, withProfile: true, approved: approved);
         CareHomeOwnerPortalFixture.InventorySeed seed =
             CareHomeOwnerPortalFixture.SeedInventory(db, facility.Id, now);
-        CareHomeOwnerPortalFixture.SeedPaidBooking(db, facility.Id, seed.RoomType.Id, now, transactionId: 901);
-        CareHomeOwnerPortalFixture.SeedVisit(db, facility.Id, now, now.AddDays(5));
+        CareHomeBooking booking = CareHomeOwnerPortalFixture.SeedPaidBooking(
+            db, facility.Id, seed.RoomType.Id, now, transactionId: 901);
+        var visit = CareHomeOwnerPortalFixture.SeedVisit(db, facility.Id, now, now.AddDays(5));
 
-        Assert.Equal(CareHomeStatus.Draft, facility.Status);
+        Assert.Equal(approved ? CareHomeStatus.Approved : CareHomeStatus.Draft,
+            (await db.Facilities.AsNoTracking().SingleAsync()).Status);
+        Assert.Equal(facility.Id, (await db.Rooms.AsNoTracking().SingleAsync()).FacilityId);
+        Assert.Equal(booking.Id, (await db.Bookings.AsNoTracking().SingleAsync()).Id);
+        Assert.Equal(visit.Id, (await db.Visits.AsNoTracking().SingleAsync()).Id);
 
         using var factory = CareHomeOwnerPortalFixture.OverrideCareHomes(_host, db);
         using HttpClient client = CareHomeOwnerPortalFixture.CreateClient(factory);
@@ -627,7 +644,57 @@ public sealed class CareHomeOwnerPortalTests : IClassFixture<PortalApiMetadataHo
         {
             using HttpResponseMessage response = await client.GetAsync(route);
             Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using JsonDocument payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            JsonElement value = payload.RootElement;
+            switch (route)
+            {
+                case "/api/v1/care-homes/facilities/mine":
+                    Assert.Equal(facility.Id.Value.ToString("D"), value.GetProperty("id").GetString());
+                    Assert.Equal((int)facility.Status, value.GetProperty("status").GetInt32());
+                    break;
+                case "/api/v1/care-homes/inventory/mine":
+                    Assert.Equal(seed.RoomType.Id.ToString("D"),
+                        Assert.Single(value.GetProperty("roomTypes").EnumerateArray()).GetProperty("id").GetString());
+                    Assert.Single(value.GetProperty("beds").EnumerateArray());
+                    break;
+                case "/api/v1/care-homes/booking-requests/mine":
+                    Assert.Equal(booking.Id.ToString("D"), Assert.Single(value.EnumerateArray()).GetProperty("id").GetString());
+                    break;
+                case "/api/v1/care-homes/visits/mine":
+                    Assert.Equal(visit.Id.ToString("D"), Assert.Single(value.EnumerateArray()).GetProperty("id").GetString());
+                    break;
+                case "/api/v1/care-homes/dashboard/mine":
+                    Assert.Equal(1, value.GetProperty("totalResources").GetInt32());
+                    Assert.Equal(1150m, value.GetProperty("periodRevenue").GetProperty("grossCollected").GetDecimal());
+                    break;
+                case "/api/v1/care-homes/revenue/mine":
+                    Assert.Equal(1150m, value.GetProperty("totals").GetProperty("netCollected").GetDecimal());
+                    Assert.Single(value.GetProperty("transactions").EnumerateArray());
+                    break;
+                default:
+                    Assert.Equal(facility.Id.Value.ToString("D"), value.GetProperty("facilityId").GetString());
+                    Assert.Equal(0, value.GetProperty("version").GetInt32());
+                    break;
+            }
         }
+    }
+
+    [Theory]
+    [InlineData("dashboard/mine")]
+    [InlineData("revenue/mine")]
+    public async Task FinanceReads_NoFacility_Return404(string route)
+    {
+        User owner = CareHomeOwnerPortalFixture.CreateUser(AccountType.CareHomeOwner, 92);
+        await using CareHomesDbContext db = CareHomeOwnerPortalFixture.CreateDb();
+        Assert.Equal(0, await db.Facilities.CountAsync());
+        using var factory = CareHomeOwnerPortalFixture.OverrideCareHomes(_host, db);
+        using HttpClient client = CareHomeOwnerPortalFixture.CreateClient(factory);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", CareHomeOwnerPortalFixture.CreateToken(_host, owner));
+        using HttpResponseMessage response = await client.GetAsync($"/api/v1/care-homes/{route}");
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        using JsonDocument payload = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal("CareHomes.Bookings.NotFound", payload.RootElement.GetProperty("code").GetString());
     }
 
     private static DateTime UtcNow() =>

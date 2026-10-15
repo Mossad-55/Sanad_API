@@ -1,6 +1,7 @@
 # PORTAL-05 report — owner-portal endpoint verification with minimal fixtures
 
-Status: worker-complete, awaiting mastermind review. No production access,
+Status: Done — worker delivery reviewed and accepted with the bounded
+mastermind test strengthening below. No production access,
 deployment, Bruno, CORS, migration, or production-code change occurred.
 Stop before PORTAL-06/07.
 
@@ -162,3 +163,47 @@ reads/writes.
   mastermind gates at integration (routes unchanged, so 0 missing/orphan
   is expected to hold).
 - `git diff --check`: clean (verified before commit).
+
+## Mastermind review and acceptance — 2026-10-15
+
+Reviewed clean pushed delivery `6b3290646e6c79ad3928f9e199dfa570b7039031`
+against the brief, fixture/HTTP assertions, real handlers and guide/Postman diff.
+No production-code change was found or made. Numeric DayOfWeek correction is
+an example fix, not a wire-format change. Finance Postman descriptions are
+directly relevant documentation, not additional runtime scope.
+
+Bounded review strengthening (test-only):
+
+- Worker fixtures were all Draft; added the approved-facility case explicitly
+  required by the brief. The helper uses the existing lifecycle-test pattern:
+  real domain draft/profile/document submission, verification and approval,
+  with no onboarding API replay/provider send. Readback precedes host startup.
+  Both Draft and Approved now exercise all seven GETs with meaningful IDs,
+  nested inventory and booking/visit/revenue assertions, and the full settings
+  success/update/stale-version/invalid-capacity sequence.
+- Added HTTP no-facility cases for dashboard and revenue: both return 404
+  `CareHomes.Bookings.NotFound`. The earlier dashboard code-derived-only
+  limitation in the worker matrix is superseded by these executed cases.
+- Replaced raw-JSON substring exclusion of `201` (which could randomly occur
+  inside a generated UUID) with exact foreign room-type/room/bed ID comparisons.
+- Revenue date-range fixture now computes payment day in Cairo rather than
+  UTC, matching the existing API contract across the UTC/Cairo midnight boundary.
+
+After the last code change:
+
+- `dotnet build Sanad.slnx --no-restore -m:1 --nologo
+  /p:TreatWarningsAsErrors=true`: exit 0, **0 warnings, 0 errors**.
+- Focused `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-build
+  --no-restore --nologo -v minimal`, filter:
+  `FullyQualifiedName~CareHomeOwnerPortalTests|FullyQualifiedName~PortalHostIsolationTests|FullyQualifiedName~PortalOpenApiContractTests|FullyQualifiedName~CareHomeFacilityTests|FullyQualifiedName~CareHomeInventoryTests|FullyQualifiedName~CareHomeVisitTests|FullyQualifiedName~CareHomeFinanceReadModelTests|FullyQualifiedName~CareHomeBookingControllerTests`:
+  exit 0, **126 passed, 0 failed, 0 skipped** (19 owner + 107 related).
+- Touched Owner/Finance Postman JSON parses; mapping gate exit 0:
+  **556 signatures / 620 requests / 0 missing / 0 orphan**. Diff-check clean.
+- Architecture boundary inputs unchanged; full unit/architecture integration
+  remains PORTAL-07 rather than being claimed from this focused run.
+
+No blocking Phase 05 finding remains in this bounded review. The fake visit
+reservation guard still means no PostgreSQL lock/concurrency proof; unrelated
+details/mobile routes and the reported caregiver data issue remain outside
+this evidence. No Production access, PostgreSQL, providers, publish or deploy.
+Final integration brief is prepared; its execution has not started.

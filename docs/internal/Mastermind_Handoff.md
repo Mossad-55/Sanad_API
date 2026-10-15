@@ -42,11 +42,17 @@ corrections (UUID extrema, row caps, null/blank fallback, partial-target caveat)
 Mastermind rerun 24/24; valid worker zero-warning/error build reused. Production
 files untouched; no live SQL or repair. Diagnostic/operator handoff is delivered,
 but the six reported deployed rows remain unverified pending operator evidence.
+PORTAL-05 delivery `6b32906` reviewed and accepted after test strengthening:
+approved plus Draft facility cases, no-facility finance HTTP, exact foreign IDs,
+and Cairo-local payment-day fixture. Strict build zero warnings/errors; combined
+owner/related 126/126 (19 owner); mapping 556/620/0/0. Real handlers/HTTP,
+visit advisory-lock guard fake; no concurrency proof or production-code changes.
 **Next action:** external worker executes the
-[PORTAL-05 owner verification brief](work/portal-api-reconciliation/worker-prompts/05-owner-portal-verification.md)
+[PORTAL-07 final gate brief](work/portal-api-reconciliation/worker-prompts/07-final-integration.md)
 from the launch message's exact pushed SHA and returns its commit/report.
-Use isolated fixtures/real handlers for seven owner GETs and settings PUT;
-Phase 05 has not started. No production access, policy change or deployment.
+Full safe unit/architecture gates and frontend handoff remain; no publish/deploy.
+PORTAL-06 stays conditional; caregiver operator evidence and separate Chat
+runtime/device/soak work remain open. Phase 07 execution has not started.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.

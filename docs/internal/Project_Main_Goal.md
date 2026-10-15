@@ -18,8 +18,13 @@ worker strict build zero warnings/errors and architecture 1/1 reused.
 PORTAL-04 delivery `33af090` is accepted after bounded diagnostic SQL/runbook
 corrections and mastermind rerun 24/24. Deployed caregiver mismatches remain
 unverified pending operator evidence; no production data repair is authorized.
-The [PORTAL-05 owner API verification brief](work/portal-api-reconciliation/worker-prompts/05-owner-portal-verification.md)
-is the next external worker action; execution has not started.
+PORTAL-05 delivery `6b32906` is accepted with mastermind test strengthening:
+Draft/Approved owner scenarios and no-facility finance, stable ID/date assertions;
+strict build zero warnings/errors, combined 126/126, mapping zero gaps. No
+production-code change or deployment. The
+[PORTAL-07 final gate brief](work/portal-api-reconciliation/worker-prompts/07-final-integration.md)
+is next: safe full suite/architecture and frontend handoff. PORTAL-06 remains
+conditional; runtime/device and caregiver operator evidence are not closed.
 The current VPS runs Production and is used for developer testing by owner
 direction; a separately hardened VPS is future work. Existing public deployment
 smoke/revision/migration evidence does not establish complete portal or Chat Plus

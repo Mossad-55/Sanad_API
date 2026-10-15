@@ -66,7 +66,7 @@ The complete settings request also contains `expectedVersion`; for example:
 }
 ```
 
-Verified PORTAL-05 on an isolated HTTP host with real handlers: Draft facilities read and save settings; cross-owner settings stay isolated; capacity below 1 returns 400 `CareHomes.Visits.InvalidRequest`.
+Verified PORTAL-05 on an isolated HTTP host with real handlers: Draft and Approved facilities read and save settings; cross-owner settings stay isolated; capacity below 1 returns 400 `CareHomes.Visits.InvalidRequest`.
 
 The owner decision request is `{ "approve": true, "reason": null }` to approve;
 rejection sets `approve` to false and supplies a nonblank reason. The Postman

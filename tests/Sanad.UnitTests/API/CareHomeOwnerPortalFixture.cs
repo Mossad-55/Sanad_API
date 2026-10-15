@@ -84,14 +84,29 @@ internal static class CareHomeOwnerPortalFixture
         [],
         []);
 
-    internal static CareHomeFacility SeedFacility(CareHomesDbContext db, UserId owner, DateTime now, bool withProfile)
+    internal static CareHomeFacility SeedFacility(
+        CareHomesDbContext db, UserId owner, DateTime now, bool withProfile, bool approved = false)
     {
         CareHomeFacility facility = CareHomeFacility.CreateDraft(owner, now);
         db.Facilities.Add(facility);
         db.SaveChanges();
-        if (withProfile)
+        if (withProfile || approved)
         {
             facility.SaveDraft(owner, facility.Version, ProfileDraft(), now);
+            db.SaveChanges();
+        }
+
+        if (approved)
+        {
+            // Reuse the existing lifecycle-test pattern: no API onboarding replay.
+            UserId reviewer = UserId.New();
+            foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
+                facility.UploadDocument(owner, type, $"private/portal-{type}.pdf", "application/pdf", 10, null, now);
+            facility.Submit(owner, facility.Version, now);
+            foreach (CareHomeDocument document in facility.Documents.ToArray())
+                facility.VerifyDocument(reviewer, facility.Version, document.Id, null, true, now);
+            facility.Review(reviewer, facility.Version, CareHomeReviewAction.Approved, null, now,
+                DateOnly.FromDateTime(now));
             db.SaveChanges();
         }
 
