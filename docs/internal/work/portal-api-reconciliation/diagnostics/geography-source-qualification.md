@@ -41,8 +41,9 @@ Publisher claims vs parsed reality:
   `A L Labban`, `Kesm than Al Raml`, `Wadi Al-NatrUn`, `15 Mayu`).
 - A `zip_codes` is empty on all 6108 records (advertised "where available"
   = nowhere). Coordinates present on all records. Per-record `source`
-  cites only the publisher's own site/API; `metadata` is `{}` — no
-  independent upstream citation per record.
+  does not establish an upstream chain; the mastermind's immutable district-file
+  check found `{}` on all 365 records. `metadata` is `{}` — no verified
+  upstream attribution per record. Other levels were not rechecked here.
 - A `LICENSE` (673 bytes) is a CC-BY-4.0 summary naming copyright holder
   `jakkrapongt` and a `build/` directory that does not exist in the repo —
   template artifact. B has **no license file at all**.

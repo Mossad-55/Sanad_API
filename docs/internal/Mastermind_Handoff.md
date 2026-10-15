@@ -65,11 +65,15 @@ is not yet approved: the City/Area model and existing Smouha seed need explicit
 alignment with any administrative hierarchy. Candidate-source counts/provenance
 are not independently qualified; see the new source intake, not a claimed
 national dataset. No importer, API, data, build or deployment action occurred.
-**Next action:** external worker executes
-[PORTAL-06A source qualification](work/portal-api-reconciliation/worker-prompts/06a-geography-source-qualification.md)
-from the launch message's pinned pushed SHA, returning evidence and proposed
-mapping/import design. Stop for owner approval before 06B; no target import,
-national seed migration, publish or deploy is authorized.
+PORTAL-06A delivery `cdf8a2a` reviewed/accepted as research. Mastermind checked
+the pinned district hash/count (365), 18 English collisions and 365 empty source
+objects. Worker proposal to import only levels 1–2 and leave Areas manual is
+not recommended as closure of the three-level picker gap; locality semantics,
+upstream provenance and coverage remain unresolved. See report's final review.
+**Next action:** owner chooses reviewed three-level launch-region coverage
+versus nationwide coverage required before release. No catalogue/mapping/06B
+approved yet. Later importer implementation and target/backup/write permission
+are separate decisions. No import, seed migration, publish or deploy authorized.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.

@@ -1,7 +1,7 @@
 # PORTAL-06A report — geography source qualification and mapping proposal
 
-Status: qualification delivered, pending owner dataset/mapping approval and
-mastermind review. No importer implemented; no IDs, references, or data
+Status: 06A research reviewed/accepted with the disposition below; no dataset
+or mapping approved. No importer implemented; no IDs, references, or data
 changed; no API startup, database contact, deployment, or Bruno occurred.
 Do not start 06B or present any source as approved.
 
@@ -49,7 +49,9 @@ Do not start 06B or present any source as approved.
 
 - Pin: `master` @ `76b47b22872288c0d8b0c757975980e6986945e8` (2026-09-08).
 - Provenance: **self-published, not government-authoritative**. Per-record
-  `source` cites only the publisher's own site/API; `metadata` is `{}`.
+  `source` does not establish an upstream chain; all 365 district records
+  independently inspected by the mastermind have an empty `{}` source object.
+  `metadata` is `{}`.
   `LICENSE` is a 673-byte CC-BY-4.0 summary naming an unrelated holder
   (`jakkrapongt`) and a nonexistent `build/` directory — template artifact.
   1 star / 0 forks / 6 commits; SEO-style sister-site network. The CC-BY-4.0
@@ -64,8 +66,9 @@ Do not start 06B or present any source as approved.
   transliterations, not official translations.
 - Level semantics are census-administrative, not consumer: level 2 =
   police sections / markaz (`قسم`, `مركز`), including a
-  `Port Alexandria Police Department` row and a residual `خارج الزمام`
-  ("Zemam Out", 0 children) bucket per governorate. Level 3 = census
+  `Port Alexandria Police Department` row and residual `خارج الزمام`
+  ("Zemam Out", 0 children) buckets (not uniformly per governorate; the
+  diagnostics note Suez differs). Level 3 = census
   shiyakha enumeration units.
 
 ### B. `mo7amed-said-223/egypt-cities` — disqualified for import
@@ -166,3 +169,49 @@ Approve: (a) source A pinned to `76b47b2` for levels 1–2 filtered import;
 Zemam/police exclusions; (c) Smouha City/Area placement; (d) Areas stay
 manually curated; (e) the exact later import target and backup. No 06B
 work and no target write until all five are explicitly approved.
+
+## Mastermind review / disposition — 2026-10-15
+
+Reviewed clean pushed delivery `cdf8a2a3283bb0f6ac64ad3902c1bcd40f59b15a`.
+Accepted as research evidence and identification of limitations, **not** as a
+production-qualified dataset or an approved execution plan. The primary
+recommendation in section 4 is a worker proposal; the mastermind does not
+recommend approving that import as the resolution of the original picker gap.
+
+Independent read-only checks fetched the district JSON at the immutable full
+source revision (no local dataset retained, downloaded code never executed):
+365 records, 315,793 bytes, SHA-256
+`F265357BDF7248FD162F1CC23B7C8A68F966CA4BC2988FED408AEF078C1C01D8`,
+18 same-parent exact English collision groups, 365 empty record-level source
+objects. The pinned LICENSE and README were also inspected. Other parsed
+counts/spot checks remain attributed to the worker; no independent official
+nationwide coverage check is claimed. Source B being unsuitable and the one
+CAPMAS catalogue not providing a gazetteer do not establish that all possible
+official sources were exhausted.
+
+Why 06B is not ready for approval:
+
+- A levels-1/2-only import with no Area dataset does not fix a required
+  three-level picker for the newly added cities. Empty Area branches remain.
+- Police-section/markaz-to-City mapping changes user-facing locality semantics
+  and affects caregiver service zones/discovery/pricing, not just display text.
+  It requires an explicit product decision, not a normalization convenience.
+- Upstream provenance and coverage remain unresolved; a publisher's CC notice
+  alone is not independent verification of the underlying source chain.
+- Excluding collision pairs/new-locality gaps creates partial coverage. It
+  must not be presented as complete Egyptian geography. Existing Smouha and
+  other manual rows must retain IDs/parents unless separately approved.
+- Section 5 is an architecture outline, not an exact owned-file implementation
+  manifest. Pin exact files and acceptance after the source/mapping decision.
+  A Production target/backup is required for later application, not for approving
+  isolated implementation; those authorities must not be bundled together.
+
+Recommended next decision: choose a reviewed **three-level launch-region
+catalogue** with explicit coverage/omissions (fast delivery), or require a
+traceable nationwide three-level catalogue before release (more data work).
+No scope is selected for the owner. Do not silently substitute districts for
+consumer cities, fabricate default Areas, or waive the national-coverage goal.
+After that choice, qualify/approve the actual catalogue and issue bounded 06B.
+
+Documentation-only review: relative links/diff validated; no build, test host,
+database, importer, Production action or deployment was needed or performed.

@@ -27,9 +27,11 @@ mapping zero gaps, corrected [frontend handoff](work/portal-api-reconciliation/f
 The excluded first worker run's local-test-DB reset violation remains documented.
 Owner has now authorized Phase 06 preparation: the
 [06A source qualification brief](work/portal-api-reconciliation/worker-prompts/06a-geography-source-qualification.md)
-is issued to establish provenance, actual coverage and City/Area mapping.
-Dataset/mapping approval remains necessary before 06B implementation; no
-import or deployment is authorized. Runtime/device and caregiver operator
+has delivered research (`cdf8a2a`), reviewed/accepted without approving a dataset.
+The partial levels-1/2 proposal does not close the three-level picker gap.
+Owner next chooses explicit launch-region coverage versus nationwide coverage
+required before release; actual catalogue/mapping approval still precedes 06B.
+No import/deployment is authorized. Runtime/device and caregiver operator
 evidence are not closed.
 The current VPS runs Production and is used for developer testing by owner
 direction; a separately hardened VPS is future work. Existing public deployment

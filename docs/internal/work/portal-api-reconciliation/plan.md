@@ -1,7 +1,7 @@
 # Admin and Care Homes portal API reconciliation
 
 Status: PORTAL-01 through 05 and PORTAL-07 accepted locally (2026-10-15).
-PORTAL-06A source qualification is issued; dataset/mapping approval still pending.
+PORTAL-06A research accepted; source/coverage/mapping decision pending (no 06B approval).
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
 The frontend report is input evidence, not an accepted defect list.
@@ -263,16 +263,20 @@ the standing repository branch instruction. Workers preserve others' edits.
 - [ ] In progress — **PORTAL-06: reference-data provisioning, pending approved source.**
   Owner authorized starting preparation on 2026-10-15. [06A source
   qualification](worker-prompts/06a-geography-source-qualification.md)
-  worker delivery (pending mastermind review and owner dataset/mapping
-  approval): [qualification report](reports/phase-06-source-qualification.md)
+  worker delivery `cdf8a2a` reviewed/accepted as research, not dataset approval:
+  [qualification report](reports/phase-06-source-qualification.md)
   with [reproducible diagnostics](diagnostics/geography-source-qualification.md).
-  Recommends pinned `open-admin-data` `76b47b2` levels 1–2 filtered (18
+  Worker proposed pinned `open-admin-data` `76b47b2` levels 1–2 filtered (18
   English-collision pairs + Zemam/police exclusions need per-pair decisions;
   Smouha placement and manual-Areas policy open); `egypt-cities` disqualified
   (no license, untranslated level-3 English); CAPMAS disqualified as a direct
   source (microdata catalogue, no gazetteer). This is research/proposed design
   only; 06B implementation requires source/mapping approval. No importer or
   target-data change is authorized, and no national completeness is claimed.
+  Mastermind does not recommend that partial import as a solution to the
+  three-level picker: Areas remain empty and provenance/locality semantics
+  unresolved. Owner chooses reviewed three-level launch-region coverage versus
+  nationwide coverage required before release, then approves an actual catalogue.
   Propose an authoritative bilingual hierarchy/dataset with provenance and scope
   (what counts as a city and an area). Design a previewable, idempotent import
   that preserves existing IDs/links, detects ambiguous duplicate names under a
