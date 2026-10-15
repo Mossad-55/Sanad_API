@@ -1,6 +1,17 @@
 # Project main goal
 
-## Current VPS-readiness checkpoint
+## Current slice — Admin and Care Homes portal API reconciliation
+
+Owner supplied a frontend issue report for verification, planning and targeted
+worker tests. The [portal reconciliation plan](work/portal-api-reconciliation/plan.md)
+owns the finding verdicts, proposed tasks, fixture strategy and audit evidence
+at `8cbeedd`. Review is complete; implementation awaits scope/rule approval.
+The current VPS runs Production and is used for developer testing by owner
+direction; a separately hardened VPS is future work. Existing public deployment
+smoke/revision/migration evidence does not establish complete portal or Chat Plus
+runtime coverage. CORS remains unchanged; Bruno is excluded.
+
+## Previous VPS-readiness publishing checkpoint
 
 Chat Plus Prompts 1–6 and VPS-readiness implementation are integrated; Prompt 4
 is optional, and Prompt 7 owns authorized post-deploy/runtime/device checks.

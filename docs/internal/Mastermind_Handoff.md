@@ -1,6 +1,27 @@
 # Mastermind handoff
 
-## Current VPS-readiness checkpoint
+## Active slice — Admin and Care Homes portal report reconciliation
+
+The owner supplied an unverified frontend report on 2026-10-15 and requested
+an evidence-based audit and fix/test plan before worker implementation. The
+audit at code/deployment baseline `8cbeedd` is complete; proposed tasks and
+evidence are in [portal reconciliation plan](work/portal-api-reconciliation/plan.md).
+Confirmed problems include reactivation error handling, library JSON casing/
+validation feedback, and OpenAPI metadata; caregiver data repair needs a
+diagnostic first. Existing relevant tests passed 257/257. Only anonymous live
+GETs were executed; no product code or remote data was changed.
+
+The current VPS is Production, used for production-mode developer testing by
+owner direction. The owner deployed the package; previous anonymous verification
+confirmed the revision and all nine applied migration heads. Do not treat that
+database as disposable or enable Development seeding there. CORS is owner-
+confirmed unchanged, and Bruno is excluded. Chat Plus runtime/device/soak work
+remains separate; deployment smoke evidence does not complete its Prompt 7.
+
+**Next action:** owner approves the proposed portal reconciliation scope/rules;
+then prepare the first pinned worker brief (PORTAL-01). No implementation yet.
+
+## Previous publishing checkpoint — superseded by owner deployment
 
 Chat Plus Prompts 1–6 and VPS-readiness implementation are integrated. Prompt 4
 is optional; Prompt 7 remains the authorized deployment/runtime/device
