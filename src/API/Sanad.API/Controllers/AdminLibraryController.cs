@@ -1,4 +1,3 @@
-using System.Text.Json;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -105,9 +104,22 @@ public sealed class AdminLibraryController(ISender sender, IFileStorage fileStor
         IFormFile? file,
         CancellationToken cancellationToken = default)
     {
-        if (!TryParseContentRequest(request, out var categoryId, out var contenttype, out var sections, out var parseError))
+        if (!TryParseContentRequest(request, out var categoryId, out var contenttype, out var sections, out var parseFailure))
         {
-            return BadRequestWithCode(parseError);
+            return LibraryInvalid(parseFailure);
+        }
+
+        if (LibraryContentValidation.Validate(
+                contenttype!.Value,
+                request.ArabicTitle,
+                request.EnglishTitle,
+                request.ArabicSummary,
+                request.EnglishSummary,
+                request.VideoUrl,
+                request.DurationSeconds,
+                sections ?? []) is { } contentErrors)
+        {
+            return LibraryInvalid(LibraryErrors.ContentInvalid.Code, ContentInvalidDetail, contentErrors);
         }
 
         var upload = await SaveCoverAsync(file, cancellationToken);
@@ -144,9 +156,45 @@ public sealed class AdminLibraryController(ISender sender, IFileStorage fileStor
         IFormFile? file,
         CancellationToken cancellationToken = default)
     {
-        if (!TryParseContentRequest(request, out var categoryId, out _, out var sections, out var parseError))
+        if (!TryParseContentRequest(request, out var categoryId, out _, out var sections, out var parseFailure))
         {
-            return BadRequestWithCode(parseError);
+            return LibraryInvalid(parseFailure);
+        }
+
+        Result<LibraryAdminContentResponse> existing =
+            await sender.Send(new GetLibraryAdminContentQuery(id), cancellationToken);
+        if (existing.IsFailure)
+            return ToActionResult(existing);
+
+        // Validate type-specific rules against the effective persisted type;
+        // the request Type stays parsed-but-ignored as before. Non-draft
+        // targets keep the existing upload-then-dispatch order so file and
+        // lifecycle precedence are unchanged.
+        if (existing.Value.Status == LibraryContentStatus.Draft.ToString() &&
+            Enum.TryParse<LibraryContentType>(existing.Value.Type, out LibraryContentType effectiveType))
+        {
+            IReadOnlyList<LibraryContentSectionInput> effectiveSections = sections
+                ?? existing.Value.Sections
+                    .Select(section => new LibraryContentSectionInput(
+                        section.DisplayOrder,
+                        section.ArabicTitle,
+                        section.EnglishTitle,
+                        section.ArabicBullets,
+                        section.EnglishBullets))
+                    .ToList();
+
+            if (LibraryContentValidation.Validate(
+                    effectiveType,
+                    request.ArabicTitle,
+                    request.EnglishTitle,
+                    request.ArabicSummary,
+                    request.EnglishSummary,
+                    request.VideoUrl,
+                    request.DurationSeconds,
+                    effectiveSections) is { } contentErrors)
+            {
+                return LibraryInvalid(LibraryErrors.ContentInvalid.Code, ContentInvalidDetail, contentErrors);
+            }
         }
 
         string? coverKey = null;
@@ -212,23 +260,46 @@ public sealed class AdminLibraryController(ISender sender, IFileStorage fileStor
             _ => false
         };
 
+    private const string ContentInvalidDetail = "One or more library content fields are invalid.";
+
+    private IActionResult LibraryInvalid(LibraryParseFailure failure) =>
+        LibraryInvalid(failure.Code, failure.Detail, failure.Errors);
+
+    private IActionResult LibraryInvalid(string code, string detail, Dictionary<string, string[]> errors)
+    {
+        var problemDetails = new ProblemDetails
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Bad Request",
+            Detail = detail,
+            Instance = HttpContext.Request.Path
+        };
+        problemDetails.Extensions["code"] = code;
+        problemDetails.Extensions["traceId"] = HttpContext.TraceIdentifier;
+        problemDetails.Extensions["errors"] = errors;
+        return StatusCode(StatusCodes.Status400BadRequest, problemDetails);
+    }
+
     private static bool TryParseContentRequest(
         ILibraryContentFormRequest request,
         out Guid? categoryId,
         out LibraryContentType? contentType,
         out IReadOnlyList<LibraryContentSectionInput>? sections,
-        out string parseError)
+        out LibraryParseFailure failure)
     {
         categoryId = null;
         contentType = null;
         sections = null;
-        parseError = string.Empty;
+        failure = null!;
 
         if (!string.IsNullOrWhiteSpace(request.CategoryId))
         {
             if (!Guid.TryParse(request.CategoryId, out Guid parsedCategoryId))
             {
-                parseError = "Cms.Library.InvalidCategory";
+                failure = new(
+                    LibraryErrors.InvalidCategory.Code,
+                    "The library category identifier is invalid.",
+                    new() { ["categoryId"] = ["The library category identifier must be a valid UUID."] });
                 return false;
             }
 
@@ -239,7 +310,10 @@ public sealed class AdminLibraryController(ISender sender, IFileStorage fileStor
             !Enum.TryParse(request.Type, ignoreCase: true, out LibraryContentType parsedType) ||
             !Enum.IsDefined(parsedType))
         {
-            parseError = "Cms.Library.InvalidType";
+            failure = new(
+                LibraryErrors.InvalidType.Code,
+                "The library content type is invalid.",
+                new() { ["type"] = ["The library content type must be Article or Video."] });
             return false;
         }
 
@@ -247,9 +321,12 @@ public sealed class AdminLibraryController(ISender sender, IFileStorage fileStor
 
         if (request.SectionsJson is not null)
         {
-            if (!TryParseSections(request.SectionsJson, out sections))
+            if (!LibraryContentValidation.TryParseSections(request.SectionsJson, out sections, out var sectionErrors))
             {
-                parseError = "Cms.Library.InvalidSections";
+                failure = new(
+                    LibraryErrors.InvalidSections.Code,
+                    "The sections content is invalid.",
+                    sectionErrors);
                 return false;
             }
         }
@@ -257,30 +334,10 @@ public sealed class AdminLibraryController(ISender sender, IFileStorage fileStor
         return true;
     }
 
-    private static bool TryParseSections(
-        string json,
-        out IReadOnlyList<LibraryContentSectionInput>? sections)
-    {
-        try
-        {
-            List<LibraryContentSectionRequest>? requests =
-                JsonSerializer.Deserialize<List<LibraryContentSectionRequest>>(json);
-            sections = (requests ?? [])
-                .Select(item => new LibraryContentSectionInput(
-                    item.DisplayOrder,
-                    item.ArabicTitle,
-                    item.EnglishTitle,
-                    item.ArabicBullets,
-                    item.EnglishBullets))
-                .ToList();
-            return true;
-        }
-        catch (JsonException)
-        {
-            sections = null;
-            return false;
-        }
-    }
+    private sealed record LibraryParseFailure(
+        string Code,
+        string Detail,
+        Dictionary<string, string[]> Errors);
 }
 
 internal interface ILibraryContentFormRequest
@@ -324,10 +381,3 @@ public sealed record UpdateLibraryContentRequest(
 public sealed record CreateLibraryCategoryRequest(string ArabicName, string EnglishName, bool IsActive = true);
 
 public sealed record UpdateLibraryCategoryRequest(string ArabicName, string EnglishName, bool IsActive);
-
-public sealed record LibraryContentSectionRequest(
-    int DisplayOrder,
-    string ArabicTitle,
-    string EnglishTitle,
-    List<string>? ArabicBullets,
-    List<string>? EnglishBullets);

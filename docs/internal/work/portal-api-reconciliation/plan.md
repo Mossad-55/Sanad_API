@@ -161,9 +161,10 @@ the standing repository branch instruction. Workers preserve others' edits.
   Cover never-verified and partly-verified targets, both source statuses,
   verified controls, missing user, seeded target, repeat calls and audit/session
   side effects with deterministic fixtures.
-- [ ] In progress — **PORTAL-02: repair library input contract and field validation.**
+- [x] Done — **PORTAL-02: repair library input contract and field validation.**
   [Worker brief](worker-prompts/02-library-validation.md) issued after Phase 01
-  acceptance. Worker implementation/results are not yet reported.
+  acceptance. Worker implementation complete; evidence in
+  [phase-02 report](reports/phase-02-library.md), pending mastermind review.
   Own AdminLibrary parser/request-validation helpers, bounded Library command/
   domain changes only if needed, Library tests, guide and Admin Postman Library
   folder. Accept existing PascalCase and documented camelCase section keys;

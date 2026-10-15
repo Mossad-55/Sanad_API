@@ -76,7 +76,24 @@ Create/update body is `multipart/form-data` (5 MB request cap):
 
 Invalid type combinations (article with `videoUrl`, video without duration,
 sections on a video, duplicate display orders, …) return
-`400 Cms.LibraryContent.Invalid`.
+`400 Cms.LibraryContent.Invalid` with a safe fixed detail, an `errors` map of
+field paths to messages, and a `traceId`. Section keys accept both the
+canonical camelCase (`displayOrder`, `arabicTitle`, `arabicBullets`, …) and
+the legacy PascalCase spellings; JSON number handling is unchanged. A
+`sectionsJson` value of `[null]`, malformed JSON, or a non-array root returns
+`400 Cms.Library.InvalidSections`; an unrecognized `type` returns `400
+Cms.Library.InvalidType`; a malformed `categoryId` returns `400
+Cms.Library.InvalidCategory`. Indexed section failures use paths such as
+`sectionsJson[0].displayOrder` and `sectionsJson[0].arabicBullets[0]`.
+
+On update, omitted `sectionsJson` preserves the existing sections while an
+explicit `[]` clears the requested array and fails for Article; an omitted
+`file` keeps the existing cover. Type-specific rules are validated against the
+persisted content type — the request `Type` remains parsed but ignored, so a
+valid update is never rejected solely because that ignored value differs.
+Rejected requests leave no new cover or content row; a failed update keeps the
+old cover and sections, and only a newly uploaded uncommitted cover is cleaned
+up.
 
 ## Public reads
 
@@ -163,6 +180,6 @@ Items use the same list shape, including `isLiked`/`isSaved`/`isPremium`/
 | `Cms.Library.CategoryInactive` | 409 | Content `categoryId` inactive. |
 | `Cms.LibraryContent.NotFound` | 404 | Interaction target unknown/unpublished. |
 | `Cms.LibraryContent.NotPublished` | 404 | Public detail on non-published content. |
-| `Cms.LibraryContent.Invalid` | 400 | Content failed domain validation. |
+| `Cms.LibraryContent.Invalid` | 400 | Content failed validation; the response carries a fixed detail plus an `errors` map and `traceId`. |
 | `Cms.LibraryContent.InvalidOperation` | 409 | Lifecycle violation (update after publish, re-publish archive rules). |
 | `Cms.Library.InvalidType` / `InvalidSort` / `InvalidStatus` / `InvalidSections` | 400 | Query/form enum and section-JSON parsing failures. |

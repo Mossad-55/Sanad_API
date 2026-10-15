@@ -30,4 +30,10 @@ public static class LibraryErrors
 
     public static readonly Error CategoryInactive =
         new("Cms.Library.CategoryInactive", "The selected library category is inactive.");
+
+    public static readonly Error InvalidType =
+        new("Cms.Library.InvalidType", "The library content type is invalid.");
+
+    public static readonly Error InvalidSections =
+        new("Cms.Library.InvalidSections", "The sections content is invalid.");
 }
