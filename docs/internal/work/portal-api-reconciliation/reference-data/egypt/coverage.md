@@ -6,11 +6,13 @@ official census. Snapshot date 2026-09-08; candidate assembled 2026-10-15.
 Structural coverage is nationwide; consumer verification is not claimed —
 every area row is `provisional-census` (see gaps).
 
-Delivered: 27 governorates, 346 cities (170 urban-district, 164
-rural-markaz, 9 new-city, 3 other-admin-unit; 18 candidate-disambiguated),
-5706 areas. Excluded: 19 districts (14 residual Zemam buckets, 5
-police-department units) and the 10 shiyakhas beneath excluded districts.
-Zero included cities lack areas; zero duplicate keys; zero orphan parents.
+Delivered: 27 governorates, 347 cities (170 urban-district, 164
+rural-markaz, 9 new-city, 3 other-admin-unit, 1 police-section-aggregate;
+18 candidate-disambiguated), 5712 areas. Excluded: 18 districts (14
+residual Zemam buckets with 0 children each, 4 port police-department
+units each holding a single customs-facility child) and the 4 shiyakhas
+beneath excluded districts. Zero included cities lack areas; zero
+duplicate keys; zero orphan parents.
 
 ## Per-governorate matrix (delivered / source)
 
@@ -35,12 +37,12 @@ Zero included cities lack areas; zero duplicate keys; zero orphan parents.
 | Menia (EG24) | 12 / 13 | 378 / 378 | New Minya kept |
 | Assiut (EG25) | 14 / 15 | 261 / 261 | Assiut New kept |
 | Suhag (EG26) | 19 / 20 | 290 / 290 | Girga/Suhag pairs disambiguated; Akhmim/Suhag New kept |
-| Qena (EG27) | 13 / 14 | 203 / 203 | Qina pair disambiguated; Qena New kept |
+| Qena (EG27) | 11 / 14 | 167 / 203 | Armant+Esna re-parented to Luxor on GOPP evidence; Qina pair disambiguated; Qena New kept |
 | Aswan (EG28) | 9 / 10 | 122 / 122 | Aswan pair disambiguated; Aswan/Toshka New kept |
-| Luxor (EG29) | 2 / 4 | 17 / 23 | Tiba police unit (6 units) + Zemam out; **thinnest branch** |
-| Red Sea (EG31) | 8 / 8 | 41 / 41 | Full, incl. Marina El Alamein-side units |
+| Luxor (EG29) | 5 / 4 | 59 / 23 | Armant+Esna re-parented in; Tiba aggregate reinstated (equivalence unresolved); Bayadiya/Qurna/Ziniya-markaz/Tod/New-Luxor absent from source; **needs official completion** |
+| Red Sea (EG31) | 8 / 8 | 41 / 41 | Full |
 | New Valley (EG32) | 4 / 4 | 75 / 75 | Full |
-| Matrouh (EG33) | 8 / 8 | 113 / 113 | Full, incl. Madinet El Alamein |
+| Matrouh (EG33) | 8 / 8 | 113 / 113 | Full, incl. Madinet El Alamein and Marina El Alamein |
 | North Sinai (EG34) | 11 / 11 | 96 / 96 | Full |
 | South Sinai (EG35) | 8 / 8 | 99 / 99 | Full |
 

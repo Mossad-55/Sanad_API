@@ -837,11 +837,17 @@
     },
     {
       "key": "EG2704",
-      "governorateKey": "EG27",
+      "governorateKey": "EG29",
       "arabicName": "مركز أرمنت",
       "englishName": "Armant",
       "mappingKind": "rural-markaz",
-      "sourceId": "EG2704"
+      "sourceId": "EG2704",
+      "reparented": {
+        "from": "EG27",
+        "to": "EG29",
+        "citation": "https://gopp.gov.eg/luxor-strategic-plan/ (General Organization for Physical Planning, Luxor strategic plan; lists 6 markaz incl. Armant and Esna, 2 new cities incl. New Tiba, 1 urban section; fetched 2026-10-15)",
+        "reason": "Official GOPP Luxor plan lists Armant and Esna among Luxor centres; source EG27xx prefix reflects pre-2009 coding, not current membership."
+      }
     },
     {
       "key": "EG1703",
@@ -1649,11 +1655,17 @@
     },
     {
       "key": "EG2705",
-      "governorateKey": "EG27",
+      "governorateKey": "EG29",
       "arabicName": "مركز إسنا",
       "englishName": "Isna",
       "mappingKind": "rural-markaz",
-      "sourceId": "EG2705"
+      "sourceId": "EG2705",
+      "reparented": {
+        "from": "EG27",
+        "to": "EG29",
+        "citation": "https://gopp.gov.eg/luxor-strategic-plan/ (General Organization for Physical Planning, Luxor strategic plan; lists 6 markaz incl. Armant and Esna, 2 new cities incl. New Tiba, 1 urban section; fetched 2026-10-15)",
+        "reason": "Official GOPP Luxor plan lists Armant and Esna among Luxor centres; source EG27xx prefix reflects pre-2009 coding, not current membership."
+      }
     },
     {
       "key": "EG1807",
@@ -2993,6 +3005,17 @@
       "englishName": "Zifta",
       "mappingKind": "rural-markaz",
       "sourceId": "EG1609"
+    },
+    {
+      "key": "EG2903",
+      "governorateKey": "EG29",
+      "arabicName": "مركز شرطة طيبة",
+      "englishName": "Tiba police station",
+      "mappingKind": "police-section-aggregate",
+      "sourceId": "EG2903",
+      "mappingNote": "Police-section source record aggregating genuine Luxor localities (Ziniya villages, New Tiba). Restored on child-locality evidence, not on label.",
+      "boundaryUnresolved": true,
+      "unresolvedNote": "Exact equivalence with GOPP Ziniya markaz / New Tiba city unverified; per-governorate official audit beyond Luxor/Qena not established."
     }
   ],
   "areas": [
@@ -48643,6 +48666,54 @@
       "englishName": "Youssef",
       "verification": "provisional-census",
       "sourceId": "EG130209"
+    },
+    {
+      "key": "EG290302",
+      "cityKey": "EG2903",
+      "arabicName": "الزينيةبحري",
+      "englishName": "Al-Zayniya Bahari",
+      "verification": "provisional-census",
+      "sourceId": "EG290302"
+    },
+    {
+      "key": "EG290303",
+      "cityKey": "EG2903",
+      "arabicName": "الزينيةقبلي",
+      "englishName": "Al-Zayniya Qibli",
+      "verification": "provisional-census",
+      "sourceId": "EG290303"
+    },
+    {
+      "key": "EG290304",
+      "cityKey": "EG2903",
+      "arabicName": "الصعايدة",
+      "englishName": "El-Sa'aydah",
+      "verification": "provisional-census",
+      "sourceId": "EG290304"
+    },
+    {
+      "key": "EG290305",
+      "cityKey": "EG2903",
+      "arabicName": "العشي",
+      "englishName": "El-Ashy",
+      "verification": "provisional-census",
+      "sourceId": "EG290305"
+    },
+    {
+      "key": "EG290306",
+      "cityKey": "EG2903",
+      "arabicName": "المدامود",
+      "englishName": "El-Madamoud",
+      "verification": "provisional-census",
+      "sourceId": "EG290306"
+    },
+    {
+      "key": "EG290301",
+      "cityKey": "EG2903",
+      "arabicName": "مدينة طيبة الجديدة",
+      "englishName": "Tiba al-Gadida",
+      "verification": "provisional-census",
+      "sourceId": "EG290301"
     }
   ],
   "exclusions": [
@@ -48673,13 +48744,6 @@
       "reason": "police-department administrative unit, not a consumer locality",
       "arabicName": "إدارة شرطة ميناء السويس",
       "englishName": "Port Suez Police Department"
-    },
-    {
-      "sourceId": "EG2903",
-      "level": 2,
-      "reason": "police-department administrative unit, not a consumer locality",
-      "arabicName": "مركز شرطة طيبة",
-      "englishName": "Tiba police station"
     },
     {
       "sourceId": "EG0100",
@@ -48800,6 +48864,13 @@
     {
       "scope": "Postal codes",
       "detail": "Source zip_codes empty on all records; postal locality mapping is out of scope."
+    }
+  ],
+  "reinstatements": [
+    {
+      "sourceId": "EG2903",
+      "cityKey": "EG2903",
+      "reason": "Six child records are genuine inhabited localities (Ziniya Bahari/Qibli, Saaydah, Ashy, Madamoud, New Tiba); dropping them removed real Luxor coverage. Equivalence with GOPP units remains unresolved."
     }
   ]
 }

@@ -1,0 +1,26 @@
+{
+  "approvedGovernorates": ["EG01", "EG02", "EG03", "EG04", "EG11", "EG12", "EG13", "EG14", "EG15", "EG16", "EG17", "EG18", "EG19", "EG21", "EG22", "EG23", "EG24", "EG25", "EG26", "EG27", "EG28", "EG29", "EG31", "EG32", "EG33", "EG34", "EG35"],
+  "expectedCities": {"EG01": 41, "EG02": 17, "EG03": 11, "EG04": 5, "EG11": 8, "EG12": 21, "EG13": 21, "EG14": 14, "EG15": 12, "EG16": 12, "EG17": 12, "EG18": 18, "EG19": 8, "EG21": 21, "EG22": 9, "EG23": 8, "EG24": 12, "EG25": 14, "EG26": 19, "EG27": 11, "EG28": 9, "EG29": 5, "EG31": 8, "EG32": 4, "EG33": 8, "EG34": 11, "EG35": 8},
+  "expectedAreas": {"EG01": 324, "EG02": 140, "EG03": 21, "EG04": 17, "EG11": 100, "EG12": 513, "EG13": 531, "EG14": 216, "EG15": 226, "EG16": 350, "EG17": 330, "EG18": 534, "EG19": 56, "EG21": 239, "EG22": 240, "EG23": 174, "EG24": 378, "EG25": 261, "EG26": 290, "EG27": 167, "EG28": 122, "EG29": 59, "EG31": 41, "EG32": 75, "EG33": 113, "EG34": 96, "EG35": 99},
+  "knownParents": {
+    "EG2704": {"governorateKey": "EG29", "citation": "https://gopp.gov.eg/luxor-strategic-plan/ (GOPP Luxor plan: 6 markaz incl. Armant and Esna; fetched 2026-10-15)"},
+    "EG2705": {"governorateKey": "EG29", "citation": "https://gopp.gov.eg/luxor-strategic-plan/ (GOPP Luxor plan: 6 markaz incl. Armant and Esna; fetched 2026-10-15)"}
+  },
+  "boundaryAudit": {
+    "audited": ["EG29", "EG27"],
+    "method": "GOPP Luxor strategic plan (official) + source row/child inspection; Helwan and 6th-October presence consistent with post-2011 abolition; EG-code prefix shown to be a pre-2009 coding fossil for Armant/Esna.",
+    "pending": ["EG01", "EG02", "EG03", "EG04", "EG11", "EG12", "EG13", "EG14", "EG15", "EG16", "EG17", "EG18", "EG19", "EG21", "EG22", "EG23", "EG24", "EG25", "EG26", "EG28", "EG31", "EG32", "EG33", "EG34", "EG35"],
+    "vintage": "unknown-mixed: post-2011 composition signals correct, Armant/Esna coding pre-2009, new-capital absent; not certified 2026 geography."
+  },
+  "unresolvedBranches": [
+    {"scope": "Luxor branch equivalence", "reason": "Tiba aggregate vs GOPP Ziniya markaz / New Tiba city unverified; Bayadiya, Qurna, Tod, New Luxor absent from source."},
+    {"scope": "Remaining 25 governorates", "reason": "No official current-boundary audit established; source vintage unknown-mixed."},
+    {"scope": "Area consumer verification", "reason": "All area rows provisional-census; batch-vs-individual validation evidence open."},
+    {"scope": "Smouha placement and New Administrative Capital coverage", "reason": "No sourced records; manual resolution pending."}
+  ],
+  "readiness": {
+    "provenanceAccepted": false,
+    "mappingDecisionsAccepted": false,
+    "consumerVerificationComplete": false
+  }
+}

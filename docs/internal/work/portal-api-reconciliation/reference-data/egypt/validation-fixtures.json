@@ -50,6 +50,82 @@
         "cities": [{ "key": "EG9901", "governorateKey": "EG99", "arabicName": "مدينة", "englishName": "City" }],
         "areas": [{ "key": "EG990101", "cityKey": "EG9901", "arabicName": "أ", "englishName": "A", "verification": "provisional-census" }]
       }
+    },
+    {
+      "name": "empty-country",
+      "expectValid": false,
+      "candidate": { "governorates": [], "cities": [], "areas": [] }
+    },
+    {
+      "name": "wrong-types",
+      "expectValid": false,
+      "candidate": {
+        "governorates": [{ "key": "EG99", "arabicName": "اختبار", "englishName": "Test" }],
+        "cities": [{ "key": 5, "governorateKey": "EG99", "arabicName": ["مدينة"], "englishName": true, "disambiguated": "yes" }],
+        "areas": [{ "key": "EG990101", "cityKey": "5", "arabicName": "أ", "englishName": "A", "verification": "provisional-census" }]
+      }
+    },
+    {
+      "name": "arabic-only-english",
+      "expectValid": false,
+      "candidate": {
+        "governorates": [{ "key": "EG99", "arabicName": "اختبار", "englishName": "Test" }],
+        "cities": [{ "key": "EG9901", "governorateKey": "EG99", "arabicName": "مدينة", "englishName": "مدينة" }],
+        "areas": [{ "key": "EG990101", "cityKey": "EG9901", "arabicName": "أ", "englishName": "A", "verification": "provisional-census" }]
+      }
+    },
+    {
+      "name": "latin-only-arabic",
+      "expectValid": false,
+      "candidate": {
+        "governorates": [{ "key": "EG99", "arabicName": "اختبار", "englishName": "Test" }],
+        "cities": [{ "key": "EG9901", "governorateKey": "EG99", "arabicName": "City", "englishName": "City" }],
+        "areas": [{ "key": "EG990101", "cityKey": "EG9901", "arabicName": "أ", "englishName": "A", "verification": "provisional-census" }]
+      }
+    },
+    {
+      "name": "duplicate-governorate-name",
+      "expectValid": false,
+      "candidate": {
+        "governorates": [
+          { "key": "EG99", "arabicName": "اختبار", "englishName": "Test" },
+          { "key": "EG98", "arabicName": "اختبار", "englishName": "Other" }
+        ],
+        "cities": [{ "key": "EG9901", "governorateKey": "EG99", "arabicName": "مدينة", "englishName": "City" }],
+        "areas": [{ "key": "EG990101", "cityKey": "EG9901", "arabicName": "أ", "englishName": "A", "verification": "provisional-census" }]
+      }
+    },
+    {
+      "name": "incomplete-national-set",
+      "expectValid": false,
+      "manifest": {
+        "approvedGovernorates": ["EG99", "EG98"],
+        "expectedCities": { "EG99": 1 },
+        "expectedAreas": { "EG99": 1 },
+        "knownParents": {}
+      },
+      "candidate": {
+        "snapshot": { "source": "test", "revision": "t1" },
+        "governorates": [{ "key": "EG99", "arabicName": "اختبار", "englishName": "Test" }],
+        "cities": [{ "key": "EG9901", "governorateKey": "EG99", "arabicName": "مدينة", "englishName": "City" }],
+        "areas": [{ "key": "EG990101", "cityKey": "EG9901", "arabicName": "أ", "englishName": "A", "verification": "provisional-census" }]
+      }
+    },
+    {
+      "name": "known-wrong-boundary",
+      "expectValid": false,
+      "manifest": {
+        "approvedGovernorates": ["EG99"],
+        "expectedCities": { "EG99": 1 },
+        "expectedAreas": { "EG99": 1 },
+        "knownParents": { "EG9901": { "governorateKey": "EG98" } }
+      },
+      "candidate": {
+        "snapshot": { "source": "test", "revision": "t1" },
+        "governorates": [{ "key": "EG99", "arabicName": "اختبار", "englishName": "Test" }],
+        "cities": [{ "key": "EG9901", "governorateKey": "EG99", "arabicName": "مدينة", "englishName": "City" }],
+        "areas": [{ "key": "EG990101", "cityKey": "EG9901", "arabicName": "أ", "englishName": "A", "verification": "provisional-census" }]
+      }
     }
   ]
 }

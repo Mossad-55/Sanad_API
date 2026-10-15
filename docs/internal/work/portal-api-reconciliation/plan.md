@@ -284,15 +284,17 @@ the standing repository branch instruction. Workers preserve others' edits.
   remain, report them; no silent reduction to levels 1–2 or manual-Areas-only.
   [06A2 worker delivery](reports/phase-06-national-catalogue.md) `5918813`
   reviewed; acceptance held for [bounded corrections](worker-prompts/06a2-review-corrections.md).
-  `reference-data/egypt/candidate.json` (27/346/5706,
-  SHA-256 `2ECB4808…BCF`), `provenance.md`, `coverage.md` per-governorate
-  matrix, offline `Validate-Catalogue.ps1` + fixtures (0 failures, 5/5
-  checks, exit 0). Areas flagged provisional-census; Smouha/NAC gaps,
-  18 disambiguated labels, and 19 exclusions recorded; no importer, data
-  write. Current validator passes but accepts empty/untranslated catalogues;
-  Armant/Esna are assigned to the wrong governorate (36 child Areas affected).
-  Fix current-boundary/exclusion evidence, structural/readiness separation
-  and documentation drift before any 06B. All-Egypt scope is not waived.
+  `reference-data/egypt/candidate.json` corrected to 27/347/5712
+  (SHA-256 `18AB3CB4…C09`), `provenance.md`, `coverage.md` per-governorate
+  matrix, new `boundary-checks.json`, hardened offline
+  `Validate-Catalogue.ps1` + 12 fixtures (structural 0 failures, 12/12
+  checks, exit 0; separate `-Readiness` gate fails closed with exit 2 on
+  4 unresolved branches, 5712 provisional areas, unaccepted flags, 5 open
+  gaps). Armant/Esna re-parented to Luxor on GOPP evidence; Tiba
+  reinstated with its 6 localities (equivalence unresolved); Zemam/port
+  exclusions evidenced by child counts; Marina/gaps-count/source-emptiness
+  documentation fixed. Areas stay provisional-census; no importer or data
+  write. All-Egypt scope is not waived; readiness blockers stay explicit.
   Propose an authoritative bilingual hierarchy/dataset with provenance and scope
   (what counts as a city and an area). Design a previewable, idempotent import
   that preserves existing IDs/links, detects ambiguous duplicate names under a
