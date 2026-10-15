@@ -44,10 +44,10 @@ hasMore }`. Bare JSON arrays are returned where the handler returns a list
 (check-in disputes, charge-rule history, city/area lookups, categories).
 
 Admin creation returns `201`. The current platform-charge rule returns `200`
-with a `null` body before the first rule exists. Unset resources (elderly
-welcome, unknown user/notification/facility/category) return their existing
-`404` codes. Controllers return the handler DTO directly, never a
-`Result<T>` envelope.
+with its DTO once a rule exists, and `204` with no body before the first rule
+exists. Unset resources (elderly welcome, unknown user/notification/facility/
+category) return their existing `404` codes. Controllers return the handler
+DTO directly, never a `Result<T>` envelope.
 
 ## Community category update
 

@@ -177,6 +177,7 @@ separate owner-controlled actions.
 ## OpenAPI contract
 
 The current-rule read publishes its `200` schema; before the first rule
-exists it returns `200` with a `null` body. The history read publishes its
-`200` bare-array schema. Shared conventions are in
+exists it returns `204` with no body (verified through HTTP: the null query
+result serializes to no content, not JSON `null`). The history read publishes
+its `200` bare-array schema. Shared conventions are in
 [api-contract-conventions](api-contract-conventions.md).

@@ -192,7 +192,10 @@ the standing repository branch instruction. Workers preserve others' edits.
   findings are in [phase-03 report](reports/phase-03-api-metadata.md).
   Own the controllers for the 28 listed actions, the five query declarations,
   OpenAPI configuration/transformer files, a dedicated community-update request
-  DTO, API contract tests, affected guides/Postman entries. Use actual response
+  DTO, API contract tests, affected guides/Postman entries. Correction pass
+  complete: host isolation proven (jobs removed, all contexts InMemory),
+  finance-current empty HTTP proven `204` with matching metadata, nullable-enum
+  union verified valid without transformer change. Use actual response
   types/statuses, including existing empty/null-state 204 or not-found outcomes
   where applicable, rather than assuming every successful read has a body.
   Publish numeric enum values plus names from their CLR enum

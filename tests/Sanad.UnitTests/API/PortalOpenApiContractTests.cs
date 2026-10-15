@@ -14,6 +14,9 @@ using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Application.Inventory;
+using Sanad.Modules.Finance.Application;
+using Sanad.Modules.Finance.Domain;
+using Sanad.Modules.Finance.Infrastructure;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Families.Application.Sos;
@@ -184,6 +187,53 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
     }
 
     [Fact]
+    public void NullableEnum_AllowsNullAndDefinedValue_RejectsUndefined()
+    {
+        JsonElement root = Document;
+        JsonElement property = ResolveRef(root, "#/components/schemas/MyProfileResponse")
+            .GetProperty("properties")
+            .GetProperty("accountType");
+
+        // The nullable union wrapper itself must not carry a numeric-only
+        // enum constraint: with anyOf/oneOf semantics it would conjunctively
+        // reject null. The null branch and the constrained $ref carry it.
+        Assert.False(
+            property.TryGetProperty("enum", out _),
+            "Nullable union wrapper must not define its own enum constraint.");
+
+        List<JsonElement> branches = CollectBranches(root, property);
+
+        Assert.True(branches.Count > 0, "accountType exposes no schema branches.");
+        Assert.True(
+            branches.Any(AllowsNull),
+            "Nullable accountType does not allow null in its complete schema.");
+        Assert.True(
+            branches.Any(branch => EnumContains(branch, root, 5)),
+            "Nullable accountType does not accept the defined SuperAdmin value.");
+        Assert.False(
+            branches.Any(branch => EnumContains(branch, root, 99)),
+            "accountType unexpectedly accepts the undefined value 99.");
+        Assert.False(
+            branches.SelectMany(EnumValues).Any(v => v.ValueKind == JsonValueKind.Null),
+            "Null must not be paired as an enum member.");
+    }
+
+    [Fact]
+    public void ChargeRuleCurrent_PublishesPopulated200AndBodiless204()
+    {
+        JsonElement operation = GetOperation(
+            Document, "/api/v1/admin/finance/platform-charge-rules/current", "get");
+        JsonElement responses = operation.GetProperty("responses");
+
+        Assert.True(
+            responses.TryGetProperty("204", out JsonElement noContent),
+            "Missing 204 first-run response for the current charge rule.");
+        Assert.False(noContent.TryGetProperty("content", out _), "204 must carry no body schema.");
+
+        Assert.True(responses.TryGetProperty("200", out _), "Populated 200 response must be retained.");
+    }
+
+    [Fact]
     public void NestedResponseRefs_ResolveToActualShapes()
     {
         JsonElement root = Document;
@@ -268,6 +318,66 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         JsonElement targetSchema = isArray ? element.GetProperty("items") : element;
         string reference = AssertRef(targetSchema, root);
         Assert.EndsWith(target, reference);
+    }
+
+    private static List<JsonElement> CollectBranches(JsonElement root, JsonElement schema)
+    {
+        var branches = new List<JsonElement> { schema };
+        foreach (string keyword in new[] { "anyOf", "oneOf", "allOf" })
+        {
+            if (schema.TryGetProperty(keyword, out JsonElement options))
+                branches.AddRange(options.EnumerateArray());
+        }
+
+        var resolved = new List<JsonElement>();
+        foreach (JsonElement branch in branches)
+        {
+            if (branch.ValueKind == JsonValueKind.Object &&
+                branch.TryGetProperty("$ref", out JsonElement reference))
+                resolved.Add(ResolveRef(root, reference.GetString()!));
+            else
+                resolved.Add(branch);
+        }
+
+        return resolved;
+    }
+
+    private static bool AllowsNull(JsonElement schema)
+    {
+        if (schema.ValueKind != JsonValueKind.Object)
+            return false;
+        if (schema.TryGetProperty("nullable", out JsonElement nullable) && nullable.GetBoolean())
+            return true;
+        if (schema.TryGetProperty("type", out JsonElement type))
+        {
+            if (type.ValueKind == JsonValueKind.String && type.GetString() == "null")
+                return true;
+            if (type.ValueKind == JsonValueKind.Array &&
+                type.EnumerateArray().Any(v => v.GetString() == "null"))
+                return true;
+        }
+
+        return false;
+    }
+
+    private static bool EnumContains(JsonElement branch, JsonElement root, int value)
+    {
+        if (branch.ValueKind == JsonValueKind.Object &&
+            branch.TryGetProperty("$ref", out JsonElement reference))
+            branch = ResolveRef(root, reference.GetString()!);
+        return branch.ValueKind == JsonValueKind.Object &&
+            branch.TryGetProperty("enum", out JsonElement members) &&
+            members.EnumerateArray().Any(v => v.ValueKind == JsonValueKind.Number && v.GetInt32() == value);
+    }
+
+    private static IEnumerable<JsonElement> EnumValues(JsonElement branch)
+    {
+        if (branch.ValueKind == JsonValueKind.Object &&
+            branch.TryGetProperty("enum", out JsonElement members))
+        {
+            foreach (JsonElement member in members.EnumerateArray())
+                yield return member;
+        }
     }
 
     private static void AssertAllowsNull(JsonElement schema, string property)
@@ -672,6 +782,91 @@ public sealed class PortalRequiredQueryRuntimeTests : IClassFixture<PortalApiMet
             FullName.Create("Admin"),
             Email.Create("portal.superadmin@example.test"),
             PhoneNumber.Create("+201000003002"));
+        user.AddAccount(AccountType.SuperAdmin);
+        IAuthTokenService tokens = _host.Services.GetRequiredService<IAuthTokenService>();
+        return tokens.GenerateAccessToken(user, DateTime.UtcNow.AddSeconds(-5)).PlainTextToken;
+    }
+}
+
+/// <summary>
+/// R2: finance current-rule empty/populated HTTP truth through the unchanged
+/// production MVC pipeline on the isolated host.
+/// </summary>
+public sealed class PortalFinanceCurrentStateTests : IClassFixture<PortalApiMetadataHost>
+{
+    private readonly PortalApiMetadataHost _host;
+
+    public PortalFinanceCurrentStateTests(PortalApiMetadataHost host) => _host = host;
+
+    [Fact]
+    public async Task Current_EmptyState_Returns204WithoutBody()
+    {
+        await using FinanceDbContext db = CreateFinanceDb();
+        using var factory = CreateFinanceFactory(db);
+        using HttpClient client = CreatePortalClient(factory);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateAccessToken());
+
+        using HttpResponseMessage response = await client.GetAsync(
+            "/api/v1/admin/finance/platform-charge-rules/current");
+
+        Assert.Equal(HttpStatusCode.NoContent, response.StatusCode);
+        Assert.Equal(string.Empty, await response.Content.ReadAsStringAsync());
+        Assert.Null(response.Content.Headers.ContentType);
+    }
+
+    [Fact]
+    public async Task Current_PopulatedState_Returns200Dto()
+    {
+        await using FinanceDbContext db = CreateFinanceDb();
+        db.PlatformChargeRules.Add(PlatformChargeRule.Create(10m, 14m, 1, DateTime.UtcNow.AddDays(-1)));
+        await db.SaveChangesAsync();
+        using var factory = CreateFinanceFactory(db);
+        using HttpClient client = CreatePortalClient(factory);
+        client.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", CreateAccessToken());
+
+        using HttpResponseMessage response = await client.GetAsync(
+            "/api/v1/admin/finance/platform-charge-rules/current");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(1, body.RootElement.GetProperty("version").GetInt32());
+        Assert.True(body.RootElement.TryGetProperty("platformFeeRatePercentage", out _));
+    }
+
+    private static FinanceDbContext CreateFinanceDb()
+    {
+        var db = new FinanceDbContext(new DbContextOptionsBuilder<FinanceDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .Options);
+        db.Database.EnsureCreated();
+        return db;
+    }
+
+    private WebApplicationFactory<Program> CreateFinanceFactory(FinanceDbContext db) =>
+        _host.WithWebHostBuilder(builder =>
+            builder.ConfigureTestServices(services =>
+            {
+                services.RemoveAll<IFinanceDbContext>();
+                services.AddSingleton<IFinanceDbContext>(db);
+            }));
+
+    private static HttpClient CreatePortalClient(WebApplicationFactory<Program> factory) =>
+        factory.CreateClient(new WebApplicationFactoryClientOptions
+        {
+            BaseAddress = new Uri("https://localhost"),
+            AllowAutoRedirect = false
+        });
+
+    private string CreateAccessToken()
+    {
+        User user = User.Create(
+            FullName.Create("مدير"),
+            FullName.Create("Admin"),
+            Email.Create("portal.finance@example.test"),
+            PhoneNumber.Create("+201000003003"));
         user.AddAccount(AccountType.SuperAdmin);
         IAuthTokenService tokens = _host.Services.GetRequiredService<IAuthTokenService>();
         return tokens.GenerateAccessToken(user, DateTime.UtcNow.AddSeconds(-5)).PlainTextToken;

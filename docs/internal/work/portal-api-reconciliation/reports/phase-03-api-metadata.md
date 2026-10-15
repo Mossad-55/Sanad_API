@@ -45,7 +45,9 @@ community update body reused the command record with its required route-owned
   six admin-user actions), including `201` for create-admin, array/dictionary
   shapes, and verified `404`s (user detail, notification detail, inventory
   admin, elderly-welcome unset, password-reset, community update). The
-  current charge rule keeps its real `200`-with-`null`-body first-run state.
+  current charge rule keeps its populated `200` DTO schema plus a bodiless
+  `204` first-run response (corrected below; the earlier `200`-null claim was
+  never HTTP-verified and was wrong).
 - `OpenApi/PortalApiSchemaTransformer`: numeric enum values/names from CLR
   definitions (`enum` + `x-enumNames` + description; string enums untouched;
   no flags enums exist — guarded anyway) and required non-null `value` for
@@ -62,6 +64,15 @@ community update body reused the command record with its required route-owned
   `PortalApiMetadataHost`: Development, dummy connection strings (never
   connected), startup migrations/test-user seeding disabled, test JWT wiring.
   Reused production OpenAPI registration/controllers; no handwritten schema.
+- Correction (R1): overriding one connection key did not isolate concrete
+  contexts, because module registrations capture connection strings eagerly
+  at startup (proven: `IdentityDbContext` resolved a machine-inherited
+  `localhost:5432` target while final `IConfiguration` already showed the
+  dummy). The host now additionally removes all production `IHostedService`
+  registrations, overrides all nine module connection keys plus both
+  migration flags, points storage at a test temporary root, uses an ephemeral
+  DataProtection provider, and re-registers every concrete module `DbContext`
+  on isolated InMemory stores. Earlier isolation wording is superseded.
 - Metadata GETs need no data fixtures (stated explicitly). Scenario tests
   prepare deterministic fakes or minimal isolated InMemory module databases
   first (seeded governorate/city/area chain read back before requests;
@@ -97,6 +108,18 @@ community update body reused the command record with its required route-owned
 - Counts: doc 45 + serialization 6 + runtime 14 + community 6 = 71 new
   assertions pass; existing `AdminResponseSchemaContractTests` green;
   `LibraryTests`/other suites untouched.
+- Corrections (R1–R3): 7 host-isolation assertions (no production jobs, all
+  nine connection keys dummy, all nine contexts InMemory, migration/seeder
+  flags off, temp storage root, ephemeral functional DataProtection,
+  override-wins precedence); finance empty-state HTTP `204` with empty body
+  and no content type plus populated `200` DTO (both through the unchanged
+  production pipeline); nullable-enum regression over
+  `MyProfileResponse.accountType` — not reproduced: the generator emits
+  `oneOf: [{type: null}, {$ref}]` (OpenAPI 3.1.1) and the transformer only
+  enriches the referenced component, leaving the union wrapper without its
+  own enum constraint, so null validates via the null branch; the regression
+  locks this shape including rejection of undefined values. No transformer
+  change was needed.
 
 ## Checks (after final code change)
 
@@ -113,9 +136,11 @@ community update body reused the command record with its required route-owned
 - Unchanged: error codes, auth, lifecycle, runtime JSON, enum/ID wire
   shapes, queries/handlers/domain/mappings, SupportContact 404, help/legal
   403, CORS. Only additive metadata plus the community body mapping.
-- `GET .../current` first-run `200`-null is documented, not schematized as
-  nullable (no invented DTO). Help-request aggregate keys serialize per
-  runtime behavior; the schema declares an integer-valued object.
+- `GET .../current` first-run is `204` with no body (HTTP-proven; the prior
+  `200`-null claim is retracted). The populated `200` DTO schema is retained
+  and the bodiless `204` is published without a schema. Help-request
+  aggregate keys serialize per runtime behavior; the schema declares an
+  integer-valued object.
 - Concrete gap: none blocking; deployed-document verification awaits owner
   deployment (out of scope).
 
@@ -126,8 +151,9 @@ All `200` except create-admin (`201`); all `application/json`:
 GET users, user detail, user sessions, user audit, elderly check-ins,
 check-in aggregate, help-requests, help-request aggregate (status map),
 medications, medication adherence, SOS, check-in disputes (array), elderly
-welcome (+404), charge-rules current (nullable first run) and history
-(array), notifications list/detail (+404)/timeline/aggregate, sentence
+welcome (+404), charge-rules current (populated 200 plus bodiless 204 first
+run) and history (array), notifications list/detail (+404)/timeline/aggregate,
+sentence
 catalog, wellness-tips, inventory admin (+404); POST users (201), suspend,
 block, reactivate, password-reset (+404), PUT account-type.
 
