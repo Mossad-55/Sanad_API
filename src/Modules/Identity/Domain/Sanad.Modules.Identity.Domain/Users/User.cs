@@ -880,6 +880,44 @@ public sealed class User : AggregateRoot<UserId>
     }
 
 
+    /// <summary>
+    /// Read-only activation-readiness check mirroring
+    /// <see cref="ValidateActivationReadiness"/> without throwing.
+    /// A user needs an account and a verified phone; a non-Elderly-only
+    /// user additionally needs an email, a verified email and a password.
+    /// Elderly-only users never acquire email/password requirements.
+    /// </summary>
+    public bool IsActivationReady
+    {
+        get
+        {
+            if (_accounts.Count == 0)
+            {
+                return false;
+            }
+
+            if (!PhoneVerified)
+            {
+                return false;
+            }
+
+            bool hasNonElderlyAccount =
+                _accounts.Any(
+                    account =>
+                        account.AccountType !=
+                        AccountType.Elderly);
+
+            if (!hasNonElderlyAccount)
+            {
+                return true;
+            }
+
+            return Email is not null &&
+                EmailVerified &&
+                HasPassword;
+        }
+    }
+
     internal void ValidateActivationReadiness()
     {
         if (_accounts.Count == 0)

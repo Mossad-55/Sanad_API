@@ -15,6 +15,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Application.Users.Admin;
+using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Application.Authentication.Registration;
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
@@ -22,6 +23,7 @@ using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
+using FeedbackEntity = Sanad.Modules.Identity.Domain.Feedback;
 
 namespace Sanad.UnitTests.Identity;
 
@@ -206,6 +208,229 @@ public sealed class AdminUserManagementTests
     }
 
     [Theory]
+    [InlineData(false, false)]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    [InlineData(true, true)]
+    public async Task Reactivate_UnreadyPendingAdmin_ReturnsActivationNotReady(bool sqlite, bool block)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.SuperAdmin, "مدير", "Admin", "react.admin@example.test", "+201000001001", UserStatus.Active);
+        await contexts.Identity.SaveChangesAsync();
+        var mail = new RecordingVerificationSender();
+        var sms = new RecordingVerificationSender();
+        Result<RegisterUserResponse> created = await new CreateAdminUserCommandHandler(contexts.Identity, new TestHasher(), new TestOtpService(), mail, sms, new FixedClock(Now))
+            .Handle(new(actor.Id, "مدير جديد", "New Admin", "pending.admin@example.test", "+201000001002", "Strong-Password-123", AccountType.SupportAdmin), default);
+        Assert.True(created.IsSuccess);
+        User target = await contexts.Identity.Users.Include(x => x.Accounts).SingleAsync(x => x.Id == created.Value.UserId);
+        Assert.Equal(UserStatus.PendingVerification, target.Status);
+        Assert.False(target.EmailVerified);
+        Assert.False(target.PhoneVerified);
+        DeviceSession session = AddSession(contexts.Identity, target.Id, Now, Now.AddDays(1), null);
+        await contexts.Identity.SaveChangesAsync();
+        var notices = new RecordingNoticePublisher();
+        if (block)
+        {
+            Result<AdminUserStatusResponse> blocked = await new BlockAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id, "Fraud review"), default);
+            Assert.True(blocked.IsSuccess);
+            Assert.Equal(UserStatus.Blocked, target.Status);
+        }
+        else
+        {
+            Result<AdminUserStatusResponse> suspended = await new SuspendAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id, "Security review"), default);
+            Assert.True(suspended.IsSuccess);
+            Assert.Equal(UserStatus.Suspended, target.Status);
+        }
+        Assert.NotNull(session.RevokedOnUtc);
+        UserStatus sourceStatus = target.Status;
+        string? sourceReason = target.StatusReason;
+        DateTime sourceUpdated = target.UpdatedOnUtc;
+        int actionsBefore = await contexts.Identity.AdminUserActions.CountAsync(x => x.TargetUserId == target.Id);
+        int noticesBefore = notices.Items.Count;
+
+        Result<AdminUserStatusResponse> result = await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(1)), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id), default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(AdminUserErrors.ActivationNotReady.Code, result.Error.Code);
+        User reloaded = await contexts.Identity.Users.Include(x => x.Accounts).SingleAsync(x => x.Id == target.Id);
+        Assert.Equal(sourceStatus, reloaded.Status);
+        Assert.Equal(sourceReason, reloaded.StatusReason);
+        Assert.Equal(sourceUpdated, reloaded.UpdatedOnUtc);
+        Assert.False(reloaded.EmailVerified);
+        Assert.False(reloaded.PhoneVerified);
+        Assert.Equal(actionsBefore, await contexts.Identity.AdminUserActions.CountAsync(x => x.TargetUserId == target.Id));
+        Assert.Equal(noticesBefore, notices.Items.Count);
+        Assert.NotNull(session.RevokedOnUtc);
+        Assert.Empty(contexts.Identity.DeviceSessions.Where(x => x.UserId == target.Id && x.RevokedOnUtc == null));
+    }
+
+    [Theory]
+    [InlineData(false, true, false)]
+    [InlineData(false, false, true)]
+    [InlineData(true, true, false)]
+    [InlineData(true, false, true)]
+    public async Task Reactivate_PartlyVerifiedAdmin_ReturnsActivationNotReady(bool sqlite, bool phoneOnly, bool block)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.SuperAdmin, "مدير", "Admin", "partial.admin@example.test", "+201000001011", UserStatus.Active);
+        User target = AddUser(contexts.Identity, AccountType.SupportAdmin, "دعم", "Partial", "partial.target@example.test", "+201000001012", UserStatus.PendingVerification);
+        target.SetInitialPasswordHash("test-hash", Now);
+        if (phoneOnly)
+            target.VerifyPhone(Now);
+        else
+            target.VerifyEmail(Now);
+        await contexts.Identity.SaveChangesAsync();
+        var notices = new RecordingNoticePublisher();
+        if (block)
+            Assert.True((await new BlockAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id, "Fraud review"), default)).IsSuccess);
+        else
+            Assert.True((await new SuspendAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id, "Security review"), default)).IsSuccess);
+        int actionsBefore = await contexts.Identity.AdminUserActions.CountAsync(x => x.TargetUserId == target.Id);
+
+        Result<AdminUserStatusResponse> result = await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(1)), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id), default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(AdminUserErrors.ActivationNotReady.Code, result.Error.Code);
+        Assert.Equal(block ? UserStatus.Blocked : UserStatus.Suspended, target.Status);
+        Assert.Equal(actionsBefore, await contexts.Identity.AdminUserActions.CountAsync(x => x.TargetUserId == target.Id));
+        Assert.Equal(phoneOnly, target.PhoneVerified);
+        Assert.Equal(!phoneOnly, target.EmailVerified);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reactivate_ReadinessEdges_MatchDomainRules(bool sqlite)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.SuperAdmin, "مدير", "Admin", "edge.admin@example.test", "+201000001021", UserStatus.Active);
+        await contexts.Identity.SaveChangesAsync();
+        var notices = new RecordingNoticePublisher();
+        static async Task<string> ReactivateCode(TestContexts contexts, RecordingNoticePublisher notices, User actor, User target)
+        {
+            if (target.Status == UserStatus.PendingVerification)
+            {
+                Result<AdminUserStatusResponse> first = target.Status == UserStatus.Blocked
+                    ? throw new InvalidOperationException("test setup error")
+                    : await new SuspendAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id, "Review"), default);
+                Assert.True(first.IsSuccess);
+            }
+            Result<AdminUserStatusResponse> result = await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(1)), new NeverSeededProtection(), notices).Handle(new(actor.Id, target.Id), default);
+            return result.IsFailure ? result.Error.Code : "Success";
+        }
+
+        User noAccount = User.Create(FullName.Create("بدون"), FullName.Create("NoAcct"), Email.Create("noacct@example.test"), PhoneNumber.Create("+201000001022"));
+        noAccount.SetInitialPasswordHash("test-hash", Now);
+        noAccount.VerifyEmail(Now);
+        noAccount.VerifyPhone(Now);
+        contexts.Identity.Users.Add(noAccount);
+        await contexts.Identity.SaveChangesAsync();
+        Assert.Equal(AdminUserErrors.ActivationNotReady.Code, await ReactivateCode(contexts, notices, actor, noAccount));
+
+        User noEmail = User.Create(FullName.Create("بدون"), FullName.Create("NoEmail"), null, PhoneNumber.Create("+201000001023"));
+        noEmail.AddAccount(AccountType.Family);
+        noEmail.SetInitialPasswordHash("test-hash", Now);
+        noEmail.VerifyPhone(Now);
+        contexts.Identity.Users.Add(noEmail);
+        await contexts.Identity.SaveChangesAsync();
+        Assert.Equal(AdminUserErrors.ActivationNotReady.Code, await ReactivateCode(contexts, notices, actor, noEmail));
+
+        User noPassword = User.Create(FullName.Create("بدون"), FullName.Create("NoPwd"), Email.Create("nopwd@example.test"), PhoneNumber.Create("+201000001024"));
+        noPassword.AddAccount(AccountType.Family);
+        noPassword.VerifyEmail(Now);
+        noPassword.VerifyPhone(Now);
+        contexts.Identity.Users.Add(noPassword);
+        await contexts.Identity.SaveChangesAsync();
+        Assert.Equal(AdminUserErrors.ActivationNotReady.Code, await ReactivateCode(contexts, notices, actor, noPassword));
+
+        User elderlyOnly = User.Create(FullName.Create("كبير"), FullName.Create("Elder"), null, PhoneNumber.Create("+201000001025"));
+        elderlyOnly.AddAccount(AccountType.Elderly);
+        elderlyOnly.VerifyPhone(Now);
+        contexts.Identity.Users.Add(elderlyOnly);
+        await contexts.Identity.SaveChangesAsync();
+        Assert.Equal("Success", await ReactivateCode(contexts, notices, actor, elderlyOnly));
+        Assert.Equal(UserStatus.Active, elderlyOnly.Status);
+        Assert.Null(elderlyOnly.StatusReason);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reactivate_VerifiedSuspendedAndBlocked_SucceedWithSingleAuditAndNotice(bool sqlite)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.SuperAdmin, "مدير", "Admin", "ok.admin@example.test", "+201000001031", UserStatus.Active);
+        User suspended = AddUser(contexts.Identity, AccountType.SupportAdmin, "موقوف", "Susp", "susp.ok@example.test", "+201000001032", UserStatus.Active);
+        User blocked = AddUser(contexts.Identity, AccountType.SupportAdmin, "محظور", "Blck", "blck.ok@example.test", "+201000001033", UserStatus.Active);
+        await contexts.Identity.SaveChangesAsync();
+        var setupNotices = new RecordingNoticePublisher();
+        Assert.True((await new SuspendAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), setupNotices).Handle(new(actor.Id, suspended.Id, "Review"), default)).IsSuccess);
+        Assert.True((await new BlockAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), setupNotices).Handle(new(actor.Id, blocked.Id, "Incident"), default)).IsSuccess);
+        DeviceSession suspendedSession = AddSession(contexts.Identity, suspended.Id, Now, Now.AddDays(1), null);
+        suspendedSession.Revoke("Admin suspended the user.", Now);
+        DeviceSession blockedSession = AddSession(contexts.Identity, blocked.Id, Now, Now.AddDays(1), null);
+        blockedSession.Revoke("Admin blocked the user.", Now);
+        await contexts.Identity.SaveChangesAsync();
+        var notices = new RecordingNoticePublisher();
+
+        Result<AdminUserStatusResponse> first = await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(1)), new NeverSeededProtection(), notices).Handle(new(actor.Id, suspended.Id), default);
+        Assert.True(first.IsSuccess);
+        Assert.Equal(UserStatus.Active, first.Value.Status);
+        Assert.Equal(UserStatus.Active, suspended.Status);
+        Assert.Null(suspended.StatusReason);
+        Assert.Single(notices.Items, n => n.Status == UserStatus.Active);
+        Assert.Equal(1, await contexts.Identity.AdminUserActions.CountAsync(x => x.TargetUserId == suspended.Id && x.Action == AdminUserActionType.Reactivated));
+        Assert.NotNull(suspendedSession.RevokedOnUtc);
+        Assert.Equal(AdminUserErrors.NotSuspended.Code, (await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(2)), new NeverSeededProtection(), notices).Handle(new(actor.Id, suspended.Id), default)).Error.Code);
+
+        Result<AdminUserStatusResponse> second = await new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now.AddMinutes(3)), new NeverSeededProtection(), notices).Handle(new(actor.Id, blocked.Id), default);
+        Assert.True(second.IsSuccess);
+        Assert.Equal(UserStatus.Active, blocked.Status);
+        Assert.Null(blocked.StatusReason);
+        Assert.Equal(1, await contexts.Identity.AdminUserActions.CountAsync(x => x.TargetUserId == blocked.Id && x.Action == AdminUserActionType.Reactivated));
+        Assert.NotNull(blockedSession.RevokedOnUtc);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reactivate_MissingSeededAndInvalidState_KeepExistingCodes(bool sqlite)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.SuperAdmin, "مدير", "Admin", "guard.admin@example.test", "+201000001041", UserStatus.Active);
+        User seeded = AddUser(contexts.Identity, AccountType.SupportAdmin, "أساسي", "Seeded", "seeded.re@example.test", "+201000001042", UserStatus.PendingVerification);
+        User pending = AddUser(contexts.Identity, AccountType.SupportAdmin, "معلق", "Pending", "pending.re@example.test", "+201000001043", UserStatus.PendingVerification);
+        User active = AddUser(contexts.Identity, AccountType.SupportAdmin, "نشط", "Active", "active.re@example.test", "+201000001044", UserStatus.Active);
+        await contexts.Identity.SaveChangesAsync();
+        var handler = new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new NeverSeededProtection(), new RecordingNoticePublisher());
+        var seededHandler = new ReactivateAdminUserCommandHandler(contexts.Identity, new FixedClock(Now), new EmailSeedProtection("seeded.re@example.test"), new RecordingNoticePublisher());
+
+        Assert.Equal(AdminUserErrors.NotFound.Code, (await handler.Handle(new(actor.Id, UserId.New()), default)).Error.Code);
+        seeded.Suspend("Hold", Now);
+        await contexts.Identity.SaveChangesAsync();
+        Assert.Equal(AdminUserErrors.SeededProtected.Code, (await seededHandler.Handle(new(actor.Id, seeded.Id), default)).Error.Code);
+        Assert.Equal(AdminUserErrors.NotSuspended.Code, (await handler.Handle(new(actor.Id, active.Id), default)).Error.Code);
+        Assert.Equal(AdminUserErrors.NotSuspended.Code, (await handler.Handle(new(actor.Id, pending.Id), default)).Error.Code);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Reactivate_PersistenceFailure_IsNotRelabeledActivationNotReady(bool sqlite)
+    {
+        await using TestContexts contexts = await TestContexts.CreateAsync(sqlite);
+        User actor = AddUser(contexts.Identity, AccountType.SuperAdmin, "مدير", "Admin", "fail.admin@example.test", "+201000001051", UserStatus.Active);
+        User target = AddUser(contexts.Identity, AccountType.SupportAdmin, "مستخدم", "User", "fail.target@example.test", "+201000001052", UserStatus.Active);
+        target.Suspend("Temporary", Now);
+        await contexts.Identity.SaveChangesAsync();
+        var throwing = new ThrowingSaveIdentityDbContext(contexts.Identity);
+        var handler = new ReactivateAdminUserCommandHandler(throwing, new FixedClock(Now.AddMinutes(1)), new NeverSeededProtection(), new RecordingNoticePublisher());
+
+        InvalidOperationException failure = await Assert.ThrowsAsync<InvalidOperationException>(() => handler.Handle(new(actor.Id, target.Id), default));
+        Assert.Equal("boom", failure.Message);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task AccountCommands_ResetChangeAndCreateTranslateOnBothProviders(bool sqlite)
@@ -317,6 +542,17 @@ public sealed class AdminUserManagementTests
             session.Revoke("test", Now);
         db.DeviceSessions.Add(session);
         return session;
+    }
+
+    private sealed class ThrowingSaveIdentityDbContext(IIdentityDbContext inner) : IIdentityDbContext
+    {
+        public DbSet<User> Users => inner.Users;
+        public DbSet<Sanad.Modules.Identity.Domain.Authentication.VerificationRequests.VerificationRequest> VerificationRequests => inner.VerificationRequests;
+        public DbSet<DeviceSession> DeviceSessions => inner.DeviceSessions;
+        public DbSet<Sanad.Modules.Identity.Domain.Support.SupportTicket> SupportTickets => inner.SupportTickets;
+        public DbSet<FeedbackEntity> Feedbacks => inner.Feedbacks;
+        public DbSet<AdminUserAction> AdminUserActions => inner.AdminUserActions;
+        public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) => throw new InvalidOperationException("boom");
     }
 
     private sealed class NeverSeededProtection : IAdminUserSeedProtection

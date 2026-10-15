@@ -37,6 +37,7 @@ public static partial class AdminUserErrors
     public static Error AlreadySuspended => new("Identity.Admin.AlreadySuspended", "The user is already suspended.");
     public static Error NotSuspended => new("Identity.Admin.NotSuspended", "The user is not suspended.");
     public static Error AlreadyBlocked => new("Identity.Admin.AlreadyBlocked", "The user is already blocked.");
+    public static Error ActivationNotReady => new("Identity.Admin.ActivationNotReady", "The user does not meet the activation requirements. Complete the required verification and account setup before reactivation.");
 }
 
 public sealed record AdminUserStatusResponse(Guid UserId, UserStatus Status, int RevokedSessionCount);
@@ -140,6 +141,7 @@ public sealed class ReactivateAdminUserCommandHandler(
         if (seedProtection.IsSeeded(user)) return AdminUserErrors.SeededProtected;
         if (user.Status == UserStatus.Active) return AdminUserErrors.NotSuspended;
         if (user.Status is not UserStatus.Suspended and not UserStatus.Blocked) return AdminUserErrors.NotSuspended;
+        if (!user.IsActivationReady) return AdminUserErrors.ActivationNotReady;
 
         user.Reactivate(clock.UtcNow);
         db.AdminUserActions.Add(AdminUserAction.Create(request.ActorUserId, request.TargetUserId, AdminUserActionType.Reactivated, null, clock.UtcNow));

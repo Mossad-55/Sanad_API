@@ -132,10 +132,14 @@ public sealed class AdminUsersController(ISender sender) : ApiControllerBase
             "Identity.Admin.SeededProtected" or "Identity.Admin.SelfAction" => 403,
             "Identity.Admin.AlreadySuspended" or "Identity.Admin.NotSuspended" or "Identity.Admin.AlreadyBlocked" or "Identity.Admin.LastSuperAdmin" => 409,
             "Identity.Admin.IllegalAccountTypeTransition" => 409,
+            "Identity.Admin.ActivationNotReady" => 409,
             "Identity.Admin.AlreadyAnonymized" or "Identity.Admin.LastSuperAdmin" => 409,
             _ => 400
         };
-        return StatusCode(status, new ProblemDetails { Status = status, Title = status == 404 ? "Not Found" : status == 403 ? "Forbidden" : status == 409 ? "Conflict" : "Bad Request", Extensions = { ["code"] = result.Error.Code, ["traceId"] = HttpContext.TraceIdentifier } });
+        var problemDetails = new ProblemDetails { Status = status, Title = status == 404 ? "Not Found" : status == 403 ? "Forbidden" : status == 409 ? "Conflict" : "Bad Request", Extensions = { ["code"] = result.Error.Code, ["traceId"] = HttpContext.TraceIdentifier } };
+        if (result.Error.Code == AdminUserErrors.ActivationNotReady.Code)
+            problemDetails.Detail = result.Error.Message;
+        return StatusCode(status, problemDetails);
     }
 
     private UserId CurrentUserId() => TryGetAuthenticatedUserId(out UserId userId) ? userId : UserId.Empty;

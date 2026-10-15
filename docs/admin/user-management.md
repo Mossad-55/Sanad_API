@@ -54,6 +54,24 @@ blocking revoke every active device session. `POST
 Active; no sessions are restored. Status notices are queued as best-effort
 in-app and email notifications after the identity mutation succeeds.
 
+Reactivation requires activation readiness: the account must hold at least one
+account record and a verified phone; a non-Elderly-only account additionally
+needs an email, a verified email, and a password. Elderly-only accounts never
+acquire email/password requirements. A freshly created admin is
+`PendingVerification` with unverified contacts, so suspending or blocking that
+account and then reactivating it returns `409
+Identity.Admin.ActivationNotReady` with the safe detail "The user does not
+meet the activation requirements. Complete the required verification and
+account setup before reactivation." The target keeps its status, reason,
+timestamps, and contact flags; no success audit entry or notice is created,
+previously revoked sessions stay revoked, and no new login session is issued.
+The pending account must complete the normal email/SMS OTP verification flow
+first; admins cannot force-verify contacts or force the account Active. A
+previously verified suspended or blocked user still reactivates to Active with
+200, a cleared status reason, exactly one `Reactivated` audit entry, and one
+success notice. Repeating reactivation against an Active account stays `409
+Identity.Admin.NotSuspended`.
+
 The seeded SuperAdmin and the acting SuperAdmin cannot be suspended or blocked.
 The final active SuperAdmin cannot be blocked. Repeated or invalid transitions
 return the documented `Identity.Admin.*` conflict codes; unknown users return

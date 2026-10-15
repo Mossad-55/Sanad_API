@@ -139,9 +139,10 @@ the standing repository branch instruction. Workers preserve others' edits.
 - [x] Done — **PORTAL-00: reconcile report and prepare this proposed plan.**
   Source review, selected anonymous live checks and focused existing tests
   completed; verification details below. No authenticated live reproduction.
-- [ ] In progress — **PORTAL-01: prevent reactivation 500 without bypassing verification.**
+- [x] Done — **PORTAL-01: prevent reactivation 500 without bypassing verification.**
   Owner approved execution; [worker brief](worker-prompts/01-reactivation.md)
-  issued. Implementation/results have not yet been reported by the worker.
+  issued. Worker implementation complete; evidence in
+  [phase-01 report](reports/phase-01-reactivation.md), pending mastermind review.
   Own Identity admin status handler/errors, the AdminUsers controller's status
   mapping, focused domain/handler/controller tests, user-management guide and
   corresponding Postman examples. Accepted rule: missing activation readiness
