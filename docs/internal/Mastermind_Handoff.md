@@ -47,12 +47,22 @@ approved plus Draft facility cases, no-facility finance HTTP, exact foreign IDs,
 and Cairo-local payment-day fixture. Strict build zero warnings/errors; combined
 owner/related 126/126 (19 owner); mapping 556/620/0/0. Real handlers/HTTP,
 visit advisory-lock guard fake; no concurrency proof or production-code changes.
-**Next action:** external worker executes the
-[PORTAL-07 final gate brief](work/portal-api-reconciliation/worker-prompts/07-final-integration.md)
-from the launch message's exact pushed SHA and returns its commit/report.
-Full safe unit/architecture gates and frontend handoff remain; no publish/deploy.
-PORTAL-06 stays conditional; caregiver operator evidence and separate Chat
-runtime/device/soak work remain open. Phase 07 execution has not started.
+PORTAL-07 delivery `0561298` reviewed and accepted locally. Mastermind corrected
+three frontend-handoff statements and added Test-SanadPortalGate.ps1, which
+prepares the exact child environment before tests start. Final mastermind run:
+unit 3308 passed / 0 failed / 8 explained skips; architecture 1/1; Postman 22/22
+parse, mapping 556/620/0/0; relative portal links and diff clean. Strict build
+zero-warning/error evidence reused with unchanged compiled inputs.
+Worker's first run violated the no-reset instruction (reported two local test
+DB resets); excluded, documented, not excused by the guarded rerun. No further
+reset or data recovery was attempted by the mastermind.
+The [frontend handoff](work/portal-api-reconciliation/frontend-handoff.md) is ready;
+nothing published/deployed. Local core reconciliation is complete, not global
+production readiness. Caregiver operator evidence and separate Chat runtime/
+device/soak gates remain open.
+**Next action:** owner confirms PORTAL-06 geography dataset and city/area
+coverage before its implementation/import brief. Do not silently import data,
+start a national seed migration, publish or deploy while that choice is pending.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.

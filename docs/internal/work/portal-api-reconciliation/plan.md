@@ -1,6 +1,6 @@
 # Admin and Care Homes portal API reconciliation
 
-Status: PORTAL-01 through 05 accepted; PORTAL-07 worker-complete, awaiting mastermind acceptance (2026-10-15).
+Status: PORTAL-01 through 05 and PORTAL-07 accepted locally (2026-10-15).
 PORTAL-06 still requires an approved geography dataset and scope.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
@@ -272,14 +272,19 @@ the standing repository branch instruction. Workers preserve others' edits.
 - [x] Done — **PORTAL-07: mastermind integration and frontend handoff.**
   [Pinned final gate brief](worker-prompts/07-final-integration.md) executed
   from base `5dff36c` (clean `main == origin/main` at intake). Worker delivery
-  (pending mastermind acceptance) adds `reports/phase-07-integration.md` and
+  `0561298` accepted after mastermind review. Added `reports/phase-07-integration.md` and
   `frontend-handoff.md`; no production/test code or Postman change was needed.
   Valid safe gates: strict build 0 warnings/errors; full unit 3308 passed,
   0 failed, 8 skipped (5 PostgreSQL integration via documented guards + 3
   pre-declared Families legacy); architecture 1/1; 22 Postman JSONs parse;
   mapping 556/620/0/0; diff-check clean; no new migration or runtime config.
-  One first-run deviation disclosed (inherited integration target briefly
-  enabled PG fixtures on local test DBs only; discarded, rerun clean).
+  Mastermind reran full unit/architecture with the new child-process-safe
+  `docs/internal/tools/Test-SanadPortalGate.ps1`: 3308/0/8 and architecture 1/1;
+  independently checked 22 JSONs, zero mapping gaps and portal Markdown links.
+  Frontend handoff wording corrected for unknown parents, sectionsJson and
+  generic activation detail. First worker run violated the no-reset instruction
+  (reported local test DB resets); excluded from accepted evidence and retained
+  in the report. The guarded rerun does not waive that incident.
   External items stay open: deployed caregiver evidence, PORTAL-06 dataset,
   untested nested/mobile routes, media cleanup, Chat runtime/soak gates.
 
@@ -384,5 +389,6 @@ preserve current enum/ID wire formats; keep existing first-run 404 and audience
 403; diagnose caregiver integrity before repair. PORTAL-06 remains a separate
 data-provisioning task until an approved dataset/scope exists. Optional landing
 media cleanup is deferred. The mastermind supplies sequential, pinned worker
-prompts. PORTAL-01 through 05 are accepted; PORTAL-07 is issued. Later phases wait
-for the preceding review and closeout.
+prompts. PORTAL-01 through 05 and local PORTAL-07 are accepted. PORTAL-06 still
+requires approved source/coverage; deployment/import and remaining runtime/data
+evidence are separate owner decisions, not automatic next actions.

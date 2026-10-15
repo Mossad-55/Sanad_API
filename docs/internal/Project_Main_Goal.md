@@ -21,10 +21,12 @@ unverified pending operator evidence; no production data repair is authorized.
 PORTAL-05 delivery `6b32906` is accepted with mastermind test strengthening:
 Draft/Approved owner scenarios and no-facility finance, stable ID/date assertions;
 strict build zero warnings/errors, combined 126/126, mapping zero gaps. No
-production-code change or deployment. The
-[PORTAL-07 final gate brief](work/portal-api-reconciliation/worker-prompts/07-final-integration.md)
-is next: safe full suite/architecture and frontend handoff. PORTAL-06 remains
-conditional; runtime/device and caregiver operator evidence are not closed.
+production-code change or deployment. PORTAL-07 delivery `0561298` is now accepted
+locally: mastermind guarded full unit 3308/0/8, architecture 1/1, Postman 22/22,
+mapping zero gaps, corrected [frontend handoff](work/portal-api-reconciliation/frontend-handoff.md).
+The excluded first worker run's local-test-DB reset violation remains documented.
+PORTAL-06 dataset/city-area coverage approval is the next owner decision;
+runtime/device and caregiver operator evidence are not closed. No deployment.
 The current VPS runs Production and is used for developer testing by owner
 direction; a separately hardened VPS is future work. Existing public deployment
 smoke/revision/migration evidence does not establish complete portal or Chat Plus

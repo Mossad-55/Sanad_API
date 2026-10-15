@@ -1,6 +1,7 @@
 # PORTAL-07 report — final integrated gates and frontend handoff (no deployment)
 
-Status: local worker delivery complete, pending mastermind acceptance.
+Status: Done — local integration reviewed and accepted by the mastermind;
+external/deployment items below remain open.
 No publish, deployment, VPS access, provider send, Bruno, CORS, migration,
 reset/seed on any persistent target, or new package occurred in the valid
 gate run. PORTAL-06 stays conditional; external items stay explicitly open.
@@ -126,3 +127,53 @@ Package a later source revision only on owner order; after owner
 deployment, check revision/migrations/smoke, then use HTTPS or an approved
 SSH tunnel with designated test actors for authenticated verification
 (no sensitive token over public HTTP). No deploy commands run now.
+
+## Mastermind acceptance — 2026-10-15
+
+Reviewed clean pushed worker delivery
+`0561298ea261c09ab5f0a10148b19f0126eda9db` and its three-file documentation
+diff against accepted Phase 01–05 behavior and the final gate brief.
+The first-run database reset was a **process violation**, not authorized by
+this phase or excused by the later passing run. The worker reports it was
+confined to local SanadIntegrationDb / SanadChatCleanupTestDb. The mastermind
+did not repeat those resets or independently audit the earlier connections.
+Prior contents of those reset test databases may have been lost; recovery
+depends on an existing backup. No recovery or other data operation was attempted.
+The initial run is excluded from accepted gate evidence.
+
+Added `docs/internal/tools/Test-SanadPortalGate.ps1` to prevent the shell-boundary
+mistake recurring: it constructs the exact dotnet child environment, removes
+integration targets immediately before Process.Start, pins all nine module
+targets to a non-serving loopback dummy, disables migration/seed flags and uses
+a unique test temporary storage root. Parent/machine/user settings are untouched;
+no inherited secret values are printed. The corrected portal host additionally
+uses InMemory stores, removed production jobs and ephemeral keys; do not infer
+that this wrapper redesigns every legacy factory or removes all legacy jobs.
+
+Final executed mastermind gates using the completed runner:
+
+- `& docs/internal/tools/Test-SanadPortalGate.ps1 -Suite Unit`: exit 0,
+  **3308 passed, 0 failed, 8 skipped / 3316**. The output names all eight
+  skips: two Identity and three Chat env-guarded PostgreSQL cases plus three
+  pre-declared Families legacy cases. No PostgreSQL fixture reset in this run.
+- `& docs/internal/tools/Test-SanadPortalGate.ps1 -Suite Architecture`: exit 0,
+  **1 passed, 0 failed, 0 skipped**.
+- Parsed all **22/22** Postman JSON files; contract mapping exit 0,
+  **556 signatures / 620 requests / 0 missing / 0 orphan**.
+- Checked Markdown links in all **16** portal-slice Markdown files: no missing
+  relative link targets. Diff-check clean. Diff review reconfirmed no migration
+  or appsettings file changes from audit baseline.
+- Reused worker's valid strict build (zero warnings/errors) and the previously
+  reviewed Phase 05 build: compiled source/test inputs have not changed in
+  Phase 07. New runner is a verification tool, not API/runtime configuration.
+
+Corrected three frontend-handoff inaccuracies: well-formed unknown parent IDs
+return 200 empty lists, not 400; the multipart field is `sectionsJson`; and
+reactivation's safe detail does not disclose a specific unverified channel.
+These were documentation errors, not newly discovered runtime defects.
+
+Local PORTAL-07 accepted. No publish, deployment, VPS/data/provider action by
+the mastermind. This does not establish global production readiness or close
+PORTAL-06, the caregiver incident, untested endpoint groups or separate Chat
+runtime/device/soak work. Next owner decision: geography dataset and city/area
+coverage for PORTAL-06 before any import implementation or target write.

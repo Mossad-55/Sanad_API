@@ -16,8 +16,9 @@ deployment. No publish or deploy is authorized by this handoff.
 - Pending users must still complete normal OTP verification; admins cannot
   force-verify or force Active. Verified Suspended/Blocked users still
   reactivate to Active with 200.
-- Frontend: surface the 409 detail (which contact channel is unverified)
-  and route the user to verification; do not retry reactivation as success.
+- Frontend: surface the safe 409 detail and guide the user through required
+  verification/account setup. It does not identify a specific unverified
+  channel; do not infer one or retry reactivation as success.
 
 ## 2. Library (PORTAL-02)
 
@@ -26,7 +27,7 @@ deployment. No publish or deploy is authorized by this handoff.
 - Article/Video business rules kept: positive unique display orders, at
   least one Article section, positive Video duration, field length limits.
 - Failures return field/indexed `errors` plus trace ID under the existing
-  `Cms.Library*` codes. Omitted `sections` keeps existing sections;
+  `Cms.Library*` codes. Omitted multipart `sectionsJson` keeps existing sections;
   explicit `[]` clears to empty (still rule-checked); `[null]` is 400.
 - Canonical examples: `docs/app/library/README.md` and the Admin Postman
   Library folder (examples are exercised locally).
@@ -37,8 +38,10 @@ deployment. No publish or deploy is authorized by this handoff.
   handler DTOs (see the required inventory table in `plan.md`); create-admin
   correctly documents **201**.
 - Five parent/date query parameters (`through`, `governorateId` ×2,
-  `cityId` ×2) are flagged required; omitted/empty/malformed/unknown
-  parents return 400 with field errors and trace IDs.
+  `cityId` ×2) are flagged required. Omitted/empty parent IDs return 400 with
+  validation field errors/trace IDs; malformed IDs return binding 400.
+  Unknown but well-formed parent IDs return **200 `[]`**, not 400.
+  Omitted license-expiration `through` returns 400 `CareHomes.Admin.InvalidQuery`.
 - Enums stay **numeric on the wire** with published values plus names;
   wrapper IDs (e.g. `GovernorateId`) keep their `{ value }` shape with
   `value` now required. No global converter migration.
