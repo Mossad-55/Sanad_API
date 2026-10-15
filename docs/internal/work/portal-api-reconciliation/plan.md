@@ -1,6 +1,6 @@
 # Admin and Care Homes portal API reconciliation
 
-Status: PORTAL-01/02/03 accepted; PORTAL-04 diagnostic brief issued (2026-10-15).
+Status: PORTAL-01/02/03 accepted; PORTAL-04 diagnostic delivered, deployed cause/count unverified (2026-10-15).
 PORTAL-06 still requires an approved geography dataset and scope.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
@@ -207,9 +207,27 @@ the standing repository branch instruction. Workers preserve others' edits.
   serialized payloads; reflection-only attribute tests are insufficient. Include
   representative nonempty nested data, nullable cases and password-reset schema
   without real secret values. Preserve 404 unset contact and app-audience 403.
-- [ ] Not started — **PORTAL-04: diagnose caregiver identity consistency.**
-  [Pinned diagnostic brief](worker-prompts/04-caregiver-integrity.md) prepared
-  after Phase 03 acceptance; external worker execution has not started.
+- [x] Done — **PORTAL-04: diagnose caregiver identity consistency.**
+  [Pinned diagnostic brief](worker-prompts/04-caregiver-integrity.md) executed
+  from base `b44fb50` (clean `main == origin/main` at intake). Worker delivery
+  (this commit, see SHA below): read-only diagnostic
+  `diagnostics/caregiver-identity.sql` (preflight, list/count reconciliation,
+  missing-user listing, account-type classification, per-id dependents,
+  split-target Identity/Families counterparts; SELECT-only, read-only
+  transaction, short timeout, ROLLBACK, no PII columns) plus operator runbook
+  `diagnostics/caregiver-identity-runbook.md`; local regressions
+  `tests/Sanad.UnitTests/Caregivers/CaregiverIdentityIntegrityTests.cs` (real
+  list/count SQL on an isolated SQLite attached-schema fixture) and
+  `CaregiverAdminListIntegrityTests.cs` (diagnostic classification matrix,
+  duplicate detection, config fallback/eager-capture) with one bounded helper
+  `CaregiverIntegrityFixture.cs`; evidence in
+  [phase-04 report](reports/phase-04-caregiver-integrity.md). Strict solution
+  build 0 warnings/errors; focused 24/24 (17 new + 7 existing
+  admin-review); `git diff --check` clean. No production access/data repair:
+  the six reported deployed records remain explicitly unverified pending
+  operator evidence; no INNER JOIN hiding, count fix, fabricated names, or
+  deletions. Production files untouched. Awaiting mastermind review before
+  PORTAL-05.
   Own a bounded read-only diagnostic/report and local list/count/integrity tests.
   Obtain full IDs via the authorized list or exact local fixture, check the
   actual Identity and Caregivers targets without outputting connection secrets,
