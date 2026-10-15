@@ -60,9 +60,16 @@ The [frontend handoff](work/portal-api-reconciliation/frontend-handoff.md) is re
 nothing published/deployed. Local core reconciliation is complete, not global
 production readiness. Caregiver operator evidence and separate Chat runtime/
 device/soak gates remain open.
-**Next action:** owner confirms PORTAL-06 geography dataset and city/area
-coverage before its implementation/import brief. Do not silently import data,
-start a national seed migration, publish or deploy while that choice is pending.
+Owner said "let's go" for Phase 06 preparation on 2026-10-15. Dataset/mapping
+is not yet approved: the City/Area model and existing Smouha seed need explicit
+alignment with any administrative hierarchy. Candidate-source counts/provenance
+are not independently qualified; see the new source intake, not a claimed
+national dataset. No importer, API, data, build or deployment action occurred.
+**Next action:** external worker executes
+[PORTAL-06A source qualification](work/portal-api-reconciliation/worker-prompts/06a-geography-source-qualification.md)
+from the launch message's pinned pushed SHA, returning evidence and proposed
+mapping/import design. Stop for owner approval before 06B; no target import,
+national seed migration, publish or deploy is authorized.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.

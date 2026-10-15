@@ -25,8 +25,12 @@ production-code change or deployment. PORTAL-07 delivery `0561298` is now accept
 locally: mastermind guarded full unit 3308/0/8, architecture 1/1, Postman 22/22,
 mapping zero gaps, corrected [frontend handoff](work/portal-api-reconciliation/frontend-handoff.md).
 The excluded first worker run's local-test-DB reset violation remains documented.
-PORTAL-06 dataset/city-area coverage approval is the next owner decision;
-runtime/device and caregiver operator evidence are not closed. No deployment.
+Owner has now authorized Phase 06 preparation: the
+[06A source qualification brief](work/portal-api-reconciliation/worker-prompts/06a-geography-source-qualification.md)
+is issued to establish provenance, actual coverage and City/Area mapping.
+Dataset/mapping approval remains necessary before 06B implementation; no
+import or deployment is authorized. Runtime/device and caregiver operator
+evidence are not closed.
 The current VPS runs Production and is used for developer testing by owner
 direction; a separately hardened VPS is future work. Existing public deployment
 smoke/revision/migration evidence does not establish complete portal or Chat Plus

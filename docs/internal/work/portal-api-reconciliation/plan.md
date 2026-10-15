@@ -1,7 +1,7 @@
 # Admin and Care Homes portal API reconciliation
 
 Status: PORTAL-01 through 05 and PORTAL-07 accepted locally (2026-10-15).
-PORTAL-06 still requires an approved geography dataset and scope.
+PORTAL-06A source qualification is issued; dataset/mapping approval still pending.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
 The frontend report is input evidence, not an accepted defect list.
@@ -260,7 +260,13 @@ the standing repository branch instruction. Workers preserve others' edits.
   0 warnings/errors; mastermind combined 126/126 (19 owner + 107 related);
   mapping 556/620/0/0. Exact ID and Cairo-date assertions strengthened; no
   production-code change. Final integration is next; PORTAL-06 conditional.
-- [ ] Not started — **PORTAL-06: reference-data provisioning, pending approved source.**
+- [ ] In progress — **PORTAL-06: reference-data provisioning, pending approved source.**
+  Owner authorized starting preparation on 2026-10-15. Execute
+  [06A source qualification](worker-prompts/06a-geography-source-qualification.md)
+  first; [intake](reports/phase-06-source-intake.md) records existing model
+  ambiguity and unqualified source candidates. This is research/proposed design
+  only; 06B implementation requires source/mapping approval. No importer or
+  target-data change is authorized, and no national completeness is claimed.
   Propose an authoritative bilingual hierarchy/dataset with provenance and scope
   (what counts as a city and an area). Design a previewable, idempotent import
   that preserves existing IDs/links, detects ambiguous duplicate names under a
@@ -392,3 +398,6 @@ media cleanup is deferred. The mastermind supplies sequential, pinned worker
 prompts. PORTAL-01 through 05 and local PORTAL-07 are accepted. PORTAL-06 still
 requires approved source/coverage; deployment/import and remaining runtime/data
 evidence are separate owner decisions, not automatic next actions.
+On 2026-10-15 the owner authorized beginning Phase 06 preparation. A bounded
+read-only 06A source-qualification brief is issued; its report must return for
+dataset/coverage/mapping approval before a 06B implementation brief.
