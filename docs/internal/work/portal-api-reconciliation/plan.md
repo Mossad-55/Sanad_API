@@ -236,6 +236,44 @@ specific approval before introducing deletion or a new cleanup job.
 
 ## Fixtures and test execution boundaries
 
+### Mandatory readiness gate before API startup or scenario requests
+
+Every worker brief must include this sequence, and the worker must complete
+and record it before launching a test API or sending a scenario request:
+
+1. **Verify the existing configuration.** Identify the exact target, database,
+   environment, API port, authentication setup, provider settings and storage
+   paths needed by this test. Reuse correct existing configuration; do not
+   guess credentials, inherit an unchecked database target, or silently change
+   Production to Development. Keep secret values out of reports.
+2. **Inspect existing seeded data first.** Read back the required actors,
+   roles, ownership, IDs, relationships and lifecycle states. A record's
+   existence alone is not sufficient: it must meet the scenario preconditions.
+   Reuse suitable data rather than replay onboarding or duplicate fixtures.
+3. **Seed only what is missing before starting the API.** On the designated
+   verified disposable target, use an existing guarded seed/test helper or add
+   the smallest bounded fixture helper. Prepare required prerequisite records
+   without launching the API or relying on startup seeding/migrations. Requests
+   whose purpose is to test creation can create their own records later; their
+   actors and other prerequisites must already be ready.
+4. **Verify the prepared state.** Read back the fixtures and required
+   relationships/statuses; confirm fake providers and test storage are ready.
+   Record a concise readiness manifest with test actors, fixture IDs/states,
+   configuration key names and reuse/creation counts. No passwords, tokens,
+   connection strings or real users' data belong in that manifest.
+5. **Then start the API and execute the selected requests.** Match requests to
+   the readiness manifest. If a scenario consumes or changes fixture state,
+   recheck it before reuse or prepare another minimal fixture first. A test
+   must not fail merely because its prerequisites were never prepared.
+
+For an isolated OpenAPI/fake-handler test host or an anonymous metadata probe
+that requires no database fixtures, explicitly mark fixtures not required and
+prepare the corresponding fake/configuration setup first; do not seed unrelated
+records just to satisfy a checklist. This readiness gate does not authorize
+seeding or resetting the existing Production VPS/database. When configuration
+or safe fixture access is missing, report the specific dependency and continue
+independent checks that do not depend on it.
+
 | Test area | Reuse first | Smallest additional fixture if absent |
 | --- | --- | --- |
 | Reactivation | Existing isolated Identity handler test contexts | Acting SuperAdmin; target users with verified/unverified contacts, Suspended and Blocked states; explicit sessions; recording notice publisher |
@@ -246,8 +284,9 @@ specific approval before introducing deletion or a new cleanup job.
 | Geography import | Existing approved location rows | Small bilingual parent/child dataset with repeat, duplicate and invalid-parent cases |
 
 Read fixture preconditions first and record IDs privately in the run context.
-Use supported APIs or existing guarded local fixture helpers; no broad onboarding
-replay when a valid state can be reused. Do not run reset-based PostgreSQL test
+Prepare prerequisites with guarded local fixture helpers before API startup;
+the supported APIs under test run only after the readiness gate. Avoid broad
+onboarding replay when a valid state can be reused. Do not run reset-based PostgreSQL test
 fixtures against inherited connection strings. Verify any PostgreSQL target is
 disposable and authorization covers the intended writes; no database resets are
 part of these tasks. Use fake providers for local tests, never real OTP/email/

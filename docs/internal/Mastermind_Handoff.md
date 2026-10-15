@@ -20,6 +20,11 @@ remains separate; deployment smoke evidence does not complete its Prompt 7.
 
 **Next action:** owner approves the proposed portal reconciliation scope/rules;
 then prepare the first pinned worker brief (PORTAL-01). No implementation yet.
+Every worker brief must enforce the owner's testing order: verify existing
+configuration and seeded fixtures, seed only missing prerequisites on the
+designated disposable target, read them back, then launch the API/run scenarios.
+The mandatory readiness gate is in the portal plan; do not seed the Production
+VPS or use startup side effects to prepare test prerequisites.
 
 ## Previous publishing checkpoint — superseded by owner deployment
 
