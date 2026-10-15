@@ -116,3 +116,10 @@ Dose timeline rows use the shared dose-log shape: `doseLogId`, `medicationId`,
 This surface does not expose audit rows as clinical response data. Audit
 retention/export behavior and any broader operational-admin screens are not
 defined by this contract.
+
+## OpenAPI contract
+
+The medication list publishes its paged `200` schema (records wrap a nested
+medication with family/Elderly names) and the adherence read publishes its
+`200` totals aggregate. Shared enum/ID conventions are in
+[api-contract-conventions](api-contract-conventions.md).

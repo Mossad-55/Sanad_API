@@ -99,6 +99,8 @@ public sealed class CareHomeInventoryController(ISender sender, IDateTimeProvide
     public Task<IActionResult> MyAvailability(AvailabilityRequest r, CancellationToken ct) => Send(new GetMyAvailabilityQuery(Actor(), r.StartDate, r.EndDate), ct);
     [Authorize(Policy = AuthorizationPolicies.CareHomesOperationalAdmin)]
     [HttpGet("admin/{facilityId:guid}")]
+    [ProducesResponseType(typeof(CareHomeInventoryDto), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<IActionResult> Admin(Guid facilityId, CancellationToken ct) => Send(new GetAdminInventoryQuery(facilityId), ct);
     [Authorize(Policy = AuthorizationPolicies.CareHomesOperationalAdmin)]
     [HttpPost("admin/{facilityId:guid}/availability")]

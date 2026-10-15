@@ -24,3 +24,10 @@ Error outcomes:
 - `404 Families.AdminCheckIn.NotFound` for a missing check-in or a check-in whose linked Family is no longer active.
 
 Admin check-in reads do not expose notification delivery, push/provider status, reminders, missed-check-in state, or Family current-status/history. Check-in persistence in Families and alert persistence in Notifications remain separate contexts with no atomic cross-context transaction; alert idempotency/retry is scoped to the negative-check-in fan-out boundary.
+
+## OpenAPI contract
+
+The list and aggregate reads publish their actual success schemas (`200`
+paged `{ items, page, pageSize, totalCount }` of check-in records, and `200`
+`{ total, positive, negative }`). Shared enum/ID conventions are in
+[api-contract-conventions](api-contract-conventions.md).

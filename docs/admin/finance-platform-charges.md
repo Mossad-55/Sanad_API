@@ -173,3 +173,10 @@ review the deployment manifest's migration identifiers before rollout.
 The current implementation was authorized for disposable local migration and
 test work only. Provider-backed payment success and production deployment are
 separate owner-controlled actions.
+
+## OpenAPI contract
+
+The current-rule read publishes its `200` schema; before the first rule
+exists it returns `200` with a `null` body. The history read publishes its
+`200` bare-array schema. Shared conventions are in
+[api-contract-conventions](api-contract-conventions.md).

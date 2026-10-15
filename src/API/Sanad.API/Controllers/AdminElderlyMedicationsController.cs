@@ -19,6 +19,7 @@ public sealed class AdminElderlyMedicationsController : ApiControllerBase
     public AdminElderlyMedicationsController(ISender sender) => _sender = sender;
 
     [HttpGet]
+    [ProducesResponseType(typeof(PagedAdminMedicationRecords), StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] Guid? dependentId = null, [FromQuery] MedicationStatus? status = null, [FromQuery] string? search = null, CancellationToken ct = default)
         => await Send(new GetAdminMedicationsQuery(Actor(), AccountType(), CorrelationId(), page, pageSize, dependentId, status, search), ct);
 
@@ -31,6 +32,7 @@ public sealed class AdminElderlyMedicationsController : ApiControllerBase
         => await Send(new GetAdminMedicationDoseTimelineQuery(Actor(), AccountType(), CorrelationId(), new MedicationId(medicationId), startDate, endDate, status), ct);
 
     [HttpGet("adherence")]
+    [ProducesResponseType(typeof(AdminMedicationAdherenceAggregate), StatusCodes.Status200OK)]
     public async Task<IActionResult> Adherence([FromQuery] DateOnly? startDate = null, [FromQuery] DateOnly? endDate = null, [FromQuery] Guid? dependentId = null, CancellationToken ct = default)
         => await Send(new GetAdminMedicationAdherenceQuery(Actor(), AccountType(), CorrelationId(), startDate, endDate, dependentId), ct);
 

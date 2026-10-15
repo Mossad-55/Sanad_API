@@ -187,7 +187,7 @@
         "item": [
           { "name": "Reset user password", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/password-reset", "description": "Returns the temporary password once; never store or log the response. Seeded account reset is forbidden." } },
           { "name": "Change administrative account type", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"accountType\": \"SupportAdmin\",\n  \"reason\": \"Role adjustment\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/account-type", "description": "Only SuperAdmin, SupportAdmin, ContentAdmin, and FinanceAdmin transitions are allowed." } },
-          { "name": "Create admin account", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"arabicFullName\": \"مدير جديد\",\n  \"englishFullName\": \"New Administrator\",\n  \"email\": \"admin@example.test\",\n  \"phoneNumber\": \"+201000000000\",\n  \"password\": \"Replace-This-123\",\n  \"accountType\": \"SupportAdmin\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users", "description": "Uses the existing registration response and OTP lifecycle; account remains PendingVerification until email and phone OTPs are verified." } }
+          { "name": "Create admin account", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"arabicFullName\": \"مدير جديد\",\n  \"englishFullName\": \"New Administrator\",\n  \"email\": \"admin@example.test\",\n  \"phoneNumber\": \"+201000000000\",\n  \"password\": \"Replace-This-123\",\n  \"accountType\": \"SupportAdmin\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users", "description": "Success 201 with the registration response (userId and email/phone verification request ids as wrapper IDs). Uses the existing registration response and OTP lifecycle; account remains PendingVerification until email and phone OTPs are verified." } }
         ]
       },
       {
@@ -752,6 +752,7 @@
           "name": "List cities of governorate (admin)",
           "request": {
             "method": "GET",
+            "description": "Required governorateId (also marked required in OpenAPI). Omission returns 400 Api.Validation.Failed; unknown parent returns 200 with []. Items carry wrapper IDs and isActive.",
             "header": [
               {
                 "key": "Authorization",
@@ -865,6 +866,7 @@
           "name": "List areas of city (admin)",
           "request": {
             "method": "GET",
+            "description": "Required cityId (also marked required in OpenAPI). Omission returns 400 Api.Validation.Failed; unknown parent returns 200 with []. Items carry wrapper IDs and isActive.",
             "header": [
               {
                 "key": "Authorization",

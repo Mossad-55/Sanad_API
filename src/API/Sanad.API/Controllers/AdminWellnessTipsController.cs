@@ -16,6 +16,7 @@ namespace Sanad.API.Controllers;
 public sealed class AdminWellnessTipsController(ISender sender, IFileStorage fileStorage) : ApiControllerBase
 {
     [HttpGet]
+    [ProducesResponseType(typeof(WellnessTipPageResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] WellnessTipPublicationStatus? status, [FromQuery] string? category, [FromQuery] string? search, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) => ToActionResult(await sender.Send(new ListWellnessTipsQuery(status, category, search, Page: page, PageSize: pageSize), ct));
     [HttpGet("{id:guid}")]
     public async Task<IActionResult> Detail(Guid id, CancellationToken ct) => ToActionResult(await sender.Send(new GetWellnessTipQuery(id), ct));

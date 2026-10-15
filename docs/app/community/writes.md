@@ -93,8 +93,10 @@ Administrators with the `CommunityModeration` policy (`SuperAdmin` or
 - `POST` — create `{ "arabicName": "…", "englishName": "…", "isActive": true }`
   → `201` with the created item. Both names are required (1–200 chars,
   trimmed); invalid names return `400` `Community.Category.Invalid`.
-- `PUT /{categoryId}` — update names and `isActive` → `200`. Unknown ids
-  return `404` `Community.CategoryNotFound`.
+- `PUT /{categoryId}` — update names and `isActive` → `200`. The request
+  body carries only `{ "arabicName": "…", "englishName": "…", "isActive": true }`;
+  the route id is authoritative and any legacy body `Id` is ignored. Unknown
+  ids return `404` `Community.CategoryNotFound`.
 - `DELETE /{categoryId}` — hard delete → `204`. Unknown ids return `404`
   `Community.CategoryNotFound`; a category referenced by posts returns `409`
   `Community.CategoryInUse` (posts never lose their category implicitly

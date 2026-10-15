@@ -15,6 +15,7 @@ public sealed record ResolveCareHomeCheckInDisputeRequest(DateTime EffectiveChec
 public sealed class AdminCareHomeCheckInDisputesController(ISender sender, IDateTimeProvider clock) : ApiControllerBase
 {
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<CareHomeCheckInDisputeResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(CancellationToken ct) => ToActionResult(await sender.Send(new ListCareHomeCheckInDisputesQuery(), ct));
 
     [HttpPost("{caseId:guid}/resolve")]

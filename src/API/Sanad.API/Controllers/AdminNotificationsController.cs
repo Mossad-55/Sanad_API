@@ -17,6 +17,7 @@ namespace Sanad.API.Controllers;
 public sealed class AdminNotificationsController(ISender sender, IFamiliesDbContext families) : ApiControllerBase
 {
     [HttpGet]
+    [ProducesResponseType(typeof(AdminNotificationPage), StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20,
         [FromQuery] string? category = null, [FromQuery] string? type = null,
         [FromQuery] DateOnly? startDate = null, [FromQuery] DateOnly? endDate = null, CancellationToken ct = default)
@@ -26,6 +27,8 @@ public sealed class AdminNotificationsController(ISender sender, IFamiliesDbCont
     }
 
     [HttpGet("{notificationId:guid}")]
+    [ProducesResponseType(typeof(AdminNotificationRecord), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(Guid notificationId, CancellationToken ct)
     {
         await AuditAsync("GetNotification", "Notification", notificationId, ct);
@@ -33,6 +36,7 @@ public sealed class AdminNotificationsController(ISender sender, IFamiliesDbCont
     }
 
     [HttpGet("timeline")]
+    [ProducesResponseType(typeof(AdminNotificationPage), StatusCodes.Status200OK)]
     public async Task<IActionResult> Timeline(
         [FromQuery, BindRequired] DateOnly startDate,
         [FromQuery, BindRequired] DateOnly endDate,
@@ -45,6 +49,7 @@ public sealed class AdminNotificationsController(ISender sender, IFamiliesDbCont
     }
 
     [HttpGet("aggregate")]
+    [ProducesResponseType(typeof(AdminNotificationAggregate), StatusCodes.Status200OK)]
     public async Task<IActionResult> Aggregate(
         [FromQuery] DateOnly? startDate = null,
         [FromQuery] DateOnly? endDate = null,

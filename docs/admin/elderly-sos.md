@@ -44,3 +44,10 @@ The exact Admin export contract, physical purge schedule, location-retention
 policy, and field-level audit/export disclosure are **Needs Owner
 Verification**. No SMS, server dialer, push/email provider, outbox, or
 scheduler delivery is claimed by these routes.
+
+## OpenAPI contract
+
+The SOS list publishes its paged `200` schema with nullable coordinates and
+numeric `status` values (`Open = 1`, `Acknowledged = 2`, `Resolved = 3`,
+`Cancelled = 4`). Shared enum/ID conventions are in
+[api-contract-conventions](api-contract-conventions.md).

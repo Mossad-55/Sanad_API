@@ -11,6 +11,8 @@ namespace Sanad.API.Controllers;
 public sealed class AdminElderlyWelcomeController(ISender sender) : ApiControllerBase
 {
     [HttpGet]
+    [ProducesResponseType(typeof(ElderlyWelcomeResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Get(CancellationToken ct) => ToActionResult(await sender.Send(new GetElderlyWelcomeQuery(), ct));
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] ElderlyWelcomeRequest request, CancellationToken ct)

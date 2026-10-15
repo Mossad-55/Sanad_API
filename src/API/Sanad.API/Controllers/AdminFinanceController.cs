@@ -21,9 +21,11 @@ public sealed class AdminFinanceController(ISender sender) : ApiControllerBase
     }
 
     [HttpGet("platform-charge-rules/current")]
+    [ProducesResponseType(typeof(PlatformChargeRuleResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Current(CancellationToken ct) => Ok((await sender.Send(new GetCurrentPlatformChargeRuleQuery(), ct)).Value);
 
     [HttpGet("platform-charge-rules/history")]
+    [ProducesResponseType(typeof(IReadOnlyList<PlatformChargeRuleResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> History(CancellationToken ct) => Ok((await sender.Send(new GetPlatformChargeRuleHistoryQuery(), ct)).Value);
 }
 

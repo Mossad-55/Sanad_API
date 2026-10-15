@@ -15,6 +15,7 @@ namespace Sanad.API.Controllers;
 public sealed class AdminElderlyCheckInsController(ISender sender) : ApiControllerBase
 {
     [HttpGet]
+    [ProducesResponseType(typeof(PagedAdminElderlyCheckIns), StatusCodes.Status200OK)]
     public async Task<IActionResult> List([FromQuery] int page = 1, [FromQuery] int pageSize = 20, [FromQuery] Guid? elderlyId = null, [FromQuery] DateOnly? startDate = null, [FromQuery] DateOnly? endDate = null, [FromQuery] bool? answer = null, CancellationToken ct = default)
         => await Send(new GetAdminElderlyCheckInsQuery(Actor(), AccountType(), CorrelationId(), page, pageSize, elderlyId, startDate, endDate, answer), ct);
 
@@ -25,6 +26,7 @@ public sealed class AdminElderlyCheckInsController(ISender sender) : ApiControll
     public async Task<IActionResult> Timeline(Guid elderlyId, [FromQuery] DateOnly startDate, [FromQuery] DateOnly endDate, CancellationToken ct) => await Send(new GetAdminElderlyCheckInTimelineQuery(Actor(), AccountType(), CorrelationId(), elderlyId, startDate, endDate), ct);
 
     [HttpGet("aggregate")]
+    [ProducesResponseType(typeof(AdminElderlyCheckInAggregate), StatusCodes.Status200OK)]
     public async Task<IActionResult> Aggregate([FromQuery] Guid? elderlyId = null, [FromQuery] DateOnly? startDate = null, [FromQuery] DateOnly? endDate = null, CancellationToken ct = default) => await Send(new GetAdminElderlyCheckInAggregateQuery(Actor(), AccountType(), CorrelationId(), elderlyId, startDate, endDate), ct);
 
     private async Task<IActionResult> Send<T>(IQuery<T> query, CancellationToken ct) => ToActionResult(await sender.Send(query, ct));

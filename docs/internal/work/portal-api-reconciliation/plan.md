@@ -183,9 +183,10 @@ the standing repository branch instruction. Workers preserve others' edits.
   omission. Empty bullet arrays remain valid. Reject `[null]` as 400. Rejected
   requests must not change records or leave newly uploaded covers; preserve the
   old cover when an update fails. Examples must actually be exercised locally.
-- [ ] Not started — **PORTAL-03: publish accurate API metadata without a wire-format migration.**
+- [x] Done — **PORTAL-03: publish accurate API metadata without a wire-format migration.**
   [Pinned worker brief](worker-prompts/03-api-metadata.md) prepared after
-  Phase 02 acceptance; implementation awaits the owner's external worker.
+  Phase 02 acceptance. Worker implementation complete; evidence in
+  [phase-03 report](reports/phase-03-api-metadata.md), pending mastermind review.
   Own the controllers for the 28 listed actions, the five query declarations,
   OpenAPI configuration/transformer files, a dedicated community-update request
   DTO, API contract tests, affected guides/Postman entries. Use actual response

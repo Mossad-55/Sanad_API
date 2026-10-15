@@ -193,3 +193,11 @@ HC-TASK-032.
 Authentication failures are `401`; accounts outside the owner policy receive
 `403`. Unknown facilities or assets return the relevant inventory not-found
 result.
+
+## OpenAPI contract
+
+The admin inventory read (`GET /api/v1/care-homes/inventory/admin/{facilityId}`)
+publishes its `200` schema with nested room-type/room/bed/maintenance
+collections and numeric allocation/media/target values; unknown facilities
+keep `404 CareHomes.Inventory.NotFound`. Shared enum/ID conventions are in
+[api-contract-conventions](../admin/api-contract-conventions.md).

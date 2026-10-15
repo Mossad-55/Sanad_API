@@ -182,7 +182,7 @@
                 }
               ]
             },
-            "description": "Anonymous. Required governorateId; omission returns 400 Api.Validation.Failed. Returns cities where both city and governorate are active."
+            "description": "Anonymous. Required governorateId (also marked required in OpenAPI); omission returns 400 Api.Validation.Failed; unknown parent returns 200 with []. Returns cities where both city and governorate are active."
           }
         },
         {
@@ -208,7 +208,7 @@
                 }
               ]
             },
-            "description": "Anonymous. Required cityId; omission returns 400 Api.Validation.Failed. Returns areas only when area + city + governorate are all active."
+            "description": "Anonymous. Required cityId (also marked required in OpenAPI); omission returns 400 Api.Validation.Failed; unknown parent returns 200 with []. Returns areas only when area + city + governorate are all active."
           }
         },
         {

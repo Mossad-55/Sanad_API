@@ -17,26 +17,33 @@ namespace Sanad.API.Controllers;
 public sealed class AdminUsersController(ISender sender) : ApiControllerBase
 {
     [HttpGet]
+    [ProducesResponseType(typeof(AdminUserListResponse), StatusCodes.Status200OK)]
     public Task<IActionResult> List([FromQuery] AdminUserListRequest request, CancellationToken ct) =>
         SendQuery(new AdminUserListQuery(request.Search, request.AccountType, request.Status, request.Sort, request.Page, request.PageSize), ct);
 
     [HttpGet("{userId:guid}")]
+    [ProducesResponseType(typeof(AdminUserDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public Task<IActionResult> Detail(Guid userId, CancellationToken ct) =>
         SendQuery(new AdminUserDetailQuery(new UserId(userId)), ct);
 
     [HttpGet("sessions")]
+    [ProducesResponseType(typeof(AdminSessionOverviewResponse), StatusCodes.Status200OK)]
     public Task<IActionResult> Sessions([FromQuery] AdminUserSessionsRequest request, CancellationToken ct) =>
         SendQuery(new AdminSessionOverviewQuery(request.AccountType, request.UserId, request.Sort, request.Page, request.PageSize), ct);
 
     [HttpPost("{userId:guid}/suspend")]
+    [ProducesResponseType(typeof(AdminUserStatusResponse), StatusCodes.Status200OK)]
     public Task<IActionResult> Suspend(Guid userId, AdminUserStatusRequest request, CancellationToken ct) =>
         SendStatus(new SuspendAdminUserCommand(CurrentUserId(), new UserId(userId), request.Reason ?? string.Empty), ct);
 
     [HttpPost("{userId:guid}/reactivate")]
+    [ProducesResponseType(typeof(AdminUserStatusResponse), StatusCodes.Status200OK)]
     public Task<IActionResult> Reactivate(Guid userId, CancellationToken ct) =>
         SendStatus(new ReactivateAdminUserCommand(CurrentUserId(), new UserId(userId)), ct);
 
     [HttpPost("{userId:guid}/block")]
+    [ProducesResponseType(typeof(AdminUserStatusResponse), StatusCodes.Status200OK)]
     public Task<IActionResult> Block(Guid userId, AdminUserStatusRequest request, CancellationToken ct) =>
         SendStatus(new BlockAdminUserCommand(CurrentUserId(), new UserId(userId), request.Reason ?? string.Empty), ct);
 
@@ -48,6 +55,8 @@ public sealed class AdminUsersController(ISender sender) : ApiControllerBase
     }
 
     [HttpPost("{userId:guid}/password-reset")]
+    [ProducesResponseType(typeof(ResetAdminUserPasswordResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> ResetPassword(Guid userId, CancellationToken ct)
     {
         Result<ResetAdminUserPasswordResponse> result = await sender.Send(new ResetAdminUserPasswordCommand(CurrentUserId(), new UserId(userId)), ct);
@@ -55,6 +64,7 @@ public sealed class AdminUsersController(ISender sender) : ApiControllerBase
     }
 
     [HttpPut("{userId:guid}/account-type")]
+    [ProducesResponseType(typeof(AdminUserAccountTypeResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> ChangeAccountType(Guid userId, AdminUserAccountTypeChangeRequest request, CancellationToken ct)
     {
         if (!Enum.TryParse(request.AccountType, true, out Sanad.Modules.Identity.Domain.Users.AccountType accountType) ||
@@ -65,6 +75,7 @@ public sealed class AdminUsersController(ISender sender) : ApiControllerBase
     }
 
     [HttpPost]
+    [ProducesResponseType(typeof(RegisterUserResponse), StatusCodes.Status201Created)]
     public async Task<IActionResult> CreateAdminUser(AdminUserCreateRequest request, CancellationToken ct)
     {
         if (!Enum.TryParse(request.AccountType, true, out Sanad.Modules.Identity.Domain.Users.AccountType accountType) ||
@@ -82,6 +93,7 @@ public sealed class AdminUsersController(ISender sender) : ApiControllerBase
     }
 
     [HttpGet("audit")]
+    [ProducesResponseType(typeof(AdminUserAuditListResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Audit([FromQuery] AdminUserAuditRequest request, CancellationToken ct)
     {
         Result<AdminUserAuditListResponse> result = await sender.Send(new AdminUserAuditQuery(request.ActorUserId, request.TargetUserId, request.Action, request.FromUtc, request.ToUtc, request.Sort, request.Page, request.PageSize), ct);

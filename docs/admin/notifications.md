@@ -90,3 +90,11 @@ idempotency key, status, attempt count, next-attempt time, and delivery timestam
 The processor sends HTML and plain text as `multipart/alternative` when an HTML
 snapshot exists. Recipients and email bodies are not exposed by the Admin
 notification inspection routes.
+
+## OpenAPI contract
+
+All four views publish their actual success schemas (`200` page envelopes
+with `hasMore` for list/timeline, the metadata record for detail, and the
+count aggregate). Unknown or out-of-window detail ids keep `404
+Notifications.AdminNotification.NotFound`. Shared conventions are in
+[api-contract-conventions](api-contract-conventions.md).

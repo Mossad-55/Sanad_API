@@ -14,7 +14,7 @@ namespace Sanad.API.Controllers;
 [Route("api/v1/admin/elderly/sos")]
 public sealed class AdminElderlySosController(ISender sender) : ApiControllerBase
 {
-    [HttpGet] public async Task<IActionResult> List([FromQuery] ElderlySosStatus? status = null, [FromQuery] Guid? elderlyId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) => await Send(new AdminListElderlySosQuery(Actor(), Account(), Correlation(), status, elderlyId, page, pageSize), ct);
+    [HttpGet][ProducesResponseType(typeof(PagedElderlySos), StatusCodes.Status200OK)] public async Task<IActionResult> List([FromQuery] ElderlySosStatus? status = null, [FromQuery] Guid? elderlyId = null, [FromQuery] int page = 1, [FromQuery] int pageSize = 20, CancellationToken ct = default) => await Send(new AdminListElderlySosQuery(Actor(), Account(), Correlation(), status, elderlyId, page, pageSize), ct);
     [HttpGet("{sosId:guid}")] public async Task<IActionResult> Detail(Guid sosId, CancellationToken ct) => await Send(new AdminGetElderlySosQuery(Actor(), Account(), Correlation(), sosId), ct);
     [HttpGet("{sosId:guid}/history")] public async Task<IActionResult> History(Guid sosId, CancellationToken ct) => await Send(new AdminGetElderlySosHistoryQuery(Actor(), Account(), Correlation(), sosId), ct);
     [HttpPost("{sosId:guid}/status")] public async Task<IActionResult> Status(Guid sosId, [FromBody] StatusRequest request, CancellationToken ct) => await Send(new ChangeElderlySosStatusCommand(Actor(), Account(), Correlation(), sosId, request.Action), ct);

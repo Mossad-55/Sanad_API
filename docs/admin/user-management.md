@@ -117,3 +117,17 @@ Filters: `actorUserId`, `targetUserId`, `action`, `fromUtc`, and `toUtc`.
 Sorting supports `Newest`, `Oldest`, and `Name`; Name sorts by the acting
 administrator's Arabic name then English name. Mutations record actor, target,
 action, optional reason, and UTC timestamp. Reads do not create audit entries.
+
+## OpenAPI contract
+
+All ten reads/actions above publish their actual success schemas: the four
+GETs return `200` envelopes/records (`{ items, page, pageSize, totalCount }`
+for list/sessions/audit; full detail with active sessions and facility link),
+the six actions return `200` with `AdminUserStatusResponse`
+(`{ userId, status, revokedSessionCount }`), `ResetAdminUserPasswordResponse`
+(`{ userId, temporaryPassword, revokedSessionCount }`),
+`AdminUserAccountTypeResponse`, or `RegisterUserResponse` — except
+create-admin, which returns `201` with `{ userId, emailVerificationRequestId,
+phoneVerificationRequestId }` (ID wrappers stay `{ "value": "…" }`). Unknown
+users return `404 Identity.User.NotFound`. Shared enum/ID conventions are in
+[api-contract-conventions](api-contract-conventions.md).

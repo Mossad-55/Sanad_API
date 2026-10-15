@@ -65,3 +65,11 @@ category, blank or overlong stable key/labels, or negative display order returns
 `409` with code `Cms.SentenceBuilder.InvalidOperation`. A persistence
 concurrency conflict is also mapped to `409` with code
 `Cms.SentenceBuilder.Conflict`.
+
+## OpenAPI contract
+
+The help-request list publishes its paged `200` schema and the aggregate
+publishes its status-to-count map object. The sentence-builder catalog list
+publishes its paged `200` schema with numeric `category` values (`Actor = 1`,
+`Action = 2`, `Need = 3`, `Qualifier = 4`). Shared enum/ID conventions are in
+[api-contract-conventions](api-contract-conventions.md).

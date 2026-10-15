@@ -106,7 +106,11 @@ public static class DependencyInjection
 
         services.AddProblemDetails();
 
-        services.AddOpenApi();
+        services.AddOpenApi(options =>
+        {
+            options.AddSchemaTransformer<OpenApi.PortalApiSchemaTransformer>();
+            options.AddOperationTransformer<OpenApi.PortalRequiredQueryTransformer>();
+        });
 
         services.AddIdentityInfrastructure(
             configuration);

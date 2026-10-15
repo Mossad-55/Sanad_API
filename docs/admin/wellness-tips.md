@@ -44,6 +44,9 @@ clinical-review state, reviewer workflow, metrics, and tenant isolation are
 not implemented and are **Needs Owner Verification**; do not infer them from
 the CMS status.
 
+The admin list publishes its paged `200` schema. Shared enum/ID conventions
+are in [api-contract-conventions](api-contract-conventions.md).
+
 Create returns `201`; successful reads, updates, publish, and archive return
 `200`. Unauthenticated requests return `401`, and authenticated roles outside
 `CmsContent` return `403`. Errors include `Cms.WellnessTip.NotFound` (404),

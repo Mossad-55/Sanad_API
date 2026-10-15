@@ -29,3 +29,9 @@ The anonymous app endpoint is `GET /api/v1/elderly/welcome?language=ar|en`.
 It returns localized published content only; Draft content is not visible.
 See [`docs/app/elderly/welcome.md`](../app/elderly/welcome.md) for the payload
 and app contract. Use only disposable local/test data for CMS mutations.
+
+## OpenAPI contract
+
+The admin detail publishes its `200` schema (benefit tiles included); an
+unset singleton keeps its existing `404`. Shared enum/ID conventions are in
+[api-contract-conventions](api-contract-conventions.md).

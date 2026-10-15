@@ -32,6 +32,15 @@ GET /api/v1/admin/lookups/areas?cityId={id}           → 200 (all areas of that
 
 Missing/empty parent id → `400`. Responses include `isActive`, `governorateId`/`cityId`.
 
+## OpenAPI contract
+
+Both parent parameters are marked required in the generated document, matching
+the enforced runtime validation: omitted or empty parents return `400
+Api.Validation.Failed`, malformed GUIDs return `400` from model binding, and
+a well-formed but unknown parent returns `200` with `[]`. List items carry
+wrapper IDs (`{ "value": "…" }`). Shared conventions are in
+[api-contract-conventions](api-contract-conventions.md).
+
 ## Cities
 
 ### Create

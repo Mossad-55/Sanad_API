@@ -26,7 +26,7 @@ Strongly typed ids are returned as `{ "id": { "value": "<guid>" }, ... }`.
 ## Cities
 `GET /api/v1/lookups/cities?governorateId={governorateGuid}` — cities of one governorate.
 
-The `governorateId` query parameter is **required**. Omitting it returns `400 Api.Validation.Failed`. Returns a city only when **both** the city and its governorate are active; `200` with `[]` if the governorate is inactive or has no active cities. Ordered by English name.
+The `governorateId` query parameter is **required** (also marked required in the generated OpenAPI document). Omitting it returns `400 Api.Validation.Failed`. Returns a city only when **both** the city and its governorate are active; `200` with `[]` if the governorate is unknown, inactive, or has no active cities. Ordered by English name.
 ```json
 [
   { "id": { "value": "…" }, "arabicName": "دمنهور", "englishName": "Damanhur" }
@@ -36,7 +36,7 @@ The `governorateId` query parameter is **required**. Omitting it returns `400 Ap
 ## Areas
 `GET /api/v1/lookups/areas?cityId={cityGuid}` — areas of one city (service locations the caregiver selects).
 
-The `cityId` query parameter is **required**. Omitting it returns `400 Api.Validation.Failed`. Returns an area only when the **full chain** (area + city + governorate) is active; deactivating a parent hides the area here even though the area itself remains active. Ordered by English name.
+The `cityId` query parameter is **required** (also marked required in the generated OpenAPI document). Omitting it returns `400 Api.Validation.Failed`. Returns an area only when the **full chain** (area + city + governorate) is active; deactivating a parent hides the area here even though the area itself remains active. A well-formed but unknown parent returns `200` with `[]`. Ordered by English name.
 ```json
 [
   { "id": { "value": "…" }, "arabicName": "مركز دمنهور", "englishName": "Damanhur Markaz" }
