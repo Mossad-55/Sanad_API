@@ -35,7 +35,9 @@ No production IDs are invented here: keys are stable source IDs.
   (template artifact) — see the 06A report. Attribution is recorded as
   stated above; whether that settles compilation/redistribution concerns
   for the underlying names is left open, not concluded here. The upstream
-  derivation chain remains unproven.
+  complete transformation chain remains unproven. Subsequent direct reference
+  comparison below qualifies the historical Arabic backbone, not the added
+  Area English names or current national completeness.
 - Cross-check: `mo7amed-said-223/egypt-cities` @ `16d3d24` shares all
   5716 level-3 codes identically (same upstream derivation, not
   independent corroboration); its level-3 English column is entirely
@@ -64,6 +66,27 @@ No production IDs are invented here: keys are stable source IDs.
   quality (e.g. Menia, Muharam Bik); they are not official translations.
 - `mappingKind` per city: `urban-district` (170), `rural-markaz` (164),
   `new-city` (9), `other-admin-unit` (3: Minshat Nasir, Misr Al-Qadima,
-  North Coast — kept selectable pending owner confirmation).
+  North Coast — kept selectable pending owner confirmation), and
+  `police-section-aggregate` (1: Tiba, boundary unresolved).
 - Every area row carries `verification: "provisional-census"`: real source
   records, not consumer-verified service zones.
+
+## Direct historical reference qualification — 2026-10-15
+
+The publisher's [source note](https://openadmindata.org/eg/) identifies
+[OCHA/HDX COD-AB Egypt](https://data.humdata.org/dataset/cod-ab-egy).
+Direct HDX metadata attributes CAPMAS and states CC BY-IGO terms. Downloaded
+GeoJSON ZIP SHA-256:
+`259987BE0B7C5E367D52EADF3DFEA39802C7750CACE8498833E3212D61B9DBA9`.
+Every included candidate key and Arabic name matches that reference exactly.
+The 18 City English differences and two City parent differences are the
+documented disambiguations and Armant/Esna corrections; Area parents match.
+All 5712 included reference Area English values are blank, so this reference
+does not validate the publisher's translations/transliterations.
+
+The source dates boundaries to 2017 and explicitly marks ADM3 coverage partial;
+its December 2024 review and 2026 resource update are not current-boundary
+certification. See [evidence](hdx-reference-evidence.json) and the
+[qualification report](../../reports/phase-06-data-qualification.md).
+The candidate remains review-only; provenance/readiness acceptance flags are
+not automatically satisfied by historical correspondence.

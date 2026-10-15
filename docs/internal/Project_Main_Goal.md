@@ -36,8 +36,12 @@ assignments for Armant/Esna, validator false passes, and evidence/doc gaps.
 [Bounded 06A2 corrections](work/portal-api-reconciliation/worker-prompts/06a2-review-corrections.md)
 delivered `1b0527b` and are accepted as correction work: structural 27/347/5712,
 12/12 fixtures; readiness still fails on unresolved evidence and coverage.
-Next is data qualification, not importer implementation. All Egypt remains
-required; catalogue/mapping acceptance precedes 06B.
+Owner then requested completion: direct OCHA/HDX comparison now qualifies the
+historical Arabic backbone, but the reference explicitly has partial Area
+coverage/2017 boundaries and no Area English names. See
+[remaining source dependency](work/portal-api-reconciliation/reports/phase-06-data-qualification.md).
+Current nationwide qualification needs source/steward evidence, not more
+backend tests. All Egypt remains required; catalogue acceptance precedes 06B.
 No import/deployment is authorized. Runtime/device and caregiver operator
 evidence are not closed.
 The current VPS runs Production and is used for developer testing by owner

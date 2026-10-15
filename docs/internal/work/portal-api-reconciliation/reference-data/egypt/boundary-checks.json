@@ -16,7 +16,7 @@
     {"scope": "Luxor branch equivalence", "reason": "Tiba aggregate vs GOPP Ziniya markaz / New Tiba city unverified; Bayadiya, Qurna, Tod, New Luxor absent from source."},
     {"scope": "Remaining 25 governorates", "reason": "No official current-boundary audit established; source vintage unknown-mixed."},
     {"scope": "Area consumer verification", "reason": "All area rows provisional-census; batch-vs-individual validation evidence open."},
-    {"scope": "Smouha placement and New Administrative Capital coverage", "reason": "No sourced records; manual resolution pending."}
+    {"scope": "Smouha placement and New Administrative Capital coverage", "reason": "Existence evidenced by official locality references; complete selectable hierarchy and legacy-ID mapping remain unresolved. See ../../reports/phase-06-data-qualification.md."}
   ],
   "readiness": {
     "provenanceAccepted": false,

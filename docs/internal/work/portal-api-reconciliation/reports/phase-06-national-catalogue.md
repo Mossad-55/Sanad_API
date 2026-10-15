@@ -125,6 +125,11 @@ backup, and owner import order remain separate authorities.
 
 ## Next input needed
 
+The subsequent owner-requested completion attempt and direct OCHA/CAPMAS
+comparison are recorded in [data qualification](phase-06-data-qualification.md).
+Historical Arabic backbone correspondence is now evidenced; this does not
+resolve the current nationwide hierarchy or added English-name evidence below.
+
 Data qualification must supply evidence before catalogue acceptance:
 
 - Resolve missing Luxor units and Tiba/Ziniya/New Tiba equivalence without

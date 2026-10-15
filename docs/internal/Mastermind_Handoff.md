@@ -83,8 +83,15 @@ work, not as an import-ready catalogue. Mastermind reran the offline structural
 gate: exit 0, 12/12 fixtures, 27/347/5712; readiness remains FAIL (exit 2).
 Armant/Esna now map to Luxor and Tiba is restored; remaining boundary, provenance,
 consumer-locality and coverage evidence is explicitly unresolved.
-**Next action:** complete the data qualification recorded in the
-[catalogue report](work/portal-api-reconciliation/reports/phase-06-national-catalogue.md#next-input-needed).
+Owner requested completion. Mastermind directly qualified historical Arabic
+name/key correspondence against OCHA/HDX (CAPMAS attributed), with a hash-pinned
+read-only comparison script and recorded evidence. Source explicitly says
+partial ADM3 coverage/2017 boundaries; all included Area English names are
+blank there. Current national readiness is therefore still Blocked, not fixed
+by matching the same old source. See the
+[data qualification report](work/portal-api-reconciliation/reports/phase-06-data-qualification.md).
+**Next action:** obtain a current reusable locality/change export or an owner-
+designated data steward's evidenced reconciliation, as specified in that report.
 Do not request a waiver of known gaps or mark provisional Areas verified by
 approval alone. All Egypt stays required; no 06B/import/write/deploy authorized.
 Every worker brief must enforce the owner's testing order: verify existing

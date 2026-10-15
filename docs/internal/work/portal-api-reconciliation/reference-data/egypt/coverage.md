@@ -3,8 +3,10 @@
 Denominator: the pinned source's own hierarchy (27 governorates, 365
 districts, 5716 shiyakhas at revision `76b47b2`), not an independent
 official census. Snapshot date 2026-09-08; candidate assembled 2026-10-15.
-Structural coverage is nationwide; consumer verification is not claimed —
-every area row is `provisional-census` (see gaps).
+The candidate represents all 27 governorates, not proven exhaustive national
+locality coverage; every Area is `provisional-census` (see gaps). Direct
+[HDX reference evidence](hdx-reference-evidence.json) confirms the historical
+Arabic backbone but explicitly identifies partial ADM3 coverage and 2017 vintage.
 
 Delivered: 27 governorates, 347 cities (170 urban-district, 164
 rural-markaz, 9 new-city, 3 other-admin-unit, 1 police-section-aggregate;
@@ -53,7 +55,8 @@ duplicate keys; zero orphan parents.
 - Cairo/New Cairo: 41 districts incl. Nasr City, Maadi, New Cairo-1/2/3,
   Shorouk, Badr; New Administrative Capital absent everywhere.
 - Luxor: urban `قسم الأقصر` ("Luxor") + rural `مركز الأقصر`
-  ("Luxor Markaz"); Tiba police unit excluded with its 6 shiyakhas.
+  ("Luxor Markaz"), Armant and Esna corrected into Luxor, and Tiba aggregate
+  reinstated with its six localities. Current centre/child equivalence unresolved.
 - Rural: Behera/Dakahlia/Sharkia markaz rows kept verbatim (guide's
   "markaz" language); urban/rural English pairs disambiguated per rule.
 - New cities: Shorouk, Badr, Obour, New Cairo, New Minya/Qena/Sohag/
@@ -65,10 +68,16 @@ duplicate keys; zero orphan parents.
 1. Smouha (seed City + Area) unmappable from source — manual preview
    reconciliation required; never auto-delete/re-parent.
 2. New Administrative Capital absent — picker cannot claim it.
-3. All 5706 area rows unverified census units; consumer service-zone
+3. All 5712 area rows unverified census units; consumer service-zone
    fitness unproven (validator counts them, coverage does not vouch).
 4. English names are transliterations; 18 disambiguated labels are
    candidate-only proposals.
-5. Upstream derivation chain unproven; postal codes absent from source.
-6. A regex missing a familiar spelling is an alias/coverage question —
-   e.g. "Menia" vs Minya, "Muharam Bik" — not proof of absence.
+5. Postal codes absent from source (optional, not a release blocker).
+
+The five entries above correspond to `candidate.gaps`; they are not the
+entire readiness ledger. Historical Arabic backbone attribution/correspondence
+is now evidenced; publisher Area English derivation and current consumer
+hierarchy remain unqualified. Smouha/NAC existence is supported by official
+references in the [qualification report](../../reports/phase-06-data-qualification.md),
+but their required selectable hierarchy/legacy-ID mapping is still unresolved.
+A missing familiar spelling (e.g. Menia/Minya) alone is not proof of absence.

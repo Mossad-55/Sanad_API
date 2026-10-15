@@ -1,7 +1,7 @@
 # Admin and Care Homes portal API reconciliation
 
 Status: PORTAL-01 through 05 and PORTAL-07 accepted locally (2026-10-15).
-PORTAL-06: All Egypt required; 06A2 corrections accepted, data qualification blocked (no import approval).
+PORTAL-06: Blocked — historical backbone qualified; current nationwide locality/English evidence requires source/steward input. All Egypt required; no import approval.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
 The frontend report is input evidence, not an accepted defect list.
@@ -287,6 +287,12 @@ the standing repository branch instruction. Workers preserve others' edits.
   Correction delivery `1b0527b` accepted as correction work after mastermind
   offline reruns (structural exit 0, 12/12 fixtures; readiness exit 2).
   Catalogue acceptance remains blocked on data evidence, not backend tests.
+  Owner requested completion on 2026-10-15. Mastermind completed a direct
+  OCHA/HDX comparison: every included Arabic name/key matches the attributable
+  historical reference, but its ADM3 coverage is explicitly partial and dated
+  2017; all included Area English reference values are blank. See
+  [data qualification / exact input handoff](reports/phase-06-data-qualification.md).
+  No claim that another wrapper of the same records closes national gaps.
   `reference-data/egypt/candidate.json` corrected to 27/347/5712
   (SHA-256 `18AB3CB4…C09`), `provenance.md`, `coverage.md` per-governorate
   matrix, new `boundary-checks.json`, hardened offline

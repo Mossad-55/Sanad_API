@@ -1,0 +1,24 @@
+{
+  "checkedOnUtc": "2026-10-15T18:22:46.2300265Z",
+  "metadataUrl": "https://data.humdata.org/api/3/action/package_show?id=cod-ab-egy",
+  "metadataModified": "2026-08-14T06:37:46.131475",
+  "datasetSource": "Central Agency for Public Mobilization and Statistics (CAPMAS)",
+  "publisher": "OCHA Field Information Services Section (FISS) / HDX",
+  "licenseId": "cc-by-igo",
+  "licenseUrl": "http://creativecommons.org/licenses/by/3.0/igo/legalcode",
+  "referenceValidOn": "2017-04-21",
+  "sourceBoundariesCreated": "2017-08-14",
+  "reviewedOn": "2024-12-19",
+  "admin3CoverageExplicitlyPartial": true,
+  "resourceUrl": "https://data.humdata.org/dataset/b90d81ba-7c7a-4283-9899-827480d80a79/resource/2080e95f-51c7-45b6-b5ab-613ff1cfc041/download/egy_admin_boundaries.geojson.zip",
+  "referenceSha256": "259987BE0B7C5E367D52EADF3DFEA39802C7750CACE8498833E3212D61B9DBA9",
+  "referenceBytes": 16949803,
+  "candidateSha256": "18AB3CB47FBDC34B1DFD77894ADA3B79DC27D22C3B2925B679291EDE45F79C09",
+  "levels": [
+    { "level": 1, "referenceCount": 27, "candidateCount": 27, "missingReferenceKeys": [], "arabicMismatchKeys": [], "englishMismatchKeys": [], "parentMismatchKeys": [], "referenceEnglishBlankCount": 0, "referenceKeysNotInCandidate": [] },
+    { "level": 2, "referenceCount": 365, "candidateCount": 347, "missingReferenceKeys": [], "arabicMismatchKeys": [], "englishMismatchKeys": ["EG1213", "EG1312", "EG1402", "EG1410", "EG1502", "EG1506", "EG1702", "EG1802", "EG1812", "EG2109", "EG2113", "EG2202", "EG2302", "EG2603", "EG2610", "EG2702", "EG2802", "EG2902"], "parentMismatchKeys": ["EG2704", "EG2705"], "referenceEnglishBlankCount": 0, "referenceKeysNotInCandidate": ["EG0100", "EG0200", "EG0215", "EG0312", "EG0406", "EG1108", "EG1300", "EG1400", "EG1800", "EG2100", "EG2200", "EG2300", "EG2400", "EG2500", "EG2600", "EG2700", "EG2800", "EG2900"] },
+    { "level": 3, "referenceCount": 5716, "candidateCount": 5712, "missingReferenceKeys": [], "arabicMismatchKeys": [], "englishMismatchKeys": [], "parentMismatchKeys": [], "referenceEnglishBlankCount": 5712, "referenceKeysNotInCandidate": ["EG021501", "EG031201", "EG040601", "EG110801"] }
+  ],
+  "interpretation": "The historical Arabic backbone is reference-correspondent. Blank reference English is not an English match or linguistic validation. The only parent differences are the intentional Armant/Esna corrections; do not revert them to match the old reference.",
+  "releaseReadinessEstablished": false
+}
