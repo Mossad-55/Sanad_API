@@ -292,6 +292,9 @@ the standing repository branch instruction. Workers preserve others' edits.
   historical reference, but its ADM3 coverage is explicitly partial and dated
   2017; all included Area English reference values are blank. See
   [data qualification / exact input handoff](reports/phase-06-data-qualification.md).
+  Owner-requested inventory: [all 347 City names](reports/egypt-city-names.md)
+  and [all 27/347/5712 names with parent hierarchy](reports/egypt-all-location-names.md).
+  Derived verbatim from the candidate, not deployed database counts or acceptance.
   No claim that another wrapper of the same records closes national gaps.
   `reference-data/egypt/candidate.json` corrected to 27/347/5712
   (SHA-256 `18AB3CB4…C09`), `provenance.md`, `coverage.md` per-governorate
