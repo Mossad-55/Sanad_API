@@ -1,7 +1,8 @@
 # PORTAL-06A2 report — All-Egypt catalogue candidate (review only)
 
-Status: candidate delivered for mastermind review; no dataset, snapshot, or
-mapping approved. No importer implemented; no database access, production
+Status: review corrections required — candidate not accepted for nationwide
+use/import. No dataset, snapshot, or mapping approved. No importer implemented;
+no database access, production
 change, deployment, or Bruno occurred. Do not start 06B or present this
 candidate as approved or consumer-verified.
 
@@ -73,3 +74,39 @@ labels, the 19 exclusions, Smouha placement, provisional-Area policy, and
 the exact later target/backup. Catalogue approval is coverage approval
 only — not source endorsement beyond the stated basis, and not permission
 to write any database.
+
+## Mastermind review — acceptance held
+
+Reviewed clean pushed delivery `591881375ddcce088beb85a2fb70acc37722341b`.
+Candidate hash/counts match; reran Validate-Catalogue.ps1 offline: exit 0,
+0 reported candidate failures and 5/5 synthetic checks. These prove the
+delivered validator's current structural checks, not national release readiness.
+No API/database/Production action or data import was performed.
+
+Concrete findings:
+
+1. **Wrong governorate boundaries:** `EG2704` Armant and `EG2705` Isna are
+   assigned to Qena (`EG27`), carrying 8 + 28 child Areas. The official
+   [GOPP Luxor plan](https://gopp.gov.eg/luxor-strategic-plan/) lists Armant
+   and Esna in Luxor's administrative centres. This is a substantive error,
+   not just a missing modern spelling. Source-count agreement is insufficient
+   evidence of current boundaries; the 2026 publication date is not data vintage.
+2. **Unjustified exclusions:** Tiba police-station record `EG2903` and six
+   Areas were dropped from their label. The official plan also lists New Tiba;
+   the exact source-record correspondence needs evidence, not an assumption
+   that police-labelled administrative geography has no resident localities.
+3. **Validator blind spots reproduced:** actual Test-Candidate function
+   definitions accept an empty three-array country and a complete mini-chain
+   with Arabic-only englishName values, each with zero failures. Required
+   national set/types/language and release-readiness checks are missing.
+4. **Documentation drift:** Marina El Alamein is in the JSON under Matrouh,
+   not Red Sea as coverage.md says; actual candidate.gaps count is 5, not 6.
+   The 1.38 MB derived dataset is committed, though the raw source files are
+   not. The publisher's source objects do not establish upstream provenance.
+
+The All-Egypt requirement remains unchanged. No provisional flags, old source
+denominators or excluded branches waive it. Run the
+[bounded review correction brief](../worker-prompts/06a2-review-corrections.md)
+before acceptance or any 06B importer work. Do not ask the owner to approve
+known-wrong geography or bundle future Production target/backup authority
+with this offline correction task. Dataset/provenance acceptance remains open.

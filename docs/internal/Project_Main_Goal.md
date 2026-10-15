@@ -31,8 +31,10 @@ has delivered research (`cdf8a2a`), reviewed/accepted without approving a datase
 The partial levels-1/2 proposal does not close the three-level picker gap.
 Owner explicitly chose **All Egypt**. The
 [06A2 national catalogue brief](work/portal-api-reconciliation/worker-prompts/06a2-national-catalogue.md)
-now prepares actual bilingual Governorate/City/Area data, provenance, coverage
-and offline validation. Actual catalogue/mapping approval still precedes 06B.
+delivered candidate `5918813` (27/346/5706), but review found wrong governorate
+assignments for Armant/Esna, validator false passes, and evidence/doc gaps.
+[Bounded 06A2 corrections](work/portal-api-reconciliation/worker-prompts/06a2-review-corrections.md)
+are next. All Egypt remains required; catalogue/mapping acceptance precedes 06B.
 No import/deployment is authorized. Runtime/device and caregiver operator
 evidence are not closed.
 The current VPS runs Production and is used for developer testing by owner

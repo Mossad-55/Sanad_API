@@ -73,11 +73,16 @@ upstream provenance and coverage remain unresolved. See report's final review.
 Owner explicitly chose **All Egypt**. Coverage choice is now resolved: prepare
 a national bilingual three-level catalogue, not selected launch regions or a
 levels-1/2 import with Areas manual. No specific dataset/mapping is approved.
-**Next action:** external worker executes
-[06A2 national catalogue preparation](work/portal-api-reconciliation/worker-prompts/06a2-national-catalogue.md)
-from the launch message's pinned pushed SHA, delivering actual candidate data,
-provenance, coverage and offline validation. Review before 06B importer work;
-later target/backup/write permission is separate. No import or deploy authorized.
+06A2 delivery `5918813` reviewed; acceptance held. Hash/counts and 5/5 offline
+checks reproduced, but the validator accepts empty and Arabic-only-English
+catalogues. Armant/Esna wrongly fall under Qena, affecting 36 child Areas;
+official GOPP Luxor evidence contradicts that mapping. Tiba exclusion needs
+evidence; coverage prose/gap counts drift from JSON. All Areas remain provisional.
+**Next action:** same worker executes
+[06A2 review corrections](work/portal-api-reconciliation/worker-prompts/06a2-review-corrections.md)
+from the launch message's pinned pushed SHA. Correct known errors and distinguish
+structural PASS from release readiness; report unresolved source gaps honestly.
+All Egypt stays required. No 06B/import/production write/deploy authorized.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.
