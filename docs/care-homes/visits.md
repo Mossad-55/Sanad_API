@@ -52,7 +52,7 @@ All routes require `CareHomeOwnerAccess` and are scoped to the owner's facility:
 | `POST /api/v1/care-homes/visits/mine/{visitId}/decision` | Approve or reject a pending request; rejection requires a reason |
 | `POST /api/v1/care-homes/visits/mine/{visitId}/cancel` | Cancel before the visit starts |
 
-Settings requests contain `visitorCapacity`, arrays of `{ "day": "Monday", "startTime": "09:00", "endTime": "17:00" }` for `operatingHours` and `visitingWindows`, and closure entries `{ "date": "2026-11-10", "reason": "Holiday" }`. A stale settings version conflicts. Settings that would make an already-reserved future appointment invalid or exceed capacity are rejected.
+Settings requests contain `visitorCapacity`, arrays of `{ "day": 1, "startTime": "09:00", "endTime": "17:00" }` for `operatingHours` and `visitingWindows` (`day` is the numeric `DayOfWeek`, 1 = Monday; string names are rejected with 400), and closure entries `{ "date": "2026-11-10", "reason": "Holiday" }`. A stale settings version conflicts with 409 `CareHomes.Visits.Conflict`. Settings that would make an already-reserved future appointment invalid or exceed capacity are rejected. Failed writes leave settings and version unchanged. Owner settings reads return 200 with `version` 0 and capacity 0 before the first save.
 
 The complete settings request also contains `expectedVersion`; for example:
 
@@ -60,11 +60,13 @@ The complete settings request also contains `expectedVersion`; for example:
 {
   "expectedVersion": 1,
   "visitorCapacity": 4,
-  "operatingHours": [{ "day": "Monday", "startTime": "09:00", "endTime": "17:00" }],
-  "visitingWindows": [{ "day": "Monday", "startTime": "10:00", "endTime": "16:00" }],
+  "operatingHours": [{ "day": 1, "startTime": "09:00", "endTime": "17:00" }],
+  "visitingWindows": [{ "day": 1, "startTime": "10:00", "endTime": "16:00" }],
   "closures": []
 }
 ```
+
+Verified PORTAL-05 on an isolated HTTP host with real handlers: Draft facilities read and save settings; cross-owner settings stay isolated; capacity below 1 returns 400 `CareHomes.Visits.InvalidRequest`.
 
 The owner decision request is `{ "approve": true, "reason": null }` to approve;
 rejection sets `approve` to false and supplies a nonblank reason. The Postman

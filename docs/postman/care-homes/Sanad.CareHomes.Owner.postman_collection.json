@@ -149,7 +149,8 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine"
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine",
+            "description": "CareHomeOwnerAccess. Returns 200 with the caller's facility (id, status, version, draft, documents, review history) including Draft facilities; 404 CareHomes.Facility.NotFound when the owner has no facility. Verified PORTAL-05 on an isolated host."
           },
           "event": [
             {
@@ -470,7 +471,8 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine",
+            "description": "CareHomeOwnerAccess. Returns 200 with facilityId, version and roomTypes/rooms/beds/maintenance for the caller's facility only; 404 when the owner has no facility. Verified PORTAL-05 on an isolated host with populated and empty states."
           },
           "event": [
             {
@@ -769,7 +771,7 @@
               ]
             },
             "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine",
-            "description": "CareHomeOwnerAccess. Lists paid requests for the owner's facility only."
+            "description": "CareHomeOwnerAccess. Lists paid requests for the owner's facility only (200 array; empty array when no paid bookings; 404 CareHomes.Bookings.NotFound when the owner has no facility). Pending-payment holds are excluded. Verified PORTAL-05 on an isolated host."
           },
           "event": [
             {
@@ -1302,7 +1304,7 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/visit-settings",
-            "description": "Reads visitor capacity, operating hours, visiting windows and closure dates."
+            "description": "CareHomeOwnerAccess. Reads visitor capacity, operating hours, visiting windows and closure dates (200; version 0 with capacity 0 before first save; 404 CareHomes.Visits.NotFound when the owner has no facility). Verified PORTAL-05 on an isolated host."
           }
         },
         {
@@ -1310,7 +1312,7 @@
           "request": {
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/care-homes/visits/mine",
-            "description": "Lists visits scoped to the authenticated facility owner."
+            "description": "CareHomeOwnerAccess. Lists visits for the caller's facility ordered by start time (200 array; empty array when none; 404 CareHomes.Visits.NotFound when the owner has no facility). Verified PORTAL-05 on an isolated host with populated, empty and cross-owner states."
           }
         },
         {
@@ -1379,10 +1381,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"expectedVersion\": 1,\n  \"visitorCapacity\": 4,\n  \"operatingHours\": [{ \"day\": \"Monday\", \"startTime\": \"09:00\", \"endTime\": \"17:00\" }],\n  \"visitingWindows\": [{ \"day\": \"Monday\", \"startTime\": \"10:00\", \"endTime\": \"16:00\" }],\n  \"closures\": []\n}"
+              "raw": "{\n  \"expectedVersion\": 1,\n  \"visitorCapacity\": 4,\n  \"operatingHours\": [{ \"day\": 1, \"startTime\": \"09:00\", \"endTime\": \"17:00\" }],\n  \"visitingWindows\": [{ \"day\": 1, \"startTime\": \"10:00\", \"endTime\": \"16:00\" }],\n  \"closures\": []\n}"
             },
             "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/visit-settings",
-            "description": "Replaces versioned schedule settings. Use the current expectedVersion; changes that invalidate reserved visits are rejected."
+            "description": "CareHomeOwnerAccess. Replaces versioned schedule settings (200, version increments). Day uses numeric DayOfWeek (1 = Monday); string names are rejected with 400. Stale expectedVersion returns 409 CareHomes.Visits.Conflict; capacity below 1 returns 400 CareHomes.Visits.InvalidRequest; failed writes leave settings/version unchanged. Verified PORTAL-05 on an isolated host."
           }
         }
       ]

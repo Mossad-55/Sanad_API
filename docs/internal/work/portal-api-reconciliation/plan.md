@@ -1,6 +1,6 @@
 # Admin and Care Homes portal API reconciliation
 
-Status: PORTAL-01 through 04 accepted; PORTAL-05 brief issued (2026-10-15).
+Status: PORTAL-01 through 04 accepted; PORTAL-05 worker-complete, awaiting mastermind review (2026-10-15).
 PORTAL-06 still requires an approved geography dataset and scope.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
@@ -243,22 +243,21 @@ the standing repository branch instruction. Workers preserve others' edits.
   deliver the bounded diagnostic query and an operator handoff and leave that
   conclusion explicitly unverified; independent fixes/testing can continue.
   Any necessary product/data repair becomes its own exact reviewed change.
-- [ ] Not started — **PORTAL-05: owner-portal endpoint verification with minimal fixtures.**
-  [Pinned worker brief](worker-prompts/05-owner-portal-verification.md) prepared
-  after Phase 04 acceptance. External worker execution has not started.
-  Own a targeted local API/fixture test harness, existing Care Homes test helpers
-  as needed, Postman owner examples and a concise results report. Reuse a valid
-  owner/facility/location/inventory fixture after checking its lifecycle. If
-  absent, create only the actors/states needed by the scenarios below. Verify
-  facilities/mine, inventory/mine, booking-requests/mine, visits/mine,
-  dashboard/mine, revenue/mine and existing visit-settings route(s), deriving
-  exact routes/contracts from current controllers. Check an owned and a foreign
-  facility, version handling where relevant, SuperAdmin/foreign-owner denial,
-  draft versus approved facility state, and empty versus populated booking/visit/
-  revenue views using existing provider-free booking fixtures. Record returned
-  shapes and expected 200/204/404 by state. No fabricated "all owner endpoints
-  healthy" claim from an admin 403, nor from empty lists alone. Report uncovered
-  detail routes explicitly; unrelated mobile endpoints are outside this task.
+- [x] Done — **PORTAL-05: owner-portal endpoint verification with minimal fixtures.**
+  [Pinned worker brief](worker-prompts/05-owner-portal-verification.md) executed
+  from base `ddab615` (clean `main == origin/main` at intake). Worker delivery
+  (commit pending mastermind review) adds `tests/Sanad.UnitTests/API/
+  CareHomeOwnerPortalFixture.cs` + `CareHomeOwnerPortalTests.cs` (15/15 green
+  over an isolated HTTP host with real handlers/policies; only the Postgres
+  advisory-lock visit guard inlined), selected owner/Finance Postman
+  descriptions, a `visits.md` numeric-day correction, and evidence in
+  [phase-05 report](reports/phase-05-owner-portal.md). Verified: seven owner
+  GETs + settings PUT with ownership isolation, populated/empty views,
+  Draft visibility, stale-version 409, range/invalid 400s, and 401/403 matrix;
+  no-facility reads 404. One authored-example defect corrected (string
+  `"day": "Monday"` rejected with 400; numeric `DayOfWeek` is the wire
+  format); no production-code defect found and none changed. Strict build
+  0 warnings/errors; focused 15/15 + reused 107/107. Stop before PORTAL-06/07.
 - [ ] Not started — **PORTAL-06: reference-data provisioning, pending approved source.**
   Propose an authoritative bilingual hierarchy/dataset with provenance and scope
   (what counts as a city and an area). Design a previewable, idempotent import
