@@ -1,7 +1,7 @@
 # Admin and Care Homes portal API reconciliation
 
 Status: PORTAL-01 through 05 and PORTAL-07 accepted locally (2026-10-15).
-PORTAL-06: All Egypt required; 06A2 review corrections needed (no import approval).
+PORTAL-06: All Egypt required; 06A2 corrections accepted, data qualification blocked (no import approval).
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
 The frontend report is input evidence, not an accepted defect list.
@@ -283,7 +283,10 @@ the standing repository branch instruction. Workers preserve others' edits.
   source, change locality semantics or authorize a target write. If data gaps
   remain, report them; no silent reduction to levels 1–2 or manual-Areas-only.
   [06A2 worker delivery](reports/phase-06-national-catalogue.md) `5918813`
-  reviewed; acceptance held for [bounded corrections](worker-prompts/06a2-review-corrections.md).
+  initially held for [bounded corrections](worker-prompts/06a2-review-corrections.md).
+  Correction delivery `1b0527b` accepted as correction work after mastermind
+  offline reruns (structural exit 0, 12/12 fixtures; readiness exit 2).
+  Catalogue acceptance remains blocked on data evidence, not backend tests.
   `reference-data/egypt/candidate.json` corrected to 27/347/5712
   (SHA-256 `18AB3CB4…C09`), `provenance.md`, `coverage.md` per-governorate
   matrix, new `boundary-checks.json`, hardened offline

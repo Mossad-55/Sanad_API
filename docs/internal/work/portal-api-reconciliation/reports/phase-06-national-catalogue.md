@@ -125,13 +125,23 @@ backup, and owner import order remain separate authorities.
 
 ## Next input needed
 
-Owner/mastermind approval of: the pinned snapshot, the 18 disambiguated
-labels, the 18 exclusions plus Tiba reinstatement, the Armant/Esna
-re-parenting, Smouha placement, and the provisional-Area policy.
-Catalogue approval is coverage approval only — not source endorsement
-beyond the stated basis, and not permission to write any database. The
-exact later import target/backup is a separate future write-authorization
-gate, not part of catalogue review.
+Data qualification must supply evidence before catalogue acceptance:
+
+- Resolve missing Luxor units and Tiba/Ziniya/New Tiba equivalence without
+  merging or inventing records by name.
+- Audit the remaining 25 governorates against a current, attributable source;
+  source publication date and source-count agreement do not prove boundaries.
+- Establish that the Area hierarchy is suitable for consumer location picking,
+  with documented batch qualification where justified, or replace unsuitable
+  census rows. Resolve provenance and bilingual-name quality.
+- Resolve the five recorded coverage gaps, including Smouha and the New
+  Administrative Capital, with cited placement and explicit mapping decisions.
+
+The owner already selected All Egypt. Approval alone cannot make provisional
+records verified or waive known gaps. Acceptance flags must follow recorded
+evidence and the relevant mapping decisions, not merely be flipped to pass.
+Catalogue acceptance, later importer implementation, and exact target/backup/
+write authorization are separate gates. No database write is authorized.
 
 ## Mastermind review — acceptance held
 
@@ -168,3 +178,22 @@ denominators or excluded branches waive it. Run the
 before acceptance or any 06B importer work. Do not ask the owner to approve
 known-wrong geography or bundle future Production target/backup authority
 with this offline correction task. Dataset/provenance acceptance remains open.
+
+## Mastermind correction acceptance — 2026-10-15
+
+Reviewed clean pushed correction `1b0527bf4308414c250d3cef2e284eaf336b2cf2`.
+Accepted R1–R5 as bounded correction work, not national catalogue readiness.
+Independent offline runs reproduced structural exit 0, all 12 fixtures passing,
+27 governorates / 347 cities / 5712 Areas, and candidate SHA-256
+`18AB3CB47FBDC34B1DFD77894ADA3B79DC27D22C3B2925B679291EDE45F79C09`.
+Readiness fails as intended (exit 2): four unresolved scope groups, all 5712
+Areas provisional, three unaccepted evidence/decision flags, five open gaps.
+Read back Armant/Esna under Luxor and restored Tiba; no import or API was run.
+The four groups are not four individual bad rows: one covers the other 25
+governorates, and another covers Area consumer suitability nationwide.
+
+No additional backend defect is established by this delivery. Complete the
+data qualification above before a 06B brief. Existing core portal gates remain
+historical and valid for unchanged compiled inputs; no .NET suite was rerun
+for this data/script/document-only review. No database, provider, Production,
+publish or deployment action occurred.

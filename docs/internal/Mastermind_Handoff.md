@@ -78,11 +78,15 @@ checks reproduced, but the validator accepts empty and Arabic-only-English
 catalogues. Armant/Esna wrongly fall under Qena, affecting 36 child Areas;
 official GOPP Luxor evidence contradicts that mapping. Tiba exclusion needs
 evidence; coverage prose/gap counts drift from JSON. All Areas remain provisional.
-**Next action:** same worker executes
-[06A2 review corrections](work/portal-api-reconciliation/worker-prompts/06a2-review-corrections.md)
-from the launch message's pinned pushed SHA. Correct known errors and distinguish
-structural PASS from release readiness; report unresolved source gaps honestly.
-All Egypt stays required. No 06B/import/production write/deploy authorized.
+06A2 correction delivery `1b0527b` reviewed and accepted as bounded correction
+work, not as an import-ready catalogue. Mastermind reran the offline structural
+gate: exit 0, 12/12 fixtures, 27/347/5712; readiness remains FAIL (exit 2).
+Armant/Esna now map to Luxor and Tiba is restored; remaining boundary, provenance,
+consumer-locality and coverage evidence is explicitly unresolved.
+**Next action:** complete the data qualification recorded in the
+[catalogue report](work/portal-api-reconciliation/reports/phase-06-national-catalogue.md#next-input-needed).
+Do not request a waiver of known gaps or mark provisional Areas verified by
+approval alone. All Egypt stays required; no 06B/import/write/deploy authorized.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.

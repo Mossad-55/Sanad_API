@@ -34,7 +34,10 @@ Owner explicitly chose **All Egypt**. The
 delivered candidate `5918813` (27/346/5706), but review found wrong governorate
 assignments for Armant/Esna, validator false passes, and evidence/doc gaps.
 [Bounded 06A2 corrections](work/portal-api-reconciliation/worker-prompts/06a2-review-corrections.md)
-are next. All Egypt remains required; catalogue/mapping acceptance precedes 06B.
+delivered `1b0527b` and are accepted as correction work: structural 27/347/5712,
+12/12 fixtures; readiness still fails on unresolved evidence and coverage.
+Next is data qualification, not importer implementation. All Egypt remains
+required; catalogue/mapping acceptance precedes 06B.
 No import/deployment is authorized. Runtime/device and caregiver operator
 evidence are not closed.
 The current VPS runs Production and is used for developer testing by owner
