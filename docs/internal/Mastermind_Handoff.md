@@ -37,12 +37,16 @@ test host isolated, finance-current empty HTTP proven 204 and documented,
 nullable-enum schema valid without a speculative transformer change. Mastermind
 rerun 85/85; mapping 556/620/0/0; reused valid correction strict build zero
 warnings/errors and architecture 1/1. See the Phase 03 report's final appendix.
+PORTAL-04 delivery `33af090` reviewed and accepted with bounded SQL/runbook
+corrections (UUID extrema, row caps, null/blank fallback, partial-target caveat).
+Mastermind rerun 24/24; valid worker zero-warning/error build reused. Production
+files untouched; no live SQL or repair. Diagnostic/operator handoff is delivered,
+but the six reported deployed rows remain unverified pending operator evidence.
 **Next action:** external worker executes the
-[PORTAL-04 diagnostic brief](work/portal-api-reconciliation/worker-prompts/04-caregiver-integrity.md)
+[PORTAL-05 owner verification brief](work/portal-api-reconciliation/worker-prompts/05-owner-portal-verification.md)
 from the launch message's exact pushed SHA and returns its commit/report.
-Phase 04 is diagnosis/local tests only: no production access/data repair.
-The six reported deployed records remain unverified without operator evidence;
-if unavailable, supply the read-only diagnostic/operator handoff explicitly.
+Use isolated fixtures/real handlers for seven owner GETs and settings PUT;
+Phase 05 has not started. No production access, policy change or deployment.
 Every worker brief must enforce the owner's testing order: verify existing
 configuration and seeded fixtures, seed only missing prerequisites on the
 designated disposable target, read them back, then launch the API/run scenarios.

@@ -46,8 +46,9 @@ Effective wiring (from current source, `*DbContext` DI + `*DbContextFactory`):
 
 - Key names: `ConnectionStrings:CaregiversDatabase`, fallback
   `ConnectionStrings:IdentityDatabase` (same fallback pattern for Families and
-  the other modules). A blank module key means that module silently shares the
-  Identity target.
+  the other modules). An absent/null module key uses the Identity fallback.
+  An explicitly empty/whitespace module key does **not** fall back: the `??`
+  selection keeps it and the subsequent validation rejects startup.
 - The connection string is captured **eagerly** at startup
   (`UseNpgsql(connectionString)` inside `AddCaregiversInfrastructure`), so the
   final `IConfiguration` snapshot alone is not proof of the already-captured
@@ -65,6 +66,12 @@ Effective wiring (from current source, `*DbContext` DI + `*DbContextFactory`):
 
 1. Connect manually (psql or equivalent) with the read-only role. The script
    never connects by itself and reads no environment variable.
+   Set `statusFilter` / `typeFilter` to SQL `NULL` or the intended integer,
+   `page=1`, `pageSize=10`, and `limit=100` explicitly; the SQL file does not
+   initialize defaults. Its row limits are clamped to 1..100. Substitute each
+   UUID placeholder with a reviewed quoted UUID literal, not a bare UUID or
+   untrusted expression. `first/last_caregiver_id` are text-order extrema,
+   not timestamps or evidence of which row was created first.
 2. On **each** target you will inspect, run:
    `BEGIN READ ONLY; SET LOCAL statement_timeout = '5s';` then Section 0,
    then `ROLLBACK;`
@@ -76,13 +83,15 @@ Effective wiring (from current source, `*DbContext` DI + `*DbContextFactory`):
      the list total and the count total under identical filters. Any other
      relationship is a defect in the two production statements — report it
      verbatim.
-   - Section 2 lists missing-user rows (bounded; default cap inside the file).
+   - Section 2 lists missing-user rows (bounded; set the requested cap explicitly).
      For the reported incident, note whether the count of such rows is six
      and their statuses/types — but do not treat the count alone as proof of
      orphaned production rows.
    - Section 3 classifies present users. Record the per-class counts
      (`matched`, `present_user_missing_expected_account`) and the 3b/3c
      listings (actual account codes, duplicate `user_id` groups).
+     Counts derived from a capped listing describe that listing only; report
+     whether its limit was reached. Do not label them complete database totals.
    - Section 4 runs once per selected full `:caregiverId`: row presence,
      certificate status counts, child-selection counts, rating count, payout
      account/payout/review ids+statuses. No content, banking values, or

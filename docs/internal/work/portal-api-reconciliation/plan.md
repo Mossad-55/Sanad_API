@@ -1,6 +1,6 @@
 # Admin and Care Homes portal API reconciliation
 
-Status: PORTAL-01/02/03 accepted; PORTAL-04 diagnostic delivered, deployed cause/count unverified (2026-10-15).
+Status: PORTAL-01 through 04 accepted; PORTAL-05 brief issued (2026-10-15).
 PORTAL-06 still requires an approved geography dataset and scope.
 Audit date: 2026-10-15. Code baseline: pushed `main`
 `8cbeedd796ea1d63fab0c4844e664cb409e27fa6`, clean at intake.
@@ -210,7 +210,7 @@ the standing repository branch instruction. Workers preserve others' edits.
 - [x] Done — **PORTAL-04: diagnose caregiver identity consistency.**
   [Pinned diagnostic brief](worker-prompts/04-caregiver-integrity.md) executed
   from base `b44fb50` (clean `main == origin/main` at intake). Worker delivery
-  (this commit, see SHA below): read-only diagnostic
+  `33af090` accepted after bounded mastermind SQL/runbook corrections: read-only diagnostic
   `diagnostics/caregiver-identity.sql` (preflight, list/count reconciliation,
   missing-user listing, account-type classification, per-id dependents,
   split-target Identity/Families counterparts; SELECT-only, read-only
@@ -226,8 +226,10 @@ the standing repository branch instruction. Workers preserve others' edits.
   admin-review); `git diff --check` clean. No production access/data repair:
   the six reported deployed records remain explicitly unverified pending
   operator evidence; no INNER JOIN hiding, count fix, fabricated names, or
-  deletions. Production files untouched. Awaiting mastermind review before
-  PORTAL-05.
+  deletions. Production files untouched. Mastermind rerun 24/24; diagnostic
+  listing bounds and UUID extrema corrected, null/blank fallback and partial
+  target-mismatch conclusions clarified. PostgreSQL diagnostic execution still
+  not run; acceptance does not resolve the deployed six-row finding.
   Own a bounded read-only diagnostic/report and local list/count/integrity tests.
   Obtain full IDs via the authorized list or exact local fixture, check the
   actual Identity and Caregivers targets without outputting connection secrets,
@@ -242,6 +244,8 @@ the standing repository branch instruction. Workers preserve others' edits.
   conclusion explicitly unverified; independent fixes/testing can continue.
   Any necessary product/data repair becomes its own exact reviewed change.
 - [ ] Not started — **PORTAL-05: owner-portal endpoint verification with minimal fixtures.**
+  [Pinned worker brief](worker-prompts/05-owner-portal-verification.md) prepared
+  after Phase 04 acceptance. External worker execution has not started.
   Own a targeted local API/fixture test harness, existing Care Homes test helpers
   as needed, Postman owner examples and a concise results report. Reuse a valid
   owner/facility/location/inventory fixture after checking its lifecycle. If
@@ -376,5 +380,5 @@ preserve current enum/ID wire formats; keep existing first-run 404 and audience
 403; diagnose caregiver integrity before repair. PORTAL-06 remains a separate
 data-provisioning task until an approved dataset/scope exists. Optional landing
 media cleanup is deferred. The mastermind supplies sequential, pinned worker
-prompts. PORTAL-01/02/03 are accepted; PORTAL-04 is issued. Later phases wait
+prompts. PORTAL-01 through 04 are accepted; PORTAL-05 is issued. Later phases wait
 for the preceding review and closeout.

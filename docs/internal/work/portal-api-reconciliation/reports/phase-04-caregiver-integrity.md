@@ -1,6 +1,7 @@
 # PORTAL-04 report — caregiver / Identity integrity diagnosis (no repair)
 
-Status: diagnostic delivered; deployed cause/count explicitly unverified.
+Status: Done — diagnostic reviewed and accepted with the bounded mastermind
+corrections below; deployed cause/count explicitly unverified.
 No production access, data change, deployment, or Bruno occurred in this task.
 No API/Postman route change was needed. Stop before PORTAL-05.
 
@@ -77,7 +78,8 @@ No API/Postman route change was needed. Stop before PORTAL-05.
   `ConnectionStrings:IdentityDatabase` (`Caregivers/.../DependencyInjection.cs:18-29`;
   identical fallback in Families/Identity modules; design-time factories read
   `ConnectionStrings__CaregiversDatabase` then `ConnectionStrings__IdentityDatabase`).
-  A blank module key silently shares the Identity target.
+  An absent/null module key shares the Identity fallback; an explicitly blank
+  module key fails validation instead (`??` does not skip empty strings).
 - Eager capture: the string is read during `AddCaregiversInfrastructure`
   (`UseNpgsql(connectionString)`); the final `IConfiguration` snapshot alone
   is therefore not proof of the captured DI options. Proven by new test
@@ -180,8 +182,9 @@ be — any of: (a) stale/test-fixture caregiver rows whose Identity users were
 never created in (or visible from) the Caregivers-target database; (b) a
 target mismatch where the Caregivers connection's database simply has no
 `identity.users` rows while the Identity module reads a different physical
-database (then the list SQL would null-enrich *every* row, not just six —
-the operator's Section 1 matched/missing split discriminates this); or
+database (an absent Identity schema fails the join; an empty visible users table
+null-enriches all rows; a stale/partially populated copy can affect only a subset.
+The matched/missing split alone cannot rule out target mismatch); or
 (c) genuinely orphaned references from a split write with no cross-module
 FK (possible by construction: scalar `user_id`, no unique constraint, no
 existence check at bootstrap, no caregiver-row cleanup on anonymization —
@@ -199,3 +202,41 @@ gaps). On receipt, reconcile full ids against the report and classify per
 row; only then draft the exact repair/quarantine/indicator change for a
 separate mastermind/owner decision. If no operator evidence arrives, the
 deployed finding stays open and unverified; Phase 05 proceeds independently.
+
+## Mastermind acceptance — 2026-10-15
+
+Reviewed worker delivery `33af090e2f4d542d5b3247f8cbf90f664ec7445b`
+on clean pushed main: diagnostic/runbook, relational fixture, list/count and
+classification/configuration tests, mapping names and source conclusions.
+Production files remain untouched. No live data access or repair.
+
+Bounded documentation/SQL review corrections before acceptance:
+
+- Duplicate-list UUID extrema now aggregate `id::text`, not raw UUID values.
+  This avoids relying on UUID MIN/MAX aggregates unavailable in supported
+  PostgreSQL versions; text extrema are representative IDs, not creation times.
+  See [PostgreSQL aggregate type support](https://www.postgresql.org/docs/18/functions-aggregate.html).
+- Listings now clamp limits to 1..100, and diagnostic page offsets use bigint.
+  Parameters/default choices and quoted UUID substitution are explicit. The
+  script contains SELECTs that the operator must wrap; it does not silently
+  claim to establish its own read-only transaction. Capped classification
+  counts are not presented as complete database totals.
+- Corrected null-versus-blank configuration behavior: missing/null module key
+  uses Identity fallback; an explicitly blank key fails startup validation.
+- Corrected the target-mismatch hypothesis: a partially populated Identity
+  copy can miss only some users; some matched rows do not rule out mismatch.
+
+Mastermind reran `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj
+--no-build --no-restore --nologo -v minimal --filter
+"FullyQualifiedName~CaregiverIdentityIntegrityTests|FullyQualifiedName~CaregiverAdminListIntegrityTests|FullyQualifiedName~Onboarding.AdminCaregiverReviewsTests"`:
+exit 0, **24 passed, 0 failed, 0 skipped**, no warnings emitted. Fixture/code
+unchanged by review; reused worker's successful zero-warning/error build.
+No build rerun needed for SQL/runbook/handoff-only corrections. Existing
+architecture/route-map inputs unchanged. `git diff --check` clean.
+
+SQL was reviewed statically; PostgreSQL execution remains **not run**. SQLite
+supports the demonstrated production join/reader behavior, not a claim that
+every authored PostgreSQL diagnostic statement was executed. No diagnostic was
+run on Production. The deployed six-row finding stays open for authorized
+operator evidence; acceptance here closes delivery of diagnostics/local tests,
+not the incident's cause or a data repair. Phase 05 can proceed independently.

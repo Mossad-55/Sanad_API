@@ -18,8 +18,8 @@
 --   4. Run Section 4 per selected caregiver id (bounded; one id per execution).
 --   5. Run Section 6 on the Families-target database for bookings/reports
 --      (a join in one database can never inspect another database's tables).
---   6. Wrap ad-hoc runs as below; every statement below is SELECT-only and ends
---      with an explicit ROLLBACK. Nothing is written.
+--   6. Wrap EACH pasted section as below; the SELECT statements in this file
+--      do not wrap themselves. End with explicit ROLLBACK. Nothing is written.
 --
 --      BEGIN READ ONLY;
 --      SET LOCAL statement_timeout = '5s';
@@ -32,7 +32,11 @@
 --   :page          integer >= 1      (admin list page; default 1)
 --   :pageSize      integer 1..100    (admin list page size; default 10)
 --   :caregiverId   uuid              (single selected caregiver id, Section 4)
---   :limit         integer           (result cap for open-ended listings; default 100)
+--   :userId        uuid              (single selected Identity user, Section 5)
+--   :limit         integer           (requested cap; clamped to 1..100, use 100)
+-- In psql, set numeric variables explicitly (there are no automatic defaults).
+-- Substitute UUID placeholders as quoted UUID literals, e.g. '...'::uuid;
+-- do not paste a bare hyphenated UUID or an untrusted SQL expression.
 --
 -- Enum reference (from current domain; do not renumber in reports):
 --   caregivers.caregivers.type:   1 = Medical, 2 = Companion
@@ -104,7 +108,7 @@ FROM caregivers.caregivers c
 WHERE (:statusFilter IS NULL OR c.status = :statusFilter)
   AND (:typeFilter IS NULL OR c.type = :typeFilter);
 
--- 1b. Production list query (exact SELECT/JOIN/ORDER/LIMIT shape; page window).
+-- 1b. Production join/order with PII omitted and diagnostic pagination clamped.
 SELECT
     c.id         AS caregiver_id,
     c.user_id    AS user_id,
@@ -121,7 +125,8 @@ LEFT JOIN identity.users u
 WHERE (:statusFilter IS NULL OR c.status = :statusFilter)
   AND (:typeFilter IS NULL OR c.type = :typeFilter)
 ORDER BY c.updated_on_utc DESC, c.id
-LIMIT :pageSize OFFSET (:page - 1) * :pageSize;
+LIMIT LEAST(GREATEST(:pageSize, 1), 100)
+OFFSET ((GREATEST(:page, 1)::bigint - 1) * LEAST(GREATEST(:pageSize, 1), 100));
 
 -- 1c. Reconciliation summary: totals must satisfy
 --     matched + missing_user = list_total = count_total (same filters).
@@ -155,7 +160,7 @@ WHERE u.id IS NULL
   AND (:statusFilter IS NULL OR c.status = :statusFilter)
   AND (:typeFilter IS NULL OR c.type = :typeFilter)
 ORDER BY c.updated_on_utc DESC, c.id
-LIMIT :limit;
+LIMIT LEAST(GREATEST(:limit, 1), 100);
 
 -- ============================================================================
 -- Section 3 — account-type / role classification for PRESENT users.
@@ -198,7 +203,7 @@ LEFT JOIN identity.users u
 WHERE (:statusFilter IS NULL OR c.status = :statusFilter)
   AND (:typeFilter IS NULL OR c.type = :typeFilter)
 ORDER BY c.updated_on_utc DESC, c.id
-LIMIT :limit;
+LIMIT LEAST(GREATEST(:limit, 1), 100);
 
 -- 3b. Mismatched type/role detail: present users whose account set does not
 -- contain the expected caregiver account (shows actual account codes only).
@@ -217,20 +222,20 @@ WHERE NOT EXISTS (
         WHERE a2.user_id = c.user_id
           AND a2.account_type = CASE WHEN c.type = 1 THEN 2 WHEN c.type = 2 THEN 3 END)
 ORDER BY c.id, a.account_type
-LIMIT :limit;
+LIMIT LEAST(GREATEST(:limit, 1), 100);
 
 -- 3c. Duplicate user_id references (meaningful: user_id has only an index, no
 -- unique constraint and no cross-module FK — see CaregiverConfiguration).
 SELECT
     c.user_id          AS user_id,
     COUNT(*)           AS caregiver_rows,
-    MIN(c.id)          AS first_caregiver_id,
-    MAX(c.id)          AS last_caregiver_id
+    MIN(c.id::text)    AS first_caregiver_id,
+    MAX(c.id::text)    AS last_caregiver_id
 FROM caregivers.caregivers c
 GROUP BY c.user_id
 HAVING COUNT(*) > 1
 ORDER BY caregiver_rows DESC, c.user_id
-LIMIT :limit;
+LIMIT LEAST(GREATEST(:limit, 1), 100);
 
 -- ============================================================================
 -- Section 4 — dependent references for ONE selected caregiver (bounded).
@@ -286,7 +291,7 @@ SELECT id AS payout_id, booking_id, status AS payout_status
 FROM caregivers.caregiver_payouts
 WHERE caregiver_id = :caregiverId
 ORDER BY id
-LIMIT :limit;
+LIMIT LEAST(GREATEST(:limit, 1), 100);
 
 SELECT r.id AS review_id, r.payout_account_id, r.decision
 FROM caregivers.caregiver_payout_account_reviews r
@@ -294,7 +299,7 @@ INNER JOIN caregivers.caregiver_payout_accounts a
     ON a.id = r.payout_account_id
 WHERE a.caregiver_id = :caregiverId
 ORDER BY r.id
-LIMIT :limit;
+LIMIT LEAST(GREATEST(:limit, 1), 100);
 
 -- ============================================================================
 -- Section 5 — Identity-target counterpart (run INDEPENDENTLY on the Identity
@@ -330,7 +335,7 @@ SELECT id AS booking_id, status AS booking_status
 FROM families.bookings
 WHERE caregiver_id = :caregiverId
 ORDER BY id
-LIMIT :limit;
+LIMIT LEAST(GREATEST(:limit, 1), 100);
 
 -- 6b. Reports referencing the caregiver (counts only).
 SELECT 'medical_reports' AS report_table, COUNT(*) AS report_count

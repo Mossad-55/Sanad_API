@@ -15,8 +15,11 @@ contract mapping zero missing/orphans). PORTAL-03 delivery `57f9d3e` plus
 correction `13a85ca` is accepted: safe host, finance empty HTTP 204, valid nullable
 enum union; mastermind rerun 85/85 and mapping zero missing/orphans, valid
 worker strict build zero warnings/errors and architecture 1/1 reused.
-The [PORTAL-04 diagnostic brief](work/portal-api-reconciliation/worker-prompts/04-caregiver-integrity.md)
-is the next external worker action; no production data repair is authorized.
+PORTAL-04 delivery `33af090` is accepted after bounded diagnostic SQL/runbook
+corrections and mastermind rerun 24/24. Deployed caregiver mismatches remain
+unverified pending operator evidence; no production data repair is authorized.
+The [PORTAL-05 owner API verification brief](work/portal-api-reconciliation/worker-prompts/05-owner-portal-verification.md)
+is the next external worker action; execution has not started.
 The current VPS runs Production and is used for developer testing by owner
 direction; a separately hardened VPS is future work. Existing public deployment
 smoke/revision/migration evidence does not establish complete portal or Chat Plus
