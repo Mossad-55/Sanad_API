@@ -2,21 +2,19 @@
 
 ## Frontend follow-up sequence — 2026-10-16
 
-Current checkpoint: **FUR-01 Done — accepted, committed/pushed and deployed**.
-Execution assignment: worker R1–R5 corrections accepted by Mastermind locally;
-strict build zero warnings/errors, full guarded unit 3421/0/8, architecture 1/1.
-Deployed revision `f9231fb`; verification recorded in the phase receipt. See
-[review findings](reports/fur-01-mastermind-review.md) and
-[same-worker correction brief](worker-prompts/fur-01-review-corrections.md).
-Seven controller diffs are metadata-only; auth-guide/example and audience
-handoff defects resolved. Earlier initial findings/interruption are historical.
+Current checkpoint: **FUR-02 Done — accepted, committed/pushed and deployed**.
+FUR-02 [release receipt](reports/fur-02-deployment.md) records deployed revision
+`5cd3526`, one Identity migration applied, nine required/applied heads matched,
+unchanged VPS configuration, active service and independent tunneled verifier.
+Worker and Mastermind [review evidence](reports/fur-02-mastermind-review.md)
+remain linked; the exact original frontend OTP exception was not reproduced.
+FUR-01's [prior receipt](reports/fur-01-deployment.md) remains valid.
 Owner approved the **19-phase full-report roadmap** on 2026-10-16 after its
 phase-by-phase explanation: FUR-00 through FUR-10 (11 phases) plus E01–E08
 (8 phases). At approval FUR-00 was Done / 18 remained; current closeout is
-FUR-00 plus FUR-01 Done / **17 remaining**. Approval establishes the roadmap and
-sequential workflow, not every detailed API/policy contract. FUR-01's exact
-contract was separately approved on 2026-10-16; execution has started within its
-bounded scope. Historical PORTAL phases below
+FUR-00 through FUR-02 Done / **16 remaining**. Approval establishes the roadmap and
+sequential workflow, not every detailed API/policy contract. FUR-01 and FUR-02
+had separately approved contracts and are now Done. Historical PORTAL phases below
 retain their accepted evidence; FUR IDs
 are follow-up work, not a reset or renaming of PORTAL-01 through PORTAL-07.
 
@@ -30,7 +28,7 @@ contract assumption mismatches are not claimed as proven client code defects.
 | --- | --- | --- |
 | FUR-00 — Alignment | Done | Report index/template and dated Admin/owner reports prepared; 17 relative file links resolve, all 46 intake IDs referenced across the two reports. Presented for owner review/forwarding, not sent. No external sending implied. |
 | FUR-01 — Contract truth (audit S01) | Done | R1–R5 accepted; strict build clean, full unit 3421/0/8, architecture 1/1. [Phase release](reports/fur-01-deployment.md) `f9231fb` deployed: 29/29 metadata operations, nine heads match/zero applied, config hashes unchanged. Public direct-path limitation disclosed. |
-| FUR-02 — Verification continuity (S02) | In progress — locally accepted, release pending | [Contract approved](contracts/fur-02-verification-continuity.md) 2026-10-16. [Worker delivery](reports/fur-02-worker-delivery.md) and [Mastermind review](reports/fur-02-mastermind-review.md) accepted locally after R1–R3/S1–S2 corrections. Implementation, tests, docs/Postman and audience handoffs remain uncommitted and undeployed. Separate commit/push and deploy authority required; FUR-03 not started. |
+| FUR-02 — Verification continuity (S02) | Done | [Approved contract](contracts/fur-02-verification-continuity.md) → [worker delivery](reports/fur-02-worker-delivery.md) → [Mastermind review](reports/fur-02-mastermind-review.md) → [verified phase release](reports/fur-02-deployment.md). Deployed `5cd3526`; Identity 1 migration applied, other eight 0; 9/9 heads and config hashes match. FUR-03 not started. |
 | FUR-03 — Finance verification (S03) | Not started | Prove exact current Npgsql queries/fixture behavior; change code only for remaining reproduced defects. |
 | FUR-04 — Care Home readback (S04) | Not started | Lock owner current-profile/revision fields, media, resident/owner/dispute/actor display semantics and query-risk coverage. |
 | FUR-05 — Owner settlements (S05) | Not started | Lock own-facility read contract reusing existing payout/refund/commission/debt rules. |

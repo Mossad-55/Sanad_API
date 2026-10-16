@@ -52,13 +52,13 @@ applied and configuration checksums unchanged. Private rollback backups retained
 Standard verifier passed through a temporary SSH tunnel; direct public HTTP from
 this machine returned HTML, so that network path is explicitly unproven.
 See [receipt](work/portal-api-reconciliation/reports/fur-01-deployment.md).
-FUR-00 and FUR-01 Done / 17 phases remain; no direct Mastermind feature edits.
+FUR-00, FUR-01 and FUR-02 Done / 16 phases remain; no direct Mastermind feature edits.
 FUR-02 [contract](work/portal-api-reconciliation/contracts/fur-02-verification-continuity.md)
 approved by owner on 2026-10-16. Scope: additive restricted-login recovery
 IDs, send-first resend with safe 502 provider error, one Identity concurrency
 migration and disposable PostgreSQL proof. Expired pending IDs remain
 recoverable for resend. [Whole-phase worker brief](work/portal-api-reconciliation/worker-prompts/fur-02-verification-continuity.md)
-was executed by the owner's worker with fake providers; no live-provider test or deployment occurred.
+was executed by the owner's worker with fake providers; no live-provider test occurred.
 Worker FUR-02 [delivery](work/portal-api-reconciliation/reports/fur-02-worker-delivery.md)
 and [Mastermind review](work/portal-api-reconciliation/reports/fur-02-mastermind-review.md):
 R1–R3 and S1–S2 corrected; complete local phase accepted for release preparation.
@@ -67,29 +67,25 @@ guarded full unit 3458/0/12; architecture 1/1; earlier disposable PostgreSQL
 proof 4/4. Mastermind independently confirmed strict build zero warnings/errors,
 Postman JSON parsing and clean `git diff --check`; independent full-unit
 rerun aborted/stalled at testhost startup, so worker's successful guarded run
-is the valid full-suite evidence. FUR-02 stays In progress: uncommitted,
-unpushed, undeployed, Identity migration unapplied to production. Next action:
-obtain explicit owner commit/push authorization, then separate publish/deploy
-authority and exact-target preflight before release. FUR-03 not started.
-Continuation release update: owner authorized FUR-02 commit/push and then its
-deployment. Scoped phase commit `5bde52383071a2c20d17e3059038f729c1b64a70`
-was pushed to `origin/main` with a clean worktree. The prior Mastermind chat
-confirmed that this complete-phase deployment order includes necessary fresh
-package publication; do not request a magic `publish` word again. Its FUR-01
-receipt and existing target are reusable context, not substitutes for live
-preflight. Live read-only preflight found the existing Production service active
-at revision `f9231fb`, `NRestarts=0`, database reachable, all nine old heads
-matched and the effective Identity target `localhost:5433/SanadDb` via the
-existing environment file. No publish, backup, migration or deployment has yet
-occurred. The release publisher still pinned the old Identity migration head;
-the release-tool correction to derive nine heads from source and the workflow
-clarification in [publish](operations/publish.md) and
-[deploy runbook](operations/deploy-runbook.md) are local pending validation and
-scoped commit/push. Next action: validate and integrate that release-tool fix,
-then perform exact-target database backup and migration-aware deployment of
-the accepted FUR-02 phase. No FUR-03 work, real-provider test, reset or seed.
-Historical checkpoints below
-must not override this follow-up or the latest deployment/import receipts.
+is the valid full-suite evidence. Owner authorized commit/push and deployment
+of the complete phase, including necessary fresh package publication; do not
+request a separate literal `publish` authorization for this release. The
+implementation commit `5bde52383071a2c20d17e3059038f729c1b64a70` and
+release-tool/workflow correction `5cd3526b53e8555d3233810b8a024fcb6aa0322e`
+were pushed to `origin/main`. The latter is the exact deployed binary revision.
+The publisher now derives all nine migration heads from source, avoiding the
+stale Identity pin. See [publish](operations/publish.md) and
+[deploy runbook](operations/deploy-runbook.md) for the standing workflow.
+FUR-02 [deployment receipt](work/portal-api-reconciliation/reports/fur-02-deployment.md):
+fresh package and exact-target private database backup verified; Production
+service active/running, `NRestarts=0`, exact revision `5cd3526`, Identity one
+migration applied, other eight zero, all 9/9 heads matched, configuration
+unchanged. On-host and SSH-tunneled standard deployment verification passed;
+no real-provider test, reset or seed. Direct public HTTP from this machine is
+still unproven. FUR-02 is Done; a subsequent documentation-only receipt commit
+does not warrant redeployment. Next action: bounded FUR-03 intake and contract
+discussion only; no FUR-03 implementation has begun. Historical checkpoints
+below must not override this follow-up or the latest deployment/import receipts.
 
 Owner workflow override after `f932c46`: report findings, agree/apply cleanup,
 validate and present the final result BEFORE committing or pushing. No further
