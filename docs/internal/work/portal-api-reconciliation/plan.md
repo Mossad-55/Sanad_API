@@ -28,8 +28,8 @@ contract assumption mismatches are not claimed as proven client code defects.
 | --- | --- | --- |
 | FUR-00 — Alignment | Done | Report index/template and dated Admin/owner reports prepared; 17 relative file links resolve, all 46 intake IDs referenced across the two reports. Presented for owner review/forwarding, not sent. No external sending implied. |
 | FUR-01 — Contract truth (audit S01) | Done | R1–R5 accepted; strict build clean, full unit 3421/0/8, architecture 1/1. [Phase release](reports/fur-01-deployment.md) `f9231fb` deployed: 29/29 metadata operations, nine heads match/zero applied, config hashes unchanged. Public direct-path limitation disclosed. |
-| FUR-02 — Verification continuity (S02) | Done | [Approved contract](contracts/fur-02-verification-continuity.md) → [worker delivery](reports/fur-02-worker-delivery.md) → [Mastermind review](reports/fur-02-mastermind-review.md) → [verified phase release](reports/fur-02-deployment.md). Deployed `5cd3526`; Identity 1 migration applied, other eight 0; 9/9 heads and config hashes match. FUR-03 not started. |
-| FUR-03 — Finance verification (S03) | Not started | Prove exact current Npgsql queries/fixture behavior; change code only for remaining reproduced defects. |
+| FUR-02 — Verification continuity (S02) | Done | [Approved contract](contracts/fur-02-verification-continuity.md) → [worker delivery](reports/fur-02-worker-delivery.md) → [Mastermind review](reports/fur-02-mastermind-review.md) → [verified phase release](reports/fur-02-deployment.md). Deployed `5cd3526`; Identity 1 migration applied, other eight 0; 9/9 heads and config hashes match. |
+| FUR-03 — Finance verification (S03) | Accepted locally — awaiting owner release approval | R1–R5 accepted; no defect reproduced, 12 PostgreSQL proofs reported, no runtime delta, deployment N/A. Mastermind review accepted; scoped commit/push and documentation-only closeout await separate owner approval. See [worker delivery](reports/fur-03-worker-delivery.md) and [Mastermind review](reports/fur-03-mastermind-review.md). |
 | FUR-04 — Care Home readback (S04) | Not started | Lock owner current-profile/revision fields, media, resident/owner/dispute/actor display semantics and query-risk coverage. |
 | FUR-05 — Owner settlements (S05) | Not started | Lock own-facility read contract reusing existing payout/refund/commission/debt rules. |
 | FUR-06 — Eligible caregiver payouts (S06) | Not started | Lock selector contract and reuse full command eligibility. |
@@ -90,22 +90,28 @@ claiming unshipped phases Done. No parallel worker execution is implied.
 6. Add a dated audience report linking original issue → contract → source/test
    evidence → deployment truth. Do not label planned/local work deployed.
 7. Worker saves a report and returns it through the owner; Mastermind reviews
-   source/evidence and issues bounded corrections back to the worker if needed.
+   actual source/tests/docs and reports concrete findings and any required
+   modifications. The owner gives bounded corrections to the same worker.
    Worker leaves the phase In progress awaiting review, never commits/pushes or
    deploys. Mastermind does not take over feature implementation silently.
-8. Owner workflow confirmed 2026-10-16: after a **complete phase** is accepted
-   with no outstanding in-scope correction or failing required gate, Mastermind
-   commits/pushes that phase, publishes/deploys its applicable release and verifies
-   it **before advancing**. No deploy per task or partial phase. Mark Done only
-   after acceptance plus deployment verification (or explicitly not-applicable
-   deployment evidence for a pure research/docs-only phase). Do not restart an
-   unchanged API merely to claim deployment of documentation.
-9. The above is the standing complete-phase release workflow, not authority for
-   workers to release, for unapproved later feature contracts, broad data repair,
-   secrets/CORS changes or resets. Exact target/revision/config/migration/backup
-   preflight and receipt remain required; stop for owner direction on a new
-   target, destructive operation or material scope/config decision. No routine
-   branch/worktree under standing guidance. Never stage unrelated private files.
+8. Owner workflow reaffirmed 2026-10-16: first present one complete phase
+   contract and receive explicit approval. Then save the full worker prompt and
+   provide a short paste-ready kickoff naming its path and recommended effort;
+   the worker reads the full prompt from the repository. Do not paste the full
+   file into chat. After complete delivery and
+   acceptance, present final evidence and request explicit owner approval for
+   commit, push and applicable publish/deploy. Contract approval is not release
+   approval. After release approval, Mastermind commits/pushes the complete
+   phase, publishes/deploys when applicable, verifies and records the receipt
+   before advancing. No per-task or partial-phase release. Mark Done only after
+   acceptance plus deployment verification (or explicitly N/A for pure
+   research/docs-only work); do not redeploy an unchanged API for docs alone.
+9. Phase/release approval does not authorize workers to release, later phase
+   contracts, broad data repair, secrets/CORS changes or resets. Exact
+   target/revision/config/migration/backup preflight and receipt remain required;
+   stop for owner direction on a new target, destructive operation or material
+   scope/config decision. No routine branch/worktree under standing guidance.
+   Never stage unrelated private files.
 
 FUR-00 acceptance: folder/index/template exist; Admin and Care Home Owner reports
 separate correct usage, assumption corrections, backend work and owner decisions;

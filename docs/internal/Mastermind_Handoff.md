@@ -29,8 +29,11 @@ this roadmap: Mastermind plans/contracts/instructs/reviews/integrates/reports;
 owner's workers implement code/tests and feature docs/Postman. Internal worker
 interrupted before production/test edits; do not silently resume or replace it.
 Worker completes a **whole phase**, saves report and stops; owner returns report
-here. Mastermind reviews; worker corrects findings. Once accepted, Mastermind
-commits/pushes the scoped phase, publishes/deploys and verifies before advancing.
+here. Mastermind reviews actual source/tests/docs and reports concrete findings
+and required modifications; owner routes corrections to the worker. After
+acceptance Mastermind presents final evidence and asks the owner for explicit
+commit/push/publish/deploy approval. Contract approval is not release approval.
+Only after that approval does Mastermind release and verify before advancing.
 No per-task/partial-phase deploy. Done requires accepted evidence plus verified
 deployment (or explicit N/A for pure docs/research with no API release delta).
 No current release is being performed. Target/config/backup/migration preflight,
@@ -83,8 +86,24 @@ migration applied, other eight zero, all 9/9 heads matched, configuration
 unchanged. On-host and SSH-tunneled standard deployment verification passed;
 no real-provider test, reset or seed. Direct public HTTP from this machine is
 still unproven. FUR-02 is Done; a subsequent documentation-only receipt commit
-does not warrant redeployment. Next action: bounded FUR-03 intake and contract
-discussion only; no FUR-03 implementation has begun. Historical checkpoints
+does not warrant redeployment. Owner approved the verification-first
+[FUR-03 contract](work/portal-api-reconciliation/contracts/fur-03-finance-verification.md)
+on 2026-10-16. Its [whole-phase worker brief](work/portal-api-reconciliation/worker-prompts/fur-03-finance-verification.md)
+was executed. Worker reports no current defect reproduced for `FR-20261016-02`
+or `FR-20261016-03` (both historically fixed in `5edd3419`), and reports 10/10
+PostgreSQL tests on `SanadBrunoTestDb`. Mastermind review requires a phase-specific
+disposable database and additional unfiltered Admin/Approved owner dashboard
+coverage; see [review](work/portal-api-reconciliation/reports/fur-03-mastermind-review.md)
+and [worker delivery](work/portal-api-reconciliation/reports/fur-03-worker-delivery.md).
+The original contract's database-creation/selection boundary was underspecified;
+this was a Mastermind omission. Owner explicitly authorized only
+`SanadFur03VerifyDb` on local `localhost:5432` for the correction round. The
+[bounded correction brief](work/portal-api-reconciliation/worker-prompts/fur-03-review-corrections.md)
+was prepared for the same worker; Mastermind has now accepted R1–R5 after source,
+test-file, report and handoff review. FUR-03 is locally accepted, with no runtime
+delta and deployment N/A, and awaits separate owner approval for scoped
+commit/push and documentation-only closeout. It is not yet marked Done.
+Historical checkpoints
 below must not override this follow-up or the latest deployment/import receipts.
 
 Owner workflow override after `f932c46`: report findings, agree/apply cleanup,
