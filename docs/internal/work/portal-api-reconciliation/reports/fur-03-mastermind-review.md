@@ -1,8 +1,8 @@
 # FUR-03 Mastermind review — finance read regression verification
 
-Date: 2026-10-16 (Africa/Cairo). **Status: Mastermind review accepted; awaiting owner release approval.**
+Date: 2026-10-16 (Africa/Cairo). **Status: accepted; phase release completed with deployment N/A.**
 
-The worker reports no reproduced defect, 10/10 PostgreSQL tests, focused existing
+The worker reports no reproduced defect, 12/12 PostgreSQL tests, focused existing
 tests passed and a strict build with zero warnings/errors. The historical typed-ID
 fix `5edd3419781cdc1d3b106b2debb60ea0295f0ff2` is an ancestor of deployed package
 `5cd3526b53e8555d3233810b8a024fcb6aa0322e`; the existing fix is in the deployed
@@ -122,6 +122,6 @@ No source-level correctness defect was found in the changed test file by static
 inspection, and no runtime defect was reproduced in the worker's reported proof.
 R1–R5 are accepted based on source/document review and the worker's saved execution
 evidence; Mastermind did not rerun tests or access PostgreSQL. No runtime change
-is expected, so deployment is N/A. FUR-03 is **accepted, awaiting owner approval
-for scoped commit/push and documentation-only closeout**; it is not marked Done
-until the release workflow is authorized and completed. FUR-04 is not included.
+was made, so deployment is N/A. FUR-03 is accepted and Done. Owner approved
+release; phase commit `858da09` is pushed to `origin/main`. See the
+[release receipt](fur-03-release.md). FUR-04 was not included.

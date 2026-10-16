@@ -14,8 +14,8 @@ is required by this phase.
 
 - Original intake and issue IDs: `FR-20261016-03` (Draft owner dashboard/revenue reads fail).
 - Canonical plan/approved contract: [FUR-03 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-03-finance-verification.md) (owner-approved 2026-10-16).
-- Source revision: `30f6bcba3d4d91421827676b681f584d28ed9798` matches `origin/main`; this
-  FUR-03 delivery (test file and docs) remains uncommitted in the workspace.
+- Source baseline: `30f6bcba3d4d91421827676b681f584d28ed9798` matched `origin/main`
+  at phase start. Accepted FUR-03 delivery is committed and pushed as `858da09`.
 - Delivery report: [fur-03-worker-delivery](../../../../internal/work/portal-api-reconciliation/reports/fur-03-worker-delivery.md), including the dated correction record.
 - Deployment status: **N/A** — no runtime API change; no deployment performed.
 - Evidence limits: handler-level and disposable-PostgreSQL proof (12/12 tests passed
