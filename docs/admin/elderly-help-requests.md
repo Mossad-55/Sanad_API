@@ -69,7 +69,12 @@ concurrency conflict is also mapped to `409` with code
 ## OpenAPI contract
 
 The help-request list publishes its paged `200` schema and the aggregate
-publishes its status-to-count map object. The sentence-builder catalog list
+publishes its status-to-count map object. Detail publishes `200`
+`ElderlyHelpRequestResponse`; history publishes `200`
+`IReadOnlyList<ElderlyHelpRequestHistoryResponse>`. The aggregate is a
+dictionary serialized with enum-name keys (for example
+`{ "Pending": 4, "Resolved": 9 }`), not a `statusCounts` array/envelope.
+The sentence-builder catalog list
 publishes its paged `200` schema with numeric `category` values (`Actor = 1`,
 `Action = 2`, `Need = 3`, `Qualifier = 4`). Shared enum/ID conventions are in
 [api-contract-conventions](api-contract-conventions.md).

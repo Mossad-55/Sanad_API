@@ -78,7 +78,12 @@ GET    /api/v1/admin/assessments/submissions               List paged family sub
 
 #### Create Care Tier
 - **Route:** `POST /api/v1/admin/assessments/tiers`
-- **Content-Type:** `multipart/form-data` (Limit: 2 MB, PNG / SVG / WebP)
+- **Content-Type:** `multipart/form-data` (Limit: 2 MB for the whole request, JPEG / PNG / WebP)
+
+Accepted illustration formats are JPEG, PNG and WebP only; SVG is rejected
+with `Storage.File.UnsupportedType`. The 2 MiB limit applies to the whole
+multipart request including boundaries and form fields, so a file of exactly
+that size may not fit.
 - **Form fields:**
   - `screenOrder`: `1`
   - `arabicTitle`: `رعاية مستقلة`

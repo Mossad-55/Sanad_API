@@ -93,11 +93,12 @@ Phone request (preferred property):
 
 JSON `accessType` is `1` (Normal) or `2` (RestrictedVerification). The JWT claim `access_type` is `Normal` or `RestrictedVerification`.
 
-PendingVerification response:
+PendingVerification response (literal wire shape; IDs are `{ "value": guid }`
+wrappers):
 
 ```json
 {
-  "userId": "018f0000-0000-0000-0000-000000000000",
+  "userId": { "value": "018f0000-0000-0000-0000-000000000000" },
   "accessType": 2,
   "accessToken": "eyJ...",
   "accessTokenExpiresOnUtc": "2026-08-25T12:15:00Z",
@@ -109,23 +110,25 @@ PendingVerification response:
 }
 ```
 
-Active response:
+Active response (literal wire shape):
 
 ```json
 {
-  "userId": "018f0000-0000-0000-0000-000000000000",
+  "userId": { "value": "018f0000-0000-0000-0000-000000000000" },
   "accessType": 1,
   "accessToken": "eyJ...",
   "accessTokenExpiresOnUtc": "2026-08-25T12:15:00Z",
   "refreshToken": "opaque-refresh-token",
   "refreshTokenExpiresOnUtc": "2026-09-24T12:00:00Z",
-  "deviceSessionId": "018f0000-0000-0000-0000-000000000010",
+  "deviceSessionId": { "value": "018f0000-0000-0000-0000-000000000010" },
   "emailVerified": true,
   "phoneVerified": true
 }
 ```
 
-Store `deviceSessionId`. Current-session logout needs it in `X-Device-Session-Id`. Refresh needs it in the body.
+Store the inner `deviceSessionId.value` GUID. Current-session logout needs that
+plain GUID in `X-Device-Session-Id`; refresh needs the same plain GUID in the
+request body.
 
 ## Rules
 

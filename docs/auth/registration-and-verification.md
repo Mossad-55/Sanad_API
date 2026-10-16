@@ -17,10 +17,10 @@ Anonymous. Success `201`. Duplicate email or phone `409`.
 
 ```json
 {
-  "firstName": "Ahmed",
-  "lastName": "Hassan",
+  "arabicFullName": "أحمد حسن",
+  "englishFullName": "Ahmed Hassan",
   "email": "ahmed@example.com",
-  "phone": "+201001234567",
+  "phoneNumber": "+201001234567",
   "password": "Password1ab",
   "accountType": 1
 }
@@ -36,10 +36,25 @@ Creates:
 - Email OTP
 - SMS OTP
 
+Register success `201` returns wrapper IDs (literal wire shape):
+
+```json
+{
+  "userId": { "value": "0198e2c2-4444-7777-8888-000000000010" },
+  "emailVerificationRequestId": { "value": "0198e2c2-4444-7777-8888-000000000011" },
+  "phoneVerificationRequestId": { "value": "0198e2c2-4444-7777-8888-000000000012" }
+}
+```
+
+Request GUIDs stay plain GUIDs while response IDs are `{ "value": guid }`
+wrappers. Restricted login returns verification flags but no verification
+request IDs; losing signup state needs the separately contracted FUR-02
+recovery flow, which is not promised here.
+
 ```bash
 curl -k -sS https://localhost:7296/api/v1/auth/register \
   -H 'Content-Type: application/json' \
-  -d '{"firstName":"Ahmed","lastName":"Hassan","email":"ahmed@example.com","phone":"+201001234567","password":"Password1ab","accountType":1}'
+  -d '{"arabicFullName":"أحمد حسن","englishFullName":"Ahmed Hassan","email":"ahmed@example.com","phoneNumber":"+201001234567","password":"Password1ab","accountType":1}'
 ```
 
 Do **not** send avatar or National ID files on this request. The body is JSON only. After email + phone verification and a Normal login, use [Avatar](avatar.md) and [National ID (identity document)](identity-document.md).
@@ -50,17 +65,32 @@ Anonymous. Success `200`.
 
 ```json
 {
-  "email": "ahmed@example.com",
-  "purpose": 1,
+  "verificationRequestId": "0198e2c2-4444-7777-8888-000000000001",
   "code": "123456"
 }
 ```
 
-`purpose`: `1` Email, `2` Phone.
+Request fields are a plain GUID plus `code`; do not send `email` or `purpose`
+payloads. Success example (literal wire shape; the `attemptesRemaining`
+spelling is the current public field name):
 
-Email verification does not activate the user. Phone verification on a pending user with both channels verified calls `User.Activate`.
+```json
+{
+  "userId": { "value": "0198e2c2-4444-7777-8888-000000000010" },
+  "emailVerified": true,
+  "phoneVerified": true,
+  "normalAccessAllowed": true,
+  "attemptesRemaining": 5
+}
+```
 
-Unknown, expired, or invalid codes return `401`. Wrong purpose for a pending request returns `400`.
+Verifying a code marks that channel verified, then the handler checks both
+channels: when email and phone are both verified and the user is still
+`PendingVerification`, the user activates. Either supported channel — email or
+phone — can therefore be the final verification that activates the account;
+there is no email-only or phone-only activation rule.
+
+Unknown, expired, or invalid codes return `401`.
 
 ## POST `/api/v1/auth/verification/resend`
 
@@ -68,14 +98,23 @@ Anonymous. Success `200`.
 
 ```json
 {
-  "email": "ahmed@example.com",
-  "purpose": 1
+  "verificationRequestId": "0198e2c2-4444-7777-8888-000000000001"
+}
+```
+
+The request carries only the pending `verificationRequestId` (plain GUID).
+The response returns the replacement request ID and its expiry:
+
+```json
+{
+  "verificationRequestId": { "value": "0198e2c2-4444-7777-8888-000000000002" },
+  "expiresOnUtc": "2026-10-16T12:15:00Z"
 }
 ```
 
 Missing pending request `404`. Already verified `400`. Cooldown `409`.
 
-Resend supersedes the previous pending request of the same purpose.
+Resend supersedes the previous pending request.
 
 ## Avatar
 

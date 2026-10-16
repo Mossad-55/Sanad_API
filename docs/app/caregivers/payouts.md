@@ -109,6 +109,11 @@ Record body:
 
 Recording validates, in order: the booking exists and is Completed **and** Paid (missing timestamps fail closed); an effective payout policy exists (otherwise `Finance.PayoutPolicy.Missing`); the policy delay has passed since `max(completedOnUtc, paidOnUtc)`; the caregiver has a saved payout account; and no `Paid` payout already exists for the booking (`409 Caregivers.Payouts.Conflict`, backed by a partial unique index so concurrent duplicate records serialize to one success and one conflict). Success returns `201` with the payout in `Paid` status.
 
+Resource-specific length rules (existing validators, unchanged): record `reason`
+and `evidence` accept at most 2000 characters each; `transferReference`
+accepts at most 200 characters. Payout-account review decisions keep their own
+500-character reason bound; do not apply one shared cap across resources.
+
 A `Paid` payout recorded in error (for example, a rejected bank transfer) is corrected with `POST .../mark-failed` and a reason body (`{"reason": "..."}`), moving it to `Failed` with the failing actor and time. `Failed` is terminal for that row; recording again for the same booking creates a new row. Marking a non-`Paid` payout returns `409 Caregivers.Payouts.InvalidState`.
 
 ## Amount calculation

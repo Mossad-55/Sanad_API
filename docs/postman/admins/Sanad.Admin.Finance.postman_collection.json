@@ -44,7 +44,8 @@
               "mode": "raw",
               "raw": "{\n  \"platformFeeRatePercentage\": 15.00,\n  \"taxRatePercentage\": 14.00,\n  \"version\": {{financeRuleVersion}},\n  \"effectiveOnUtc\": \"{{effectiveOnUtc}}\"\n}"
             },
-            "url": "{{baseUrl}}/api/v1/admin/finance/platform-charge-rules"
+            "url": "{{baseUrl}}/api/v1/admin/finance/platform-charge-rules",
+            "description": "FinanceOperationalAdmin (SuperAdmin/SupportAdmin). Creates a versioned platform-charge rule and returns 201 with the new rule GUID (not 200). Invalid input 400 Finance.Charges.Invalid; version conflicts 409."
           },
           "description": "Returns 201 with the new rule UUID. Percentages are independent and apply to the payment base; no absent-config default exists. Version must exceed the latest stored Finance version. Manual/destructive configuration request; use only on an owner-authorized disposable target."
         },
@@ -58,7 +59,8 @@
                 "value": "Bearer {{adminToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/v1/admin/finance/platform-charge-rules/current"
+            "url": "{{baseUrl}}/api/v1/admin/finance/platform-charge-rules/current",
+            "description": "FinanceOperationalAdmin. Returns 200 with the active PlatformChargeRuleResponse, or 204 with no body before the first rule exists (never JSON null)."
           },
           "description": "Returns 200 with the effective active rule, or JSON null when no effective rule exists. SuperAdmin and SupportAdmin only."
         },
@@ -72,7 +74,8 @@
                 "value": "Bearer {{adminToken}}"
               }
             ],
-            "url": "{{baseUrl}}/api/v1/admin/finance/platform-charge-rules/history"
+            "url": "{{baseUrl}}/api/v1/admin/finance/platform-charge-rules/history",
+            "description": "FinanceOperationalAdmin. Returns 200 with the bare array of PlatformChargeRuleResponse rows ordered by descending version."
           },
           "description": "Returns 200 with all shared rules ordered by descending version. Historical rules and transaction snapshots are preserved. SuperAdmin and SupportAdmin only."
         }

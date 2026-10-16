@@ -85,6 +85,7 @@ public sealed class CareHomeVisitsController(ISender sender, IFamiliesDbContext 
 
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpGet("visits/mine")]
+    [ProducesResponseType(typeof(IReadOnlyList<CareHomeVisitResponse>), StatusCodes.Status200OK)]
     public Task<IActionResult> OwnerList(CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor)
         ? Send(new ListOwnerCareHomeVisitsQuery(actor, clock.UtcNow), ct) : Task.FromResult<IActionResult>(Unauthorized());
 
@@ -104,11 +105,13 @@ public sealed class CareHomeVisitsController(ISender sender, IFamiliesDbContext 
 
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpGet("facilities/mine/visit-settings")]
+    [ProducesResponseType(typeof(CareHomeVisitSettingsResponse), StatusCodes.Status200OK)]
     public Task<IActionResult> OwnerSettings(CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor)
         ? Send(new GetOwnerCareHomeVisitSettingsQuery(actor), ct) : Task.FromResult<IActionResult>(Unauthorized());
 
     [Authorize(Policy = AuthorizationPolicies.CareHomeOwnerAccess)]
     [HttpPut("facilities/mine/visit-settings")]
+    [ProducesResponseType(typeof(CareHomeVisitSettingsResponse), StatusCodes.Status200OK)]
     public Task<IActionResult> UpdateOwnerSettings(CareHomeVisitSettingsRequest request, CancellationToken ct)
     {
         if (!TryGetAuthenticatedUserId(out UserId actor)) return Task.FromResult<IActionResult>(Unauthorized());

@@ -41,7 +41,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"emailVerificationRequestId\": \"018f0000-0000-7000-8000-000000000002\",\n  \"phoneVerificationRequestId\": \"018f0000-0000-7000-8000-000000000003\"\n}"
+              "body": "{\n  \"userId\": { \"value\": \"018f0000-0000-7000-8000-000000000001\" },\n  \"emailVerificationRequestId\": { \"value\": \"018f0000-0000-7000-8000-000000000002\" },\n  \"phoneVerificationRequestId\": { \"value\": \"018f0000-0000-7000-8000-000000000003\" }\n}"
             },
             {
               "name": "400 Unsupported account type validation",
@@ -131,7 +131,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"emailVerified\": true,\n  \"phoneVerified\": false,\n  \"normalAccessAllowed\": false,\n  \"attemptesRemaining\": 4\n}"
+              "body": "{\n  \"userId\": { \"value\": \"018f0000-0000-7000-8000-000000000001\" },\n  \"emailVerified\": true,\n  \"phoneVerified\": false,\n  \"normalAccessAllowed\": false,\n  \"attemptesRemaining\": 4\n}"
             },
             {
               "name": "200 Both channels verified",
@@ -144,7 +144,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"emailVerified\": true,\n  \"phoneVerified\": true,\n  \"normalAccessAllowed\": true,\n  \"attemptesRemaining\": 5\n}"
+              "body": "{\n  \"userId\": { \"value\": \"018f0000-0000-7000-8000-000000000001\" },\n  \"emailVerified\": true,\n  \"phoneVerified\": true,\n  \"normalAccessAllowed\": true,\n  \"attemptesRemaining\": 5\n}"
             },
             {
               "name": "400 Request not pending",
@@ -268,7 +268,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"verificationRequestId\": \"018f0000-0000-7000-8000-000000000004\",\n  \"expiresOnUtc\": \"2026-08-25T12:05:00Z\"\n}"
+              "body": "{\n  \"verificationRequestId\": { \"value\": \"018f0000-0000-7000-8000-000000000004\" },\n  \"expiresOnUtc\": \"2026-08-25T12:05:00Z\"\n}"
             },
             {
               "name": "400 Request not pending",
@@ -358,7 +358,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"accessType\": 1,\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example\",\n  \"accessTokenExpiresOnUtc\": \"2026-08-25T12:15:00Z\",\n  \"refreshToken\": \"opaque-refresh-token\",\n  \"refreshTokenExpiresOnUtc\": \"2026-09-24T12:00:00Z\",\n  \"deviceSessionId\": \"018f0000-0000-7000-8000-000000000010\",\n  \"emailVerified\": true,\n  \"phoneVerified\": true\n}"
+              "body": "{\n  \"userId\": { \"value\": \"018f0000-0000-7000-8000-000000000001\" },\n  \"accessType\": 1,\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example\",\n  \"accessTokenExpiresOnUtc\": \"2026-08-25T12:15:00Z\",\n  \"refreshToken\": \"opaque-refresh-token\",\n  \"refreshTokenExpiresOnUtc\": \"2026-09-24T12:00:00Z\",\n  \"deviceSessionId\": { \"value\": \"018f0000-0000-7000-8000-000000000010\" },\n  \"emailVerified\": true,\n  \"phoneVerified\": true\n}"
             },
             {
               "name": "200 Restricted verification",
@@ -371,7 +371,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"userId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"accessType\": 2,\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example\",\n  \"accessTokenExpiresOnUtc\": \"2026-08-25T12:15:00Z\",\n  \"refreshToken\": null,\n  \"refreshTokenExpiresOnUtc\": null,\n  \"deviceSessionId\": null,\n  \"emailVerified\": true,\n  \"phoneVerified\": false\n}"
+              "body": "{\n  \"userId\": { \"value\": \"018f0000-0000-7000-8000-000000000001\" },\n  \"accessType\": 2,\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example\",\n  \"accessTokenExpiresOnUtc\": \"2026-08-25T12:15:00Z\",\n  \"refreshToken\": null,\n  \"refreshTokenExpiresOnUtc\": null,\n  \"deviceSessionId\": null,\n  \"emailVerified\": true,\n  \"phoneVerified\": false\n}"
             },
             {
               "name": "401 Invalid credentials",
@@ -479,7 +479,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"deviceSessionId\": \"018f0000-0000-7000-8000-000000000010\",\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example\",\n  \"accessTokenExpiresOnUtc\": \"2026-08-25T12:15:00Z\",\n  \"refreshToken\": \"new-opaque-refresh-token\",\n  \"refreshTokenExpiresOnUtc\": \"2026-09-24T12:00:00Z\"\n}"
+              "body": "{\n  \"deviceSessionId\": { \"value\": \"018f0000-0000-7000-8000-000000000010\" },\n  \"accessToken\": \"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.example\",\n  \"accessTokenExpiresOnUtc\": \"2026-08-25T12:15:00Z\",\n  \"refreshToken\": \"new-opaque-refresh-token\",\n  \"refreshTokenExpiresOnUtc\": \"2026-09-24T12:00:00Z\"\n}"
             },
             {
               "name": "401 Session not found",

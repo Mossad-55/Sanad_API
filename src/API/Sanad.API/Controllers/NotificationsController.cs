@@ -20,6 +20,7 @@ public sealed class NotificationsController(ISender sender) : ApiControllerBase
     }
 
     [HttpGet("unread-count")]
+    [ProducesResponseType(typeof(int), StatusCodes.Status200OK)]
     public async Task<IActionResult> UnreadCount(CancellationToken cancellationToken)
     {
         if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();

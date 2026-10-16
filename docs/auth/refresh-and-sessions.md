@@ -25,6 +25,10 @@ Current-session logout also needs:
 X-Device-Session-Id: <deviceSessionId>
 ```
 
+Use the inner GUID from the login/refresh `deviceSessionId` wrapper (for
+example `018f0000-0000-0000-0000-000000000010`), not the JSON object. Refresh
+request bodies use the same plain GUID.
+
 ## Refresh flow
 
 ```mermaid
@@ -50,6 +54,13 @@ sequenceDiagram
 
 Anonymous. Success `200`. Send the session id and the current refresh token. Do not send the access token.
 
+```json
+{
+  "deviceSessionId": "018f0000-0000-0000-0000-000000000010",
+  "refreshToken": "opaque-refresh-token"
+}
+```
+
 ```bash
 curl -sS https://localhost:7296/api/v1/auth/refresh \
   -H "Content-Type: application/json" \
@@ -61,13 +72,17 @@ curl -sS https://localhost:7296/api/v1/auth/refresh \
 
 ```json
 {
-  "deviceSessionId": "018f0000-0000-0000-0000-000000000010",
+  "deviceSessionId": { "value": "018f0000-0000-0000-0000-000000000010" },
   "accessToken": "eyJ...",
   "accessTokenExpiresOnUtc": "2026-08-25T12:15:00Z",
   "refreshToken": "new-opaque-refresh-token",
   "refreshTokenExpiresOnUtc": "2026-09-24T12:00:00Z"
 }
 ```
+
+Response IDs are `{ "value": guid }` wrappers. Extract the inner
+`deviceSessionId.value` GUID for the `X-Device-Session-Id` header and for the
+next refresh request body, both of which take the plain GUID.
 
 Rules:
 

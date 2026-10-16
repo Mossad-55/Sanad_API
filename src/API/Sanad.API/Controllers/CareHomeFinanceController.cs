@@ -13,12 +13,14 @@ namespace Sanad.API.Controllers;
 public sealed class CareHomeFinanceController(ISender sender, IDateTimeProvider clock) : ApiControllerBase
 {
     [HttpGet("dashboard/mine")]
+    [ProducesResponseType(typeof(CareHomeDashboard), StatusCodes.Status200OK)]
     public async Task<IActionResult> Dashboard([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct) =>
         TryGetAuthenticatedUserId(out UserId actor)
             ? ToActionResult(await sender.Send(new GetOwnerCareHomeDashboardQuery(actor, from, to, clock.UtcNow), ct))
             : Unauthorized();
 
     [HttpGet("revenue/mine")]
+    [ProducesResponseType(typeof(CareHomeRevenueReport), StatusCodes.Status200OK)]
     public async Task<IActionResult> Revenue([FromQuery] DateOnly? from, [FromQuery] DateOnly? to, CancellationToken ct) =>
         TryGetAuthenticatedUserId(out UserId actor)
             ? ToActionResult(await sender.Send(new GetOwnerCareHomeRevenueQuery(actor, from, to), ct))

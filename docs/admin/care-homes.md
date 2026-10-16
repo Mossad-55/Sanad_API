@@ -40,7 +40,9 @@ Verification requires an expiry date or explicit `confirmNonExpiring: true`; a g
 { "expectedVersion": 7, "reason": "Unreadable registration" }
 ```
 
-Rejection requires a reason and returns the updated detail. Both document actions return `409 CareHomes.Admin.Conflict` when `expectedVersion` is stale, `400 CareHomes.Admin.InvalidOperation` for an invalid state, and `400 CareHomes.Admin.DocumentNotFound` for a missing document. Authentication/authorization failures are `401/403`.
+Rejection requires a reason and returns the updated detail. Review and document
+rejection reasons accept at most 1000 characters each (existing domain rule,
+unchanged). Both document actions return `409 CareHomes.Admin.Conflict` when `expectedVersion` is stale, `400 CareHomes.Admin.InvalidOperation` for an invalid state, and `400 CareHomes.Admin.DocumentNotFound` for a missing document. Authentication/authorization failures are `401/403`.
 
 ## Review the application
 

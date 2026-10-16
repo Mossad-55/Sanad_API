@@ -500,7 +500,8 @@
               "mode": "raw",
               "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"arabicName\": \"غرفة مشتركة\",\n  \"englishName\": \"Shared room\",\n  \"monthlyPriceEgp\": 10000,\n  \"allocationMode\": 1,\n  \"arabicDescription\": \"\",\n  \"englishDescription\": \"Shared accommodation\"\n}"
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types",
+            "description": "CareHomeOwnerAccess. Creates a room type and returns 200 with the full CareHomeInventoryDto (facilityId, version, roomTypes/rooms/beds/maintenance)."
           },
           "description": "Owner only. AllocationMode: Shared=1, Private=2, Suite=3. Success returns the full inventory and increments version."
         },
@@ -518,7 +519,8 @@
               "mode": "raw",
               "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"arabicName\": \"غرفة مشتركة محدثة\",\n  \"englishName\": \"Shared room updated\",\n  \"monthlyPriceEgp\": 11000,\n  \"allocationMode\": 1,\n  \"arabicDescription\": null,\n  \"englishDescription\": null,\n  \"amenities\": [\n    { \"arabic\": \"تكييف\", \"english\": \"Air conditioning\" },\n    { \"arabic\": \"حمام خاص\", \"english\": \"Private bathroom\" }\n  ]\n}"
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}",
+            "description": "CareHomeOwnerAccess. Updates a room type (amenities replace the whole set) and returns 200 with the full CareHomeInventoryDto."
           },
           "description": "Owner only; expectedVersion is required. amenities replaces the whole bilingual set (max 50 items, each Arabic and English required)."
         },
@@ -527,7 +529,8 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false",
+            "description": "CareHomeOwnerAccess. Archives or restores a room type (expectedVersion + restore) and returns 200 with the full CareHomeInventoryDto."
           },
           "description": "Archives while retaining the stable ID; set restore=true to restore."
         },
@@ -556,7 +559,8 @@
                 }
               ]
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/media"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/media",
+            "description": "CareHomeOwnerAccess. Multipart form (expectedVersion, kind 1=cover/2=gallery, file; JPG/PNG up to 5 MB). Success returns 201 with the CareHomeRoomTypeMediaDto entry."
           },
           "description": "Owner only; multipart upload. kind: 1=cover (one per room type), 2=gallery (up to 10). JPG/PNG, max 5 MB. Success returns 201 with the media entry; a room type becomes bookable only with a cover plus at least one gallery photo."
         },
@@ -565,7 +569,8 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/media/{{roomTypeMediaId}}?expectedVersion={{careHomeFacilityVersion}}"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/room-types/{{inventoryRoomTypeId}}/media/{{roomTypeMediaId}}?expectedVersion={{careHomeFacilityVersion}}",
+            "description": "CareHomeOwnerAccess. Removes one room-type photo (expectedVersion query) and returns 204 with no body."
           },
           "description": "Owner only. Removes the photo and re-orders remaining gallery positions; returns 204. Removing the last photos un-publishes the room type and holds are rejected with 400 CareHomes.Inventory.RoomMediaRequired until cover plus gallery exist again."
         },
@@ -583,7 +588,8 @@
               "mode": "raw",
               "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomTypeId\": \"{{inventoryRoomTypeId}}\",\n  \"roomNumber\": \"101\"\n}"
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms",
+            "description": "CareHomeOwnerAccess. Creates a room and returns 200 with the full CareHomeInventoryDto."
           },
           "description": "Room numbers are unique within the facility."
         },
@@ -601,7 +607,8 @@
               "mode": "raw",
               "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomNumber\": \"102\",\n  \"arabicDisplayName\": \"غرفة مميزة\",\n  \"englishDisplayName\": \"Premium room\"\n}"
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}",
+            "description": "CareHomeOwnerAccess. Renames a room (optional display-name overrides) and returns 200 with the full CareHomeInventoryDto."
           },
           "description": "Owner only; one call renames the room (room number changes are rejected while an active hold or stay exists), sets or clears the bilingual display-name override (send blank strings for both to fall back to the room type name), and changes the type (roomTypeId omitted/empty keeps the current type; a non-archived type of the same facility is required). Room numbers remain facility-unique."
         },
@@ -610,7 +617,8 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false",
+            "description": "CareHomeOwnerAccess. Archives or restores a room and returns 200 with the full CareHomeInventoryDto."
           },
           "description": "Archives while retaining the stable ID; set restore=true to restore."
         },
@@ -639,7 +647,8 @@
                 }
               ]
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/media"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/media",
+            "description": "CareHomeOwnerAccess. Multipart form (expectedVersion, kind 1=cover/2=gallery, file; JPG/PNG up to 5 MB). Success returns 201 with the CareHomeRoomMediaDto entry."
           },
           "description": "Owner only; multipart upload. kind: 1=cover (one per room), 2=gallery (up to 10). JPG/PNG, max 5 MB; bytes must match the declared content type. Success returns 201 with the media entry. Room photos never affect the room type bookability gate."
         },
@@ -648,7 +657,8 @@
           "request": {
             "method": "DELETE",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/media/{{roomMediaId}}?expectedVersion={{careHomeFacilityVersion}}"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/rooms/{{inventoryRoomId}}/media/{{roomMediaId}}?expectedVersion={{careHomeFacilityVersion}}",
+            "description": "CareHomeOwnerAccess. Removes one room photo (expectedVersion query) and returns 204 with no body."
           },
           "description": "Owner only. Removes the photo and re-orders remaining gallery positions; returns 204, 404 CareHomes.Inventory.MediaNotFound for an unknown photo."
         },
@@ -666,7 +676,8 @@
               "mode": "raw",
               "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomId\": \"{{inventoryRoomId}}\",\n  \"label\": \"A\"\n}"
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/beds"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/beds",
+            "description": "CareHomeOwnerAccess. Creates a bed and returns 200 with the full CareHomeInventoryDto."
           }
         },
         {
@@ -683,7 +694,8 @@
               "mode": "raw",
               "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"roomId\": \"{{inventoryRoomId}}\",\n  \"label\": \"B\"\n}"
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/beds/{{inventoryBedId}}"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/beds/{{inventoryBedId}}",
+            "description": "CareHomeOwnerAccess. Renames a bed and returns 200 with the full CareHomeInventoryDto."
           }
         },
         {
@@ -691,7 +703,8 @@
           "request": {
             "method": "POST",
             "header": [],
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/beds/{{inventoryBedId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/beds/{{inventoryBedId}}/archive?expectedVersion={{careHomeFacilityVersion}}&restore=false",
+            "description": "CareHomeOwnerAccess. Archives or restores a bed and returns 200 with the full CareHomeInventoryDto."
           },
           "description": "Archives while retaining the stable ID; set restore=true to restore."
         },
@@ -709,7 +722,8 @@
               "mode": "raw",
               "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"target\": 2,\n  \"targetId\": \"{{inventoryBedId}}\",\n  \"startDate\": \"2027-01-10\",\n  \"endDate\": \"2027-01-12\",\n  \"reason\": \"Planned repair\"\n}"
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/maintenance"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/maintenance",
+            "description": "CareHomeOwnerAccess. Creates a maintenance block (target, dates, reason) and returns 200 with the full CareHomeInventoryDto."
           },
           "description": "Egypt-local half-open dates; target Room=1 or Bed=2. Overlaps with active holds/stays or conflicting blocks are rejected."
         },
@@ -727,7 +741,8 @@
               "mode": "raw",
               "raw": "{\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-01-20\"\n}"
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/availability"
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/mine/availability",
+            "description": "CareHomeOwnerAccess. POST with startDate/endDate; returns 200 with an array of CareHomeAvailability rows by room type."
           },
           "description": "Derived by room type. The current occupancy provider is empty until later booking work supplies holds and stays."
         },

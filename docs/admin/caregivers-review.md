@@ -121,7 +121,7 @@ Reject/revoke body: `{ "reason": "…" }`. Same 404/409 error codes as above (`C
 GET /api/v1/admin/caregivers/{caregiverId}/certificates/{certificateId}/file
 ```
 
-Streams the stored scan from private storage (PDF/JPEG/PNG/WebP) as a file download, `CaregiversAdmin` required. The response `Content-Type` matches the stored file; the download filename is `certificate-{certificateId}.<ext>`.
+Streams the stored scan from private storage (PDF/JPEG/PNG/WebP) as a file download, `CaregiverReviewAdmin` required (SuperAdmin or SupportAdmin; ContentAdmin receives `403`). The response `Content-Type` matches the stored file; the download filename is `certificate-{certificateId}.<ext>`.
 
 - `404 Caregivers.Onboarding.NotFound` when the caregiver id is unknown; `Caregivers.Onboarding.CertificateNotFound` when the caregiver exists but the certificate id is unknown.
 - `404 Storage.File.NotFound` — the stored file is missing.

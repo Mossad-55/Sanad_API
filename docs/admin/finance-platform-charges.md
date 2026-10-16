@@ -36,7 +36,7 @@ with the new rule UUID. Invalid input returns `400 Finance.Charges.Invalid`;
 duplicate/out-of-order versions return a conflict; concurrent version/active
 changes return `409 Finance.Charges.Conflict`.
 
-The current route returns the active effective rule, or JSON `null` when no
+The current route returns the active effective rule, or `204` with no body when no
 effective rule exists. History returns all stored rules ordered by descending
 version. Rule responses contain `id`, `platformFeeRatePercentage`,
 `taxRatePercentage`, `version`, `effectiveOnUtc`, `createdOnUtc`, and

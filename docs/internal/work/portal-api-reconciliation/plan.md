@@ -1,5 +1,141 @@
 # Admin and Care Homes portal API reconciliation
 
+## Frontend follow-up sequence — 2026-10-16
+
+Current active work: **FUR-01 — owner-approved, implementation In progress**.
+Execution assignment: worker R1–R5 corrections accepted by Mastermind locally;
+strict build zero warnings/errors, full guarded unit 3421/0/8, architecture 1/1.
+Release pending; phase is not Done until deployment verified. See
+[review findings](reports/fur-01-mastermind-review.md) and
+[same-worker correction brief](worker-prompts/fur-01-review-corrections.md).
+Seven controller diffs are metadata-only; auth-guide/example and audience
+handoff defects resolved. Earlier initial findings/interruption are historical.
+Owner approved the **19-phase full-report roadmap** on 2026-10-16 after its
+phase-by-phase explanation: FUR-00 through FUR-10 (11 phases) plus E01–E08
+(8 phases). FUR-00 is Done; 18 remain. Approval establishes the roadmap and
+sequential workflow, not every detailed API/policy contract. FUR-01's exact
+contract was separately approved on 2026-10-16; execution has started within its
+bounded scope. Historical PORTAL phases below
+retain their accepted evidence; FUR IDs
+are follow-up work, not a reset or renaming of PORTAL-01 through PORTAL-07.
+
+The [new intake audit](frontend-report-audit-2026-10-16.md) covers all 46 supplied
+items. [Frontend handoffs](../../../frontend-handoffs/README.md) separates Admin
+and App audiences, phase names and dates. It contains owner-forwardable reports,
+not a duplicate task tracker. The frontend repositories were not inspected;
+contract assumption mismatches are not claimed as proven client code defects.
+
+| Follow-up | Status | Objective and gate |
+| --- | --- | --- |
+| FUR-00 — Alignment | Done | Report index/template and dated Admin/owner reports prepared; 17 relative file links resolve, all 46 intake IDs referenced across the two reports. Presented for owner review/forwarding, not sent. No external sending implied. |
+| FUR-01 — Contract truth (audit S01) | In progress | [Mastermind review](reports/fur-01-mastermind-review.md) accepts corrected delivery: strict build clean, full unit 3421/0/8, architecture 1/1. [Phase release](reports/fur-01-deployment.md) pending; no final Done yet. |
+| FUR-02 — Verification continuity (S02) | Not started | Lock resend failure/retry and restricted-identity recovery contract. No production OTP bypass or provider send implied. |
+| FUR-03 — Finance verification (S03) | Not started | Prove exact current Npgsql queries/fixture behavior; change code only for remaining reproduced defects. |
+| FUR-04 — Care Home readback (S04) | Not started | Lock owner current-profile/revision fields, media, resident/owner/dispute/actor display semantics and query-risk coverage. |
+| FUR-05 — Owner settlements (S05) | Not started | Lock own-facility read contract reusing existing payout/refund/commission/debt rules. |
+| FUR-06 — Eligible caregiver payouts (S06) | Not started | Lock selector contract and reuse full command eligibility. |
+| FUR-07 — Community moderation (S07) | Not started | Lock list/detail/reasons/counters and explicitly selected report/block policy; no implicit global suspension grant. |
+| FUR-08 — Owner disputes (S08) | Not started | Lock own-facility read/filter/display contract without admin resolution powers. |
+| FUR-09 — Caregiver integrity disposition (S09) | Not started | Review dependencies/recovery evidence before any separately approved exact repair/quarantine. Never hide or delete profiles implicitly. |
+| FUR-10 — Integration and release handoff | Not started | Final cross-phase integration/closure, audience handoffs and config/migration accounting. Each earlier complete phase already receives Mastermind release verification under the standing workflow; this final gate does not defer those releases. New target/destructive/material decisions still need exact authority. |
+
+Recommended core order: FUR-00 → contract lock → FUR-01 → FUR-02 → FUR-03 →
+FUR-04 → FUR-05 → FUR-06 → FUR-07 → FUR-08 → FUR-10. Consider the FUR-09
+diagnostic early, but any repair is separate authority. No endpoint feature slice
+above is approved merely by inclusion here. Decide the release boundary before
+issuing its executable brief; do not wait for every frontend reply to proceed
+with independently confirmed, approved work.
+
+### Approved full-report feature roadmap
+
+These eight phase headings are now included in the owner-approved roadmap;
+their exact behaviors, permissions and implementation contracts are **not yet
+approved**. Their earlier classification as unapproved expansion candidates in
+the dated audit remains historical. Resolve only the active phase's decisions.
+
+| Phase | Status | Purpose and contract boundary |
+| --- | --- | --- |
+| E01 — User statistics and growth | Not started | Agree permitted aggregate counts, entities, date/time buckets and ranges; do not broaden PII access. |
+| E02 — Owner legal support | Not started | Agree owner legal audience/content publication and resolve owner ID/deletion questions; do not automatically add personal-ID/deletion workflows. |
+| E03 — Medical-access audit | Not started | Define caregiver permission-decision capture, privacy, retention and restricted audit reads. |
+| E04 — Platform controls | Not started | Define maintenance/platform-state enforcement, exceptions, public status and supported payment-mode semantics. |
+| E05 — Family-home CMS | Not started | Define banners, quick links, featured services and mobile publication. |
+| E06 — Missed check-ins | Not started | Define expected population, window/timezone/grace and derived feed. |
+| E07 — Caregiver review notes | Not started | Define internal note author, access, history and correction policy. |
+| E08 — Landing-media lifecycle | Not started | Protect live/historical references while managing unused media safely. |
+
+Accepted roadmap defaults: gateway secrets stay server-managed, application
+configuration registry screens are deferred, Supplier remains postponed. New
+requirements for those systems require separate phase/scope approval. Closing
+the report includes correct-usage answers and explicit deferrals, not automatic
+implementation of every suggestion.
+
+Recommended sequence for the full roadmap: FUR-01 through FUR-08 in order;
+review FUR-09 diagnostic early and settle its approved disposition before final
+closeout; E01–E08 individually contracted and sequenced afterward; **FUR-10 last**
+for the selected release. Smaller releases can be agreed explicitly without
+claiming unshipped phases Done. No parallel worker execution is implied.
+
+### Per-slice operating contract
+
+1. Mastermind agrees owner scope, exact observable behavior/DTOs/errors/permissions and exclusions.
+2. Pin current main SHA/local delta, owned files and tests in one worker brief.
+3. Inspect disposable fixture/config readiness; reuse or seed minimal data, read
+   it back, and verify prerequisites before business API testing. Production is
+   not disposable; authenticated GETs can write audits. Fake providers by default.
+4. Worker implements/tests the entire approved phase and synchronizes its feature
+   guides/Postman, not only one subtask; distinguish InMemory logic from actual
+   PostgreSQL translation/execution. Keep guides/OpenAPI/Postman aligned. No Bruno.
+5. Mastermind performs bounded review; resolve concrete findings and record actual
+   commands/counts/skips/warnings/limitations. No broad duplicate re-audit.
+6. Add a dated audience report linking original issue → contract → source/test
+   evidence → deployment truth. Do not label planned/local work deployed.
+7. Worker saves a report and returns it through the owner; Mastermind reviews
+   source/evidence and issues bounded corrections back to the worker if needed.
+   Worker leaves the phase In progress awaiting review, never commits/pushes or
+   deploys. Mastermind does not take over feature implementation silently.
+8. Owner workflow confirmed 2026-10-16: after a **complete phase** is accepted
+   with no outstanding in-scope correction or failing required gate, Mastermind
+   commits/pushes that phase, publishes/deploys its applicable release and verifies
+   it **before advancing**. No deploy per task or partial phase. Mark Done only
+   after acceptance plus deployment verification (or explicitly not-applicable
+   deployment evidence for a pure research/docs-only phase). Do not restart an
+   unchanged API merely to claim deployment of documentation.
+9. The above is the standing complete-phase release workflow, not authority for
+   workers to release, for unapproved later feature contracts, broad data repair,
+   secrets/CORS changes or resets. Exact target/revision/config/migration/backup
+   preflight and receipt remain required; stop for owner direction on a new
+   target, destructive operation or material scope/config decision. No routine
+   branch/worktree under standing guidance. Never stage unrelated private files.
+
+FUR-00 acceptance: folder/index/template exist; Admin and Care Home Owner reports
+separate correct usage, assumption corrections, backend work and owner decisions;
+all 46 intake IDs are accounted for across their union; relative links resolve;
+no secrets/code/provider/database changes. Worker roles skipped for this bounded
+documentation setup: direct Mastermind execution is sufficient.
+
+FUR-00 evidence (2026-10-16): four audience-framework/report Markdown files;
+relative-file-link check 17/17, intake-reference coverage 46/46, whitespace check
+and `git diff --check` clean after line-ending normalization. These are document
+checks, not runtime tests or independent re-execution of earlier live evidence.
+No build/API/provider/database operation needed or run. Existing root intake and
+full audit preserved; navigation/history pointers updated without deleting files.
+
+Owner audience correction (2026-10-16): Admin contains `admin-portal` and
+`care-home-owner`; App contains Family/Caregiver/Elderly only. The two new
+alignment reports were relocated accordingly with their contents/evidence
+preserved and links updated. This corrects the initial FUR-00 grouping, not the
+API roles or underlying feature contract. An App README records the boundary.
+
+Next action: Mastermind commits/pushes the accepted complete phase, publishes/
+deploys to the verified existing target and records verification. Do not start
+FUR-02 or mark Done before the deployment receipt is complete.
+Reports are prepared for review/forwarding, not sent; frontend
+acknowledgement/completion must not be invented. The original audit remains a
+dated evidence snapshot, not a competing execution checklist.
+
+## Historical PORTAL delivery and geography evidence
+
 Status: PORTAL-01 through 05 and PORTAL-07 accepted locally (2026-10-15).
 PORTAL-06: **Done for owner-accepted V1 scope**. Approved preserve-and-add import
 executed: 6081 inserts, final 27/349/5714 including legacy extras; old nine lookup

@@ -11,6 +11,7 @@ namespace Sanad.API.Controllers;
 public sealed class AdminFinanceController(ISender sender) : ApiControllerBase
 {
     [HttpPost("platform-charge-rules")]
+    [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     public async Task<IActionResult> Create(CreatePlatformChargeRuleRequest request, CancellationToken ct)
     {
         var result = await sender.Send(new CreatePlatformChargeRuleCommand(request.PlatformFeeRatePercentage, request.TaxRatePercentage, request.Version, request.EffectiveOnUtc), ct);

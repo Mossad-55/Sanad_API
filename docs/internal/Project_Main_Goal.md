@@ -2,6 +2,19 @@
 
 ## Current slice — Admin and Care Homes portal API reconciliation
 
+2026-10-16 follow-up: owner authorized a phased report/plan setup for the new
+46-item frontend intake. The [FUR sequence](work/portal-api-reconciliation/plan.md#frontend-follow-up-sequence--2026-10-16)
+is the task source of truth; [dated Admin/App handoffs](../frontend-handoffs/README.md)
+are audience-facing evidence/actions. FUR-00 documentation is Done; subsequent
+backend contracts are not approved by this structure. Owner then approved the
+19-phase full-report roadmap (FUR-00–10 plus E01–08); the exact FUR-01 contract
+is the next lock, with implementation Not started. See the current Mastermind
+handoff for exactly one next action. Earlier PORTAL completion remains valid.
+Owner's standing phase workflow: workers implement and return complete reports;
+Mastermind plans/reviews/integrates. After full-phase acceptance and any worker
+corrections, Mastermind commits/pushes and deploys/verifies before advancing.
+No per-task deploy or silent Mastermind takeover of feature implementation.
+
 Current update: owner-approved V1 geography preserve-and-add provisioning is
 Done. Final 27 governorates / 349 Cities / 5714 Areas (legacy extras retained),
 all nine original lookup records and five selections unchanged, zero orphans.

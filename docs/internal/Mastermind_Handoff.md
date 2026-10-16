@@ -2,6 +2,57 @@
 
 ## Active slice — Admin and Care Homes portal report reconciliation
 
+### Current follow-up — 2026-10-16
+
+Owner requested a step-by-step plan and dated frontend reports separated by
+Admin/App audience, phase and issue. FUR-00 documentation setup is Done;
+the [canonical follow-up sequence](work/portal-api-reconciliation/plan.md#frontend-follow-up-sequence--2026-10-16)
+owns status. [Audience index](../frontend-handoffs/README.md) links the Admin and
+Care Home Owner alignment reports; the [full audit](work/portal-api-reconciliation/frontend-report-audit-2026-10-16.md)
+remains detailed evidence. No frontend repo inspection or external sending is
+claimed. No API/data/provider/config changes or commit/push are authorized by
+this setup. Future features and role decisions need their own locked contracts.
+Validation: 17/17 report file links, 46/46 intake references; documentation-only
+checks, no new runtime tests. Reports are ready for owner review/forwarding.
+Audience correction: Admin = Admin portal + Care Home Owner portal; App =
+Family/Caregiver/Elderly only. Reports relocated without changing findings.
+FUR-01's [approved contract](work/portal-api-reconciliation/contracts/fur-01-contract-accuracy.md)
+now bounds 29 existing-operation metadata corrections, docs/examples and tests;
+no runtime behavior, endpoint, configuration or database change. Execution In progress.
+Owner subsequently approved the **19-phase roadmap** (FUR-00–10 plus E01–08),
+with FUR-00 Done / 18 remaining. This is roadmap approval, not blanket approval
+of detailed feature/policy contracts or release operations. FUR-01
+[execution brief](work/portal-api-reconciliation/worker-prompts/fur-01-contract-accuracy.md)
+is now executable after separate owner approval of the exact FUR-01 contract.
+Latest owner workflow (2026-10-16) supersedes earlier release-approval wording for
+this roadmap: Mastermind plans/contracts/instructs/reviews/integrates/reports;
+owner's workers implement code/tests and feature docs/Postman. Internal worker
+interrupted before production/test edits; do not silently resume or replace it.
+Worker completes a **whole phase**, saves report and stops; owner returns report
+here. Mastermind reviews; worker corrects findings. Once accepted, Mastermind
+commits/pushes the scoped phase, publishes/deploys and verifies before advancing.
+No per-task/partial-phase deploy. Done requires accepted evidence plus verified
+deployment (or explicit N/A for pure docs/research with no API release delta).
+No current release is being performed. Target/config/backup/migration preflight,
+privacy and no-reset boundaries remain; new material decisions need owner input.
+Worker FUR-01 delivery received at unchanged HEAD `4b65369`; reported build clean,
+172 focused / architecture 1/1 (worker evidence, not independently rerun).
+Mastermind review: production changes are metadata-only, actual route sets
+556 unique each / zero missing-orphan. Changes requested: stale login/refresh
+wrapper examples and activation prose, tests not reading actual examples,
+11 broken audience links and wrong backend/frontend attribution/status wording.
+See [review](work/portal-api-reconciliation/reports/fur-01-mastermind-review.md).
+Subsequent corrected delivery re-reviewed and accepted: R1–R5 resolved; Mastermind
+strict build zero warnings/errors, guarded full unit 3421/0/8, architecture 1/1,
+32/32 audience links and actual full route sets 556 each / zero missing-orphaned.
+Earlier restricted test-runner timeouts discarded; valid guarded reruns passed.
+Release pending, final Done not claimed; no direct Mastermind feature edits.
+Next action: commit/push accepted FUR-01, publish/deploy verified existing target,
+complete [receipt](work/portal-api-reconciliation/reports/fur-01-deployment.md).
+FUR-02 not started.
+Historical checkpoints below
+must not override this follow-up or the latest deployment/import receipts.
+
 Owner workflow override after `f932c46`: report findings, agree/apply cleanup,
 validate and present the final result BEFORE committing or pushing. No further
 commit/push without explicit owner approval; no publish/deploy/import approval.

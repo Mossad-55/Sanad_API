@@ -18,6 +18,7 @@ public sealed record CareHomeBookingCancellationRequest(string Reason);
 public sealed class CareHomeBookingRequestsController(ISender sender, IDateTimeProvider clock) : ApiControllerBase
 {
     [HttpGet]
+    [ProducesResponseType(typeof(IReadOnlyList<CareHomeBookingListItem>), StatusCodes.Status200OK)]
     public async Task<IActionResult> List(CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new ListOwnerCareHomeBookingsQuery(actor, clock.UtcNow), ct)) : Unauthorized();
 
     [HttpPost("{bookingId:guid}/decision")]

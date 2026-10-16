@@ -76,7 +76,9 @@ nullable UTC `readOnUtc`, and the typed destination pair
 
 Returns a JSON integer containing the unread count among the caller's
 notifications that are still within the one-year read-time availability
-window.
+window. The response is a bare integer (`200` with e.g. `3`, or `0` when
+nothing is unread), not an envelope object such as `{ "count": 3 }`; do not
+introduce a wrapper in client types.
 
 ## Mark one read
 

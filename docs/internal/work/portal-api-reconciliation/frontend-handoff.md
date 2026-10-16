@@ -1,5 +1,11 @@
 # Portal frontend handoff — Admin and Care Homes API reconciliation
 
+Historical PORTAL-07 snapshot. Its revision/deployment statements describe that
+checkpoint, not the current release. For new dated audience reports start at the
+[Admin/App handoff index](../../../frontend-handoffs/README.md); current follow-up
+status is in [the plan](plan.md#frontend-follow-up-sequence--2026-10-16). Existing
+implementation details below remain historical evidence, not a new feature brief.
+
 Source: integrated `main` at PORTAL-07 delivery (plan:
 `docs/internal/work/portal-api-reconciliation/plan.md`; evidence:
 `reports/phase-01-reactivation.md` through `reports/phase-07-integration.md`).
