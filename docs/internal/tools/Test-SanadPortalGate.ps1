@@ -26,7 +26,11 @@ foreach ($argument in @('test', $project, '--no-build', '--no-restore', '--nolog
 
 $integrationKeys = @(
     'ConnectionStrings__IdentityIntegrationDatabase',
-    'ConnectionStrings__FamiliesIntegrationDatabase'
+    'ConnectionStrings__FamiliesIntegrationDatabase',
+    # FUR-02 disposable-PostgreSQL opt-in key. It does not match the
+    # *IntegrationDatabase pattern above, so it is listed explicitly to keep
+    # it out of the guarded test child environment (fail-closed below).
+    'ConnectionStrings__Fur02VerificationDatabase'
 )
 foreach ($key in @($gateStart.Environment.Keys)) {
     if ($key -match '(?i)^ConnectionStrings__.*IntegrationDatabase$') {

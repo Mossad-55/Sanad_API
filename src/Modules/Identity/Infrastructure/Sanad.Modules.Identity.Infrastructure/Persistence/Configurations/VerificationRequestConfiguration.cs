@@ -97,6 +97,12 @@ public sealed class VerificationRequestConfiguration :
                 request.InvalidatedOnUtc)
             .HasColumnName("invalidated_on_utc");
 
+        builder.Property(request =>
+                request.Version)
+            .HasColumnName("version")
+            .IsConcurrencyToken()
+            .IsRequired();
+
         builder.HasIndex(
             request => new
             {

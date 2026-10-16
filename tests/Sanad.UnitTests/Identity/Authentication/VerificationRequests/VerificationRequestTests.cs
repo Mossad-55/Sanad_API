@@ -879,6 +879,138 @@ public sealed class VerificationRequestTests
             request.MaxAttempts);
     }
 
+    [Fact]
+    public void Create_ShouldInitializeConcurrencyVersion()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        Assert.Equal(1, request.Version);
+    }
+
+    [Fact]
+    public void Verify_ShouldBumpConcurrencyVersion()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        request.Verify(createdOnUtc);
+
+        Assert.Equal(2, request.Version);
+    }
+
+    [Fact]
+    public void RegisterFailedAttempt_ShouldBumpConcurrencyVersionOnce_WhenMaxAttemptsReached()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        for (int attempt = 0;
+             attempt < VerificationRequest.MaximumAttemptsAllowed;
+             attempt++)
+        {
+            request.RegisterFailedAttempt(
+                createdOnUtc);
+        }
+
+        Assert.Equal(
+            VerificationStatus.Invalidated,
+            request.Status);
+
+        Assert.Equal(
+            1 + VerificationRequest.MaximumAttemptsAllowed,
+            request.Version);
+    }
+
+    [Fact]
+    public void InvalidateForResend_ShouldInvalidatePendingRequest()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        request.InvalidateForResend(
+            createdOnUtc.AddMinutes(1));
+
+        Assert.Equal(
+            VerificationStatus.Invalidated,
+            request.Status);
+
+        Assert.Equal(2, request.Version);
+    }
+
+    [Fact]
+    public void InvalidateForResend_ShouldInvalidateExpiredRequest()
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        request.MarkExpired(
+            createdOnUtc.AddMinutes(6));
+
+        request.InvalidateForResend(
+            createdOnUtc.AddMinutes(7));
+
+        Assert.Equal(
+            VerificationStatus.Invalidated,
+            request.Status);
+
+        Assert.Equal(3, request.Version);
+    }
+
+    [Theory]
+    [InlineData(VerificationStatus.Verified)]
+    [InlineData(VerificationStatus.Invalidated)]
+    public void InvalidateForResend_ShouldRejectTerminalRequest(
+        VerificationStatus terminalStatus)
+    {
+        DateTime createdOnUtc =
+            CreateUtcDateTime();
+
+        VerificationRequest request =
+            CreateRequest(
+                createdOnUtc,
+                createdOnUtc.AddMinutes(5));
+
+        if (terminalStatus ==
+            VerificationStatus.Verified)
+        {
+            request.Verify(createdOnUtc);
+        }
+        else
+        {
+            request.Invalidate(createdOnUtc);
+        }
+
+        Assert.Throws<DomainException>(
+            () => request.InvalidateForResend(
+                createdOnUtc.AddMinutes(1)));
+    }
+
     private static VerificationRequest CreateRequest(
         DateTime createdOnUtc,
         DateTime expiresOnUtc)

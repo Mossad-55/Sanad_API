@@ -1,0 +1,12 @@
+# FUR-02 — final bounded verification-safety corrections
+
+Copy the message below to the same FUR-02 worker. No new phase or release authority is implied.
+
+---
+
+Continue the existing uncommitted FUR-02 delta on `main` at baseline `ba88f3c63120110dbf5e84744aaa46abbed01ad9`. Preserve owner/unrelated files. Read repository instructions, the approved FUR-02 contract, your updated delivery report and `docs/internal/work/portal-api-reconciliation/reports/fur-02-mastermind-review.md`. Mastermind verified R1–R3 in source; please make only these remaining corrections:
+
+1. In `docs/internal/tools/Test-SanadPortalGate.ps1`, remove `ConnectionStrings__Fur02VerificationDatabase` from the **actual dotnet test child environment**, and include it in the fail-closed absence assertion. The current guard clears legacy `*IntegrationDatabase` keys but misses this new opt-in key; inherited values must never cause a guarded full suite to run the four stateful FUR-02 PostgreSQL tests. Do not modify the explicit disposable PostgreSQL opt-in proof test or target validation. Prove the guard behavior by launching the script with a harmless inherited sentinel value for this key and showing the expected four FUR-02 skips; do not print real connection strings, contact PostgreSQL, or make database writes.
+2. The current `Handle_ShouldPropagateCancellationAndPreserveState_WhenRequestTokenIsCanceled` test cancels before the handler's first EF query. Add/adjust a fake-sender test so the sender is definitely entered, the passed request token is cancelled **during send**, and the sender throws `OperationCanceledException`. Assert the exception propagates, the old request remains unchanged, no replacement persists, and zero saves occur. Keep the provider-side `TaskCanceledException` test with a live request token expecting 502. This pins both branches at the provider boundary.
+
+Owned correction files: `docs/internal/tools/Test-SanadPortalGate.ps1`, `tests/Sanad.UnitTests/Identity/Verification/ResendOtpCommandHandlerTests.cs`, and the existing FUR-02 worker delivery report. Disclose any other required file before editing. Run a strict zero-warning build, affected focused tests, the guarded full unit and architecture gates, and `git diff --check`, with the inherited sentinel set only in the invocation that proves the child guard. Record exact commands, exits, counts, skips and any limitations in §12 of the saved worker report. No production target, real provider, commit, push or deploy. Return the report path for Mastermind review; do not mark FUR-02 Done.

@@ -153,6 +153,7 @@ Elderly cannot self-register and cannot share an identity with another account t
 | Refresh token | No | Yes, 30 days, bound rotation per device session |
 | DeviceSession | No | Yes |
 | Password change / sessions | No | Yes |
+| Verification recovery IDs | Returned on pending password login (latest resendable signup request per unverified channel) | Never |
 | National ID (`/auth/identity-document`) | No (403) | Yes, for Family / Medical / Companion |
 | Caregiver onboarding (`CaregiverAccess`) | No (403) | Yes, for caregiver accounts |
 | Verify / resend | Yes, those routes are anonymous | Yes |

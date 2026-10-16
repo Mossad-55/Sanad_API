@@ -1,12 +1,16 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Application.Authentication;
+using Sanad.Modules.Identity.Application.Authentication.Login;
 using Sanad.Modules.Identity.Application.Authentication.Registration;
+using Sanad.Modules.Identity.Application.Authentication.Tokens;
+using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 using Sanad.Modules.Identity.Domain.Users;
 
@@ -316,6 +320,98 @@ public sealed class RegisterUserCommandHandlerTests
             dbContext.VerificationRequests);
     }
 
+    [Fact]
+    public async Task Handle_ShouldPreserveUserAndRequests_WhenProviderSendFails_AndLoginRecoversIds()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        RegisterUserCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                new FakePasswordHasher(),
+                new FakeOtpService(),
+                new ThrowingEmailSender(),
+                new RecordingSmsSender());
+
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.Handle(
+                CreateCommand(),
+                CancellationToken.None));
+
+        User user =
+            Assert.Single(
+                dbContext.Users);
+
+        Assert.Equal(
+            UserStatus.PendingVerification,
+            user.Status);
+
+        VerificationRequest[] requests =
+            await dbContext
+                .VerificationRequests
+                .OrderBy(request =>
+                    request.Purpose)
+                .ToArrayAsync();
+
+        Assert.Equal(2, requests.Length);
+
+        Assert.All(
+            requests,
+            request =>
+                Assert.Equal(
+                    VerificationStatus.Pending,
+                    request.Status));
+
+        VerificationRequest emailRequest =
+            Assert.Single(
+                requests,
+                request =>
+                    request.Purpose ==
+                    VerificationPurpose.VerifyEmail);
+
+        VerificationRequest phoneRequest =
+            Assert.Single(
+                requests,
+                request =>
+                    request.Purpose ==
+                    VerificationPurpose.VerifyPhone);
+
+        LoginCommandHandler loginHandler =
+            new(
+                dbContext,
+                new FakePasswordHasher(),
+                new FakeAuthTokenService(),
+                new FixedDateTimeProvider());
+
+        Result<LoginResponse> loginResult =
+            await loginHandler.Handle(
+                new LoginCommand(
+                    "mohamed@example.com",
+                    "StrongPass123",
+                    "Pixel 8",
+                    DevicePlatform.Android,
+                    "1.0.0"),
+                CancellationToken.None);
+
+        Assert.True(loginResult.IsSuccess);
+
+        Assert.Equal(
+            AuthAccessType.RestrictedVerification,
+            loginResult.Value.AccessType);
+
+        Assert.Equal(
+            emailRequest.Id,
+            loginResult.Value.EmailVerificationRequestId);
+
+        Assert.Equal(
+            phoneRequest.Id,
+            loginResult.Value.PhoneVerificationRequestId);
+
+        Assert.Null(loginResult.Value.RefreshToken);
+        Assert.Null(loginResult.Value.DeviceSessionId);
+    }
+
     private static RegisterUserCommandHandler CreateHandler(
         IIdentityDbContext dbContext,
         IPasswordHasher passwordHasher,
@@ -522,6 +618,84 @@ public sealed class RegisterUserCommandHandlerTests
                     purpose));
 
             return Task.CompletedTask;
+        }
+    }
+
+    private sealed class ThrowingEmailSender :
+        IEmailSender
+    {
+        public Task SendEmailAsync(string email, string subject, string body, string? correlationId, CancellationToken cancellationToken)
+            => Task.CompletedTask;
+
+        public Task SendSupportRequestAsync(
+            string senderName,
+            string? senderEmail,
+            string senderPhoneNumber,
+            string accountTypes,
+            string subject,
+            string message,
+            CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+
+        public Task SendVerificationCodeAsync(
+            string email,
+            string code,
+            VerificationPurpose purpose,
+            CancellationToken cancellationToken)
+        {
+            throw new InvalidOperationException(
+                "Email provider OTP delivery failed.");
+        }
+
+        public Task SendFamilyInvitationAsync(
+            string email,
+            string familyName,
+            string inviteLink,
+            CancellationToken cancellationToken)
+        {
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class FakeAuthTokenService :
+        IAuthTokenService
+    {
+        public GeneratedAccessToken GenerateAccessToken(
+            User user,
+            DateTime utcNow,
+            DeviceSessionId? deviceSessionId = null)
+        {
+            return new GeneratedAccessToken(
+                "access-token",
+                utcNow.AddMinutes(15));
+        }
+
+        public GeneratedAccessToken
+            GenerateRestrictedVerificationToken(
+                User user,
+                DateTime utcNow)
+        {
+            return new GeneratedAccessToken(
+                "restricted-token",
+                utcNow.AddMinutes(15));
+        }
+
+        public GeneratedRefreshToken GenerateRefreshToken(
+            DateTime utcNow)
+        {
+            return new GeneratedRefreshToken(
+                "refresh-token",
+                "refresh-token-hash",
+                utcNow.AddDays(30));
+        }
+
+        public bool VerifyRefreshToken(
+            string providedToken,
+            string storedHash)
+        {
+            return false;
         }
     }
 

@@ -106,6 +106,60 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         }
     }
 
+    [Fact]
+    public void ResendOperation_PublishesProviderDeliveryFailureResponse()
+    {
+        JsonElement root = Document;
+        JsonElement operation = GetOperation(root, "/api/v1/auth/verification/resend", "post");
+
+        Assert.True(
+            operation.GetProperty("responses").TryGetProperty("200", out JsonElement ok),
+            "Missing 200 response for POST /api/v1/auth/verification/resend.");
+        Assert.True(
+            TryGetJsonSchema(ok, out JsonElement schema),
+            "Missing application/json schema for POST /api/v1/auth/verification/resend 200.");
+        Assert.EndsWith("ResendOtpResponse", AssertRef(schema, root));
+
+        Assert.True(
+            operation.GetProperty("responses").TryGetProperty("409", out _),
+            "Missing 409 response for POST /api/v1/auth/verification/resend.");
+        Assert.True(
+            operation.GetProperty("responses").TryGetProperty("502", out _),
+            "Missing 502 response for POST /api/v1/auth/verification/resend.");
+    }
+
+    [Fact]
+    public void LoginResponseSchema_IncludesRecoveryFields()
+    {
+        JsonElement root = Document;
+        JsonElement operation = GetOperation(root, "/api/v1/auth/login", "post");
+
+        Assert.True(
+            operation.GetProperty("responses").TryGetProperty("200", out JsonElement ok),
+            "Missing 200 response for POST /api/v1/auth/login.");
+        Assert.True(
+            TryGetJsonSchema(ok, out JsonElement schema),
+            "Missing application/json schema for POST /api/v1/auth/login 200.");
+
+        string reference = AssertRef(schema, root);
+        Assert.EndsWith("LoginResponse", reference);
+
+        JsonElement properties = ResolveRef(root, reference).GetProperty("properties");
+
+        foreach (string property in new[]
+        {
+            "emailVerificationRequestId",
+            "emailVerificationRequestExpiresOnUtc",
+            "phoneVerificationRequestId",
+            "phoneVerificationRequestExpiresOnUtc"
+        })
+        {
+            Assert.True(
+                properties.TryGetProperty(property, out _),
+                $"Missing {property} in LoginResponse schema.");
+        }
+    }
+
     public static TheoryData<string, string, string> RequiredQueryParameters => new()
     {
         { "get", "/api/v1/admin/care-homes/license-expirations", "through" },

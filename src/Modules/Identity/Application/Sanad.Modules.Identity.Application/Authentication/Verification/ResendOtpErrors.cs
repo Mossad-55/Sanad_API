@@ -23,4 +23,10 @@ public static class ResendOtpErrors
         new(
             "Identity.Verification.ResendCooldownActive",
             "Verification code cannot be resent yet.");
+
+    public static readonly Error ProviderDeliveryFailed =
+        new(
+            "Identity.Verification.ProviderDeliveryFailed",
+            "Verification code delivery is temporarily unavailable. " +
+            "Please try again.");
 }

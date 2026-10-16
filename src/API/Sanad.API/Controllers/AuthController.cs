@@ -119,6 +119,9 @@ public sealed class AuthController :
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status409Conflict)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> ResendOtp(
         [FromBody] ResendOtpRequest request,
         CancellationToken cancellationToken)

@@ -41,6 +41,27 @@ public sealed class IdentityDbContextModelTests
     }
 
     [Fact]
+    public void Model_ShouldMarkVerificationRequestVersionAsConcurrencyToken()
+    {
+        using IdentityDbContext dbContext =
+            CreateDbContext();
+
+        var requestEntityType =
+            dbContext.Model
+                .FindEntityType(
+                    "Sanad.Modules.Identity.Domain.Authentication.VerificationRequests.VerificationRequest");
+
+        Assert.NotNull(requestEntityType);
+
+        var versionProperty =
+            requestEntityType!.FindProperty("Version");
+
+        Assert.NotNull(versionProperty);
+        Assert.True(versionProperty!.IsConcurrencyToken);
+        Assert.Equal("version", versionProperty.GetColumnName());
+    }
+
+    [Fact]
     public void Model_ShouldMapUniqueUserEmailAndPhoneIndexes()
     {
         using IdentityDbContext dbContext =

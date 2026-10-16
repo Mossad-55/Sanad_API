@@ -2,11 +2,13 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
+using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 using Sanad.Modules.Identity.Domain.Users;
 
 namespace Sanad.Modules.Identity.Application.Authentication.Login;
@@ -133,6 +135,22 @@ public sealed class LoginCommandHandler :
             await _dbContext.SaveChangesAsync(
                 cancellationToken);
 
+            VerificationRequest? emailRecoveryRequest =
+                user.EmailVerified
+                    ? null
+                    : await FindLatestResendableRequestAsync(
+                        user.Id,
+                        VerificationPurpose.VerifyEmail,
+                        cancellationToken);
+
+            VerificationRequest? phoneRecoveryRequest =
+                user.PhoneVerified
+                    ? null
+                    : await FindLatestResendableRequestAsync(
+                        user.Id,
+                        VerificationPurpose.VerifyPhone,
+                        cancellationToken);
+
             return new LoginResponse(
                 user.Id,
                 AuthAccessType
@@ -143,7 +161,11 @@ public sealed class LoginCommandHandler :
                 RefreshTokenExpiresOnUtc: null,
                 DeviceSessionId: null,
                 user.EmailVerified,
-                user.PhoneVerified);
+                user.PhoneVerified,
+                emailRecoveryRequest?.Id,
+                emailRecoveryRequest?.ExpiresOnUtc,
+                phoneRecoveryRequest?.Id,
+                phoneRecoveryRequest?.ExpiresOnUtc);
         }
 
         if (user.Status !=
@@ -215,5 +237,27 @@ public sealed class LoginCommandHandler :
             deviceSession.Id,
             user.EmailVerified,
             user.PhoneVerified);
+    }
+
+    private async Task<VerificationRequest?>
+        FindLatestResendableRequestAsync(
+            UserId userId,
+            VerificationPurpose purpose,
+            CancellationToken cancellationToken)
+    {
+        return await _dbContext.VerificationRequests
+            .Where(request =>
+                request.UserId == userId &&
+                request.Purpose == purpose &&
+                (request.Status ==
+                    VerificationStatus.Pending ||
+                 request.Status ==
+                    VerificationStatus.Expired))
+            .OrderByDescending(request =>
+                request.CreatedOnUtc)
+            .ThenByDescending(request =>
+                request.Id)
+            .FirstOrDefaultAsync(
+                cancellationToken);
     }
 }

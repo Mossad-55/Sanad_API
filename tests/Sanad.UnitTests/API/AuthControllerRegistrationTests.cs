@@ -122,6 +122,75 @@ public sealed class AuthControllerRegistrationTests
         Assert.Equal(response, ok.Value);
     }
 
+    [Theory]
+    [InlineData(
+        "Identity.Verification.ProviderDeliveryFailed",
+        StatusCodes.Status502BadGateway)]
+    [InlineData(
+        "Identity.Verification.RequestSuperseded",
+        StatusCodes.Status409Conflict)]
+    [InlineData(
+        "Identity.Verification.ResendCooldownActive",
+        StatusCodes.Status409Conflict)]
+    public async Task ResendOtp_ShouldReturnMappedProblemDetails_WhenApplicationFails(
+        string errorCode,
+        int expectedStatusCode)
+    {
+        var controller = CreateController(
+            Result<ResendOtpResponse>.Failure(
+                new Error(
+                    errorCode,
+                    "Internal message")));
+
+        IActionResult result = await controller.ResendOtp(
+            new ResendOtpRequest(
+                Guid.CreateVersion7()),
+            CancellationToken.None);
+
+        var mapped = Assert.IsType<ObjectResult>(result);
+
+        Assert.Equal(expectedStatusCode, mapped.StatusCode);
+
+        var problemDetails = Assert.IsType<ProblemDetails>(mapped.Value);
+
+        Assert.Equal(
+            errorCode,
+            problemDetails.Extensions["code"]);
+    }
+
+    [Fact]
+    public async Task ResendOtp_ShouldReturnExactPublicMessage_WhenProviderDeliveryFails()
+    {
+        var controller = CreateController(
+            Result<ResendOtpResponse>.Failure(
+                ResendOtpErrors.ProviderDeliveryFailed));
+
+        IActionResult result = await controller.ResendOtp(
+            new ResendOtpRequest(
+                Guid.CreateVersion7()),
+            CancellationToken.None);
+
+        var mapped = Assert.IsType<ObjectResult>(result);
+
+        Assert.Equal(
+            StatusCodes.Status502BadGateway,
+            mapped.StatusCode);
+
+        var problemDetails = Assert.IsType<ProblemDetails>(mapped.Value);
+
+        Assert.Equal(
+            "Identity.Verification.ProviderDeliveryFailed",
+            problemDetails.Extensions["code"]);
+
+        Assert.Equal(
+            "Bad Gateway",
+            problemDetails.Title);
+
+        Assert.Equal(
+            "Verification code delivery is temporarily unavailable. Please try again.",
+            problemDetails.Detail);
+    }
+
     private static AuthController CreateController(
         object response)
     {

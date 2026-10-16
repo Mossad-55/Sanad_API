@@ -118,7 +118,7 @@ public sealed class PortalAuthExampleContractTests : IClassFixture<PortalApiMeta
     }
 
     [Fact]
-    public void RestrictedLogin_HasNoVerificationRequestIdsOrSessionValues()
+    public void RestrictedLogin_SerializesNullRecoveryIdsAndWrapperShape()
     {
         var restricted = new LoginResponse(
             new UserId(Guid.Parse("0198e2c2-4444-7777-8888-000000000001")),
@@ -132,8 +132,30 @@ public sealed class PortalAuthExampleContractTests : IClassFixture<PortalApiMeta
         Assert.Equal(JsonValueKind.Null, json.GetProperty("refreshToken").ValueKind);
         Assert.Equal(JsonValueKind.Null, json.GetProperty("deviceSessionId").ValueKind);
         Assert.False(json.GetProperty("emailVerified").GetBoolean());
-        Assert.False(json.TryGetProperty("emailVerificationRequestId", out _));
-        Assert.False(json.TryGetProperty("phoneVerificationRequestId", out _));
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("emailVerificationRequestId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("emailVerificationRequestExpiresOnUtc").ValueKind);
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("phoneVerificationRequestId").ValueKind);
+        Assert.Equal(JsonValueKind.Null, json.GetProperty("phoneVerificationRequestExpiresOnUtc").ValueKind);
+
+        var recovered = new LoginResponse(
+            new UserId(Guid.Parse("0198e2c2-4444-7777-8888-000000000001")),
+            AuthAccessType.RestrictedVerification,
+            "synthetic-access-token",
+            new DateTime(2026, 10, 16, 12, 15, 0, DateTimeKind.Utc),
+            null, null, null, false, true,
+            new VerificationRequestId(Guid.Parse("0198e2c2-4444-7777-8888-000000000002")),
+            new DateTime(2026, 10, 16, 12, 20, 0, DateTimeKind.Utc),
+            null, null);
+        using JsonDocument recoveredPayload = JsonDocument.Parse(Serialize(recovered));
+        JsonElement recoveredJson = recoveredPayload.RootElement;
+
+        Assert.Equal(
+            "0198e2c2-4444-7777-8888-000000000002",
+            recoveredJson.GetProperty("emailVerificationRequestId").GetProperty("value").GetString());
+        Assert.Equal(
+            "2026-10-16T12:20:00Z",
+            recoveredJson.GetProperty("emailVerificationRequestExpiresOnUtc").GetString());
+        Assert.Equal(JsonValueKind.Null, recoveredJson.GetProperty("phoneVerificationRequestId").ValueKind);
     }
 
     [Fact]
@@ -334,10 +356,15 @@ public sealed class PortalLiteralExampleConformanceTests : IClassFixture<PortalA
 
         JsonElement pending = blocks.Single(b =>
             b.TryGetProperty("accessType", out JsonElement access) && access.GetInt32() == 2);
-        Assert.True(MatchesSampleShape(pending, Sample(RestrictedLoginSample())));
+        Assert.True(MatchesSampleShape(pending, Sample(RestrictedLoginWithRecoverySample())));
         Assert.Equal(JsonValueKind.Null, pending.GetProperty("refreshToken").ValueKind);
         Assert.Equal(JsonValueKind.Null, pending.GetProperty("deviceSessionId").ValueKind);
-        Assert.False(pending.TryGetProperty("emailVerificationRequestId", out _));
+        Assert.True(pending.TryGetProperty("emailVerificationRequestId", out JsonElement emailRecovery));
+        Assert.Equal(JsonValueKind.Object, emailRecovery.ValueKind);
+        Assert.True(emailRecovery.TryGetProperty("value", out _));
+        Assert.True(pending.TryGetProperty("emailVerificationRequestExpiresOnUtc", out _));
+        Assert.True(pending.TryGetProperty("phoneVerificationRequestId", out _));
+        Assert.True(pending.TryGetProperty("phoneVerificationRequestExpiresOnUtc", out _));
 
         JsonElement active = blocks.Single(b =>
             b.TryGetProperty("accessType", out JsonElement access) && access.GetInt32() == 1);
@@ -447,6 +474,11 @@ public sealed class PortalLiteralExampleConformanceTests : IClassFixture<PortalA
     private static LoginResponse RestrictedLoginSample() => new(
         new UserId(Guid.NewGuid()), AuthAccessType.RestrictedVerification,
         "synthetic", DateTime.UtcNow, null, null, null, false, true);
+
+    private static LoginResponse RestrictedLoginWithRecoverySample() => new(
+        new UserId(Guid.NewGuid()), AuthAccessType.RestrictedVerification,
+        "synthetic", DateTime.UtcNow, null, null, null, false, true,
+        new VerificationRequestId(Guid.NewGuid()), DateTime.UtcNow, null, null);
 
     private static LoginResponse ActiveLoginSample() => new(
         new UserId(Guid.NewGuid()), AuthAccessType.Normal,

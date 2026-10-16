@@ -207,6 +207,10 @@ internal sealed class IdentityTestDbContext :
             .HasConversion(
                 nullableUserIdConverter);
 
+        request.Property(value =>
+                value.Version)
+            .IsConcurrencyToken();
+
         request.Ignore(value =>
             value.DomainEvents);
     }

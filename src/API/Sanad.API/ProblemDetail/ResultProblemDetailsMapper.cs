@@ -114,6 +114,7 @@ public static class ResultProblemDetailsMapper
             ["Identity.Verification.ResendRequestNotPending"] = 400,
             ["Identity.Verification.RequestSuperseded"] = 409,
             ["Identity.Verification.ResendCooldownActive"] = 409,
+            ["Identity.Verification.ProviderDeliveryFailed"] = 502,
             ["Identity.Verification.RequestNotFound"] = 401,
             ["Identity.Verification.RequestNotPending"] = 400,
             ["Identity.Verification.RequestExpired"] = 401,
@@ -372,6 +373,13 @@ public static class ResultProblemDetailsMapper
             problemDetails.Detail = "Elderly account not registered.";
         }
 
+        if (error.Code == "Identity.Verification.ProviderDeliveryFailed")
+        {
+            problemDetails.Detail =
+                "Verification code delivery is temporarily unavailable. " +
+                "Please try again.";
+        }
+
         problemDetails.Extensions["code"] =
             error.Code;
 
@@ -400,6 +408,9 @@ public static class ResultProblemDetailsMapper
 
             StatusCodes.Status409Conflict =>
                 "Conflict",
+
+            StatusCodes.Status502BadGateway =>
+                "Bad Gateway",
 
             _ =>
                 "Internal Server Error"

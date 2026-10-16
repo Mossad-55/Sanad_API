@@ -12,4 +12,8 @@ public sealed record LoginResponse(
     DateTime? RefreshTokenExpiresOnUtc,
     DeviceSessionId? DeviceSessionId,
     bool EmailVerified,
-    bool PhoneVerified);
+    bool PhoneVerified,
+    VerificationRequestId? EmailVerificationRequestId = null,
+    DateTime? EmailVerificationRequestExpiresOnUtc = null,
+    VerificationRequestId? PhoneVerificationRequestId = null,
+    DateTime? PhoneVerificationRequestExpiresOnUtc = null);

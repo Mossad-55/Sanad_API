@@ -53,8 +53,24 @@ Standard verifier passed through a temporary SSH tunnel; direct public HTTP from
 this machine returned HTML, so that network path is explicitly unproven.
 See [receipt](work/portal-api-reconciliation/reports/fur-01-deployment.md).
 FUR-00 and FUR-01 Done / 17 phases remain; no direct Mastermind feature edits.
-Next action: discuss/lock FUR-02 verification-continuity contract with owner;
-implementation not started and no new worker automatically dispatched.
+FUR-02 [contract](work/portal-api-reconciliation/contracts/fur-02-verification-continuity.md)
+approved by owner on 2026-10-16. Scope: additive restricted-login recovery
+IDs, send-first resend with safe 502 provider error, one Identity concurrency
+migration and disposable PostgreSQL proof. Expired pending IDs remain
+recoverable for resend. [Whole-phase worker brief](work/portal-api-reconciliation/worker-prompts/fur-02-verification-continuity.md)
+was executed by the owner's worker with fake providers; no live-provider test or deployment occurred.
+Worker FUR-02 [delivery](work/portal-api-reconciliation/reports/fur-02-worker-delivery.md)
+and [Mastermind review](work/portal-api-reconciliation/reports/fur-02-mastermind-review.md):
+R1–R3 and S1–S2 corrected; complete local phase accepted for release preparation.
+Worker final gates: strict build zero warnings/errors; focused resend 19/0;
+guarded full unit 3458/0/12; architecture 1/1; earlier disposable PostgreSQL
+proof 4/4. Mastermind independently confirmed strict build zero warnings/errors,
+Postman JSON parsing and clean `git diff --check`; independent full-unit
+rerun aborted/stalled at testhost startup, so worker's successful guarded run
+is the valid full-suite evidence. FUR-02 stays In progress: uncommitted,
+unpushed, undeployed, Identity migration unapplied to production. Next action:
+obtain explicit owner commit/push authorization, then separate publish/deploy
+authority and exact-target preflight before release. FUR-03 not started.
 Historical checkpoints below
 must not override this follow-up or the latest deployment/import receipts.
 

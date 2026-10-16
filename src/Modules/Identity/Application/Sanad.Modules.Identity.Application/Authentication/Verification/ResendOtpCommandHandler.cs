@@ -54,29 +54,37 @@ public sealed class ResendOtpCommandHandler :
         }
 
         if (currentRequest.Status !=
-            VerificationStatus.Pending)
+                VerificationStatus.Pending &&
+            currentRequest.Status !=
+                VerificationStatus.Expired)
         {
             return ResendOtpErrors
                 .RequestNotPending;
         }
 
-        VerificationRequest? latestPendingRequest =
+        VerificationRequest? latestResendableRequest =
             await _dbContext
                 .VerificationRequests
                 .Where(item =>
+                    item.UserId ==
+                        currentRequest.UserId &&
                     item.Target ==
                         currentRequest.Target &&
                     item.Purpose ==
                         currentRequest.Purpose &&
-                    item.Status ==
-                        VerificationStatus.Pending)
+                    (item.Status ==
+                        VerificationStatus.Pending ||
+                     item.Status ==
+                        VerificationStatus.Expired))
                 .OrderByDescending(item =>
                     item.CreatedOnUtc)
+                .ThenByDescending(item =>
+                    item.Id)
                 .FirstOrDefaultAsync(
                     cancellationToken);
 
-        if (latestPendingRequest is not null &&
-            latestPendingRequest.Id !=
+        if (latestResendableRequest is not null &&
+            latestResendableRequest.Id !=
             currentRequest.Id)
         {
             return ResendOtpErrors
@@ -96,9 +104,6 @@ public sealed class ResendOtpCommandHandler :
                 .CooldownActive;
         }
 
-        currentRequest.Invalidate(
-            utcNow);
-
         GeneratedOtpCode generatedOtp =
             _otpService.Generate(
                 OtpPolicy.CodeLength);
@@ -117,16 +122,40 @@ public sealed class ResendOtpCommandHandler :
                 utcNow,
                 expiresOnUtc);
 
+        try
+        {
+            await SendCodeAsync(
+                replacementRequest,
+                generatedOtp.PlainTextCode,
+                cancellationToken);
+        }
+        catch (OperationCanceledException)
+            when (cancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return ResendOtpErrors
+                .ProviderDeliveryFailed;
+        }
+
+        currentRequest.InvalidateForResend(
+            utcNow);
+
         _dbContext.VerificationRequests.Add(
             replacementRequest);
 
-        await _dbContext.SaveChangesAsync(
-            cancellationToken);
-
-        await SendCodeAsync(
-            replacementRequest,
-            generatedOtp.PlainTextCode,
-            cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(
+                cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return ResendOtpErrors
+                .RequestSuperseded;
+        }
 
         return new ResendOtpResponse(
             replacementRequest.Id,

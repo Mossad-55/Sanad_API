@@ -4,9 +4,11 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
+using Sanad.Modules.Identity.Application.Authentication;
 using Sanad.Modules.Identity.Application.Authentication.Login;
 using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Domain.Authentication.DeviceSessions;
+using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 using Sanad.Modules.Identity.Domain.Users;
 using Sanad.Modules.Identity.Domain.Users.Events;
 using Sanad.UnitTests.Identity.Registration;
@@ -581,6 +583,362 @@ public sealed class LoginCommandHandlerTests
                     UserPasswordChangedDomainEvent>());
     }
 
+    [Fact]
+    public async Task Handle_ShouldReturnRecoveryIds_ForPendingUserWithPendingRequests()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.PendingVerification);
+
+        VerificationRequest emailRequest =
+            await SeedVerificationRequestAsync(
+                dbContext,
+                user.Id,
+                VerificationChannel.Email,
+                VerificationPurpose.VerifyEmail,
+                "mohamed@example.com",
+                FixedDateTimeProvider.UtcNowValue
+                    .AddMinutes(-4));
+
+        VerificationRequest phoneRequest =
+            await SeedVerificationRequestAsync(
+                dbContext,
+                user.Id,
+                VerificationChannel.Sms,
+                VerificationPurpose.VerifyPhone,
+                "+201001234567",
+                FixedDateTimeProvider.UtcNowValue
+                    .AddMinutes(-3));
+
+        dbContext.ResetSaveChangesCalls();
+
+        LoginCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                PasswordVerificationResult.Success,
+                new FakeAuthTokenService());
+
+        Result<LoginResponse> result =
+            await handler.Handle(
+                CreateCommand(),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(
+            AuthAccessType.RestrictedVerification,
+            result.Value.AccessType);
+
+        Assert.Equal(
+            emailRequest.Id,
+            result.Value.EmailVerificationRequestId);
+
+        Assert.Equal(
+            emailRequest.ExpiresOnUtc,
+            result.Value.EmailVerificationRequestExpiresOnUtc);
+
+        Assert.Equal(
+            phoneRequest.Id,
+            result.Value.PhoneVerificationRequestId);
+
+        Assert.Equal(
+            phoneRequest.ExpiresOnUtc,
+            result.Value.PhoneVerificationRequestExpiresOnUtc);
+
+        Assert.Null(result.Value.RefreshToken);
+        Assert.Null(result.Value.DeviceSessionId);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnLatestRequestId_WhenMultiplePendingRequestsExist()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.PendingVerification);
+
+        await SeedVerificationRequestAsync(
+            dbContext,
+            user.Id,
+            VerificationChannel.Email,
+            VerificationPurpose.VerifyEmail,
+            "mohamed@example.com",
+            FixedDateTimeProvider.UtcNowValue
+                .AddMinutes(-5));
+
+        VerificationRequest latestEmailRequest =
+            await SeedVerificationRequestAsync(
+                dbContext,
+                user.Id,
+                VerificationChannel.Email,
+                VerificationPurpose.VerifyEmail,
+                "mohamed@example.com",
+                FixedDateTimeProvider.UtcNowValue
+                    .AddMinutes(-2));
+
+        LoginCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                PasswordVerificationResult.Success,
+                new FakeAuthTokenService());
+
+        Result<LoginResponse> result =
+            await handler.Handle(
+                CreateCommand(),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(
+            latestEmailRequest.Id,
+            result.Value.EmailVerificationRequestId);
+
+        Assert.Equal(
+            latestEmailRequest.ExpiresOnUtc,
+            result.Value.EmailVerificationRequestExpiresOnUtc);
+
+        Assert.Null(
+            result.Value.PhoneVerificationRequestId);
+
+        Assert.Null(
+            result.Value.PhoneVerificationRequestExpiresOnUtc);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnExpiredRequestId_WithTrueExpiry()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.PendingVerification);
+
+        VerificationRequest expiredRequest =
+            await SeedVerificationRequestAsync(
+                dbContext,
+                user.Id,
+                VerificationChannel.Email,
+                VerificationPurpose.VerifyEmail,
+                "mohamed@example.com",
+                FixedDateTimeProvider.UtcNowValue
+                    .AddMinutes(-10));
+
+        expiredRequest.MarkExpired(
+            FixedDateTimeProvider.UtcNowValue);
+
+        await dbContext.SaveChangesAsync();
+
+        LoginCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                PasswordVerificationResult.Success,
+                new FakeAuthTokenService());
+
+        Result<LoginResponse> result =
+            await handler.Handle(
+                CreateCommand(),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(
+            expiredRequest.Id,
+            result.Value.EmailVerificationRequestId);
+
+        Assert.Equal(
+            expiredRequest.ExpiresOnUtc,
+            result.Value.EmailVerificationRequestExpiresOnUtc);
+
+        Assert.True(
+            result.Value.EmailVerificationRequestExpiresOnUtc <
+            FixedDateTimeProvider.UtcNowValue);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnNull_ForVerifiedChannel()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.PendingVerification);
+
+        user.VerifyEmail(
+            FixedDateTimeProvider.UtcNowValue);
+
+        await SeedVerificationRequestAsync(
+            dbContext,
+            user.Id,
+            VerificationChannel.Email,
+            VerificationPurpose.VerifyEmail,
+            "mohamed@example.com",
+            FixedDateTimeProvider.UtcNowValue
+                .AddMinutes(-4));
+
+        VerificationRequest phoneRequest =
+            await SeedVerificationRequestAsync(
+                dbContext,
+                user.Id,
+                VerificationChannel.Sms,
+                VerificationPurpose.VerifyPhone,
+                "+201001234567",
+                FixedDateTimeProvider.UtcNowValue
+                    .AddMinutes(-3));
+
+        await dbContext.SaveChangesAsync();
+
+        LoginCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                PasswordVerificationResult.Success,
+                new FakeAuthTokenService());
+
+        Result<LoginResponse> result =
+            await handler.Handle(
+                CreateCommand(),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.True(result.Value.EmailVerified);
+        Assert.False(result.Value.PhoneVerified);
+
+        Assert.Null(
+            result.Value.EmailVerificationRequestId);
+
+        Assert.Null(
+            result.Value.EmailVerificationRequestExpiresOnUtc);
+
+        Assert.Equal(
+            phoneRequest.Id,
+            result.Value.PhoneVerificationRequestId);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldNotLeakForeignOrWrongPurposeRequests()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.PendingVerification);
+
+        await SeedVerificationRequestAsync(
+            dbContext,
+            UserId.New(),
+            VerificationChannel.Email,
+            VerificationPurpose.VerifyEmail,
+            " stranger@example.com ".Trim(),
+            FixedDateTimeProvider.UtcNowValue
+                .AddMinutes(-2));
+
+        await SeedVerificationRequestAsync(
+            dbContext,
+            user.Id,
+            VerificationChannel.Email,
+            VerificationPurpose.ResetPassword,
+            "mohamed@example.com",
+            FixedDateTimeProvider.UtcNowValue
+                .AddMinutes(-2));
+
+        await SeedVerificationRequestAsync(
+            dbContext,
+            user.Id,
+            VerificationChannel.Sms,
+            VerificationPurpose.ElderlyLogin,
+            "+201001234567",
+            FixedDateTimeProvider.UtcNowValue
+                .AddMinutes(-1));
+
+        LoginCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                PasswordVerificationResult.Success,
+                new FakeAuthTokenService());
+
+        Result<LoginResponse> result =
+            await handler.Handle(
+                CreateCommand(),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Null(
+            result.Value.EmailVerificationRequestId);
+
+        Assert.Null(
+            result.Value.EmailVerificationRequestExpiresOnUtc);
+
+        Assert.Null(
+            result.Value.PhoneVerificationRequestId);
+
+        Assert.Null(
+            result.Value.PhoneVerificationRequestExpiresOnUtc);
+    }
+
+    [Fact]
+    public async Task Handle_ShouldReturnNullRecoveryFields_ForActiveUser()
+    {
+        await using IdentityTestDbContext dbContext =
+            CreateDbContext();
+
+        User user =
+            await SeedUserAsync(
+                dbContext,
+                UserStatus.Active);
+
+        await SeedVerificationRequestAsync(
+            dbContext,
+            user.Id,
+            VerificationChannel.Email,
+            VerificationPurpose.VerifyEmail,
+            "mohamed@example.com",
+            FixedDateTimeProvider.UtcNowValue
+                .AddMinutes(-4));
+
+        LoginCommandHandler handler =
+            CreateHandler(
+                dbContext,
+                PasswordVerificationResult.Success,
+                new FakeAuthTokenService());
+
+        Result<LoginResponse> result =
+            await handler.Handle(
+                CreateCommand(),
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        Assert.Equal(
+            AuthAccessType.Normal,
+            result.Value.AccessType);
+
+        Assert.Null(
+            result.Value.EmailVerificationRequestId);
+
+        Assert.Null(
+            result.Value.EmailVerificationRequestExpiresOnUtc);
+
+        Assert.Null(
+            result.Value.PhoneVerificationRequestId);
+
+        Assert.Null(
+            result.Value.PhoneVerificationRequestExpiresOnUtc);
+    }
+
     private static LoginCommandHandler CreateHandler(
         IdentityTestDbContext dbContext,
         PasswordVerificationResult verificationResult,
@@ -707,6 +1065,33 @@ public sealed class LoginCommandHandlerTests
         }
 
         return session;
+    }
+
+    private static async Task<VerificationRequest> SeedVerificationRequestAsync(
+        IdentityTestDbContext dbContext,
+        UserId userId,
+        VerificationChannel channel,
+        VerificationPurpose purpose,
+        string target,
+        DateTime createdOnUtc)
+    {
+        VerificationRequest request =
+            VerificationRequest.Create(
+                userId,
+                target,
+                "old-otp-hash",
+                channel,
+                purpose,
+                createdOnUtc,
+                createdOnUtc.Add(
+                    OtpPolicy.Lifetime));
+
+        dbContext.VerificationRequests.Add(
+            request);
+
+        await dbContext.SaveChangesAsync();
+
+        return request;
     }
 
     private static LoginCommand CreateCommand()

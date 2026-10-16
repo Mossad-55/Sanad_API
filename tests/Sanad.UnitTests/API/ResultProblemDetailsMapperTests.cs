@@ -163,6 +163,18 @@ public sealed class ResultProblemDetailsMapperTests
         "CareHomes.Inventory.InvalidRange",
         StatusCodes.Status400BadRequest,
         "The request could not be completed.")]
+    [InlineData(
+        "Identity.Verification.RequestSuperseded",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
+        "Identity.Verification.ResendCooldownActive",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
+        "Identity.Verification.ProviderDeliveryFailed",
+        StatusCodes.Status502BadGateway,
+        "Verification code delivery is temporarily unavailable. Please try again.")]
     public void Create_ShouldMapStableErrorCode(
         string errorCode,
         int expectedStatusCode,
@@ -202,6 +214,54 @@ public sealed class ResultProblemDetailsMapperTests
 
         Assert.DoesNotContain(
             "Internal message",
+            problemDetails.Detail);
+    }
+
+    [Fact]
+    public void Create_ShouldExposeApprovedPublicMessage_ForProviderDeliveryFailed()
+    {
+        var httpContext =
+            new DefaultHttpContext();
+
+        httpContext.TraceIdentifier =
+            "trace-id";
+
+        httpContext.Request.Path =
+            "/api/v1/auth/verification/resend";
+
+        var problemDetails =
+            ResultProblemDetailsMapper.Create(
+                new Error(
+                    "Identity.Verification.ProviderDeliveryFailed",
+                    "Internal SMS Misr body with code 654321 and password hunter2 must not leak."),
+                httpContext);
+
+        Assert.Equal(
+            StatusCodes.Status502BadGateway,
+            problemDetails.Status);
+
+        Assert.Equal(
+            "Bad Gateway",
+            problemDetails.Title);
+
+        Assert.Equal(
+            "Verification code delivery is temporarily unavailable. Please try again.",
+            problemDetails.Detail);
+
+        Assert.Equal(
+            "Identity.Verification.ProviderDeliveryFailed",
+            problemDetails.Extensions["code"]);
+
+        Assert.DoesNotContain(
+            "654321",
+            problemDetails.Detail);
+
+        Assert.DoesNotContain(
+            "hunter2",
+            problemDetails.Detail);
+
+        Assert.DoesNotContain(
+            "SMS Misr",
             problemDetails.Detail);
     }
 

@@ -33,6 +33,7 @@ Validation failures are also Problem Details. `detail` is a safe public message.
 | `Identity.Verification.ResendRequestNotPending` | 400 |
 | `Identity.Verification.RequestSuperseded` | 409 |
 | `Identity.Verification.ResendCooldownActive` | 409 |
+| `Identity.Verification.ProviderDeliveryFailed` | 502 |
 | `Identity.Login.InvalidCredentials` | 401 |
 | `Identity.Login.UserSuspended` | 403 |
 | `Identity.Login.UserBlocked` | 403 |
@@ -84,7 +85,18 @@ Unmapped application errors become `400`.
 | 403 | The requested operation is not allowed. |
 | 404 | The requested resource was not found. |
 | 409 | The request conflicts with the current state. |
+| 502 | `Verification code delivery is temporarily unavailable. Please try again.` (only for `Identity.Verification.ProviderDeliveryFailed`; any other 502 keeps `The request could not be completed.`) |
 | Other 400 | The request could not be completed. |
+
+Resend accepts `Pending` and `Expired` verification requests (an expired-code
+`verify` attempt persists `Expired`, which remains resendable);
+`Verified` and `Invalidated` requests return
+`Identity.Verification.ResendRequestNotPending` (`400`). A provider send
+failure returns `Identity.Verification.ProviderDeliveryFailed` (`502`) whose
+HTTP problem `title` is `Bad Gateway` and whose `detail` is exactly the
+owner-approved public message "Verification code delivery is temporarily
+unavailable. Please try again." Raw provider bodies, OTPs, credentials, and
+exception text never appear on the wire.
 
 Clients should branch on `status` and `code`, not on `detail`.
 

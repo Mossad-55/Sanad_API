@@ -47,9 +47,11 @@ Register success `201` returns wrapper IDs (literal wire shape):
 ```
 
 Request GUIDs stay plain GUIDs while response IDs are `{ "value": guid }`
-wrappers. Restricted login returns verification flags but no verification
-request IDs; losing signup state needs the separately contracted FUR-02
-recovery flow, which is not promised here.
+wrappers. If the provider send after registration fails, the persisted user
+and both pending requests are kept (nothing is rolled back); a password login
+then returns the recovery request IDs described in
+[email-password-login.md](email-password-login.md), so signup can resume with
+the existing verify/resend routes.
 
 ```bash
 curl -k -sS https://localhost:7296/api/v1/auth/register \
@@ -102,8 +104,12 @@ Anonymous. Success `200`.
 }
 ```
 
-The request carries only the pending `verificationRequestId` (plain GUID).
-The response returns the replacement request ID and its expiry:
+The request carries only the `verificationRequestId` (plain GUID) of a
+`Pending` or `Expired` request. An `Expired` request — including one that
+`verify` marked `Expired` after an expired-code attempt — can be resent; the
+expired code itself can never verify. `Verified` and `Invalidated` requests
+stay non-resendable. The response returns the replacement request ID and its
+expiry:
 
 ```json
 {
@@ -112,9 +118,25 @@ The response returns the replacement request ID and its expiry:
 }
 ```
 
-Missing pending request `404`. Already verified `400`. Cooldown `409`.
+Missing request `404`. Verified or invalidated request `400`. Cooldown `409`
+(60 seconds from the request's creation). Superseded `409`: resend compares
+the latest `Pending` or `Expired` request for the same user, purpose and
+target, and rejects an older ID.
 
-Resend supersedes the previous pending request.
+The generated code is sent before any verification state changes. If the
+provider rejects the send, throws, or times out, nothing is persisted and the
+API returns `502 Identity.Verification.ProviderDeliveryFailed`; retry with the
+same request ID once the cooldown permits. Request cancellation also preserves
+state. Only after a successful send is the old request invalidated and exactly
+one five-minute replacement persisted.
+
+Concurrent resends of the same request persist exactly one replacement; the
+loser receives `409 Identity.Verification.RequestSuperseded` and can recover
+the winning request ID through password login. This is retry-safe persisted
+state, not exactly-once delivery: a losing call may already have sent a code
+that is never accepted, and a provider may accept a message before the API
+observes a failure while the old request stays usable. The client must always
+use the latest request ID it received.
 
 ## Avatar
 

@@ -106,11 +106,27 @@ wrappers):
   "refreshTokenExpiresOnUtc": null,
   "deviceSessionId": null,
   "emailVerified": false,
-  "phoneVerified": true
+  "phoneVerified": true,
+  "emailVerificationRequestId": { "value": "018f0000-0000-0000-0000-000000000001" },
+  "emailVerificationRequestExpiresOnUtc": "2026-08-25T12:20:00Z",
+  "phoneVerificationRequestId": null,
+  "phoneVerificationRequestExpiresOnUtc": null
 }
 ```
 
-Active response (literal wire shape):
+Recovery IDs let a client that lost the registration response resume signup:
+for each unverified channel, login returns the newest signup verification
+request (`VerifyEmail` / `VerifyPhone`) for that same user whose status is
+`Pending` or `Expired`, ordered by creation time then request ID, with its
+true expiry — including a request `verify` already marked `Expired` (the
+expired code cannot verify, but its ID can be resent). A verified channel
+returns null recovery fields, as does a channel with no resendable request
+(the API never manufactures an OTP or marks the channel verified). Another
+user's request IDs, and reset-password or elderly-login request IDs, are
+never returned. Use the returned ID with the existing verify/resend routes.
+
+Active response (literal wire shape; recovery fields are always null here,
+as they are for elderly OTP login):
 
 ```json
 {
@@ -122,7 +138,11 @@ Active response (literal wire shape):
   "refreshTokenExpiresOnUtc": "2026-09-24T12:00:00Z",
   "deviceSessionId": { "value": "018f0000-0000-0000-0000-000000000010" },
   "emailVerified": true,
-  "phoneVerified": true
+  "phoneVerified": true,
+  "emailVerificationRequestId": null,
+  "emailVerificationRequestExpiresOnUtc": null,
+  "phoneVerificationRequestId": null,
+  "phoneVerificationRequestExpiresOnUtc": null
 }
 ```
 

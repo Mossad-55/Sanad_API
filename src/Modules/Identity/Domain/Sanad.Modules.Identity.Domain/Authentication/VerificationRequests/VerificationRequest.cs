@@ -33,6 +33,8 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
         Attempts = 0;
         MaxAttempts = MaximumAttemptsAllowed;
 
+        Version = 1;
+
         CreatedOnUtc = createdOnUtc;
         ExpiresOnUtc = expiresOnUtc;
 
@@ -67,6 +69,8 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
     public DateTime? VerifiedOnUtc { get; private set; }
 
     public DateTime? InvalidatedOnUtc { get; private set; }
+
+    public int Version { get; private set; }
 
     public static VerificationRequest Create(
         UserId? userId,
@@ -138,6 +142,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
 
         Status = VerificationStatus.Verified;
         VerifiedOnUtc = utcNow;
+        BumpVersion();
 
         RaiseDomainEvent(
             new VerificationRequestVerifiedDomainEvent(Id));
@@ -157,8 +162,17 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
 
         if (Attempts >= MaxAttempts)
         {
-            Invalidate(utcNow);
+            if (utcNow.Kind != DateTimeKind.Utc)
+            {
+                throw new DomainException(
+                    "Invalidation time must be in UTC."
+                );
+            }
+
+            InvalidateCore(utcNow);
         }
+
+        BumpVersion();
     }
 
     public void Invalidate(DateTime utcNow)
@@ -172,11 +186,28 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
             );
         }
 
-        Status = VerificationStatus.Invalidated;
-        InvalidatedOnUtc = utcNow;
+        InvalidateCore(utcNow);
+        BumpVersion();
+    }
 
-        RaiseDomainEvent(
-            new VerificationRequestInvalidatedDomainEvent(Id));
+    public void InvalidateForResend(DateTime utcNow)
+    {
+        if (Status != VerificationStatus.Pending &&
+            Status != VerificationStatus.Expired)
+        {
+            throw new DomainException(
+                "Verification request is no longer pending.");
+        }
+
+        if (utcNow.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException(
+                "Invalidation time must be in UTC."
+            );
+        }
+
+        InvalidateCore(utcNow);
+        BumpVersion();
     }
 
     public void MarkExpired(DateTime utcNow)
@@ -191,6 +222,7 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
         }
 
         Status = VerificationStatus.Expired;
+        BumpVersion();
     }
 
     public bool IsExpired(DateTime utcNow)
@@ -212,6 +244,20 @@ public sealed class VerificationRequest : AggregateRoot<VerificationRequestId>
             throw new DomainException(
                 "Verification request is no longer pending.");
         }
+    }
+
+    private void InvalidateCore(DateTime utcNow)
+    {
+        Status = VerificationStatus.Invalidated;
+        InvalidatedOnUtc = utcNow;
+
+        RaiseDomainEvent(
+            new VerificationRequestInvalidatedDomainEvent(Id));
+    }
+
+    private void BumpVersion()
+    {
+        Version = checked(Version + 1);
     }
 
     private static void ValidateChannelAndPurpose(
