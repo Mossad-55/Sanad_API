@@ -55,7 +55,8 @@ applied and configuration checksums unchanged. Private rollback backups retained
 Standard verifier passed through a temporary SSH tunnel; direct public HTTP from
 this machine returned HTML, so that network path is explicitly unproven.
 See [receipt](work/portal-api-reconciliation/reports/fur-01-deployment.md).
-FUR-00, FUR-01 and FUR-02 Done / 16 phases remain; no direct Mastermind feature edits.
+At the FUR-02 checkpoint, FUR-00 through FUR-02 were Done / 16 phases remained;
+the current FUR-03 closeout is recorded below.
 FUR-02 [contract](work/portal-api-reconciliation/contracts/fur-02-verification-continuity.md)
 approved by owner on 2026-10-16. Scope: additive restricted-login recovery
 IDs, send-first resend with safe 502 provider error, one Identity concurrency
@@ -91,16 +92,15 @@ does not warrant redeployment. Owner approved the verification-first
 on 2026-10-16. Its [whole-phase worker brief](work/portal-api-reconciliation/worker-prompts/fur-03-finance-verification.md)
 was executed. Worker reports no current defect reproduced for `FR-20261016-02`
 or `FR-20261016-03` (both historically fixed in `5edd3419`), and reports 12/12
-PostgreSQL tests on authorized disposable database `SanadFur03VerifyDb`. Mastermind review required a phase-specific
-disposable database and additional unfiltered Admin/Approved owner dashboard
-coverage; see [review](work/portal-api-reconciliation/reports/fur-03-mastermind-review.md)
+PostgreSQL tests on authorized disposable database `SanadFur03VerifyDb`. The
+initial Mastermind review required a dedicated target and expanded dashboard
+coverage; the worker completed those bounded corrections. See [review](work/portal-api-reconciliation/reports/fur-03-mastermind-review.md)
 and [worker delivery](work/portal-api-reconciliation/reports/fur-03-worker-delivery.md).
 The original contract's database-creation/selection boundary was underspecified;
 this was a Mastermind omission. Owner explicitly authorized only
-`SanadFur03VerifyDb` on local `localhost:5432` for the correction round. The
-[bounded correction brief](work/portal-api-reconciliation/worker-prompts/fur-03-review-corrections.md)
-was prepared for the same worker; Mastermind accepted R1–R5 after source,
-test-file, report and handoff review. Owner approved commit/push; phase commit
+`SanadFur03VerifyDb` on local `localhost:5432` for the correction round. Mastermind
+accepted R1–R5 after source, test-file, report and handoff review. Owner approved
+commit/push; phase commit
 `858da09` is on `origin/main`, and post-push `HEAD`/`origin/main` matched. The
 [release receipt](work/portal-api-reconciliation/reports/fur-03-release.md)
 records FUR-03 Done, deployment N/A (no runtime delta), and the worker-reported

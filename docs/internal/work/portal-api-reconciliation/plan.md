@@ -2,7 +2,9 @@
 
 ## Frontend follow-up sequence — 2026-10-16
 
-Current checkpoint: **FUR-02 Done — accepted, committed/pushed and deployed**.
+Current checkpoint: **FUR-03 Done — accepted, committed/pushed; deployment N/A**.
+FUR-03 [release receipt](reports/fur-03-release.md) records commit `858da09`
+pushed to `origin/main`, no runtime delta and deployment N/A.
 FUR-02 [release receipt](reports/fur-02-deployment.md) records deployed revision
 `5cd3526`, one Identity migration applied, nine required/applied heads matched,
 unchanged VPS configuration, active service and independent tunneled verifier.
@@ -12,8 +14,8 @@ FUR-01's [prior receipt](reports/fur-01-deployment.md) remains valid.
 Owner approved the **19-phase full-report roadmap** on 2026-10-16 after its
 phase-by-phase explanation: FUR-00 through FUR-10 (11 phases) plus E01–E08
 (8 phases). At approval FUR-00 was Done / 18 remained; current closeout is
-FUR-00 through FUR-02 Done / **16 remaining**. Approval establishes the roadmap and
-sequential workflow, not every detailed API/policy contract. FUR-01 and FUR-02
+FUR-00 through FUR-03 Done / **15 remaining**. Approval establishes the roadmap and
+sequential workflow, not every detailed API/policy contract. FUR-01 through FUR-03
 had separately approved contracts and are now Done. Historical PORTAL phases below
 retain their accepted evidence; FUR IDs
 are follow-up work, not a reset or renaming of PORTAL-01 through PORTAL-07.
