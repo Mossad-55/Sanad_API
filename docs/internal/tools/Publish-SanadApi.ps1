@@ -24,6 +24,29 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($revision)) {
     throw 'The current Git revision could not be resolved.'
 }
 
+# Derive release heads from the checked-out migration sources. A hard-coded
+# manifest can silently lag an accepted phase migration and make deployment
+# verification compare the running database against the wrong requirement.
+$requiredMigrations = [ordered]@{}
+foreach ($module in @('Identity', 'Cms', 'Caregivers', 'Families', 'CareHomes', 'Notifications', 'Community', 'Finance', 'Chat')) {
+    $migrationDirectory = Join-Path $repositoryRoot "src\Modules\$module\Infrastructure\Sanad.Modules.$module.Infrastructure\Persistence\Migrations"
+    if (-not (Test-Path -LiteralPath $migrationDirectory -PathType Container)) {
+        throw "Migration directory was not found for $module."
+    }
+
+    $head = Get-ChildItem -LiteralPath $migrationDirectory -File |
+        Where-Object { $_.Name -match '^\d{14}_[^.]+\.cs$' } |
+        Sort-Object Name -Descending |
+        Select-Object -First 1
+    if ($null -eq $head) {
+        throw "No migration source was found for $module."
+    }
+    if (-not (Test-Path -LiteralPath (Join-Path $migrationDirectory "$($head.BaseName).Designer.cs") -PathType Leaf)) {
+        throw "Latest migration designer was not found for $module."
+    }
+    $requiredMigrations[$module] = $head.BaseName
+}
+
 New-Item -ItemType Directory -Path $resolvedOutputPath -Force | Out-Null
 
 $publishArguments = @(
@@ -51,17 +74,7 @@ $manifest = [ordered]@{
     revision = $revision
     configuration = $Configuration
     publishedOnUtc = [DateTime]::UtcNow.ToString('O')
-    requiredMigrations = [ordered]@{
-        Identity = '20261013104759_AddChatMessagesPreference'
-        Cms = '20261012071340_AddLandingSectionHistory'
-        Caregivers = '20261009004058_AddCaregiverPayoutAccountReview'
-        Families = '20261013005844_AddBookingAreaServiceAttribution'
-        CareHomes = '20261012143753_AddCareHomeRoomTypeAmenitiesAndMedia'
-        Notifications = '20261010010618_AddEmailHtmlSnapshots'
-        Community = '20261010004134_AddCommunityCategories'
-        Finance = '20261010143327_AddCaregiverPayoutPolicyDescriptions'
-        Chat = '20261013171755_AddAttachmentCleanupIndex'
-    }
+    requiredMigrations = $requiredMigrations
     startupMigrationPolicy = 'All registered module migrations run before API startup outside Development; production cannot disable them.'
 }
 $manifest | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $resolvedOutputPath 'sanad-deployment-manifest.json') -Encoding utf8

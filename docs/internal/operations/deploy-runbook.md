@@ -1,6 +1,6 @@
 # Deploy runbook (production releases)
 
-Deployment is never implied by `publish`, a merge, or a passing gate battery. It starts only on an explicit owner order naming the exact target host and database. The deploying agent or owner follows this page top to bottom and records evidence without secrets.
+Deployment is never implied by `publish`, a merge, or a passing gate battery. It starts only on an explicit owner deployment order for an accepted phase and an exact target host/database. The target may be incorporated by reference to the immediately prior owner-designated deployment receipt when the owner asks to continue that release workflow; revalidate its live service, effective database identity and configuration before any write. Do not repeatedly request the same authorization or a literal `publish` word when the owner has already ordered deployment of that accepted phase. If the target differs or cannot be verified, stop and ask about that specific mismatch. The deploying agent or owner follows this page top to bottom and records evidence without secrets.
 
 ## 1. Pre-flight (on the build machine)
 
@@ -8,6 +8,7 @@ Deployment is never implied by `publish`, a merge, or a passing gate battery. It
 2. Confirm a fresh package exists from [publish.md](publish.md) with a matching manifest revision.
 3. Confirm the manifest `requiredMigrations` table matches the release revision's `Migrations/` folders (all 9 contexts).
 4. Confirm no secret material in or next to the package: no `.env`, no `*.local.json`, no keys/certs, no `appsettings.Development.json` (the publish script enforces the last one).
+5. If the phase adds a migration, privately verify the running service's effective database host/port/name and current applied head, determine the expected pending migrations for every context, and make a validated private database backup on that exact target before restart. A binary rollback does not undo schema changes; prove the old binary remains compatible with any additive schema or define a separate, explicitly authorized data-safe recovery. Never automatically restore a database backup over new production writes.
 
 ## 2. Local-only environment (never committed)
 
@@ -58,6 +59,8 @@ Prove ignore-status before every release: `git check-ignore -v .env deploy/publi
    smoke `GET /api/v1/lookups/services` at HTTP 200. A local-manifest-only
    check or a single lookup response alone is not release evidence.
 3. Confirm the caregiver completion path including the allowance-exhausted `409` contract (see [deployment.md](deployment.md)).
+
+For a changed Identity verification flow, use sanitized anonymous metadata/on-host smoke plus approved fake-provider tests. Do not send a real OTP merely to claim deployment verification. Preserve the existing Production CORS, storage, key-ring and provider configuration; compare safe fingerprints before and after. If direct public HTTP from the build machine returns HTML while on-host and a temporary localhost-only SSH tunnel verify JSON, record the external-path limitation rather than changing API/CORS configuration without evidence.
 
 ## 5. Record evidence (no secrets)
 

@@ -71,6 +71,23 @@ is the valid full-suite evidence. FUR-02 stays In progress: uncommitted,
 unpushed, undeployed, Identity migration unapplied to production. Next action:
 obtain explicit owner commit/push authorization, then separate publish/deploy
 authority and exact-target preflight before release. FUR-03 not started.
+Continuation release update: owner authorized FUR-02 commit/push and then its
+deployment. Scoped phase commit `5bde52383071a2c20d17e3059038f729c1b64a70`
+was pushed to `origin/main` with a clean worktree. The prior Mastermind chat
+confirmed that this complete-phase deployment order includes necessary fresh
+package publication; do not request a magic `publish` word again. Its FUR-01
+receipt and existing target are reusable context, not substitutes for live
+preflight. Live read-only preflight found the existing Production service active
+at revision `f9231fb`, `NRestarts=0`, database reachable, all nine old heads
+matched and the effective Identity target `localhost:5433/SanadDb` via the
+existing environment file. No publish, backup, migration or deployment has yet
+occurred. The release publisher still pinned the old Identity migration head;
+the release-tool correction to derive nine heads from source and the workflow
+clarification in [publish](operations/publish.md) and
+[deploy runbook](operations/deploy-runbook.md) are local pending validation and
+scoped commit/push. Next action: validate and integrate that release-tool fix,
+then perform exact-target database backup and migration-aware deployment of
+the accepted FUR-02 phase. No FUR-03 work, real-provider test, reset or seed.
 Historical checkpoints below
 must not override this follow-up or the latest deployment/import receipts.
 
