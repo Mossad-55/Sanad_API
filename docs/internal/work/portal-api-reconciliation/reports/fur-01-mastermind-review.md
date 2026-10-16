@@ -3,7 +3,7 @@
 Date: 2026-10-16 (Africa/Cairo).
 Review baseline: HEAD `4b65369d760c8af6b2242ebd2022a6cb10057580` plus
 the worker's uncommitted FUR-01 delivery and preserved planning delta.
-**Current verdict: accepted locally after R1–R5 corrections; deployment pending.**
+**Current verdict: accepted after R1–R5 corrections; deployed and verified.**
 The initial findings below are preserved as review history; the final re-review
 appendix supersedes the original changes-requested disposition.
 
@@ -172,3 +172,9 @@ control; it is not staged with the sanitized reports. No feature implementation
 was taken over by the Mastermind. Local acceptance authorizes the standing
 complete-phase commit/push/release workflow; **final Done waits for the deployment
 receipt**. FUR-02 remains Not started.
+
+Later release update: the [deployment receipt](fur-01-deployment.md) is complete.
+Accepted source `f9231fb` is pushed and deployed, 29/29 actual metadata operations
+verified, nine migration heads unchanged/zero applied, service healthy and
+configuration preserved. FUR-01 is Done. Direct public-path redirection from
+this machine remains explicitly unproven; on-host/tunneled verification passed.

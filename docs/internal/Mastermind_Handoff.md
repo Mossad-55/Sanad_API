@@ -18,7 +18,7 @@ Audience correction: Admin = Admin portal + Care Home Owner portal; App =
 Family/Caregiver/Elderly only. Reports relocated without changing findings.
 FUR-01's [approved contract](work/portal-api-reconciliation/contracts/fur-01-contract-accuracy.md)
 now bounds 29 existing-operation metadata corrections, docs/examples and tests;
-no runtime behavior, endpoint, configuration or database change. Execution In progress.
+no runtime behavior, endpoint, configuration or database change. Phase Done.
 Owner subsequently approved the **19-phase roadmap** (FUR-00–10 plus E01–08),
 with FUR-00 Done / 18 remaining. This is roadmap approval, not blanket approval
 of detailed feature/policy contracts or release operations. FUR-01
@@ -46,10 +46,15 @@ Subsequent corrected delivery re-reviewed and accepted: R1–R5 resolved; Master
 strict build zero warnings/errors, guarded full unit 3421/0/8, architecture 1/1,
 32/32 audience links and actual full route sets 556 each / zero missing-orphaned.
 Earlier restricted test-runner timeouts discarded; valid guarded reruns passed.
-Release pending, final Done not claimed; no direct Mastermind feature edits.
-Next action: commit/push accepted FUR-01, publish/deploy verified existing target,
-complete [receipt](work/portal-api-reconciliation/reports/fur-01-deployment.md).
-FUR-02 not started.
+Release complete: `f9231fb` pushed/published/deployed; active/running, zero
+restarts, all 29 metadata operations verified, nine migration heads match/zero
+applied and configuration checksums unchanged. Private rollback backups retained.
+Standard verifier passed through a temporary SSH tunnel; direct public HTTP from
+this machine returned HTML, so that network path is explicitly unproven.
+See [receipt](work/portal-api-reconciliation/reports/fur-01-deployment.md).
+FUR-00 and FUR-01 Done / 17 phases remain; no direct Mastermind feature edits.
+Next action: discuss/lock FUR-02 verification-continuity contract with owner;
+implementation not started and no new worker automatically dispatched.
 Historical checkpoints below
 must not override this follow-up or the latest deployment/import receipts.
 

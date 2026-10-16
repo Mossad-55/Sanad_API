@@ -7,8 +7,12 @@
 is the task source of truth; [dated Admin/App handoffs](../frontend-handoffs/README.md)
 are audience-facing evidence/actions. FUR-00 documentation is Done; subsequent
 backend contracts are not approved by this structure. Owner then approved the
-19-phase full-report roadmap (FUR-00–10 plus E01–08); the exact FUR-01 contract
-is the next lock, with implementation Not started. See the current Mastermind
+19-phase full-report roadmap (FUR-00–10 plus E01–08). FUR-01 is now accepted,
+pushed and deployed at `f9231fb`: 29/29 metadata contracts, zero config/schema
+delta, full unit 3421/0/8, architecture 1/1. See the
+[release receipt](work/portal-api-reconciliation/reports/fur-01-deployment.md).
+Roadmap: 2 Done / 17 remaining. FUR-02 contract discussion is next, not automatic
+implementation. See the current Mastermind
 handoff for exactly one next action. Earlier PORTAL completion remains valid.
 Owner's standing phase workflow: workers implement and return complete reports;
 Mastermind plans/reviews/integrates. After full-phase acceptance and any worker

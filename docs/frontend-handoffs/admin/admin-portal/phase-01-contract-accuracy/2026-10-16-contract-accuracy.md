@@ -1,5 +1,16 @@
 # Admin portal — FUR-01 contract accuracy — admin operations and conventions
 
+## Release update — 2026-10-16
+
+Mastermind accepted the corrected phase and deployed source `f9231fb`.
+The actual service OpenAPI passes all 29 phase contracts; nine migration heads
+match with zero applied, configuration unchanged. See the
+[release receipt](../../../../internal/work/portal-api-reconciliation/reports/fur-01-deployment.md)
+for exact revision, gates and the direct-public-network limitation. Refresh
+OpenAPI/types on your normal API connection; no new business behavior is added.
+The original local-delivery snapshot below is preserved as historical evidence;
+its not-yet-deployed statements describe that earlier checkpoint.
+
 Date: 2026-10-16 (Africa/Cairo). Phase: FUR-01.
 Purpose: implementation delivery (local; not deployed).
 Audience: Admin portal (Admin = Admin portal + Care Home Owner portal).

@@ -2,17 +2,18 @@
 
 ## Frontend follow-up sequence — 2026-10-16
 
-Current active work: **FUR-01 — owner-approved, implementation In progress**.
+Current checkpoint: **FUR-01 Done — accepted, committed/pushed and deployed**.
 Execution assignment: worker R1–R5 corrections accepted by Mastermind locally;
 strict build zero warnings/errors, full guarded unit 3421/0/8, architecture 1/1.
-Release pending; phase is not Done until deployment verified. See
+Deployed revision `f9231fb`; verification recorded in the phase receipt. See
 [review findings](reports/fur-01-mastermind-review.md) and
 [same-worker correction brief](worker-prompts/fur-01-review-corrections.md).
 Seven controller diffs are metadata-only; auth-guide/example and audience
 handoff defects resolved. Earlier initial findings/interruption are historical.
 Owner approved the **19-phase full-report roadmap** on 2026-10-16 after its
 phase-by-phase explanation: FUR-00 through FUR-10 (11 phases) plus E01–E08
-(8 phases). FUR-00 is Done; 18 remain. Approval establishes the roadmap and
+(8 phases). At approval FUR-00 was Done / 18 remained; current closeout is
+FUR-00 plus FUR-01 Done / **17 remaining**. Approval establishes the roadmap and
 sequential workflow, not every detailed API/policy contract. FUR-01's exact
 contract was separately approved on 2026-10-16; execution has started within its
 bounded scope. Historical PORTAL phases below
@@ -28,7 +29,7 @@ contract assumption mismatches are not claimed as proven client code defects.
 | Follow-up | Status | Objective and gate |
 | --- | --- | --- |
 | FUR-00 — Alignment | Done | Report index/template and dated Admin/owner reports prepared; 17 relative file links resolve, all 46 intake IDs referenced across the two reports. Presented for owner review/forwarding, not sent. No external sending implied. |
-| FUR-01 — Contract truth (audit S01) | In progress | [Mastermind review](reports/fur-01-mastermind-review.md) accepts corrected delivery: strict build clean, full unit 3421/0/8, architecture 1/1. [Phase release](reports/fur-01-deployment.md) pending; no final Done yet. |
+| FUR-01 — Contract truth (audit S01) | Done | R1–R5 accepted; strict build clean, full unit 3421/0/8, architecture 1/1. [Phase release](reports/fur-01-deployment.md) `f9231fb` deployed: 29/29 metadata operations, nine heads match/zero applied, config hashes unchanged. Public direct-path limitation disclosed. |
 | FUR-02 — Verification continuity (S02) | Not started | Lock resend failure/retry and restricted-identity recovery contract. No production OTP bypass or provider send implied. |
 | FUR-03 — Finance verification (S03) | Not started | Prove exact current Npgsql queries/fixture behavior; change code only for remaining reproduced defects. |
 | FUR-04 — Care Home readback (S04) | Not started | Lock owner current-profile/revision fields, media, resident/owner/dispute/actor display semantics and query-risk coverage. |
@@ -128,8 +129,10 @@ preserved and links updated. This corrects the initial FUR-00 grouping, not the
 API roles or underlying feature contract. An App README records the boundary.
 
 Next action: Mastermind commits/pushes the accepted complete phase, publishes/
-deploys to the verified existing target and records verification. Do not start
-FUR-02 or mark Done before the deployment receipt is complete.
+deploys to the verified existing target and records verification — **completed**.
+Owner next discusses/locks FUR-02's verification-continuity contract before a
+new worker prompt. FUR-02 implementation Not started. Roadmap now **2 Done /
+17 remaining**; no later contract is silently approved by this closeout.
 Reports are prepared for review/forwarding, not sent; frontend
 acknowledgement/completion must not be invented. The original audit remains a
 dated evidence snapshot, not a competing execution checklist.

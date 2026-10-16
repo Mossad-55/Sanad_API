@@ -1,7 +1,7 @@
 # FUR-01 delivery report — existing API contract accuracy
 
 Date: 2026-10-16 (Africa/Cairo). Revised with R1–R5 review corrections.
-Phase status: **In progress — Mastermind local acceptance complete; deployment pending.**
+Phase status: **Done — Mastermind accepted, committed/pushed and deployed.**
 Contract: [fur-01-contract-accuracy](../contracts/fur-01-contract-accuracy.md) (owner-approved 2026-10-16).
 Brief: [fur-01 worker brief](../worker-prompts/fur-01-contract-accuracy.md).
 Review: [Mastermind acceptance review](fur-01-mastermind-review.md) (changes requested) →
@@ -153,3 +153,12 @@ zero warnings/errors; full guarded unit **3421/0/8**, architecture **1/1**;
 discarded restricted-runner attempts and the mapping-script limitation.
 The worker sections above are historical delivery evidence, not claims of a
 worker commit or deployment. Phase release is now pending; FUR-02 not started.
+
+## 9. Complete-phase release (Mastermind)
+
+Source/package/deployed revision `f9231fb24e02ed72e7d08903c55f3e3193201b83`.
+[Deployment receipt](fur-01-deployment.md): service healthy, actual 29/29 OpenAPI
+operations verified, 9/9 migration heads match/zero applied, config hashes
+unchanged; no runtime/new endpoint/data change. Standard verifier passed via
+SSH tunnel. Direct public HTTP from this machine returned HTML and is not
+claimed verified. Phase Done; FUR-02 remains Not started.

@@ -1,7 +1,10 @@
 # FUR-01 — Existing API contract accuracy
 
 Date: 2026-10-16 (Africa/Cairo).
-**Approval state: owner-approved 2026-10-16; execution In progress.**
+**Approval state: owner-approved 2026-10-16; phase Done, deployed `f9231fb`.**
+
+Execution/acceptance/release evidence: [phase receipt](../reports/fur-01-deployment.md).
+This completed contract is historical; do not rerun it as a fresh worker task.
 
 The owner separately approved this exact contract after approving the 19-phase
 roadmap. Only FUR-01 execution is authorized here. The source revision and

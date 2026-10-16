@@ -9,9 +9,9 @@ communication index, not a second implementation backlog.
 | --- | --- | --- | --- |
 | Admin — Admin portal | FUR-00 — Alignment | [2026-10-16 reconciliation](admin/admin-portal/phase-00-alignment/2026-10-16-portal-report-reconciliation.md) | Ready for owner review/forwarding; not proof of frontend receipt or completion. |
 | Admin — Care Home Owner portal | FUR-00 — Alignment | [2026-10-16 reconciliation](admin/care-home-owner/phase-00-alignment/2026-10-16-portal-report-reconciliation.md) | Ready for owner review/forwarding; not a mobile-app audit. |
-| Admin — Admin portal | FUR-01 — Contract accuracy | [2026-10-16 contract accuracy](admin/admin-portal/phase-01-contract-accuracy/2026-10-16-contract-accuracy.md) | Worker delivery, local only; not deployed. Covers FR-20261016-30–35, 37, 39, 43, 45, 46 admin portions. |
-| Admin — Care Home Owner portal | FUR-01 — Contract accuracy | [2026-10-16 contract accuracy](admin/care-home-owner/phase-01-contract-accuracy/2026-10-16-contract-accuracy.md) | Worker delivery, local only; not deployed. Covers inventory/visits/finance reads and onboarding rules. |
-| App — Shared (Family/Caregiver/Elderly) | FUR-01 — Contract notice | [2026-10-16 contract notice](app/shared/phase-01-contract-accuracy/2026-10-16-contract-notice.md) | Convention notice only; no mobile frontend audited. Auth shapes and unread-count truth. |
+| Admin — Admin portal | FUR-01 — Contract accuracy | [2026-10-16 contract accuracy](admin/admin-portal/phase-01-contract-accuracy/2026-10-16-contract-accuracy.md) | Accepted/deployed `f9231fb`; release update links receipt. Covers FR-20261016-30–35, 37, 39, 43, 45, 46 admin portions. |
+| Admin — Care Home Owner portal | FUR-01 — Contract accuracy | [2026-10-16 contract accuracy](admin/care-home-owner/phase-01-contract-accuracy/2026-10-16-contract-accuracy.md) | Accepted/deployed `f9231fb`; inventory/visits/finance metadata and unchanged onboarding rules. |
+| App — Shared (Family/Caregiver/Elderly) | FUR-01 — Contract notice | [2026-10-16 contract notice](app/shared/phase-01-contract-accuracy/2026-10-16-contract-notice.md) | Accepted release; convention notice only, no mobile frontend audited. Auth shapes and unread-count truth. |
 
 App means **Family, Caregiver and Elderly clients only**, by owner direction.
 There is no audience-specific mobile report for this portal intake; shared auth

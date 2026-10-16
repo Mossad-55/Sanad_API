@@ -1,5 +1,14 @@
 # Shared App contract notice — FUR-01 auth shapes and unread-count convention
 
+## Release update — 2026-10-16
+
+Accepted source `f9231fb` is deployed; unread-count metadata and corrected auth
+examples are available in the accepted release/docs. Existing runtime ID/token
+shapes did not change and no mobile frontend was audited. See the
+[release receipt](../../../../internal/work/portal-api-reconciliation/reports/fur-01-deployment.md)
+for evidence/limitations. The earlier local-only snapshot below remains
+historical; do not treat its pending-release wording as the current state.
+
 Date: 2026-10-16 (Africa/Cairo). Phase: FUR-01.
 Purpose: implementation delivery (local; not deployed).
 Audience: App shared — Family, Caregiver and Elderly clients (convention notice only).

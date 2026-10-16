@@ -1,5 +1,15 @@
 # Care Home Owner portal — FUR-01 contract accuracy — inventory, visits, finance reads
 
+## Release update — 2026-10-16
+
+Mastermind accepted and deployed source `f9231fb`. The actual service metadata
+for inventory, booking list, visits/settings and finance now passes the phase's
+29-operation matrix. No owner business rule, configuration or schema changed.
+[Release receipt](../../../../internal/work/portal-api-reconciliation/reports/fur-01-deployment.md)
+records verification and the direct-public-network limitation. Refresh your
+released types on your normal API connection. The original local-delivery
+snapshot below is historical; its pending-deployment wording is not current.
+
 Date: 2026-10-16 (Africa/Cairo). Phase: FUR-01.
 Purpose: implementation delivery (local; not deployed).
 Audience: Care Home Owner portal (Admin audience = Admin portal + Care Home Owner portal).
