@@ -4,14 +4,26 @@
 
 FUR-06 is Done at pushed/deployed revision `7339034`; see its
 [release receipt](work/portal-api-reconciliation/reports/fur-06-release.md).
-The current owner request is to streamline the worker and release workflow;
-see [Codex/OpenCode workflow](operations/codex-workflow.md),
+The worker and release workflow was streamlined and pushed as `119ba56`; see
+[Codex/OpenCode workflow](operations/codex-workflow.md),
 [publish procedure](operations/publish.md), and
-[deployment runbook](operations/deploy-runbook.md). FUR-07 remains Not started
-and is not part of this workflow review.
+[deployment runbook](operations/deploy-runbook.md). FUR-07 has an approved
+[contract](work/portal-api-reconciliation/contracts/fur-07-community-moderation.md)
+and [worker brief](work/portal-api-reconciliation/worker-prompts/fur-07-community-moderation.md),
+and the owner-approved amendment for two existing Community test files. The
+Codex continuation completed the approved implementation, documentation,
+Postman examples, migration authoring, and focused checks. Its
+[delivery report](work/portal-api-reconciliation/reports/fur-07-worker-delivery.md)
+preserves the previous OpenCode 429/checkpoint as history and records the
+current result. Mastermind review accepted the delivered source, migration,
+tests, guides, and Postman mapping. The strict build passed with zero warnings
+and errors; 153 focused Community/model tests passed. The PostgreSQL advisory
+lock path was not exercised against a live PostgreSQL server. FUR-07 is not
+Done or released; its migration remains unapplied.
 
-**Next action:** present the completed workflow review and the required local
-OpenCode bridge reload, then wait for owner direction. Do not begin FUR-07.
+**Next action:** obtain the owner's explicit release authorization for the
+reviewed FUR-07 phase. No commit, push, publish, deployment, or FUR-08 work is
+authorized yet.
 
 ## Active slice — Admin and Care Homes portal report reconciliation
 

@@ -74,7 +74,7 @@ public sealed class CommunityImageFileTests
         Post post = Post.Create(
             "Title Arabic", "Title", "Content Arabic", "Content",
             CommunityImageUrls.For(record.Id), false, author, Utc(1));
-        post.Reject(Utc(2));
+        post.Reject(UserId.New(), CommunityRejectionReasonCodes.Spam, null, Utc(2));
         db.Posts.Add(post);
         await db.SaveChangesAsync();
 

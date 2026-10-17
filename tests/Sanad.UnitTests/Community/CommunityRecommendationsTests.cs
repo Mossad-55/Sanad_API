@@ -190,7 +190,7 @@ public sealed class CommunityRecommendationsTests
     private static Post RejectedPost(UserId author, int day)
     {
         Post post = CreatePost(author, day);
-        post.Reject(Utc(day));
+        post.Reject(UserId.New(), CommunityRejectionReasonCodes.Spam, null, Utc(day));
         return post;
     }
 

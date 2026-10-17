@@ -1,4 +1,5 @@
 using Sanad.Modules.Community.Application.Abstractions.Data;
+using Sanad.Modules.Community.Application.Posts;
 using Sanad.Modules.Community.Domain.Comments;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
@@ -16,7 +17,14 @@ public sealed class CreatePostCommentCommandHandler : ICommandHandler<CreatePost
 
     public async Task<Result<Comment>> Handle(CreatePostCommentCommand request, CancellationToken cancellationToken)
     {
-        var comment = Comment.Create(new CommunityPostId(request.PostId), new UserId(request.AuthorId),
+        var authorId = new UserId(request.AuthorId);
+        if (await CommunityAuthorRestrictionGuard.IsAuthorRestrictedAsync(
+                _dbContext, authorId, DateTime.UtcNow, cancellationToken))
+        {
+            return Result<Comment>.Failure(CommunityModerationErrors.AuthorRestricted);
+        }
+
+        var comment = Comment.Create(new CommunityPostId(request.PostId), authorId,
             request.ContentArabic, request.ContentEnglish, DateTime.UtcNow);
 
         _dbContext.Comments.Add(comment);

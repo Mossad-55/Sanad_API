@@ -7,6 +7,8 @@ namespace Sanad.Modules.Community.Domain.Posts;
 
 public sealed class Post : AggregateRoot<CommunityPostId>
 {
+    public const int MaximumNoteLength = 1000;
+
     private Post()
     {
     }
@@ -58,6 +60,10 @@ public sealed class Post : AggregateRoot<CommunityPostId>
     public DateTime? UpdatedOnUtc { get; private set; }
     public string? PublishedBy { get; private set; }
     public DateTime? PublishedOnUtc { get; private set; }
+    public UserId? RejectedBy { get; private set; }
+    public string? RejectionReasonCode { get; private set; }
+    public string? RejectionNote { get; private set; }
+    public DateTime? RejectedOnUtc { get; private set; }
 
     public static Post Create(
         string titleArabic,
@@ -94,14 +100,30 @@ public sealed class Post : AggregateRoot<CommunityPostId>
         UpdatedOnUtc = publishedOnUtc;
     }
 
-    public void Reject(DateTime rejectedOnUtc)
+    public void Reject(
+        UserId moderatorId,
+        string? reasonCode,
+        string? note,
+        DateTime rejectedOnUtc)
     {
+        if (moderatorId == UserId.Empty)
+            throw new DomainException("A rejecting moderator is required.");
+        if (!CommunityRejectionReasonCodes.IsValid(reasonCode))
+            throw new DomainException("Community rejection reason code is invalid.");
+        string code = reasonCode!;
+        string? normalizedNote = NormalizeRejectionNote(note);
+        if (CommunityRejectionReasonCodes.RequiresNote(code) && normalizedNote is null)
+            throw new DomainException("A note is required for this rejection reason.");
         if (rejectedOnUtc.Kind != DateTimeKind.Utc)
             throw new DomainException("Rejection timestamps must be UTC.");
         if (Status != PostStatus.PendingReview)
             throw new DomainException("Only posts pending review can be rejected.");
 
         Status = PostStatus.Rejected;
+        RejectedBy = moderatorId;
+        RejectionReasonCode = code;
+        RejectionNote = normalizedNote;
+        RejectedOnUtc = rejectedOnUtc;
         UpdatedOnUtc = rejectedOnUtc;
     }
 
@@ -120,6 +142,15 @@ public sealed class Post : AggregateRoot<CommunityPostId>
             throw new DomainException($"{name} must not exceed {maximumLength} characters.");
         return normalized;
     }
+
+    private static string? NormalizeRejectionNote(string? value)
+    {
+        string? normalized = string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+        if (normalized?.Length > MaximumNoteLength)
+            throw new DomainException(
+                $"Community rejection notes must not exceed {MaximumNoteLength} characters.");
+        return normalized;
+    }
 }
 
 public enum PostStatus
@@ -129,4 +160,36 @@ public enum PostStatus
     Published = 2,
     Rejected = 3,
     Archived = 4
+}
+
+/// <summary>
+/// The closed set of FUR-07 rejection reason codes. Unknown codes are
+/// validation errors. <see cref="Other"/> requires a note; every other code
+/// accepts an optional note.
+/// </summary>
+public static class CommunityRejectionReasonCodes
+{
+    public const string CommunityGuidelines = "CommunityGuidelines";
+    public const string Spam = "Spam";
+    public const string Duplicate = "Duplicate";
+    public const string UnsafeContent = "UnsafeContent";
+    public const string Other = "Other";
+
+    public static readonly int MaximumLength = 50;
+
+    private static readonly HashSet<string> All =
+        new(StringComparer.Ordinal)
+        {
+            CommunityGuidelines,
+            Spam,
+            Duplicate,
+            UnsafeContent,
+            Other
+        };
+
+    public static bool IsValid(string? reasonCode) =>
+        reasonCode is not null && All.Contains(reasonCode);
+
+    public static bool RequiresNote(string? reasonCode) =>
+        string.Equals(reasonCode, Other, StringComparison.Ordinal);
 }

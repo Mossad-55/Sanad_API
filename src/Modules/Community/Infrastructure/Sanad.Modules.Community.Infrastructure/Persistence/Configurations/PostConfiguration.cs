@@ -39,5 +39,19 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         builder.Property(e => e.PublishedOnUtc)
             .HasColumnType("timestamp with time zone")
             .IsRequired(false);
+        builder.Property(e => e.RejectedBy)
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? new UserId(value.Value) : (UserId?)null)
+            .IsRequired(false);
+        builder.Property(e => e.RejectionReasonCode)
+            .HasMaxLength(CommunityRejectionReasonCodes.MaximumLength)
+            .IsRequired(false);
+        builder.Property(e => e.RejectionNote)
+            .HasMaxLength(Post.MaximumNoteLength)
+            .IsRequired(false);
+        builder.Property(e => e.RejectedOnUtc)
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false);
     }
 }

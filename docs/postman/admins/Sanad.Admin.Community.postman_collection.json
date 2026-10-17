@@ -9,7 +9,10 @@
     { "key": "baseUrl", "value": "https://localhost:7296" },
     { "key": "accessToken", "value": "" },
     { "key": "postId", "value": "" },
-    { "key": "categoryId", "value": "" }
+    { "key": "categoryId", "value": "" },
+    { "key": "reportId", "value": "" },
+    { "key": "authorId", "value": "" },
+    { "key": "restrictionId", "value": "" }
   ],
   "item": [
     {
@@ -25,10 +28,11 @@
       "name": "Reject pending post",
       "request": {
         "method": "POST",
-        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"reasonCode\": \"Spam\",\n  \"note\": null\n}" },
         "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}/reject"
       },
-      "description": "ContentAdmin or SuperAdmin only. Returns 204; rejected posts remain hidden from public Community reads."
+      "description": "ContentAdmin or SuperAdmin only. Returns 204. reasonCode is CommunityGuidelines|Spam|Duplicate|UnsafeContent|Other; Other requires a note. Notes are trimmed plain text up to 1000 characters. Rejection stores moderator and UTC decision time; pending/rejected posts remain hidden from the public Community feed."
     },
     {
       "name": "List categories (admin)",
@@ -67,6 +71,54 @@
         "url": "{{baseUrl}}/api/v1/admin/community/categories/{{categoryId}}"
       },
       "description": "Hard delete. Returns 204. Unknown ids return 404 Community.CategoryNotFound; categories referenced by posts return 409 Community.CategoryInUse."
+    },
+    {
+      "name": "Community moderation queue",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/posts?page=1&pageSize=25&status=PendingReview&reportStatus=Open&search="
+      },
+      "description": "ContentAdmin or SuperAdmin only. Paged queue with optional status/reportStatus/search filters and query-derived counters. Page size defaults to 25 and is capped at 100. Items include author ID and display names, never contact details."
+    },
+    {
+      "name": "Community moderation post detail",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}"
+      },
+      "description": "Returns post detail, retained reports, and chronological publish/rejection history. Author email and phone are not included. Unknown posts return 404."
+    },
+    {
+      "name": "Resolve Community report",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"resolution\": \"ActionTaken\",\n  \"note\": \"Reviewed\"\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/reports/{{reportId}}/resolve"
+      },
+      "description": "resolution is ActionTaken or Dismissed; note is optional up to 1000 characters. Resolution records moderator/time but does not itself reject a post or restrict its author. Unknown report returns 404; already resolved returns 409."
+    },
+    {
+      "name": "Restrict Community author",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"duration\": \"Days7\",\n  \"reasonCode\": \"Spam\",\n  \"note\": null\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/authors/{{authorId}}/restrictions"
+      },
+      "description": "Community-only write restriction. duration is Hours24|Days7|Days30; reasonCode is CommunityGuidelines|Spam|Duplicate|UnsafeContent|Other. Other requires a note. Blocks new posts/comments/replies only and does not change Identity state."
+    },
+    {
+      "name": "Revoke Community restriction",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Appeal accepted\"\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/restrictions/{{restrictionId}}/revoke"
+      },
+      "description": "Ends a restriction early while retaining its original action and recording moderator, UTC time, and required reason. Unknown id returns 404; already revoked returns 409."
     }
   ]
 }

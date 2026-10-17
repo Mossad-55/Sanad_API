@@ -30,11 +30,11 @@ public sealed class CommunityModerationAndCheckInTests
     {
         var post = CreatePost();
 
-        post.Reject(DateTime.UtcNow);
+        post.Reject(UserId.New(), CommunityRejectionReasonCodes.Spam, null, DateTime.UtcNow);
 
         Assert.Equal(PostStatus.Rejected, post.Status);
         Assert.Throws<Sanad.BuildingBlocks.Domain.Exceptions.DomainException>(
-            () => post.Reject(DateTime.UtcNow));
+            () => post.Reject(UserId.New(), CommunityRejectionReasonCodes.Spam, null, DateTime.UtcNow));
     }
 
     [Theory]

@@ -18,6 +18,13 @@ public sealed class CreatePostCommandHandler : ICommandHandler<CreatePostCommand
 
     public async Task<Result<Post>> Handle(CreatePostCommand request, CancellationToken cancellationToken)
     {
+        var authorId = new UserId(request.AuthorId);
+        if (await CommunityAuthorRestrictionGuard.IsAuthorRestrictedAsync(
+                _dbContext, authorId, DateTime.UtcNow, cancellationToken))
+        {
+            return Result<Post>.Failure(CommunityModerationErrors.AuthorRestricted);
+        }
+
         CommunityCategoryId? categoryId = null;
         if (request.CategoryId is Guid rawCategoryId)
         {
@@ -42,7 +49,7 @@ public sealed class CreatePostCommandHandler : ICommandHandler<CreatePostCommand
             request.ContentEnglish,
             request.ImageUrl,
             request.IsAnonymous,
-            new UserId(request.AuthorId),
+            authorId,
             DateTime.UtcNow,
             categoryId);
 

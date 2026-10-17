@@ -1,4 +1,6 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
+using System.Data;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Community.Application.Abstractions.Data;
 using Sanad.Modules.Community.Domain.Categories;
@@ -14,6 +16,7 @@ namespace Sanad.Modules.Community.Infrastructure.Persistence;
 public class CommunityDbContext : DbContext, ICommunityDbContext
 {
     public const string Schema = "community";
+    private const int AuthorRestrictionLockNamespace = 0x53414E41;
 
     public CommunityDbContext(DbContextOptions<CommunityDbContext> options)
         : base(options)
@@ -28,6 +31,42 @@ public class CommunityDbContext : DbContext, ICommunityDbContext
     public DbSet<CommunityInteraction> Interactions { get; set; } = null!;
     public DbSet<CommunityImage> CommunityImages { get; set; } = null!;
     public DbSet<CommunityCategory> Categories { get; set; } = null!;
+    public DbSet<CommunityPostReport> CommunityPostReports { get; set; } = null!;
+    public DbSet<CommunityAuthorRestriction> CommunityAuthorRestrictions { get; set; } = null!;
+
+    public async Task<IDbContextTransaction?> BeginCommunityAuthorRestrictionTransactionAsync(
+        UserId authorId,
+        CancellationToken cancellationToken = default)
+    {
+        if (!Database.IsRelational())
+            return null;
+
+        bool isPostgres = Database.ProviderName == "Npgsql.EntityFrameworkCore.PostgreSQL";
+        IDbContextTransaction transaction = await Database.BeginTransactionAsync(
+            isPostgres ? IsolationLevel.ReadCommitted : IsolationLevel.Serializable,
+            cancellationToken);
+
+        try
+        {
+            if (isPostgres)
+            {
+                // A transaction-scoped advisory lock is shared by every API
+                // process. ReadCommitted gives the post-lock existence query
+                // a fresh snapshot after any prior lock holder commits.
+                int authorLockKey = authorId.Value.GetHashCode();
+                await Database.ExecuteSqlInterpolatedAsync(
+                    $"SELECT pg_advisory_xact_lock({AuthorRestrictionLockNamespace}, {authorLockKey})",
+                    cancellationToken);
+            }
+
+            return transaction;
+        }
+        catch
+        {
+            await transaction.DisposeAsync();
+            throw;
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -105,5 +144,69 @@ public class CommunityDbContext : DbContext, ICommunityDbContext
         parameter.DbType = dbType;
         parameter.Value = value;
         return parameter;
+    }
+
+    public async Task<IReadOnlyDictionary<Guid, CommunityAuthorName>> GetCommunityAuthorNamesAsync(
+        IReadOnlyCollection<Guid> userIds,
+        CancellationToken cancellationToken = default)
+    {
+        var names = new Dictionary<Guid, CommunityAuthorName>();
+        if (userIds is null || userIds.Count == 0)
+        {
+            return names;
+        }
+
+        // SQLite (unit-test seam) has no Identity schema; production
+        // PostgreSQL stores Identity users in the identity schema. The prefix
+        // is a fixed internal constant in both cases, never user input.
+        string prefix = Database.ProviderName == "Microsoft.EntityFrameworkCore.Sqlite"
+            ? "main."
+            : "identity.";
+
+        Guid[] distinct = userIds.Distinct().ToArray();
+
+        var command = Database.GetDbConnection().CreateCommand();
+        var placeholders = new string[distinct.Length];
+        for (int i = 0; i < distinct.Length; i++)
+        {
+            var parameter = command.CreateParameter();
+            parameter.ParameterName = $"@id{i}";
+            parameter.DbType = System.Data.DbType.Guid;
+            parameter.Value = distinct[i];
+            command.Parameters.Add(parameter);
+            placeholders[i] = parameter.ParameterName;
+        }
+
+        command.CommandText =
+            "SELECT id AS \"UserId\", arabic_full_name AS \"ArabicFullName\", " +
+            "english_full_name AS \"EnglishFullName\" " +
+            $"FROM {prefix}users WHERE id IN ({string.Join(", ", placeholders)})";
+
+        bool openedHere = Database.GetDbConnection().State != System.Data.ConnectionState.Open;
+        if (openedHere)
+        {
+            await Database.OpenConnectionAsync(cancellationToken);
+        }
+
+        try
+        {
+            await using var reader = await command.ExecuteReaderAsync(cancellationToken);
+            while (await reader.ReadAsync(cancellationToken))
+            {
+                Guid id = reader.GetGuid(0);
+                string arabic = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
+                string english = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
+                names[id] = new CommunityAuthorName(arabic, english);
+            }
+        }
+        finally
+        {
+            if (openedHere)
+            {
+                await Database.CloseConnectionAsync();
+            }
+        }
+
+        return names;
     }
 }

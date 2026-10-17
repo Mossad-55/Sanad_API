@@ -22,6 +22,36 @@ Both moderation routes return `204` on success and require the
 the public read routes. Unknown posts return the standard Community not-found
 problem response.
 
+Rejection requires a closed-set `reasonCode` and accepts an optional
+plain-text `note` (maximum 1000 characters). Codes are `CommunityGuidelines`,
+`Spam`, `Duplicate`, `UnsafeContent`, and `Other`; `Other` requires a note.
+Unknown codes, a missing required note, or an overlong note return 400. The
+decision records the moderator and UTC time and appears in admin moderation
+history.
+
+An authenticated Community user can report a **published** post they did not
+author with `POST /api/v1/community/posts/{postId}/reports`:
+
+```json
+{ "reasonCode": "Spam", "note": "Optional context" }
+```
+
+Report reason codes are `Spam`, `HarassmentOrAbuse`,
+`HarmfulOrUnsafeContent`, `MisleadingOrFalseInformation`, and `Other`.
+`Other` requires a note; all notes are trimmed plain text up to 1000
+characters. Unknown posts return 404; own-post or non-published targets
+return 409; invalid codes, missing required notes, or overlong notes return
+400. One report is retained per reporter/post pair; repeating the request
+returns the existing report. Reporting does not hide the post from the feed.
+There is no report deletion or post hide/restore action in this phase.
+
+An active Community restriction prevents its author from creating posts,
+comments, and replies. The restriction expires after the selected 24-hour,
+7-day, or 30-day duration, or earlier if revoked by a moderator. It does not
+change account login or access to other modules, existing content, or other
+Community interactions. A restricted write returns the Community error
+`Community.AuthorRestricted`.
+
 Post creation body (all fields except `imageUrl`, `isAnonymous`, and
 `categoryId` are required):
 

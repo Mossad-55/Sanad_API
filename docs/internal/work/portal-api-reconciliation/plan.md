@@ -2,11 +2,17 @@
 
 ## Frontend follow-up sequence — 2026-10-16
 
-Current checkpoint: **FUR-06 is Done**: accepted, committed/pushed, published,
-and deployed at `7339034`; the [release receipt](reports/fur-06-release.md)
-records the VPS revision, migration-head match, smoke result, and preserved host
-configuration. The present owner request is to streamline the worker and release
-workflow; FUR-07 remains Not started and is outside this work. FUR-05 is Done; see the
+Current checkpoint: **FUR-06 is Done** at deployed revision `7339034`; see its
+[release receipt](reports/fur-06-release.md). FUR-07 has an owner-approved
+contract and the owner-approved test manifest amendment. The continuation
+worker completed the in-scope implementation and required checks; the
+[delivery report](reports/fur-07-worker-delivery.md) records exact results.
+Mastermind review accepted the source, migration, tests, guides, and Postman
+mapping. The strict build passed with zero warnings/errors and 153 focused
+Community/model tests passed. PostgreSQL advisory-lock behavior was not tested
+against a live PostgreSQL server. FUR-07 is awaiting owner release authorization;
+it is not Done, the migration is unapplied, and nothing is released. FUR-05 is
+Done; see the
 [FUR-05 release receipt](reports/fur-05-release.md),
 [worker delivery](reports/fur-05-worker-delivery.md), and
 [Mastermind review](reports/fur-05-mastermind-review.md). FUR-04 is Done; see
@@ -41,7 +47,7 @@ contract assumption mismatches are not claimed as proven client code defects.
 | FUR-04 — Care Home readback (S04) | Done | Six-item scope and C1–C4 corrections accepted. Commit `31b13cc` pushed and deployed; Mastermind strict build 0 warnings/errors, guarded full unit 3475/0/31, architecture 1/1; standard deployment verifier passed, 9/9 heads matched, zero migrations applied, service active/NRestarts=0, host configuration fingerprints unchanged. Worker PostgreSQL proof 7/7 on `SanadFur04VerifyDb` (not rerun during corrections); the worker's unauthorized creation/drop of three unintended lowercase database instances remains disclosed, with no further DB action. See [delivery report](reports/fur-04-worker-delivery.md), [release receipt](reports/fur-04-release.md), and audience handoffs ([Admin](../frontend-handoffs/admin/admin-portal/phase-04-care-home-readback/2026-10-16-care-home-readback.md), [Owner](../frontend-handoffs/admin/care-home-owner/phase-04-care-home-readback/2026-10-16-care-home-readback.md)). FUR-05 not started. |
 | FUR-05 — Owner settlements (S05) | Done | Owner-approved read-only ledger includes eligible unpaid balances and recorded transfers. Reviewed, committed and pushed as `ca2ef2f`, deployed and verified; zero migrations applied and configuration fingerprints unchanged. See [worker delivery](reports/fur-05-worker-delivery.md), [Mastermind review](reports/fur-05-mastermind-review.md), and [release receipt](reports/fur-05-release.md). |
 | FUR-06 — Eligible caregiver payouts (S06) | Done | Contract accepted; worker delivery and Mastermind review accepted. Strict build passed and focused tests passed 21/21 before commit. Commit `7339034` was pushed and deployed; deployment endpoint reports the exact revision, database reachable, all 9/9 applied heads match, and services smoke returned HTTP 200. See [release receipt](reports/fur-06-release.md). The earlier full guarded suite attempts could not connect to testhost and were not repeated during publish/deploy. |
-| FUR-07 — Community moderation (S07) | Not started | Lock list/detail/reasons/counters and explicitly selected report/block policy; no implicit global suspension grant. |
+| FUR-07 — Community moderation (S07) | In progress — reviewed, awaiting owner release authorization | Approved [contract](contracts/fur-07-community-moderation.md); implementation, migration authoring, tests, feature guides, and Postman examples delivered and accepted by Mastermind review. Strict build 0 warnings/errors; focused Community/model tests 153/0/0. PostgreSQL advisory-lock behavior was not exercised against a live PostgreSQL server. Not committed, pushed, published, or deployed; migration not applied. See [delivery report](reports/fur-07-worker-delivery.md). |
 | FUR-08 — Owner disputes (S08) | Not started | Lock own-facility read/filter/display contract without admin resolution powers. |
 | FUR-09 — Caregiver integrity disposition (S09) | Not started | Review dependencies/recovery evidence before any separately approved exact repair/quarantine. Never hide or delete profiles implicitly. |
 | FUR-10 — Integration and release handoff | Not started | Final cross-phase integration/closure, audience handoffs and config/migration accounting. Each earlier complete phase already receives Mastermind release verification under the standing workflow; this final gate does not defer those releases. New target/destructive/material decisions still need exact authority. |

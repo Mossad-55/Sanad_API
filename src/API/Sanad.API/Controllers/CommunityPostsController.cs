@@ -1,7 +1,9 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sanad.API.ProblemDetail;
 using Sanad.BuildingBlocks.Application.Abstractions;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Community.Application.Comments;
 using Sanad.Modules.Community.Application.CheckIns;
@@ -203,6 +205,34 @@ public sealed class CommunityPostsController : ApiControllerBase
         return result.IsSuccess ? Ok() : ToActionResult(result);
     }
 
+    /// <summary>
+    /// FUR-07 report intake. Published posts only; an author cannot report
+    /// their own post; anonymous callers are rejected by the controller-level
+    /// authorization. A repeat request returns the same retained report.
+    /// </summary>
+    [HttpPost("posts/{postId:guid}/reports")]
+    [ProducesResponseType(
+        typeof(SubmitCommunityPostReportResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ReportPost(
+        Guid postId,
+        [FromBody] SubmitCommunityPostReportRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new SubmitCommunityPostReportCommand(postId, userId, request.ReasonCode, request.Note),
+            cancellationToken);
+
+        return result.IsSuccess ? Ok(result.Value) : ToReportError(result.Error);
+    }
+
     #endregion
 
     #region Check-ins
@@ -284,6 +314,28 @@ public sealed class CommunityPostsController : ApiControllerBase
 
     #endregion
 
+    /// <summary>
+    /// Forces the report-intake state conflicts to 409 (own post, or a target
+    /// that is not published) instead of the shared mapper's 400 default; the
+    /// unknown-post 404 already comes from the mapper.
+    /// </summary>
+    private IActionResult ToReportError(Error error)
+    {
+        if (error.Code == CommunityModerationErrors.CannotReportOwnPost.Code ||
+            error.Code == CommunityModerationErrors.ReportNotAllowed.Code)
+        {
+            ProblemDetails problemDetails =
+                ResultProblemDetailsMapper.Create(error, HttpContext);
+            problemDetails.Type = "https://httpstatuses.com/409";
+            problemDetails.Title = "Conflict";
+            problemDetails.Status = StatusCodes.Status409Conflict;
+            problemDetails.Detail = "The request conflicts with the current state.";
+            return StatusCode(StatusCodes.Status409Conflict, problemDetails);
+        }
+
+        return ToActionResult(Result.Failure(error));
+    }
+
     private static CommunityPostResponse ToResponse(PostFeedItem item) =>
         ToResponse(item.Post, item.IsLiked, item.IsFavorited, item.CurrentUserRating);
 
@@ -304,3 +356,5 @@ public sealed record CommunityPostResponse(Guid Id, string TitleArabic, string T
     string Status, int LikesCount, int CommentsCount, int FavoritesCount, DateTime CreatedOnUtc,
     Guid? CategoryId = null, string? CategoryArabicName = null, string? CategoryEnglishName = null,
     bool IsLiked = false, bool IsFavorited = false, int? CurrentUserRating = null);
+
+public sealed record SubmitCommunityPostReportRequest(string? ReasonCode, string? Note);
