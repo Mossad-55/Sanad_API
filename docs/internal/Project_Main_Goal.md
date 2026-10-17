@@ -18,14 +18,18 @@ its [phase receipt](work/portal-api-reconciliation/reports/fur-03-release.md).
 FUR-04 is accepted, committed/pushed and deployed at `31b13cc`; its release
 receipt records guarded gates, exact package/revision, zero migrations applied,
 all nine heads matched, active service and unchanged host configuration.
-FUR-05 and FUR-06 are Done; FUR-06 revision `7339034` is deployed and its
-[receipt](work/portal-api-reconciliation/reports/fur-06-release.md) records
-runtime evidence. FUR-07 remains Not started. See the current Mastermind handoff
-for the one next action. Earlier PORTAL completion remains valid.
-Current phase workflow: Mastermind locks the contract and reviews; one OpenCode
-worker implements the whole approved phase and pauses for its report; successful
-checks are reused while their inputs remain unchanged. After phase acceptance,
-the owner separately authorizes release. Mastermind then commits/pushes,
+FUR-05, FUR-06, and FUR-07 are Done. FUR-07 revision `303a131` is deployed;
+its [receipt](work/portal-api-reconciliation/reports/fur-07-release.md) records
+the applied Community migration and 9/9 runtime verification. See the current
+Mastermind handoff for the next action. Earlier PORTAL completion remains
+valid.
+Current phase workflow: Mastermind locks the contract and reviews; one Codex
+subagent using GPT-6 Luna at medium reasoning implements the approved phase and
+reports completion or a blocker. Mastermind waits on that same worker, reviews
+its report, and resumes it if it reports a blocker. Any parallel phase first
+needs a separate contract and a disjoint ownership/state assessment. Successful
+checks are reused while inputs remain unchanged. After phase acceptance, the
+owner separately authorizes release. Mastermind then commits/pushes,
 packages, deploys/verifies when applicable, records one receipt, and stops. See
 the [workflow](operations/codex-workflow.md),
 [publish procedure](operations/publish.md), and

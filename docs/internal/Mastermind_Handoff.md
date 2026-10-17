@@ -2,28 +2,22 @@
 
 ## Current checkpoint — 2026-10-17
 
-FUR-06 is Done at pushed/deployed revision `7339034`; see its
-[release receipt](work/portal-api-reconciliation/reports/fur-06-release.md).
-The worker and release workflow was streamlined and pushed as `119ba56`; see
-[Codex/OpenCode workflow](operations/codex-workflow.md),
-[publish procedure](operations/publish.md), and
-[deployment runbook](operations/deploy-runbook.md). FUR-07 has an approved
-[contract](work/portal-api-reconciliation/contracts/fur-07-community-moderation.md)
-and [worker brief](work/portal-api-reconciliation/worker-prompts/fur-07-community-moderation.md),
-and the owner-approved amendment for two existing Community test files. The
-Codex continuation completed the approved implementation, documentation,
-Postman examples, migration authoring, and focused checks. Its
-[delivery report](work/portal-api-reconciliation/reports/fur-07-worker-delivery.md)
-preserves the previous OpenCode 429/checkpoint as history and records the
-current result. Mastermind review accepted the delivered source, migration,
-tests, guides, and Postman mapping. The strict build passed with zero warnings
-and errors; 153 focused Community/model tests passed. The PostgreSQL advisory
-lock path was not exercised against a live PostgreSQL server. FUR-07 is not
-Done or released; its migration remains unapplied.
+FUR-07 is Done at pushed/deployed revision `303a131`; see its
+[release receipt](work/portal-api-reconciliation/reports/fur-07-release.md).
+The approved Community moderation contract, worker delivery, and Mastermind
+review are recorded in the [contract](work/portal-api-reconciliation/contracts/fur-07-community-moderation.md),
+[delivery report](work/portal-api-reconciliation/reports/fur-07-worker-delivery.md),
+and [review](work/portal-api-reconciliation/reports/fur-07-mastermind-review.md).
+Its additive Community migration was applied to the existing production
+database. The deployment verifier passed through the SSH tunnel: exact
+revision, database reachable, all 9/9 migration heads matched, all nine
+startup checks present, and anonymous services smoke HTTP 200. The worker's
+153 focused tests and strict zero-warning build were reused; no tests were
+rerun during release. The PostgreSQL advisory-lock path was not exercised
+against a live PostgreSQL server.
 
-**Next action:** obtain the owner's explicit release authorization for the
-reviewed FUR-07 phase. No commit, push, publish, deployment, or FUR-08 work is
-authorized yet.
+**Next action:** discuss and lock the FUR-08 contract and assess any proposed
+parallel work with the owner before another worker assignment.
 
 ## Active slice — Admin and Care Homes portal report reconciliation
 
