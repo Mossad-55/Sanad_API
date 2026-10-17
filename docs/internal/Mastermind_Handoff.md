@@ -135,17 +135,15 @@ no further database action occurred. See the [phase release receipt](work/portal
 FUR-05's owner-scoped settlement contract was approved on 2026-10-17: include
 both eligible unpaid balances and recorded transfers, reusing existing payout,
 refund, fee and debt truth. The implementation worker completed its report;
-Mastermind review accepted the code, tests, guide and Postman update for release.
-See the [worker delivery](work/portal-api-reconciliation/reports/fur-05-worker-delivery.md)
-and [Mastermind review](work/portal-api-reconciliation/reports/fur-05-mastermind-review.md).
-The owner directed completion and deployment of FUR-05. No database, migration,
-or provider action is part of this phase. FUR-06 remains deferred at the owner's
-direction until FUR-05 deployment is complete and the parallel-work decision is
-discussed together.
+Mastermind review accepted the code, tests, guide and Postman update. The phase
+was committed, pushed and deployed as `ca2ef2f`; see the [worker delivery](work/portal-api-reconciliation/reports/fur-05-worker-delivery.md),
+[Mastermind review](work/portal-api-reconciliation/reports/fur-05-mastermind-review.md),
+and [release receipt](work/portal-api-reconciliation/reports/fur-05-release.md).
+No migration was added or applied and no provider or payout state changed.
+FUR-06 remains Not started and deferred at the owner's direction.
 
-**Next action:** commit and push the reviewed FUR-05 phase, then prepare its fresh
-release package and deploy it to the previously designated target under the
-deployment runbook. Record verified evidence before marking FUR-05 Done.
+**Next action:** discuss the FUR-06 parallel-work decision with the owner before
+preparing its contract or implementation prompt.
 
 Historical checkpoints
 below must not override this follow-up or the latest deployment/import receipts.

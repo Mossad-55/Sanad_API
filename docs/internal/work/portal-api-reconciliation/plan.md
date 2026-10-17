@@ -2,14 +2,12 @@
 
 ## Frontend follow-up sequence — 2026-10-16
 
-Current checkpoint: **FUR-05 accepted for release; deployment in progress**.
-FUR-04 is Done; see [FUR-04 release receipt](reports/fur-04-release.md).
-FUR-05's [owner-approved contract](contracts/fur-05-owner-settlements.md),
-[pinned worker prompt](worker-prompts/fur-05-owner-settlements.md),
+Current checkpoint: **FUR-05 Done — deployed and verified**. See the
+[FUR-05 release receipt](reports/fur-05-release.md),
 [worker delivery](reports/fur-05-worker-delivery.md), and
-[Mastermind review](reports/fur-05-mastermind-review.md) are recorded. The
-owner directed deployment; the release receipt will be completed after target
-verification. FUR-06 remains deferred at the owner's direction.
+[Mastermind review](reports/fur-05-mastermind-review.md). FUR-06 remains Not
+started and deferred at the owner's direction. FUR-04 is Done; see
+[FUR-04 release receipt](reports/fur-04-release.md).
 FUR-02 [release receipt](reports/fur-02-deployment.md) records deployed revision
 `5cd3526`, one Identity migration applied, nine required/applied heads matched,
 unchanged VPS configuration, active service and independent tunneled verifier.
@@ -38,7 +36,7 @@ contract assumption mismatches are not claimed as proven client code defects.
 | FUR-02 — Verification continuity (S02) | Done | [Approved contract](contracts/fur-02-verification-continuity.md) → [worker delivery](reports/fur-02-worker-delivery.md) → [Mastermind review](reports/fur-02-mastermind-review.md) → [verified phase release](reports/fur-02-deployment.md). Deployed `5cd3526`; Identity 1 migration applied, other eight 0; 9/9 heads and config hashes match. |
 | FUR-03 — Finance verification (S03) | Done | R1–R5 accepted; no defect reproduced; worker-reported strict build clean, focused suites 11/11 + 19/19 + 25/25, PostgreSQL proof 12/12 on `SanadFur03VerifyDb`. No runtime delta; deployment N/A. [Phase release receipt](reports/fur-03-release.md); phase commit `858da09` pushed to `origin/main`. |
 | FUR-04 — Care Home readback (S04) | Done | Six-item scope and C1–C4 corrections accepted. Commit `31b13cc` pushed and deployed; Mastermind strict build 0 warnings/errors, guarded full unit 3475/0/31, architecture 1/1; standard deployment verifier passed, 9/9 heads matched, zero migrations applied, service active/NRestarts=0, host configuration fingerprints unchanged. Worker PostgreSQL proof 7/7 on `SanadFur04VerifyDb` (not rerun during corrections); the worker's unauthorized creation/drop of three unintended lowercase database instances remains disclosed, with no further DB action. See [delivery report](reports/fur-04-worker-delivery.md), [release receipt](reports/fur-04-release.md), and audience handoffs ([Admin](../frontend-handoffs/admin/admin-portal/phase-04-care-home-readback/2026-10-16-care-home-readback.md), [Owner](../frontend-handoffs/admin/care-home-owner/phase-04-care-home-readback/2026-10-16-care-home-readback.md)). FUR-05 not started. |
-| FUR-05 — Owner settlements (S05) | In progress | Owner-approved read-only ledger includes eligible unpaid balances and recorded transfers. Implementation, docs and Postman accepted after Mastermind review; deployment is underway. See [worker delivery](reports/fur-05-worker-delivery.md) and [Mastermind review](reports/fur-05-mastermind-review.md). |
+| FUR-05 — Owner settlements (S05) | Done | Owner-approved read-only ledger includes eligible unpaid balances and recorded transfers. Reviewed, committed and pushed as `ca2ef2f`, deployed and verified; zero migrations applied and configuration fingerprints unchanged. See [worker delivery](reports/fur-05-worker-delivery.md), [Mastermind review](reports/fur-05-mastermind-review.md), and [release receipt](reports/fur-05-release.md). |
 | FUR-06 — Eligible caregiver payouts (S06) | Not started | Lock selector contract and reuse full command eligibility. |
 | FUR-07 — Community moderation (S07) | Not started | Lock list/detail/reasons/counters and explicitly selected report/block policy; no implicit global suspension grant. |
 | FUR-08 — Owner disputes (S08) | Not started | Lock own-facility read/filter/display contract without admin resolution powers. |
