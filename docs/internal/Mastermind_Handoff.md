@@ -106,7 +106,7 @@ commit/push; phase commit
 records FUR-03 Done, deployment N/A (no runtime delta), and the worker-reported
 verification evidence.
 
-### Current active phase — FUR-04 Care Home readback
+### Completed phase — FUR-04 Care Home readback
 
 FUR-04 contract and test-schema addendum were owner-approved; the complete
 worker delivery and C1–C4 corrections were reviewed and accepted. See the
@@ -125,9 +125,17 @@ created and dropped during target setup. The only approved target was the exact
 `SanadFur04VerifyDb`; the correction report records available pre-drop evidence
 and resulting state. No further database action is authorized or planned.
 Owner authorized FUR-04 commit, push and Production deployment on 2026-10-17.
-Release is in progress; do not mark Done until the pushed revision, fresh
-package, deployment, service/migration/configuration checks and verifier are
-recorded in the [phase release receipt](work/portal-api-reconciliation/reports/fur-04-release.md).
+FUR-04 is **Done**: `31b13cc` is pushed/deployed; Mastermind guarded Unit
+3475/0/31 and Architecture 1/1 passed, strict build had zero warnings/errors,
+the standard verifier passed, all nine migration heads match with zero applied,
+service is active with zero restarts, and host configuration fingerprints are
+unchanged. The unauthorized local database setup deviation remains disclosed;
+no further database action occurred. See the [phase release receipt](work/portal-api-reconciliation/reports/fur-04-release.md).
+
+**Next action:** begin only a bounded read-only FUR-05 investigation and prepare
+its full contract proposal for owner discussion/approval. Do not start an
+implementation worker or FUR-06 until FUR-05's contract is explicitly approved
+and its complete worker prompt is presented.
 
 Historical checkpoints
 below must not override this follow-up or the latest deployment/import receipts.

@@ -3,11 +3,11 @@
 Date: 2026-10-16 (Africa/Cairo). Phase: FUR-04.
 Purpose: backend contract delivery notice; client adoption unconfirmed.
 Audience: Admin portal (Admin audience = Admin portal + Care Home Owner portal).
-Communication state: worker delivery complete; Mastermind review and owner release approval pending — not yet forwarded as accepted.
+Communication state: backend phase accepted and deployed; client adoption/forwarding remains unconfirmed.
 
 No frontend repository was inspected. No frontend code defect is claimed.
 This notice communicates the delivered backend readback contract and what
-admin-portal clients should rely on once released. No new endpoint, route,
+admin-portal clients can rely on in deployed revision `31b13cc`. No new endpoint, route,
 policy, or lifecycle change is included.
 
 ## Baseline and authority
@@ -17,8 +17,8 @@ policy, or lifecycle change is included.
   actor display) from the A3 missing-fields audit.
 - Canonical plan/approved contract: [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) (owner-approved 2026-10-16, including the test-schema addendum).
 - Source baseline: `14677d961813a94be602390e7801623c766ad53c` (`main == origin/main`, clean at phase start).
-- Delivery report: [fur-04-worker-delivery](../../../../internal/work/portal-api-reconciliation/reports/fur-04-worker-delivery.md) (worker evidence; Mastermind review pending).
-- Deployment status: **not performed — awaiting Mastermind review and owner release approval.**
+- Delivery report: [fur-04-worker-delivery](../../../../internal/work/portal-api-reconciliation/reports/fur-04-worker-delivery.md); [release receipt](../../../../internal/work/portal-api-reconciliation/reports/fur-04-release.md) records Mastermind acceptance and Production deployment of `31b13cc`.
+- Deployment status: **deployed and verified**; frontend forwarding/adoption is unconfirmed.
 - Evidence limits: the original phase included focused unit proof plus
   disposable-PostgreSQL proof (7/7 tests passed against
   `SanadFur04VerifyDb`); that PostgreSQL proof was not rerun during C1. C1's
@@ -53,10 +53,10 @@ would need a migration and are not included.
 
 | Issue | Contract | Implementation/revision | Verification | Deployment | Remaining action |
 | --- | --- | --- | --- | --- | --- |
-| #25 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | `CareHomeAdminRevision.Media` + Admin file-route URI; file-guard predicate correction in `CareHomeProfileMediaController.cs` (same allow/deny, translatable shape) | Focused unit + 7/7 disposable-PostgreSQL proof; strict build 0 warnings/errors; guarded full unit 3473/0/31; architecture 1/1 | Not performed — awaiting Mastermind review and owner release approval | After release, render per-revision media from `media[].uri`; never parse storage keys |
-| #27 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | `AdminCareHomeCheckInDispute` resident snapshots + `originalBookingTotalAmount`/`originalBookingCurrency` | Original focused unit + 7/7 disposable-PostgreSQL proof (not rerun during C1); C1 focused correction run: 131 passed / 0 failed / 0 skipped | Not performed — awaiting Mastermind review and owner release approval | Display the original booking total as labeled; do not substitute refund/payout/net figures |
-| #28 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | Nullable `ownerArabicName`/`ownerEnglishName` on list/detail via Identity display lookup | Focused unit (incl. real-Identity SQLite twins) + 7/7 disposable-PostgreSQL proof | Not performed — awaiting Mastermind review and owner release approval | Render names when present, blank state when null; do not request phone |
-| #29 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | `CareHomeAdminReviewHistory` with `actorArabicName`/`actorEnglishName`/`actorCurrentRoles` (current-at-read) | Focused unit incl. live role-change proof + 7/7 disposable-PostgreSQL proof | Not performed — awaiting Mastermind review and owner release approval | Label roles as current; never present them as the historical decision-time role |
+| #25 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | `CareHomeAdminRevision.Media` + Admin file-route URI; file-guard predicate correction in `CareHomeProfileMediaController.cs` (same allow/deny, translatable shape) | Focused unit + worker PostgreSQL proof 7/7; Mastermind strict build clean, guarded full unit 3475/0/31, architecture 1/1; [release verifier](../../../../internal/work/portal-api-reconciliation/reports/fur-04-release.md) passed | Deployed `31b13cc` and verified; no migration applied | Render per-revision media from `media[].uri`; never parse storage keys |
+| #27 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | `AdminCareHomeCheckInDispute` resident snapshots + `originalBookingTotalAmount`/`originalBookingCurrency` | Worker PostgreSQL proof 7/7 (not rerun during C1); C1 correction run 131/0; final guarded full Unit 3475/0/31; deployed verifier passed | Deployed `31b13cc`; no migration applied | Display the original booking total as labeled; do not substitute refund/payout/net figures |
+| #28 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | Nullable `ownerArabicName`/`ownerEnglishName` on list/detail via Identity display lookup | Focused unit (incl. real-Identity SQLite twins) + worker PostgreSQL proof 7/7; final guarded Unit 3475/0/31 | Deployed `31b13cc`; no migration applied | Render names when present, blank state when null; do not request phone |
+| #29 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | `CareHomeAdminReviewHistory` with `actorArabicName`/`actorEnglishName`/`actorCurrentRoles` (current-at-read) | Focused unit incl. live role-change proof + worker PostgreSQL proof 7/7; final guarded Unit 3475/0/31 | Deployed `31b13cc`; no migration applied | Label roles as current; never present them as the historical decision-time role |
 
 The linked delivery report is backend evidence, not proof of client adoption.
 

@@ -3,11 +3,11 @@
 Date: 2026-10-16 (Africa/Cairo). Phase: FUR-04.
 Purpose: backend contract delivery notice; client adoption unconfirmed.
 Audience: Care Home Owner portal (Admin audience = Admin portal + Care Home Owner portal).
-Communication state: worker delivery complete; Mastermind review and owner release approval pending — not yet forwarded as accepted.
+Communication state: backend phase accepted and deployed; client adoption/forwarding remains unconfirmed.
 
 No frontend repository was inspected. No frontend code defect is claimed.
 This notice communicates the delivered backend readback contract and what
-owner-portal clients should rely on once released. No new endpoint, route,
+owner-portal clients can rely on in deployed revision `31b13cc`. No new endpoint, route,
 policy, or lifecycle change is included.
 
 ## Baseline and authority
@@ -16,8 +16,8 @@ policy, or lifecycle change is included.
   and `#26` (owner operational booking detail) from the A3 missing-fields audit.
 - Canonical plan/approved contract: [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) (owner-approved 2026-10-16, including the test-schema addendum).
 - Source baseline: `14677d961813a94be602390e7801623c766ad53c` (`main == origin/main`, clean at phase start).
-- Delivery report: [fur-04-worker-delivery](../../../../internal/work/portal-api-reconciliation/reports/fur-04-worker-delivery.md) (worker evidence; Mastermind review pending).
-- Deployment status: **not performed — awaiting Mastermind review and owner release approval.**
+- Delivery report: [fur-04-worker-delivery](../../../../internal/work/portal-api-reconciliation/reports/fur-04-worker-delivery.md); [release receipt](../../../../internal/work/portal-api-reconciliation/reports/fur-04-release.md) records Mastermind acceptance and Production deployment of `31b13cc`.
+- Deployment status: **deployed and verified**; frontend forwarding/adoption is unconfirmed.
 - Evidence limits: focused unit proof plus disposable-PostgreSQL proof (7/7
   tests passed against `SanadFur04VerifyDb`); no frontend repository,
   provider, Bruno, or production run. Frontend repositories inspected: none.
@@ -43,8 +43,8 @@ remains FUR-08 and is not part of this delivery.
 
 | Issue | Contract | Implementation/revision | Verification | Deployment | Remaining action |
 | --- | --- | --- | --- | --- | --- |
-| #24 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | `CareHomeOwnerProfile.SubmittedProfile`/`ApprovedProfile` (`CareHomeProfileRevisionProfile`: `revisionId` + `profile`) | Owner state-matrix unit tests (Draft/PendingReview/NeedsCorrection/Rejected/Approved/Approved-with-newer-draft) + PostgreSQL proof; no-GET-mutation asserted | Not performed — awaiting Mastermind review and owner release approval | After release, render `submittedProfile` only when non-null (pending review) and `approvedProfile` whenever present; do not treat a null `draft` as "no profile" |
-| #26 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | `CareHomeOwnerBookingOperationalResponse` resident snapshot fields from stored booking values | Focused unit + PostgreSQL proof incl. own-facility and 404 cases | Not performed — awaiting Mastermind review and owner release approval | Display stored snapshots as-is; do not substitute live identity data |
+| #24 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | `CareHomeOwnerProfile.SubmittedProfile`/`ApprovedProfile` (`CareHomeProfileRevisionProfile`: `revisionId` + `profile`) | Owner state-matrix unit tests (Draft/PendingReview/NeedsCorrection/Rejected/Approved/Approved-with-newer-draft) + worker PostgreSQL proof; final guarded Unit 3475/0/31; no-GET-mutation asserted | Deployed `31b13cc`; verifier passed; no migration applied | Render `submittedProfile` only when non-null (pending review) and `approvedProfile` whenever present; do not treat a null `draft` as "no profile" |
+| #26 | [FUR-04 contract](../../../../internal/work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md) | `CareHomeOwnerBookingOperationalResponse` resident snapshot fields from stored booking values | Focused unit + worker PostgreSQL proof incl. own-facility/404; final guarded Unit 3475/0/31; deployment verifier passed | Deployed `31b13cc`; no migration applied | Display stored snapshots as-is; do not substitute live identity data |
 
 The linked delivery report is backend evidence, not proof of client adoption.
 

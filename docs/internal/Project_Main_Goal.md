@@ -15,9 +15,12 @@ FUR-02 is accepted and deployed at `5cd3526` with its one additive Identity
 migration; see its [phase receipt](work/portal-api-reconciliation/reports/fur-02-deployment.md).
 FUR-03 is accepted/pushed at `858da09`; verification-only, deployment N/A. See
 its [phase receipt](work/portal-api-reconciliation/reports/fur-03-release.md).
-FUR-04 delivery is accepted and its commit/push/deployment are owner-authorized;
-the release is in progress. See the current Mastermind
-handoff for exactly one next action. Earlier PORTAL completion remains valid.
+FUR-04 is accepted, committed/pushed and deployed at `31b13cc`; its release
+receipt records guarded gates, exact package/revision, zero migrations applied,
+all nine heads matched, active service and unchanged host configuration.
+Fourteen roadmap phases remain; FUR-05 has not started. See the current
+Mastermind handoff for exactly one next action. Earlier PORTAL completion
+remains valid.
 Owner's standing phase workflow: workers implement and return complete reports;
 Mastermind plans/reviews/integrates. After full-phase acceptance and any worker
 corrections, Mastermind commits/pushes and deploys/verifies before advancing.
