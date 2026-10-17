@@ -72,7 +72,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/admin/care-homes/check-in-disputes",
-            "description": "CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin is denied). Lists cases newest first. Provide an authorized admin token before running."
+            "description": "CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin is denied). Lists cases newest first. Each case carries the stored residentArabicName/residentEnglishName snapshots and the original booking originalBookingTotalAmount in originalBookingCurrency (current fixed Care Home currency convention, EGP; the booking does not persist a currency). List-only enrichment; resolve and Family submission shapes are unchanged. Provide an authorized admin token before running."
           },
           "event": [
             {
@@ -162,7 +162,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/admin/care-homes?page=1&pageSize=20",
-            "description": "Returns page/pageSize/totalCount/items. Invalid paging or status returns 400 CareHomes.Admin.InvalidQuery."
+            "description": "Returns page/pageSize/totalCount/items. Each item carries ownerArabicName/ownerEnglishName (nullable account display names; null when the identity is missing or anonymized; no phone). Invalid paging or status returns 400 CareHomes.Admin.InvalidQuery."
           },
           "event": [
             {
@@ -181,7 +181,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}",
-            "description": "Returns revisions, document metadata and review history without private storage keys. Unknown IDs return 404 CareHomes.Admin.ApplicationNotFound."
+            "description": "Returns ownerArabicName/ownerEnglishName, revisions, document metadata and review history without private storage keys. Each revision carries ordered media metadata (id, kind, position, contentType, length, uri pointing at the Admin media file route). Each history entry carries actorArabicName/actorEnglishName and actorCurrentRoles (current account roles at read time, not historical roles; nulls when the identity is missing or anonymized). Unknown IDs return 404 CareHomes.Admin.ApplicationNotFound."
           },
           "event": [
             {

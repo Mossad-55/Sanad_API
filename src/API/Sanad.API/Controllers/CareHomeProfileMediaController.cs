@@ -55,8 +55,7 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
     {
         if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized();
         var item = await db.ProfileMedia.AsNoTracking().SingleOrDefaultAsync(x => x.Id == mediaId, ct);
-        if (item is not null && !await db.Facilities.AsNoTracking().AnyAsync(f => f.OwnerUserId == actor &&
-            f.Revisions.Any(r => r.Id == item.ProfileRevisionId), ct)) item = null;
+        if (item is not null && !await OwnsRevisionAsync(actor, item.ProfileRevisionId, ct)) item = null;
         if (item is null) return NotFound();
         return await Open(item.StorageKey, ct);
     }
@@ -66,8 +65,7 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
     public async Task<IActionResult> ReadAdmin(Guid careHomeId, Guid mediaId, CancellationToken ct)
     {
         var item = await db.ProfileMedia.AsNoTracking().SingleOrDefaultAsync(x => x.Id == mediaId, ct);
-        if (item is not null && !await db.Facilities.AsNoTracking().AnyAsync(f => f.Id.Value == careHomeId &&
-            f.Revisions.Any(r => r.Id == item.ProfileRevisionId), ct)) item = null;
+        if (item is not null && !await FacilityOwnsRevisionAsync(careHomeId, item.ProfileRevisionId, ct)) item = null;
         if (item is null) return NotFound();
         return await Open(item.StorageKey, ct);
     }
@@ -77,8 +75,7 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
     public async Task<IActionResult> ReadApproved(Guid careHomeId, Guid mediaId, CancellationToken ct)
     {
         var item = await db.ProfileMedia.AsNoTracking().SingleOrDefaultAsync(x => x.Id == mediaId, ct);
-        if (item is not null && !await db.Facilities.AsNoTracking().AnyAsync(f => f.Id.Value == careHomeId &&
-            f.Status == CareHomeStatus.Approved && f.ApprovedRevisionId == item.ProfileRevisionId, ct)) item = null;
+        if (item is not null && !await IsApprovedRevisionAsync(careHomeId, item.ProfileRevisionId, ct)) item = null;
         if (item is null) return NotFound();
         return await Open(item.StorageKey, ct);
     }
@@ -88,6 +85,33 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
         var result = await storage.OpenReadAsync(key, ct);
         if (result.IsFailure) return NotFound();
         return File(result.Value.Content, result.Value.ContentType, enableRangeProcessing: false);
+    }
+
+    private async Task<bool> OwnsRevisionAsync(UserId actor, Guid revisionId, CancellationToken ct)
+    {
+        List<Guid> revisionIds = await db.Facilities.AsNoTracking()
+            .Where(f => f.OwnerUserId == actor)
+            .SelectMany(f => f.Revisions.Select(r => r.Id))
+            .ToListAsync(ct);
+        return revisionIds.Contains(revisionId);
+    }
+
+    private async Task<bool> FacilityOwnsRevisionAsync(Guid careHomeId, Guid revisionId, CancellationToken ct)
+    {
+        List<Guid> revisionIds = await db.Facilities.AsNoTracking()
+            .Where(f => f.Id == new CareHomeId(careHomeId))
+            .SelectMany(f => f.Revisions.Select(r => r.Id))
+            .ToListAsync(ct);
+        return revisionIds.Contains(revisionId);
+    }
+
+    private async Task<bool> IsApprovedRevisionAsync(Guid careHomeId, Guid revisionId, CancellationToken ct)
+    {
+        Guid? approvedRevisionId = await db.Facilities.AsNoTracking()
+            .Where(f => f.Id == new CareHomeId(careHomeId) && f.Status == CareHomeStatus.Approved)
+            .Select(f => f.ApprovedRevisionId)
+            .SingleOrDefaultAsync(ct);
+        return approvedRevisionId == revisionId;
     }
 
 }

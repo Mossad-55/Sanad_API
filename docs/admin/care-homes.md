@@ -6,13 +6,13 @@ The operational review and private-file routes in this guide are restricted to n
 
 `GET /api/v1/admin/care-homes?page=1&pageSize=20&status=2`
 
-`page` is at least 1, `pageSize` is 1–100, and optional `status` must be a defined `CareHomeStatus` value. The `200 OK` response contains `page`, `pageSize`, `totalCount`, and `items`; each item contains `id`, `ownerUserId`, `status`, `version`, `submittedRevisionId`, bilingual names, and `updatedOnUtc`. Invalid paging/status returns `400 CareHomes.Admin.InvalidQuery`.
+`page` is at least 1, `pageSize` is 1–100, and optional `status` must be a defined `CareHomeStatus` value. The `200 OK` response contains `page`, `pageSize`, `totalCount`, and `items`; each item contains `id`, `ownerUserId`, nullable `ownerArabicName`/`ownerEnglishName` account display names (null when the identity is missing or anonymized; no phone is exposed), `status`, `version`, `submittedRevisionId`, bilingual names, and `updatedOnUtc`. Invalid paging/status returns `400 CareHomes.Admin.InvalidQuery`.
 
 ## Application detail
 
 `GET /api/v1/admin/care-homes/{careHomeId}`
 
-Returns `200 OK` with the owner ID, lifecycle status/version, submitted and approved revision IDs, ordered frozen/editable `revisions`, document metadata, and chronological `reviewHistory`. Unknown IDs return `404 CareHomes.Admin.ApplicationNotFound`. Document metadata contains IDs, type, revision, expiry, review state/reason, and timestamps; it does not expose the private storage key.
+Returns `200 OK` with the owner ID, nullable `ownerArabicName`/`ownerEnglishName` account display names (null when the identity is missing or anonymized; no phone is exposed), lifecycle status/version, submitted and approved revision IDs, ordered frozen/editable `revisions`, document metadata, and chronological `reviewHistory`. Each revision carries its ordered media metadata (`id`, `kind`, `position`, `contentType`, `length`, and a `uri` pointing at the Admin media file route below); storage keys are never serialized. Each history entry keeps its actor ID and ordering and adds nullable `actorArabicName`/`actorEnglishName` plus separately named `actorCurrentRoles` holding the actor's current account roles at read time (not the role held when the event occurred); missing or anonymized actors yield null enrichment. Unknown IDs return `404 CareHomes.Admin.ApplicationNotFound`. Document metadata contains IDs, type, revision, expiry, review state/reason, and timestamps; it does not expose the private storage key.
 
 ## Read a private document
 

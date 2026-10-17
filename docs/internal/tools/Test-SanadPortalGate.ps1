@@ -30,7 +30,13 @@ $integrationKeys = @(
     # FUR-02 disposable-PostgreSQL opt-in key. It does not match the
     # *IntegrationDatabase pattern above, so it is listed explicitly to keep
     # it out of the guarded test child environment (fail-closed below).
-    'ConnectionStrings__Fur02VerificationDatabase'
+    'ConnectionStrings__Fur02VerificationDatabase',
+    # FUR-03 disposable-PostgreSQL opt-in key. Listed explicitly for the same
+    # reason: the guarded suite must never inherit this target.
+    'ConnectionStrings__Fur03VerificationDatabase',
+    # FUR-04 disposable-PostgreSQL opt-in key. Listed explicitly for the same
+    # reason: the guarded suite must never inherit this target.
+    'ConnectionStrings__Fur04VerificationDatabase'
 )
 foreach ($key in @($gateStart.Environment.Keys)) {
     if ($key -match '(?i)^ConnectionStrings__.*IntegrationDatabase$') {

@@ -1,4 +1,5 @@
 using System.Text;
+using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
@@ -6,17 +7,20 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Facilities;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
+using Sanad.Modules.Identity.Application.Users;
 
 namespace Sanad.UnitTests.CareHomes;
 
 public sealed class AdminCareHomeApplicationTests
 {
+    internal static ISender Sender { get; } = new FakeDisplayInfoSender();
+
     [Fact]
     public async Task AdminQueries_RejectInvalidPagingAndReturnTypedMissingIdErrors()
     {
         using CareHomesDbContext db = CreateDb();
-        var list = new GetAdminCareHomeApplicationsQueryHandler(db);
-        var detail = new GetAdminCareHomeApplicationQueryHandler(db);
+        var list = new GetAdminCareHomeApplicationsQueryHandler(db, Sender);
+        var detail = new GetAdminCareHomeApplicationQueryHandler(db, Sender);
 
         var invalidPage = await list.Handle(new GetAdminCareHomeApplicationsQuery(0, 20), default);
         var invalidSize = await list.Handle(new GetAdminCareHomeApplicationsQuery(1, 101), default);
@@ -37,7 +41,7 @@ public sealed class AdminCareHomeApplicationTests
         UserId admin = UserId.New();
         var facility = await CreateSubmittedFacility(db, owner);
         CareHomeDocument document = facility.Documents.Single(x => x.Type == CareHomeDocumentType.OperatingLicense);
-        var handler = new ReviewCareHomeDocumentCommandHandler(db);
+        var handler = new ReviewCareHomeDocumentCommandHandler(db, Sender);
         int submittedVersion = facility.Version;
 
         var missingConfirmation = await handler.Handle(new ReviewCareHomeDocumentCommand(
@@ -61,7 +65,7 @@ public sealed class AdminCareHomeApplicationTests
         UserId admin = UserId.New();
         var facility = await CreateSubmittedFacility(db, owner);
         CareHomeDocument document = facility.Documents.Single(x => x.Type == CareHomeDocumentType.Registration);
-        var handler = new ReviewCareHomeDocumentCommandHandler(db);
+        var handler = new ReviewCareHomeDocumentCommandHandler(db, Sender);
 
         var rejected = await handler.Handle(new ReviewCareHomeDocumentCommand(
             admin, facility.Id.Value, document.Id, facility.Version, false, null, false, "Unreadable registration"), default);
@@ -82,7 +86,7 @@ public sealed class AdminCareHomeApplicationTests
         UserId owner = UserId.New();
         UserId admin = UserId.New();
         var facility = await CreateSubmittedFacility(db, owner);
-        var handler = new ReviewCareHomeApplicationCommandHandler(db);
+        var handler = new ReviewCareHomeApplicationCommandHandler(db, Sender);
 
         var correction = await handler.Handle(new ReviewCareHomeApplicationCommand(
             admin, facility.Id.Value, facility.Version, CareHomeReviewAction.CorrectionsRequested, "Please replace certificate"), default);
@@ -92,7 +96,7 @@ public sealed class AdminCareHomeApplicationTests
         {
             facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents)
                 .SingleAsync(x => x.Id == facility.Id);
-            await new ReviewCareHomeDocumentCommandHandler(db).Handle(new ReviewCareHomeDocumentCommand(
+            await new ReviewCareHomeDocumentCommandHandler(db, Sender).Handle(new ReviewCareHomeDocumentCommand(
                 admin, facility.Id.Value, document.Id, facility.Version, true, null, true, null), default);
         }
         facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents).SingleAsync(x => x.Id == facility.Id);
@@ -176,6 +180,23 @@ public sealed class AdminCareHomeApplicationTests
 
     private static CareHomesDbContext CreateDb() => new(new DbContextOptionsBuilder<CareHomesDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+
+    private sealed class FakeDisplayInfoSender : ISender
+    {
+        public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+        {
+            if (request is GetUserDisplayInfoByIdsQuery)
+            {
+                return Task.FromResult((TResponse)(object)Result<IReadOnlyList<UserDisplayInfo>>.Success(Array.Empty<UserDisplayInfo>()));
+            }
+            throw new NotSupportedException();
+        }
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default) where TRequest : IRequest => throw new NotSupportedException();
+        public Task<object?> Send(object request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
 
     private sealed class RecordingStorage : IFileStorage
     {

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using MediatR;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
@@ -6,12 +7,16 @@ using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Domain.Facilities;
+using Sanad.Modules.Identity.Application.Users;
+using Sanad.Modules.Identity.Domain.Users;
 
 namespace Sanad.Modules.CareHomes.Application.Facilities;
 
 public sealed record CareHomeAdminApplicationItem(
     Guid Id,
     Guid OwnerUserId,
+    string? OwnerArabicName,
+    string? OwnerEnglishName,
     CareHomeStatus Status,
     int Version,
     Guid? SubmittedRevisionId,
@@ -25,6 +30,14 @@ public sealed record CareHomeAdminApplicationsPage(
     int TotalCount,
     IReadOnlyList<CareHomeAdminApplicationItem> Items);
 
+public sealed record CareHomeAdminRevisionMedia(
+    Guid Id,
+    CareHomeProfileMediaKind Kind,
+    int Position,
+    string ContentType,
+    long Length,
+    string Uri);
+
 public sealed record CareHomeAdminRevision(
     Guid Id,
     int RevisionNumber,
@@ -32,18 +45,34 @@ public sealed record CareHomeAdminRevision(
     DateTime CreatedOnUtc,
     DateTime? SubmittedOnUtc,
     DateTime? ApprovedOnUtc,
-    CareHomeProfileDraft Profile);
+    CareHomeProfileDraft Profile,
+    IReadOnlyList<CareHomeAdminRevisionMedia> Media);
+
+public sealed record CareHomeAdminReviewHistory(
+    Guid Id,
+    Guid? ProfileRevisionId,
+    CareHomeReviewAction Action,
+    CareHomeStatus PreviousStatus,
+    CareHomeStatus NewStatus,
+    Guid ActorUserId,
+    string? Reason,
+    DateTime OccurredOnUtc,
+    string? ActorArabicName,
+    string? ActorEnglishName,
+    IReadOnlyList<string>? ActorCurrentRoles);
 
 public sealed record CareHomeAdminApplicationDetail(
     Guid Id,
     Guid OwnerUserId,
+    string? OwnerArabicName,
+    string? OwnerEnglishName,
     CareHomeStatus Status,
     int Version,
     Guid? SubmittedRevisionId,
     Guid? ApprovedRevisionId,
     IReadOnlyList<CareHomeAdminRevision> Revisions,
     IReadOnlyList<CareHomeDocumentResponse> Documents,
-    IReadOnlyList<CareHomeReviewHistory> ReviewHistory);
+    IReadOnlyList<CareHomeAdminReviewHistory> ReviewHistory);
 
 public static class CareHomeAdminErrors
 {
@@ -58,7 +87,7 @@ public static class CareHomeAdminErrors
 public sealed record GetAdminCareHomeApplicationsQuery(int Page = 1, int PageSize = 20, CareHomeStatus? Status = null)
     : IQuery<CareHomeAdminApplicationsPage>;
 
-public sealed class GetAdminCareHomeApplicationsQueryHandler(ICareHomesDbContext db)
+public sealed class GetAdminCareHomeApplicationsQueryHandler(ICareHomesDbContext db, ISender sender)
     : IQueryHandler<GetAdminCareHomeApplicationsQuery, CareHomeAdminApplicationsPage>
 {
     public async Task<Result<CareHomeAdminApplicationsPage>> Handle(GetAdminCareHomeApplicationsQuery request, CancellationToken ct)
@@ -80,22 +109,35 @@ public sealed class GetAdminCareHomeApplicationsQueryHandler(ICareHomesDbContext
             .AsSplitQuery()
             .ToListAsync(ct);
 
+        UserId[] ownerIds = facilities.Select(item => item.OwnerUserId).Distinct().ToArray();
+        IReadOnlyList<UserDisplayInfo> ownerInfo = await QueryDisplayInfoAsync(ownerIds, ct);
+        Dictionary<Guid, UserDisplayInfo> ownerById = ownerInfo.ToDictionary(x => x.UserId.Value);
+
         CareHomeAdminApplicationItem[] items = facilities.Select(item =>
         {
             CareHomeProfileRevision? revision = item.Revisions.SingleOrDefault(x => x.Id == item.SubmittedRevisionId)
                 ?? item.Revisions.OrderByDescending(x => x.RevisionNumber).FirstOrDefault();
+            ownerById.TryGetValue(item.OwnerUserId.Value, out UserDisplayInfo? owner);
             return new CareHomeAdminApplicationItem(item.Id.Value, item.OwnerUserId.Value,
+                owner?.ArabicFullName, owner?.EnglishFullName,
                 item.Status, item.Version, item.SubmittedRevisionId, revision?.EnglishName,
                 revision?.ArabicName, item.UpdatedOnUtc);
         }).ToArray();
 
         return new CareHomeAdminApplicationsPage(request.Page, request.PageSize, count, items);
     }
+
+    private async Task<IReadOnlyList<UserDisplayInfo>> QueryDisplayInfoAsync(IReadOnlyCollection<UserId> userIds, CancellationToken ct)
+    {
+        if (userIds.Count == 0) return Array.Empty<UserDisplayInfo>();
+        var result = await sender.Send(new GetUserDisplayInfoByIdsQuery(userIds), ct);
+        return result.IsSuccess ? result.Value : Array.Empty<UserDisplayInfo>();
+    }
 }
 
 public sealed record GetAdminCareHomeApplicationQuery(Guid CareHomeId) : IQuery<CareHomeAdminApplicationDetail>;
 
-public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext db)
+public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext db, ISender sender)
     : IQueryHandler<GetAdminCareHomeApplicationQuery, CareHomeAdminApplicationDetail>
 {
     public async Task<Result<CareHomeAdminApplicationDetail>> Handle(GetAdminCareHomeApplicationQuery request, CancellationToken ct)
@@ -104,25 +146,75 @@ public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext 
             .Include(x => x.Revisions).Include(x => x.Documents).Include(x => x.ReviewHistory)
             .AsSplitQuery()
             .SingleOrDefaultAsync(x => x.Id == new CareHomeId(request.CareHomeId), ct);
-        return facility is null
-            ? Result<CareHomeAdminApplicationDetail>.Failure(CareHomeAdminErrors.ApplicationNotFound)
-            : Map(facility);
+        if (facility is null)
+            return Result<CareHomeAdminApplicationDetail>.Failure(CareHomeAdminErrors.ApplicationNotFound);
+
+        List<CareHomeProfileMedia> media = await db.ProfileMedia.AsNoTracking()
+            .Where(x => facility.Revisions.Select(r => r.Id).Contains(x.ProfileRevisionId))
+            .ToListAsync(ct);
+
+        return await Map(facility, media, sender, ct);
     }
 
-    internal static CareHomeAdminApplicationDetail Map(CareHomeFacility facility) => new(
-        facility.Id.Value, facility.OwnerUserId.Value, facility.Status, facility.Version,
-        facility.SubmittedRevisionId, facility.ApprovedRevisionId,
-        facility.Revisions.OrderBy(x => x.RevisionNumber).Select(revision => new CareHomeAdminRevision(
-            revision.Id, revision.RevisionNumber, revision.IsFrozen, revision.CreatedOnUtc,
-            revision.SubmittedOnUtc, revision.ApprovedOnUtc,
-            new CareHomeProfileDraft(revision.ArabicName, revision.EnglishName,
-                revision.ArabicDescription, revision.EnglishDescription, revision.ContactName,
-                revision.ContactPhone, revision.ContactEmail, revision.Governorate, revision.City,
-                revision.Area, revision.Address, revision.ArabicAdmissionConditions,
-                revision.EnglishAdmissionConditions, revision.Amenities, revision.MedicalServices))).ToArray(),
-        facility.Documents.OrderByDescending(x => x.CreatedOnUtc)
-            .Select(UploadCareHomeDocumentCommandHandler.ToResponse).ToArray(),
-        facility.ReviewHistory.OrderBy(x => x.OccurredOnUtc).ToArray());
+    internal static async Task<CareHomeAdminApplicationDetail> Map(
+        CareHomeFacility facility, IReadOnlyList<CareHomeProfileMedia> media, ISender sender, CancellationToken ct)
+    {
+        IReadOnlyList<CareHomeProfileMedia> mediaForRevision(Guid revisionId) =>
+            media.Where(x => x.ProfileRevisionId == revisionId)
+                .OrderBy(x => x.Position).ThenBy(x => x.Id)
+                .Select(x => x).ToList();
+
+        IReadOnlyList<CareHomeAdminRevisionMedia> mapMedia(Guid revisionId, IReadOnlyList<CareHomeProfileMedia> items) =>
+            items.Select(x => new CareHomeAdminRevisionMedia(x.Id, x.Kind, x.Position,
+                x.ContentType, x.Length,
+                $"/api/v1/admin/care-homes/{facility.Id.Value:D}/media/{x.Id:D}/file")).ToList();
+
+        UserId[] actorIds = facility.ReviewHistory.Select(x => x.ActorUserId).Distinct().ToArray();
+        UserId[] allIds = actorIds.Append(facility.OwnerUserId).Distinct().ToArray();
+        IReadOnlyList<UserDisplayInfo> displayInfo = await QueryDisplayInfoAsync(allIds, sender, ct);
+        Dictionary<Guid, UserDisplayInfo> infoById = displayInfo.ToDictionary(x => x.UserId.Value);
+
+        infoById.TryGetValue(facility.OwnerUserId.Value, out UserDisplayInfo? owner);
+
+        return new CareHomeAdminApplicationDetail(
+            facility.Id.Value, facility.OwnerUserId.Value,
+            owner?.ArabicFullName, owner?.EnglishFullName,
+            facility.Status, facility.Version,
+            facility.SubmittedRevisionId, facility.ApprovedRevisionId,
+            facility.Revisions.OrderBy(x => x.RevisionNumber).Select(revision =>
+            {
+                IReadOnlyList<CareHomeProfileMedia> revisionMedia = mediaForRevision(revision.Id);
+                return new CareHomeAdminRevision(
+                    revision.Id, revision.RevisionNumber, revision.IsFrozen, revision.CreatedOnUtc,
+                    revision.SubmittedOnUtc, revision.ApprovedOnUtc,
+                    new CareHomeProfileDraft(revision.ArabicName, revision.EnglishName,
+                        revision.ArabicDescription, revision.EnglishDescription, revision.ContactName,
+                        revision.ContactPhone, revision.ContactEmail, revision.Governorate, revision.City,
+                        revision.Area, revision.Address, revision.ArabicAdmissionConditions,
+                        revision.EnglishAdmissionConditions, revision.Amenities, revision.MedicalServices),
+                    mapMedia(revision.Id, revisionMedia));
+            }).ToArray(),
+            facility.Documents.OrderByDescending(x => x.CreatedOnUtc)
+                .Select(UploadCareHomeDocumentCommandHandler.ToResponse).ToArray(),
+            facility.ReviewHistory.OrderBy(x => x.OccurredOnUtc).Select(history =>
+            {
+                infoById.TryGetValue(history.ActorUserId.Value, out UserDisplayInfo? actor);
+                return new CareHomeAdminReviewHistory(
+                    history.Id, history.ProfileRevisionId, history.Action,
+                    history.PreviousStatus, history.NewStatus,
+                    history.ActorUserId.Value, history.Reason, history.OccurredOnUtc,
+                    actor?.ArabicFullName, actor?.EnglishFullName,
+                    actor?.AccountTypes.Select(x => ((AccountType)x).ToString()).ToArray());
+            }).ToArray());
+    }
+
+    private static async Task<IReadOnlyList<UserDisplayInfo>> QueryDisplayInfoAsync(
+        IReadOnlyCollection<UserId> userIds, ISender sender, CancellationToken ct)
+    {
+        if (userIds.Count == 0) return Array.Empty<UserDisplayInfo>();
+        var result = await sender.Send(new GetUserDisplayInfoByIdsQuery(userIds), ct);
+        return result.IsSuccess ? result.Value : Array.Empty<UserDisplayInfo>();
+    }
 }
 
 public sealed record ReviewCareHomeDocumentCommand(
@@ -135,7 +227,7 @@ public sealed record ReviewCareHomeDocumentCommand(
     bool ConfirmNonExpiring,
     string? Reason) : ICommand<CareHomeAdminApplicationDetail>;
 
-public sealed class ReviewCareHomeDocumentCommandHandler(ICareHomesDbContext db)
+public sealed class ReviewCareHomeDocumentCommandHandler(ICareHomesDbContext db, ISender sender)
     : ICommandHandler<ReviewCareHomeDocumentCommand, CareHomeAdminApplicationDetail>
 {
     public async Task<Result<CareHomeAdminApplicationDetail>> Handle(ReviewCareHomeDocumentCommand request, CancellationToken ct)
@@ -166,7 +258,10 @@ public sealed class ReviewCareHomeDocumentCommandHandler(ICareHomesDbContext db)
         {
             return Result<CareHomeAdminApplicationDetail>.Failure(CareHomeAdminErrors.Conflict);
         }
-        return GetAdminCareHomeApplicationQueryHandler.Map(facility);
+        List<CareHomeProfileMedia> media = await db.ProfileMedia.AsNoTracking()
+            .Where(x => facility.Revisions.Select(r => r.Id).Contains(x.ProfileRevisionId))
+            .ToListAsync(ct);
+        return await GetAdminCareHomeApplicationQueryHandler.Map(facility, media, sender, ct);
     }
 }
 
@@ -177,7 +272,7 @@ public sealed record ReviewCareHomeApplicationCommand(
     CareHomeReviewAction Action,
     string? Reason) : ICommand<CareHomeAdminApplicationDetail>;
 
-public sealed class ReviewCareHomeApplicationCommandHandler(ICareHomesDbContext db)
+public sealed class ReviewCareHomeApplicationCommandHandler(ICareHomesDbContext db, ISender sender)
     : ICommandHandler<ReviewCareHomeApplicationCommand, CareHomeAdminApplicationDetail>
 {
     public async Task<Result<CareHomeAdminApplicationDetail>> Handle(ReviewCareHomeApplicationCommand request, CancellationToken ct)
@@ -204,7 +299,10 @@ public sealed class ReviewCareHomeApplicationCommandHandler(ICareHomesDbContext 
         {
             return Result<CareHomeAdminApplicationDetail>.Failure(CareHomeAdminErrors.Conflict);
         }
-        return GetAdminCareHomeApplicationQueryHandler.Map(facility);
+        List<CareHomeProfileMedia> media = await db.ProfileMedia.AsNoTracking()
+            .Where(x => facility.Revisions.Select(r => r.Id).Contains(x.ProfileRevisionId))
+            .ToListAsync(ct);
+        return await GetAdminCareHomeApplicationQueryHandler.Map(facility, media, sender, ct);
     }
 }
 

@@ -56,7 +56,7 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         { "get", "/api/v1/admin/elderly/medications", 200, "ref", "PagedAdminMedicationRecords" },
         { "get", "/api/v1/admin/elderly/medications/adherence", 200, "ref", "AdminMedicationAdherenceAggregate" },
         { "get", "/api/v1/admin/elderly/sos", 200, "ref", "PagedElderlySos" },
-        { "get", "/api/v1/admin/care-homes/check-in-disputes", 200, "array", "CareHomeCheckInDisputeResponse" },
+        { "get", "/api/v1/admin/care-homes/check-in-disputes", 200, "array", "AdminCareHomeCheckInDispute" },
         { "get", "/api/v1/admin/cms/elderly-welcome", 200, "ref", "ElderlyWelcomeResponse" },
         { "get", "/api/v1/admin/finance/platform-charge-rules/current", 200, "ref", "PlatformChargeRuleResponse" },
         { "get", "/api/v1/admin/finance/platform-charge-rules/history", 200, "array", "PlatformChargeRuleResponse" },
@@ -310,7 +310,7 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         // Nullable properties stay nullable.
         AssertAllowsNull(ResolveRef(root, "#/components/schemas/AdminUserDetailResponse"), "email");
         AssertAllowsNull(ResolveRef(root, "#/components/schemas/ElderlySosResponse"), "latitude");
-        AssertAllowsNull(ResolveRef(root, "#/components/schemas/CareHomeCheckInDisputeResponse"), "resolvedOnUtc");
+        AssertAllowsNull(ResolveRef(root, "#/components/schemas/AdminCareHomeCheckInDispute"), "resolvedOnUtc");
     }
 
     private JsonElement Document

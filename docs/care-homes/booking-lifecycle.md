@@ -122,7 +122,7 @@ All routes below require `CareHomeOwnerAccess` and are scoped to a facility owne
 | POST | `/api/v1/care-homes/booking-requests/mine/{bookingId}/assignment/transfer` | Transfers an accepted stay to another physical resource of the same original room type. |
 | POST | `/api/v1/care-homes/booking-requests/mine/{bookingId}/check-in` | Records the actual UTC check-in time using the server clock. |
 | POST | `/api/v1/care-homes/booking-requests/mine/{bookingId}/check-out` | Records the actual UTC check-out time using the server clock. |
-| GET | `/api/v1/care-homes/booking-requests/mine/{bookingId}/operational` | Returns the currently effective assignment, append-only assignment history, actual check-in/out, and Family-confirmation readback fields. |
+| GET | `/api/v1/care-homes/booking-requests/mine/{bookingId}/operational` | Returns the booking's stored resident Arabic/English name and age snapshots, the currently effective assignment, append-only assignment history, actual check-in/out, and Family-confirmation readback fields. |
 
 Assignment JSON is `{ "roomId": "<room-guid>", "bedId": "<bed-guid-or-null>" }`. A Shared room type requires `bedId`; a Private or Suite room type requires `bedId: null` and reserves the whole room. The room must be active, belong to the booking's facility and room type, and the bed (when supplied) must belong to that room. An occupied or otherwise conflicting resource returns `409 CareHomes.Bookings.AssignmentConflict`; allocation-shape or invalid-resource input returns `400 CareHomes.Bookings.InvalidAssignment` where mapped by the host. Assignment also enforces the accepted booking state and returns `409 CareHomes.Bookings.InvalidState` when the booking cannot be assigned.
 
@@ -145,6 +145,9 @@ Invalid bed shape/resource returns `400 CareHomes.Bookings.InvalidAssignment`; i
   "roomTypeId": "<room-type-guid>",
   "assignedRoomId": "<room-guid>",
   "assignedBedId": "<bed-guid-or-null>",
+  "residentArabicName": "Resident Arabic",
+  "residentEnglishName": "Resident English",
+  "residentAge": 77,
   "actualCheckInOnUtc": "2026-11-10T12:00:00Z",
   "actualCheckInRecordedBy": "<owner-user-guid>",
   "actualCheckOutOnUtc": null,
@@ -169,7 +172,7 @@ Operational admins use the following routes:
 | GET | `/api/v1/admin/care-homes/check-in-disputes` | Lists cases newest first. |
 | POST | `/api/v1/admin/care-homes/check-in-disputes/{caseId}/resolve` | Resolves an open case with evidence, reason, and an effective UTC check-in time. |
 
-Both routes require `CareHomesOperationalAdmin`, which permits `SuperAdmin` and `SupportAdmin` with normal access. `ContentAdmin` is not permitted. Resolution JSON is `{ "effectiveCheckInOnUtc": "2026-11-10T12:00:00Z", "evidence": "signed arrival log", "reason": "Facility record reconciled" }`. Evidence, reason, and a UTC effective check-in time are required. Missing cases return `404 CareHomes.CheckInDispute.NotFound`; repeated resolution or invalid case state returns `409 CareHomes.CheckInDispute.InvalidState`. Responses expose `id`, `bookingId`, `facilityId`, `checkoutOnUtc`, `status`, `openedOnUtc`, `openedBy`, `effectiveCheckInOnUtc`, `evidence`, `reason`, `resolvedOnUtc`, and `resolvedBy`; these fields provide the audit trail without replacing the original facility timestamps.
+Both routes require `CareHomesOperationalAdmin`, which permits `SuperAdmin` and `SupportAdmin` with normal access. `ContentAdmin` is not permitted. Resolution JSON is `{ "effectiveCheckInOnUtc": "2026-11-10T12:00:00Z", "evidence": "signed arrival log", "reason": "Facility record reconciled" }`. Evidence, reason, and a UTC effective check-in time are required. Missing cases return `404 CareHomes.CheckInDispute.NotFound`; repeated resolution or invalid case state returns `409 CareHomes.CheckInDispute.InvalidState`. Responses expose `id`, `bookingId`, `facilityId`, `checkoutOnUtc`, `status`, `openedOnUtc`, `openedBy`, `effectiveCheckInOnUtc`, `evidence`, `reason`, `resolvedOnUtc`, and `resolvedBy`; these fields provide the audit trail without replacing the original facility timestamps. The Admin **list** response additionally carries the booking's stored `residentArabicName`/`residentEnglishName` snapshots and the original booking `originalBookingTotalAmount` in `originalBookingCurrency`; the currency carries the current fixed Care Home currency convention (`EGP`) — the booking does not persist a currency property — and the amount remains the booking's original `TotalAmount`, not a refund, payout, or net amount. The Admin resolve and Family submission responses keep their pre-existing shapes without these enrichment fields.
 
 Families may also submit a check-in dispute after a facility-recorded check-in:
 

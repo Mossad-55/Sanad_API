@@ -16,6 +16,8 @@ No request body. Creates the caller's single facility in `Draft` status and retu
 
 Returns `200 OK` with the caller's facility, current editable draft, document metadata, revision identifiers, version, status, and review history. Returns `404 CareHomes.Facility.NotFound` when the account has not created a facility. No caller-supplied facility ID is accepted, preventing cross-owner reads.
 
+Alongside `draft`, the response carries two nullable revision-bound readbacks. `submittedProfile` (`revisionId` plus profile projection) is populated only while a submitted revision is pending review; `approvedProfile` follows `approvedRevisionId` and remains available while a newer editable draft exists. A `GET` never creates, saves, or mutates a draft. Owner private contact fields stay on this owner route and are never returned through public discovery.
+
 ## Save my profile draft
 
 `PUT /api/v1/care-homes/facilities/mine/profile`

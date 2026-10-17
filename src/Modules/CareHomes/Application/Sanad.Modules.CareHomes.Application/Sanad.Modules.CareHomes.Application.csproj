@@ -14,5 +14,7 @@
     <ProjectReference Include="..\..\..\Families\Application\Sanad.Modules.Families.Application\Sanad.Modules.Families.Application.csproj" />
     <ProjectReference Include="..\..\..\Families\Domain\Sanad.Modules.Families.Domain\Sanad.Modules.Families.Domain.csproj" />
     <ProjectReference Include="..\..\..\Finance\Application\Sanad.Modules.Finance.Application\Sanad.Modules.Finance.Application.csproj" />
+    <ProjectReference Include="..\..\..\Identity\Application\Sanad.Modules.Identity.Application\Sanad.Modules.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\..\Identity\Domain\Sanad.Modules.Identity.Domain\Sanad.Modules.Identity.Domain.csproj" />
   </ItemGroup>
 </Project>

@@ -15,12 +15,13 @@ public sealed record RecordCareHomeCheckInCommand(UserId Actor, Guid BookingId, 
 public sealed record RecordCareHomeCheckOutCommand(UserId Actor, Guid BookingId, DateTime UtcNow) : ICommand<CareHomeBookingResponse>;
 public sealed record GetOwnerCareHomeBookingOperationalQuery(UserId Actor, Guid BookingId, DateTime UtcNow) : IQuery<CareHomeOwnerBookingOperationalResponse>;
 public sealed record ConfirmCareHomeCheckInCommand(UserId Actor, FamilyId FamilyId, Guid BookingId, DateTime UtcNow) : ICommand<CareHomeBookingResponse>;
-public sealed record ListCareHomeCheckInDisputesQuery() : IQuery<IReadOnlyList<CareHomeCheckInDisputeResponse>>;
+public sealed record ListCareHomeCheckInDisputesQuery() : IQuery<IReadOnlyList<AdminCareHomeCheckInDispute>>;
 public sealed record ResolveCareHomeCheckInDisputeCommand(UserId Actor, Guid CaseId, DateTime EffectiveCheckInOnUtc, string Evidence, string Reason, DateTime UtcNow) : ICommand<CareHomeCheckInDisputeResponse>;
 public sealed record SubmitCareHomeCheckInDisputeCommand(UserId Actor, FamilyId FamilyId, Guid BookingId, string Reason, DateTime UtcNow) : ICommand<CareHomeCheckInDisputeResponse>;
 public sealed record CareHomeCheckInDisputeResponse(Guid Id, Guid BookingId, Guid FacilityId, DateTime? CheckoutOnUtc, CareHomeCheckInDisputeStatus Status, DateTime OpenedOnUtc, Guid OpenedBy, DateTime? EffectiveCheckInOnUtc, string? Evidence, string? Reason, string? FamilyReason, DateTime? ResolvedOnUtc, Guid? ResolvedBy);
+public sealed record AdminCareHomeCheckInDispute(Guid Id, Guid BookingId, Guid FacilityId, DateTime? CheckoutOnUtc, CareHomeCheckInDisputeStatus Status, DateTime OpenedOnUtc, Guid OpenedBy, DateTime? EffectiveCheckInOnUtc, string? Evidence, string? Reason, string? FamilyReason, DateTime? ResolvedOnUtc, Guid? ResolvedBy, string? ResidentArabicName, string? ResidentEnglishName, decimal? OriginalBookingTotalAmount, string? OriginalBookingCurrency);
 public sealed record CareHomeBookingAssignmentHistoryItem(Guid? FromRoomId, Guid? FromBedId, Guid ToRoomId, Guid? ToBedId, DateOnly EffectiveDate, Guid ActorUserId, DateTime OccurredOnUtc);
-public sealed record CareHomeOwnerBookingOperationalResponse(Guid Id, Guid FacilityId, Guid RoomTypeId, Guid? AssignedRoomId, Guid? AssignedBedId, DateTime? ActualCheckInOnUtc, Guid? ActualCheckInRecordedBy, DateTime? ActualCheckOutOnUtc, Guid? ActualCheckOutRecordedBy, DateTime? FamilyCheckInConfirmedOnUtc, Guid? FamilyCheckInConfirmedBy, IReadOnlyList<CareHomeBookingAssignmentHistoryItem>? AssignmentHistory = null);
+public sealed record CareHomeOwnerBookingOperationalResponse(Guid Id, Guid FacilityId, Guid RoomTypeId, Guid? AssignedRoomId, Guid? AssignedBedId, string ResidentArabicName, string ResidentEnglishName, int ResidentAge, DateTime? ActualCheckInOnUtc, Guid? ActualCheckInRecordedBy, DateTime? ActualCheckOutOnUtc, Guid? ActualCheckOutRecordedBy, DateTime? FamilyCheckInConfirmedOnUtc, Guid? FamilyCheckInConfirmedBy, IReadOnlyList<CareHomeBookingAssignmentHistoryItem>? AssignmentHistory = null);
 
 public sealed class AssignCareHomeBookingHandler(ICareHomesDbContext db, ICareHomeBookingReservationGuard reservationGuard) : ICommandHandler<AssignCareHomeBookingCommand, CareHomeBookingResponse>
 {
@@ -91,7 +92,7 @@ public sealed class OwnerCareHomeBookingOperationalHandler(ICareHomesDbContext d
         var entries = await db.BookingAssignmentHistory.AsNoTracking().Where(x => x.BookingId == booking.Id).OrderBy(x => x.EffectiveDate).ThenBy(x => x.OccurredOnUtc).ToListAsync(ct);
         var assignment = CareHomeAssignmentHistoryProjection.Resolve(booking, entries, CareHomeAssignmentHistoryProjection.CairoToday(r.UtcNow));
         var history = entries.Select(x => new CareHomeBookingAssignmentHistoryItem(x.FromRoomId, x.FromBedId, x.ToRoomId, x.ToBedId, x.EffectiveDate, x.Actor.Value, x.OccurredOnUtc)).ToArray();
-        return new CareHomeOwnerBookingOperationalResponse(booking.Id, booking.FacilityId.Value, booking.RoomTypeId, assignment.RoomId, assignment.BedId, booking.ActualCheckInOnUtc, booking.ActualCheckInRecordedBy?.Value, booking.ActualCheckOutOnUtc, booking.ActualCheckOutRecordedBy?.Value, booking.FamilyCheckInConfirmedOnUtc, booking.FamilyCheckInConfirmedBy?.Value, history);
+        return new CareHomeOwnerBookingOperationalResponse(booking.Id, booking.FacilityId.Value, booking.RoomTypeId, assignment.RoomId, assignment.BedId, booking.ElderlyArabicName, booking.ElderlyEnglishName, booking.ElderlyAge, booking.ActualCheckInOnUtc, booking.ActualCheckInRecordedBy?.Value, booking.ActualCheckOutOnUtc, booking.ActualCheckOutRecordedBy?.Value, booking.FamilyCheckInConfirmedOnUtc, booking.FamilyCheckInConfirmedBy?.Value, history);
     }
 }
 
@@ -128,9 +129,14 @@ public sealed class ConfirmCareHomeCheckInHandler(ICareHomesDbContext db) : ICom
     { var b = await db.Bookings.SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FamilyId == r.FamilyId, ct); if (b is null) return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.NotFound", "Booking was not found.")); try { b.ConfirmFamilyCheckIn(r.Actor, r.UtcNow); await db.SaveChangesAsync(ct); return CheckoutHandler.Map(b); } catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.InvalidState", ex.Message)); } }
 }
 
-public sealed class CheckInDisputeHandlers(ICareHomesDbContext db) : IQueryHandler<ListCareHomeCheckInDisputesQuery, IReadOnlyList<CareHomeCheckInDisputeResponse>>, ICommandHandler<ResolveCareHomeCheckInDisputeCommand, CareHomeCheckInDisputeResponse>, ICommandHandler<SubmitCareHomeCheckInDisputeCommand, CareHomeCheckInDisputeResponse>
+public sealed class CheckInDisputeHandlers(ICareHomesDbContext db) : IQueryHandler<ListCareHomeCheckInDisputesQuery, IReadOnlyList<AdminCareHomeCheckInDispute>>, ICommandHandler<ResolveCareHomeCheckInDisputeCommand, CareHomeCheckInDisputeResponse>, ICommandHandler<SubmitCareHomeCheckInDisputeCommand, CareHomeCheckInDisputeResponse>
 {
-    public async Task<Result<IReadOnlyList<CareHomeCheckInDisputeResponse>>> Handle(ListCareHomeCheckInDisputesQuery r, CancellationToken ct) => (await db.CheckInDisputes.AsNoTracking().OrderByDescending(x => x.OpenedOnUtc).ToListAsync(ct)).Select(Map).ToArray();
+    public async Task<Result<IReadOnlyList<AdminCareHomeCheckInDispute>>> Handle(ListCareHomeCheckInDisputesQuery r, CancellationToken ct)
+    {
+        var disputes = await db.CheckInDisputes.AsNoTracking().OrderByDescending(x => x.OpenedOnUtc).ToListAsync(ct);
+        Dictionary<Guid, CareHomeBooking> bookings = await LoadBookingsAsync(disputes.Select(x => x.BookingId), ct);
+        return disputes.Select(x => MapAdmin(x, bookings)).ToArray();
+    }
     public async Task<Result<CareHomeCheckInDisputeResponse>> Handle(ResolveCareHomeCheckInDisputeCommand r, CancellationToken ct) { var c = await db.CheckInDisputes.SingleOrDefaultAsync(x => x.Id == r.CaseId, ct); if (c is null) return Result<CareHomeCheckInDisputeResponse>.Failure(new("CareHomes.CheckInDispute.NotFound", "Check-in dispute was not found.")); try { c.Resolve(r.Actor, r.EffectiveCheckInOnUtc, r.Evidence, r.Reason, r.UtcNow); CareHomeNotificationEvents.Enqueue(db, CareHomeNotificationEvent.DisputeResolved, c.BookingId, r.UtcNow, c.Id, $"care-home-dispute:{c.Id:N}:resolved"); await db.SaveChangesAsync(ct); return Map(c); } catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Result<CareHomeCheckInDisputeResponse>.Failure(new("CareHomes.CheckInDispute.InvalidState", ex.Message)); } }
     public async Task<Result<CareHomeCheckInDisputeResponse>> Handle(SubmitCareHomeCheckInDisputeCommand r, CancellationToken ct)
     {
@@ -190,5 +196,17 @@ public sealed class CheckInDisputeHandlers(ICareHomesDbContext db) : IQueryHandl
             catch (DbUpdateException) { db.CheckInDisputes.Entry(reloaded).State = EntityState.Detached; }
         }
     }
+    private async Task<Dictionary<Guid, CareHomeBooking>> LoadBookingsAsync(IEnumerable<Guid> bookingIds, CancellationToken ct)
+    {
+        Guid[] ids = bookingIds.Distinct().ToArray();
+        if (ids.Length == 0) return new Dictionary<Guid, CareHomeBooking>();
+        var rows = await db.Bookings.AsNoTracking().Where(x => ids.Contains(x.Id)).ToListAsync(ct);
+        return rows.ToDictionary(x => x.Id);
+    }
     private static CareHomeCheckInDisputeResponse Map(CareHomeCheckInDispute x) => new(x.Id, x.BookingId, x.FacilityId.Value, x.CheckoutOnUtc, x.Status, x.OpenedOnUtc, x.OpenedBy.Value, x.EffectiveCheckInOnUtc, x.Evidence, x.Reason, x.FamilyReason, x.ResolvedOnUtc, x.ResolvedBy?.Value);
+    private static AdminCareHomeCheckInDispute MapAdmin(CareHomeCheckInDispute x, IReadOnlyDictionary<Guid, CareHomeBooking> bookings)
+    {
+        bookings.TryGetValue(x.BookingId, out CareHomeBooking? booking);
+        return new(x.Id, x.BookingId, x.FacilityId.Value, x.CheckoutOnUtc, x.Status, x.OpenedOnUtc, x.OpenedBy.Value, x.EffectiveCheckInOnUtc, x.Evidence, x.Reason, x.FamilyReason, x.ResolvedOnUtc, x.ResolvedBy?.Value, booking?.ElderlyArabicName, booking?.ElderlyEnglishName, booking?.TotalAmount, booking is null ? null : "EGP");
+    }
 }

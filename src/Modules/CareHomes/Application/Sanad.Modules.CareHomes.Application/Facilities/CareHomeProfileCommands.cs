@@ -9,6 +9,8 @@ using Sanad.Modules.CareHomes.Domain.Facilities;
 
 namespace Sanad.Modules.CareHomes.Application.Facilities;
 
+public sealed record CareHomeProfileRevisionProfile(Guid RevisionId, CareHomeProfileDraft Profile);
+
 public sealed record CareHomeOwnerProfile(
     Guid Id,
     CareHomeStatus Status,
@@ -16,6 +18,8 @@ public sealed record CareHomeOwnerProfile(
     Guid? SubmittedRevisionId,
     Guid? ApprovedRevisionId,
     CareHomeProfileDraft? Draft,
+    CareHomeProfileRevisionProfile? SubmittedProfile,
+    CareHomeProfileRevisionProfile? ApprovedProfile,
     IReadOnlyList<CareHomeDocumentResponse> Documents,
     IReadOnlyList<CareHomeReviewHistory> ReviewHistory,
     IReadOnlyList<CareHomeProfileMediaResponse> ProfileMedia);
@@ -63,16 +67,29 @@ public sealed class CreateCareHomeFacilityCommandHandler(ICareHomesDbContext db)
     internal static CareHomeOwnerProfile Map(CareHomeFacility facility, IReadOnlyList<CareHomeProfileMedia>? media = null)
     {
         CareHomeProfileRevision? draft = facility.Revisions.LastOrDefault(x => !x.IsFrozen);
-        CareHomeProfileDraft? profile = draft is null ? null : new CareHomeProfileDraft(
-            draft.ArabicName, draft.EnglishName, draft.ArabicDescription, draft.EnglishDescription,
-            draft.ContactName, draft.ContactPhone, draft.ContactEmail, draft.Governorate, draft.City,
-            draft.Area, draft.Address, draft.ArabicAdmissionConditions, draft.EnglishAdmissionConditions,
-            draft.Amenities, draft.MedicalServices);
+        CareHomeProfileDraft? profile = draft is null ? null : ToDraft(draft);
         return new CareHomeOwnerProfile(
             facility.Id.Value, facility.Status, facility.Version, facility.SubmittedRevisionId,
             facility.ApprovedRevisionId, profile,
+            ToRevisionProfile(facility, facility.SubmittedRevisionId, CareHomeStatus.PendingReview),
+            ToRevisionProfile(facility, facility.ApprovedRevisionId, null),
             facility.Documents.Select(UploadCareHomeDocumentCommandHandler.ToResponse).ToArray(),
             facility.ReviewHistory.ToArray(), MapMedia(media ?? []));
+    }
+
+    internal static CareHomeProfileDraft ToDraft(CareHomeProfileRevision revision) => new(
+        revision.ArabicName, revision.EnglishName, revision.ArabicDescription, revision.EnglishDescription,
+        revision.ContactName, revision.ContactPhone, revision.ContactEmail, revision.Governorate, revision.City,
+        revision.Area, revision.Address, revision.ArabicAdmissionConditions, revision.EnglishAdmissionConditions,
+        revision.Amenities, revision.MedicalServices);
+
+    private static CareHomeProfileRevisionProfile? ToRevisionProfile(
+        CareHomeFacility facility, Guid? revisionId, CareHomeStatus? requiredStatus)
+    {
+        if (revisionId is null) return null;
+        if (requiredStatus is not null && facility.Status != requiredStatus) return null;
+        CareHomeProfileRevision? revision = facility.Revisions.SingleOrDefault(x => x.Id == revisionId);
+        return revision is null ? null : new CareHomeProfileRevisionProfile(revision.Id, ToDraft(revision));
     }
 
     internal static IReadOnlyList<CareHomeProfileMediaResponse> MapMedia(IEnumerable<CareHomeProfileMedia> media) =>

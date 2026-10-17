@@ -11,10 +11,12 @@ backend contracts are not approved by this structure. Owner then approved the
 pushed and deployed at `f9231fb`: 29/29 metadata contracts, zero config/schema
 delta, full unit 3421/0/8, architecture 1/1. See the
 [release receipt](work/portal-api-reconciliation/reports/fur-01-deployment.md).
-FUR-02 is now accepted and deployed at `5cd3526` with its one additive Identity
-migration; see the [phase receipt](work/portal-api-reconciliation/reports/fur-02-deployment.md).
-Roadmap: **3 Done / 16 remaining**. FUR-03 contract discussion is next, not automatic
-implementation. See the current Mastermind
+FUR-02 is accepted and deployed at `5cd3526` with its one additive Identity
+migration; see its [phase receipt](work/portal-api-reconciliation/reports/fur-02-deployment.md).
+FUR-03 is accepted/pushed at `858da09`; verification-only, deployment N/A. See
+its [phase receipt](work/portal-api-reconciliation/reports/fur-03-release.md).
+FUR-04 delivery is accepted and its commit/push/deployment are owner-authorized;
+the release is in progress. See the current Mastermind
 handoff for exactly one next action. Earlier PORTAL completion remains valid.
 Owner's standing phase workflow: workers implement and return complete reports;
 Mastermind plans/reviews/integrates. After full-phase acceptance and any worker

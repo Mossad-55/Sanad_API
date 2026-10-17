@@ -105,6 +105,30 @@ commit/push; phase commit
 [release receipt](work/portal-api-reconciliation/reports/fur-03-release.md)
 records FUR-03 Done, deployment N/A (no runtime delta), and the worker-reported
 verification evidence.
+
+### Current active phase — FUR-04 Care Home readback
+
+FUR-04 contract and test-schema addendum were owner-approved; the complete
+worker delivery and C1–C4 corrections were reviewed and accepted. See the
+[contract](work/portal-api-reconciliation/contracts/fur-04-care-home-readback.md),
+[worker prompt](work/portal-api-reconciliation/worker-prompts/fur-04-care-home-readback.md),
+[correction brief](work/portal-api-reconciliation/worker-prompts/fur-04-review-corrections.md),
+and [delivery report](work/portal-api-reconciliation/reports/fur-04-worker-delivery.md).
+Evidence is worker-reported: focused 15/15; C1 focused correction run 131/0;
+PostgreSQL 7/7 on `SanadFur04VerifyDb` (not rerun during corrections); strict
+build 0 warnings/errors; guarded full unit 3473/0/31; Architecture 1/1. The
+Admin handoff, Owner handoff, feature docs and Postman examples are updated.
+
+The delivery report records an **unauthorized local database setup deviation**:
+three successive unintended lowercase `sanadfur04verifydb` databases were
+created and dropped during target setup. The only approved target was the exact
+`SanadFur04VerifyDb`; the correction report records available pre-drop evidence
+and resulting state. No further database action is authorized or planned.
+Owner authorized FUR-04 commit, push and Production deployment on 2026-10-17.
+Release is in progress; do not mark Done until the pushed revision, fresh
+package, deployment, service/migration/configuration checks and verifier are
+recorded in the [phase release receipt](work/portal-api-reconciliation/reports/fur-04-release.md).
+
 Historical checkpoints
 below must not override this follow-up or the latest deployment/import receipts.
 
