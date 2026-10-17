@@ -46,10 +46,10 @@ rows and matches the endpoint and DTO fields.
 - `powershell -NoProfile -ExecutionPolicy Bypass -File docs/internal/tools/Verify-ApiContractMapping.ps1`
   reported 557 controller method signatures and 621 Postman API requests. Its
   printed missing/orphan counts are not used as independent evidence because the
-  helper's comparison collections are unpopulated. The prior accepted normalized
-  route-set baseline was 556 unique methods/paths on each side; this phase changes
-  one controller route and adds one matching Postman request, making the unique
-  sets 557/557 with no other route delta.
+  helper's printed comparison counts are not used as independent evidence. A
+  separate normalized method/path HashSet comparison of the actual controller
+  and Postman parser outputs found **557 unique routes on each side, 0 missing,
+  and 0 orphaned**.
 - `git diff --check` — exit 0; only Git's informational LF-to-CRLF notices.
 
 No Bruno/live HTTP test was selected. No API was started, and no database,

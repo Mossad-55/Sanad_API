@@ -26,10 +26,10 @@ of FUR-05 on 2026-10-17.
 - Worker-focused tests passed 56/56; Postman collection and embedded response
   parsed. `git diff --check` passed. The controller/Postman mapping check
   reported 557 controller method signatures and 621 requests; its own printed
-  gap counts are not treated as proof because the comparison collections are
-  unpopulated. Independent comparison against the previously accepted 556/556
-  unique route baseline confirms this phase adds one matching method/path on
-  each side, for 557/557 unique route coverage.
+  gap counts are not treated as proof because the helper's comparison
+  collections are unpopulated. A separate normalized method/path HashSet
+  comparison of the actual parser outputs found **557 unique routes on each
+  side, 0 missing and 0 orphaned**.
 - No Bruno run or authenticated owner-ledger request was made. Post-deployment
   OpenAPI inspection confirmed `GET /api/v1/care-homes/payouts/mine` is present
   and documents HTTP 200. Automated tests cover route metadata, policy, owner
