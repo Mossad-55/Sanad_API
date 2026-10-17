@@ -195,8 +195,45 @@
     },
     {
       "name": "Caregiver payouts (SuperAdmin or FinanceAdmin)",
-      "description": "Caregiver payout records and manual transfer recording under /api/v1/admin/caregiver-payouts. Requires the PayoutOperationalAdmin policy (SuperAdmin or FinanceAdmin). Recording validates Completed+Paid eligibility, effective policy timing, saved payout account, and duplicate payment. Manual fixture only; never replay a record against shared data.",
+      "description": "Caregiver payout records and manual transfer recording under /api/v1/admin/caregiver-payouts. Requires the PayoutOperationalAdmin policy (SuperAdmin or FinanceAdmin). The eligible-bookings selector is a read-only list of bookings currently eligible for recording. Recording validates Completed+Paid eligibility, effective policy timing, saved payout account, and duplicate payment. Manual fixture only; never replay a record against shared data.",
       "item": [
+        {
+          "name": "List eligible caregiver payout bookings",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregiver-payouts/eligible-bookings?page=1&pageSize=20",
+            "description": "PayoutOperationalAdmin (SuperAdmin/FinanceAdmin). Read-only selector (GET /api/v1/admin/caregiver-payouts/eligible-bookings) of bookings eligible for a manual payout record right now: completed and paid with both timestamps, effective payout delay elapsed, caregiver payout account Verified, and no Paid payout. A Failed payout does not exclude the booking, so it reappears for retry. Optional caregiverId filter; page >= 1 and pageSize clamped 1-100; rows ordered oldest eligible first. No effective policy returns 400 Finance.PayoutPolicy.Missing. Returns only booking/caregiver identity, safe display names, timestamps, and the caregiver fee amount/currency; never bank or IBAN data. Authored example, not runtime evidence."
+          },
+          "response": [
+            {
+              "name": "200 one eligible booking",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/api/v1/admin/caregiver-payouts/eligible-bookings?page=1&pageSize=20"
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "cookie": [],
+              "body": "{\n  \"items\": [\n    {\n      \"bookingId\": \"0198e2c2-2222-7777-8888-000000000003\",\n      \"caregiverId\": \"0198e2c2-2222-7777-8888-000000000001\",\n      \"arabicFullName\": \"محمد أحمد\",\n      \"englishFullName\": \"Mohamed Ahmed\",\n      \"completedOnUtc\": \"2026-10-05T00:00:00Z\",\n      \"eligibleOnUtc\": \"2026-10-08T00:00:00Z\",\n      \"caregiverAmount\": 150.00,\n      \"currency\": \"EGP\"\n    }\n  ],\n  \"page\": 1,\n  \"pageSize\": 20,\n  \"totalCount\": 1,\n  \"totalPages\": 1\n}"
+            }
+          ]
+        },
         {
           "name": "List caregiver payouts",
           "request": {

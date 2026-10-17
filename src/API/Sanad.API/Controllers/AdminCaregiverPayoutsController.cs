@@ -35,6 +35,26 @@ public sealed class AdminCaregiverPayoutsController(
         return ToActionResult(result);
     }
 
+    [HttpGet("eligible-bookings")]
+    [ProducesResponseType(
+        typeof(PagedResult<EligibleCaregiverPayoutBookingResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetEligibleBookings(
+        [FromQuery] Guid? caregiverId,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await sender.Send(
+            new GetEligibleCaregiverPayoutBookingsQuery(
+                caregiverId,
+                page,
+                pageSize),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
     [HttpGet("{payoutId:guid}")]
     [ProducesResponseType(
         typeof(CaregiverPayoutResponse),

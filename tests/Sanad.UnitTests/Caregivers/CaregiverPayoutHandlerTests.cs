@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
@@ -423,6 +424,271 @@ public sealed class CaregiverPayoutHandlerTests
         Assert.Equal(CaregiverPayoutErrors.NotFound, missing.Error);
     }
 
+    [Fact]
+    public async Task EligibleSelector_ShouldReturnEligibleBookingWithNamesAndFee()
+    {
+        using CaregiversDbContext inner = CreateCaregiversDbContext();
+        using FamiliesDbContext familiesDb = CreateFamiliesDbContext();
+
+        Caregiver caregiver = await AddCaregiverAsync(inner);
+        Booking booking = await AddCompletedBookingAsync(familiesDb, caregiver.Id);
+        await AddPayoutAccountAsync(inner, caregiver.Id);
+
+        var handler = CreateEligibleSelectorHandler(inner, familiesDb);
+
+        var result = await handler.Handle(
+            new GetEligibleCaregiverPayoutBookingsQuery(),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value.Page);
+        Assert.Equal(20, result.Value.PageSize);
+        Assert.Equal(1, result.Value.TotalCount);
+        Assert.Equal(1, result.Value.TotalPages);
+        EligibleCaregiverPayoutBookingResponse item =
+            Assert.Single(result.Value.Items);
+        Assert.Equal(booking.Id.Value, item.BookingId);
+        Assert.Equal(caregiver.Id.Value, item.CaregiverId);
+        Assert.Equal("محمد أحمد", item.ArabicFullName);
+        Assert.Equal("Mohamed Ahmed", item.EnglishFullName);
+        // completed Utc(5) + 72h delay.
+        Assert.Equal(Utc(5), item.CompletedOnUtc);
+        Assert.Equal(Utc(8), item.EligibleOnUtc);
+        Assert.Equal(150m, item.CaregiverAmount);
+        Assert.Equal("EGP", item.Currency);
+
+        // Read-only: the selector never stages a booking, account or payout write.
+        Assert.False(inner.ChangeTracker.HasChanges());
+        Assert.False(familiesDb.ChangeTracker.HasChanges());
+    }
+
+    [Fact]
+    public async Task EligibleSelector_ShouldExcludeIneligibleBookings()
+    {
+        using CaregiversDbContext inner = CreateCaregiversDbContext();
+        using FamiliesDbContext familiesDb = CreateFamiliesDbContext();
+
+        Caregiver included = await AddCaregiverAsync(inner);
+        await AddPayoutAccountAsync(inner, included.Id);
+        Booking includedBooking = await AddCompletedBookingAsync(
+            familiesDb,
+            included.Id);
+
+        Caregiver pendingAccount = await AddCaregiverAsync(inner);
+        await AddPayoutAccountInStatusAsync(
+            inner,
+            pendingAccount.Id,
+            PayoutAccountStatus.Pending);
+        await AddCompletedBookingAsync(familiesDb, pendingAccount.Id);
+
+        Caregiver alreadyPaid = await AddCaregiverAsync(inner);
+        await AddPayoutAccountAsync(inner, alreadyPaid.Id);
+        Booking paidBooking = await AddCompletedBookingAsync(
+            familiesDb,
+            alreadyPaid.Id);
+        inner.Payouts.Add(RecordPayout(paidBooking, alreadyPaid.Id, Utc(9)));
+        await inner.SaveChangesAsync();
+
+        Caregiver notDue = await AddCaregiverAsync(inner);
+        await AddPayoutAccountAsync(inner, notDue.Id);
+        await AddCompletedBookingAsync(familiesDb, notDue.Id, completedDay: 19);
+
+        Caregiver noAccount = await AddCaregiverAsync(inner);
+        await AddCompletedBookingAsync(familiesDb, noAccount.Id);
+
+        // Paid but never completed: the selector only considers Completed bookings.
+        Caregiver notCompleted = await AddCaregiverAsync(inner);
+        await AddPayoutAccountAsync(inner, notCompleted.Id);
+        Booking inProgress = AddBooking(familiesDb, notCompleted.Id);
+        inProgress.MarkAsPaid("order-2", "tx-2", Utc(2));
+        inProgress.AcceptByCaregiver(Utc(2));
+        inProgress.StartVisit(Utc(4));
+        await familiesDb.SaveChangesAsync();
+
+        var handler = CreateEligibleSelectorHandler(inner, familiesDb);
+
+        var result = await handler.Handle(
+            new GetEligibleCaregiverPayoutBookingsQuery(),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value.TotalCount);
+        EligibleCaregiverPayoutBookingResponse item =
+            Assert.Single(result.Value.Items);
+        Assert.Equal(includedBooking.Id.Value, item.BookingId);
+        Assert.Equal(included.Id.Value, item.CaregiverId);
+    }
+
+    [Fact]
+    public async Task EligibleSelector_ShouldKeepFailedPayoutBookingEligibleForRetry()
+    {
+        using CaregiversDbContext inner = CreateCaregiversDbContext();
+        using FamiliesDbContext familiesDb = CreateFamiliesDbContext();
+
+        Caregiver caregiver = await AddCaregiverAsync(inner);
+        await AddPayoutAccountAsync(inner, caregiver.Id);
+        Booking booking = await AddCompletedBookingAsync(familiesDb, caregiver.Id);
+
+        CaregiverPayout failed = RecordPayout(booking, caregiver.Id, Utc(9));
+        failed.MarkFailed("Bank rejected the transfer", UserId.New(), Utc(10));
+        inner.Payouts.Add(failed);
+        await inner.SaveChangesAsync();
+
+        var handler = CreateEligibleSelectorHandler(inner, familiesDb);
+
+        var result = await handler.Handle(
+            new GetEligibleCaregiverPayoutBookingsQuery(),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(booking.Id.Value, Assert.Single(result.Value.Items).BookingId);
+    }
+
+    [Fact]
+    public async Task EligibleSelector_ShouldFailClosed_WhenNoEffectivePolicy()
+    {
+        using CaregiversDbContext inner = CreateCaregiversDbContext();
+        using FamiliesDbContext familiesDb = CreateFamiliesDbContext();
+
+        Caregiver caregiver = await AddCaregiverAsync(inner);
+        await AddPayoutAccountAsync(inner, caregiver.Id);
+        await AddCompletedBookingAsync(familiesDb, caregiver.Id);
+
+        var handler = new GetEligibleCaregiverPayoutBookingsQueryHandler(
+            new FixedHeaderCaregiversDbContext(inner),
+            familiesDb,
+            new FixedPolicyReader(null),
+            new FixedClock(Utc(20)));
+
+        var result = await handler.Handle(
+            new GetEligibleCaregiverPayoutBookingsQuery(),
+            default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CaregiverPayoutPolicyErrors.Missing, result.Error);
+    }
+
+    [Fact]
+    public async Task EligibleSelector_ShouldPageOrderAndFilterByCaregiver()
+    {
+        using CaregiversDbContext inner = CreateCaregiversDbContext();
+        using FamiliesDbContext familiesDb = CreateFamiliesDbContext();
+
+        Caregiver first = await AddCaregiverAsync(inner);
+        Caregiver second = await AddCaregiverAsync(inner);
+        await AddPayoutAccountAsync(inner, first.Id);
+        await AddPayoutAccountAsync(inner, second.Id);
+
+        Booking firstEarly = await AddCompletedBookingAsync(
+            familiesDb,
+            first.Id,
+            completedDay: 5);
+        Booking firstLate = await AddCompletedBookingAsync(
+            familiesDb,
+            first.Id,
+            completedDay: 7);
+        Booking secondMiddle = await AddCompletedBookingAsync(
+            familiesDb,
+            second.Id,
+            completedDay: 6);
+
+        var handler = CreateEligibleSelectorHandler(inner, familiesDb);
+
+        var firstPage = await handler.Handle(
+            new GetEligibleCaregiverPayoutBookingsQuery(Page: 1, PageSize: 2),
+            default);
+
+        Assert.True(firstPage.IsSuccess);
+        Assert.Equal(3, firstPage.Value.TotalCount);
+        Assert.Equal(2, firstPage.Value.TotalPages);
+        Assert.Equal(
+            new[] { firstEarly.Id.Value, secondMiddle.Id.Value },
+            firstPage.Value.Items.Select(i => i.BookingId).ToArray());
+
+        var secondPage = await handler.Handle(
+            new GetEligibleCaregiverPayoutBookingsQuery(Page: 2, PageSize: 2),
+            default);
+
+        Assert.True(secondPage.IsSuccess);
+        Assert.Equal(
+            firstLate.Id.Value,
+            Assert.Single(secondPage.Value.Items).BookingId);
+
+        var filtered = await handler.Handle(
+            new GetEligibleCaregiverPayoutBookingsQuery(second.Id.Value),
+            default);
+
+        Assert.True(filtered.IsSuccess);
+        Assert.Equal(1, filtered.Value.TotalCount);
+        Assert.Equal(
+            secondMiddle.Id.Value,
+            Assert.Single(filtered.Value.Items).BookingId);
+
+        // Page and page size are clamped, not rejected.
+        var clamped = await handler.Handle(
+            new GetEligibleCaregiverPayoutBookingsQuery(Page: 0, PageSize: 0),
+            default);
+
+        Assert.True(clamped.IsSuccess);
+        Assert.Equal(1, clamped.Value.Page);
+        Assert.Equal(1, clamped.Value.PageSize);
+        Assert.Single(clamped.Value.Items);
+    }
+
+    [Fact]
+    public void EligibleSelectorResponse_ShouldNotExposePayoutAccountOrIbanFields()
+    {
+        string[] propertyNames = typeof(EligibleCaregiverPayoutBookingResponse)
+            .GetProperties()
+            .Select(p => p.Name)
+            .ToArray();
+
+        Assert.All(
+            propertyNames,
+            name => Assert.DoesNotContain(
+                "iban",
+                name,
+                StringComparison.OrdinalIgnoreCase));
+        Assert.All(
+            propertyNames,
+            name => Assert.DoesNotContain(
+                "bank",
+                name,
+                StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static GetEligibleCaregiverPayoutBookingsQueryHandler
+        CreateEligibleSelectorHandler(
+            CaregiversDbContext inner,
+            FamiliesDbContext familiesDb)
+    {
+        return new GetEligibleCaregiverPayoutBookingsQueryHandler(
+            new FixedHeaderCaregiversDbContext(inner),
+            familiesDb,
+            new FixedPolicyReader(new CaregiverPayoutPolicyRates(72, 2)),
+            new FixedClock(Utc(20)));
+    }
+
+    private static CaregiverPayout RecordPayout(
+        Booking booking,
+        CaregiverId caregiverId,
+        DateTime recordedOnUtc) =>
+        CaregiverPayout.Record(
+            booking.Id,
+            caregiverId,
+            booking.PriceSnapshot.BaseCaregiverFee,
+            booking.PriceSnapshot.PlatformFeeAmount,
+            booking.PriceSnapshot.Currency,
+            2,
+            booking.PriceSnapshot.PlatformChargeRuleVersion,
+            "NBE",
+            "****0002",
+            "BANK-2026-000123",
+            "Transfer advice 000123",
+            "October weekly payout",
+            UserId.New(),
+            recordedOnUtc);
+
     private static async Task<Caregiver> AddCaregiverAsync(
         CaregiversDbContext dbContext)
     {
@@ -647,6 +913,82 @@ public sealed class CaregiverPayoutHandlerTests
                 "October weekly payout",
                 Utc(10)),
             default));
+    }
+
+    private sealed class FixedClock(DateTime utcNow) : IDateTimeProvider
+    {
+        public DateTime UtcNow { get; } = utcNow;
+    }
+
+    private sealed class FixedHeaderCaregiversDbContext(
+        ICaregiversDbContext inner) : ICaregiversDbContext
+    {
+        public DbSet<Caregiver> Caregivers => inner.Caregivers;
+        public DbSet<CaregiverRating> CaregiverRatings => inner.CaregiverRatings;
+        public DbSet<Service> Services => inner.Services;
+        public DbSet<Language> Languages => inner.Languages;
+        public DbSet<Bank> Banks => inner.Banks;
+        public DbSet<CaregiverPayoutAccount> PayoutAccounts => inner.PayoutAccounts;
+        public DbSet<CaregiverPayoutAccountReview> PayoutAccountReviews => inner.PayoutAccountReviews;
+        public DbSet<CaregiverPayout> Payouts => inner.Payouts;
+        public DbSet<Governorate> Governorates => inner.Governorates;
+        public DbSet<City> Cities => inner.Cities;
+        public DbSet<Area> Areas => inner.Areas;
+        public DbSet<Specialization> Specializations => inner.Specializations;
+        public DbSet<ProfessionalTitle> ProfessionalTitles => inner.ProfessionalTitles;
+        public DbSet<AcademicDegree> AcademicDegrees => inner.AcademicDegrees;
+
+        public Task<IReadOnlyList<AdminCaregiverListItem>> GetAdminCaregiversAsync(
+            int page, int pageSize, int? status, int? type,
+            CancellationToken cancellationToken = default) =>
+            inner.GetAdminCaregiversAsync(page, pageSize, status, type, cancellationToken);
+
+        public Task<int> CountAdminCaregiversAsync(
+            int? status, int? type,
+            CancellationToken cancellationToken = default) =>
+            inner.CountAdminCaregiversAsync(status, type, cancellationToken);
+
+        public Task<(IReadOnlyList<CaregiverSearchCardResponse> Items, int TotalCount)> SearchActiveCaregiversAsync(
+            string? search, int? type, int? gender, Guid? areaId, Guid? specializationId,
+            int? availability, decimal? minPrice, decimal? maxPrice, decimal? minRating,
+            int? minExperienceYears, int page, int pageSize,
+            CancellationToken cancellationToken = default) =>
+            inner.SearchActiveCaregiversAsync(
+                search, type, gender, areaId, specializationId, availability,
+                minPrice, maxPrice, minRating, minExperienceYears, page, pageSize,
+                cancellationToken);
+
+        public Task<(IReadOnlyList<MedicalCaregiverRecipientItem> Items, int TotalCount)> SearchActiveMedicalCaregiversAsync(
+            string? search, int page, int pageSize,
+            CancellationToken cancellationToken = default) =>
+            inner.SearchActiveMedicalCaregiversAsync(search, page, pageSize, cancellationToken);
+
+        // The in-memory provider cannot run the production raw-SQL identity join,
+        // so the safe display name is supplied deterministically for tests.
+        public Task<CaregiverUserHeader?> GetCaregiverUserHeaderAsync(
+            UserId userId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult<CaregiverUserHeader?>(
+                new CaregiverUserHeader(
+                    userId.Value,
+                    "محمد أحمد",
+                    "Mohamed Ahmed",
+                    null,
+                    null));
+
+        public Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(
+            CancellationToken cancellationToken = default) =>
+            inner.GetTopRatedCaregiversAsync(cancellationToken);
+
+        public Task<PayoutRecordSaveResult> SavePayoutIfAccountRevisionVerifiedAsync(
+            CaregiverId caregiverId, int expectedRevision, CaregiverPayout payout,
+            CancellationToken cancellationToken = default) =>
+            inner.SavePayoutIfAccountRevisionVerifiedAsync(
+                caregiverId, expectedRevision, payout, cancellationToken);
+
+        public Task<int> SaveChangesAsync(
+            CancellationToken cancellationToken = default) =>
+            inner.SaveChangesAsync(cancellationToken);
     }
 
     private sealed class ThrowingSaveCaregiversDbContext(

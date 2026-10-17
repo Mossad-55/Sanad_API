@@ -397,3 +397,206 @@ public sealed class GetCaregiverPaymentPolicyQueryHandler(
                 ExpectedProcessingDays: null));
     }
 }
+
+/// <summary>
+/// Admin selector read model for a currently eligible manual payout: only the
+/// identifiers, the existing safe caregiver display names, the timestamps the
+/// operator needs to justify the transfer, and the existing caregiver fee
+/// entitlement. No payout-account, bank or IBAN field is exposed.
+/// </summary>
+public sealed record EligibleCaregiverPayoutBookingResponse(
+    Guid BookingId,
+    Guid CaregiverId,
+    string ArabicFullName,
+    string EnglishFullName,
+    DateTime CompletedOnUtc,
+    DateTime EligibleOnUtc,
+    decimal CaregiverAmount,
+    string Currency);
+
+/// <summary>
+/// Paged selector input. <see cref="CaregiverId"/> is the only optional filter,
+/// matching the adjacent admin payout list.
+/// </summary>
+public sealed record GetEligibleCaregiverPayoutBookingsQuery(
+    Guid? CaregiverId = null,
+    int Page = 1,
+    int PageSize = 20) : IQuery<
+    PagedResult<EligibleCaregiverPayoutBookingResponse>>;
+
+/// <summary>
+/// Read-only eligible-booking selector for recording a manual caregiver payout.
+/// Inclusion reuses the record command rules exactly: completed and paid with
+/// both timestamps, elapsed effective payout delay, a verified payout account,
+/// and no <c>Paid</c> payout row. A <c>Failed</c> payout row does not exclude the
+/// booking, so it stays available for a later retry. A missing effective policy
+/// fails closed with the existing payout-policy error. Nothing is written and no
+/// provider is called.
+/// </summary>
+public sealed class GetEligibleCaregiverPayoutBookingsQueryHandler(
+    ICaregiversDbContext caregiversDb,
+    IFamiliesDbContext familiesDb,
+    ICaregiverPayoutPolicyReader policyReader,
+    IDateTimeProvider clock) : IQueryHandler<
+    GetEligibleCaregiverPayoutBookingsQuery,
+    PagedResult<EligibleCaregiverPayoutBookingResponse>>
+{
+    public async Task<Result<PagedResult<EligibleCaregiverPayoutBookingResponse>>> Handle(
+        GetEligibleCaregiverPayoutBookingsQuery request,
+        CancellationToken cancellationToken)
+    {
+        int page = Math.Max(1, request.Page);
+        int pageSize = Math.Clamp(request.PageSize, 1, 100);
+
+        CaregiverPayoutPolicyRates? rates =
+            await policyReader.GetEffectiveAsync(
+                clock.UtcNow,
+                cancellationToken);
+
+        if (rates is null)
+        {
+            // Fail closed exactly like admin payout recording: eligibility is
+            // undefined without the configured payout delay.
+            return Result<PagedResult<EligibleCaregiverPayoutBookingResponse>>
+                .Failure(CaregiverPayoutPolicyErrors.Missing);
+        }
+
+        IQueryable<Booking> bookingQuery =
+            familiesDb.Bookings
+                .AsNoTracking()
+                .Where(
+                    b => b.Status == BookingStatus.Completed &&
+                         b.CompletedOnUtc != null &&
+                         b.PaidOnUtc != null);
+
+        if (request.CaregiverId.HasValue)
+        {
+            var caregiverId = new CaregiverId(request.CaregiverId.Value);
+            bookingQuery = bookingQuery.Where(b => b.CaregiverId == caregiverId);
+        }
+
+        List<Booking> bookings =
+            await bookingQuery.ToListAsync(cancellationToken);
+
+        HashSet<Guid> verifiedCaregiverIds =
+            (await caregiversDb.PayoutAccounts
+                .AsNoTracking()
+                .Where(a => a.Status == PayoutAccountStatus.Verified)
+                .ToListAsync(cancellationToken))
+            .Select(a => a.CaregiverId.Value)
+            .ToHashSet();
+
+        HashSet<Guid> paidBookingIds =
+            (await caregiversDb.Payouts
+                .AsNoTracking()
+                .Where(p => p.Status == PayoutStatus.Paid)
+                .ToListAsync(cancellationToken))
+            .Select(p => p.BookingId.Value)
+            .ToHashSet();
+
+        List<(Booking Booking, DateTime EligibleOnUtc)> eligible = [];
+        foreach (Booking booking in bookings)
+        {
+            if (!verifiedCaregiverIds.Contains(booking.CaregiverId.Value) ||
+                paidBookingIds.Contains(booking.Id.Value))
+            {
+                continue;
+            }
+
+            PayoutEligibility.Result eligibility = PayoutEligibility.Evaluate(
+                booking.CompletedOnUtc,
+                booking.PaidOnUtc,
+                rates.PayoutDelayHours,
+                clock.UtcNow);
+
+            if (eligibility.IsEligible &&
+                eligibility.EligibleAfterUtc is not null)
+            {
+                eligible.Add((booking, eligibility.EligibleAfterUtc.Value));
+            }
+        }
+
+        // Oldest eligible first, matching the existing admin review queue, with a
+        // stable booking-id tie-break.
+        eligible.Sort(
+            static (left, right) =>
+            {
+                int byEligibleTime = left.EligibleOnUtc.CompareTo(right.EligibleOnUtc);
+                return byEligibleTime != 0
+                    ? byEligibleTime
+                    : left.Booking.Id.Value.CompareTo(right.Booking.Id.Value);
+            });
+
+        int totalCount = eligible.Count;
+        int totalPages = (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        List<(Booking Booking, DateTime EligibleOnUtc)> pageItems =
+            eligible
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToList();
+
+        var namesByCaregiverId =
+            new Dictionary<Guid, (string Arabic, string English)>();
+
+        List<EligibleCaregiverPayoutBookingResponse> items =
+            new(pageItems.Count);
+
+        foreach ((Booking booking, DateTime eligibleOnUtc) in pageItems)
+        {
+            Guid caregiverId = booking.CaregiverId.Value;
+
+            if (!namesByCaregiverId.TryGetValue(caregiverId, out var names))
+            {
+                names = await LoadCaregiverDisplayNamesAsync(
+                    caregiversDb,
+                    booking.CaregiverId,
+                    cancellationToken);
+                namesByCaregiverId[caregiverId] = names;
+            }
+
+            items.Add(
+                new EligibleCaregiverPayoutBookingResponse(
+                    booking.Id.Value,
+                    caregiverId,
+                    names.Arabic,
+                    names.English,
+                    booking.CompletedOnUtc!.Value,
+                    eligibleOnUtc,
+                    booking.PriceSnapshot.BaseCaregiverFee,
+                    booking.PriceSnapshot.Currency));
+        }
+
+        return Result<PagedResult<EligibleCaregiverPayoutBookingResponse>>.Success(
+            new PagedResult<EligibleCaregiverPayoutBookingResponse>(
+                items,
+                page,
+                pageSize,
+                totalCount,
+                totalPages));
+    }
+
+    private static async Task<(string Arabic, string English)>
+        LoadCaregiverDisplayNamesAsync(
+            ICaregiversDbContext caregiversDb,
+            CaregiverId caregiverId,
+            CancellationToken cancellationToken)
+    {
+        Caregiver? caregiver = await caregiversDb.Caregivers
+            .AsNoTracking()
+            .SingleOrDefaultAsync(c => c.Id == caregiverId, cancellationToken);
+
+        if (caregiver is null)
+        {
+            return (string.Empty, string.Empty);
+        }
+
+        CaregiverUserHeader? header = await caregiversDb.GetCaregiverUserHeaderAsync(
+            caregiver.UserId,
+            cancellationToken);
+
+        return header is null
+            ? (string.Empty, string.Empty)
+            : (header.ArabicFullName, header.EnglishFullName);
+    }
+}

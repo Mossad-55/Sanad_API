@@ -31,6 +31,9 @@ public sealed class AdminCaregiverPayoutsAuthorizationTests
     public void CaregiverPayoutAdminRoutes_HaveExpectedTemplates()
     {
         Assert.Equal(
+            "eligible-bookings",
+            TemplateOf(nameof(AdminCaregiverPayoutsController.GetEligibleBookings)));
+        Assert.Equal(
             "{payoutId:guid}",
             TemplateOf(nameof(AdminCaregiverPayoutsController.GetPayout)));
         Assert.Equal(

@@ -39,6 +39,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Durable notification inspection | `docs/admin/notifications.md` |
 | Bank catalogue | `docs/admin/lookups-banks.md` |
 | Finance platform charges and caregiver payout policy | `docs/admin/finance-platform-charges.md` |
+| Admin caregiver payout selector, records, and failures | `docs/app/admin/caregiver-payouts.md` |
 | Caregiver payout accounts and payouts | `docs/app/caregivers/payouts.md` |
 | Community moderation | `docs/app/community/writes.md` |
 | Postman | General Admin: `docs/postman/admins/Sanad.Admin.postman_collection.json`; Care Homes operations: `docs/postman/admins/Sanad.Admin.CareHomes.postman_collection.json` |
