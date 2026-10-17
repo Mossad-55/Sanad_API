@@ -47,13 +47,29 @@ foreach ($module in @('Identity', 'Cms', 'Caregivers', 'Families', 'CareHomes', 
     $requiredMigrations[$module] = $head.BaseName
 }
 
+# Reusing an output directory can leave stale assemblies in the package.
+# Restrict cleanup to a child of deploy/ and wait until manifest inputs validate.
+$deployRoot = [System.IO.Path]::GetFullPath((Join-Path $repositoryRoot 'deploy'))
+$resolvedOutputParent = [System.IO.Path]::GetFullPath((Split-Path -Parent $resolvedOutputPath))
+if (-not [string]::Equals($resolvedOutputParent, $deployRoot, [System.StringComparison]::OrdinalIgnoreCase)) {
+    throw "Publish output must be a direct child of the repository deploy directory: $resolvedOutputPath"
+}
+if (Test-Path -LiteralPath $resolvedOutputPath) {
+    $existingOutput = Get-Item -LiteralPath $resolvedOutputPath -Force
+    if (($existingOutput.Attributes -band [System.IO.FileAttributes]::ReparsePoint) -ne 0) {
+        throw "Publish output cannot be a reparse point: $resolvedOutputPath"
+    }
+    Remove-Item -LiteralPath $resolvedOutputPath -Recurse -Force
+}
+
 New-Item -ItemType Directory -Path $resolvedOutputPath -Force | Out-Null
 
 $publishArguments = @(
     'publish', $projectPath,
     '--configuration', $Configuration,
     '--output', $resolvedOutputPath,
-    '--nologo'
+    '--nologo',
+    '/p:TreatWarningsAsErrors=true'
 )
 if ($SkipBuild) {
     $publishArguments += '--no-build'

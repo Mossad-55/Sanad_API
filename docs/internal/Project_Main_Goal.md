@@ -18,13 +18,19 @@ its [phase receipt](work/portal-api-reconciliation/reports/fur-03-release.md).
 FUR-04 is accepted, committed/pushed and deployed at `31b13cc`; its release
 receipt records guarded gates, exact package/revision, zero migrations applied,
 all nine heads matched, active service and unchanged host configuration.
-Fourteen roadmap phases remain; FUR-05 has not started. See the current
-Mastermind handoff for exactly one next action. Earlier PORTAL completion
-remains valid.
-Owner's standing phase workflow: workers implement and return complete reports;
-Mastermind plans/reviews/integrates. After full-phase acceptance and any worker
-corrections, Mastermind commits/pushes and deploys/verifies before advancing.
-No per-task deploy or silent Mastermind takeover of feature implementation.
+FUR-05 and FUR-06 are Done; FUR-06 revision `7339034` is deployed and its
+[receipt](work/portal-api-reconciliation/reports/fur-06-release.md) records
+runtime evidence. FUR-07 remains Not started. See the current Mastermind handoff
+for the one next action. Earlier PORTAL completion remains valid.
+Current phase workflow: Mastermind locks the contract and reviews; one OpenCode
+worker implements the whole approved phase and pauses for its report; successful
+checks are reused while their inputs remain unchanged. After phase acceptance,
+the owner separately authorizes release. Mastermind then commits/pushes,
+packages, deploys/verifies when applicable, records one receipt, and stops. See
+the [workflow](operations/codex-workflow.md),
+[publish procedure](operations/publish.md), and
+[deploy runbook](operations/deploy-runbook.md). No per-task release or silent
+Mastermind takeover of feature implementation.
 
 Current update: owner-approved V1 geography preserve-and-add provisioning is
 Done. Final 27 governorates / 349 Cities / 5714 Areas (legacy extras retained),

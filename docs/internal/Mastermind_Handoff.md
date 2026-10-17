@@ -1,5 +1,18 @@
 # Mastermind handoff
 
+## Current checkpoint — 2026-10-17
+
+FUR-06 is Done at pushed/deployed revision `7339034`; see its
+[release receipt](work/portal-api-reconciliation/reports/fur-06-release.md).
+The current owner request is to streamline the worker and release workflow;
+see [Codex/OpenCode workflow](operations/codex-workflow.md),
+[publish procedure](operations/publish.md), and
+[deployment runbook](operations/deploy-runbook.md). FUR-07 remains Not started
+and is not part of this workflow review.
+
+**Next action:** present the completed workflow review and the required local
+OpenCode bridge reload, then wait for owner direction. Do not begin FUR-07.
+
 ## Active slice — Admin and Care Homes portal report reconciliation
 
 ### Current follow-up — 2026-10-16
@@ -140,25 +153,22 @@ was committed, pushed and deployed as `ca2ef2f`; see the [worker delivery](work/
 [Mastermind review](work/portal-api-reconciliation/reports/fur-05-mastermind-review.md),
 and [release receipt](work/portal-api-reconciliation/reports/fur-05-release.md).
 No migration was added or applied and no provider or payout state changed.
+### Historical FUR-06 pre-release checkpoint — superseded
+
 FUR-06's [eligible caregiver payout selector contract](work/portal-api-reconciliation/contracts/fur-06-eligible-caregiver-payouts.md)
 and [worker brief](work/portal-api-reconciliation/worker-prompts/fur-06-eligible-caregiver-payouts.md)
-were executed. OpenCode initially returned only initialization text because the
-local bridge treats any assistant message as a final report; this caused two
-producer sessions to overlap briefly. The worker disclosed and removed the
-duplicate implementation. See the [worker delivery](work/portal-api-reconciliation/reports/fur-06-worker-delivery.md)
+were executed. OpenCode initially returned initialization text that the local
+bridge treated as a final report, briefly overlapping two producer sessions.
+The worker disclosed and removed duplicate implementation. See the
+[worker delivery](work/portal-api-reconciliation/reports/fur-06-worker-delivery.md)
 and [Mastermind review](work/portal-api-reconciliation/reports/fur-06-mastermind-review.md).
-Independent strict build passed with zero warnings/errors and focused tests
-passed 21/21. No migrations, stateful tests, database/provider changes, commit,
-push, or deploy occurred. FUR-06 is accepted for release preparation, pending
-owner authorization for release actions. Its handler currently materializes all
-candidate rows before paging; the scale risk is documented in the review.
+The phase was subsequently committed, pushed, published, and deployed; current
+evidence is in the [FUR-06 release receipt](work/portal-api-reconciliation/reports/fur-06-release.md).
+The phase-specific scale observation remains documented in the review.
 
-FUR-07 remains paused. Its code areas are distinct, but report intake/storage,
-counters, and blocking policy still need a locked contract before parallel
-safety can be established.
-
-**Next action:** obtain owner approval for FUR-06 commit/push/deployment; after
-release verification, reassess and lock FUR-07 before dispatch.
+FUR-07 was paused pending its report intake/storage, counters, and blocking
+policy contract. It remains Not started; no FUR-07 work is authorized by this
+workflow review.
 
 Historical checkpoints
 below must not override this follow-up or the latest deployment/import receipts.

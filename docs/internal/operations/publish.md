@@ -1,34 +1,64 @@
 # Publish trigger (`publish`)
 
-## Trigger contract
+## Trigger and scope
 
-When the owner requests **`publish`** as a package-only operation (optionally with a scope, e.g. `publish release`), any agent — human or AI — follows exactly this page and stops after packaging. That request never authorizes deployment, production access, migration applies outside the package build, or secret exposure. In the owner-approved complete-phase workflow, an explicit authorization to **deploy an accepted phase** includes preparing its necessary fresh package; it does not require the owner to repeat a literal trigger word. Deployment still follows the separate exact-target preflight in [deploy-runbook.md](deploy-runbook.md).
+`publish` means create a package and report its provenance. It does not authorize
+deployment, production access, migration application, or secret exposure. An
+explicit owner order to deploy an accepted phase includes preparing its fresh
+package; do not ask the owner to repeat `publish`. Deployment follows the
+separate [deploy runbook](deploy-runbook.md).
 
-## Preconditions (stop if any fails)
+## Preconditions
 
-1. Working tree clean (`git status --short` empty) on `main`.
-2. `main` == `origin/main` (`git rev-parse main` equals `git rev-parse origin/main`).
-3. The revision to publish is the pushed `main` HEAD. Publishing an unpushed or dirty tree is forbidden.
+1. The phase is accepted and its required verification evidence is recorded.
+   Evidence must cover the final source tree and relevant dependencies,
+   toolchain, command/configuration, and stateful target/fixtures. If a source or
+   other relevant input changed, rerun only the checks that change invalidated.
+   Do not repeat successful tests because packaging follows them.
+2. The working tree is clean on `main`, and `main` equals `origin/main`.
+3. The package revision is the pushed `main` HEAD. Do not package a dirty or
+   unpushed revision.
 
-## Steps
+## Package
 
-1. Record HEAD SHA: `git rev-parse HEAD`.
-2. Gate battery (all must exit 0):
-   - `git diff --check`
-   - `dotnet build Sanad.slnx --no-restore -m:1 --nologo /p:TreatWarningsAsErrors=true` (0 warnings, 0 errors)
-   - `pwsh -NoProfile -File docs/internal/tools/Test-SanadPortalGate.ps1 -Suite Unit` (0 failures; only pre-declared static skips). This isolates all nine module targets and removes integration opt-in variables in the actual test child; do not use an unguarded inherited test process.
-   - `pwsh -NoProfile -File docs/internal/tools/Test-SanadPortalGate.ps1 -Suite Architecture` (pass).
-   - `powershell -NoProfile -ExecutionPolicy Bypass -File docs/internal/tools/Verify-ApiContractMapping.ps1`, plus an independent normalized method/route set comparison when route coverage is relevant. The mapping script's printed missing/orphan counts alone are vacuous until its comparison variables are populated. Bruno is excluded from this gate by owner direction and cannot fail or delay publication.
-3. Package:
-   ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Publish-SanadApi.ps1 -Configuration Release
-   ```
-   Output goes to `deploy/publish-out/` (git-ignored by design).
-4. Verify the manifest: `sanad-deployment-manifest.json` `revision` must equal the HEAD SHA from step 1; `requiredMigrations` must list all 9 contexts (Identity, Cms, Caregivers, Families, CareHomes, Notifications, Community, Finance, Chat) at their actual latest migration-source identifiers. The publisher derives these heads from the checked-out source and refuses missing migration/designer files. Independently compare all nine values before transfer. Any `deploy/publish-out` manifest predating the published revision is stale by definition and is never a release; always use a fresh output directory for a phase deployment.
-5. Report back: HEAD SHA, gate evidence (commands + exit codes + counts), package path, manifest revision match. Then stop.
+Run the publisher once:
 
-## Hard prohibitions
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Publish-SanadApi.ps1 -Configuration Release
+```
 
-- Never copy `appsettings.Development.json`, seed settings, `.env`, or any secret into or alongside the package (the script refuses Development settings itself).
-- Never start the package against production, never apply migrations anywhere, never push, tag, or deploy.
-- Deployment is a separate owner order handled only via [deploy-runbook.md](deploy-runbook.md).
+The publisher compiles the API as part of `dotnet publish`; do not run a second
+solution build just for packaging. It derives the latest migration source heads
+for all nine contexts and writes `sanad-deployment-manifest.json`. It also
+refuses to publish if `appsettings.Development.json` appears in the output.
+The output directory is `deploy/publish-out/` (git-ignored and cleared for each
+run so files from an older package cannot leak into the new one). Packaging
+does not run tests.
+
+Confirm once that:
+
+- the manifest `revision` equals pushed `main` HEAD;
+- the manifest contains all nine contexts (Identity, Cms, Caregivers, Families,
+  CareHomes, Notifications, Community, Finance, Chat);
+- the output has no `.env`, local settings, keys, certificates, or other secrets.
+
+The manifest migration heads are source-derived by the publisher. Do not repeat
+an independent source-folder comparison in the deployment preflight. Deployment
+must still compare these required heads with the *actually applied remote*
+heads; that is runtime evidence, not a duplicate source check.
+
+## Report and stop
+
+Report the revision, package path, manifest revision match, and links to the
+already-recorded gate evidence. A package-only request stops here. It does not
+authorize transfer, service restart, or deployment.
+
+## Hard boundaries
+
+- Never copy `appsettings.Development.json`, seed settings, `.env`, or secrets
+  into or alongside the package.
+- Do not run test suites, route mapping, or `git diff --check` as part of
+  packaging. Those checks belong to source acceptance and are conditional on the
+  phase contract; reuse their results while inputs remain unchanged.
+- Never launch the package against production from the build machine. Never
+  push, tag, or deploy under a package-only request.

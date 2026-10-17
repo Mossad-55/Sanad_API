@@ -2,8 +2,11 @@
 
 ## Frontend follow-up sequence — 2026-10-16
 
-Current checkpoint: **FUR-06 implementation and review accepted — awaiting
-owner release authorization**. FUR-05 is Done; see the
+Current checkpoint: **FUR-06 is Done**: accepted, committed/pushed, published,
+and deployed at `7339034`; the [release receipt](reports/fur-06-release.md)
+records the VPS revision, migration-head match, smoke result, and preserved host
+configuration. The present owner request is to streamline the worker and release
+workflow; FUR-07 remains Not started and is outside this work. FUR-05 is Done; see the
 [FUR-05 release receipt](reports/fur-05-release.md),
 [worker delivery](reports/fur-05-worker-delivery.md), and
 [Mastermind review](reports/fur-05-mastermind-review.md). FUR-04 is Done; see
@@ -37,7 +40,7 @@ contract assumption mismatches are not claimed as proven client code defects.
 | FUR-03 — Finance verification (S03) | Done | R1–R5 accepted; no defect reproduced; worker-reported strict build clean, focused suites 11/11 + 19/19 + 25/25, PostgreSQL proof 12/12 on `SanadFur03VerifyDb`. No runtime delta; deployment N/A. [Phase release receipt](reports/fur-03-release.md); phase commit `858da09` pushed to `origin/main`. |
 | FUR-04 — Care Home readback (S04) | Done | Six-item scope and C1–C4 corrections accepted. Commit `31b13cc` pushed and deployed; Mastermind strict build 0 warnings/errors, guarded full unit 3475/0/31, architecture 1/1; standard deployment verifier passed, 9/9 heads matched, zero migrations applied, service active/NRestarts=0, host configuration fingerprints unchanged. Worker PostgreSQL proof 7/7 on `SanadFur04VerifyDb` (not rerun during corrections); the worker's unauthorized creation/drop of three unintended lowercase database instances remains disclosed, with no further DB action. See [delivery report](reports/fur-04-worker-delivery.md), [release receipt](reports/fur-04-release.md), and audience handoffs ([Admin](../frontend-handoffs/admin/admin-portal/phase-04-care-home-readback/2026-10-16-care-home-readback.md), [Owner](../frontend-handoffs/admin/care-home-owner/phase-04-care-home-readback/2026-10-16-care-home-readback.md)). FUR-05 not started. |
 | FUR-05 — Owner settlements (S05) | Done | Owner-approved read-only ledger includes eligible unpaid balances and recorded transfers. Reviewed, committed and pushed as `ca2ef2f`, deployed and verified; zero migrations applied and configuration fingerprints unchanged. See [worker delivery](reports/fur-05-worker-delivery.md), [Mastermind review](reports/fur-05-mastermind-review.md), and [release receipt](reports/fur-05-release.md). |
-| FUR-06 — Eligible caregiver payouts (S06) | In progress | Contract locked; worker delivery and Mastermind review accepted for release preparation. Independent strict build and focused tests pass. Awaiting owner commit/push/deploy approval; scale observation is documented. FUR-07 remains paused. |
+| FUR-06 — Eligible caregiver payouts (S06) | Done | Contract accepted; worker delivery and Mastermind review accepted. Strict build passed and focused tests passed 21/21 before commit. Commit `7339034` was pushed and deployed; deployment endpoint reports the exact revision, database reachable, all 9/9 applied heads match, and services smoke returned HTTP 200. See [release receipt](reports/fur-06-release.md). The earlier full guarded suite attempts could not connect to testhost and were not repeated during publish/deploy. |
 | FUR-07 — Community moderation (S07) | Not started | Lock list/detail/reasons/counters and explicitly selected report/block policy; no implicit global suspension grant. |
 | FUR-08 — Owner disputes (S08) | Not started | Lock own-facility read/filter/display contract without admin resolution powers. |
 | FUR-09 — Caregiver integrity disposition (S09) | Not started | Review dependencies/recovery evidence before any separately approved exact repair/quarantine. Never hide or delete profiles implicitly. |

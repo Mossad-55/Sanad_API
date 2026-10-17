@@ -1,35 +1,119 @@
-# Codex local workflow
+# Codex and OpenCode workflow
 
-Follow [repository instructions](../governance/AGENTS.md). Start with [Mastermind handoff](../Mastermind_Handoff.md), then its active slice. [Project goal](../Project_Main_Goal.md) indexes the owner-approved priorities.
+Follow [repository instructions](../governance/AGENTS.md). Start with the
+[Mastermind handoff](../Mastermind_Handoff.md), inspect the worktree, and resume
+the recorded active phase. The phase plan is the source of truth for scope and
+status.
 
-## One sequential pass
+## One worker per phase, with a dependency gate for overlap
 
-Before this implementation sequence, the planning mastermind must ask what already exists in the owner's application for the slice, review provided UI/instructions, discuss recommendations and missing decisions, and adjust tasks with the owner. Development begins only after explicit plan approval. The planning mastermind supplies the approved plan and exact handoff prompt to the executing mastermind. Only Care homes is currently in intake; other features remain unplanned.
+1. **Mastermind locks the current contract.** Confirm the owner's existing application
+   behavior and supplied UI/evidence, then agree scope, permissions, exclusions,
+   owned files, dependencies, acceptance criteria, and only the verification
+   relevant to the change. Get explicit owner approval of the complete contract.
+2. **Mastermind prepares the handoff.** Save one complete worker prompt with the
+   base revision, exact file manifest, acceptance criteria, fixture/target limits,
+   report path, and stop conditions. Give the owner a short kickoff with the
+   prompt path and recommended effort. Do not paste the full prompt into chat.
+3. **Dispatch one OpenCode session for the current phase.** Record the phase,
+   base revision, prompt path, and `job_id` in the phase checkpoint before
+   dispatch. Keep one active implementation session per phase. The worker owns the approved files and
+   completes the whole assigned phase, including focused tests and feature
+   docs/Postman when listed in its manifest. Do not add separate scout, test
+   author, or documenter sessions when they would repeat that work; use them
+   only for a specific independent need.
+4. **Mastermind waits on that worker.** Do not message it, send progress nudges,
+   launch a replacement, or edit its owned files. Wait on the same `job_id` until
+   its explicit terminal report or blocker arrives. Startup text, progress,
+   tool handoffs, timeouts, or ambiguous status are not completion. If the
+   bridge treats any assistant text as completion, that is a bridge defect:
+   mark the job status unknown, recover/check the same session, and do not
+   dispatch a replacement until the defect is fixed and terminal state is
+   confirmed.
+5. **While waiting, assess only the next approved plan.** After the current
+   worker is dispatched, the Mastermind may read the immediately following
+   already-approved phase contract/file manifest and compare its owned files,
+   stateful targets, outputs, and dependencies with the active phase. Do not
+   scout, edit, or prompt the next phase as a way to manufacture independence.
+   If any dependency, shared file/state, output handoff, or integration boundary
+   is unclear, keep phases sequential and continue waiting for the current
+   report. If independence is established, present the proposed overlap and its
+   file/state boundary to the owner; only after the owner approves the next
+   contract may a second OpenCode session start. The two workers then remain
+   isolated and are each left alone until report/blocker. Never let them share
+   files or stateful targets. The owner may instead direct sequential work.
+6. **Worker stops at report or blocker.** The worker returns one concise report
+   listing status, changed files, checks and results, assumptions, fixture/data
+   effects, limitations, and any owner decision needed. It does not commit,
+   push, deploy, or start the next phase. A blocker ends the run until the owner
+   provides the missing decision/input.
+7. **Mastermind reviews once.** Inspect the actual diff and evidence against the
+   contract. Give the owner concrete findings. If a correction is needed, the
+   owner routes the bounded correction to that same worker session; wait for its
+   updated report, then review only the changed scope and affected evidence.
+   Do not restart the phase or repeat unaffected review/checks.
+8. **Owner approves release separately.** After acceptance, present the final
+   evidence and ask once for the applicable commit/push/package/deployment
+   authorization. Contract approval alone is not release approval. Do not
+   re-request an authorization already given for the same phase and target.
+9. **Mastermind closes the phase.** After release authorization, commit and push
+   the accepted phase on `main`, package the pushed revision, deploy only to the
+   authorized target, verify deployment, write one receipt, update the phase
+   status and short handoff, then stop. Do not silently begin a later phase.
 
-For substantial tasks, use scout → implementer → optional test author → reviewer → optional documenter → mastermind integration, verification, and handoff. One worker at a time. Small, clear tasks may skip roles that add no value. Concrete corrections receive a bounded follow-up; do not restart the sequence or add another review round.
+## Evidence and gates
 
-Every brief specifies the revision, objective, owned files, acceptance criteria, dependencies, and required output. Scout identifies affected endpoints and verification prerequisites, including test data/actors/states, before Bruno requests are written. The Mastermind checks existing fixture data read-only and seeds only the minimum missing records on the already-authorized disposable target; it verifies the state before running a request. Keep a separate fresh booking/entity for each state-changing scenario that consumes its prior state. Test author is optional. Documenter updates feature guides/Postman when the API contract or user-facing behavior changes.
+- Select checks from the contract and risk: build the final code once, run
+  focused automated tests for changed behavior, and use Bruno only when the
+  live HTTP/stateful boundary adds necessary evidence or the owner requests it.
+  Full Unit/Architecture suites are conditional on cross-cutting/high-risk
+  scope or a phase's explicit release requirement. Do not run a fixed matrix for
+  every endpoint.
+- Treat a successful check as reusable evidence for the exact inputs it
+  exercised: source tree, dependencies/toolchain, command/configuration, and,
+  for stateful checks, target plus fixture state. If an input changes, rerun
+  only the checks that depend on it. Record the evidence once with revision,
+  command, result/counts, warnings/skips, and limitations. A failed/stalled run
+  does not erase a different successful run with matching inputs.
+- `git diff --check` belongs in final source review before commit. Do not repeat
+  it during package/deployment after the pushed tree has been confirmed clean.
+  Route/Postman mapping is required only when routes or API examples changed;
+  it is static coverage evidence, not a runtime test.
+- Packaging compiles the API. Do not run another solution build solely because
+  packaging follows a successful build on unchanged inputs. The package step
+  never runs tests. Confirm the package revision matches pushed `main`, all nine
+  migration heads are source-derived, and no local settings/secrets are present.
+- Deployment checks are not a second test suite: verify the exact target, keep a
+  recoverable binary backup, start the service, check startup migration evidence,
+  verify deployed revision and applied migration heads, run one agreed anonymous
+  smoke, and compare protected host configuration fingerprints. Add target or
+  feature-specific checks only when the phase changes that behavior. See
+  [publish](publish.md) and [deploy runbook](deploy-runbook.md).
+- Stop repeating a command when two attempts fail without new diagnostic
+  evidence or it stalls. Report the precise blocker; do not launch concurrent
+  retries that contend for test/build outputs.
 
-## Keep owner asks and verification simple
+## Role boundaries
 
-When blocked, tell the owner in plain language what is missing, why it prevents the next step, and the one decision or input needed to continue. Name the exact fixture/scenario only when that is the blocker. Do not turn a simple ask into a long authorization checklist; include only the target and side effects that matter for the specific operation.
+- **Mastermind:** owner intake and contract, worker prompt, single-session
+  coordination, bounded review, selected verification, release approval request,
+  commit/push/release after approval, receipt, and handoff.
+- **OpenCode phase worker:** implements the complete approved file manifest,
+  adds/updates only contract-relevant tests and feature docs/Postman, reports
+  evidence, then pauses. It does not set scope, make unresolved policy choices,
+  release, or take the next phase.
+- **Test author (optional):** independently designs tests only when the change
+  needs substantial coverage design; does not duplicate tests the phase worker
+  already authored.
+- **Reviewer (one bounded pass):** reports concrete correctness, security,
+  compatibility, and coverage findings. The Mastermind remains responsible for
+  reviewing the actual changes.
+- **Documenter (optional):** separate only when documentation is substantial or
+  outside the phase worker's assigned files.
+- **Owner:** approves the contract, receives reports and routes corrections,
+  makes unresolved product/target decisions, and separately authorizes release.
 
-Keep tests proportional to the behavior being changed. Run focused automated tests for the changed rule/contract. Bruno is optional and risk-based: use a small smoke check only when live HTTP behavior adds needed evidence or the owner requests it. Do not create a Bruno case for every endpoint or a fixed matrix of success, validation, authentication, authorization, and conflicts. Reuse safe fixtures; seed only what is missing, verify it before the request, and read back state-changing results. Clean up only when supported and authorized. Avoid broad suites and fixture frameworks. If Bruno is blocked by unavailable data/provider/runtime, record why and the automated evidence; do not let that alone hold the task or commit.
-
-## Required gates
-
-When Bruno is selected, use the [failure-first runbook](bruno-failure-first.md). Pin the runtime/fixture, run only explicit requests, diagnose the first failure, fix the evidenced cause, and rerun minimal prerequisites. HTTP failures do not justify database resets or random ports. Reuse valid evidence and authorized fixtures; after two unchanged attempts or ten minutes without new diagnostic evidence, stop and report the limitation.
-
-For implementation changes, the Mastermind builds once after the final code edit and runs focused tests. Run the full suite for cross-cutting/high-risk changes or release readiness, not every small task. Bruno is not a default gate and does not block a commit solely because its runtime/fixture is unavailable. Required automated checks must pass; document skipped/blocked checks honestly. Documentation/script-only changes receive relevant static/script validation. Do not add broad fixtures or tests without a contract need or observed defect.
-
-Reuse successful gates unless later changes invalidate them. Record commands, scope, results, warnings/skips, cleanup, and limitations in the owning slice. Static request mapping is not an executed test. Owner-confirmed historical results remain labelled separately.
-
-## Resume and closeout
-
-1. Inspect the worktree and preserve unfinished and unrelated changes.
-2. Read the active slice, current role, and next action; resume there.
-3. Resolve only decisions needed now; block dependent tasks narrowly.
-4. Complete verification, update the slice and short handoff, and report.
-5. Update the task/handoff, commit completed task changes on `main`, and push `main` to keep the remote aligned under the owner's standing instruction. Do not create routine worktrees or merge another branch. Get separate authorization for production changes, destructive database resets, or deployment. Do not silently start the next product goal.
-
-The persisted model/effort remains gpt-5.6-luna / medium. Root AGENTS.md is the instruction-discovery pointer. Consolidated logs are retired sources awaiting separately confirmed cleanup.
+For stateful checks, use an already authorized disposable target, verify the
+minimal fixture before execution, and never run against production. Resets,
+new targets, migrations, provider calls, and other persistent side effects need
+specific authorization. See [Bruno failure-first runbook](bruno-failure-first.md).
