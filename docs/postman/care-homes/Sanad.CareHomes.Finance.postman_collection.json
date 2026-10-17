@@ -22,6 +22,31 @@
         { "name": "Dashboard", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/care-homes/dashboard/mine?from={{from}}&to={{to}}", "description": "CareHomeOwnerAccess. Returns 200 with cairoDate, occupied/total resources, occupancyPercentage, pendingPaymentCount, awaitingDecisionCount and periodRevenue totals. Empty facility returns zeros. Verified PORTAL-05 on an isolated host." } },
         { "name": "Revenue and transactions", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/care-homes/revenue/mine?from={{from}}&to={{to}}", "description": "CareHomeOwnerAccess. Returns 200 with from/to, totals (base, fee, tax, gross, refunds, net, counts) and transactions. Date filters are inclusive Cairo-local dates; a reversed range returns 400 CareHomes.Revenue.InvalidRange. Verified PORTAL-05 on an isolated host." } },
         { "name": "Revenue CSV", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/care-homes/revenue/mine/export.csv?from={{from}}&to={{to}}" } },
+        {
+          "name": "Payout ledger",
+          "request": {
+            "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] },
+            "method": "GET",
+            "description": "CareHomeOwnerAccess. GET /api/v1/care-homes/payouts/mine. Scoped server-side to the authenticated owner's facility; no facility ID query parameter. Returns 200 with already-recorded transfers (non-null payoutId) and currently eligible unpaid balances (null payoutId), all ordered by checkout time descending. A facility with no settlement rows returns 200 []. An owner with no facility returns 404 CareHomes.Bookings.NotFound. When an eligible unpaid balance needs an effective Finance rule, the route fails closed with CareHomes.Payout.FinanceConfigurationMissing. Read-only: it never records a payout or debt and never changes the booking. Authored example, not runtime evidence.",
+            "url": "{{baseUrl}}/api/v1/care-homes/payouts/mine"
+          },
+          "response": [
+            {
+              "name": "200 recorded transfer and eligible unpaid balance",
+              "originalRequest": {
+                "method": "GET",
+                "header": [],
+                "url": { "raw": "{{baseUrl}}/api/v1/care-homes/payouts/mine" }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [{ "key": "Content-Type", "value": "application/json" }],
+              "cookie": [],
+              "body": "[\n  {\n    \"bookingId\": \"0199a1b2-c3d4-7e5f-8a90-1234567890ab\",\n    \"facilityId\": \"0199a1b2-c3d4-7e5f-8a90-000000000001\",\n    \"startDate\": \"2026-09-01\",\n    \"endDate\": \"2026-09-30\",\n    \"remainingCustomerAmount\": 1150.00,\n    \"remainingGross\": 1000.00,\n    \"feeRatePercentage\": 5.00,\n    \"feeAmount\": 50.00,\n    \"netPayable\": 950.00,\n    \"payoutId\": \"0199a1b2-c3d4-7e5f-8a90-abcdefabcdef\",\n    \"facilityDebt\": 100.00,\n    \"currency\": \"EGP\",\n    \"transferReference\": \"BANK-REF-20261001\",\n    \"recordedOnUtc\": \"2026-10-01T09:30:00Z\"\n  },\n  {\n    \"bookingId\": \"0199a1b2-c3d4-7e5f-8a90-1234567890cd\",\n    \"facilityId\": \"0199a1b2-c3d4-7e5f-8a90-000000000001\",\n    \"startDate\": \"2026-09-15\",\n    \"endDate\": \"2026-10-14\",\n    \"remainingCustomerAmount\": 1150.00,\n    \"remainingGross\": 1000.00,\n    \"feeRatePercentage\": 5.00,\n    \"feeAmount\": 50.00,\n    \"netPayable\": 950.00,\n    \"payoutId\": null,\n    \"facilityDebt\": 0.00,\n    \"currency\": \"EGP\",\n    \"transferReference\": null,\n    \"recordedOnUtc\": null\n  }\n]"
+            }
+          ]
+        },
         { "name": "List internal notes", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "GET", "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/internal-notes" } },
         { "name": "Append internal note", "request": { "auth": { "type": "bearer", "bearer": [{ "key": "token", "value": "{{careHomeOwnerJwt}}", "type": "string" }] }, "method": "POST", "header": [{ "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"text\": \"Follow up with the facility team.\"\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/booking-requests/mine/{{careHomeBookingId}}/internal-notes" } }
       ]

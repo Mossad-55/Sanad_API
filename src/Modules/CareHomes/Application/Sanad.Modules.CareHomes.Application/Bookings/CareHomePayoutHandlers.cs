@@ -65,13 +65,15 @@ public static class CareHomePayoutCalculation
     }
 }
 
-public sealed class GetCareHomePayoutLedgerHandler(
-    ICareHomesDbContext db, IPlatformChargeRuleReader chargeRules)
-    : IQueryHandler<GetCareHomePayoutLedgerQuery, IReadOnlyList<CareHomePayoutLedgerItem>>
+public sealed record GetOwnerCareHomePayoutLedgerQuery(UserId Actor, DateTime UtcNow)
+    : IQuery<IReadOnlyList<CareHomePayoutLedgerItem>>;
+
+internal static class CareHomePayoutLedgerProjection
 {
-    public async Task<Result<IReadOnlyList<CareHomePayoutLedgerItem>>> Handle(GetCareHomePayoutLedgerQuery request, CancellationToken ct)
+    public static async Task<Result<IReadOnlyList<CareHomePayoutLedgerItem>>> Load(
+        ICareHomesDbContext db, IPlatformChargeRuleReader chargeRules, CareHomeId? facilityFilter,
+        DateTime utcNow, bool settlementRowsOnly, CancellationToken ct)
     {
-        CareHomeId? facilityFilter = request.FacilityId is Guid ledgerFacility ? new CareHomeId(ledgerFacility) : null;
         var bookings = await db.Bookings.AsNoTracking()
             .Where(x => x.ActualCheckOutOnUtc != null
                 && (x.PaymentStatus == CareHomeBookingPaymentStatus.Paid || x.PaymentStatus == CareHomeBookingPaymentStatus.Refunded)
@@ -85,7 +87,7 @@ public sealed class GetCareHomePayoutLedgerHandler(
         bool hasUnsettledPayables = bookings.Any(x => !payouts.ContainsKey(x.Id)
             && CareHomePayoutCalculation.TryGetRemainingAmounts(x, out _, out _));
         PlatformChargeRuleRates? rates = hasUnsettledPayables
-            ? await chargeRules.GetEffectiveAsync(request.UtcNow, ct)
+            ? await chargeRules.GetEffectiveAsync(utcNow, ct)
             : null;
         if (hasUnsettledPayables && rates is null)
             return Result<IReadOnlyList<CareHomePayoutLedgerItem>>.Failure(CareHomePayoutErrors.FinanceConfigurationMissing);
@@ -99,14 +101,44 @@ public sealed class GetCareHomePayoutLedgerHandler(
             decimal fee = payout?.FeeAmount ?? (eligible
                 ? PlatformChargeCalculator.Calculate(gross, rate, 0m).PlatformFeeAmount
                 : 0m);
+            decimal netPayable = payout?.NetAmount
+                ?? (eligible ? Math.Round(gross - fee, 2, MidpointRounding.ToEven) : 0m);
+            // The Owner settlement view returns recorded transfers plus currently
+            // eligible unpaid balances only; the Admin ledger keeps every row.
+            if (settlementRowsOnly && payout is null && (!eligible || netPayable <= 0m))
+                continue;
             rows.Add(new(booking.Id, booking.FacilityId.Value, booking.StartDate, booking.EndDate,
                 payout?.RemainingCustomerAmount ?? (eligible ? remainingCustomer : 0m),
-                payout?.GrossAmount ?? (eligible ? gross : 0m), rate, fee,
-                payout?.NetAmount ?? (eligible ? Math.Round(gross - fee, 2, MidpointRounding.ToEven) : 0m),
+                payout?.GrossAmount ?? (eligible ? gross : 0m), rate, fee, netPayable,
                 payout?.Id, debts.GetValueOrDefault(booking.Id), payout?.Currency ?? "EGP",
                 payout?.TransferReference, payout?.RecordedOnUtc));
         }
         return Result<IReadOnlyList<CareHomePayoutLedgerItem>>.Success(rows);
+    }
+}
+
+public sealed class GetCareHomePayoutLedgerHandler(
+    ICareHomesDbContext db, IPlatformChargeRuleReader chargeRules)
+    : IQueryHandler<GetCareHomePayoutLedgerQuery, IReadOnlyList<CareHomePayoutLedgerItem>>
+{
+    public Task<Result<IReadOnlyList<CareHomePayoutLedgerItem>>> Handle(GetCareHomePayoutLedgerQuery request, CancellationToken ct) =>
+        CareHomePayoutLedgerProjection.Load(db, chargeRules,
+            request.FacilityId is Guid ledgerFacility ? new CareHomeId(ledgerFacility) : null,
+            request.UtcNow, settlementRowsOnly: false, ct);
+}
+
+public sealed class GetOwnerCareHomePayoutLedgerHandler(
+    ICareHomesDbContext db, IPlatformChargeRuleReader chargeRules)
+    : IQueryHandler<GetOwnerCareHomePayoutLedgerQuery, IReadOnlyList<CareHomePayoutLedgerItem>>
+{
+    public async Task<Result<IReadOnlyList<CareHomePayoutLedgerItem>>> Handle(GetOwnerCareHomePayoutLedgerQuery request, CancellationToken ct)
+    {
+        CareHomeFacility? facility = await db.Facilities.AsNoTracking()
+            .SingleOrDefaultAsync(x => x.OwnerUserId == request.Actor, ct);
+        return facility is null
+            ? Result<IReadOnlyList<CareHomePayoutLedgerItem>>.Failure(CareHomeRevenueProjection.NotFound)
+            : await CareHomePayoutLedgerProjection.Load(db, chargeRules, facility.Id,
+                request.UtcNow, settlementRowsOnly: true, ct);
     }
 }
 

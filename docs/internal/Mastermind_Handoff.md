@@ -132,10 +132,20 @@ service is active with zero restarts, and host configuration fingerprints are
 unchanged. The unauthorized local database setup deviation remains disclosed;
 no further database action occurred. See the [phase release receipt](work/portal-api-reconciliation/reports/fur-04-release.md).
 
-**Next action:** begin only a bounded read-only FUR-05 investigation and prepare
-its full contract proposal for owner discussion/approval. Do not start an
-implementation worker or FUR-06 until FUR-05's contract is explicitly approved
-and its complete worker prompt is presented.
+FUR-05's owner-scoped settlement contract was approved on 2026-10-17: include
+both eligible unpaid balances and recorded transfers, reusing existing payout,
+refund, fee and debt truth. The implementation worker completed its report;
+Mastermind review accepted the code, tests, guide and Postman update for release.
+See the [worker delivery](work/portal-api-reconciliation/reports/fur-05-worker-delivery.md)
+and [Mastermind review](work/portal-api-reconciliation/reports/fur-05-mastermind-review.md).
+The owner directed completion and deployment of FUR-05. No database, migration,
+or provider action is part of this phase. FUR-06 remains deferred at the owner's
+direction until FUR-05 deployment is complete and the parallel-work decision is
+discussed together.
+
+**Next action:** commit and push the reviewed FUR-05 phase, then prepare its fresh
+release package and deploy it to the previously designated target under the
+deployment runbook. Record verified evidence before marking FUR-05 Done.
 
 Historical checkpoints
 below must not override this follow-up or the latest deployment/import receipts.

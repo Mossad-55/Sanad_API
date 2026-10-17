@@ -34,4 +34,11 @@ public sealed class CareHomeFinanceController(ISender sender, IDateTimeProvider 
         return result.IsFailure ? ToActionResult(result)
             : File(CareHomeRevenueCsv.Render(result.Value), "text/csv; charset=utf-8", "care-home-revenue.csv");
     }
+
+    [HttpGet("payouts/mine")]
+    [ProducesResponseType(typeof(IReadOnlyList<CareHomePayoutLedgerItem>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> PayoutLedger(CancellationToken ct) =>
+        TryGetAuthenticatedUserId(out UserId actor)
+            ? ToActionResult(await sender.Send(new GetOwnerCareHomePayoutLedgerQuery(actor, clock.UtcNow), ct))
+            : Unauthorized();
 }

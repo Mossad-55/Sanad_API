@@ -1,6 +1,6 @@
 # Care Homes receipts, revenue, exports, and internal notes
 
-HC-TASK-037 adds operator and operational-Admin read models for Care Home booking charges, completed refunds, revenue movements, and dashboard counts. It reuses the booking's immutable base/fee/tax snapshot and refund completion record. It does not calculate new fees, change refund behavior, initiate payouts, or include resident wallets, visits, bank breakdowns, invoice analytics, PDF receipts, or email delivery.
+HC-TASK-037 adds operator and operational-Admin read models for Care Home booking charges, completed refunds, revenue movements, and dashboard counts. It reuses the booking's immutable base/fee/tax snapshot and refund completion record. It does not calculate new fees, change refund behavior, initiate payouts, or include resident wallets, visits, bank breakdowns, invoice analytics, PDF receipts, or email delivery. FUR-05 adds a read-only facility-owner settlement view over the same existing payout truth; it does not calculate new fees, record transfers, or expose evidence, reason, or recording-actor fields.
 
 ## Authorization and routes
 
@@ -12,6 +12,7 @@ Facility-owner routes require `CareHomeOwnerAccess`. The application resolves th
 | GET | `/api/v1/care-homes/dashboard/mine?from=YYYY-MM-DD&to=YYYY-MM-DD` | Read occupancy, live pending counts, and period revenue. |
 | GET | `/api/v1/care-homes/revenue/mine?from=YYYY-MM-DD&to=YYYY-MM-DD` | Read revenue totals and transaction rows. |
 | GET | `/api/v1/care-homes/revenue/mine/export.csv?from=YYYY-MM-DD&to=YYYY-MM-DD` | Export the same transaction rows as CSV. |
+| GET | `/api/v1/care-homes/payouts/mine` | Read the facility's recorded transfers and eligible unpaid balances. |
 | GET | `/api/v1/care-homes/booking-requests/mine/{bookingId}/internal-notes` | Read private booking notes. |
 | POST | `/api/v1/care-homes/booking-requests/mine/{bookingId}/internal-notes` | Append a private note using `{ "text": "..." }`. |
 
@@ -39,6 +40,14 @@ Bookings paid before this feature has a stored payment timestamp remain in unfil
 Dashboard `cairoDate` is the current Cairo-local date. `occupiedResources` counts in-use or held capacity, including unassigned room-type holds. `totalResources` counts physical room resources for private/suite inventory and bed resources for shared inventory; `occupancyPercentage` is zero when capacity is zero. `pendingPaymentCount` counts unexpired checkout holds, and `awaitingDecisionCount` counts paid bookings in the active facility-decision window. `periodRevenue` has the same totals shape as revenue.
 
 CSV is UTF-8 with BOM, has a header row, uses invariant two-decimal money values, and contains the same period transaction rows and scope as the JSON report. Text cells are quoted, embedded quotes are doubled, and formula-leading user references are neutralized. Exports do not contain medical snapshots or Family contact information.
+
+## Owner settlement view
+
+`GET /api/v1/care-homes/payouts/mine` requires `CareHomeOwnerAccess` and returns `200` with an array of settlement rows scoped to the authenticated owner's facility. The caller cannot supply a facility ID. When the authenticated owner has no facility the route returns the same safe `404 CareHomes.Bookings.NotFound` used by the other owner finance reads; a facility without settlement rows returns `200` with an empty array.
+
+Each row keeps the existing payout-ledger shape: `bookingId`, `facilityId`, `startDate`, `endDate`, `remainingCustomerAmount`, `remainingGross`, `feeRatePercentage`, `feeAmount`, `netPayable`, `payoutId`, `facilityDebt`, `currency`, `transferReference`, and `recordedOnUtc`. A non-null `payoutId` identifies an already-recorded transfer; every recorded transfer is returned, including one with subsequent debt reported in `facilityDebt`. A null `payoutId` identifies a currently eligible unpaid balance: the completed stay, paid/refunded payment, completed checkout, refund state, and positive remaining amount must all pass the existing eligibility checks, and the calculated `netPayable` must be positive. Ineligible or zero-payable rows without a recorded payout are excluded. Rows stay in checkout-time-descending order, and the view never creates or changes payout, debt, or booking state. Evidence, reason, and recording-actor fields are not part of the ledger read model and are not exposed.
+
+When an eligible unpaid balance needs a Finance rule that is not effective, the route fails closed with `CareHomes.Payout.FinanceConfigurationMissing`, reusing the existing Admin ledger behavior. The Admin ledger and the payout-writing routes are unchanged; customer collections are not owner income and no calculation moves to the caller.
 
 ## Internal notes
 

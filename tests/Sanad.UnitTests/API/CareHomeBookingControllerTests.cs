@@ -54,6 +54,14 @@ public sealed class CareHomeBookingControllerTests
         Assert.Equal("revenue/mine", owner.GetMethod(nameof(CareHomeFinanceController.Revenue))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
         Assert.Equal("revenue/mine/export.csv", owner.GetMethod(nameof(CareHomeFinanceController.Export))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
 
+        // FUR-05 owner settlement read: exact route, owner policy (class-level above) and
+        // no caller-controlled facility scope parameter.
+        MethodInfo payoutLedger = owner.GetMethod(nameof(CareHomeFinanceController.PayoutLedger))!;
+        Assert.Equal("payouts/mine", payoutLedger.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        ParameterInfo[] payoutLedgerParameters = payoutLedger.GetParameters();
+        Assert.DoesNotContain(payoutLedgerParameters, x => x.ParameterType != typeof(CancellationToken));
+        Assert.DoesNotContain(payoutLedgerParameters, x => x.GetCustomAttribute<FromQueryAttribute>() is not null);
+
         var admin = typeof(AdminCareHomeFinanceController);
         Assert.Equal(AuthorizationPolicies.CareHomesOperationalAdmin, Assert.Single(admin.GetCustomAttributes<AuthorizeAttribute>()).Policy);
         Assert.Equal("api/v1/admin/care-homes", Assert.Single(admin.GetCustomAttributes<RouteAttribute>()).Template);
