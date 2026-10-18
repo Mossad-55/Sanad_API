@@ -16,22 +16,21 @@ startup checks present, and anonymous services smoke HTTP 200. The worker's
 rerun during release. The PostgreSQL advisory-lock path was not exercised
 against a live PostgreSQL server.
 
-FUR-08 Owner dispute readback contract was approved on 2026-10-18. The whole-phase
-[brief](work/portal-api-reconciliation/worker-prompts/fur-08-owner-disputes.md),
-worker delivery, and review are recorded under the portal reconciliation slice.
-The final OpenAI child `ses_eb3abb0feffeJCouDAJek74uSh`
-(`openai/gpt-6-luna#medium`) completed the feature and bounded corrections; the
-Mastermind accepted the local diff. Worker-reported gates: strict Release build
-0 warnings/errors, focused tests 20/20, Postman JSON/route/defaults and diff checks
-passed. No live HTTP, Bruno, or database verification; no migration was added.
-The Owner authorized scoped commit/push and applicable publication/deployment to
-the prior designated Production target, subject to live preflight. No release
-operation has yet occurred.
+FUR-08 Owner dispute readback was accepted, committed, pushed and deployed as
+`14757ccce6ad1fb59482ca26d4df5e17ca8c56d9`. See the [worker delivery](work/portal-api-reconciliation/reports/fur-08-worker-delivery.md)
+and [release receipt](work/portal-api-reconciliation/reports/fur-08-release.md).
+Worker-reported gates: strict Release build 0 warnings/errors, focused tests
+20/20, Postman JSON/route/defaults and diff check passed. The deployment
+verifier passed through the SSH tunnel: exact revision, Production, database
+reachable, 9/9 migration heads matched, 9 startup checks with zero migrations
+applied, and services smoke HTTP 200. Service active/NRestarts=0; protected host
+configuration fingerprints unchanged. No live authenticated FUR-08 endpoint
+or Bruno verification was performed. Direct public HTTP redirected to an ISP
+HTML page; tunnel verification was used. No database data, provider, or migration
+change occurred. FUR-09 remains Not started.
 
-**Next action:** commit/push only the reviewed FUR-08 files, then package the
-pushed revision and follow the deployment preflight/verification runbook. Preserve
-all unrelated worktree changes.
-
+**Next action:** stop after FUR-08 closeout and await the Owner's direction for
+any next separately approved phase; do not advance automatically.
 ## Active slice — Admin and Care Homes portal report reconciliation
 
 ### Current follow-up — 2026-10-16
