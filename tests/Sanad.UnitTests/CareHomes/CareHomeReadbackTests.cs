@@ -1,7 +1,8 @@
-using System.Text.Json;
+﻿using System.Text.Json;
 using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
@@ -638,4 +639,278 @@ public sealed class CareHomeReadbackTests
 
     private static CareHomesDbContext CreateDb() => new(new DbContextOptionsBuilder<CareHomesDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+
+    private static CareHomeFacility SeedFacility(CareHomesDbContext db, UserId owner)
+    {
+        CareHomeFacility facility = CareHomeFacility.CreateDraft(owner, Now);
+        db.Facilities.Add(facility);
+        return facility;
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_EmptyOwner_ReturnsPagedEmpty()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        var result = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 1, 25, null, Now), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value.Page);
+        Assert.Equal(25, result.Value.PageSize);
+        Assert.Equal(0, result.Value.TotalCount);
+        Assert.Empty(result.Value.Items);
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_FacilityWithoutDisputes_ReturnsPagedEmpty()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        db.Facilities.Add(CareHomeFacility.CreateDraft(owner, Now));
+        await db.SaveChangesAsync();
+
+        var result = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 2, 10, null, Now), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Page);
+        Assert.Equal(10, result.Value.PageSize);
+        Assert.Equal(0, result.Value.TotalCount);
+        Assert.Empty(result.Value.Items);
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_OwnFacility_DisputesAreVisibleAndPaged()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = SeedFacility(db, owner);
+        CareHomeFacility foreign = SeedFacility(db, UserId.New());
+
+        var open = CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), Now, "Family issue");
+        var resolved = CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), Now.AddMinutes(1));
+        resolved.Resolve(UserId.New(), Now.AddMinutes(2), "Signed log", "Reconciled", Now.AddMinutes(3));
+        var foreignDispute = CareHomeCheckInDispute.Open(Guid.NewGuid(), foreign.Id, null, UserId.New(), Now.AddMinutes(5));
+        db.CheckInDisputes.AddRange(open, resolved, foreignDispute);
+        await db.SaveChangesAsync();
+
+        var result = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 1, 25, null, Now), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.TotalCount);
+        Assert.Equal(2, result.Value.Items.Count);
+        Guid[] ids = result.Value.Items.Select(x => x.Id).ToArray();
+        Assert.Equal(new[] { resolved.Id, open.Id }, ids);
+        Assert.DoesNotContain(result.Value.Items, x => x.Id == foreignDispute.Id);
+
+        var filtered = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 1, 25, "open", Now), default);
+        Assert.Equal(1, filtered.Value.TotalCount);
+        Assert.Equal(CareHomeCheckInDisputeStatus.Open, Assert.Single(filtered.Value.Items).Status);
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_ForeignOwner_IsolatedFromOtherFacilityCases()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId ownerA = UserId.New();
+        UserId ownerB = UserId.New();
+        CareHomeFacility facilityA = SeedFacility(db, ownerA);
+        CareHomeFacility facilityB = SeedFacility(db, ownerB);
+        db.CheckInDisputes.Add(CareHomeCheckInDispute.Open(Guid.NewGuid(), facilityB.Id, null, UserId.New(), Now));
+        await db.SaveChangesAsync();
+
+        var result = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(ownerA, 1, 25, null, Now), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(0, result.Value.TotalCount);
+        Assert.Empty(result.Value.Items);
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_StatusFilter_IsCaseInsensitiveAndCountsAfterFiltering()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = SeedFacility(db, owner);
+        var resolved = CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), Now);
+        resolved.Resolve(UserId.New(), Now.AddMinutes(1), "Signed log", "Reconciled", Now.AddMinutes(2));
+        db.CheckInDisputes.AddRange(
+            CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), Now),
+            CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), Now.AddMinutes(1)),
+            resolved);
+        await db.SaveChangesAsync();
+
+        var result = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 1, 1, "RESOLVED", Now), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, result.Value.TotalCount);
+        OwnerCareHomeCheckInDispute single = Assert.Single(result.Value.Items);
+        Assert.Equal(CareHomeCheckInDisputeStatus.Resolved, single.Status);
+        Assert.NotNull(single.ResolvedOnUtc);
+        Assert.NotNull(single.EffectiveCheckInOnUtc);
+    }
+
+    [Theory]
+    [InlineData("Open", true)]
+    [InlineData("open", true)]
+    [InlineData("RESOLVED", true)]
+    [InlineData("0", false)]
+    [InlineData("2", false)]
+    [InlineData("99", false)]
+    [InlineData("Closed", false)]
+    public async Task OwnerDisputes_StatusValidator_AcceptsOnlyCaseInsensitiveNames(string? status, bool valid)
+    {
+        var result = await new OwnerCareHomeCheckInDisputesQueryValidator()
+            .ValidateAsync(new ListOwnerCareHomeCheckInDisputesQuery(UserId.New(), 1, 25, status, Now));
+
+        Assert.Equal(valid, result.IsValid);
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_Pagination_OrderAndPostFilterTotalMatch()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = SeedFacility(db, owner);
+        Guid[] orderedIds = new Guid[6];
+        for (int i = 0; i < 6; i++)
+        {
+            var dispute = CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), Now.AddMinutes(i));
+            if (i is 2 or 4)
+                dispute.Resolve(UserId.New(), Now.AddMinutes(i + 1), "Signed log", "Reconciled", Now.AddMinutes(i + 2));
+            db.CheckInDisputes.Add(dispute);
+            orderedIds[i] = dispute.Id;
+        }
+        await db.SaveChangesAsync();
+        Array.Reverse(orderedIds);
+
+        var page1 = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 1, 4, null, Now), default);
+        var page2 = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 2, 4, null, Now), default);
+
+        Assert.Equal(6, page1.Value.TotalCount);
+        Assert.Equal(orderedIds.Take(4).ToArray(), page1.Value.Items.Select(x => x.Id).ToArray());
+        Assert.Equal(6, page2.Value.TotalCount);
+        Assert.Equal(orderedIds.Skip(4).ToArray(), page2.Value.Items.Select(x => x.Id).ToArray());
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_EqualOpenedTime_OrdersByCaseIdDescending()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = SeedFacility(db, owner);
+        DateTime opened = Now.AddHours(-1);
+        var first = CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), opened);
+        var second = CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), opened);
+        var third = CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), opened);
+        db.CheckInDisputes.AddRange(first, second, third);
+        await db.SaveChangesAsync();
+
+        var result = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 1, 25, null, Now), default);
+
+        Assert.Equal(new[] { first.Id, second.Id, third.Id }.OrderByDescending(id => id), result.Value.Items.Select(x => x.Id));
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_BookingUnavailable_EnrichmentFieldsAreNull()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = SeedFacility(db, owner);
+        db.CheckInDisputes.Add(CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), Now));
+        await db.SaveChangesAsync();
+
+        var result = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 1, 25, null, Now), default);
+
+        Assert.True(result.IsSuccess);
+        OwnerCareHomeCheckInDispute item = Assert.Single(result.Value.Items);
+        Assert.Null(item.ResidentArabicName);
+        Assert.Null(item.ResidentEnglishName);
+        Assert.Null(item.OriginalBookingTotalAmount);
+        Assert.Null(item.OriginalBookingCurrency);
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_OpenCase_NullsCheckoutAndOutcomeTimestamps()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = SeedFacility(db, owner);
+        var open = CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), Now, "Family issue");
+        db.CheckInDisputes.Add(open);
+        await db.SaveChangesAsync();
+
+        var result = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 1, 25, null, Now), default);
+
+        OwnerCareHomeCheckInDispute item = Assert.Single(result.Value.Items);
+        Assert.Equal(CareHomeCheckInDisputeStatus.Open, item.Status);
+        Assert.Null(item.CheckoutOnUtc);
+        Assert.Equal("Family issue", item.FamilyReason);
+        Assert.Null(item.EffectiveCheckInOnUtc);
+        Assert.Null(item.ResolvedOnUtc);
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_OutcomeResolution_DoesNotRewriteBookingTimestamps()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = SeedFacility(db, owner);
+        CareHomeBooking booking = CreateBooking(facility.Id, "مقيم", "Resident", 80);
+        booking.MarkPaid(123, Now.AddMinutes(1));
+        booking.Accept(Now.AddMinutes(2));
+        booking.AssignPhysicalResource(Guid.NewGuid(), null, Now.AddMinutes(3));
+        booking.RecordCheckIn(UserId.New(), Now.AddMinutes(4));
+        booking.RecordCheckOut(UserId.New(), Now.AddMinutes(5));
+        db.Bookings.Add(booking);
+        var dispute = CareHomeCheckInDispute.Open(booking.Id, facility.Id, Now.AddMinutes(5), UserId.New(), Now.AddMinutes(6));
+        dispute.Resolve(UserId.New(), Now.AddMinutes(7), "Signed log", "Reconciled", Now.AddMinutes(8));
+        db.CheckInDisputes.Add(dispute);
+        await db.SaveChangesAsync();
+
+        var result = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 1, 25, "Resolved", Now), default);
+
+        OwnerCareHomeCheckInDispute item = Assert.Single(result.Value.Items);
+        Assert.Equal(Now.AddMinutes(7), item.EffectiveCheckInOnUtc);
+        Assert.Equal(Now.AddMinutes(5), item.CheckoutOnUtc);
+        Assert.NotNull(item.OriginalBookingTotalAmount);
+        Assert.Equal("EGP", item.OriginalBookingCurrency);
+
+        CareHomeBooking persisted = await db.Bookings.AsNoTracking().SingleAsync(x => x.Id == booking.Id);
+        Assert.Equal(Now.AddMinutes(4), persisted.ActualCheckInOnUtc);
+        Assert.Equal(Now.AddMinutes(5), persisted.ActualCheckOutOnUtc);
+    }
+
+    [Fact]
+    public async Task OwnerDisputes_ResponseJson_ExcludesAdminResolutionFields()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        CareHomeFacility facility = SeedFacility(db, owner);
+        var dispute = CareHomeCheckInDispute.Open(Guid.NewGuid(), facility.Id, null, UserId.New(), Now);
+        dispute.Resolve(UserId.New(), Now.AddMinutes(1), "Signed log", "Reconciled", Now.AddMinutes(2));
+        db.CheckInDisputes.Add(dispute);
+        await db.SaveChangesAsync();
+
+        var result = await new OwnerCareHomeCheckInDisputesHandler(db)
+            .Handle(new ListOwnerCareHomeCheckInDisputesQuery(owner, 1, 25, null, Now), default);
+
+        Assert.True(result.IsSuccess);
+        string json = JsonSerializer.Serialize(result.Value, WebOptions);
+        foreach (string field in new[] { "evidence", "reason", "resolvedBy", "openedBy" })
+            Assert.DoesNotContain(field, json, StringComparison.Ordinal);
+        foreach (string field in new[] { "id", "bookingId", "facilityId", "status", "openedOnUtc", "familyReason", "effectiveCheckInOnUtc", "resolvedOnUtc" })
+            Assert.Contains(field, json, StringComparison.Ordinal);
+    }
 }

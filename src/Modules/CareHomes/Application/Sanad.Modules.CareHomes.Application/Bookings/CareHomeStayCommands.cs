@@ -1,3 +1,4 @@
+using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
@@ -208,5 +209,118 @@ public sealed class CheckInDisputeHandlers(ICareHomesDbContext db) : IQueryHandl
     {
         bookings.TryGetValue(x.BookingId, out CareHomeBooking? booking);
         return new(x.Id, x.BookingId, x.FacilityId.Value, x.CheckoutOnUtc, x.Status, x.OpenedOnUtc, x.OpenedBy.Value, x.EffectiveCheckInOnUtc, x.Evidence, x.Reason, x.FamilyReason, x.ResolvedOnUtc, x.ResolvedBy?.Value, booking?.ElderlyArabicName, booking?.ElderlyEnglishName, booking?.TotalAmount, booking is null ? null : "EGP");
+    }
+}
+
+public sealed record OwnerCareHomeCheckInDispute(
+    Guid Id,
+    Guid BookingId,
+    Guid FacilityId,
+    DateTime? CheckoutOnUtc,
+    CareHomeCheckInDisputeStatus Status,
+    DateTime OpenedOnUtc,
+    DateTime? EffectiveCheckInOnUtc,
+    DateTime? ResolvedOnUtc,
+    string? FamilyReason,
+    string? ResidentArabicName,
+    string? ResidentEnglishName,
+    decimal? OriginalBookingTotalAmount,
+    string? OriginalBookingCurrency);
+
+public sealed record OwnerCareHomeCheckInDisputesResponse(
+    int Page,
+    int PageSize,
+    int TotalCount,
+    IReadOnlyList<OwnerCareHomeCheckInDispute> Items);
+
+public sealed record ListOwnerCareHomeCheckInDisputesQuery(
+    UserId Actor,
+    int Page,
+    int PageSize,
+    string? Status,
+    DateTime UtcNow) : IQuery<OwnerCareHomeCheckInDisputesResponse>;
+
+public sealed class OwnerCareHomeCheckInDisputesQueryValidator : AbstractValidator<ListOwnerCareHomeCheckInDisputesQuery>
+{
+    public OwnerCareHomeCheckInDisputesQueryValidator()
+    {
+        RuleFor(x => x.Page).GreaterThanOrEqualTo(1).WithErrorCode("CareHomes.CheckInDispute.InvalidQuery");
+        RuleFor(x => x.PageSize).InclusiveBetween(1, 100).WithErrorCode("CareHomes.CheckInDispute.InvalidQuery");
+        RuleFor(x => x.Status).Must(s => string.IsNullOrEmpty(s) ||
+                string.Equals(s, nameof(CareHomeCheckInDisputeStatus.Open), StringComparison.OrdinalIgnoreCase) ||
+                string.Equals(s, nameof(CareHomeCheckInDisputeStatus.Resolved), StringComparison.OrdinalIgnoreCase))
+            .WithErrorCode("CareHomes.CheckInDispute.InvalidQuery");
+    }
+}
+
+public sealed class OwnerCareHomeCheckInDisputesHandler(ICareHomesDbContext db) : IQueryHandler<ListOwnerCareHomeCheckInDisputesQuery, OwnerCareHomeCheckInDisputesResponse>
+{
+    public async Task<Result<OwnerCareHomeCheckInDisputesResponse>> Handle(ListOwnerCareHomeCheckInDisputesQuery r, CancellationToken ct)
+    {
+        CareHomeFacility? facility = await db.Facilities.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == r.Actor, ct);
+        if (facility is null)
+            return Result<OwnerCareHomeCheckInDisputesResponse>.Success(new(r.Page, r.PageSize, 0, []));
+
+        CareHomeCheckInDisputeStatus statusFilter;
+        bool hasStatusFilter = false;
+        if (!string.IsNullOrEmpty(r.Status))
+        {
+            statusFilter = Enum.Parse<CareHomeCheckInDisputeStatus>(r.Status, true);
+            hasStatusFilter = true;
+        }
+        else
+        {
+            statusFilter = CareHomeCheckInDisputeStatus.Open;
+        }
+
+        IQueryable<CareHomeCheckInDispute> query = db.CheckInDisputes.AsNoTracking()
+            .Where(x => x.FacilityId == facility.Id);
+        if (hasStatusFilter)
+            query = query.Where(x => x.Status == statusFilter);
+
+        List<CareHomeCheckInDispute> disputes = await query
+            .OrderByDescending(x => x.OpenedOnUtc)
+            .ThenByDescending(x => x.Id)
+            .Skip((r.Page - 1) * r.PageSize)
+            .Take(r.PageSize)
+            .ToListAsync(ct);
+
+        IQueryable<CareHomeCheckInDispute> countQuery = db.CheckInDisputes.AsNoTracking()
+            .Where(x => x.FacilityId == facility.Id);
+        if (hasStatusFilter)
+            countQuery = countQuery.Where(x => x.Status == statusFilter);
+        int totalCount = await countQuery.CountAsync(ct);
+
+        Dictionary<Guid, CareHomeBooking> bookings = await LoadBookingsAsync(disputes.Select(x => x.BookingId), ct);
+        return Result<OwnerCareHomeCheckInDisputesResponse>.Success(new(
+            r.Page, r.PageSize, totalCount,
+            disputes.Select(x => Map(x, bookings)).ToArray()));
+    }
+
+    private async Task<Dictionary<Guid, CareHomeBooking>> LoadBookingsAsync(IEnumerable<Guid> bookingIds, CancellationToken ct)
+    {
+        Guid[] ids = bookingIds.Distinct().ToArray();
+        if (ids.Length == 0) return new Dictionary<Guid, CareHomeBooking>();
+        var rows = await db.Bookings.AsNoTracking().Where(x => ids.Contains(x.Id)).ToListAsync(ct);
+        return rows.ToDictionary(x => x.Id);
+    }
+
+    private static OwnerCareHomeCheckInDispute Map(CareHomeCheckInDispute x, IReadOnlyDictionary<Guid, CareHomeBooking> bookings)
+    {
+        bookings.TryGetValue(x.BookingId, out CareHomeBooking? booking);
+        return new(
+            x.Id,
+            x.BookingId,
+            x.FacilityId.Value,
+            x.CheckoutOnUtc,
+            x.Status,
+            x.OpenedOnUtc,
+            x.EffectiveCheckInOnUtc,
+            x.ResolvedOnUtc,
+            x.FamilyReason,
+            booking?.ElderlyArabicName,
+            booking?.ElderlyEnglishName,
+            booking?.TotalAmount,
+            booking is null ? null : "EGP");
     }
 }

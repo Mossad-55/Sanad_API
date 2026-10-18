@@ -63,6 +63,7 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
         { "post", "/api/v1/care-homes/inventory/mine/availability", 200, "array", "CareHomeAvailability" },
         { "post", "/api/v1/care-homes/inventory/admin/{facilityId}/availability", 200, "array", "CareHomeAvailability" },
         { "get", "/api/v1/care-homes/booking-requests/mine", 200, "array", "CareHomeBookingListItem" },
+        { "get", "/api/v1/care-homes/check-in-disputes/mine", 200, "ref", "OwnerCareHomeCheckInDisputesResponse" },
         { "get", "/api/v1/care-homes/visits/mine", 200, "array", "CareHomeVisitResponse" },
         { "get", "/api/v1/care-homes/facilities/mine/visit-settings", 200, "ref", "CareHomeVisitSettingsResponse" },
         { "put", "/api/v1/care-homes/facilities/mine/visit-settings", 200, "ref", "CareHomeVisitSettingsResponse" },
@@ -179,6 +180,41 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
         JsonElement booking = ResolveRef(root, "#/components/schemas/CareHomeBookingListItem");
         Assert.True(booking.GetProperty("properties").TryGetProperty("status", out _));
         Assert.True(booking.GetProperty("properties").TryGetProperty("paymentStatus", out _));
+
+        JsonElement disputes = ResolveRef(root, "#/components/schemas/OwnerCareHomeCheckInDisputesResponse");
+        JsonElement envelopeProperties = disputes.GetProperty("properties");
+        foreach (string field in new[] { "page", "pageSize", "totalCount", "items" })
+            Assert.True(envelopeProperties.TryGetProperty(field, out _), $"Owner dispute page is missing {field}.");
+        JsonElement items = disputes.GetProperty("properties").GetProperty("items");
+        Assert.Equal("array", items.GetProperty("type").GetString());
+        string itemRef = AssertRef(items.GetProperty("items"), root);
+        Assert.EndsWith("OwnerCareHomeCheckInDispute", itemRef);
+        JsonElement disputeSchema = ResolveRef(root, itemRef);
+        JsonElement itemProperties = disputeSchema.GetProperty("properties");
+        foreach (string field in new[]
+        {
+            "id", "bookingId", "facilityId", "checkoutOnUtc", "status",
+            "openedOnUtc", "effectiveCheckInOnUtc", "resolvedOnUtc",
+            "familyReason", "residentArabicName", "residentEnglishName",
+            "originalBookingTotalAmount", "originalBookingCurrency"
+        })
+            Assert.True(itemProperties.TryGetProperty(field, out _),
+                $"Owner dispute item schema is missing {field}.");
+        foreach (string field in new[]
+        {
+            "checkoutOnUtc", "familyReason", "residentArabicName", "residentEnglishName",
+            "originalBookingTotalAmount", "originalBookingCurrency", "effectiveCheckInOnUtc", "resolvedOnUtc"
+        })
+        {
+            JsonElement property = itemProperties.GetProperty(field);
+            bool nullable = property.TryGetProperty("nullable", out JsonElement nullableFlag) && nullableFlag.ValueKind == JsonValueKind.True;
+            bool permitsNullUnion = new[] { "anyOf", "oneOf" }.Any(key => property.TryGetProperty(key, out JsonElement union)
+                && union.EnumerateArray().Any(option => option.TryGetProperty("type", out JsonElement type) && type.GetString() == "null"));
+            Assert.True(nullable || permitsNullUnion, $"Owner dispute field {field} must allow null.");
+        }
+        foreach (string field in new[] { "evidence", "reason", "resolvedBy", "openedBy" })
+            Assert.False(itemProperties.TryGetProperty(field, out _),
+                $"Admin-only field {field} leaked into the owner dispute item schema.");
     }
 
     [Fact]
@@ -500,6 +536,12 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
                     [new(Guid.Parse("0198e2c2-4444-7777-8888-0000000000d1"), FacilityId, RoomTypeId,
                         new DateOnly(2027, 1, 5), new DateOnly(2027, 2, 5), CareHomeBookingStatus.Accepted,
                         CareHomeBookingPaymentStatus.Paid, 1150m, "EGP", "John Doe")]),
+                Sanad.Modules.CareHomes.Application.Bookings.ListOwnerCareHomeCheckInDisputesQuery q =>
+                    Result<OwnerCareHomeCheckInDisputesResponse>.Success(new(
+                        q.Page, q.PageSize, 1,
+                        [new(Guid.Parse("0198e2c2-4444-7777-8888-0000000000f5"), Guid.Parse("0198e2c2-4444-7777-8888-0000000000f6"),
+                            FacilityId, null, CareHomeCheckInDisputeStatus.Open, new DateTime(2026, 10, 16, 12, 0, 0, DateTimeKind.Utc),
+                            null, null, "Family reason", "Resident Arabic", "Resident English", 1150m, "EGP")])),
                 ListOwnerCareHomeVisitsQuery => Result<IReadOnlyList<CareHomeVisitResponse>>.Success([SampleVisit()]),
                 GetOwnerCareHomeVisitSettingsQuery => Result<CareHomeVisitSettingsResponse>.Success(SampleSettings()),
                 UpdateOwnerCareHomeVisitSettingsCommand => Result<CareHomeVisitSettingsResponse>.Success(SampleSettings()),

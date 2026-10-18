@@ -1,6 +1,6 @@
 # Mastermind handoff
 
-## Current checkpoint — 2026-10-17
+## Current checkpoint — 2026-10-18
 
 FUR-07 is Done at pushed/deployed revision `303a131`; see its
 [release receipt](work/portal-api-reconciliation/reports/fur-07-release.md).
@@ -16,8 +16,21 @@ startup checks present, and anonymous services smoke HTTP 200. The worker's
 rerun during release. The PostgreSQL advisory-lock path was not exercised
 against a live PostgreSQL server.
 
-**Next action:** discuss and lock the FUR-08 contract and assess any proposed
-parallel work with the owner before another worker assignment.
+FUR-08 Owner dispute readback contract was approved on 2026-10-18. The whole-phase
+[brief](work/portal-api-reconciliation/worker-prompts/fur-08-owner-disputes.md),
+worker delivery, and review are recorded under the portal reconciliation slice.
+The final OpenAI child `ses_eb3abb0feffeJCouDAJek74uSh`
+(`openai/gpt-6-luna#medium`) completed the feature and bounded corrections; the
+Mastermind accepted the local diff. Worker-reported gates: strict Release build
+0 warnings/errors, focused tests 20/20, Postman JSON/route/defaults and diff checks
+passed. No live HTTP, Bruno, or database verification; no migration was added.
+The Owner authorized scoped commit/push and applicable publication/deployment to
+the prior designated Production target, subject to live preflight. No release
+operation has yet occurred.
+
+**Next action:** commit/push only the reviewed FUR-08 files, then package the
+pushed revision and follow the deployment preflight/verification runbook. Preserve
+all unrelated worktree changes.
 
 ## Active slice — Admin and Care Homes portal report reconciliation
 

@@ -1403,6 +1403,51 @@
           }
         }
       ]
+    },
+    {
+      "name": "05. Check-in disputes (read only)",
+      "description": "CareHomeOwnerAccess. Lists only cases for the authenticated owner's facility. No facility selector or owner resolution action. Query page (default 1), pageSize (default 25; 1–100), optional status (Open/Resolved, case-insensitive). An owner without a facility receives an empty page. Loading/empty/error states are read-only; Sanad support handles cases. Case outcomes do not rewrite facility check-in/out timestamps.",
+      "item": [
+        {
+          "name": "List my check-in disputes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/care-homes/check-in-disputes/mine?page=1&pageSize=25",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "care-homes",
+                "check-in-disputes",
+                "mine"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Optional; defaults to 1, minimum 1."
+                },
+                {
+                  "key": "pageSize",
+                  "value": "25",
+                  "description": "Optional; defaults to 25, range 1–100."
+                },
+                {
+                  "key": "status",
+                  "value": "{{status}}",
+                  "disabled": true,
+                  "description": "Optional Open or Resolved, case-insensitive."
+                }
+              ]
+            },
+            "description": "200: { page, pageSize, totalCount, items }. Items include nullable checkoutOnUtc, familyReason, residentArabicName/residentEnglishName, originalBookingTotalAmount/originalBookingCurrency, effectiveCheckInOnUtc and resolvedOnUtc. Missing booking enrichment fields are null. Admin evidence, rationale and resolver ID are not returned. Invalid query values use the standard validation response."
+          }
+        }
+      ]
     }
   ]
 }

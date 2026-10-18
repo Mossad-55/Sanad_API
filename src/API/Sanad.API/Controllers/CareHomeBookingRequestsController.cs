@@ -42,6 +42,17 @@ public sealed class CareHomeBookingRequestsController(ISender sender, IDateTimeP
     [HttpGet("{bookingId:guid}/operational")]
     public async Task<IActionResult> Operational(Guid bookingId, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new GetOwnerCareHomeBookingOperationalQuery(actor, bookingId, clock.UtcNow), ct)) : Unauthorized();
 
+    [HttpGet("~/api/v1/care-homes/check-in-disputes/mine")]
+    [ProducesResponseType(typeof(OwnerCareHomeCheckInDisputesResponse), StatusCodes.Status200OK)]
+    public async Task<IActionResult> CheckInDisputes(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        [FromQuery] string? status = null,
+        CancellationToken ct = default) =>
+        TryGetAuthenticatedUserId(out UserId actor)
+            ? ToActionResult(await sender.Send(new ListOwnerCareHomeCheckInDisputesQuery(actor, page, pageSize, status, clock.UtcNow), ct))
+            : Unauthorized();
+
     [HttpGet("{bookingId:guid}/receipt")]
     public async Task<IActionResult> Receipt(Guid bookingId, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor)
         ? ToActionResult(await sender.Send(new GetOwnerCareHomeReceiptQuery(actor, bookingId), ct)) : Unauthorized();

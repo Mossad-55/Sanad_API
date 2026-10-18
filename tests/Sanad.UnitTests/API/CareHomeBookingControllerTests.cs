@@ -45,6 +45,22 @@ public sealed class CareHomeBookingControllerTests
     }
 
     [Fact]
+    public void Owner_check_in_disputes_route_keeps_owner_policy_and_exposes_paged_mine_list()
+    {
+        var controller = typeof(CareHomeBookingRequestsController);
+        MethodInfo method = controller.GetMethod(nameof(CareHomeBookingRequestsController.CheckInDisputes))!;
+        Assert.Equal(AuthorizationPolicies.CareHomeOwnerAccess, Assert.Single(controller.GetCustomAttributes<AuthorizeAttribute>()).Policy);
+        string routeTemplate = method.GetCustomAttribute<HttpGetAttribute>()!.Template!.Replace("~/", string.Empty);
+        Assert.Equal("api/v1/care-homes/check-in-disputes/mine", routeTemplate);
+        var producesAttributes = method.GetCustomAttributes(typeof(Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute))
+            .Cast<Microsoft.AspNetCore.Mvc.ProducesResponseTypeAttribute>().ToArray();
+        Assert.Equal(typeof(Sanad.Modules.CareHomes.Application.Bookings.OwnerCareHomeCheckInDisputesResponse),
+            Assert.Single(producesAttributes, a => a.StatusCode == StatusCodes.Status200OK).Type);
+        foreach (string name in new[] { "page", "pageSize", "status" })
+            Assert.Contains(method.GetParameters(), p => p.Name == name && p.GetCustomAttributes(typeof(FromQueryAttribute)).Any());
+    }
+
+    [Fact]
     public void Finance_and_note_routes_use_owner_and_operational_admin_policies()
     {
         var owner = typeof(CareHomeFinanceController);
@@ -110,6 +126,24 @@ public sealed class CareHomeBookingControllerTests
     }
 
     [Fact]
+    public void Owner_check_in_disputes_endpoint_is_read_only_and_exposes_no_resolution_route()
+    {
+        var owner = typeof(CareHomeBookingRequestsController);
+        Assert.Equal(AuthorizationPolicies.CareHomeOwnerAccess, Assert.Single(owner.GetCustomAttributes<AuthorizeAttribute>()).Policy);
+
+        string[] postTemplates = owner.GetMethods()
+            .Where(m => m.GetCustomAttribute<HttpPostAttribute>() is HttpPostAttribute post)
+            .Select(m => postTemplate(m))
+            .Where(t => t is not null)
+            .Cast<string>()
+            .ToArray();
+
+        static string? postTemplate(MethodInfo m) => m.GetCustomAttribute<HttpPostAttribute>()?.Template?.ToLowerInvariant();
+
+        Assert.DoesNotContain(postTemplates, t => t.Contains("check-in-dispute") || t.Contains("resolve"));
+    }
+
+    [Fact]
     public void Admin_refund_routes_require_operational_admin()
     {
         var controller = typeof(AdminCareHomeRefundsController);
@@ -145,6 +179,7 @@ public sealed class CareHomeBookingControllerTests
     [InlineData("CareHomes.CheckInDispute.InvalidState", 409)]
     [InlineData("CareHomes.CheckInDispute.InvalidReason", 400)]
     [InlineData("CareHomes.CheckInDispute.OpenConflict", 409)]
+        [InlineData("CareHomes.CheckInDispute.InvalidQuery", 400)]
     public void Booking_error_codes_map_to_stable_http_statuses(string code, int expectedStatus)
     {
         var problem = ResultProblemDetailsMapper.Create(new Error(code, "internal detail"), new DefaultHttpContext());

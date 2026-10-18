@@ -109,6 +109,7 @@ public static class ResultProblemDetailsMapper
             ["CareHomes.CheckInDispute.InvalidState"] = 409,
             ["CareHomes.CheckInDispute.InvalidReason"] = 400,
             ["CareHomes.CheckInDispute.OpenConflict"] = 409,
+            ["CareHomes.CheckInDispute.InvalidQuery"] = 400,
 
             ["Identity.Verification.ResendRequestNotFound"] = 404,
             ["Identity.Verification.ResendRequestNotPending"] = 400,
