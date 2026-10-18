@@ -143,6 +143,7 @@ public static class DependencyInjection
         services.AddHostedService<CareHomeTransferNotificationProcessor>();
         services.AddHostedService<CareHomeBookingNotificationProcessor>();
         services.AddHostedService<CareHomeReviewNotificationProcessor>();
+        services.AddHostedService<FamiliesIntegration.CaregiverMedicalAccessAuditRetentionService>();
         services.AddHostedService<EmailOutboxProcessor>();
         services.AddHostedService<PushOutboxProcessor>();
         services.AddScoped<IElderlyCheckInAlertGateway, ElderlyCheckInAlertGateway>();
@@ -521,6 +522,13 @@ public static class DependencyInjection
             // ElderlySosOperational precedent above — SuperAdmin + SupportAdmin
             // on a normal AccessType. No other role gains chat-admin rights.
             options.AddPolicy(AuthorizationPolicies.ChatSupportAdmin, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+            });
+
+            options.AddPolicy(AuthorizationPolicies.MedicalAccessAuditAdmin, policy =>
             {
                 policy.RequireAuthenticatedUser();
                 policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());

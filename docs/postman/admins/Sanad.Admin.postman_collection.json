@@ -3159,6 +3159,17 @@
         { "name": "Reorder landing sections (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"items\": [\n    { \"id\": \"{{landingSectionId}}\", \"displayOrder\": 0 }\n  ]\n}" }, "url": "{{baseUrl}}/api/v1/admin/landing/sections/reorder", "description": "STATE-CHANGING batch displayOrder setter. Success 204. Duplicate or unknown ids return 400 Cms.Landing.ReorderInvalid." } },
         { "name": "Upload landing media (manual multipart)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "formdata" }, "url": "{{baseUrl}}/api/v1/admin/landing/media", "description": "STATE-CHANGING manual multipart example. Set body mode to form-data with file (JPEG/PNG/WebP signature checked, max 5 MB). Success 201 {key}; invalid content or size returns 400. Use the returned key as imagePath on create/update." } }
       ]
+    },
+    {
+      "name": "Caregiver medical-access decision audit",
+      "request": {
+        "method": "GET",
+        "header": [
+          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/v1/admin/caregivers/medical-access-audit?page=1&pageSize=50",
+        "description": "Read-only audit list for Normal SuperAdmin/SupportAdmin; ContentAdmin and app accounts are denied. Optional filters: fromUtc/throughUtc (UTC, at most 12 months), actorUserId, dependentId, granteeUserId, action (CreateGrant/RevokeGrant), decision (Allowed/Denied). Defaults: latest 30 days, page=1, pageSize=50 (maximum 100). Response: { items, page, pageSize, totalCount, totalPages }. Invalid filters return 400 Api.Validation.Failed; authentication/policy failures return 401/403."
+      }
     }
   ]
 }

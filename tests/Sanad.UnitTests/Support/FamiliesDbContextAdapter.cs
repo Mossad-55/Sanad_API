@@ -29,6 +29,7 @@ internal abstract class FamiliesDbContextAdapter(IFamiliesDbContext inner)
     public DbSet<BookingCancellationFact> BookingCancellationFacts => Inner.BookingCancellationFacts;
     public DbSet<BookingReview> BookingReviews => Inner.BookingReviews;
     public DbSet<MedicalAccessGrant> MedicalAccessGrants => Inner.MedicalAccessGrants;
+    public DbSet<CaregiverMedicalAccessAudit> CaregiverMedicalAccessAudits => Inner.CaregiverMedicalAccessAudits;
     public DbSet<AssessmentQuestion> AssessmentQuestions => Inner.AssessmentQuestions;
     public DbSet<AssessmentTier> AssessmentTiers => Inner.AssessmentTiers;
     public DbSet<CareAssessment> CareAssessments => Inner.CareAssessments;

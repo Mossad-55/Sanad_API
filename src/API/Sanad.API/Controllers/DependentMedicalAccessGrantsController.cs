@@ -46,6 +46,10 @@ public sealed class DependentMedicalAccessGrantsController : ApiControllerBase
         var result = await _sender.Send(command, cancellationToken);
         if (result.IsFailure)
         {
+            if (result.Error.Code == "Families.AuditWriteFailed")
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, result.Error);
+            }
             return BadRequest(result.Error);
         }
 
@@ -137,7 +141,14 @@ public sealed class DependentMedicalAccessGrantsController : ApiControllerBase
         var command = new RevokeMedicalAccessGrantCommand(
             new ElderlyId(dependentId), new MedicalAccessGrantId(grantId), userId);
         var result = await _sender.Send(command, cancellationToken);
-        if (result.IsFailure) return ToActionResult(result);
+        if (result.IsFailure)
+        {
+            if (result.Error.Code == "Families.AuditWriteFailed")
+            {
+                return StatusCode(StatusCodes.Status503ServiceUnavailable, result.Error);
+            }
+            return ToActionResult(result);
+        }
         return NoContent();
     }
 }

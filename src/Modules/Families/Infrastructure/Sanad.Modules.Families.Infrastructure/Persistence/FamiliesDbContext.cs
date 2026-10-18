@@ -60,6 +60,7 @@ public sealed class FamiliesDbContext :
 
     public DbSet<BookingReview> BookingReviews => Set<BookingReview>();
     public DbSet<MedicalAccessGrant> MedicalAccessGrants => Set<MedicalAccessGrant>();
+    public DbSet<CaregiverMedicalAccessAudit> CaregiverMedicalAccessAudits => Set<CaregiverMedicalAccessAudit>();
 
     public void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
         PaymobSubscriptionIdentities.Add(identity);
@@ -90,6 +91,7 @@ public sealed class FamiliesDbContext :
         ThrowIfPaymobSubscriptionCallbackMutated();
         ThrowIfPaymobSubscriptionIdentityMutated();
         ThrowIfAdminMedicationAccessAuditMutated();
+        ThrowIfCaregiverMedicalAccessAuditMutated();
         ThrowIfHelpRequestHistoryMutated();
         ThrowIfSosHistoryMutated();
 
@@ -115,6 +117,7 @@ public sealed class FamiliesDbContext :
         ThrowIfPaymobSubscriptionCallbackMutated();
         ThrowIfPaymobSubscriptionIdentityMutated();
         ThrowIfAdminMedicationAccessAuditMutated();
+        ThrowIfCaregiverMedicalAccessAuditMutated();
         ThrowIfHelpRequestHistoryMutated();
         ThrowIfSosHistoryMutated();
 
@@ -152,6 +155,15 @@ public sealed class FamiliesDbContext :
         {
             if (entry.State is EntityState.Modified or EntityState.Deleted)
                 throw new InvalidOperationException("Admin medication access audits are append-only.");
+        }
+    }
+
+    private void ThrowIfCaregiverMedicalAccessAuditMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<CaregiverMedicalAccessAudit>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+                throw new InvalidOperationException("Caregiver medical access audits are append-only.");
         }
     }
     private void ThrowIfHelpRequestHistoryMutated()

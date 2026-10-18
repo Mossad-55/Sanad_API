@@ -313,6 +313,7 @@ public static class ResultProblemDetailsMapper
             , ["Families.Sos.IdempotencyConflict"] = 409
             , ["Families.Sos.InvalidOperation"] = 409
             , ["Families.Sos.InvalidLocation"] = 400
+            , ["Families.AuditWriteFailed"] = 503
 
             , ["Cms.ElderlyWelcome.NotFound"] = 404
             , ["Cms.ElderlyWelcome.NotPublished"] = 404

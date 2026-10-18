@@ -17,11 +17,47 @@ public sealed class CreateMedicalAccessGrantCommandHandler(
         CreateMedicalAccessGrantCommand request,
         CancellationToken cancellationToken)
     {
+        var correlationId = Guid.NewGuid().ToString();
+
         // Resolve the family for the user
         var dependent = await MedicalAccessFamilyAuthorization.GetDependentAsync(
             dbContext, request.DependentId, request.GrantedByUserId, requireManagePermission: true, cancellationToken);
         if (dependent is null)
         {
+            // Authorization denial audit (append-only). A failed audit write must
+            // not be reported as a successfully audited denial.
+            if (request.DependentId != ElderlyId.Empty)
+            {
+                try
+                {
+                    dbContext.CaregiverMedicalAccessAudits.Add(CaregiverMedicalAccessAudit.Create(
+                        request.GrantedByUserId,
+                        request.DependentId,
+                        null,
+                        null,
+                        CaregiverMedicalAccessAuditAction.CreateGrant,
+                        CaregiverMedicalAccessAuditDecision.Denied,
+                        "Families.AccessDenied",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        DateTime.UtcNow,
+                        correlationId));
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (DbUpdateException)
+                {
+                    return Result<MedicalAccessGrant>.Failure(
+                        new Error("Families.AuditWriteFailed", "The medical access audit could not be recorded."));
+                }
+            }
+
             return Result<MedicalAccessGrant>.Failure(
                 new Error("Families.AccessDenied", "The dependent is not accessible to this family member."));
         }
@@ -63,7 +99,37 @@ public sealed class CreateMedicalAccessGrantCommandHandler(
         }
 
         dbContext.MedicalAccessGrants.Add(grant);
-        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Atomic audit event
+        dbContext.CaregiverMedicalAccessAudits.Add(CaregiverMedicalAccessAudit.Create(
+            request.GrantedByUserId,
+            request.DependentId,
+            request.GranteeUserId,
+            grant.Id,
+            CaregiverMedicalAccessAuditAction.CreateGrant,
+            CaregiverMedicalAccessAuditDecision.Allowed,
+            null,
+            request.GrantType,
+            request.CanViewRecords,
+            request.CanEditRecords,
+            request.CanShareWithOthers,
+            request.ExpiresOnUtc,
+            grant.GrantedOnUtc,
+            correlationId));
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (DbUpdateException)
+        {
+            return Result<MedicalAccessGrant>.Failure(
+                new Error("Families.AuditWriteFailed", "The medical access audit could not be recorded."));
+        }
 
         return Result<MedicalAccessGrant>.Success(grant);
     }
@@ -74,10 +140,46 @@ public sealed class RevokeMedicalAccessGrantCommandHandler(
 {
     public async Task<Result<bool>> Handle(RevokeMedicalAccessGrantCommand request, CancellationToken cancellationToken)
     {
+        var correlationId = Guid.NewGuid().ToString();
+
         var dependent = await MedicalAccessFamilyAuthorization.GetDependentAsync(
             dbContext, request.DependentId, request.RevokedByUserId, requireManagePermission: true, cancellationToken);
         if (dependent is null)
+        {
+            if (request.DependentId != ElderlyId.Empty)
+            {
+                try
+                {
+                    dbContext.CaregiverMedicalAccessAudits.Add(CaregiverMedicalAccessAudit.Create(
+                        request.RevokedByUserId,
+                        request.DependentId,
+                        null,
+                        null,
+                        CaregiverMedicalAccessAuditAction.RevokeGrant,
+                        CaregiverMedicalAccessAuditDecision.Denied,
+                        "Families.AccessDenied",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        DateTime.UtcNow,
+                        correlationId));
+                    await dbContext.SaveChangesAsync(cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    throw;
+                }
+                catch (DbUpdateException)
+                {
+                    return Result<bool>.Failure(
+                        new Error("Families.AuditWriteFailed", "The medical access audit could not be recorded."));
+                }
+            }
+
             return Result<bool>.Failure(new Error("Families.AccessDenied", "The dependent is not accessible to this family member."));
+        }
 
         var grant = await dbContext.MedicalAccessGrants.SingleOrDefaultAsync(
             g => g.Id == request.GrantId && g.DependentId == dependent.Id, cancellationToken);
@@ -93,7 +195,36 @@ public sealed class RevokeMedicalAccessGrantCommandHandler(
             return Result<bool>.Failure(new Error("MedicalAccess.InvalidGrant", exception.Message));
         }
 
-        await dbContext.SaveChangesAsync(cancellationToken);
+        // Atomic audit event
+        dbContext.CaregiverMedicalAccessAudits.Add(CaregiverMedicalAccessAudit.Create(
+            request.RevokedByUserId,
+            request.DependentId,
+            grant.GranteeUserId,
+            grant.Id,
+            CaregiverMedicalAccessAuditAction.RevokeGrant,
+            CaregiverMedicalAccessAuditDecision.Allowed,
+            null,
+            grant.GrantType,
+            grant.CanViewRecords,
+            grant.CanEditRecords,
+            grant.CanShareWithOthers,
+            grant.ExpiresOnUtc,
+            DateTime.UtcNow,
+            correlationId));
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (DbUpdateException)
+        {
+            return Result<bool>.Failure(
+                new Error("Families.AuditWriteFailed", "The medical access audit could not be recorded."));
+        }
         return Result<bool>.Success(true);
     }
 }

@@ -4,11 +4,15 @@
 
 E01 and E02 are Done. E02 implementation `80d87bb1cf9059f3dcb7efbdd8df4ef6219ec627`
 is committed, pushed, deployed, and verified; see the [release receipt](work/portal-api-reconciliation/reports/e02-owner-legal-support-release.md).
-The Owner-approved [contract](work/portal-api-reconciliation/contracts/e02-owner-legal-support.md),
-[whole-phase Worker brief](work/portal-api-reconciliation/worker-prompts/e02-owner-legal-support.md),
-and [delivery report](work/portal-api-reconciliation/reports/e02-owner-legal-support-delivery.md)
-record the scope and evidence. Unrelated local edits and private files remain
-preserved. Do not begin E03 or another phase without separate Owner direction.
+E03 medical-access decision audit is implementation/review accepted and awaits
+the Owner's separate release approval. The approved [contract](work/portal-api-reconciliation/contracts/e03-medical-access-audit.md),
+[whole-phase Worker brief](work/portal-api-reconciliation/worker-prompts/e03-medical-access-audit.md),
+and [delivery evidence](work/portal-api-reconciliation/reports/e03-medical-access-audit-delivery.md)
+are saved. Strict Release build passed with 0 warnings/errors; focused Families,
+Admin, retention and OpenAPI tests passed 39/39; both Postman collections and
+route mappings were verified. The additive Families migration is authored but
+unapplied. Unrelated local edits remain preserved; no Production feature request
+or E04+ work occurred.
 
 FUR-07 is Done at pushed/deployed revision `303a131`; see its
 [release receipt](work/portal-api-reconciliation/reports/fur-07-release.md).
@@ -116,8 +120,24 @@ zero migrations applied, service active with zero restarts, and anonymous
 services smoke HTTP 200. No authenticated legal feature request was made in
 Production. See the [release receipt](work/portal-api-reconciliation/reports/e02-owner-legal-support-release.md).
 
-**Next action:** stop after E02 closeout and await the Owner's direction; do not
-start E03 or another phase automatically.
+E02 closeout is complete; E03 was separately selected and approved on 2026-10-18.
+
+## Active phase — E03 Caregiver medical-access decision audit
+
+The Owner approved the [E03 contract](work/portal-api-reconciliation/contracts/e03-medical-access-audit.md)
+on 2026-10-18. Mastermind completed the remaining bounded test, Postman, and
+evidence corrections after several Worker deliveries stopped incomplete. A
+relational filter test exposed and verified the fix for EF translation of
+strongly typed IDs. The final tests cover grant success/denial/exclusions,
+transaction rollback, restricted Admin reads, generated OpenAPI, retention, and
+Postman routing. See the [delivery report](work/portal-api-reconciliation/reports/e03-medical-access-audit-delivery.md).
+
+E03 is **not released**. The additive Families migration remains authored but
+unapplied; no Production data, API startup, or authenticated feature request
+occurred.
+
+**Next action:** request the Owner's explicit approval for E03 commit, push,
+package and deployment; do not start E04 or another phase.
 
 ## Active slice — Admin and Care Homes portal report reconciliation
 

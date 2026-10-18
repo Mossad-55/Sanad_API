@@ -27,7 +27,7 @@ reported Production caregiver rows remain unverified and no repair/quarantine
 is recommended. FUR-10 (integration and release handoff) is Done —
 documentation-only, deployment N/A; see the [integration release handoff
 report](work/portal-api-reconciliation/reports/fur-10-integration-release-handoff.md).
-E01 and E02 are Done; E03–E08 remain Not started and individually uncontracted. See the current Mastermind handoff for the next action. Earlier
+E01 and E02 are Done; E03 implementation is accepted pending separate Owner release approval under its individually approved medical-access audit contract; E04–E08 remain Not started and uncontracted. See the current Mastermind handoff for the next action. Earlier
 PORTAL completion remains valid.
 Current phase workflow: see [governance](governance/AGENTS.md) and the
 [OpenCode CLI phase workflow](operations/codex-workflow.md): the Mastermind

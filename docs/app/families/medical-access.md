@@ -79,3 +79,11 @@ are listed, and no medical-record content is returned. Each item carries the
 for this dependent and grantee. `search` matches Arabic/English names
 (case-insensitive, trimmed, optional); `page` is at least 1 and `pageSize` is
 clamped to 1–100.
+
+## Decision audit (Admin-only)
+
+E03 adds an append-only Admin decision audit of the grant create/revoke
+operations above. It records only authorization decisions at those operations;
+it does **not** add a caregiver medical-record read endpoint and does not change
+grant semantics. The audit is readable only via
+`GET /api/v1/admin/caregivers/medical-access-audit` by SuperAdmin/SupportAdmin.

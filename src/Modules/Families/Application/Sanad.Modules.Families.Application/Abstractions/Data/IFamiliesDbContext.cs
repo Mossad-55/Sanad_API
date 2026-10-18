@@ -49,6 +49,7 @@ public interface IFamiliesDbContext
 
     DbSet<BookingReview> BookingReviews { get; }
     DbSet<MedicalAccessGrant> MedicalAccessGrants { get; }
+    DbSet<CaregiverMedicalAccessAudit> CaregiverMedicalAccessAudits { get; }
 
     /// <summary>
     /// Queues the provider identity claim in the same unit of work as the callback mutation.
