@@ -27,10 +27,24 @@ applied, and services smoke HTTP 200. Service active/NRestarts=0; protected host
 configuration fingerprints unchanged. No live authenticated FUR-08 endpoint
 or Bruno verification was performed. Direct public HTTP redirected to an ISP
 HTML page; tunnel verification was used. No database data, provider, or migration
-change occurred. FUR-09 remains Not started.
+change occurred. FUR-09 is Done for its approved local diagnostic/API-test scope;
+the six reported Production rows remain unverified.
 
-**Next action:** stop after FUR-08 closeout and await the Owner's direction for
+## Completed phase — FUR-09 Caregiver integrity disposition
+
+Owner approved the amended local-only API reproduction contract on 2026-10-18.
+Worker session `ses_eb35f9129ffemhsaCSp0hd8GJJ` delivered the in-process
+`GET /api/v1/admin/caregivers` synthetic SQLite reproduction. Mastermind reviewed
+the new test and sanitized [disposition report](work/portal-api-reconciliation/reports/fur-09-caregiver-integrity-disposition.md).
+Worker-reported strict Release build passed with 0 warnings/errors; focused
+caregiver API/integrity tests passed 24/24; `git diff --check` passed. No
+Production/shared DB access or changes. The six Production rows remain
+unverified, and no repair/quarantine is recommended on synthetic evidence.
+Deployment N/A (test/report only).
+
+**Next action:** stop after FUR-09 closeout and await the Owner's direction for
 any next separately approved phase; do not advance automatically.
+
 ## Active slice — Admin and Care Homes portal report reconciliation
 
 ### Current follow-up — 2026-10-16
