@@ -77,12 +77,18 @@ endpoint/OpenAPI tests passed 67/67. The broader portal response-contract class
 had one unrelated owner-dispute nullable-schema failure (39/40). Postman JSON
 and `git diff --check` passed. See the [E01 delivery report](work/portal-api-reconciliation/reports/e01-user-statistics-growth-delivery.md).
 
-E01 was committed and pushed to `origin/main` as `d7f1e086043ba4807b1d5b1cd4ab3b10f9e2b857`.
-Deployment remains paused pending an identified target and procedure; report
-back before deployment. No E02–E08 work is authorized.
+E01 implementation was committed as `d7f1e086043ba4807b1d5b1cd4ab3b10f9e2b857`
+and pushed to `origin/main`; the documentation receipt is
+`ea14e668a0dee95a7b4aac61e507abb235ba8d7c`. At the Owner's instruction, that
+exact pushed main revision was packaged and deployed to the existing owner-
+designated Production VPS. The standard deployment verifier passed; see the
+[E01 deployment receipt](work/portal-api-reconciliation/reports/e01-user-statistics-growth-deployment.md).
+No authenticated request to the new statistics endpoint was made in Production;
+the contract's live-feature-request exclusion remains observed. No E02–E08 work
+is authorized.
 
-**Next action:** report the push receipt to the Owner and await deployment
-target/procedure or other direction.
+**Next action:** report deployment evidence to the Owner and await direction; do
+not start another phase.
 
 ## Active slice — Admin and Care Homes portal report reconciliation
 

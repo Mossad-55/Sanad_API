@@ -1,7 +1,7 @@
 # E01 user statistics and growth — worker delivery
 
 ## Status
-COMPLETE (committed and pushed; deployment not performed).
+COMPLETE (committed, pushed, packaged, deployed, and verified).
 
 ## Changed files
 - `src/API/Sanad.API/Controllers/AdminUsersController.cs` — added `GET statistics`.
@@ -27,4 +27,4 @@ COMPLETE (committed and pushed; deployment not performed).
 ## Mastermind review
 - Aligned the account-type response property with the approved contract: `distinctUserCount` (not `count`); API JSON assertions cover numeric enum values and the property name.
 - Final strict Release solution build passed with zero warnings/errors; final focused endpoint/OpenAPI checks passed 67/67.
-- E01 was pushed to `origin/main` as `d7f1e086043ba4807b1d5b1cd4ab3b10f9e2b857`. Deployment is paused until its target and procedure are identified; report back before deployment.
+- E01 implementation was pushed as `d7f1e086043ba4807b1d5b1cd4ab3b10f9e2b857`, receipt as `ea14e668a0dee95a7b4aac61e507abb235ba8d7c`, and deployed from the receipt revision. See the [deployment receipt](e01-user-statistics-growth-deployment.md).
