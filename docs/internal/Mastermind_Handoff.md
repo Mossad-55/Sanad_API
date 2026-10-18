@@ -2,13 +2,13 @@
 
 ## Current checkpoint — 2026-10-18
 
-E01 is Done, committed, pushed, deployed and verified. E02 Owner legal support
-is the sole active phase: its Owner-approved [contract](work/portal-api-reconciliation/contracts/e02-owner-legal-support.md)
-and [whole-phase Worker brief](work/portal-api-reconciliation/worker-prompts/e02-owner-legal-support.md)
-are saved; Worker session `ses_eb062abc4ffe0GKTIBTVVJMHBG` is active on pinned
-`main` `cae46032fc5448592a2a324122bedd41503e7e1f` with
-`opencode/beam-free#high`. Preserve unrelated local edits. Contract approval is
-not release approval.
+E01 and E02 are Done. E02 implementation `80d87bb1cf9059f3dcb7efbdd8df4ef6219ec627`
+is committed, pushed, deployed, and verified; see the [release receipt](work/portal-api-reconciliation/reports/e02-owner-legal-support-release.md).
+The Owner-approved [contract](work/portal-api-reconciliation/contracts/e02-owner-legal-support.md),
+[whole-phase Worker brief](work/portal-api-reconciliation/worker-prompts/e02-owner-legal-support.md),
+and [delivery report](work/portal-api-reconciliation/reports/e02-owner-legal-support-delivery.md)
+record the scope and evidence. Unrelated local edits and private files remain
+preserved. Do not begin E03 or another phase without separate Owner direction.
 
 FUR-07 is Done at pushed/deployed revision `303a131`; see its
 [release receipt](work/portal-api-reconciliation/reports/fur-07-release.md).
@@ -95,7 +95,7 @@ No authenticated request to the new statistics endpoint was made in Production;
 the contract's live-feature-request exclusion remains observed. No E02–E08 work
 was authorized by the E01 contract; E02 was subsequently approved separately.
 
-## Active phase — E02 Owner legal support
+## Completed phase — E02 Owner legal support
 
 The Owner approved the [E02 contract](work/portal-api-reconciliation/contracts/e02-owner-legal-support.md)
 on 2026-10-18. The [whole-phase Worker brief](work/portal-api-reconciliation/worker-prompts/e02-owner-legal-support.md)
@@ -109,11 +109,15 @@ tests passed 20/20; both Postman collections validated; `git diff --check` was
 clean apart from pre-existing CRLF warnings. The broader
 `PortalRemainingResponseContractTests` run had one unrelated owner-dispute
 `checkoutOnUtc` nullability failure (52 passed/1 failed), retained and unmasked.
-Unrelated local edits and private files remain preserved. No release/commit/push/
-deployment authorization is implied by contract approval.
+E02 implementation `80d87bb1cf9059f3dcb7efbdd8df4ef6219ec627` was committed,
+pushed, and deployed to the existing Owner-designated Production VPS. The
+standard deployment verifier passed with all 9/9 migration heads matched,
+zero migrations applied, service active with zero restarts, and anonymous
+services smoke HTTP 200. No authenticated legal feature request was made in
+Production. See the [release receipt](work/portal-api-reconciliation/reports/e02-owner-legal-support-release.md).
 
-**Next action:** request the Owner's explicit approval for E02 commit, push, and
-applicable publication/deployment; do not start another phase.
+**Next action:** stop after E02 closeout and await the Owner's direction; do not
+start E03 or another phase automatically.
 
 ## Active slice — Admin and Care Homes portal report reconciliation
 
