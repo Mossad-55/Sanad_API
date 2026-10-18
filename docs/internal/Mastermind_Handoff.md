@@ -77,12 +77,12 @@ endpoint/OpenAPI tests passed 67/67. The broader portal response-contract class
 had one unrelated owner-dispute nullable-schema failure (39/40). Postman JSON
 and `git diff --check` passed. See the [E01 delivery report](work/portal-api-reconciliation/reports/e01-user-statistics-growth-delivery.md).
 
-The Owner approved committing and pushing E01. Deployment remains paused pending
-an identified target and procedure; report back before deployment. No E02–E08
-work is authorized.
+E01 was committed and pushed to `origin/main` as `d7f1e086043ba4807b1d5b1cd4ab3b10f9e2b857`.
+Deployment remains paused pending an identified target and procedure; report
+back before deployment. No E02–E08 work is authorized.
 
-**Next action:** commit and push the reviewed E01 scope, then report the receipt
-and wait before any deployment.
+**Next action:** report the push receipt to the Owner and await deployment
+target/procedure or other direction.
 
 ## Active slice — Admin and Care Homes portal report reconciliation
 
