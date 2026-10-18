@@ -56,8 +56,33 @@ sync. Worker-reported validation resolved 166/166 relative links and passed
 commit, or deployment action occurred. FUR-09 Production rows remain unverified;
 E01–E08 remain Not started/uncontracted. Deployment N/A.
 
-**Next action:** request separate Owner authorization to commit/push the FUR-10
-documentation. Do not begin E01–E08 or parallel branch work.
+**Next action:** stop after FUR-10 closeout and await the Owner's direction for
+the next separately approved roadmap phase; do not advance automatically.
+
+## Active phase — E01 User statistics and growth
+
+Owner approved the aggregate-only E01 contract on 2026-10-18, based on the
+provided Super Admin dashboard screenshot. The [contract](work/portal-api-reconciliation/contracts/e01-user-statistics-growth.md)
+and [whole-phase Worker brief](work/portal-api-reconciliation/worker-prompts/e01-user-statistics-growth.md)
+are saved. E01 does not include financial monitoring, the undefined services
+series, PII, user-level drill-down, or broader roles. Existing unrelated
+worktree changes are preserved.
+
+The Owner selected OpenCode Zen `opencode/longcat-2.5-preview-free` for E01;
+after its rate limit, the Owner authorized the same child
+`ses_eb0cce48effeiIbvjsmV0itcR6` to continue on `opencode/beam-free#high` and
+approved numeric enum-valued arrays. The local implementation is complete and
+reviewed. Strict Release build passed with zero warnings/errors; focused
+endpoint/OpenAPI tests passed 67/67. The broader portal response-contract class
+had one unrelated owner-dispute nullable-schema failure (39/40). Postman JSON
+and `git diff --check` passed. See the [E01 delivery report](work/portal-api-reconciliation/reports/e01-user-statistics-growth-delivery.md).
+
+The Owner approved committing and pushing E01. Deployment remains paused pending
+an identified target and procedure; report back before deployment. No E02–E08
+work is authorized.
+
+**Next action:** commit and push the reviewed E01 scope, then report the receipt
+and wait before any deployment.
 
 ## Active slice — Admin and Care Homes portal report reconciliation
 

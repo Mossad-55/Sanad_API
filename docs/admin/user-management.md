@@ -118,7 +118,36 @@ Sorting supports `Newest`, `Oldest`, and `Name`; Name sorts by the acting
 administrator's Arabic name then English name. Mutations record actor, target,
 action, optional reason, and UTC timestamp. Reads do not create audit entries.
 
-## OpenAPI contract
+## User statistics and growth
+
+`GET /api/v1/admin/users/statistics`
+
+SuperAdmin-only aggregate read. Returns no user-level data, IDs, names, emails,
+or phone numbers.
+
+Response: `{ totalUsers, usersByStatus, usersByAccountType,
+newRegistrationsByMonth }`.
+
+- `totalUsers`: all distinct Identity user rows, across every current status.
+- `usersByStatus`: one entry per `UserStatus` value (`1 = PendingVerification`,
+  `2 = Active`, `3 = Suspended`, `4 = Blocked`), including zero counts, as
+  `{ status, count }`. Current status snapshot only.
+- `usersByAccountType`: one entry per `AccountType` value (`1 = Family`,
+  `2 = MedicalCaregiver`, `3 = CompanionCaregiver`, `4 = Elderly`,
+  `5 = SuperAdmin`, `6 = ContentAdmin`, `7 = SupportAdmin`,
+  `8 = CareHomeOwner`, `9 = FinanceAdmin`), including zero counts, as
+  `{ accountType, distinctUserCount }`. A user can hold multiple account types,
+  so these counts may overlap and must not be summed as `totalUsers`.
+- `newRegistrationsByMonth`: the 12 latest Cairo calendar months, including
+  the current partial month, in chronological order as `yyyy-MM`, each as
+  `{ month, count }`. Zero-registration months are included. Boundaries use
+  Cairo-local (Africa/Cairo) month starts converted from UTC; the server's
+  local timezone is never used. This is new-user registration growth, not
+  account additions or active-user growth.
+
+No query parameters in this version. The screenshot's "services growth" series
+and the unclear account/category card are not implemented; financial
+monitoring, bookings/revenue, and unrelated dashboard panels are out of scope.
 
 All ten reads/actions above publish their actual success schemas: the four
 GETs return `200` envelopes/records (`{ items, page, pageSize, totalCount }`

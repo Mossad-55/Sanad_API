@@ -167,6 +167,20 @@
             "url": "{{baseUrl}}/api/v1/admin/users/sessions?page=1&pageSize=20&sort=Newest",
             "description": "Optional filters: accountType (SuperAdmin, SupportAdmin, ContentAdmin, FinanceAdmin) and userId. Returns only unrevoked, unexpired admin sessions. lastSeenUtc represents the session's LastRotatedOnUtc token-rotation time."
           }
+        },
+        {
+          "name": "User statistics and growth",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/users/statistics",
+            "description": "SuperAdmin-only aggregate: distinct user totals, current status and account-type counts (zero-filled, numeric enum values), and the 12 latest Cairo-month registration buckets. No PII, query parameters, or services series."
+          }
         }
       ]
     },

@@ -101,6 +101,13 @@ public sealed class AdminUsersController(ISender sender) : ApiControllerBase
         return ToActionResult(result);
     }
 
+    [HttpGet("statistics")]
+    [ProducesResponseType(typeof(AdminUserStatisticsResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public Task<IActionResult> Statistics(CancellationToken ct) =>
+        SendQuery(new AdminUserStatisticsQuery(), ct);
+
     private async Task<IActionResult> SendQuery<T>(IQuery<T> query, CancellationToken ct)
     {
         if (query is AdminUserListQuery list && !IsValid(list) ||

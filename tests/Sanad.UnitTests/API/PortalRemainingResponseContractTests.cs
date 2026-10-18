@@ -70,7 +70,8 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
         { "get", "/api/v1/care-homes/dashboard/mine", 200, "ref", "CareHomeDashboard" },
         { "get", "/api/v1/care-homes/revenue/mine", 200, "ref", "CareHomeRevenueReport" },
         { "get", "/api/v1/notifications/unread-count", 200, "int", string.Empty },
-        { "post", "/api/v1/admin/finance/platform-charge-rules", 201, "guid", string.Empty }
+        { "post", "/api/v1/admin/finance/platform-charge-rules", 201, "guid", string.Empty },
+        { "get", "/api/v1/admin/users/statistics", 200, "ref", "AdminUserStatisticsResponse" }
     };
 
     [Theory]
