@@ -2,6 +2,14 @@
 
 ## Current checkpoint — 2026-10-18
 
+E01 is Done, committed, pushed, deployed and verified. E02 Owner legal support
+is the sole active phase: its Owner-approved [contract](work/portal-api-reconciliation/contracts/e02-owner-legal-support.md)
+and [whole-phase Worker brief](work/portal-api-reconciliation/worker-prompts/e02-owner-legal-support.md)
+are saved; Worker session `ses_eb062abc4ffe0GKTIBTVVJMHBG` is active on pinned
+`main` `cae46032fc5448592a2a324122bedd41503e7e1f` with
+`opencode/beam-free#high`. Preserve unrelated local edits. Contract approval is
+not release approval.
+
 FUR-07 is Done at pushed/deployed revision `303a131`; see its
 [release receipt](work/portal-api-reconciliation/reports/fur-07-release.md).
 The approved Community moderation contract, worker delivery, and Mastermind
@@ -59,7 +67,7 @@ E01–E08 remain Not started/uncontracted. Deployment N/A.
 **Next action:** stop after FUR-10 closeout and await the Owner's direction for
 the next separately approved roadmap phase; do not advance automatically.
 
-## Active phase — E01 User statistics and growth
+## Completed phase — E01 User statistics and growth
 
 Owner approved the aggregate-only E01 contract on 2026-10-18, based on the
 provided Super Admin dashboard screenshot. The [contract](work/portal-api-reconciliation/contracts/e01-user-statistics-growth.md)
@@ -85,10 +93,27 @@ designated Production VPS. The standard deployment verifier passed; see the
 [E01 deployment receipt](work/portal-api-reconciliation/reports/e01-user-statistics-growth-deployment.md).
 No authenticated request to the new statistics endpoint was made in Production;
 the contract's live-feature-request exclusion remains observed. No E02–E08 work
-is authorized.
+was authorized by the E01 contract; E02 was subsequently approved separately.
 
-**Next action:** report deployment evidence to the Owner and await direction; do
-not start another phase.
+## Active phase — E02 Owner legal support
+
+The Owner approved the [E02 contract](work/portal-api-reconciliation/contracts/e02-owner-legal-support.md)
+on 2026-10-18. The [whole-phase Worker brief](work/portal-api-reconciliation/worker-prompts/e02-owner-legal-support.md)
+is saved. Worker session `ses_eb062abc4ffe0GKTIBTVVJMHBG` completed the approved
+implementation and bounded review corrections on pinned `main` revision
+`cae46032fc5448592a2a324122bedd41503e7e1f`, using the Owner-selected OpenCode Zen
+model `opencode/beam-free#high`. Mastermind review accepted the source, Owner
+legal/Help/OpenAPI tests, guides, and Admin/Owner Postman updates. The strict
+Release build passed with 0 warnings/errors; focused Legal/Help/Owner API/OpenAPI
+tests passed 20/20; both Postman collections validated; `git diff --check` was
+clean apart from pre-existing CRLF warnings. The broader
+`PortalRemainingResponseContractTests` run had one unrelated owner-dispute
+`checkoutOnUtc` nullability failure (52 passed/1 failed), retained and unmasked.
+Unrelated local edits and private files remain preserved. No release/commit/push/
+deployment authorization is implied by contract approval.
+
+**Next action:** request the Owner's explicit approval for E02 commit, push, and
+applicable publication/deployment; do not start another phase.
 
 ## Active slice — Admin and Care Homes portal report reconciliation
 

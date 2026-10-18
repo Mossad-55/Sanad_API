@@ -66,7 +66,7 @@ public sealed class LegalController :
         LegalDocumentType documentType,
         CancellationToken cancellationToken)
     {
-        if (!TryGetCmsAudienceFromClaims(
+        if (!TryGetLegalAudienceFromClaims(
                 out LegalAudience audience))
         {
             return ToActionResult(

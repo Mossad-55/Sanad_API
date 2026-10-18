@@ -59,7 +59,7 @@ public sealed class HelpFaq : AggregateRoot<HelpFaqId>
         int displayOrder,
         bool isActive)
     {
-        if (!audience.IsDefined())
+        if (!audience.IsHelpAudience())
         {
             throw new DomainException(
                 "Audience is not a supported app audience.");
@@ -100,7 +100,7 @@ public sealed class HelpFaq : AggregateRoot<HelpFaqId>
         int displayOrder,
         bool isActive)
     {
-        if (!audience.IsDefined())
+        if (!audience.IsHelpAudience())
         {
             throw new DomainException(
                 "Audience is not a supported app audience.");

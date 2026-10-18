@@ -1448,6 +1448,40 @@
           }
         }
       ]
+    },
+    {
+      "name": "Legal pages (app reads)",
+      "description": "Signed-in Care Home Owner legal content. LegalAudience numeric: CareHomeOwner=5. Audience is derived from the JWT; no audience query/body parameter. Returns only the current Published version; missing publication returns 404 Cms.Legal.NotPublished. No realistic legal text in examples.",
+      "item": [
+        {
+          "name": "Privacy Policy",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{careHomeOwnerJwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/legal/privacy-policy",
+            "description": "NormalAccess policy; Normal access token with active CareHomeOwner account-type claim. 200 LegalDocumentResponse or 404 Cms.Legal.NotPublished."
+          }
+        },
+        {
+          "name": "Terms & Conditions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{careHomeOwnerJwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/legal/terms",
+            "description": "NormalAccess policy; Normal access token with active CareHomeOwner account-type claim. 200 LegalDocumentResponse or 404 Cms.Legal.NotPublished."
+          }
+        }
+      ]
     }
   ]
 }

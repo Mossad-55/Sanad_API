@@ -129,6 +129,39 @@ public abstract class ApiControllerBase :
         return audience.IsDefined();
     }
 
+    /// <summary>
+    /// Maps the authenticated JWT AccountType claim to legal-content audiences,
+    /// including CareHomeOwner. Used only by legal read routes; Help Center
+    /// reads continue to use <see cref="TryGetCmsAudienceFromClaims"/>, which
+    /// does not grant an Owner audience.
+    /// </summary>
+    protected bool TryGetLegalAudienceFromClaims(
+        out LegalAudience audience)
+    {
+        audience = default;
+
+        string? accountType =
+            User.FindFirst(
+                AuthClaimNames.AccountType)?.Value;
+
+        audience = accountType switch
+        {
+            nameof(AccountType.Family) =>
+                LegalAudience.Family,
+            nameof(AccountType.MedicalCaregiver) =>
+                LegalAudience.MedicalCaregiver,
+            nameof(AccountType.CompanionCaregiver) =>
+                LegalAudience.CompanionCaregiver,
+            nameof(AccountType.Elderly) =>
+                LegalAudience.Elderly,
+            nameof(AccountType.CareHomeOwner) =>
+                LegalAudience.CareHomeOwner,
+            _ => default
+        };
+
+        return audience.IsDefined();
+    }
+
     protected bool TryGetCurrentDeviceSessionId(
         out DeviceSessionId deviceSessionId)
     {

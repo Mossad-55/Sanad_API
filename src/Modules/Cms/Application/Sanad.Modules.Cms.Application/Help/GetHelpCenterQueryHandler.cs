@@ -23,7 +23,7 @@ public sealed class GetHelpCenterQueryHandler :
         GetHelpCenterQuery request,
         CancellationToken cancellationToken)
     {
-        if (!request.Audience.IsDefined())
+        if (!request.Audience.IsHelpAudience())
         {
             return ContentErrors.UnsupportedAudience;
         }

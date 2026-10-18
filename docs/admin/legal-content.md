@@ -19,13 +19,13 @@ a bare 401/403 with no business `code`). Missing/invalid token → **401**.
 | Super Admin | `SuperAdmin` | Yes |
 | Content Admin | `ContentAdmin` | Yes |
 | Support Admin | `SupportAdmin` | No (read-only; not granted) |
-| Family / Caregiver / Elderly | app types | No (they use the signed-in app reads only) |
+| Family / Caregiver / Elderly / Care Home Owner | app types | No (they use the signed-in app reads only) |
 
 ## Enum values (numeric JSON binding)
 
 ```text
 LegalDocumentType: PrivacyPolicy = 1, TermsAndConditions = 2
-LegalAudience:     Family = 1, MedicalCaregiver = 2, CompanionCaregiver = 3, Elderly = 4
+LegalAudience:     Family = 1, MedicalCaregiver = 2, CompanionCaregiver = 3, Elderly = 4, CareHomeOwner = 5
 LegalDocumentStatus: Draft = 1, Published = 2, Archived = 3
 LegalSectionType:  Text = 1, UserRights = 2
 ```

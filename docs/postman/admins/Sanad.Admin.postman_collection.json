@@ -2305,7 +2305,7 @@
     },
     {
       "name": "11. Legal Content CMS (SET-12)",
-      "description": "Dedicated Privacy Policy / Terms content. CmsContent policy (SuperAdmin or ContentAdmin with a Normal token). Draft -> Published -> Archived; publishing archives the previous version and retains all history; nothing is deleted. Write requests are manual authoring examples with PLACEHOLDER values only - do not run them as automated happy paths.",
+      "description": "Dedicated Privacy Policy / Terms content. CmsContent policy (SuperAdmin or ContentAdmin with a Normal token). LegalAudience numeric: Family=1, MedicalCaregiver=2, CompanionCaregiver=3, Elderly=4, CareHomeOwner=5. Draft -> Published -> Archived; publishing archives the previous version and retains all history; nothing is deleted. Write requests are manual authoring examples with PLACEHOLDER values only - do not run them as automated happy paths.",
       "item": [
         {
           "name": "List legal documents (Admin)",

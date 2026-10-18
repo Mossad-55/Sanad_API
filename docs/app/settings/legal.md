@@ -10,13 +10,13 @@ audience (no query parameter, no body field).
 
 | Screen action | Endpoint | Auth |
 |---|---|---|
-| Privacy Policy | `GET /api/v1/legal/privacy-policy` | Normal JWT (any of the four app types) |
-| Terms & Conditions | `GET /api/v1/legal/terms` | Normal JWT (any of the four app types) |
+| Privacy Policy | `GET /api/v1/legal/privacy-policy` | Normal JWT (Family, Medical Caregiver, Companion Caregiver, Elderly, or Care Home Owner) |
+| Terms & Conditions | `GET /api/v1/legal/terms` | Normal JWT (Family, Medical Caregiver, Companion Caregiver, Elderly, or Care Home Owner) |
 
 ## Audience behavior
 
 ```text
-Family = 1, MedicalCaregiver = 2, CompanionCaregiver = 3, Elderly = 4
+Family = 1, MedicalCaregiver = 2, CompanionCaregiver = 3, Elderly = 4, CareHomeOwner = 5
 ```
 
 Each app role only ever receives the current **Published** version authored
@@ -69,7 +69,7 @@ invents legal text.
 Field notes:
 
 - `documentType`: `1` PrivacyPolicy, `2` TermsAndConditions (echoes the route).
-- `audience`: the caller's audience (1–4).
+- `audience`: the caller's audience (1–5; 5 = CareHomeOwner).
 - `version`: server-assigned version of the current publication.
 - `status`: always `2` (Published) on app reads.
 - `id` is the strongly typed id JSON shape `{ "value": "<guid>" }`.

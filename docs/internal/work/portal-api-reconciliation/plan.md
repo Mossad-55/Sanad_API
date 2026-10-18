@@ -69,7 +69,7 @@ the dated audit remains historical. Resolve only the active phase's decisions.
 | Phase | Status | Purpose and contract boundary |
 | --- | --- | --- |
 | E01 — User statistics and growth | Done | Committed/pushed (`d7f1e08`; receipt `ea14e66`) and deployed from clean pushed `main` revision `ea14e668a0dee95a7b4aac61e507abb235ba8d7c` to the existing owner-designated Production VPS. Strict Release build 0 warnings/errors; focused endpoint/OpenAPI 67/67; deployment verifier passed, all 9 migration heads matched, startup applied 0 migrations, service active with 0 restarts. Broader portal response-contract class had one unrelated owner-dispute nullability failure (39/40). No authenticated production statistics call. See deployment receipt. |
-| E02 — Owner legal support | Not started | Agree owner legal audience/content publication and resolve owner ID/deletion questions; do not automatically add personal-ID/deletion workflows. |
+| E02 — Owner legal support | In progress | Worker session `ses_eb062abc4ffe0GKTIBTVVJMHBG` completed the approved implementation and bounded review corrections; Mastermind review accepted the source, tests, guides, and Postman updates. Await explicit Owner release approval; personal-ID/account deletion remain excluded. |
 | E03 — Medical-access audit | Not started | Define caregiver permission-decision capture, privacy, retention and restricted audit reads. |
 | E04 — Platform controls | Not started | Define maintenance/platform-state enforcement, exceptions, public status and supported payment-mode semantics. |
 | E05 — Family-home CMS | Not started | Define banners, quick links, featured services and mobile publication. |
