@@ -18,14 +18,22 @@ its [phase receipt](work/portal-api-reconciliation/reports/fur-03-release.md).
 FUR-04 is accepted, committed/pushed and deployed at `31b13cc`; its release
 receipt records guarded gates, exact package/revision, zero migrations applied,
 all nine heads matched, active service and unchanged host configuration.
-FUR-05, FUR-06, and FUR-07 are Done. FUR-07 revision `303a131` is deployed;
-its [receipt](work/portal-api-reconciliation/reports/fur-07-release.md) records
-the applied Community migration and 9/9 runtime verification. See the current
-Mastermind handoff for the next action. Earlier PORTAL completion remains
-valid.
-Current phase workflow: Mastermind locks the contract and reviews; one Codex
-subagent using GPT-6 Luna at medium reasoning implements the approved phase and
-reports completion or a blocker. Mastermind waits on that same worker, reviews
+FUR-05, FUR-06, FUR-07, and FUR-08 are Done and deployed (`ca2ef2f`,
+`7339034`, `303a131`, `14757cc` respectively); FUR-07's applied Community
+migration and 9/9 runtime verification are in its [release
+receipt](work/portal-api-reconciliation/reports/fur-07-release.md). FUR-09 is
+Done for its approved local synthetic API test/report scope only; the six
+reported Production caregiver rows remain unverified and no repair/quarantine
+is recommended. FUR-10 (integration and release handoff) is Done —
+documentation-only, deployment N/A; see the [integration release handoff
+report](work/portal-api-reconciliation/reports/fur-10-integration-release-handoff.md).
+E01–E08 remain Not started and individually uncontracted. See the current Mastermind handoff for the next action. Earlier
+PORTAL completion remains valid.
+Current phase workflow: see [governance](governance/AGENTS.md) and the
+[OpenCode CLI phase workflow](operations/codex-workflow.md): the Mastermind
+locks the contract and reviews; one native OpenCode Worker child — using the
+provider/model the Owner selects and verifies for the phase — implements the
+approved phase and reports completion or a blocker. Mastermind waits on that same worker, reviews
 its report, and resumes it if it reports a blocker. Any parallel phase first
 needs a separate contract and a disjoint ownership/state assessment. Successful
 checks are reused while inputs remain unchanged. After phase acceptance, the

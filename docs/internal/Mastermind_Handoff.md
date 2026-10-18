@@ -45,6 +45,20 @@ Deployment N/A (test/report only).
 **Next action:** stop after FUR-09 closeout and await the Owner's direction for
 any next separately approved phase; do not advance automatically.
 
+## Completed phase — FUR-10 Integration and release handoff
+
+FUR-10 was accepted as a documentation-only cross-phase closeout. Its [contract](work/portal-api-reconciliation/contracts/fur-10-cross-phase-integration-handoff.md),
+[worker brief](work/portal-api-reconciliation/worker-prompts/fur-10-cross-phase-integration-handoff.md),
+and [closeout report](work/portal-api-reconciliation/reports/fur-10-integration-release-handoff.md)
+record the FUR-00–FUR-09 ledger, audience handoffs, index and project-summary
+sync. Worker-reported validation resolved 166/166 relative links and passed
+`git diff --check`; no runtime/API, Production, database, provider, build, test,
+commit, or deployment action occurred. FUR-09 Production rows remain unverified;
+E01–E08 remain Not started/uncontracted. Deployment N/A.
+
+**Next action:** request separate Owner authorization to commit/push the FUR-10
+documentation. Do not begin E01–E08 or parallel branch work.
+
 ## Active slice — Admin and Care Homes portal report reconciliation
 
 ### Current follow-up — 2026-10-16
