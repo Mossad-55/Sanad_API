@@ -6,14 +6,15 @@ roadmap work. Checkpoint claims below identify only the last recorded state.
 
 ## Current checkpoint
 
-- **Status:** completed locally; changes remain uncommitted.
-- **Active task:** none. The cleanup is complete; owner-gated commit/push is still pending.
+- **Status:** completed, committed, and pushed.
+- **Active task:** none. E04 remains at intake/contract planning; it is not worker-ready.
 - **Worker/session:** Mastermind direct work; no Worker dispatched.
-- **Base/current revision:** `a16094b5786b93483635c488f808c3dcf5cebf4e` / `a16094b5786b93483635c488f808c3dcf5cebf4e` at task start.
-- **Changed files:** `.opencode/agents/sanad-worker.md`, `.opencode/skills/sanad-docs/SKILL.md`, `docs/internal/Mastermind_Handoff.md`, `docs/internal/Project_Main_Goal.md`, `docs/internal/governance/AGENTS.md`, `docs/internal/operations/codex-workflow.md`, `docs/internal/templates/phase-tracker.md`, `docs/internal/work/portal-api-reconciliation/plan.md`, `docs/internal/work/workflow-refresh/tasks.md`.
-- **Checks:** status/relevant diffs, workflow audit, E03 receipt, and OpenCode V2 skills guide inspected — PASS; relative Markdown links in 8 changed docs — PASS; `git diff --check` — PASS (pre-existing LF/CRLF notices only); whitespace scan of 3 new docs — PASS. Product build/test suite/Bruno — NOT RUN (documentation-only task).
-- **Blockers:** no blocker to publishing the isolated cleanup files. Pre-existing overlapping and unrelated edits remain excluded from staging. Ongoing cross-machine task-state policy beyond this pushed cleanup remains undecided.
-- **Next exact action:** finish staging only cleanup-owned files/hunks, inspect the staged diff, then commit and push this bounded documentation change.
+- **Base/current revision:** `a16094b5786b93483635c488f808c3dcf5cebf4e` / `a42e6feb30cf3a58adcc435e60ae5f7eb7310b00`.
+- **Pushed files:** `.opencode/skills/sanad-docs/SKILL.md`, `docs/internal/Mastermind_Handoff.md`, selected roadmap/index hunks in `docs/internal/Project_Main_Goal.md`, `docs/internal/templates/phase-tracker.md`, `docs/internal/work/portal-api-reconciliation/plan.md`, and this tracker.
+- **Excluded local edits:** pre-existing changes in `Project_Main_Goal.md`, `governance/AGENTS.md`, `codex-workflow.md`, `.codex/*`, `README.md`, the bridge, E03 prompts, `.opencode/agents/sanad-worker.md`, workflow-audit reports, and runtime DB artifacts remain unstaged/uncommitted.
+- **Checks:** status/relevant diffs, workflow audit, E03 receipt, and OpenCode V2 skills guide inspected — PASS; relative Markdown links in 8 docs — PASS; `git diff --check` — PASS (pre-existing LF/CRLF notices only); whitespace scan — PASS; commit `a42e6feb30cf3a58adcc435e60ae5f7eb7310b00` pushed to `origin/main` — PASS. Product build/test suite/Bruno — NOT RUN (documentation-only task).
+- **Blockers:** E04 current-app details and remaining contract decisions are outstanding. Ongoing cross-machine task-state/checkpoint policy remains undecided.
+- **Next exact action:** complete E04 intake and exact contract, then obtain explicit contract approval before creating its phase tracker or dispatching a Worker.
 
 ## Tasks
 
@@ -25,7 +26,7 @@ roadmap work. Checkpoint claims below identify only the last recorded state.
 | WF-M04 | Add concise reusable Sanad documentation skill | Mastermind | WF-M01 | App/Admin/Care Homes audience clarity and verified-contract rules; no duplicate mandatory review workload | completed | [Sanad docs skill](../../../../.opencode/skills/sanad-docs/SKILL.md); optional-only usage documented |
 | WF-M05 | Validate changed documentation and report checkpoint | Mastermind | WF-M02, WF-M03, WF-M04 | Relative links and diff checked; unrun checks stated; unrelated changes preserved | completed | Relative links resolve in 8 docs; whitespace scan clean; `git diff --check` exit 0 with only line-ending notices; product build/tests/Bruno NOT RUN for docs-only scope |
 | WF-O01 | [OWNER GATE] Authorize commit/push, if desired | Owner | WF-M05 | Separate explicit decision recorded | completed | Owner explicitly authorized commit/push of cleanup; pre-existing edits excluded |
-| WF-M06 | Commit and push the isolated workflow cleanup | Mastermind | WF-O01 | Only cleanup-owned changes are committed/pushed; unrelated work remains untouched | in_progress | Inspect staged diff before release |
+| WF-M06 | Commit and push the isolated workflow cleanup | Mastermind | WF-O01 | Only cleanup-owned changes are committed/pushed; unrelated work remains untouched | completed | `a42e6feb30cf3a58adcc435e60ae5f7eb7310b00` pushed to `origin/main`; unowned changes remain unstaged |
 
 ## Checkpoint log
 
@@ -37,6 +38,8 @@ roadmap work. Checkpoint claims below identify only the last recorded state.
 | 2026-10-19T05:46:58.6621362+03:00 | WF-O01 / Owner direction received | `a16094b5786b93483635c488f808c3dcf5cebf4e` / same | No file changes at this checkpoint | Owner selected pause for commit/push; E04 option brief requested | Pre-existing overlapping/untracked work makes safe staging unresolved; task-state sync policy undecided | Await safe commit-scope direction; collect E04 current-app input and policy choices | Owner response recorded; no commit/push performed |
 | 2026-10-19T05:48:20.7907322+03:00 | WF-O01 / Mastermind direct | `a16094b5786b93483635c488f808c3dcf5cebf4e` / same | `docs/internal/Mastermind_Handoff.md`; `docs/internal/work/workflow-refresh/tasks.md` | Relative links and whitespace in both files: PASS; `git diff --check`: exit 0 (existing line-ending notices) | Commit/push paused by Owner; E04 current-app/policy intake pending | Wait for Owner's E04 details and safe commit-scope direction | Verified by Mastermind against current files/check output |
 | 2026-10-19T05:53:52.2994293+03:00 | WF-M06 / Mastermind direct | `a16094b5786b93483635c488f808c3dcf5cebf4e` / same | Staged scope: five cleanup files plus selected roadmap pointer hunks; exact stage to verify before commit | Owner authorization: PASS; staging excludes pre-existing diffs and untracked runtime/prompt/audit artifacts; staged-diff review: pending | None for bounded cleanup commit; broader E04 intake and future sync policy unresolved | Review exact cached diff; commit and push if scoped correctly | Pending Mastermind verification |
+| 2026-10-19T05:58:13.2775367+03:00 | WF-M06 / Mastermind direct | `a16094b5786b93483635c488f808c3dcf5cebf4e` / `a42e6feb30cf3a58adcc435e60ae5f7eb7310b00` | Six committed files listed above; only selected Project_Main_Goal hunks included | Staged diff reviewed; `git diff --cached --check` PASS; commit and push PASS | E04 intake and future checkpoint sync policy pending | Ask for current E04 UI/behavior and finalize exact contract; no Worker yet | Verified by Mastermind; branch confirmed synchronized immediately after push |
 
-No commit, push, installation, runtime operation, product implementation, or
-deployment is part of this cleanup task. E04–E08 remain separately unapproved.
+No installation, runtime operation, product implementation, Worker dispatch, or
+deployment occurred. E04–E08 remain individually uncontracted; this cleanup did
+not authorize any of them.

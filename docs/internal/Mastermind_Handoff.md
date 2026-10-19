@@ -2,16 +2,15 @@
 
 ## Current operational handoff — 2026-10-19
 
-- **Active task:** WF-M06 — commit/push the approved isolated workflow cleanup;
-  see the [workflow refresh tracker](work/workflow-refresh/tasks.md).
-- **Current checkpoint:** Owner renewed commit/push authorization for the isolated
-  cleanup scope; the [workflow refresh tracker](work/workflow-refresh/tasks.md)
-  records the staged file list and verification. Pre-existing overlapping and
-  unrelated edits remain excluded. No product phase is active.
-- **Blockers:** broader cross-machine task-state policy remains undecided.
-- **Next exact action:** commit and push only the reviewed cleanup scope. E04
-  remains at options/intake; prepare and approve its exact contract before any
-  worker starts.
+- **Active task:** none. Workflow cleanup was committed/pushed as
+  `a42e6feb30cf3a58adcc435e60ae5f7eb7310b00`; see the
+  [workflow refresh tracker](work/workflow-refresh/tasks.md).
+- **Current checkpoint:** E04 is at intake/contract planning only. No E04
+  tracker, worker brief, or Worker has been started.
+- **Blockers:** E04 current-app details and remaining contract choices are
+  needed; ongoing cross-machine checkpoint-sync policy is undecided.
+- **Next exact action:** resolve E04 intake and exact acceptance/exception rules,
+  then present the complete contract for explicit approval before dispatch.
 
 ## Historical handoff record — retained, not operational
 
