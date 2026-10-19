@@ -1,6 +1,13 @@
 # Project main goal
 
-## Current slice — Admin and Care Homes portal API reconciliation
+## Current roadmap and phase status — 2026-10-19
+
+The [portal reconciliation plan](work/portal-api-reconciliation/plan.md) is the
+roadmap/status index, not an executable task backlog. A phase tracker is created
+only after explicit approval of that phase's contract; it is the sole task and
+checkpoint source for that phase. Contracts own scope, reports/receipts own
+evidence, and the [Mastermind handoff](Mastermind_Handoff.md) stays a compact
+operational pointer. Roadmap inclusion is not implementation or release approval.
 
 2026-10-16 follow-up: owner authorized a phased report/plan setup for the new
 46-item frontend intake. The [FUR sequence](work/portal-api-reconciliation/plan.md#frontend-follow-up-sequence--2026-10-16)
@@ -159,7 +166,9 @@ and security/storage requirements close. Voice remains excluded.
 
 ## Canonical files
 
-- [Mastermind handoff](Mastermind_Handoff.md): current state and next action.
+- [Mastermind handoff](Mastermind_Handoff.md): compact operational checkpoint and link to the active phase tracker; retained dated material is historical.
+- [Phase tracker template](templates/phase-tracker.md): copy only for a phase with an explicitly approved contract; one tracker owns that phase's task status and checkpoints.
+- [Workflow refresh tracker](work/workflow-refresh/tasks.md): current documentation-only cleanup task; it does not authorize a product phase.
 - [Care homes decisions](operations/care-homes/Care_Homes_Decisions.md): consolidated owner requirements and remaining contract blockers.
 - [Care homes tasks](operations/care-homes/Care_Homes_Tasks.md): the single implementation checklist, grouped by dependencies.
 - [UI evidence](operations/care-homes/UI_Review.md): 29 reviewed screenshots.

@@ -1,24 +1,31 @@
 # Mastermind handoff
 
-## Current checkpoint — 2026-10-19
+## Current operational handoff — 2026-10-19
 
-E01 and E02 are Done. E02 implementation `80d87bb1cf9059f3dcb7efbdd8df4ef6219ec627`
-is committed, pushed, deployed, and verified; see the [release receipt](work/portal-api-reconciliation/reports/e02-owner-legal-support-release.md).
-E03 is Done: implementation `9ab790da692129cdb7a15e288cfc5206f014d686` and
-deployed revision `845f2920bd68597b15698643e489210d0782557a` are committed,
-pushed, deployed, and verified; see the [release receipt](work/portal-api-reconciliation/reports/e03-medical-access-audit-release.md).
-The Families migration was applied, all 9/9 heads match, the service is active,
-and the anonymous services smoke returned HTTP 200. Focused tests passed 39/39;
-the release receipt records the unrelated test limitation and no authenticated
-E03 feature request. Unrelated local edits remain preserved. Do not start E04 or
-another phase without separate Owner direction.
+- **Active task:** WF-M06 — commit/push the approved isolated workflow cleanup;
+  see the [workflow refresh tracker](work/workflow-refresh/tasks.md).
+- **Current checkpoint:** Owner renewed commit/push authorization for the isolated
+  cleanup scope; the [workflow refresh tracker](work/workflow-refresh/tasks.md)
+  records the staged file list and verification. Pre-existing overlapping and
+  unrelated edits remain excluded. No product phase is active.
+- **Blockers:** broader cross-machine task-state policy remains undecided.
+- **Next exact action:** commit and push only the reviewed cleanup scope. E04
+  remains at options/intake; prepare and approve its exact contract before any
+  worker starts.
+
+## Historical handoff record — retained, not operational
+
+The dated material below is retained as historical evidence. Its old next-action
+and status wording is not current instruction; use the compact checkpoint above,
+the active phase tracker, and linked release receipts for current truth. Do not
+rewrite or delete historical receipts as part of routine handoff updates.
 
 FUR-07 is Done at pushed/deployed revision `303a131`; see its
 [release receipt](work/portal-api-reconciliation/reports/fur-07-release.md).
-The approved Community moderation contract, worker delivery, and Mastermind
-review are recorded in the [contract](work/portal-api-reconciliation/contracts/fur-07-community-moderation.md),
-[delivery report](work/portal-api-reconciliation/reports/fur-07-worker-delivery.md),
-and [review](work/portal-api-reconciliation/reports/fur-07-mastermind-review.md).
+The approved Community moderation contract and worker delivery are recorded in
+the [contract](work/portal-api-reconciliation/contracts/fur-07-community-moderation.md)
+and [delivery report](work/portal-api-reconciliation/reports/fur-07-worker-delivery.md);
+Mastermind review acceptance is recorded in this historical checkpoint.
 Its additive Community migration was applied to the existing production
 database. The deployment verifier passed through the SSH tunnel: exact
 revision, database reachable, all 9/9 migration heads matched, all nine
