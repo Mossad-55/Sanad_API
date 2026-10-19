@@ -19,10 +19,10 @@ is not a new E04 selection.
 
 ## Current checkpoint/result
 
-- Phase state: `accepted`; release state: `not_requested`. E04-A, E04-B and E04-C
-  are complete and the Mastermind accepted the phase locally. "Accepted" means the
-  implementation, focused verification and consumer delivery pass review; it is
-  not committed, published, deployed, or migrated.
+- Phase state: `completed`; release state: `verified`. E04-A, E04-B and E04-C
+  were accepted, the phase was committed and pushed, and the authorized release
+  was deployed and verified. The [release receipt](../reports/e04-platform-controls-release.md)
+  is the evidence of record.
 - Base: `b847de46226e9f5089e8a044d3c2d23458aef3ac` (re-verified; unchanged by any
   stage). The accepted, uncommitted E04-A delta is the base for E04-B.
 - Worker session: `ses_ead905588ffeTEWjxUdplK8WPt` on
@@ -314,11 +314,23 @@ is not a new E04 selection.
   (commit/push, publish/deploy and migration application). The authorized target
   is the Owner-designated Production VPS carried by the immediately prior E03
   receipt; it is revalidated before any write.
-- Next action: commit and push the accepted phase, publish the package from
-  pushed `main`, deploy to the authorized target, verify with the standard
-  deployment verifier, then record the release revision, verification and
-  limitations here and mark the phase `completed`. No later phase starts before
-  that.
+- Release outcome: implementation and release revision
+  `bdc06057caa2c4b4589565c8c7c456ea57bdf8e9` (pushed `origin/main`; package and
+  deployed revision match). Deployed to the Owner-designated Production VPS
+  with the standard deployment verifier passing through a temporary
+  localhost-only SSH tunnel: remote revision match, Production environment,
+  database reachable, 9/9 applied migration heads matched, nine context
+  startup checks (Finance applied exactly one migration, the E04 head; the
+  other eight applied zero), and the anonymous services smoke HTTP 200. The
+  anonymous `GET /api/v1/platform/status` feature smoke returned `state: 1`
+  (Operational) with Card and Wallet available, proving the new route and the
+  seeded control row are live. Host appsettings, service unit and environment
+  fingerprints were unchanged by the cutover. No authenticated Admin request,
+  control mutation, provider call or data repair was performed.
+- Next action: the phase is complete and released. E05 (Family-home CMS) and
+  E06 (daily wellness missed-check-ins) are the next queued phases, each still
+  requiring its own Worker model selection, dispatch direction and release
+  authorization.
 
 - C (Mastermind, direct — no Worker): consumer delivery was written against the
   implemented behavior, not against a plan. New guides
