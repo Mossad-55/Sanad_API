@@ -60,6 +60,9 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         { "get", "/api/v1/admin/cms/elderly-welcome", 200, "ref", "ElderlyWelcomeResponse" },
         { "get", "/api/v1/admin/finance/platform-charge-rules/current", 200, "ref", "PlatformChargeRuleResponse" },
         { "get", "/api/v1/admin/finance/platform-charge-rules/history", 200, "array", "PlatformChargeRuleResponse" },
+        { "get", "/api/v1/admin/platform-controls", 200, "ref", "PlatformControlResponse" },
+        { "put", "/api/v1/admin/platform-controls", 200, "ref", "PlatformControlResponse" },
+        { "get", "/api/v1/platform/status", 200, "ref", "PublicPlatformStatusResponse" },
         { "get", "/api/v1/admin/notifications", 200, "ref", "AdminNotificationPage" },
         { "get", "/api/v1/admin/notifications/{notificationId}", 200, "ref", "AdminNotificationRecord" },
         { "get", "/api/v1/admin/notifications/timeline", 200, "ref", "AdminNotificationPage" },
@@ -188,7 +191,9 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         { "AccountType", [1, 2, 3, 4, 5, 6, 7, 8, 9], ["Family", "MedicalCaregiver", "CompanionCaregiver", "Elderly", "SuperAdmin", "ContentAdmin", "SupportAdmin", "CareHomeOwner", "FinanceAdmin"] },
         { "DevicePlatform", [0, 1, 2, 3], ["Unknown", "Android", "iOS", "Web"] },
         { "CaregiverType", [1, 2], ["Medical", "Companion"] },
-        { "AdminUserActionType", [1, 2, 3, 4, 5, 6, 7, 8], ["Suspended", "Reactivated", "Blocked", "SessionsRevoked", "PasswordReset", "AccountTypeChanged", "Created", "Anonymized"] }
+        { "AdminUserActionType", [1, 2, 3, 4, 5, 6, 7, 8], ["Suspended", "Reactivated", "Blocked", "SessionsRevoked", "PasswordReset", "AccountTypeChanged", "Created", "Anonymized"] },
+        { "PlatformState", [1, 2], ["Operational", "Maintenance"] },
+        { "PlatformPaymentMethod", [1, 2], ["Card", "Wallet"] }
     };
 
     [Theory]
@@ -285,6 +290,98 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         Assert.False(noContent.TryGetProperty("content", out _), "204 must carry no body schema.");
 
         Assert.True(responses.TryGetProperty("200", out _), "Populated 200 response must be retained.");
+    }
+
+    [Fact]
+    public void PublicPlatformStatus_PublishesOnlyTheSanitizedShape()
+    {
+        JsonElement root = Document;
+        JsonElement schema = ResolveRef(root, "#/components/schemas/PublicPlatformStatusResponse");
+
+        Assert.Equal(
+            ["availablePaymentMethods", "maintenanceMessageArabic", "maintenanceMessageEnglish", "state"],
+            schema.GetProperty("properties")
+                .EnumerateObject()
+                .Select(property => property.Name)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray());
+
+        // The public status advertises supported payment methods only; it never
+        // carries the control version, the Card/Wallet switches, the internal
+        // reason or any actor/audit data.
+        AssertRefProperty(root, schema, "availablePaymentMethods", "PlatformPaymentMethod", isArray: true);
+    }
+
+    [Fact]
+    public void PlatformControlOperations_PublishTheirFailureContracts()
+    {
+        JsonElement responses = GetOperation(
+            Document, "/api/v1/admin/platform-controls", "get").GetProperty("responses");
+
+        Assert.True(
+            responses.TryGetProperty("200", out JsonElement ok),
+            "Missing 200 response for GET /api/v1/admin/platform-controls.");
+        Assert.True(
+            TryGetJsonSchema(ok, out JsonElement schema),
+            "Missing application/json schema for GET /api/v1/admin/platform-controls 200.");
+        Assert.EndsWith("PlatformControlResponse", AssertRef(schema, Document));
+        Assert.True(
+            responses.TryGetProperty("503", out _),
+            "Missing fail-closed 503 response for GET /api/v1/admin/platform-controls.");
+        foreach (string status in new[] { "401", "403" })
+        {
+            Assert.True(
+                responses.TryGetProperty(status, out _),
+                $"Missing {status} response for GET /api/v1/admin/platform-controls.");
+        }
+
+        JsonElement putResponses = GetOperation(
+            Document, "/api/v1/admin/platform-controls", "put").GetProperty("responses");
+        foreach (string status in new[] { "200", "400", "409", "503", "401", "403" })
+        {
+            Assert.True(
+                putResponses.TryGetProperty(status, out _),
+                $"Missing {status} response for PUT /api/v1/admin/platform-controls.");
+        }
+
+        JsonElement statusResponses = GetOperation(
+            Document, "/api/v1/platform/status", "get").GetProperty("responses");
+        Assert.True(
+            statusResponses.TryGetProperty("503", out _),
+            "Missing fail-closed 503 response for GET /api/v1/platform/status.");
+        // The public status route is anonymous and must not advertise auth errors.
+        foreach (string status in new[] { "401", "403" })
+        {
+            Assert.False(
+                statusResponses.TryGetProperty(status, out _),
+                $"Anonymous GET /api/v1/platform/status must not document {status}.");
+        }
+    }
+
+    [Fact]
+    public void FamilyCheckoutAndPaymentIntentOperations_PublishPlatformControlFailures()
+    {
+        // E04-B: the gated new checkouts and payment-intent routes document the
+        // platform maintenance/method failures they can now return.
+        AssertDocumentsResponses("/api/v1/family/bookings/checkout", "post", "503");
+        AssertDocumentsResponses("/api/v1/family/bookings/{bookingId}/payments/intent", "post", "400", "503");
+        AssertDocumentsResponses("/api/v1/family/care-home-bookings/checkout", "post", "503");
+        AssertDocumentsResponses("/api/v1/family/care-home-bookings/{bookingId}/payments/intent", "post", "400", "503");
+        AssertDocumentsResponses("/api/v1/family/subscriptions/payment-intent", "post", "400", "503");
+        AssertDocumentsResponses("/api/v1/family/subscriptions/renewal/payment-intent", "post", "400", "503");
+        AssertDocumentsResponses("/api/v1/family/subscriptions/plan-change/payment-intent", "post", "400", "503");
+    }
+
+    private void AssertDocumentsResponses(string path, string method, params string[] statuses)
+    {
+        JsonElement responses = GetOperation(Document, path, method).GetProperty("responses");
+
+        foreach (string status in statuses)
+        {
+            Assert.True(
+                responses.TryGetProperty(status, out _),
+                $"Missing {status} response for {method.ToUpperInvariant()} {path}.");
+        }
     }
 
     [Fact]

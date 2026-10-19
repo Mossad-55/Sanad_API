@@ -111,6 +111,7 @@ public sealed class FamilyBookingsController : ApiControllerBase
     [ProducesResponseType(
         typeof(BookingCheckoutResponse),
         StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CreateCheckout(
         [FromBody] CreateBookingCheckoutRequest request,
         CancellationToken cancellationToken)
@@ -170,6 +171,8 @@ public sealed class FamilyBookingsController : ApiControllerBase
     [ProducesResponseType(
         typeof(BookingPaymentIntentResponse),
         StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CreatePaymentIntent(
         Guid bookingId,
         [FromBody] CreatePaymentIntentRequest request,

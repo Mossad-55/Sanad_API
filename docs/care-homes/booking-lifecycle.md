@@ -51,6 +51,13 @@ The elderly/contact resolver rechecks Family access and stores the server-derive
 
 Checkout returns `200` with the booking response. Initial status values are `PendingPayment = 1` and `PaymentStatus = Pending = 1`; `holdUntilUtc` is the 15-minute checkout deadline. The response includes booking/facility/elderly/room IDs, start/end dates, earliest arrival, amounts, `EGP`, status, payment status, hold, and decision reason.
 
+**Platform availability.** A new Care-home checkout is refused while the
+platform is in Maintenance (`503 Platform.Maintenance`) and when the platform
+controls cannot be read (`503 Platform.ControlStateUnavailable`). The refusal
+happens before the capacity read, the reservation, and any booking write, so a
+rejected checkout leaves no booking and no hold. Local room/bed maintenance
+blocks are unrelated to this control and are still applied as documented above.
+
 Payment-intent JSON follows the existing Family payment shape:
 
 ```json
@@ -66,6 +73,17 @@ Payment-intent JSON follows the existing Family payment shape:
 ```
 
 The response contains `bookingId`, the `chb_` merchant reference, Paymob order/intention IDs, client secret, and public key. Repeating the request after an intent exists returns the same intent. An expired or otherwise non-payable booking returns `409 CareHomes.Bookings.InvalidState`.
+
+**Platform availability.** A *new* payment intent is refused while the platform
+is in Maintenance (`503 Platform.Maintenance`), when the selected method is
+disabled or not configured on the server (`400 Platform.PaymentMethodUnavailable`
+— including ApplePay, which is not supported), or when the platform controls
+cannot be read (`503 Platform.ControlStateUnavailable`). The refusal happens
+before the payment claim, the Paymob call, and any pending-transaction write.
+Replaying a request for an intent that already exists returns that same intent
+and is **not** blocked, so a family that already started a payment can still
+finish it while the platform is in Maintenance. Settlement of a verified
+provider callback is never gated.
 
 ## Paid stay extensions (HC-036)
 

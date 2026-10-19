@@ -9,6 +9,8 @@ public interface IFinanceDbContext
 {
     DbSet<PlatformChargeRule> PlatformChargeRules { get; }
     DbSet<CaregiverPayoutPolicy> CaregiverPayoutPolicies { get; }
+    DbSet<PlatformControlState> PlatformControlStates { get; }
+    DbSet<PlatformControlAuditEntry> PlatformControlAuditEntries { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
 

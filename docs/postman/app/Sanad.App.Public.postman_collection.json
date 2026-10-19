@@ -271,6 +271,21 @@
           }
         }
       ]
+    },
+    {
+      "name": "06. Platform status",
+      "item": [
+        {
+          "name": "Get public platform status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/platform/status",
+            "description": "Anonymous. Returns the sanitized public platform status: state (1 Operational, 2 Maintenance), the published bilingual maintenance message, and the currently available supported payment methods (1 Card, 2 Wallet). ApplePay is never advertised. Fails closed with 503 Platform.ControlStateUnavailable when the platform controls cannot be read."
+          },
+          "description": "Read before starting a new booking or payment. Advisory for the UI only: the server enforces the same rules and refuses gated routes with 503 Platform.Maintenance or 400 Platform.PaymentMethodUnavailable."
+        }
+      ]
     }
   ],
   "variable": [

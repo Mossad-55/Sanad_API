@@ -174,7 +174,8 @@ public sealed class BookingRemediationTests
         var handler = new CreateBookingCheckoutCommandHandler(
             dbContext,
             new FakePricing(BookingCaregiverType.Medical, 2500m),
-            new FixedPlatformChargeRules(15m, 0m));
+            new FixedPlatformChargeRules(15m, 0m),
+            FixedPlatformControls.Operational());
 
         var result = await handler.Handle(
             CheckoutCommand(family, elderly, DateTime.UtcNow),
@@ -197,7 +198,8 @@ public sealed class BookingRemediationTests
         var handler = new CreateBookingCheckoutCommandHandler(
             dbContext,
             new FakePricing(BookingCaregiverType.Companion, -1m),
-            new FixedPlatformChargeRules(15m, 0m));
+            new FixedPlatformChargeRules(15m, 0m),
+            FixedPlatformControls.Operational());
 
         var result = await handler.Handle(
             CheckoutCommand(family, elderly, DateTime.UtcNow),
@@ -220,7 +222,8 @@ public sealed class BookingRemediationTests
         var checkout = new CreateBookingCheckoutCommandHandler(
             dbContext,
             new FakePricing(BookingCaregiverType.Medical, 500m),
-            new FixedPlatformChargeRules(15m, 0m));
+            new FixedPlatformChargeRules(15m, 0m),
+            FixedPlatformControls.Operational());
 
         var checkoutResult = await checkout.Handle(
             CheckoutCommand(family, elderly, DateTime.UtcNow),
@@ -253,7 +256,8 @@ public sealed class BookingRemediationTests
         var checkout = new CreateBookingCheckoutCommandHandler(
             dbContext,
             new FakePricing(BookingCaregiverType.Medical, 500m),
-            new FixedPlatformChargeRules(15m, 0m));
+            new FixedPlatformChargeRules(15m, 0m),
+            FixedPlatformControls.Operational());
         var command = CheckoutCommand(family, elderly, DateTime.UtcNow);
 
         var first = await checkout.Handle(command, CancellationToken.None);

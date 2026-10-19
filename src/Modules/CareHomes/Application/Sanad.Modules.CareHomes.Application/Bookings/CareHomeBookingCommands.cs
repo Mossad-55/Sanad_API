@@ -12,6 +12,7 @@ using Sanad.Modules.CareHomes.Application.Inventory;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
+using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Finance.Application;
 
@@ -40,11 +41,18 @@ public sealed class CareHomeCapacityConflictException : Exception { }
 public sealed class CheckoutValidator : AbstractValidator<CheckoutCareHomeBookingCommand>
 { public CheckoutValidator() { RuleFor(x => x.FacilityId).NotEqual(Guid.Empty); RuleFor(x => x.RoomTypeId).NotEqual(Guid.Empty); RuleFor(x => x.StartDate).NotEqual(default(DateOnly)); } }
 
-public sealed class CheckoutHandler(ICareHomesDbContext db, IPlatformChargeRuleReader charges, ICareHomeOccupancyProvider occupancy, ICareHomeBookingReservationGuard reservationGuard, CareHomeBookingTiming? timing = null) : ICommandHandler<CheckoutCareHomeBookingCommand, CareHomeBookingResponse>
+public sealed class CheckoutHandler(ICareHomesDbContext db, IPlatformChargeRuleReader charges, ICareHomeOccupancyProvider occupancy, ICareHomeBookingReservationGuard reservationGuard, IPlatformControlReader controls, CareHomeBookingTiming? timing = null) : ICommandHandler<CheckoutCareHomeBookingCommand, CareHomeBookingResponse>
 {
     private readonly CareHomeBookingTiming _timing = timing ?? CareHomeBookingTiming.Default;
     public async Task<Result<CareHomeBookingResponse>> Handle(CheckoutCareHomeBookingCommand r, CancellationToken ct)
     {
+        // E04: a new Care Home booking checkout is gated before any capacity
+        // read, reservation or persistence, so a rejection cannot create a
+        // booking, a hold or any partial payment state. Local resource-level
+        // Care Home maintenance blocks are unchanged and still applied below.
+        Error? platformError = await PlatformControlGate.CheckNewCheckoutAsync(controls, ct);
+        if (platformError is not null) return Result<CareHomeBookingResponse>.Failure(platformError);
+
         var facility = await db.Facilities.AsNoTracking()
             .Include(x => x.Revisions).Include(x => x.Documents)
             .SingleOrDefaultAsync(x => x.Id == new CareHomeId(r.FacilityId) && x.Status == CareHomeStatus.Approved, ct);
@@ -87,14 +95,22 @@ public sealed class FamilyListHandler(ICareHomesDbContext db) : IQueryHandler<Li
 public sealed class FamilyDetailHandler(ICareHomesDbContext db) : IQueryHandler<GetFamilyCareHomeBookingQuery, CareHomeBookingResponse>
 { public async Task<Result<CareHomeBookingResponse>> Handle(GetFamilyCareHomeBookingQuery r, CancellationToken ct) { var x = await db.Bookings.SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FamilyId == r.FamilyId, ct); if (x is null) return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.NotFound", "Booking was not found.")); x.ExpireIfNeeded(r.UtcNow); return CheckoutHandler.Map(x); } }
 
-public sealed class PaymentIntentHandler(ICareHomesDbContext db, IPaymobClient paymob) : ICommandHandler<CreateCareHomePaymentIntentCommand, CareHomeBookingPaymentIntentResponse>
+public sealed class PaymentIntentHandler(ICareHomesDbContext db, IPaymobClient paymob, IPlatformControlReader controls, IPaymentMethodConfiguration paymentMethods) : ICommandHandler<CreateCareHomePaymentIntentCommand, CareHomeBookingPaymentIntentResponse>
 {
     public async Task<Result<CareHomeBookingPaymentIntentResponse>> Handle(CreateCareHomePaymentIntentCommand r, CancellationToken ct)
     {
         var x = await db.Bookings.SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FamilyId == r.FamilyId, ct);
         if (x is null) return Result<CareHomeBookingPaymentIntentResponse>.Failure(new Error("CareHomes.Bookings.NotFound", "Booking was not found."));
         x.ExpireIfNeeded(r.UtcNow);
+        // An already-created intent is read back and reused before the E04
+        // gate: retrying an existing intent never creates a new one and is not
+        // blocked only because the platform is in maintenance or a method was
+        // disabled after the intent was created.
         if (x.PaymobOrderId is not null) return new CareHomeBookingPaymentIntentResponse(x.Id, x.MerchantReference, x.PaymobOrderId, x.IntentionOrderId!, x.PaymentClientSecret!, x.PaymentPublicKey!);
+        // E04: a new intent is gated before the claim, provider call and
+        // persistence, so a rejection leaves no claim and no pending state.
+        Error? platformError = await PlatformControlGate.CheckNewPaymentIntentAsync(controls, paymentMethods, r.Method, ct);
+        if (platformError is not null) return Result<CareHomeBookingPaymentIntentResponse>.Failure(platformError);
         if (x.Status != CareHomeBookingStatus.PendingPayment || !x.TryClaimPaymentIntent(r.UtcNow)) return Result<CareHomeBookingPaymentIntentResponse>.Failure(new Error("CareHomes.Bookings.InvalidState", "A payment intent is already being created or the booking is no longer payable."));
         await db.SaveChangesAsync(ct);
         var result = await paymob.CreatePaymentIntentAsync(new PaymobPaymentIntentInput(new BookingId(x.Id), r.Method, x.TotalAmount, "EGP", r.Billing, x.MerchantReference), ct);

@@ -147,7 +147,8 @@ public sealed class FamilyRoleMatrixLockTests
         var handler = new CreateBookingCheckoutCommandHandler(
             db,
             new FakePricing(BookingCaregiverType.Medical, 500m),
-            new FixedPlatformChargeRules(15m, 0m));
+            new FixedPlatformChargeRules(15m, 0m),
+            FixedPlatformControls.Operational());
 
         Result<BookingCheckoutResponse> result =
             await handler.Handle(
@@ -176,7 +177,8 @@ public sealed class FamilyRoleMatrixLockTests
         var handler = new CreateBookingCheckoutCommandHandler(
             db,
             new FakePricing(BookingCaregiverType.Medical, 500m),
-            new FixedPlatformChargeRules(15m, 0m));
+            new FixedPlatformChargeRules(15m, 0m),
+            FixedPlatformControls.Operational());
 
         Result<BookingCheckoutResponse> result =
             await handler.Handle(

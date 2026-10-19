@@ -1016,7 +1016,8 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
         var handler = new CreateBookingCheckoutCommandHandler(
             dbContext,
             new FixedPricing(CaregiverBaseFee),
-            new FixedPlatformChargeRules(15m, 0m));
+            new FixedPlatformChargeRules(15m, 0m),
+            FixedPlatformControls.Operational());
 
         TimeOnly startTime = TimeOnly.FromDateTime(scheduledStartUtc);
 
@@ -1053,7 +1054,8 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
         DateTime paidAtUtc,
         long paymobTransactionId)
     {
-        var intentHandler = new CreateBookingPaymentIntentCommandHandler(dbContext, paymob);
+        var platformControls = new FixedPlatformControls();
+        var intentHandler = new CreateBookingPaymentIntentCommandHandler(dbContext, paymob, platformControls, platformControls);
 
         Result<BookingPaymentIntentResponse> intent = await intentHandler.Handle(
             new CreateBookingPaymentIntentCommand(

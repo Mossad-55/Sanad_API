@@ -12,6 +12,8 @@ using Sanad.Modules.CareHomes.Infrastructure.Bookings;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Finance.Application;
+using Sanad.Modules.Finance.Domain;
+using Sanad.UnitTests.Families;
 
 namespace Sanad.UnitTests.CareHomes;
 
@@ -52,6 +54,7 @@ public sealed class CareHomeBookingLifecycleTests
                 new EffectiveCharges(),
                 new EmptyCareHomeOccupancyProvider(),
                 new InlineReservationGuard(),
+                FixedPlatformControls.Operational(),
                 new CareHomeBookingTiming(TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(5)))
             .Handle(new CheckoutCareHomeBookingCommand(
                 UserId.New(), FamilyId.New(), Intake(), facility.Id.Value, type.Id,
@@ -494,7 +497,8 @@ public sealed class CareHomeBookingLifecycleTests
         db.Bookings.Add(booking);
         await db.SaveChangesAsync();
         var client = new FakePaymob();
-        var handler = new PaymentIntentHandler(db, client);
+        var platformControls = new FixedPlatformControls();
+        var handler = new PaymentIntentHandler(db, client, platformControls, platformControls);
 
         var denied = await handler.Handle(new CreateCareHomePaymentIntentCommand(actor, FamilyId.New(), booking.Id, PaymentMethod.Card, Billing(), Now), default);
         Assert.False(denied.IsSuccess);
@@ -516,7 +520,8 @@ public sealed class CareHomeBookingLifecycleTests
         db.Bookings.Add(booking);
         await db.SaveChangesAsync();
         var client = new FakePaymob { FailIntent = true };
-        var handler = new PaymentIntentHandler(db, client);
+        var platformControls = new FixedPlatformControls();
+        var handler = new PaymentIntentHandler(db, client, platformControls, platformControls);
         var command = new CreateCareHomePaymentIntentCommand(booking.FamilyUserId, booking.FamilyId, booking.Id, PaymentMethod.Wallet, Billing(), Now);
 
         var first = await handler.Handle(command, default);
@@ -525,6 +530,130 @@ public sealed class CareHomeBookingLifecycleTests
         var retry = await handler.Handle(command with { UtcNow = Now.AddSeconds(1) }, default);
         Assert.True(retry.IsSuccess);
         Assert.Equal(2, client.IntentCalls);
+    }
+
+    // ---------------------- E04-B platform control gates ----------------------
+
+    [Fact]
+    public async Task Platform_maintenance_rejects_a_new_checkout_without_creating_a_booking()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db);
+        CareHomeRoomType type = await AddBookableRoomType(db, facility);
+
+        var result = await CreateCheckoutHandler(db, FixedPlatformControls.Maintenance())
+            .Handle(new CheckoutCareHomeBookingCommand(
+                UserId.New(), FamilyId.New(), Intake(), facility.Id.Value, type.Id, new DateOnly(2026, 10, 5), Now), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.Maintenance", result.Error.Code);
+        Assert.Empty(db.Bookings);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("unreadable")]
+    public async Task Platform_checkout_fails_closed_when_the_control_record_is_unavailable(string state)
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db);
+        CareHomeRoomType type = await AddBookableRoomType(db, facility);
+
+        FixedPlatformControls controls = state == "missing"
+            ? FixedPlatformControls.Missing()
+            : FixedPlatformControls.Unreadable();
+
+        var result = await CreateCheckoutHandler(db, controls)
+            .Handle(new CheckoutCareHomeBookingCommand(
+                UserId.New(), FamilyId.New(), Intake(), facility.Id.Value, type.Id, new DateOnly(2026, 10, 5), Now), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.ControlStateUnavailable", result.Error.Code);
+        Assert.Empty(db.Bookings);
+    }
+
+    [Fact]
+    public async Task Platform_maintenance_rejects_a_new_payment_intent_before_any_provider_call()
+    {
+        await using var db = CreateBookingDb();
+        var booking = Create(new DateOnly(2026, 10, 5));
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync();
+        var client = new FakePaymob();
+        var controls = FixedPlatformControls.Maintenance();
+        var handler = new PaymentIntentHandler(db, client, controls, controls);
+
+        var result = await handler.Handle(new CreateCareHomePaymentIntentCommand(
+            booking.FamilyUserId, booking.FamilyId, booking.Id, PaymentMethod.Wallet, Billing(), Now), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.Maintenance", result.Error.Code);
+        Assert.Equal(0, client.IntentCalls);
+        Assert.Null(db.Bookings.Single().PaymobOrderId);
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task Disabled_or_unconfigured_wallet_is_rejected_before_any_provider_call(bool enabled, bool configured)
+    {
+        await using var db = CreateBookingDb();
+        var booking = Create(new DateOnly(2026, 10, 5));
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync();
+        var client = new FakePaymob();
+        var controls = new FixedPlatformControls { WalletEnabled = enabled, WalletConfigured = configured };
+        var handler = new PaymentIntentHandler(db, client, controls, controls);
+
+        var result = await handler.Handle(new CreateCareHomePaymentIntentCommand(
+            booking.FamilyUserId, booking.FamilyId, booking.Id, PaymentMethod.Wallet, Billing(), Now), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, client.IntentCalls);
+        Assert.Null(db.Bookings.Single().PaymobOrderId);
+    }
+
+    [Fact]
+    public async Task ApplePay_is_rejected_without_calling_the_provider()
+    {
+        await using var db = CreateBookingDb();
+        var booking = Create(new DateOnly(2026, 10, 5));
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync();
+        var client = new FakePaymob();
+        var controls = new FixedPlatformControls();
+        var handler = new PaymentIntentHandler(db, client, controls, controls);
+
+        var result = await handler.Handle(new CreateCareHomePaymentIntentCommand(
+            booking.FamilyUserId, booking.FamilyId, booking.Id, PaymentMethod.ApplePay, Billing(), Now), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, client.IntentCalls);
+        Assert.Null(db.Bookings.Single().PaymobOrderId);
+    }
+
+    [Fact]
+    public async Task Existing_intent_is_read_back_during_maintenance_and_after_the_method_is_disabled()
+    {
+        await using var db = CreateBookingDb();
+        var booking = Create(new DateOnly(2026, 10, 5));
+        Assert.True(booking.TryClaimPaymentIntent(Now));
+        booking.SetPaymentIntent(1, "order_reuse", "intent_reuse", "secret_reuse", "public_reuse", Now);
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync();
+        var client = new FakePaymob();
+        var controls = new FixedPlatformControls { State = PlatformState.Maintenance, WalletEnabled = false };
+        var handler = new PaymentIntentHandler(db, client, controls, controls);
+
+        var result = await handler.Handle(new CreateCareHomePaymentIntentCommand(
+            booking.FamilyUserId, booking.FamilyId, booking.Id, PaymentMethod.Wallet, Billing(), Now), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("order_reuse", result.Value.PaymobOrderId);
+        Assert.Equal("intent_reuse", result.Value.IntentionOrderId);
+        Assert.Equal(0, client.IntentCalls);
     }
 
     [Fact]
@@ -681,7 +810,7 @@ public sealed class CareHomeBookingLifecycleTests
         PublishRoomMedia(db, type);
         await db.SaveChangesAsync();
 
-        var result = await new CheckoutHandler(db, new NoCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard())
+        var result = await new CheckoutHandler(db, new NoCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard(), FixedPlatformControls.Operational())
             .Handle(new CheckoutCareHomeBookingCommand(
                 UserId.New(), FamilyId.New(), new ElderlyIntakeResolution(
                     FamilyId.New(), ElderlyId.New(), UserId.New(), "Ø¹Ø±Ø¨ÙŠ", "Elderly", 75,
@@ -708,7 +837,7 @@ public sealed class CareHomeBookingLifecycleTests
         PublishRoomMedia(db, type);
         await db.SaveChangesAsync();
 
-        var result = await new CheckoutHandler(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new ConflictReservationGuard())
+        var result = await new CheckoutHandler(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new ConflictReservationGuard(), FixedPlatformControls.Operational())
             .Handle(new CheckoutCareHomeBookingCommand(
                 UserId.New(), FamilyId.New(), Intake(), facility.Id.Value, type.Id, new DateOnly(2026, 10, 5), Now), default);
 
@@ -725,8 +854,8 @@ public sealed class CareHomeBookingLifecycleTests
     private static CareHomesDbContext CreateBookingDb() =>
         new(new DbContextOptionsBuilder<CareHomesDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 
-    private static CheckoutHandler CreateCheckoutHandler(CareHomesDbContext db) =>
-        new(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard());
+    private static CheckoutHandler CreateCheckoutHandler(CareHomesDbContext db, FixedPlatformControls? controls = null) =>
+        new(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard(), controls ?? FixedPlatformControls.Operational());
 
     private static PaymobBillingData Billing() => new("Fixture", "Family", "family@test.local", "+201000000000");
 

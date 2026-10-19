@@ -323,7 +323,7 @@
               "raw": "{\n  \"elderlyId\": \"{{careHomeElderlyId}}\",\n  \"facilityId\": \"{{careHomeFacilityId}}\",\n  \"roomTypeId\": \"{{careHomeRoomTypeId}}\",\n  \"requestedStartDate\": \"{{careHomeStartDate}}\",\n  \"careNeedsNotes\": \"Authored booking example\",\n  \"responsibleContactName\": \"Fixture contact\",\n  \"responsibleContactPhone\": \"+201000000000\",\n  \"responsibleContactRelationship\": \"Daughter\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/family/care-home-bookings/checkout",
-            "description": "Creates one calendar month with a 15-minute unpaid hold. Start date must be at least 24 hours from checkout in Cairo time. Success is 200; validation/arrival/capacity/configuration errors are mapped by the API."
+            "description": "Creates one calendar month with a 15-minute unpaid hold. Start date must be at least 24 hours from checkout in Cairo time. Success is 200; validation/arrival/capacity/configuration errors are mapped by the API. Platform availability: a new checkout is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the platform controls cannot be read (503 Platform.ControlStateUnavailable); no booking and no hold are created."
           },
           "event": [
             {
@@ -395,7 +395,7 @@
               "raw": "{\n  \"method\": 1,\n  \"billing\": { \"firstName\": \"Fixture\", \"lastName\": \"Family\", \"email\": \"family@example.test\", \"phoneNumber\": \"+201000000000\" }\n}"
             },
             "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeExtensionBookingId}}/payments/intent",
-            "description": "Creates the separate Paymob Card/Wallet intent for an extension segment. Payment callback updates only that extension; facility acceptance remains a separate decision. Requires a previously created extension with a current payment hold."
+            "description": "Creates the separate Paymob Card/Wallet intent for an extension segment. Payment callback updates only that extension; facility acceptance remains a separate decision. Requires a previously created extension with a current payment hold. Platform availability: a new extension intent is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable)."
           },
           "event": [
             {
@@ -463,7 +463,7 @@
               "raw": "{\n  \"method\": 1,\n  \"billing\": { \"firstName\": \"Fixture\", \"lastName\": \"Family\", \"email\": \"family@example.test\", \"phoneNumber\": \"+201000000000\" }\n}"
             },
             "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{careHomeBookingId}}/payments/intent",
-            "description": "Card/Wallet Paymob intent. Repeating an existing intent returns the same intent; expired/non-payable bookings return 409 CareHomes.Bookings.InvalidState."
+            "description": "Card/Wallet Paymob intent. Repeating an existing intent returns the same intent; expired/non-payable bookings return 409 CareHomes.Bookings.InvalidState. Platform availability: only a NEW intent is refused — during Maintenance (503 Platform.Maintenance), when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable), or when the platform controls cannot be read (503 Platform.ControlStateUnavailable). Replaying an already-created intent still returns that same intent."
           },
           "event": [
             {

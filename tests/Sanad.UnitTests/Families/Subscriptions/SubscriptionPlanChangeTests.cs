@@ -6,6 +6,7 @@ using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.Modules.Finance.Domain;
 using Sanad.UnitTests.Finance;
 
 namespace Sanad.UnitTests.Families.Subscriptions;
@@ -77,7 +78,7 @@ public sealed class SubscriptionPlanChangeTests
             now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub");
         var paymob = new FakePaymobClient();
 
-        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var intent = await PlanChangeIntentHandler(db, paymob).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Wallet, Billing(), now), default);
         Assert.True(intent.IsSuccess);
         Assert.Null(paymob.LastUpdatedAmount);
@@ -139,7 +140,7 @@ public sealed class SubscriptionPlanChangeTests
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", 1000m, 0m);
         var paymob = new FakePaymobClient();
-        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var intent = await PlanChangeIntentHandler(db, paymob).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
 
         Assert.True(intent.IsSuccess);
@@ -160,7 +161,7 @@ public sealed class SubscriptionPlanChangeTests
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
         await using var db = Seed(out Family family, out SubscriptionPlanVersion source, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub");
         var paymob = new FakePaymobClient { UpdateFailure = true };
-        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var intent = await PlanChangeIntentHandler(db, paymob).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
         var before = db.FamilySubscriptions.Single().PlanKey;
 
@@ -181,7 +182,7 @@ public sealed class SubscriptionPlanChangeTests
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", 10000m, 0m);
         var paymob = new FakePaymobClient();
 
-        var result = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var result = await PlanChangeIntentHandler(db, paymob).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
 
         Assert.True(result.IsSuccess);
@@ -204,7 +205,7 @@ public sealed class SubscriptionPlanChangeTests
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, target.Id, now), default);
         var paymob = new FakePaymobClient();
 
-        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var intent = await PlanChangeIntentHandler(db, paymob).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
         var paid = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
             new ConfirmSubscriptionPaymentCommand(intent.Value.MerchantReference, 104, (long)(intent.Value.Amount * 100m), "EGP", true, false, now), default);
@@ -233,7 +234,7 @@ public sealed class SubscriptionPlanChangeTests
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, target.Id, now), default);
         var paymob = new FakePaymobClient();
 
-        var intent = await new CreatePlanChangePaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var intent = await PlanChangeIntentHandler(db, paymob).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
         var nextQuote = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, followup.Id, now), default);
@@ -303,6 +304,87 @@ public sealed class SubscriptionPlanChangeTests
         Assert.Equal(end.AddMonths(1), subscription.CurrentPeriodEndsOnUtc);
     }
 
+    // ---------------------- E04-B platform control gates ----------------------
+
+    private static CreatePlanChangePaymentIntentCommandHandler PlanChangeIntentHandler(
+        FamiliesDbContext db,
+        IPaymobClient paymob,
+        FixedPlatformControls? controls = null)
+    {
+        // E04: one explicit in-memory control record supplies both the control
+        // state and the method-configuration truth.
+        FixedPlatformControls platform = controls ?? FixedPlatformControls.Operational();
+
+        return new CreatePlanChangePaymentIntentCommandHandler(
+            db, paymob, new FixedPlatformChargeRules(10m, 5m), platform, platform);
+    }
+
+    [Fact]
+    public async Task Plan_change_intent_during_maintenance_is_rejected_before_any_provider_call()
+    {
+        DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
+        await using var db = Seed(out Family family, out SubscriptionPlanVersion source, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", 10000m, 0m);
+        var paymob = new FakePaymobClient();
+
+        var result = await PlanChangeIntentHandler(db, paymob, FixedPlatformControls.Maintenance()).Handle(
+            new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.Maintenance", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Equal(0, paymob.UpdateCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+        Assert.Equal(source.Key, db.FamilySubscriptions.Single().PlanKey);
+    }
+
+    [Theory]
+    [InlineData(false, true)]
+    [InlineData(true, false)]
+    public async Task Plan_change_intent_for_a_disabled_or_unconfigured_card_is_rejected_before_any_provider_call(bool enabled, bool configured)
+    {
+        DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
+        await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", 10000m, 0m);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { CardEnabled = enabled, CardConfigured = configured };
+
+        var result = await PlanChangeIntentHandler(db, paymob, controls).Handle(
+            new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Equal(0, paymob.UpdateCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+    }
+
+    [Fact]
+    public async Task Plan_change_quote_and_pending_downgrade_lifecycle_stay_available_during_maintenance()
+    {
+        DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
+        await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.Premium, "provider-sub", sourcePlan: SubscriptionPlan.PremiumPlus);
+        var paymob = new FakePaymobClient();
+        var controls = FixedPlatformControls.Maintenance();
+
+        // The quote is a read and the pending-downgrade replace/cancel flow
+        // starts no new payment intent: E04 deliberately does not gate them.
+        var quote = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
+            new CreatePlanChangeQuoteCommand(family.OwnerUserId, target.Id, now), default);
+        Assert.True(quote.IsSuccess);
+
+        var replace = await new ReplacePendingDowngradeCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+            new ReplacePendingDowngradeCommand(family.OwnerUserId, target.Id, now), default);
+        Assert.True(replace.IsSuccess);
+        Assert.NotNull(db.FamilySubscriptions.Single().PendingDowngrade);
+
+        var cancel = await new CancelPendingDowngradeCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+            new CancelPendingDowngradeCommand(family.OwnerUserId, now), default);
+        Assert.True(cancel.IsSuccess);
+        Assert.Null(db.FamilySubscriptions.Single().PendingDowngrade);
+
+        // The control record is only consulted by the gated new-intent path.
+        Assert.Equal(PlatformState.Maintenance, controls.State);
+    }
+
     private static FamiliesDbContext Seed(
         out Family family,
         out SubscriptionPlanVersion source,
@@ -348,15 +430,21 @@ public sealed class SubscriptionPlanChangeTests
     {
         public decimal? LastUpdatedAmount { get; private set; }
         public bool UpdateFailure { get; set; }
+        public int IntentCalls { get; private set; }
+        public int UpdateCalls { get; private set; }
 
         public Task<Result<PaymobPaymentIntent>> CreatePaymentIntentAsync(PaymobPaymentIntentInput input, CancellationToken cancellationToken = default) =>
             Task.FromResult(Result<PaymobPaymentIntent>.Failure(new Error("Paymob.MethodNotAvailable", "Not used.")));
 
-        public Task<Result<PaymobPaymentIntent>> CreateSubscriptionPaymentIntentAsync(PaymobSubscriptionPaymentIntentInput input, CancellationToken cancellationToken = default) =>
-            Task.FromResult(Result<PaymobPaymentIntent>.Success(new PaymobPaymentIntent(input.MerchantReference, "order", "secret", "public")));
+        public Task<Result<PaymobPaymentIntent>> CreateSubscriptionPaymentIntentAsync(PaymobSubscriptionPaymentIntentInput input, CancellationToken cancellationToken = default)
+        {
+            IntentCalls++;
+            return Task.FromResult(Result<PaymobPaymentIntent>.Success(new PaymobPaymentIntent(input.MerchantReference, "order", "secret", "public")));
+        }
 
         public Task<Result> UpdateSubscriptionAmountAsync(string providerSubscriptionId, decimal targetRecurringGross, CancellationToken cancellationToken = default)
         {
+            UpdateCalls++;
             LastUpdatedAmount = targetRecurringGross;
             return Task.FromResult(UpdateFailure
                 ? Result.Failure(new Error("Paymob.GatewayError", "Provider update failed."))

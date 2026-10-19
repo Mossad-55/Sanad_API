@@ -6,6 +6,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
+using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Finance.Application;
@@ -62,18 +63,31 @@ public sealed class CreateSubscriptionPaymentIntentCommandHandler
     private readonly IFamiliesDbContext _db;
     private readonly IPaymobClient _paymobClient;
     private readonly IPlatformChargeRuleReader _chargeRules;
+    private readonly IPlatformControlReader _controls;
+    private readonly IPaymentMethodConfiguration _paymentMethods;
 
-    public CreateSubscriptionPaymentIntentCommandHandler(IFamiliesDbContext db, IPaymobClient paymobClient, IPlatformChargeRuleReader chargeRules)
+    public CreateSubscriptionPaymentIntentCommandHandler(IFamiliesDbContext db, IPaymobClient paymobClient, IPlatformChargeRuleReader chargeRules, IPlatformControlReader controls, IPaymentMethodConfiguration paymentMethods)
     {
         _db = db;
         _paymobClient = paymobClient;
         _chargeRules = chargeRules;
+        _controls = controls;
+        _paymentMethods = paymentMethods;
     }
 
     public async Task<Result<SubscriptionPaymentIntentResponse>> Handle(
         CreateSubscriptionPaymentIntentCommand request,
         CancellationToken cancellationToken)
     {
+        // E04: a new subscription payment intent is gated before any provider
+        // call, claim or attempt write.
+        Error? platformError = await PlatformControlGate.CheckNewPaymentIntentAsync(
+            _controls, _paymentMethods, request.Method, cancellationToken);
+        if (platformError is not null)
+        {
+            return Result<SubscriptionPaymentIntentResponse>.Failure(platformError);
+        }
+
         var family = await FamilyAccess.ResolveFamilyAsync(_db, request.UserId, cancellationToken);
         if (family is null || !FamilyAccess.IsOwner(family, request.UserId))
             return Result<SubscriptionPaymentIntentResponse>.Failure(NotOwner);
@@ -94,6 +108,23 @@ public sealed class CreateSubscriptionPaymentIntentCommandHandler
         var plan = await _db.SubscriptionPlanVersions
             .AsNoTracking()
             .SingleAsync(item => item.Id == quote.Value.PlanVersionId, cancellationToken);
+
+        // E04 path-specific technical prerequisite: when the resolved plan
+        // actually carries a provider subscription plan id, the gateway client
+        // sends this Card intent through the dedicated 3DS enrollment
+        // integration (matching PaymobClient.cardEnrollment), not the generic
+        // Card integration. Missing that configuration fails closed here, before
+        // the attempt is created and before any provider call, instead of
+        // surfacing a gateway-level method-not-available later. Plans without a
+        // provider subscription plan id keep the generic Card rule, and Wallet
+        // is unaffected.
+        if (request.Method == SubscriptionPaymentMethod.Card &&
+            plan.PaymobSubscriptionPlanId is not null &&
+            !_paymentMethods.CardSubscriptionEnrollmentConfigured)
+        {
+            return Result<SubscriptionPaymentIntentResponse>.Failure(
+                PlatformControlErrors.PaymentMethodUnavailable);
+        }
 
         var attempt = SubscriptionPaymentAttempt.Create(
             family.Id,
@@ -151,21 +182,36 @@ public sealed class CreateSubscriptionRenewalPaymentIntentCommandHandler
     private readonly IFamiliesDbContext _db;
     private readonly IPaymobClient _paymobClient;
     private readonly IPlatformChargeRuleReader _chargeRules;
+    private readonly IPlatformControlReader _controls;
+    private readonly IPaymentMethodConfiguration _paymentMethods;
 
     public CreateSubscriptionRenewalPaymentIntentCommandHandler(
         IFamiliesDbContext db,
         IPaymobClient paymobClient,
-        IPlatformChargeRuleReader chargeRules)
+        IPlatformChargeRuleReader chargeRules,
+        IPlatformControlReader controls,
+        IPaymentMethodConfiguration paymentMethods)
     {
         _db = db;
         _paymobClient = paymobClient;
         _chargeRules = chargeRules;
+        _controls = controls;
+        _paymentMethods = paymentMethods;
     }
 
     public async Task<Result<SubscriptionPaymentIntentResponse>> Handle(
         CreateSubscriptionRenewalPaymentIntentCommand request,
         CancellationToken cancellationToken)
     {
+        // E04: a new renewal payment intent is gated before any provider call
+        // or attempt write; renewal callbacks stay ungated.
+        Error? platformError = await PlatformControlGate.CheckNewPaymentIntentAsync(
+            _controls, _paymentMethods, request.Method, cancellationToken);
+        if (platformError is not null)
+        {
+            return Result<SubscriptionPaymentIntentResponse>.Failure(platformError);
+        }
+
         var family = await FamilyAccess.ResolveFamilyAsync(_db, request.UserId, cancellationToken);
         if (family is null || !FamilyAccess.IsOwner(family, request.UserId))
             return Result<SubscriptionPaymentIntentResponse>.Failure(NotOwner);

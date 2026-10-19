@@ -11,6 +11,7 @@ using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.Modules.Finance.Domain;
 using Xunit;
 using Sanad.UnitTests.Finance;
 
@@ -114,7 +115,8 @@ public sealed class BookingPaymentWebhookTests
         var checkout = new CreateBookingCheckoutCommandHandler(
             dbContext,
             new FakePricing(BookingCaregiverType.Medical, 500m),
-            new FixedPlatformChargeRules(15m, 0m));
+            new FixedPlatformChargeRules(15m, 0m),
+            FixedPlatformControls.Operational());
 
         var checkoutResult = await checkout.Handle(
             new CreateBookingCheckoutCommand(
@@ -162,6 +164,53 @@ public sealed class BookingPaymentWebhookTests
         Assert.Equal(
             PaymentTransactionStatus.Succeeded,
             persisted.PaymentTransactions.Single().Status);
+    }
+
+    [Fact]
+    public async Task Verified_callback_settles_the_existing_intent_while_the_platform_is_in_maintenance()
+    {
+        var (dbContext, family, elderly) = SeedFamily();
+        Booking booking = await CheckoutAsync(dbContext, family, elderly);
+
+        // The intent exists and the platform records maintenance: the gated
+        // new-intent path is blocked, while the verified callback path (whose
+        // handler graph deliberately has no control dependency) must still
+        // settle the payment exactly once.
+        booking.RecordPaymentIntent("PM-ORDER-7", PaymentMethod.Card, DateTime.UtcNow);
+        dbContext.SaveChanges();
+
+        var controls = FixedPlatformControls.Maintenance();
+        Assert.Equal(PlatformState.Maintenance, controls.State);
+
+        var blocked = await new CreateBookingPaymentIntentCommandHandler(dbContext, new FakePaymobClient(null), controls, controls).Handle(
+            new CreateBookingPaymentIntentCommand(
+                booking.Id,
+                family.OwnerUserId,
+                PaymentMethod.Card,
+                new PaymobBillingData("Fixture", "Family", "family@test.local", "+201000000000"),
+                DateTime.UtcNow),
+            CancellationToken.None);
+
+        Assert.False(blocked.IsSuccess);
+        Assert.Equal("Platform.Maintenance", blocked.Error.Code);
+
+        var paymob = new FakePaymobClient(new PaymobPaymentIntent("PM-ORDER-7", "pi_7", "dev-secret", "pk_dev"));
+        var handler = new ConfirmBookingPaymentCommandHandler(dbContext, paymob);
+
+        var result = await handler.Handle(
+            new ConfirmBookingPaymentCommand("PM-ORDER-7", 777777, 57500, true, false, DateTime.UtcNow),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("Paid", result.Value.Outcome);
+
+        var replay = await handler.Handle(
+            new ConfirmBookingPaymentCommand("PM-ORDER-7", 777777, 57500, true, false, DateTime.UtcNow),
+            CancellationToken.None);
+
+        Assert.True(replay.IsSuccess);
+        Assert.Equal("AlreadyProcessed", replay.Value.Outcome);
+        Assert.Equal(BookingStatus.PendingCaregiverApproval, dbContext.Bookings.Single().Status);
     }
 
     [Fact]

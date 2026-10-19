@@ -6,11 +6,13 @@ using Microsoft.Extensions.Options;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
+using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Payments;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.Modules.Finance.Domain;
 using Sanad.UnitTests.Finance;
 
 namespace Sanad.UnitTests.Families.Subscriptions;
@@ -24,7 +26,7 @@ public sealed class SubscriptionPaymentTests
         var paymob = new FakePaymobClient();
         var now = DateTime.UtcNow;
 
-        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var result = await IntentHandler(db, paymob).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId,
                 plan.Id,
@@ -55,7 +57,7 @@ public sealed class SubscriptionPaymentTests
     {
         await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
         var paymob = new FakePaymobClient();
-        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var result = await IntentHandler(db, paymob).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Wallet, Billing(), DateTime.UtcNow),
             default);
@@ -66,7 +68,7 @@ public sealed class SubscriptionPaymentTests
 
         db.FamilySubscriptions.Add(FamilySubscription.Create(family.Id, plan));
         await db.SaveChangesAsync();
-        result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        result = await IntentHandler(db, paymob).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
             default);
@@ -81,7 +83,7 @@ public sealed class SubscriptionPaymentTests
         await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
         var paymob = new FakePaymobClient();
 
-        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var result = await IntentHandler(db, paymob).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 UserId.New(), plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
             default);
@@ -149,7 +151,7 @@ public sealed class SubscriptionPaymentTests
         await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
         var paymob = new FakePaymobClient();
 
-        var result = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var result = await IntentHandler(db, paymob).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId,
                 plan.Id,
@@ -232,7 +234,7 @@ public sealed class SubscriptionPaymentTests
     {
         await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
         var paymob = new FakePaymobClient();
-        var intent = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var intent = await IntentHandler(db, paymob).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
             default);
@@ -249,7 +251,7 @@ public sealed class SubscriptionPaymentTests
         Assert.Equal("Failed", failed.Value.Outcome);
         Assert.Empty(db.FamilySubscriptions);
 
-        var secondIntent = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var secondIntent = await IntentHandler(db, paymob).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow), default);
         long secondExpectedAmountCents = (long)(secondIntent.Value.Amount * 100m);
@@ -269,7 +271,7 @@ public sealed class SubscriptionPaymentTests
     {
         await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
         var paymob = new FakePaymobClient();
-        var intent = await new CreateSubscriptionPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var intent = await IntentHandler(db, paymob).Handle(
             new CreateSubscriptionPaymentIntentCommand(
                 family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow), default);
 
@@ -295,13 +297,13 @@ public sealed class SubscriptionPaymentTests
         await db.SaveChangesAsync();
         var paymob = new FakePaymobClient();
 
-        var early = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var early = await RenewalIntentHandler(db, paymob).Handle(
             new CreateSubscriptionRenewalPaymentIntentCommand(
                 family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), created.AddDays(15)), default);
         Assert.False(early.IsSuccess);
         Assert.Equal("Subscriptions.Renewal.NotDue", early.Error.Code);
 
-        var result = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var result = await RenewalIntentHandler(db, paymob).Handle(
             new CreateSubscriptionRenewalPaymentIntentCommand(
                 family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), created.AddMonths(1)), default);
 
@@ -324,7 +326,7 @@ public sealed class SubscriptionPaymentTests
         var paymob = new FakePaymobClient();
         DateTime failureTime = periodEnd.AddMinutes(1);
 
-        var first = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var first = await RenewalIntentHandler(db, paymob).Handle(
             new CreateSubscriptionRenewalPaymentIntentCommand(
                 family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), failureTime), default);
         var failed = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
@@ -333,7 +335,7 @@ public sealed class SubscriptionPaymentTests
         Assert.Equal("Failed", failed.Value.Outcome);
         Assert.True(subscription.IsWithinRenewalGrace(periodEnd.AddDays(3)));
 
-        var retry = await new CreateSubscriptionRenewalPaymentIntentCommandHandler(db, paymob, new FixedPlatformChargeRules(10m, 5m)).Handle(
+        var retry = await RenewalIntentHandler(db, paymob).Handle(
             new CreateSubscriptionRenewalPaymentIntentCommand(
                 family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), periodEnd.AddDays(3)), default);
         long retryAmountCents = (long)(retry.Value.Amount * 100m);
@@ -345,12 +347,362 @@ public sealed class SubscriptionPaymentTests
         Assert.Null(subscription.RenewalGraceEndsOnUtc);
     }
 
+    // ---------------------- E04-B platform control gates ----------------------
+
+    private static CreateSubscriptionPaymentIntentCommandHandler IntentHandler(
+        FamiliesDbContext db,
+        IPaymobClient paymob,
+        FixedPlatformControls? controls = null)
+    {
+        // E04: one explicit in-memory control record supplies both the control
+        // state and the method-configuration truth.
+        FixedPlatformControls platform = controls ?? FixedPlatformControls.Operational();
+
+        return new CreateSubscriptionPaymentIntentCommandHandler(
+            db, paymob, new FixedPlatformChargeRules(10m, 5m), platform, platform);
+    }
+
+    private static CreateSubscriptionRenewalPaymentIntentCommandHandler RenewalIntentHandler(
+        FamiliesDbContext db,
+        IPaymobClient paymob,
+        FixedPlatformControls? controls = null)
+    {
+        FixedPlatformControls platform = controls ?? FixedPlatformControls.Operational();
+
+        return new CreateSubscriptionRenewalPaymentIntentCommandHandler(
+            db, paymob, new FixedPlatformChargeRules(10m, 5m), platform, platform);
+    }
+
+    [Fact]
+    public async Task Initial_intent_during_maintenance_is_rejected_before_any_provider_call()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        var paymob = new FakePaymobClient();
+
+        var result = await IntentHandler(db, paymob, FixedPlatformControls.Maintenance()).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.Maintenance", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+    }
+
+    [Fact]
+    public async Task Initial_intent_for_a_disabled_card_is_rejected_before_any_provider_call()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { CardEnabled = false };
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+
+        // The still-configured and still-enabled Wallet method remains usable.
+        Assert.True((await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Wallet, Billing(), DateTime.UtcNow),
+            default)).IsSuccess);
+    }
+
+    [Fact]
+    public async Task Initial_intent_for_an_unconfigured_wallet_is_rejected_before_any_provider_call()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { WalletConfigured = false };
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Wallet, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+    }
+
+    [Fact]
+    public async Task Card_enrollment_intent_without_the_3ds_integration_is_rejected_before_any_provider_call()
+    {
+        // A plan that carries a provider subscription plan id sends this Card
+        // intent through the dedicated 3DS enrollment integration, which is a
+        // different integration id from the generic Card one, so the generic
+        // Card configuration alone cannot satisfy it.
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls
+        {
+            CardConfigured = true,
+            CardSubscriptionEnrollmentConfigured = false
+        };
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Null(paymob.LastInput);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+    }
+
+    [Fact]
+    public async Task Card_enrollment_intent_with_the_3ds_integration_keeps_the_existing_success_flow()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
+        var paymob = new FakePaymobClient();
+
+        var result = await IntentHandler(db, paymob, FixedPlatformControls.Operational()).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.True(result.Value.RecurringRenewalSupported);
+        Assert.Equal(1, paymob.IntentCalls);
+        Assert.Equal(6755, paymob.LastInput!.SubscriptionPlanId);
+
+        var attempt = await db.SubscriptionPaymentAttempts.SingleAsync();
+        Assert.Equal(SubscriptionPaymentAttemptStatus.Pending, attempt.Status);
+        Assert.Equal(result.Value.MerchantReference, attempt.MerchantReference);
+    }
+
+    [Fact]
+    public async Task Card_intent_for_a_plan_without_a_provider_plan_id_keeps_the_generic_card_rule()
+    {
+        // No provider subscription plan id: no enrollment is sent, so the
+        // generic Card integration remains sufficient.
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { CardSubscriptionEnrollmentConfigured = false };
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.False(result.Value.RecurringRenewalSupported);
+        Assert.Equal(1, paymob.IntentCalls);
+        Assert.Null(paymob.LastInput!.SubscriptionPlanId);
+        Assert.Single(db.SubscriptionPaymentAttempts);
+    }
+
+    [Fact]
+    public async Task Wallet_intent_for_an_enrollment_plan_is_unaffected_by_the_3ds_prerequisite()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { CardSubscriptionEnrollmentConfigured = false };
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Wallet, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, paymob.IntentCalls);
+        Assert.Null(paymob.LastInput!.SubscriptionPlanId);
+        Assert.Single(db.SubscriptionPaymentAttempts);
+    }
+
+    [Fact]
+    public async Task Renewal_intent_is_unaffected_by_the_3ds_enrollment_prerequisite()
+    {
+        // Renewal never sends an enrollment plan id, so it keeps the generic
+        // Card integration rule even when the plan itself has a provider id.
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        db.FamilySubscriptions.Add(FamilySubscription.Create(family.Id, plan, created, created.AddMonths(1)));
+        await db.SaveChangesAsync();
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { CardSubscriptionEnrollmentConfigured = false };
+
+        var result = await RenewalIntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionRenewalPaymentIntentCommand(
+                family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), created.AddMonths(1)),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, paymob.IntentCalls);
+        Assert.Null(paymob.LastInput!.SubscriptionPlanId);
+        Assert.Single(db.SubscriptionPaymentAttempts);
+    }
+
+    [Theory]
+    [InlineData("missing")]
+    [InlineData("unreadable")]
+    public async Task Subscription_intent_fails_closed_when_the_control_record_is_unavailable(string state)
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        var paymob = new FakePaymobClient();
+
+        FixedPlatformControls controls = state == "missing"
+            ? FixedPlatformControls.Missing()
+            : FixedPlatformControls.Unreadable();
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.ControlStateUnavailable", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+    }
+
+    [Fact]
+    public async Task Renewal_intent_during_maintenance_is_rejected_before_any_provider_call()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        FamilySubscription subscription = FamilySubscription.Create(family.Id, plan, created, created.AddMonths(1));
+        db.FamilySubscriptions.Add(subscription);
+        await db.SaveChangesAsync();
+        var paymob = new FakePaymobClient();
+
+        var result = await RenewalIntentHandler(db, paymob, FixedPlatformControls.Maintenance()).Handle(
+            new CreateSubscriptionRenewalPaymentIntentCommand(
+                family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), created.AddMonths(1)),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.Maintenance", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+        Assert.Null(subscription.RenewalGraceEndsOnUtc);
+    }
+
+    [Fact]
+    public async Task Renewal_intent_for_an_unconfigured_wallet_is_rejected_before_any_provider_call()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        db.FamilySubscriptions.Add(FamilySubscription.Create(family.Id, plan, created, created.AddMonths(1)));
+        await db.SaveChangesAsync();
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { WalletConfigured = false, WalletEnabled = true };
+
+        var result = await RenewalIntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionRenewalPaymentIntentCommand(
+                family.OwnerUserId, SubscriptionPaymentMethod.Wallet, Billing(), created.AddMonths(1)),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+    }
+
+    [Theory]
+    [InlineData(1, null)]
+    [InlineData(2, null)]
+    [InlineData(0, "Platform.PaymentMethodUnavailable")]
+    [InlineData(99, "Platform.PaymentMethodUnavailable")]
+    public async Task Subscription_gate_maps_only_defined_methods(int method, string? expectedCode)
+    {
+        // Exhaustive switch: an undefined enum value (an unvalidated cast that
+        // reaches a direct handler call, e.g. renewal) must fail closed as
+        // unavailable instead of falling through to Wallet.
+        var controls = new FixedPlatformControls();
+
+        Error? error = await PlatformControlGate.CheckNewPaymentIntentAsync(
+            controls,
+            controls,
+            (SubscriptionPaymentMethod)method,
+            CancellationToken.None);
+
+        Assert.Equal(expectedCode, error?.Code);
+    }
+
+    [Fact]
+    public async Task Undefined_method_on_renewal_is_rejected_before_any_provider_call()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        DateTime created = new(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        db.FamilySubscriptions.Add(FamilySubscription.Create(family.Id, plan, created, created.AddMonths(1)));
+        await db.SaveChangesAsync();
+        var paymob = new FakePaymobClient();
+
+        var result = await RenewalIntentHandler(db, paymob, new FixedPlatformControls()).Handle(
+            new CreateSubscriptionRenewalPaymentIntentCommand(
+                family.OwnerUserId, (SubscriptionPaymentMethod)99, Billing(), created.AddMonths(1)),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+    }
+
+    [Fact]
+    public async Task Undefined_method_on_initial_intent_is_rejected_before_any_provider_call()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        var paymob = new FakePaymobClient();
+
+        var result = await IntentHandler(db, paymob, new FixedPlatformControls()).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, (SubscriptionPaymentMethod)99, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+    }
+
+    [Fact]
+    public async Task Existing_pending_attempt_still_settles_exactly_once_while_the_platform_is_in_maintenance()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls();
+
+        var initial = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+        Assert.True(initial.IsSuccess);
+        long amountCents = (long)(initial.Value.Amount * 100m);
+
+        // The platform enters maintenance after the intent already exists: the
+        // verified provider callback path never consults the control record and
+        // must still settle the existing payment exactly once.
+        controls.State = PlatformState.Maintenance;
+
+        var paid = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
+            new ConfirmSubscriptionPaymentCommand(
+                initial.Value.MerchantReference, 41, amountCents, "EGP", true, false, DateTime.UtcNow),
+            default);
+        Assert.Equal("Paid", paid.Value.Outcome);
+
+        var duplicate = await new ConfirmSubscriptionPaymentCommandHandler(db, paymob).Handle(
+            new ConfirmSubscriptionPaymentCommand(
+                initial.Value.MerchantReference, 41, amountCents, "EGP", true, false, DateTime.UtcNow),
+            default);
+        Assert.Equal("AlreadyProcessed", duplicate.Value.Outcome);
+    }
+
     private static FamiliesDbContext SeedDb(
         out Family family,
         out SubscriptionPlanVersion plan,
         int? paymobSubscriptionPlanId = null)
-    {
-        var db = new FamiliesDbContext(new DbContextOptionsBuilder<FamiliesDbContext>()
+    {        var db = new FamiliesDbContext(new DbContextOptionsBuilder<FamiliesDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         DateTime now = DateTime.UtcNow;
         family = Family.Create(UserId.New());
@@ -375,6 +727,8 @@ public sealed class SubscriptionPaymentTests
     {
         public PaymobSubscriptionPaymentIntentInput? LastInput { get; private set; }
 
+        public int IntentCalls { get; private set; }
+
         public Task<Result<PaymobPaymentIntent>> CreatePaymentIntentAsync(
             PaymobPaymentIntentInput input,
             CancellationToken cancellationToken = default) =>
@@ -385,6 +739,7 @@ public sealed class SubscriptionPaymentTests
             PaymobSubscriptionPaymentIntentInput input,
             CancellationToken cancellationToken = default)
         {
+            IntentCalls++;
             LastInput = input;
             return Task.FromResult(Result<PaymobPaymentIntent>.Success(
                 new PaymobPaymentIntent(

@@ -119,6 +119,131 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                             t.HasCheckConstraint("ck_platform_charge_rules_version", "version > 0");
                         });
                 });
+
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.PlatformControlAuditEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<bool>("AfterCardEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("after_card_enabled");
+
+                    b.Property<string>("AfterMaintenanceMessageArabic")
+                        .HasColumnType("text")
+                        .HasColumnName("after_maintenance_message_arabic");
+
+                    b.Property<string>("AfterMaintenanceMessageEnglish")
+                        .HasColumnType("text")
+                        .HasColumnName("after_maintenance_message_english");
+
+                    b.Property<int>("AfterState")
+                        .HasColumnType("integer")
+                        .HasColumnName("after_state");
+
+                    b.Property<bool>("AfterWalletEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("after_wallet_enabled");
+
+                    b.Property<bool>("BeforeCardEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("before_card_enabled");
+
+                    b.Property<string>("BeforeMaintenanceMessageArabic")
+                        .HasColumnType("text")
+                        .HasColumnName("before_maintenance_message_arabic");
+
+                    b.Property<string>("BeforeMaintenanceMessageEnglish")
+                        .HasColumnType("text")
+                        .HasColumnName("before_maintenance_message_english");
+
+                    b.Property<int>("BeforeState")
+                        .HasColumnType("integer")
+                        .HasColumnName("before_state");
+
+                    b.Property<bool>("BeforeWalletEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("before_wallet_enabled");
+
+                    b.Property<string>("InternalReason")
+                        .HasColumnType("text")
+                        .HasColumnName("internal_reason");
+
+                    b.Property<int>("NewVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("new_version");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_on_utc");
+
+                    b.Property<int>("PreviousVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("previous_version");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("platform_control_audit_entries", "finance", t =>
+                        {
+                            t.HasCheckConstraint("ck_platform_control_audit_entries_states", "before_state IN (1, 2) AND after_state IN (1, 2)");
+
+                            t.HasCheckConstraint("ck_platform_control_audit_entries_versions", "previous_version > 0 AND new_version = previous_version + 1");
+                        });
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.PlatformControlState", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<bool>("CardEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("card_enabled");
+
+                    b.Property<string>("MaintenanceMessageArabic")
+                        .HasColumnType("text")
+                        .HasColumnName("maintenance_message_arabic");
+
+                    b.Property<string>("MaintenanceMessageEnglish")
+                        .HasColumnType("text")
+                        .HasColumnName("maintenance_message_english");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<bool>("WalletEnabled")
+                        .HasColumnType("boolean")
+                        .HasColumnName("wallet_enabled");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Version")
+                        .IsUnique()
+                        .HasDatabaseName("ux_platform_control_states_version");
+
+                    b.ToTable("platform_control_states", "finance", t =>
+                        {
+                            t.HasCheckConstraint("ck_platform_control_states_state", "state IN (1, 2)");
+
+                            t.HasCheckConstraint("ck_platform_control_states_version", "version > 0");
+                        });
+                });
 #pragma warning restore 612, 618
         }
     }

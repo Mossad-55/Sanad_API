@@ -15,6 +15,7 @@ using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.UnitTests.Families;
 using Sanad.UnitTests.Finance;
 
 namespace Sanad.UnitTests.ChatPlus;
@@ -376,7 +377,8 @@ public sealed class ChatPlusPricingTests
         var handler = new CreateBookingCheckoutCommandHandler(
             families,
             new FakeCheckoutPricing(),
-            new FixedPlatformChargeRules(15m, 0m));
+            new FixedPlatformChargeRules(15m, 0m),
+            FixedPlatformControls.Operational());
 
         var attributed = await handler.Handle(
             new CreateBookingCheckoutCommand(

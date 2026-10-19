@@ -449,6 +449,47 @@
           "description": "The only operation returning the full IBAN. No-store response; every reveal is audited. Manual fixture only; never replay against shared data."
         }
       ]
+    },
+    {
+      "name": "Platform controls (SuperAdmin only)",
+      "item": [
+        {
+          "name": "Get platform controls",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/platform-controls"
+          },
+          "description": "SuperAdmin only (401 unauthenticated, 403 any other role). Returns version, state (1 Operational, 2 Maintenance), the bilingual maintenance message, the Card/Wallet switches, and updatedOnUtc. 503 Platform.ControlStateUnavailable when the control record cannot be read; there is no default Operational fallback."
+        },
+        {
+          "name": "Update platform controls",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": 1,\n  \"state\": 2,\n  \"cardEnabled\": false,\n  \"walletEnabled\": true,\n  \"maintenanceMessageArabic\": \"الصيانة الدورية\",\n  \"maintenanceMessageEnglish\": \"Scheduled maintenance\",\n  \"internalReason\": \"Paymob maintenance window\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/platform-controls"
+          },
+          "description": "Full replacement of the editable values; every field is supplied explicitly and an omitted method switch is disabled. Send the version read from the previous request as expectedVersion. 400 Platform.Control.Invalid (invalid value or message over 500 characters), 409 Platform.ControlVersionConflict (stale version, current state preserved), 503 Platform.ControlStateUnavailable. This example switches the platform into Maintenance and disables Card: it changes live availability, so run it only on an owner-authorized target and restore the previous state afterwards. internalReason is stored in the audit history only and is never returned publicly."
+        }
+      ]
     }
   ]
 }

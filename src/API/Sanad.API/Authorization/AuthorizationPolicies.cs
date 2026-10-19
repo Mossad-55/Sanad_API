@@ -58,4 +58,10 @@ public static class AuthorizationPolicies
     public const string SessionBoundAccess = "SessionBoundAccess";
 
     public const string SuperAdminOnly = "SuperAdminOnly";
+
+    /// <summary>
+    /// E04 platform controls: authenticated SuperAdmin-only read/update of the
+    /// operational/maintenance state and Card/Wallet switches.
+    /// </summary>
+    public const string PlatformControlsAdmin = "PlatformControlsAdmin";
 }

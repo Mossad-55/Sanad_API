@@ -1,9 +1,9 @@
 # E04 — Platform controls and public business status
 
-**Status: Owner-approved direction — 2026-10-19.** This contract records the
-Owner's accepted recommendation. Its implementation manifest and Worker brief
-must be prepared and pinned before dispatch; release/deployment remain separate
-Owner gates.
+**Owner-approved scope — 2026-10-19.** This retained contract owns product
+requirements only. The [single Worker brief](../worker-prompts/e04-platform-controls.md)
+owns execution, task status and evidence. Release/deployment remain separately
+Owner-authorized; the simplified governance replaces the old tracker/push workflow.
 
 ## Product input and current evidence
 
@@ -119,14 +119,13 @@ Operational.
 - No frontend/UI implementation, general application configuration registry,
   gateway-secret editing, new payment provider/method, provider call, or data
   repair.
-- This draft does not authorize implementation, migration application, commit,
-  push, publish, or deployment. Contract approval and release authorization are
-  separate gates.
+- Scope approval permits preparation of the Worker brief. Start implementation
+  only on Owner direction; migration application, commit/push and deployment
+  require their applicable explicit authorization.
 
-## Owner approval required
+## Execution reference
 
-This direction is Owner-approved. The Mastermind will save the phase tracker and
-Worker brief with the pinned revision and exact file manifest, then obtain the
-Owner-selected Worker provider/model before dispatch. No Worker starts before
-those dispatch materials are saved and the agreed pre-dispatch commit/push gate
-is satisfied. Release/deployment still require separate explicit authorization.
+Use the single brief and the already selected E04 Worker model. Pin the current
+revision/local delta before dispatch. No separate tracker, repeated model selection
+or planning-only commit/push is required. Product scope and exceptions above are
+unchanged by the documentation cleanup.

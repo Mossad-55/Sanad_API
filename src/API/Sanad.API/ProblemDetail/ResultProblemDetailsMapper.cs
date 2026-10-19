@@ -275,6 +275,16 @@ public static class ResultProblemDetailsMapper
             ["Paymob.MethodNotAvailable"] = 409,
             ["Paymob.GatewayError"] = 502,
 
+            // E04 platform controls: maintenance blocks new checkout/payment
+            // starts (503), a disabled/unconfigured method is a client error
+            // (400), a stale control update conflicts (409), and an unreadable
+            // control record fails closed (503).
+            ["Platform.Maintenance"] = 503,
+            ["Platform.PaymentMethodUnavailable"] = 400,
+            ["Platform.ControlVersionConflict"] = 409,
+            ["Platform.ControlStateUnavailable"] = 503,
+            ["Platform.Control.Invalid"] = 400,
+
             ["Storage.File.Empty"] = 400,
             ["Storage.File.TooLarge"] = 400,
             ["Storage.File.UnsupportedType"] = 400,
@@ -414,6 +424,9 @@ public static class ResultProblemDetailsMapper
             StatusCodes.Status502BadGateway =>
                 "Bad Gateway",
 
+            StatusCodes.Status503ServiceUnavailable =>
+                "Service Unavailable",
+
             _ =>
                 "Internal Server Error"
         };
@@ -435,6 +448,9 @@ public static class ResultProblemDetailsMapper
 
             StatusCodes.Status409Conflict =>
                 "The request conflicts with the current state.",
+
+            StatusCodes.Status503ServiceUnavailable =>
+                "The service is temporarily unavailable.",
 
             StatusCodes.Status500InternalServerError =>
                 "An unexpected error occurred.",

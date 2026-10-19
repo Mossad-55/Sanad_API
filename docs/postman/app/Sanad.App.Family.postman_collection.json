@@ -2231,7 +2231,7 @@
                 "raw": "{\n  \"elderlyId\": \"{{dependentId}}\",\n  \"caregiverId\": \"{{caregiverId}}\",\n  \"shiftType\": 1,\n  \"bookingDate\": \"2026-06-08\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"serviceAddress\": \"14 شارع الكورنيش، الإسكندرية\",\n  \"specialInstructions\": \"المريض يعاني من ضغط الدم\"\n}"
               }
             },
-            "description": "No price/caregiver-type fields — pricing is server-side (base + 15% platform fee).",
+            "description": "No price/caregiver-type fields — pricing is server-side (base + 15% platform fee). Platform availability: a new checkout is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the platform controls cannot be read (503 Platform.ControlStateUnavailable); no booking and no slot hold are created.",
             "event": [
               {
                 "listen": "test",
@@ -2287,7 +2287,7 @@
                 }
               },
               "url": "{{baseUrl}}/api/v1/family/bookings/{{bookingId}}/payments/intent",
-              "description": "Creates a Paymob intention and returns clientSecret + publicKey for the Paymob mobile SDK (embedded checkout). The webhook — not the SDK callback — is the source of truth. method: 1 Card, 2 Wallet (3 ApplePay reserved)."
+              "description": "Creates a Paymob intention and returns clientSecret + publicKey for the Paymob mobile SDK (embedded checkout). The webhook — not the SDK callback — is the source of truth. method: 1 Card, 2 Wallet (3 ApplePay reserved). Platform availability: a new intent is refused while the platform is in Maintenance (503 Platform.Maintenance), when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable), or when the platform controls cannot be read (503 Platform.ControlStateUnavailable); no Paymob call and no pending payment are created."
             },
             "response": []
           },
@@ -2536,7 +2536,7 @@
               },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/payment-intent"
             },
-            "description": "Owner only; the server reruns the quote and returns a provider client secret, public key, amount/currency, and a sub_ merchant reference. The numeric method enum is 1=Card or 2=Wallet. recurringRenewalSupported is true only for Card when the selected local plan has a positive paymobSubscriptionPlanId and Paymob Card 3DS is configured; Wallet is one-time/manual. Do not run against shared data without an owner-approved payment fixture."
+            "description": "Owner only; the server reruns the quote and returns a provider client secret, public key, amount/currency, and a sub_ merchant reference. The numeric method enum is 1=Card or 2=Wallet. recurringRenewalSupported is true only for Card when the selected local plan has a positive paymobSubscriptionPlanId and Paymob Card 3DS is configured; Wallet is one-time/manual. Do not run against shared data without an owner-approved payment fixture. Platform availability: a new intent is refused while the platform is in Maintenance (503 Platform.Maintenance), when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable, including a missing Paymob Card 3DS enrollment integration), or when the platform controls cannot be read (503 Platform.ControlStateUnavailable)."
           },
           {
             "name": "Get current subscription snapshot",
@@ -2594,7 +2594,7 @@
               },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/plan-change/payment-intent"
             },
-            "description": "Owner-only mutation; method 1=Card or 2=Wallet. Card uses the existing provider subscription and updates its future recurring gross amount after successful settlement; Wallet remains one-time/manual. A zero-charge upgrade performs no provider charge and returns amount 0, but still synchronizes Card future billing before local finalization. A target priced at or below the current plan returns 409 Subscriptions.PlanChange.NotUpgrade before any provider call. If tax is not configured, the quote is rejected with 409 Subscriptions.Quote.TaxNotConfigured before payment. Do not replay without an approved payment fixture."
+            "description": "Owner-only mutation; method 1=Card or 2=Wallet. Card uses the existing provider subscription and updates its future recurring gross amount after successful settlement; Wallet remains one-time/manual. A zero-charge upgrade performs no provider charge and returns amount 0, but still synchronizes Card future billing before local finalization. A target priced at or below the current plan returns 409 Subscriptions.PlanChange.NotUpgrade before any provider call. If tax is not configured, the quote is rejected with 409 Subscriptions.Quote.TaxNotConfigured before payment. Do not replay without an approved payment fixture. Platform availability: a new plan-change intent is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable); the plan-change quote and the pending-downgrade lifecycle stay available during Maintenance."
           },
           {
             "name": "Schedule or replace pending downgrade",
@@ -2684,7 +2684,7 @@
               },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/renewal/payment-intent"
             },
-            "description": "Owner only; starts at the period boundary or during seven-day grace using stored snapshot terms. A seeded current subscription normally returns 409 NotDue; do not replay against a due shared subscription without an approved fixture."
+            "description": "Owner only; starts at the period boundary or during seven-day grace using stored snapshot terms. A seeded current subscription normally returns 409 NotDue; do not replay against a due shared subscription without an approved fixture. Platform availability: a new renewal intent is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable)."
           },
           {
             "name": "List subscription invoices",

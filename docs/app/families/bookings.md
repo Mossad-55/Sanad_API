@@ -105,6 +105,15 @@ PendingPayment ──pay──▶ PendingCaregiverApproval ──accept──▶
 
 `totalPayableAmount = base fee + platform fee amount + tax amount`; both percentages are calculated from the base fee and rounded independently. The exact rates and rule version are server-selected and preserved in the booking snapshot. Payment starts with the intent endpoint below.
 
+**Platform availability.** A new checkout is refused while the platform is in
+Maintenance (`503 Platform.Maintenance`) and when the platform controls cannot
+be read (`503 Platform.ControlStateUnavailable`). The refusal happens before any
+slot reservation or booking is created, so a rejected checkout leaves no
+booking and no hold. Reads, cancellation, refunds and the booking lifecycle stay
+available. The app can read the current state and the available payment methods
+from the public status route — see
+[platform business status](../public/platform-status.md).
+
 ### 2. Tab list
 
 `GET /api/v1/family/bookings?tab=1` → `FamilyBookingListItem[]`: booking id, caregiver id, senior Arabic/English names, date + time window, `shiftType`, `status`, `totalPayableAmount`, `currency`. The caregiver name/avatar fields are reserved and currently return `null` pending the caregiver-name join.
@@ -145,6 +154,16 @@ Family Owner or Editor may cancel; Viewer receives `403 Bookings.UnauthorizedRol
 | `billing` | object | Required by Paymob: first/last name, email, phone number. The app should auto-fill these from the family profile. |
 
 Only a booking in `PendingPayment` can start a payment; the amount and currency always come from the booking's immutable price snapshot (never from the client).
+
+**Platform availability.** A new payment intent is refused while the platform is
+in Maintenance (`503 Platform.Maintenance`), when the selected method is
+disabled or not configured on the server (`400 Platform.PaymentMethodUnavailable`
+— this includes ApplePay, which E04 does not support), or when the platform
+controls cannot be read (`503 Platform.ControlStateUnavailable`). The refusal
+happens before any Paymob call and before any pending transaction is written, so
+a rejected request leaves no partial payment state. Read the currently
+available methods from the public status route — see
+[platform business status](../public/platform-status.md).
 
 **`200` response**
 
@@ -204,3 +223,6 @@ If the refund call fails at the gateway, the booking still transitions and the c
 | `Paymob.NotConfigured` | 503 | Payment gateway keys are absent from server configuration. |
 | `Paymob.MethodNotAvailable` | 409 | Method not enabled (e.g. Apple Pay before Paymob enablement). |
 | `Paymob.GatewayError` | 502 | Paymob returned an unexpected response. |
+| `Platform.Maintenance` | 503 | The platform is in Maintenance; a new checkout or payment intent was refused. No booking, hold, or pending payment is created. |
+| `Platform.PaymentMethodUnavailable` | 400 | The selected payment method is disabled or not configured on the server (includes ApplePay, which is not supported). No Paymob call is made. |
+| `Platform.ControlStateUnavailable` | 503 | The platform controls could not be read, so the request failed closed. Not a published outage — retry later. |

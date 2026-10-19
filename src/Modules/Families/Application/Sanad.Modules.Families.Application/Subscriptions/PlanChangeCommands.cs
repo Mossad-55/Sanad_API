@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
+using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Finance.Application;
@@ -71,9 +72,17 @@ public sealed class CreatePlanChangeQuoteCommandHandler : IQueryHandler<CreatePl
 public sealed class CreatePlanChangePaymentIntentCommandHandler : ICommandHandler<CreatePlanChangePaymentIntentCommand, SubscriptionPaymentIntentResponse>
 {
     private readonly IFamiliesDbContext _db; private readonly IPaymobClient _paymob; private readonly IPlatformChargeRuleReader _chargeRules;
-    public CreatePlanChangePaymentIntentCommandHandler(IFamiliesDbContext db, IPaymobClient paymob, IPlatformChargeRuleReader chargeRules) { _db = db; _paymob = paymob; _chargeRules = chargeRules; }
+    private readonly IPlatformControlReader _controls; private readonly IPaymentMethodConfiguration _paymentMethods;
+    public CreatePlanChangePaymentIntentCommandHandler(IFamiliesDbContext db, IPaymobClient paymob, IPlatformChargeRuleReader chargeRules, IPlatformControlReader controls, IPaymentMethodConfiguration paymentMethods) { _db = db; _paymob = paymob; _chargeRules = chargeRules; _controls = controls; _paymentMethods = paymentMethods; }
     public async Task<Result<SubscriptionPaymentIntentResponse>> Handle(CreatePlanChangePaymentIntentCommand request, CancellationToken ct)
     {
+        // E04: a new plan-change payment intent is gated before any provider
+        // call or attempt write. The plan-change quote stays a read, and
+        // pending-downgrade replace/cancel stay lifecycle operations.
+        Error? platformError = await PlatformControlGate.CheckNewPaymentIntentAsync(
+            _controls, _paymentMethods, request.Method, ct);
+        if (platformError is not null) return Result<SubscriptionPaymentIntentResponse>.Failure(platformError);
+
         var quote = await new CreatePlanChangeQuoteCommandHandler(_db, _chargeRules).Handle(new(request.UserId, request.PlanVersionId, request.UtcNow), ct);
         if (!quote.IsSuccess) return Result<SubscriptionPaymentIntentResponse>.Failure(quote.Error);
         var resolved = await new CreatePlanChangeQuoteCommandHandler(_db, _chargeRules).Resolve(request.UserId, request.PlanVersionId, request.UtcNow, ct);

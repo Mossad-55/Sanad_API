@@ -7,8 +7,141 @@ using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Families;
+using Sanad.Modules.Families.Domain.Subscriptions;
+using Sanad.Modules.Finance.Application;
+using Sanad.Modules.Finance.Domain;
 
 namespace Sanad.Modules.Families.Application.Bookings;
+
+/// <summary>
+/// E04 platform-control gate for the named NEW operations only: a new caregiver
+/// booking checkout, a new Care Home booking checkout, and new payment-intent
+/// creation for caregiver bookings, Care Home bookings, subscription
+/// initial/renewal payments and plan changes. Every check reads the persisted
+/// control record through <see cref="IPlatformControlReader"/> and fails closed
+/// with the generic unavailable error when it cannot be read: no request may
+/// bypass the gate by assuming Operational.
+/// Verified provider callbacks, existing intent readback/reuse, reads,
+/// cancellations, refunds, care-delivery lifecycle and other unlisted
+/// operations deliberately do not call this gate.
+/// </summary>
+public static class PlatformControlGate
+{
+    /// <summary>Maintenance gate for a new checkout that starts no provider call.</summary>
+    public static async Task<Error?> CheckNewCheckoutAsync(
+        IPlatformControlReader controls,
+        CancellationToken cancellationToken)
+    {
+        var (snapshot, error) = await ReadAsync(controls, cancellationToken);
+        if (error is not null)
+        {
+            return error;
+        }
+
+        return snapshot!.Values.State == PlatformState.Maintenance
+            ? PlatformControlErrors.Maintenance
+            : null;
+    }
+
+    /// <summary>
+    /// Maintenance and method gate for a caregiver/booking payment intent.
+    /// ApplePay is deliberately unsupported by E04 and is rejected here, so it
+    /// is never handed to the gateway.
+    /// </summary>
+    public static Task<Error?> CheckNewPaymentIntentAsync(
+        IPlatformControlReader controls,
+        IPaymentMethodConfiguration methods,
+        PaymentMethod method,
+        CancellationToken cancellationToken) =>
+        CheckAsync(
+            controls,
+            methods,
+            method switch
+            {
+                PaymentMethod.Card => MethodAvailability.Card,
+                PaymentMethod.Wallet => MethodAvailability.Wallet,
+                _ => MethodAvailability.Unsupported
+            },
+            cancellationToken);
+
+    /// <summary>Maintenance and method gate for a subscription payment intent.</summary>
+    public static Task<Error?> CheckNewPaymentIntentAsync(
+        IPlatformControlReader controls,
+        IPaymentMethodConfiguration methods,
+        SubscriptionPaymentMethod method,
+        CancellationToken cancellationToken) =>
+        CheckAsync(
+            controls,
+            methods,
+            // Exhaustive mapping: an undefined enum value (an unvalidated cast
+            // reaching a direct handler call) must never be treated as a
+            // supported method, so it fails closed as unavailable.
+            method switch
+            {
+                SubscriptionPaymentMethod.Card => MethodAvailability.Card,
+                SubscriptionPaymentMethod.Wallet => MethodAvailability.Wallet,
+                _ => MethodAvailability.Unsupported
+            },
+            cancellationToken);
+
+    private static async Task<Error?> CheckAsync(
+        IPlatformControlReader controls,
+        IPaymentMethodConfiguration methods,
+        MethodAvailability method,
+        CancellationToken cancellationToken)
+    {
+        var (snapshot, error) = await ReadAsync(controls, cancellationToken);
+        if (error is not null)
+        {
+            return error;
+        }
+
+        PlatformControlValues values = snapshot!.Values;
+
+        if (values.State == PlatformState.Maintenance)
+        {
+            return PlatformControlErrors.Maintenance;
+        }
+
+        bool available = method switch
+        {
+            MethodAvailability.Card => values.CardEnabled && methods.CardConfigured,
+            MethodAvailability.Wallet => values.WalletEnabled && methods.WalletConfigured,
+            _ => false
+        };
+
+        return available ? null : PlatformControlErrors.PaymentMethodUnavailable;
+    }
+
+    private static async Task<(PlatformControlSnapshot? Snapshot, Error? Error)> ReadAsync(
+        IPlatformControlReader controls,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            PlatformControlSnapshot? snapshot = await controls.GetAsync(cancellationToken);
+
+            return snapshot is null
+                ? (null, PlatformControlErrors.Unavailable)
+                : (snapshot, null);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception)
+        {
+            return (null, PlatformControlErrors.Unavailable);
+        }
+    }
+
+    private enum MethodAvailability
+    {
+        Card = 1,
+        Wallet = 2,
+        Unsupported = 3
+    }
+}
 
 public sealed record BookingPaymentIntentResponse(
     Guid BookingId,
@@ -57,19 +190,39 @@ public sealed class CreateBookingPaymentIntentCommandHandler
 {
     private readonly IFamiliesDbContext _dbContext;
     private readonly IPaymobClient _paymobClient;
+    private readonly IPlatformControlReader _controls;
+    private readonly IPaymentMethodConfiguration _paymentMethods;
 
     public CreateBookingPaymentIntentCommandHandler(
         IFamiliesDbContext dbContext,
-        IPaymobClient paymobClient)
+        IPaymobClient paymobClient,
+        IPlatformControlReader controls,
+        IPaymentMethodConfiguration paymentMethods)
     {
         _dbContext = dbContext;
         _paymobClient = paymobClient;
+        _controls = controls;
+        _paymentMethods = paymentMethods;
     }
 
     public async Task<Result<BookingPaymentIntentResponse>> Handle(
         CreateBookingPaymentIntentCommand request,
         CancellationToken cancellationToken)
     {
+        // E04: creating a new intent is gated before any provider call or
+        // pending-transaction write, so a rejection leaves no partial payment
+        // state. Existing intents and callbacks are handled elsewhere.
+        Error? platformError = await PlatformControlGate.CheckNewPaymentIntentAsync(
+            _controls,
+            _paymentMethods,
+            request.Method,
+            cancellationToken);
+
+        if (platformError is not null)
+        {
+            return Result<BookingPaymentIntentResponse>.Failure(platformError);
+        }
+
         var family = await _dbContext.Families
             .AsNoTracking()
             .Include(f => f.Members)

@@ -99,6 +99,20 @@ amount, `403` non-owner, `404` unavailable plan, `409` current subscription or
 unavailable payment method, `502` provider failure, and `503` missing provider
 configuration.
 
+**Platform availability.** The initial payment intent is a new payment start,
+so it is refused while the platform is in Maintenance (`503
+Platform.Maintenance`), when the selected method is disabled or not configured
+(`400 Platform.PaymentMethodUnavailable`), or when the platform controls cannot
+be read (`503 Platform.ControlStateUnavailable`). The refusal happens before
+any provider call and before the payment attempt is written. An initial Card
+payment whose selected plan carries a provider subscription plan id also
+requires the Paymob Card 3DS enrollment integration to be configured; without
+it the request fails closed with `400 Platform.PaymentMethodUnavailable` rather
+than a gateway error. Quotes, plan reads, renewals that already exist, and
+settlement of an existing payment are unaffected. The app can read the current
+state and the available methods from the public status route — see
+[platform business status](../public/platform-status.md).
+
 ## Renewal payment and seven-day grace
 
 `POST /api/v1/family/subscriptions/renewal/payment-intent` is Owner-only and
@@ -126,6 +140,14 @@ grace expiry, or while another renewal attempt is pending returns `409`.
 This endpoint always uses the manual payment-intent boundary and reports
 `recurringRenewalSupported: false`; renewal enrollment is not started here.
 Wallet renewal remains one-time/manual.
+
+A renewal is a new payment start, so it is refused while the platform is in
+Maintenance (`503 Platform.Maintenance`), when the selected method is disabled
+or not configured (`400 Platform.PaymentMethodUnavailable`), or when the
+platform controls cannot be read (`503 Platform.ControlStateUnavailable`).
+The refusal happens before the renewal attempt is written. Renewal of an
+already-created payment and settlement of an existing renewal callback are
+unaffected.
 
 ## Plan changes
 
@@ -210,6 +232,14 @@ provider configuration returns `503` (`Paymob.NotConfigured`). A failed Card
 provider amount update leaves local pending state unchanged and is safe to
 retry; do not replay payment or downgrade mutations against shared data
 without an approved fixture.
+
+An immediate plan-change payment intent is a new payment start, so it is refused
+while the platform is in Maintenance (`503 Platform.Maintenance`), when the
+selected method is disabled or not configured (`400
+Platform.PaymentMethodUnavailable`), or when the platform controls cannot be
+read (`503 Platform.ControlStateUnavailable`). The plan-change **quote** and
+the pending-downgrade replace/cancel lifecycle are reads and existing state
+changes, not new payment starts, so they remain available during Maintenance.
 
 ### Local Development no-provider downgrade fixture
 

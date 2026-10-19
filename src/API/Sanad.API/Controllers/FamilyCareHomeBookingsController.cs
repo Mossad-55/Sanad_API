@@ -29,10 +29,13 @@ public sealed class FamilyCareHomeBookingsController(ISender sender, IFamiliesDb
     { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); return ToActionResult(await sender.Send(new GetFamilyCareHomeBookingQuery(actor, family.Id, bookingId, clock.UtcNow), ct)); }
 
     [HttpPost("checkout")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Checkout(CareHomeCheckoutRequest request, CancellationToken ct)
     { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); var resolution = await intake.ResolveAsync(new ElderlyIntakeRequest(actor, family.Id, new ElderlyId(request.ElderlyId), DateOnly.FromDateTime(clock.UtcNow), request.CareNeedsNotes, request.ResponsibleContactName, request.ResponsibleContactPhone, request.ResponsibleContactRelationship), ct); if (resolution.IsFailure) return ToActionResult(resolution); return ToActionResult(await sender.Send(new CheckoutCareHomeBookingCommand(actor, family.Id, resolution.Value, request.FacilityId, request.RoomTypeId, request.RequestedStartDate, clock.UtcNow), ct)); }
 
     [HttpPost("{bookingId:guid}/payments/intent")]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Payment(Guid bookingId, CreatePaymentIntentRequest request, CancellationToken ct)
     { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); return ToActionResult(await sender.Send(new CreateCareHomePaymentIntentCommand(actor, family.Id, bookingId, request.Method, request.Billing, clock.UtcNow), ct)); }
 

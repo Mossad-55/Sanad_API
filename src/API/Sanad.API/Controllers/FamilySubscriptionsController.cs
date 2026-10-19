@@ -168,6 +168,11 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
             "Paymob.MethodNotAvailable" => StatusCodes.Status409Conflict,
             "Paymob.GatewayError" => StatusCodes.Status502BadGateway,
             "Paymob.NotConfigured" => StatusCodes.Status503ServiceUnavailable,
+
+            // E04: maintenance/control failures are documented platform
+            // errors, never folded into the subscription fallback.
+            "Platform.Maintenance" or "Platform.ControlStateUnavailable" => StatusCodes.Status503ServiceUnavailable,
+            "Platform.PaymentMethodUnavailable" => StatusCodes.Status400BadRequest,
             _ => 0
         };
 
@@ -208,6 +213,10 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
             "Paymob.MethodNotAvailable" => StatusCodes.Status409Conflict,
             "Paymob.GatewayError" => StatusCodes.Status502BadGateway,
             "Paymob.NotConfigured" => StatusCodes.Status503ServiceUnavailable,
+
+            // E04: maintenance/control failures stay documented platform errors.
+            "Platform.Maintenance" or "Platform.ControlStateUnavailable" => StatusCodes.Status503ServiceUnavailable,
+            "Platform.PaymentMethodUnavailable" => StatusCodes.Status400BadRequest,
             _ => 0
         };
 
@@ -223,6 +232,13 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
     }
 
     [HttpPost("plan-change/payment-intent")]
+    [ProducesResponseType(typeof(SubscriptionPaymentIntentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CreatePlanChangePaymentIntent([FromBody] CreatePlanChangePaymentIntentRequest request, CancellationToken cancellationToken)
     {
         if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
@@ -292,6 +308,11 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
             "Paymob.GatewayError" => StatusCodes.Status502BadGateway,
             "Paymob.NotConfigured" => StatusCodes.Status503ServiceUnavailable,
             "Subscriptions.PlanChange.PaymentNotRequired" => StatusCodes.Status400BadRequest,
+
+            // E04: the helper's 409 fallback must never swallow the platform
+            // maintenance/method outcomes.
+            "Platform.Maintenance" or "Platform.ControlStateUnavailable" => StatusCodes.Status503ServiceUnavailable,
+            "Platform.PaymentMethodUnavailable" => StatusCodes.Status400BadRequest,
             _ => StatusCodes.Status409Conflict
         };
         return Problem(status, result.Error);

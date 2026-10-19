@@ -62,17 +62,20 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
     private readonly IFamiliesDbContext _dbContext;
     private readonly ICaregiverBookingPricing _caregiverBookingPricing;
     private readonly IPlatformChargeRuleReader _chargeRules;
+    private readonly IPlatformControlReader _controls;
     private readonly ICaregiverCatalogLookup? _catalogLookup;
 
     public CreateBookingCheckoutCommandHandler(
         IFamiliesDbContext dbContext,
         ICaregiverBookingPricing caregiverBookingPricing,
         IPlatformChargeRuleReader chargeRules,
+        IPlatformControlReader controls,
         ICaregiverCatalogLookup? catalogLookup = null)
     {
         _dbContext = dbContext;
         _caregiverBookingPricing = caregiverBookingPricing;
         _chargeRules = chargeRules;
+        _controls = controls;
         _catalogLookup = catalogLookup;
     }
 
@@ -82,6 +85,18 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
     {
         try
         {
+            // E04: a new caregiver booking checkout is gated before any
+            // validation, slot reservation or persistence, so a rejection
+            // cannot create a booking or any partial payment state.
+            Error? platformError = await PlatformControlGate.CheckNewCheckoutAsync(
+                _controls,
+                cancellationToken);
+
+            if (platformError is not null)
+            {
+                return Result<BookingCheckoutResponse>.Failure(platformError);
+            }
+
             // 1. Resolve Family & Verify Member Role
             var family = await _dbContext.Families
                 .Include(f => f.Members)

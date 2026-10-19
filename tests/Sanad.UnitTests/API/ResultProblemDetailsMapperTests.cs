@@ -175,6 +175,26 @@ public sealed class ResultProblemDetailsMapperTests
         "Identity.Verification.ProviderDeliveryFailed",
         StatusCodes.Status502BadGateway,
         "Verification code delivery is temporarily unavailable. Please try again.")]
+    [InlineData(
+        "Platform.Maintenance",
+        StatusCodes.Status503ServiceUnavailable,
+        "The service is temporarily unavailable.")]
+    [InlineData(
+        "Platform.PaymentMethodUnavailable",
+        StatusCodes.Status400BadRequest,
+        "The request could not be completed.")]
+    [InlineData(
+        "Platform.ControlVersionConflict",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
+    [InlineData(
+        "Platform.ControlStateUnavailable",
+        StatusCodes.Status503ServiceUnavailable,
+        "The service is temporarily unavailable.")]
+    [InlineData(
+        "Platform.Control.Invalid",
+        StatusCodes.Status400BadRequest,
+        "The request could not be completed.")]
     public void Create_ShouldMapStableErrorCode(
         string errorCode,
         int expectedStatusCode,
@@ -263,6 +283,27 @@ public sealed class ResultProblemDetailsMapperTests
         Assert.DoesNotContain(
             "SMS Misr",
             problemDetails.Detail);
+    }
+
+    [Fact]
+    public void Create_ShouldPresentAnUnavailableControlStateAsAGeneric503()
+    {
+        var httpContext = new DefaultHttpContext();
+        httpContext.TraceIdentifier = "trace-id";
+        httpContext.Request.Path = "/api/v1/platform/status";
+
+        var problemDetails = ResultProblemDetailsMapper.Create(
+            new Error(
+                "Platform.ControlStateUnavailable",
+                "Internal: finance row missing; Host=prod-db.internal;Password=hunter2"),
+            httpContext);
+
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, problemDetails.Status);
+        Assert.Equal("Service Unavailable", problemDetails.Title);
+        Assert.Equal("The service is temporarily unavailable.", problemDetails.Detail);
+        Assert.Equal("Platform.ControlStateUnavailable", problemDetails.Extensions["code"]);
+        Assert.DoesNotContain("prod-db.internal", problemDetails.Detail);
+        Assert.DoesNotContain("hunter2", problemDetails.Detail);
     }
 
     [Fact]

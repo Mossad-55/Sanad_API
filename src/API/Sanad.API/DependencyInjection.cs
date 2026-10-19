@@ -56,6 +56,7 @@ using Sanad.Modules.Identity.Application.Users.Admin;
 using Microsoft.Extensions.Options;
 using Sanad.Modules.Notifications.Application.Abstractions.Data;
 using Sanad.Modules.Notifications.Domain.Notifications;
+using Sanad.Modules.Families.Infrastructure.Payments;
 
 namespace Sanad.API;
 
@@ -155,6 +156,11 @@ public static class DependencyInjection
         services.AddScoped<IElderlyIntakeResolver, FamilyElderlyIntakeResolver>();
         services.AddSingleton<IAdminUserSeedProtection, AdminUserSeedProtection>();
         services.AddScoped<IAdminUserStatusNoticePublisher, AdminUserStatusNoticePublisher>();
+
+        // E04: whether Card/Wallet provider integrations are configured comes
+        // from the existing Paymob options; the public status API advertises a
+        // method only when it is both enabled and configured.
+        services.AddSingleton<IPaymentMethodConfiguration, PaymobPaymentMethodConfiguration>();
 
         services.AddOptions<LocalStorageOptions>()
             .Bind(
@@ -542,6 +548,16 @@ public static class DependencyInjection
                 policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString());
             });
 
+            // E04 platform controls: same SuperAdmin-only shape as
+            // SuperAdminOnly, named for the control surface so role denial and
+            // intent are unambiguous.
+            options.AddPolicy(AuthorizationPolicies.PlatformControlsAdmin, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString());
+            });
+
             // Sensitive Chat access: Normal plus a verified session-bound
             // sid claim. The JWT OnTokenValidated step above already
             // verifies session ownership/revocation; this policy rejects
@@ -740,4 +756,28 @@ internal sealed class AdminUserStatusNoticePublisher(
             logger.LogWarning(ex, "Could not enqueue the status-change notice for admin-managed user {UserId}.", notice.UserId.Value);
         }
     }
+}
+
+/// <summary>
+/// E04 availability truth derived from the existing Paymob options: a method
+/// is configured only when the gateway secret and that method's integration id
+/// are present. The Card subscription-enrollment prerequisite is reported
+/// separately because that single branch uses the dedicated 3DS enrollment
+/// integration instead of the generic Card integration. No provider secret or
+/// integration id is ever exposed; only the boolean outcomes reach the callers,
+/// and only the generic method truth reaches the public status response.
+/// </summary>
+internal sealed class PaymobPaymentMethodConfiguration(IOptions<PaymobOptions> options) : IPaymentMethodConfiguration
+{
+    public bool CardConfigured =>
+        !string.IsNullOrWhiteSpace(options.Value.SecretKey) &&
+        !string.IsNullOrWhiteSpace(options.Value.CardIntegrationId);
+
+    public bool WalletConfigured =>
+        !string.IsNullOrWhiteSpace(options.Value.SecretKey) &&
+        !string.IsNullOrWhiteSpace(options.Value.WalletIntegrationId);
+
+    public bool CardSubscriptionEnrollmentConfigured =>
+        !string.IsNullOrWhiteSpace(options.Value.SecretKey) &&
+        !string.IsNullOrWhiteSpace(options.Value.Card3dsIntegrationId);
 }
