@@ -1,55 +1,101 @@
 # Sanad API working instructions
 
-These repository-wide rules are referenced by the root AGENTS.md. Owner-approved on 2026-10-01. The modular migration does not restart completed product work.
+Repository-wide rules referenced by root AGENTS.md. Simplified by Owner direction on 2026-10-19.
 
 ## Start and resume
 
-- Mandatory owner intake BEFORE planning or developing ANY product slice: ask what the owner already has in the application, review supplied screens and instructions, and clarify missing behavior. Recommend options for discussion; do not infer endpoint or business-rule approval from screenshots. Add, remove, or modify tasks with the owner, then present the complete phase contract and obtain explicit owner approval before preparing implementation instructions.
-- The Mastermind owns planning, contract lock, worker handoff, review, integration, and release coordination for the active owner-approved slice. Do not infer permission for another product phase from a roadmap entry. Previously generated project-wide task files are superseded drafts pending scoped cleanup, not an executable backlog.
+- Agree the product behavior and scope with the Owner before a new slice; reuse already supplied requirements and approvals.
+- Mastermind owns planning, contract lock, worker handoff, review, integration, release coordination. Roadmap inclusion is not implementation/release approval.
+- Read Mastermind_Handoff.md, then only active slice and linked contracts. Inspect git status/diff first; preserve unrelated edits/private files. Resume at unfinished role.
+- One active slice; default one worker. Overlap only after explicit checks and owner approval; otherwise stay sequential.
+- Single active brief owns scope, acceptance, current result. Handoff owns project next action/backlog. Short standing rules only.
+- Replace current checkpoint instead of appending diary. One fact in one place.
+- Resolve decisions for active slice; future decisions stay future. Block only dependent tasks.
+- Legacy handoffs/logs/checklists are historical; do not treat as active instructions.
 
-- Read docs/internal/Mastermind_Handoff.md, then only the active slice and linked contracts. docs/internal/Project_Main_Goal.md owns project scope, priorities, and the phase-to-slice index.
-- Inspect git status and the relevant diff first; preserve unrelated edits and private files. Resume at the unfinished role. Reopen completed work only for a concrete defect, changed requirement, or invalidated evidence.
-- Keep one active slice. Default to one worker session. Two phases may overlap only after the current worker is dispatched, the next already-approved phase is checked read-only for independent contracts, disjoint files and stateful targets, no output dependency, and a clear integration boundary, and the owner approves the next contract. If uncertain, stay sequential; do not scout or edit a next phase to manufacture independence. The slice checklist owns task status and evidence; other documents link to it. Statuses are Not started, In progress, Blocked, and Done. Identify historical/owner-confirmed evidence separately from local execution. Small, well-bounded tasks may be completed directly by the Mastermind without running every worker role.
-- Update the slice whenever a task starts, finishes, or becomes blocked. Keep the handoff short: active goal/phase/slice/worker, completed milestone, blockers, and exactly one next action.
-- Resolve decisions needed for the active slice; future decisions remain in their future slices. Block only dependent tasks and continue independent authorized work within the active slice.
-- Legacy handoffs, progress logs, VAT briefs, and the former 16-item release checklist are historical sources awaiting separately confirmed deletion. Do not treat them as active instructions or routinely reread private history.
+## Phase lifecycle and document ownership
 
-## Worker roles and usual sequence
+1. **Prepare:** Mastermind puts scope, acceptance, file ownership, checks and any
+   genuinely needed sequential tasks in one brief. Resolve material product
+   decisions with the Owner. No implementation before scope approval.
+2. **Start:** after approval and Owner direction, pin current revision/local delta,
+   use the selected model, dispatch one Worker and record its session in the brief.
+   A task is not `in_progress` merely because its plan exists.
+3. **Deliver:** Worker updates only its assigned task and current result in the
+   brief, including changed files, commands/results, limitations and next action.
+   On a stage handback, stop until Mastermind accepts and resumes the next stage.
+4. **Review:** Mastermind checks the actual diff and relevant evidence. Accept the
+   task or send concrete corrections to the same Worker. Recheck only affected
+   evidence. After two unsuccessful correction rounds, take over valid remaining
+   work when Owner-authorized; never overwrite a running Worker.
+5. **Accept:** when all implementation tasks, consumer docs/Postman and required
+   checks pass review, mark the phase `accepted`. This means locally accepted,
+   not committed, deployed or completed. Present results for release approval.
+6. **Finish:** after explicit release approval, perform only authorized operations
+   and verify them. Mark the phase `completed` only when required release work is
+   verified (or deployment is explicitly N/A for non-runtime work). Record release
+   revision, verification and limitations once; link an operational receipt only
+   when needed. Report and stop; the next product phase needs its own direction.
 
-Roles are tools, not a mandatory serial relay. For a bounded approved phase, prefer one whole-phase OpenCode worker who owns implementation, focused tests, and feature docs/Postman in the approved manifest; the Mastermind reviews once. Use a scout, independent test author, reviewer, or documenter only when that role supplies a distinct needed result. Do not create parallel or sequential workers that repeat the same ownership or evidence.
+Task states: `pending` → `in_progress` → `ready_for_review` → `completed`.
+Worker may set `blocked` with a concrete reason; resume to `in_progress` when
+resolved. Corrections return a task to `in_progress`. Only Mastermind sets
+`completed`. Completed implementation tasks do not mean the phase is deployed.
+Phase state: `approved`, `in_progress`, `ready_for_review`, `accepted`, `completed`;
+record a blocker separately so the last verified state remains clear. Release
+state is separate: `not_requested`, `awaiting_approval`, `authorized`, `verified`
+or `not_applicable` with a reason. Never infer authorization from a status value.
+Mastermind owns phase/release states: set `in_progress` when implementation starts
+and `ready_for_review` when the complete delivery is available. Worker updates only
+assigned task states/results. Required release verification that fails keeps the
+phase `accepted` with the failure recorded; it does not become `completed`.
 
-- Every brief pins the current `main` revision/local delta, objective, owned files, acceptance criteria, dependencies, and required output. Tell workers they are not alone and must preserve others' edits. Supply bounded context rather than repository dumps or full conversation history.
-- Phase sequence: Mastermind investigates and presents one complete phase contract to the owner. After explicit contract approval, prepare and save the exact worker brief, then provide a short paste-ready kickoff naming the repository, prompt-file path and recommended reasoning effort. The worker must read and follow the complete saved prompt; do not duplicate the full prompt in chat. Do not dispatch a worker or start implementation without the owner's direction.
-- OpenCode is single-flight per phase: record the worker `job_id` and pinned revision before dispatch. After dispatch, wait on that same session for an explicit completion report or blocker. Initial assistant text, progress, tool handoffs, timeout, or ambiguous status are not completion. Do not message the worker, edit its owned files, or start a replacement while its status is running or unknown. Recover/continue the same session; only a confirmed terminal session permits a replacement, with the reason recorded.
-- Scout maps requirements, existing behavior, affected endpoints, permissions, files, and verification before implementation; reports missing inputs and proposes the exact file manifest. Before any Bruno authoring, Scout lists the actors and data states each proposed scenario needs, which operations consume/change them, and which fixtures can safely be reused.
-- Implementer changes only the approved behavior and owned files; reports contract ambiguity instead of inventing policy.
-- Test author is optional and is used when a change needs substantial or independent test design. Add focused automated tests for the changed business rule or contract. Do not require unit tests and Bruno for every endpoint or a fixed success/validation/authentication/authorization/conflict matrix. Cover only behavior changed by the task and directly relevant regressions. Bruno is optional and risk-based; use it when a live HTTP/provider boundary adds evidence unit tests cannot provide, or when the owner requests it. Distinguish authored from executed checks and report any material gap.
-- Reviewer performs one bounded read-only correctness, security, compatibility, and test-coverage review with concrete findings, paths, and corrections.
-- Documenter keeps each feature guide separate and linked to its slice; documents routes, permissions, payloads, responses, errors, and lifecycle. Update the appropriate Postman collection with clear feature folders and existing naming conventions; create a separate collection when appropriate. Match examples to verified behavior. Update slice evidence and handoff references within the assigned manifest; do not duplicate checklists.
-- Workers report changed files, results, findings, and blockers, then stop. Mastermind reviews the actual source/tests/docs and tells the owner the concrete findings and any exact modifications needed. The owner routes bounded corrections to the same worker; do not restart the whole sequence. Once the complete phase passes review, present the final evidence and request explicit owner approval for commit, push and applicable publication/deployment. Do not commit, push or deploy before that post-review approval; contract approval is not release approval. Then commit/push the scoped phase, publish/deploy when applicable, verify and record the receipt before advancing.
+- **Brief:** owns task status, scope and evidence. Update on start, block, handback,
+  review or release; replace current results, retain concise valid task evidence.
+- **Mastermind handoff:** Mastermind alone updates the active brief link, blocker
+  and next action at a meaningful stop or phase change. Do not copy task tables,
+  test logs or release history into it.
+- **Consumer guides/Postman:** Worker updates affected API behavior with the feature.
+  No separate documentation relay, tracker, per-task report or routine index sync.
+- Existing approved contracts may remain scope references without a second status
+  ledger. For future phases put approval/scope in the brief itself. Use the
+  [E04 brief](../work/portal-api-reconciliation/worker-prompts/e04-platform-controls.md)
+  as the worked example; reuse its structure, not its product scope or old evidence.
 
-## Mastermind verification
+## Worker and verification
 
-- When Bruno is selected, use [the Bruno runbook](../operations/bruno-failure-first.md) for stateful target checks and first-failure diagnosis. Pin the target and run only the explicit requests needed for the changed behavior. Do not run a full collection by default.
-- Before writing/running a stateful Bruno scenario, the Mastermind checks fixture readiness read-only. If required data is missing, prepare the smallest deterministic fixture on the already-authorized disposable target, then read it back and verify the preconditions before the request. Use supported APIs or existing seeders; do not reuse a consumed booking/state for a test that needs the old state. No broad fixture framework or replay of onboarding. A new target, reset, migration, or unapproved persistent side effect still needs owner authorization.
-- At the first unexpected Bruno failure, capture the actual request/response and relevant log, fix the evidenced cause, and rerun only that request with its prerequisites. After two unchanged attempts or ten minutes without new evidence, stop and report the specific limitation. Bruno being unavailable, lacking a fixture, or unsupported by a Development provider does not by itself block closeout when the required focused automated checks pass; record the gap and compensating evidence. Do not claim an unrun check passed.
-
-- Mastermind owns scope, decisions, any needed sequential worker coordination, integration, the selected build/test checks, optional risk-based Bruno, final evidence, and handoff.
-- For implementation changes: build once after the final code change and run focused tests for the affected behavior. Run the full suite only for cross-cutting/high-risk changes or when the approved phase/release contract requires it; do not make it an automatic step for every small slice. Run Bruno only when selected by the risk/contract or requested by the owner; it is not a default commit gate.
-- Documentation/script-only changes use relevant documentation/script validation. Do not launch the API or full .NET suite merely for documentation relocation.
-- Every dotnet build/test gate requires successful exit and ZERO warnings. Resolve failures/warnings; never use blanket suppression. If an unrelated/environmental warning cannot safely be resolved in scope, report the gate as not clean and block closeout.
-- Reuse successful gates while their relevant inputs remain valid (source, dependencies/toolchain, command/configuration, and stateful target/fixture); rerun only checks invalidated by later changes. Packaging is not a reason to repeat tests. Stop stalled or repeating commands. Record command, revision/scope, exit status, counts, skips, warnings, fixture changes, and limitations. Never invent execution results.
-- Any stateful test data must use a verified disposable target and minimal fixture writes. Resets require exact-target verification and owner authorization. Never run stateful tests against production. Do not commit with a known code defect or failing required automated check; a Bruno check that was not selected or could not run is recorded as a limitation, not an automatic commit blocker.
-- Define scope, permissions, observable acceptance criteria, and verification before implementation. Admin/CMS list/detail/history/inspection acceptance belongs to the same resource slice as its mutations.
+- For bounded approved phase, use one native OpenCode Worker owning implementation, focused tests, feature docs/Postman. Mastermind reviews once.
+- Brief pins revision, objective, owned files, acceptance, dependencies, output. Preserve others' edits.
+- Phase sequence: contract approval, saved brief, short kickoff, dispatch only on owner direction. Do not duplicate full prompt in chat.
+- One native child Worker per phase; record sessionID and pinned revision. Do not poll or replace while running. Resume same session where possible.
+- Worker may move task to ready_for_review, never completed. Mastermind completes after validation.
+- Implementer changes only approved behavior/owned files; reports ambiguity instead of inventing policy.
+- Tests focused on changed behavior/regressions. Bruno optional and risk-based. Distinguish authored vs executed checks.
+- Reviewer one bounded read-only review with concrete findings.
+- Docs/Postman update with feature change; match verified behavior.
+- Mastermind owns scope, decisions, integration, selected checks, final evidence, handoff. Build once after final code change; focused tests. Full suite only cross-cutting/high-risk or contract-required. Bruno only when selected/requested.
+- Every dotnet build/test gate: successful exit and zero warnings. Reuse valid gates; rerun only invalidated checks. Never invent results.
+- Stateful tests use verified disposable target and minimal writes. Never production. Resets need exact-target verification and owner authorization.
 
 ## Models and runtime
 
-Owner preference (2026-10-16): use High reasoning for the Mastermind whenever the platform/session allows it. Recommend and state an appropriate effort for each worker in the short kickoff; normally High for source tracing, security, persistence or integration-sensitive tasks, with lower effort only for simple bounded work. Repository guidance cannot change a platform-pinned runtime; use the available session setting where supported.
+- Owner selects Mastermind model and reasoning effort. Worker profile default is free and never inherits Mastermind model.
+- Use Owner-selected provider/model/effort; ask only when not already selected. Verify effective selection; never silently switch.
+- Do not auto-switch providers; rate-limit/quota errors require owner decision.
+
+## Additional standing rules
+
+- Mastermind sends bounded corrections to the same worker; do not restart whole sequence.
+- Docs-only changes use docs/script validation; no product build/tests required.
+- No repeated intake of already supplied requirements.
+- Protected production/new persistent targets/migration operations require explicit authority.
+- No mandatory docs-only push before implementation.
 
 ## Safety and release
 
-- Never expose credentials or stage private handoffs, protected fixtures, or unrelated changes. New docs contain sanitized rules/evidence, not private environment details.
-- Follow the owner's current standing branch/release instruction. Work directly on `main`; do not create or switch to a worktree for routine task work. Owner workflow reaffirmed 2026-10-16: approve the exact contract before worker instructions; save the full worker prompt and give the owner a short kickoff pointing the worker to that file with its recommended effort; after complete worker delivery, Mastermind reviews and reports corrections; after acceptance, Mastermind presents final evidence and waits for explicit approval to commit, push and deploy/publish the phase. Contract approval is not release approval; approval for one phase does not imply approval for another. Cleanup approval alone is not release approval. Production changes, destructive database resets and new targets/configuration still require exact authority. Do not merge another branch unless separately requested.
-- Legacy deletion needs a separate exact-list confirmation AFTER replacement verification. Blueprint/workflow approval is not deletion approval.
-- Priority: Care homes → Chat → Notifications → full application UI reconciliation → remaining roadmap. Original phase IDs remain traceability metadata. Family and Elderly UI are supplied; Caregiver UI is outstanding. Do not ask for already supplied inventories or repeat completed audits.
-- At goal completion, report and hand off. Do not silently begin a later product goal or restore the historical 16-item checklist.
+- Never expose credentials or stage private handoffs, protected fixtures, unrelated changes.
+- Work directly on main; no worktree for routine task work.
+- Contract approval is not release approval. Cleanup approval is not release approval. Commit/push/deploy only after explicit owner authorization, then verify and record receipt.
+- Legacy deletion needs separate exact-list confirmation after replacement verification.
+- Priority: Care homes + Chat + Notifications + full application UI reconciliation + remaining roadmap.
+- At goal completion, report and hand off. Do not silently begin later product goal.
