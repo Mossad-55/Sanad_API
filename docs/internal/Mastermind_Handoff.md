@@ -5,13 +5,14 @@
 - **Active task:** none. Workflow cleanup was committed/pushed as
   `a42e6feb30cf3a58adcc435e60ae5f7eb7310b00`; see the
   [workflow refresh tracker](work/workflow-refresh/tasks.md).
-- **Current checkpoint:** E04 contract, tracker and bounded Worker brief are
-  prepared. Owner-selected `opencode/beam-free#medium` is effective and verified.
-  No Worker has been dispatched.
-- **Blockers:** commit/push of the approved E04 planning materials before
-  dispatch. Ongoing cross-machine checkpoint-sync policy remains undecided.
-- **Next exact action:** validate and push only the approved E04 planning files;
-  dispatch only against that pushed revision.
+- **Current checkpoint:** E04 contract, tracker and bounded Worker brief were
+  committed/pushed at `8842560a9370a2eb6...`. Owner-selected
+  `opencode/beam-free#medium` is effective and verified. No Worker has been
+  dispatched.
+- **Blockers:** none for Worker dispatch; release/deployment remain separately
+  owner-gated. Ongoing cross-machine checkpoint-sync policy remains undecided.
+- **Next exact action:** pin latest pushed `main`, dispatch E04-W01, and record
+  the returned Worker session/checkpoint.
 
 ## Historical handoff record — retained, not operational
 
