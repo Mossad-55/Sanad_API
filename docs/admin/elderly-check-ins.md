@@ -23,7 +23,16 @@ Error outcomes:
 - `400 Families.AdminCheckIn.InvalidDateRange` for a reversed or over-31-day range.
 - `404 Families.AdminCheckIn.NotFound` for a missing check-in or a check-in whose linked Family is no longer active.
 
-Admin check-in reads do not expose notification delivery, push/provider status, reminders, missed-check-in state, or Family current-status/history. Check-in persistence in Families and alert persistence in Notifications remain separate contexts with no atomic cross-context transaction; alert idempotency/retry is scoped to the negative-check-in fan-out boundary.
+Recorded-answer reads do not expose notification delivery, push/provider status, reminders, or Family current-status/history. The derived missed-check-in feed below is separate from those recorded-answer reads. Check-in persistence in Families and alert persistence in Notifications remain separate contexts with no atomic cross-context transaction; alert idempotency/retry is scoped to the negative-check-in fan-out boundary.
+
+## Missed daily wellness check-ins (derived)
+
+`GET /api/v1/admin/elderly/check-ins/missed` derives missing expected daily wellness answers. It uses the same `ElderlyMedicationOperationalRead` policy and the same payload-free audit (`ListMissedCheckIns`). Required `startDate` and `endDate` (inclusive, max 31 days, not reversed); optional `elderlyId`; `page` (default 1), `pageSize` (default 20, max 100). Response: `{ evaluationOnUtc, items, page, pageSize, totalCount }`; items contain only `elderlyId`, `familyId`, `localDate`, `dueOnUtc`. No names, contact, clinical, medication or payment data.
+
+Error outcomes:
+- `400 Families.AdminCheckIn.InvalidDateRange` for reversed/over-31-day ranges or an end date of `9999-12-31` (its next-midnight deadline is not representable). Missing dates return standard model-validation `400` before audit.
+- `409 Families.AdminCheckIn.IndeterminateEvaluation` when cohort/timezone/identity facts are unusable.
+- `503 Families.AdminCheckIn.EvaluationUnavailable` when source evaluation is unavailable.
 
 ## OpenAPI contract
 

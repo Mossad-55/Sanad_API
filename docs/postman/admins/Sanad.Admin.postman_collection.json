@@ -155,7 +155,12 @@
           "name": "List users",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/users?page=1&pageSize=20&sort=Newest",
             "description": "Optional query filters: search (Arabic/English name, email, phone), accountType, status; sort is Newest, Oldest, or Name. Page and pageSize are clamped to 1–100. Name sorts Arabic then English ascending."
           }
@@ -164,7 +169,12 @@
           "name": "User detail",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}",
             "description": "Set adminUserId to a user UUID. Includes active device sessions and a facility link for CareHomeOwner only."
           }
@@ -173,7 +183,12 @@
           "name": "Admin active sessions overview",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/users/sessions?page=1&pageSize=20&sort=Newest",
             "description": "Optional filters: accountType (SuperAdmin, SupportAdmin, ContentAdmin, FinanceAdmin) and userId. Returns only unrevoked, unexpired admin sessions. lastSeenUtc represents the session's LastRotatedOnUtc token-rotation time."
           }
@@ -194,36 +209,210 @@
         }
       ]
     },
-      {
-        "name": "00.1. SuperAdmin User Management (status and sessions)",
-        "description": "Phase 2 mutations. Use a disposable target only; suspend/block/revoke change state. Status requests require a reason.",
-        "item": [
-          { "name": "Suspend user", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Operator action\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/suspend" } },
-          { "name": "Reactivate user", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/reactivate", "description": "Reactivates a Suspended or Blocked user to Active; no sessions are restored. The target must meet activation readiness (verified phone; non-Elderly also verified email and password) or the API returns 409 Identity.Admin.ActivationNotReady. A freshly admin-created PendingVerification user must complete the normal email/SMS OTP verification first. Repeat calls against Active return 409 Identity.Admin.NotSuspended." } },
-          { "name": "Block user", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Operator action\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/block" } },
-          { "name": "Revoke all sessions", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/sessions/revoke" } },
-          { "name": "Revoke one session", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"sessionId\": \"REPLACE_WITH_SESSION_ID\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/sessions/revoke" } }
-        ]
-      },
-      {
-        "name": "00.2. SuperAdmin User Management (accounts)",
-        "description": "Phase 3. Admin password reset invalidates all sessions; create remains pending until the normal email and SMS OTP verification flow completes.",
-        "item": [
-          { "name": "Reset user password", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/password-reset", "description": "Returns the temporary password once; never store or log the response. Seeded account reset is forbidden." } },
-          { "name": "Change administrative account type", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"accountType\": \"SupportAdmin\",\n  \"reason\": \"Role adjustment\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/account-type", "description": "Only SuperAdmin, SupportAdmin, ContentAdmin, and FinanceAdmin transitions are allowed." } },
-          { "name": "Create admin account", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"arabicFullName\": \"مدير جديد\",\n  \"englishFullName\": \"New Administrator\",\n  \"email\": \"admin@example.test\",\n  \"phoneNumber\": \"+201000000000\",\n  \"password\": \"Replace-This-123\",\n  \"accountType\": \"SupportAdmin\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users", "description": "Success 201 with the registration response (userId and email/phone verification request ids as wrapper IDs). Uses the existing registration response and OTP lifecycle; account remains PendingVerification until email and phone OTPs are verified." } }
-        ]
-      },
-      {
-        "name": "00.3. SuperAdmin User Management (anonymize and audit)",
-        "description": "Phase 4. Anonymization is irreversible in normal product flows. The audit feed is append-only and includes actor, target, action, reason, and UTC time.",
-        "item": [
-          { "name": "Anonymize user", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Approved privacy request\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/anonymize", "description": "Scrubs user profile PII, blocks the account, revokes sessions, and writes an audit action. Seeded, self, and final active SuperAdmin targets are refused." } },
-          { "name": "List admin user audit actions", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/users/audit?page=1&pageSize=20&sort=Newest", "description": "Optional filters: actorUserId, targetUserId, action, fromUtc, and toUtc. Sort supports Newest, Oldest, and Name (acting admin ArabicName then EnglishName)." } }
-        ]
-      },
-      {
-        "name": "01. Auth",
+    {
+      "name": "00.1. SuperAdmin User Management (status and sessions)",
+      "description": "Phase 2 mutations. Use a disposable target only; suspend/block/revoke change state. Status requests require a reason.",
+      "item": [
+        {
+          "name": "Suspend user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Operator action\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/suspend"
+          }
+        },
+        {
+          "name": "Reactivate user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/reactivate",
+            "description": "Reactivates a Suspended or Blocked user to Active; no sessions are restored. The target must meet activation readiness (verified phone; non-Elderly also verified email and password) or the API returns 409 Identity.Admin.ActivationNotReady. A freshly admin-created PendingVerification user must complete the normal email/SMS OTP verification first. Repeat calls against Active return 409 Identity.Admin.NotSuspended."
+          }
+        },
+        {
+          "name": "Block user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Operator action\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/block"
+          }
+        },
+        {
+          "name": "Revoke all sessions",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/sessions/revoke"
+          }
+        },
+        {
+          "name": "Revoke one session",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionId\": \"REPLACE_WITH_SESSION_ID\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/sessions/revoke"
+          }
+        }
+      ]
+    },
+    {
+      "name": "00.2. SuperAdmin User Management (accounts)",
+      "description": "Phase 3. Admin password reset invalidates all sessions; create remains pending until the normal email and SMS OTP verification flow completes.",
+      "item": [
+        {
+          "name": "Reset user password",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/password-reset",
+            "description": "Returns the temporary password once; never store or log the response. Seeded account reset is forbidden."
+          }
+        },
+        {
+          "name": "Change administrative account type",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"accountType\": \"SupportAdmin\",\n  \"reason\": \"Role adjustment\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/account-type",
+            "description": "Only SuperAdmin, SupportAdmin, ContentAdmin, and FinanceAdmin transitions are allowed."
+          }
+        },
+        {
+          "name": "Create admin account",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arabicFullName\": \"مدير جديد\",\n  \"englishFullName\": \"New Administrator\",\n  \"email\": \"admin@example.test\",\n  \"phoneNumber\": \"+201000000000\",\n  \"password\": \"Replace-This-123\",\n  \"accountType\": \"SupportAdmin\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/users",
+            "description": "Success 201 with the registration response (userId and email/phone verification request ids as wrapper IDs). Uses the existing registration response and OTP lifecycle; account remains PendingVerification until email and phone OTPs are verified."
+          }
+        }
+      ]
+    },
+    {
+      "name": "00.3. SuperAdmin User Management (anonymize and audit)",
+      "description": "Phase 4. Anonymization is irreversible in normal product flows. The audit feed is append-only and includes actor, target, action, reason, and UTC time.",
+      "item": [
+        {
+          "name": "Anonymize user",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Approved privacy request\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/users/{{adminUserId}}/anonymize",
+            "description": "Scrubs user profile PII, blocks the account, revokes sessions, and writes an audit action. Seeded, self, and final active SuperAdmin targets are refused."
+          }
+        },
+        {
+          "name": "List admin user audit actions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/users/audit?page=1&pageSize=20&sort=Newest",
+            "description": "Optional filters: actorUserId, targetUserId, action, fromUtc, and toUtc. Sort supports Newest, Oldest, and Name (acting admin ArabicName then EnglishName)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "01. Auth",
       "item": [
         {
           "name": "Login Super Admin",
@@ -380,18 +569,63 @@
           "name": "Update splash screen (manual multipart)",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "body": { "mode": "formdata", "formdata": [
-              { "key": "arabicTitle", "type": "text", "value": "Ù…Ø±Ø­Ø¨Ø§ Ø¨ÙƒÙ…" },
-              { "key": "englishTitle", "type": "text", "value": "Welcome back" },
-              { "key": "arabicDescription", "type": "text", "value": "ÙˆØµÙ" },
-              { "key": "englishDescription", "type": "text", "value": "Description" },
-              { "key": "arabicButtonText", "type": "text", "value": "Ø§Ù„ØªØ§Ù„ÙŠ" },
-              { "key": "englishButtonText", "type": "text", "value": "Next" },
-              { "key": "backgroundColor", "type": "text", "value": "#1A73E8" },
-              { "key": "displayOrder", "type": "text", "value": "0" },
-              { "key": "file", "type": "file", "src": [], "value": "" }
-            ] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "arabicTitle",
+                  "type": "text",
+                  "value": "Ù…Ø±Ø­Ø¨Ø§ Ø¨ÙƒÙ…"
+                },
+                {
+                  "key": "englishTitle",
+                  "type": "text",
+                  "value": "Welcome back"
+                },
+                {
+                  "key": "arabicDescription",
+                  "type": "text",
+                  "value": "ÙˆØµÙ"
+                },
+                {
+                  "key": "englishDescription",
+                  "type": "text",
+                  "value": "Description"
+                },
+                {
+                  "key": "arabicButtonText",
+                  "type": "text",
+                  "value": "Ø§Ù„ØªØ§Ù„ÙŠ"
+                },
+                {
+                  "key": "englishButtonText",
+                  "type": "text",
+                  "value": "Next"
+                },
+                {
+                  "key": "backgroundColor",
+                  "type": "text",
+                  "value": "#1A73E8"
+                },
+                {
+                  "key": "displayOrder",
+                  "type": "text",
+                  "value": "0"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "value": ""
+                }
+              ]
+            },
             "url": "{{baseUrl}}/api/v1/admin/splash-screens/{{splashScreenId}}"
           },
           "description": "Manual multipart mutation for Super/Content Admin only. internalName is immutable; file is optional. 200 success, 400 validation/file errors, 404 Cms.Splash.NotFound. Do not replay against shared data."
@@ -444,7 +678,12 @@
           "name": "List cancellation history",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/bookings/cancellations?page=1&pageSize=10&actor=1"
           },
           "description": "Safe read for Super Admin or Content Admin normal JWT. 200 paged durable facts, actor 1 Family or 2 Caregiver; 401 unauthenticated, 403 non-admin/restricted."
@@ -2599,7 +2838,12 @@
           "name": "List family subscriptions (safe read)",
           "request": {
             "method": "GET",
-            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/subscriptions?page=1&pageSize=10"
           },
           "description": "Safe read. Returns paged family subscription snapshots, family context, owner ID, stored plan terms, current-state, auto-renew, cancellation, and period-end fields. Includes historical non-current snapshots."
@@ -2608,7 +2852,12 @@
           "name": "Get family subscription (safe read)",
           "request": {
             "method": "GET",
-            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/subscriptions/{{subscriptionId}}"
           },
           "description": "Safe read. Returns one stored family subscription snapshot; unknown IDs return 404 Subscriptions.Subscription.NotFound."
@@ -2617,7 +2866,12 @@
           "name": "List subscription plans (safe read)",
           "request": {
             "method": "GET",
-            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans?page=1&pageSize=10"
           },
           "description": "Safe read. Returns all draft, published, and retired-for-new-sales plan versions so administrators can see the complete catalog state."
@@ -2626,7 +2880,12 @@
           "name": "Get subscription plan (safe read)",
           "request": {
             "method": "GET",
-            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans/{{subscriptionPlanVersionId}}"
           },
           "description": "Safe read. Returns one plan version with immutable terms, benefits, publication state, availability, and timestamps; unknown IDs return 404 Subscriptions.Plan.NotFound."
@@ -2635,8 +2894,20 @@
           "name": "Create subscription plan draft (manual)",
           "request": {
             "method": "POST",
-            "header": [{"key": "Content-Type", "value": "application/json"}, {"key": "Authorization", "value": "Bearer {{accessToken}}"}],
-            "body": {"mode": "raw", "raw": "{\n  \"key\": \"premium\",\n  \"version\": 2,\n  \"price\": 299.00,\n  \"cycle\": 1,\n  \"currency\": \"EGP\",\n  \"benefits\": [\n    { \"key\": 1, \"isIncluded\": true },\n    { \"key\": 2, \"isIncluded\": true },\n    { \"key\": 3, \"isIncluded\": true },\n    { \"key\": 4, \"isIncluded\": true },\n    { \"key\": 5, \"isIncluded\": true },\n    { \"key\": 6, \"isIncluded\": true },\n    { \"key\": 7, \"isIncluded\": true },\n    { \"key\": 8, \"isIncluded\": false }\n  ],\n  \"memberLimit\": { \"kind\": 1, \"value\": 10 },\n  \"monthlyBookingLimit\": { \"kind\": 1, \"value\": 20 },\n  \"rollover\": 1,\n  \"paymobSubscriptionPlanId\": 6755\n}"},
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"key\": \"premium\",\n  \"version\": 2,\n  \"price\": 299.00,\n  \"cycle\": 1,\n  \"currency\": \"EGP\",\n  \"benefits\": [\n    { \"key\": 1, \"isIncluded\": true },\n    { \"key\": 2, \"isIncluded\": true },\n    { \"key\": 3, \"isIncluded\": true },\n    { \"key\": 4, \"isIncluded\": true },\n    { \"key\": 5, \"isIncluded\": true },\n    { \"key\": 6, \"isIncluded\": true },\n    { \"key\": 7, \"isIncluded\": true },\n    { \"key\": 8, \"isIncluded\": false }\n  ],\n  \"memberLimit\": { \"kind\": 1, \"value\": 10 },\n  \"monthlyBookingLimit\": { \"kind\": 1, \"value\": 20 },\n  \"rollover\": 1,\n  \"paymobSubscriptionPlanId\": 6755\n}"
+            },
             "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans"
           },
           "description": "Manual example only. Create creates a draft only; publish separately with the publish request. No plan edit endpoint exists, and family subscriptions activate only after a successful payment callback is settled. The request must include all eight benefit keys exactly once with boolean isIncluded. Numeric enums: cycle 1=Monthly/2=Annual; benefit key 1=Chatting, 2=Library, 3=CommunityForum, 4=FamilyActivityTimeline, 5=BasicSearch, 6=AdvancedSearchFilters, 7=MedicalSummaryExportAndSecureSharing, 8=PremiumContent; limit kind 1=Finite (positive value)/2=Unlimited (null value); rollover 1=None/2=NotApplicable. Optional paymobSubscriptionPlanId enables initial Card enrollment when Paymob Card 3DS is configured; it is not a provider subscription ID. Success is 201 with the draft plan-version UUID. Duplicate key/version is 409 Subscriptions.Plan.DuplicateVersion."
@@ -2645,7 +2916,12 @@
           "name": "Publish subscription plan (manual)",
           "request": {
             "method": "POST",
-            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans/{{subscriptionPlanVersionId}}/publish"
           },
           "description": "Manual mutation. Success is 204; missing plan is 404 Subscriptions.Plan.NotFound; already published or publication race is 409. Published terms are immutable."
@@ -2654,7 +2930,12 @@
           "name": "Retire subscription plan (manual)",
           "request": {
             "method": "POST",
-            "header": [{"key": "Authorization", "value": "Bearer {{accessToken}}"}],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans/{{subscriptionPlanVersionId}}/retire"
           },
           "description": "Manual mutation. Success is 204 and appends an immutable audit record; missing is 404; unpublished or already retired is 409. Existing subscription snapshots are unchanged."
@@ -2829,7 +3110,12 @@
           "name": "List wellness tips",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/wellness-tips?page=1&pageSize=20&status={{wellnessStatus}}&category={{wellnessCategory}}&search={{wellnessSearch}}"
           },
           "description": "SuperAdmin or ContentAdmin Normal JWT. Filters are optional; pageSize defaults to 20 and is capped at 100. CMS is global/shared."
@@ -2838,7 +3124,12 @@
           "name": "Get wellness tip detail",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}"
           },
           "description": "Returns draft, published, or archived detail."
@@ -2847,7 +3138,12 @@
           "name": "Preview wellness tip",
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/preview"
           },
           "description": "Returns the same CMS detail response without changing publication state."
@@ -2856,14 +3152,42 @@
           "name": "Create wellness tip draft (manual multipart)",
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "body": { "mode": "formdata", "formdata": [
-              { "key": "arabicTitle", "value": "عنوان تجريبي", "type": "text" },
-              { "key": "englishTitle", "value": "Example wellness tip", "type": "text" },
-              { "key": "category", "value": "general", "type": "text" },
-              { "key": "sectionsJson", "value": "[{\"DisplayOrder\":1,\"ArabicText\":\"نصيحة\",\"EnglishText\":\"Advice\"}]", "type": "text" },
-              { "key": "file", "type": "file", "src": "{{wellnessImageFile}}" }
-            ] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "arabicTitle",
+                  "value": "عنوان تجريبي",
+                  "type": "text"
+                },
+                {
+                  "key": "englishTitle",
+                  "value": "Example wellness tip",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "general",
+                  "type": "text"
+                },
+                {
+                  "key": "sectionsJson",
+                  "value": "[{\"DisplayOrder\":1,\"ArabicText\":\"نصيحة\",\"EnglishText\":\"Advice\"}]",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{wellnessImageFile}}"
+                }
+              ]
+            },
             "url": "{{baseUrl}}/api/v1/admin/wellness-tips"
           },
           "description": "STATE-CHANGING manual request. Returns 201 when created; malformed sectionsJson returns 400; missing/empty file returns 400 Storage.File.Empty; unsupported/mismatched image content returns 400 Storage.File.UnsupportedType; invalid domain content returns 409 Cms.WellnessTip.InvalidOperation. The embedded sectionsJson property names are case-sensitive: use DisplayOrder, ArabicText, EnglishText. File must be non-empty JPEG/PNG/WebP; max request size 5 MiB. Storage key is generated. Do not replay without approved disposable data."
@@ -2872,26 +3196,73 @@
           "name": "Update wellness tip draft (manual multipart)",
           "request": {
             "method": "PUT",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
-            "body": { "mode": "formdata", "formdata": [
-              { "key": "arabicTitle", "value": "عنوان محدث", "type": "text" },
-              { "key": "englishTitle", "value": "Updated wellness tip", "type": "text" },
-              { "key": "category", "value": "general", "type": "text" },
-              { "key": "sectionsJson", "value": "[{\"DisplayOrder\":1,\"ArabicText\":\"نصيحة محدثة\",\"EnglishText\":\"Updated advice\"}]", "type": "text" },
-              { "key": "file", "type": "file", "src": "{{wellnessImageFile}}", "disabled": true }
-            ] },
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "arabicTitle",
+                  "value": "عنوان محدث",
+                  "type": "text"
+                },
+                {
+                  "key": "englishTitle",
+                  "value": "Updated wellness tip",
+                  "type": "text"
+                },
+                {
+                  "key": "category",
+                  "value": "general",
+                  "type": "text"
+                },
+                {
+                  "key": "sectionsJson",
+                  "value": "[{\"DisplayOrder\":1,\"ArabicText\":\"نصيحة محدثة\",\"EnglishText\":\"Updated advice\"}]",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{wellnessImageFile}}",
+                  "disabled": true
+                }
+              ]
+            },
             "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}"
           },
           "description": "STATE-CHANGING manual request. Returns 200 when updated; malformed sectionsJson returns 400; a missing tip returns 404 Cms.WellnessTip.NotFound; invalid content/lifecycle returns 409 Cms.WellnessTip.InvalidOperation. The embedded sectionsJson property names are case-sensitive: use DisplayOrder, ArabicText, EnglishText. Only drafts can be edited. Omit file to keep the existing image; supplying one replaces the image key."
         },
         {
           "name": "Publish wellness tip",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/publish" },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/publish"
+          },
           "description": "STATE-CHANGING manual request. Archived tips cannot be republished."
         },
         {
           "name": "Archive wellness tip",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/archive" },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/wellness-tips/{{wellnessTipId}}/archive"
+          },
           "description": "STATE-CHANGING manual request."
         }
       ]
@@ -2902,18 +3273,96 @@
       "item": [
         {
           "name": "Get active medication lateness setting",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/cms/medication-lateness", "description": "Read-only CMS setting under CmsContent (Normal SuperAdmin or ContentAdmin). Returns the active immutable revision with revisionId, version, thresholdMinutes, isActive, and createdOnUtc. If no active setting exists, returns 404 Cms.MedicationLateness.NotFound." },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('CMS medication lateness GET contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });", "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.revisionId).to.be.a('string'); pm.expect(body.version).to.be.a('number'); pm.expect(body.thresholdMinutes).to.be.a('number'); pm.expect(body.isActive).to.eql(true); }", "if (pm.response.code === 404) { pm.expect(pm.response.json().code).to.eql('Cms.MedicationLateness.NotFound'); }"] } }]
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/cms/medication-lateness",
+            "description": "Read-only CMS setting under CmsContent (Normal SuperAdmin or ContentAdmin). Returns the active immutable revision with revisionId, version, thresholdMinutes, isActive, and createdOnUtc. If no active setting exists, returns 404 Cms.MedicationLateness.NotFound."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CMS medication lateness GET contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.revisionId).to.be.a('string'); pm.expect(body.version).to.be.a('number'); pm.expect(body.thresholdMinutes).to.be.a('number'); pm.expect(body.isActive).to.eql(true); }",
+                  "if (pm.response.code === 404) { pm.expect(pm.response.json().code).to.eql('Cms.MedicationLateness.NotFound'); }"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Create medication lateness revision (manual mutation)",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"thresholdMinutes\": 60\n}" }, "url": "{{baseUrl}}/api/v1/admin/cms/medication-lateness/revisions", "description": "STATE-CHANGING CMS authoring under CmsContent (Normal SuperAdmin or ContentAdmin). Creates and activates the next immutable revision, deactivating the previous active revision; only one revision remains active. thresholdMinutes must be 1–1440; invalid values return 400 Cms.MedicationLateness.Invalid. Success returns revisionId, version, thresholdMinutes, isActive, and createdOnUtc. Do not replay without owner-approved disposable CMS data." },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('CMS medication lateness revision contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });", "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.revisionId).to.be.a('string'); pm.expect(body.thresholdMinutes).to.be.a('number'); pm.expect(body.isActive).to.eql(true); }", "if (pm.response.code === 400) { pm.expect(pm.response.json().code).to.eql('Cms.MedicationLateness.Invalid'); }"] } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"thresholdMinutes\": 60\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/cms/medication-lateness/revisions",
+            "description": "STATE-CHANGING CMS authoring under CmsContent (Normal SuperAdmin or ContentAdmin). Creates and activates the next immutable revision, deactivating the previous active revision; only one revision remains active. thresholdMinutes must be 1–1440; invalid values return 400 Cms.MedicationLateness.Invalid. Success returns revisionId, version, thresholdMinutes, isActive, and createdOnUtc. Do not replay without owner-approved disposable CMS data."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('CMS medication lateness revision contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.revisionId).to.be.a('string'); pm.expect(body.thresholdMinutes).to.be.a('number'); pm.expect(body.isActive).to.eql(true); }",
+                  "if (pm.response.code === 400) { pm.expect(pm.response.json().code).to.eql('Cms.MedicationLateness.Invalid'); }"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Evaluate Elderly late/missed doses (manual mutation)",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-medication-lateness" }], "url": "{{baseUrl}}/api/v1/admin/elderly/medications/late/evaluate?dependentId={{elderlyId}}", "description": "STATE-CHANGING: the action-level policy override is ElderlyMedicationOperationalManage (Normal SuperAdmin or SupportAdmin), despite the controller's class-level ElderlyMedicationOperationalRead policy. The action audits before resolving the target; a missing Elderly or Elderly linked to a deleted Family returns 404 Families.AdminMedication.NotFound. On success it evaluates only the selected profile's current IANA-local day using the active versioned CMS threshold, returns thresholdMinutes/settingVersion/localDate/missedDoses, and may persist current-day scheduled/missed dose logs plus idempotent durable in-app alerts. Assigned caregivers qualify only for active Confirmed/InProgress bookings; active linked Family recipients must honor MedicationReminders; active SupportAdmin users are included. Push/email/outbox/scheduler are deferred/Needs Owner Verification. Use only an approved disposable fixture." },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin medication lateness evaluation contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });", "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.thresholdMinutes).to.be.a('number'); pm.expect(body.settingVersion).to.be.a('number'); pm.expect(body.localDate).to.be.a('string'); pm.expect(body.missedDoses).to.be.an('array'); }", "if (pm.response.code === 404) { pm.expect(pm.response.json().code).to.eql('Families.AdminMedication.NotFound'); }"] } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-medication-lateness"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/medications/late/evaluate?dependentId={{elderlyId}}",
+            "description": "STATE-CHANGING: the action-level policy override is ElderlyMedicationOperationalManage (Normal SuperAdmin or SupportAdmin), despite the controller's class-level ElderlyMedicationOperationalRead policy. The action audits before resolving the target; a missing Elderly or Elderly linked to a deleted Family returns 404 Families.AdminMedication.NotFound. On success it evaluates only the selected profile's current IANA-local day using the active versioned CMS threshold, returns thresholdMinutes/settingVersion/localDate/missedDoses, and may persist current-day scheduled/missed dose logs plus idempotent durable in-app alerts. Assigned caregivers qualify only for active Confirmed/InProgress bookings; active linked Family recipients must honor MedicationReminders; active SupportAdmin users are included. Push/email/outbox/scheduler are deferred/Needs Owner Verification. Use only an approved disposable fixture."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin medication lateness evaluation contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.thresholdMinutes).to.be.a('number'); pm.expect(body.settingVersion).to.be.a('number'); pm.expect(body.localDate).to.be.a('string'); pm.expect(body.missedDoses).to.be.an('array'); }",
+                  "if (pm.response.code === 404) { pm.expect(pm.response.json().code).to.eql('Families.AdminMedication.NotFound'); }"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -2922,42 +3371,176 @@
       "item": [
         {
           "name": "List Elderly check-ins (manual read)",
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin check-in list contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin check-in list contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-check-in-list" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-check-in-list"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins?page=1&pageSize=20&startDate={{checkInStartDate}}&endDate={{checkInEndDate}}&answer={{checkInAnswer}}",
             "description": "Safe read for a Normal SuperAdmin or SupportAdmin JWT. Optional elderlyId, inclusive startDate/endDate, and answer filters are supported; page defaults to 1/20 and pageSize is bounded 1–100. Valid reads audit before querying. The inclusive date range may not exceed 31 days. Response fields intentionally exclude timezone, contact, location, and clinical source data. GET writes an operational access-audit row; use only an approved disposable/local fixture."
           }
         },
         {
           "name": "Get Elderly check-in detail (manual read)",
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin check-in detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin check-in detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-check-in-detail" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-check-in-detail"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins/{{elderlyCheckInId}}",
             "description": "Safe read for a Normal SuperAdmin or SupportAdmin JWT. Returns 404 when the UUID is absent or its Family is inactive/deleted. Successful reads audit before the result and expose only safe operational check-in fields."
           }
         },
         {
           "name": "Get Elderly check-in timeline (manual read)",
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin check-in timeline contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin check-in timeline contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-check-in-timeline" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-check-in-timeline"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins/timeline/{{elderlyId}}?startDate={{checkInStartDate}}&endDate={{checkInEndDate}}",
             "description": "Safe read for a Normal SuperAdmin or SupportAdmin JWT. Both ISO dates are required; the range is inclusive and capped at 31 days. Reversed/over-wide ranges return 400 Families.AdminCheckIn.InvalidDateRange."
           }
         },
         {
           "name": "Get Elderly check-in aggregate (manual read)",
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin check-in aggregate contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }],
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin check-in aggregate contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-check-in-aggregate" }],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-check-in-aggregate"
+              }
+            ],
             "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins/aggregate?elderlyId={{elderlyId}}&startDate={{checkInStartDate}}&endDate={{checkInEndDate}}",
             "description": "Safe read for a Normal SuperAdmin or SupportAdmin JWT. Returns total/positive/negative counts over the optional Elderly/date filters. Valid reads audit before querying; no timezone, contact, location, or clinical source fields are returned."
+          }
+        },
+        {
+          "name": "List missed Elderly check-ins (manual read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin missed check-in contract', function () { pm.expect([200, 400, 401, 403, 409, 503]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-missed-check-in-list"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins/missed?startDate={{checkInStartDate}}&endDate={{checkInEndDate}}&page=1&pageSize=20",
+            "description": "Derived missed daily wellness check-ins. Required inclusive startDate/endDate (max 31 days). Optional elderlyId. Returns evaluationOnUtc, items (elderlyId, familyId, localDate, dueOnUtc), page, pageSize, totalCount. Minimal projection only."
+          }
+        },
+        {
+          "name": "List missed Elderly check-ins (manual read)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin missed check-in contract', function () { pm.expect([200, 400, 401, 403, 409, 503]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-missed-check-in-list"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins/missed?startDate={{checkInStartDate}}&endDate={{checkInEndDate}}&page=1&pageSize=20",
+            "description": "Derived missed daily wellness check-ins. Required inclusive startDate/endDate (max 31 days). Optional elderlyId. Returns evaluationOnUtc, items (elderlyId, familyId, localDate, dueOnUtc), page, pageSize, totalCount. Minimal projection only."
           }
         }
       ]
@@ -2968,23 +3551,97 @@
       "item": [
         {
           "name": "List Elderly help requests (manual read)",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-help-request-list" }], "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests?page=1&pageSize=20&status={{helpRequestStatus}}&elderlyId={{elderlyId}}", "description": "Manual stateful read. One-year availability; pageSize 1–100. Optional status values are Pending, Accepted, InProgress, Resolved, Rejected, Cancelled, Reopened. Deleted Families are excluded." }
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-help-request-list"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests?page=1&pageSize=20&status={{helpRequestStatus}}&elderlyId={{elderlyId}}",
+            "description": "Manual stateful read. One-year availability; pageSize 1–100. Optional status values are Pending, Accepted, InProgress, Resolved, Rejected, Cancelled, Reopened. Deleted Families are excluded."
+          }
         },
         {
           "name": "Get Elderly help request (manual read)",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-help-request-detail" }], "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}", "description": "Manual stateful safe projection. Successful reads audit before the query; missing, expired, or deleted-Family records return 404 Families.HelpRequest.NotFound." }
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-help-request-detail"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}",
+            "description": "Manual stateful safe projection. Successful reads audit before the query; missing, expired, or deleted-Family records return 404 Families.HelpRequest.NotFound."
+          }
         },
         {
           "name": "Get Elderly help-request history (manual read)",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-help-request-history" }], "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}/history", "description": "Manual stateful read. Returns chronological append-only history for the last year, including action, resulting status, optional reason, actor user ID, and UTC timestamp." }
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-help-request-history"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}/history",
+            "description": "Manual stateful read. Returns chronological append-only history for the last year, including action, resulting status, optional reason, actor user ID, and UTC timestamp."
+          }
         },
         {
           "name": "Aggregate Elderly help requests (manual read)",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-help-request-aggregate" }], "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/aggregate", "description": "Manual stateful read. Returns status counts for one-year requests belonging to non-deleted Families and audits before querying." }
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-help-request-aggregate"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/aggregate",
+            "description": "Manual stateful read. Returns status counts for one-year requests belonging to non-deleted Families and audits before querying."
+          }
         },
         {
           "name": "Change Elderly help-request status (manual mutation)",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Reviewed by support\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}/{{helpRequestAction}}", "description": "STATE-CHANGING: action is accepted, started, resolved, rejected, cancelled, or reopened. The API binds this URL segment as statusAction to avoid MVC's reserved action selector. Reject/resolve/reopen and operator cancel require a nonblank reason max 500 chars. Reopen persists Reopened then returns the request to InProgress. Use only an approved disposable fixture; do not replay against shared data." }
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Reviewed by support\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/elderly/help-requests/{{helpRequestId}}/{{helpRequestAction}}",
+            "description": "STATE-CHANGING: action is accepted, started, resolved, rejected, cancelled, or reopened. The API binds this URL segment as statusAction to avoid MVC's reserved action selector. Reject/resolve/reopen and operator cancel require a nonblank reason max 500 chars. Reopen persists Reopened then returns the request to InProgress. Use only an approved disposable fixture; do not replay against shared data."
+          }
         }
       ]
     },
@@ -2992,11 +3649,84 @@
       "name": "15C. Sentence-builder CMS (manual authoring/read-only)",
       "description": "Normal SuperAdmin or ContentAdmin under CmsContent. CMS is global/shared. GETs are safe; create and activate/deactivate change catalog state and are manual authoring examples only. Successful catalog routes return 200 OK. Unauthenticated requests return 401; authenticated roles outside CmsContent return 403; missing revisions return 404 Cms.SentenceBuilder.NotFound; invalid category, blank/overlong key or labels, and negative display order return 409 Cms.SentenceBuilder.InvalidOperation. Persistence concurrency conflicts are 409 Cms.SentenceBuilder.Conflict.",
       "item": [
-        { "name": "List sentence-builder catalog", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog?page=1&pageSize=50&category={{sentenceBuilderCategory}}&active={{sentenceBuilderActive}}", "description": "Read-only. Success returns 200. Categories: Actor=1, Action=2, Need=3, Qualifier=4. Page size is bounded 1–100; results include immutable revisions and active state. Unauthenticated returns 401; roles outside CmsContent return 403." } },
-        { "name": "Get sentence-builder revision", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}", "description": "Read-only bilingual revision detail. Success returns 200; unauthenticated returns 401; roles outside CmsContent return 403; an absent revision returns 404 Cms.SentenceBuilder.NotFound." } },
-        { "name": "Create sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"stableKey\": \"water\",\n  \"category\": 3,\n  \"arabicLabel\": \"ماء\",\n  \"englishLabel\": \"Water\",\n  \"displayOrder\": 10\n}" }, "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog", "description": "STATE-CHANGING authoring example. Success returns 200. Labels are required, bilingual, max 200 chars; stableKey max 120 chars; displayOrder is nonnegative. Invalid category, blank/overlong key or labels, or negative order returns 409 Cms.SentenceBuilder.InvalidOperation; a persistence concurrency conflict returns 409 Cms.SentenceBuilder.Conflict. Upsert creates a new immutable revision and activates it while deactivating the prior revision for the same stable key/category. Unauthenticated returns 401 and roles outside CmsContent return 403. Do not run without owner-approved disposable CMS fixture data." } },
-        { "name": "Activate sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}/activate", "description": "STATE-CHANGING authoring example. Success returns 200. Unauthenticated returns 401; roles outside CmsContent return 403; an absent revision returns 404 Cms.SentenceBuilder.NotFound; a persistence concurrency conflict returns 409 Cms.SentenceBuilder.Conflict. Activates this revision and deactivates other revisions for its stable key/category. Use only with approved disposable CMS data." } },
-        { "name": "Deactivate sentence-builder revision (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}/deactivate", "description": "STATE-CHANGING authoring example. Success returns 200. Unauthenticated returns 401; roles outside CmsContent return 403; an absent revision returns 404 Cms.SentenceBuilder.NotFound; a persistence concurrency conflict returns 409 Cms.SentenceBuilder.Conflict. Deactivates only this revision; old content is not mutated. Use only with approved disposable CMS data." } }
+        {
+          "name": "List sentence-builder catalog",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog?page=1&pageSize=50&category={{sentenceBuilderCategory}}&active={{sentenceBuilderActive}}",
+            "description": "Read-only. Success returns 200. Categories: Actor=1, Action=2, Need=3, Qualifier=4. Page size is bounded 1–100; results include immutable revisions and active state. Unauthenticated returns 401; roles outside CmsContent return 403."
+          }
+        },
+        {
+          "name": "Get sentence-builder revision",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}",
+            "description": "Read-only bilingual revision detail. Success returns 200; unauthenticated returns 401; roles outside CmsContent return 403; an absent revision returns 404 Cms.SentenceBuilder.NotFound."
+          }
+        },
+        {
+          "name": "Create sentence-builder revision (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stableKey\": \"water\",\n  \"category\": 3,\n  \"arabicLabel\": \"ماء\",\n  \"englishLabel\": \"Water\",\n  \"displayOrder\": 10\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog",
+            "description": "STATE-CHANGING authoring example. Success returns 200. Labels are required, bilingual, max 200 chars; stableKey max 120 chars; displayOrder is nonnegative. Invalid category, blank/overlong key or labels, or negative order returns 409 Cms.SentenceBuilder.InvalidOperation; a persistence concurrency conflict returns 409 Cms.SentenceBuilder.Conflict. Upsert creates a new immutable revision and activates it while deactivating the prior revision for the same stable key/category. Unauthenticated returns 401 and roles outside CmsContent return 403. Do not run without owner-approved disposable CMS fixture data."
+          }
+        },
+        {
+          "name": "Activate sentence-builder revision (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}/activate",
+            "description": "STATE-CHANGING authoring example. Success returns 200. Unauthenticated returns 401; roles outside CmsContent return 403; an absent revision returns 404 Cms.SentenceBuilder.NotFound; a persistence concurrency conflict returns 409 Cms.SentenceBuilder.Conflict. Activates this revision and deactivates other revisions for its stable key/category. Use only with approved disposable CMS data."
+          }
+        },
+        {
+          "name": "Deactivate sentence-builder revision (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/sentence-builder/catalog/{{sentenceBuilderRevisionId}}/deactivate",
+            "description": "STATE-CHANGING authoring example. Success returns 200. Unauthenticated returns 401; roles outside CmsContent return 403; an absent revision returns 404 Cms.SentenceBuilder.NotFound; a persistence concurrency conflict returns 409 Cms.SentenceBuilder.Conflict. Deactivates only this revision; old content is not mutated. Use only with approved disposable CMS data."
+          }
+        }
       ]
     },
     {
@@ -3060,23 +3790,127 @@
       "item": [
         {
           "name": "List Elderly SOS",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-list" }], "url": "{{baseUrl}}/api/v1/admin/elderly/sos?page=1&pageSize=20&status={{sosStatus}}&elderlyId={{elderlyId}}", "description": "SAFE READ: Normal SuperAdmin/SupportAdmin. Optional status and elderlyId filters; pageSize is bounded 1–100. Successful reads create an audit row." },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS list contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }]
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-sos-list"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/sos?page=1&pageSize=20&status={{sosStatus}}&elderlyId={{elderlyId}}",
+            "description": "SAFE READ: Normal SuperAdmin/SupportAdmin. Optional status and elderlyId filters; pageSize is bounded 1–100. Successful reads create an audit row."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin SOS list contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Elderly SOS detail",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-detail" }], "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}", "description": "SAFE READ: audit-before-read; unknown, foreign, or deleted-Family SOS returns 404 Families.Sos.NotFound." },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-sos-detail"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}",
+            "description": "SAFE READ: audit-before-read; unknown, foreign, or deleted-Family SOS returns 404 Families.Sos.NotFound."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin SOS detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get Elderly SOS history",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-history" }], "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/history", "description": "SAFE READ: chronological append-only Created/Acknowledged/Resolved/Cancelled history; audit-before-read." },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS history contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-sos-history"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/history",
+            "description": "SAFE READ: chronological append-only Created/Acknowledged/Resolved/Cancelled history; audit-before-read."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin SOS history contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Change Elderly SOS status — manual fixture",
-          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "X-Correlation-ID", "value": "postman-admin-sos-status" }], "body": { "mode": "raw", "raw": "{\n  \"action\": 2\n}" }, "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/status", "description": "STATE-CHANGING: manual disposable fixture only. The JSON action uses numeric enum values (Open=1, Acknowledged=2, Resolved=3, Cancelled=4). Normal SuperAdmin/SupportAdmin. Allowed transitions are Open→Acknowledged/Resolved/Cancelled and Acknowledged→Resolved/Cancelled; invalid transitions return 400 Families.Sos.InvalidOperation." },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin SOS status contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-sos-status"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": 2\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/elderly/sos/{{sosId}}/status",
+            "description": "STATE-CHANGING: manual disposable fixture only. The JSON action uses numeric enum values (Open=1, Acknowledged=2, Resolved=3, Cancelled=4). Normal SuperAdmin/SupportAdmin. Allowed transitions are Open→Acknowledged/Resolved/Cancelled and Acknowledged→Resolved/Cancelled; invalid transitions return 400 Families.Sos.InvalidOperation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin SOS status contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -3089,14 +3923,28 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
-              { "key": "X-Correlation-ID", "value": "postman-admin-notifications-list" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-notifications-list"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/admin/notifications?page=1&pageSize=20&category=ElderlySos&type=SosCreated&startDate=2026-09-01&endDate=2026-09-30",
             "description": "SAFE READ: audited before query. page/pageSize default 1/20 and are bounded 1–100. Optional exact category/type and UTC calendar startDate/endDate filters; inclusive dates. Audit persistence failure returns no notification data."
           },
           "event": [
-            { "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification metadata read contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin notification metadata read contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
           ]
         },
         {
@@ -3104,39 +3952,87 @@
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
-              { "key": "X-Correlation-ID", "value": "postman-admin-notifications-detail" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-notifications-detail"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/admin/notifications/{{notificationId}}",
             "description": "SAFE READ: metadata only (ID/category/type/created/read); audited before query. An unknown or out-of-window ID returns 404 Notifications.AdminNotification.NotFound."
           },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"] } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin notification detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get notification timeline page",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
-              { "key": "X-Correlation-ID", "value": "postman-admin-notifications-timeline" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-notifications-timeline"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/admin/notifications/timeline?startDate=2026-09-01&endDate=2026-09-30&page=1&pageSize=20",
             "description": "SAFE READ: required UTC calendar dates are inclusive and must span at most 31 days. page/pageSize default 1/20 and are bounded 1–100; response includes page metadata and hasMore. Audited before query."
           },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification timeline contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin notification timeline contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
         },
         {
           "name": "Get notification aggregate",
           "request": {
             "method": "GET",
             "header": [
-              { "key": "Authorization", "value": "Bearer {{accessToken}}" },
-              { "key": "X-Correlation-ID", "value": "postman-admin-notifications-aggregate" }
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "X-Correlation-ID",
+                "value": "postman-admin-notifications-aggregate"
+              }
             ],
             "url": "{{baseUrl}}/api/v1/admin/notifications/aggregate?startDate=2026-09-01&endDate=2026-09-30",
             "description": "SAFE READ: optional UTC calendar date bounds; when both are supplied they must be ordered and span at most 31 inclusive days. Returns total/read/unread and category counts. Audited before query."
           },
-          "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('admin notification aggregate contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"] } }]
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('admin notification aggregate contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
         }
       ]
     },
@@ -3144,30 +4040,415 @@
       "name": "19. Library CMS (manual)",
       "description": "Library content CMS under the CmsContent policy (SuperAdmin or ContentAdmin). Categories are a bilingual active/inactive lookup; content is Article|Video with a Draft/Published/Archived lifecycle. GETs are safe reads; create/update/delete/publish/archive are manual state-changing authoring examples - run them only against approved disposable CMS fixtures. Success returns 200/201/204 as noted; unauthenticated returns 401; roles outside CmsContent return 403; unknown ids return 404 Cms.LibraryCategory.NotFound or Cms.LibraryContent.NotFound; invalid names or content shapes return 400; delete-in-use and lifecycle violations return 409.",
       "item": [
-        { "name": "List library categories", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/categories", "description": "Read-only. Returns all categories including inactive with isActive and timestamps. Success 200; 401 unauthenticated; 403 outside CmsContent." } },
-        { "name": "Create library category (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"Health tips\",\n  \"englishName\": \"Health tips\",\n  \"isActive\": true\n}" }, "url": "{{baseUrl}}/api/v1/admin/library/categories", "description": "STATE-CHANGING. Success 201 with the created category. Names are required, bilingual, trimmed, max 200 chars; blank/overlong names return 400 Cms.LibraryCategory.Invalid. isActive defaults to true." } },
-        { "name": "Update library category (manual mutation)", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"Health tips\",\n  \"englishName\": \"Health tips\",\n  \"isActive\": false\n}" }, "url": "{{baseUrl}}/api/v1/admin/library/categories/{{libraryCategoryId}}", "description": "STATE-CHANGING. Success 200. Unknown id returns 404 Cms.LibraryCategory.NotFound; blank/overlong names return 400 Cms.LibraryCategory.Invalid. Deactivating hides the category from the public list without detaching content." } },
-        { "name": "Delete library category (manual mutation)", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/categories/{{libraryCategoryId}}", "description": "STATE-CHANGING. Success 204. Unknown id returns 404 Cms.LibraryCategory.NotFound; a category referenced by any content returns 409 Cms.LibraryCategory.InUse - deactivate it instead." } },
-        { "name": "List library content", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/content?status={{libraryStatus}}&type={{libraryType}}&search={{librarySearch}}&page=1&pageSize=20", "description": "Read-only paged admin list across all statuses. status=Draft|Published|Archived and type=Article|Video are optional; invalid enum values return 400 Cms.Library.InvalidStatus / Cms.Library.InvalidType. search matches both titles. Response is {items, page, pageSize, totalCount}." } },
-        { "name": "Get library content detail", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}", "description": "Read-only. Full admin detail for any status, including sections and video fields. Unknown id returns 404 Cms.LibraryContent.NotFound." } },
-        { "name": "Create library content (manual multipart)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "type", "value": "Article", "type": "text" }, { "key": "categoryId", "value": "{{libraryCategoryId}}", "type": "text" }, { "key": "arabicTitle", "value": "نصيحة صحية", "type": "text" }, { "key": "englishTitle", "value": "Healthy tip", "type": "text" }, { "key": "arabicSummary", "value": "ملخص قصير", "type": "text" }, { "key": "englishSummary", "value": "Short summary", "type": "text" }, { "key": "isPremium", "value": "false", "type": "text" }, { "key": "sectionsJson", "value": "[{\"displayOrder\":1,\"arabicTitle\":\"الأول\",\"englishTitle\":\"First\",\"arabicBullets\":[\"نقطة\"],\"englishBullets\":[\"bullet\"]}]", "type": "text" }, { "key": "file", "type": "file", "src": "replace-with-local-cover.png" }] }, "url": "{{baseUrl}}/api/v1/admin/library/content", "description": "STATE-CHANGING manual multipart Article example (canonical camelCase sectionsJson; legacy PascalCase keys are also accepted). Replace the file src with a local JPEG/PNG/WebP cover (required on create, signature checked, max 5 MB). Success 201, always Draft. Unknown category returns 400 Cms.Library.InvalidCategory; inactive category 409 Cms.Library.CategoryInactive; malformed sections 400 Cms.Library.InvalidSections; invalid type combinations or section arrays 400 Cms.LibraryContent.Invalid with a fixed detail, an errors map of field paths (for example sectionsJson[0].displayOrder) and a traceId. Validation runs before upload, so rejected requests leave no cover. Do not run without owner-approved disposable CMS fixture data." } },
-        { "name": "Update library content (manual multipart)", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "formdata", "formdata": [{ "key": "type", "value": "Video", "type": "text" }, { "key": "categoryId", "value": "{{libraryCategoryId}}", "type": "text" }, { "key": "arabicTitle", "value": "فيديو جديد", "type": "text" }, { "key": "englishTitle", "value": "New video", "type": "text" }, { "key": "arabicSummary", "value": "ملخص قصير", "type": "text" }, { "key": "englishSummary", "value": "Short summary", "type": "text" }, { "key": "isPremium", "value": "false", "type": "text" }, { "key": "videoUrl", "value": "https://youtu.be/abc123", "type": "text" }, { "key": "durationSeconds", "value": "300", "type": "text" }] }, "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}", "description": "STATE-CHANGING manual multipart Video example targeting a Video draft (videos must not send sectionsJson). Omitting sectionsJson preserves existing sections and omitting file keeps the existing cover; an explicit empty sections array fails for Article. Success 200. Type rules are validated against the persisted content type. Only Draft content can be updated - Published/Archived returns 409 Cms.LibraryContent.InvalidOperation; unknown id 404 Cms.LibraryContent.NotFound; invalid fields return 400 with an errors map and traceId, leaving the old cover and sections unchanged. Do not run without owner-approved disposable CMS fixture data." } },
-        { "name": "Publish library content (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}/publish", "description": "STATE-CHANGING. Draft to Published; sets publishedOnUtc on first publish; publishing an already-published item is a no-op success. Unknown id returns 404 Cms.LibraryContent.NotFound; Archived content returns 409 Cms.LibraryContent.InvalidOperation (no restore-from-archive in V1)." } },
-        { "name": "Archive library content (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}/archive", "description": "STATE-CHANGING. Any status to Archived; idempotent. Unknown id returns 404 Cms.LibraryContent.NotFound. Archived content disappears from public reads." } }
+        {
+          "name": "List library categories",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/library/categories",
+            "description": "Read-only. Returns all categories including inactive with isActive and timestamps. Success 200; 401 unauthenticated; 403 outside CmsContent."
+          }
+        },
+        {
+          "name": "Create library category (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arabicName\": \"Health tips\",\n  \"englishName\": \"Health tips\",\n  \"isActive\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/library/categories",
+            "description": "STATE-CHANGING. Success 201 with the created category. Names are required, bilingual, trimmed, max 200 chars; blank/overlong names return 400 Cms.LibraryCategory.Invalid. isActive defaults to true."
+          }
+        },
+        {
+          "name": "Update library category (manual mutation)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arabicName\": \"Health tips\",\n  \"englishName\": \"Health tips\",\n  \"isActive\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/library/categories/{{libraryCategoryId}}",
+            "description": "STATE-CHANGING. Success 200. Unknown id returns 404 Cms.LibraryCategory.NotFound; blank/overlong names return 400 Cms.LibraryCategory.Invalid. Deactivating hides the category from the public list without detaching content."
+          }
+        },
+        {
+          "name": "Delete library category (manual mutation)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/library/categories/{{libraryCategoryId}}",
+            "description": "STATE-CHANGING. Success 204. Unknown id returns 404 Cms.LibraryCategory.NotFound; a category referenced by any content returns 409 Cms.LibraryCategory.InUse - deactivate it instead."
+          }
+        },
+        {
+          "name": "List library content",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/library/content?status={{libraryStatus}}&type={{libraryType}}&search={{librarySearch}}&page=1&pageSize=20",
+            "description": "Read-only paged admin list across all statuses. status=Draft|Published|Archived and type=Article|Video are optional; invalid enum values return 400 Cms.Library.InvalidStatus / Cms.Library.InvalidType. search matches both titles. Response is {items, page, pageSize, totalCount}."
+          }
+        },
+        {
+          "name": "Get library content detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}",
+            "description": "Read-only. Full admin detail for any status, including sections and video fields. Unknown id returns 404 Cms.LibraryContent.NotFound."
+          }
+        },
+        {
+          "name": "Create library content (manual multipart)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "Article",
+                  "type": "text"
+                },
+                {
+                  "key": "categoryId",
+                  "value": "{{libraryCategoryId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicTitle",
+                  "value": "نصيحة صحية",
+                  "type": "text"
+                },
+                {
+                  "key": "englishTitle",
+                  "value": "Healthy tip",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicSummary",
+                  "value": "ملخص قصير",
+                  "type": "text"
+                },
+                {
+                  "key": "englishSummary",
+                  "value": "Short summary",
+                  "type": "text"
+                },
+                {
+                  "key": "isPremium",
+                  "value": "false",
+                  "type": "text"
+                },
+                {
+                  "key": "sectionsJson",
+                  "value": "[{\"displayOrder\":1,\"arabicTitle\":\"الأول\",\"englishTitle\":\"First\",\"arabicBullets\":[\"نقطة\"],\"englishBullets\":[\"bullet\"]}]",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "replace-with-local-cover.png"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/admin/library/content",
+            "description": "STATE-CHANGING manual multipart Article example (canonical camelCase sectionsJson; legacy PascalCase keys are also accepted). Replace the file src with a local JPEG/PNG/WebP cover (required on create, signature checked, max 5 MB). Success 201, always Draft. Unknown category returns 400 Cms.Library.InvalidCategory; inactive category 409 Cms.Library.CategoryInactive; malformed sections 400 Cms.Library.InvalidSections; invalid type combinations or section arrays 400 Cms.LibraryContent.Invalid with a fixed detail, an errors map of field paths (for example sectionsJson[0].displayOrder) and a traceId. Validation runs before upload, so rejected requests leave no cover. Do not run without owner-approved disposable CMS fixture data."
+          }
+        },
+        {
+          "name": "Update library content (manual multipart)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "type",
+                  "value": "Video",
+                  "type": "text"
+                },
+                {
+                  "key": "categoryId",
+                  "value": "{{libraryCategoryId}}",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicTitle",
+                  "value": "فيديو جديد",
+                  "type": "text"
+                },
+                {
+                  "key": "englishTitle",
+                  "value": "New video",
+                  "type": "text"
+                },
+                {
+                  "key": "arabicSummary",
+                  "value": "ملخص قصير",
+                  "type": "text"
+                },
+                {
+                  "key": "englishSummary",
+                  "value": "Short summary",
+                  "type": "text"
+                },
+                {
+                  "key": "isPremium",
+                  "value": "false",
+                  "type": "text"
+                },
+                {
+                  "key": "videoUrl",
+                  "value": "https://youtu.be/abc123",
+                  "type": "text"
+                },
+                {
+                  "key": "durationSeconds",
+                  "value": "300",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}",
+            "description": "STATE-CHANGING manual multipart Video example targeting a Video draft (videos must not send sectionsJson). Omitting sectionsJson preserves existing sections and omitting file keeps the existing cover; an explicit empty sections array fails for Article. Success 200. Type rules are validated against the persisted content type. Only Draft content can be updated - Published/Archived returns 409 Cms.LibraryContent.InvalidOperation; unknown id 404 Cms.LibraryContent.NotFound; invalid fields return 400 with an errors map and traceId, leaving the old cover and sections unchanged. Do not run without owner-approved disposable CMS fixture data."
+          }
+        },
+        {
+          "name": "Publish library content (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}/publish",
+            "description": "STATE-CHANGING. Draft to Published; sets publishedOnUtc on first publish; publishing an already-published item is a no-op success. Unknown id returns 404 Cms.LibraryContent.NotFound; Archived content returns 409 Cms.LibraryContent.InvalidOperation (no restore-from-archive in V1)."
+          }
+        },
+        {
+          "name": "Archive library content (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}/archive",
+            "description": "STATE-CHANGING. Any status to Archived; idempotent. Unknown id returns 404 Cms.LibraryContent.NotFound. Archived content disappears from public reads."
+          }
+        }
       ]
     },
     {
       "name": "20. Landing CMS (manual)",
       "description": "Landing section CMS under the CmsContent policy (SuperAdmin or ContentAdmin). Closed 12-key registry (stats is virtual, never stored); Draft/Published/Archived lifecycle with draft twins for published edits; publish supersedes same-type rows to Archived. GETs are safe reads; all mutations are manual - run them only against approved disposable CMS fixtures. Unauthenticated returns 401; roles outside CmsContent return 403.",
       "item": [
-        { "name": "List landing sections", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/landing/sections?status={{landingStatus}}&type={{landingType}}&search={{landingSearch}}&page=1&pageSize=20", "description": "Read-only paged admin list across all statuses. status=Draft|Published|Archived and type (registry key e.g. hero, about) are optional; invalid values return 400. Response is {items, page, pageSize, totalCount}." } },
-        { "name": "Create landing section draft (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"type\": \"about\",\n  \"arabicTitle\": \"من نحن\",\n  \"englishTitle\": \"About\",\n  \"arabicBody\": null,\n  \"englishBody\": null,\n  \"contentJson\": null,\n  \"imagePath\": null,\n  \"displayOrder\": 0,\n  \"isVisible\": true\n}" }, "url": "{{baseUrl}}/api/v1/admin/landing/sections", "description": "STATE-CHANGING. Creates a Draft (drafts may be partial). type is a registry key (hero, partner-logos, about, features, activity-cards, steps, dashboard-promo, testimonials, faq, contact-form, footer); unknown types return 400 Cms.Landing.InvalidType. Success 201." } },
-        { "name": "Update landing section draft (manual mutation)", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"arabicTitle\": \"من نحن\",\n  \"englishTitle\": \"About\",\n  \"displayOrder\": 0,\n  \"isVisible\": true\n}" }, "url": "{{baseUrl}}/api/v1/admin/landing/sections/{{landingSectionId}}", "description": "STATE-CHANGING. Edits a Draft in place. Targeting a Published id creates (or updates) its draft twin and returns it (200); Archived targets return 400; unknown ids 404 Cms.LandingSection.NotFound. Do not run without owner-approved disposable CMS fixture data." } },
-        { "name": "Publish landing section (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/landing/sections/{{landingSectionId}}/publish", "description": "STATE-CHANGING. Draft to Published; previously published rows of the same type move to Archived (history retained). Writes an immutable audit row (actor, section, action, UTC). Requires bilingual titles (hero also requires a cover image); incomplete returns 400 Cms.LandingSection.Incomplete naming the gap; unknown id 404; non-draft 400." } },
-        { "name": "Set landing section visibility (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"value\": false\n}" }, "url": "{{baseUrl}}/api/v1/admin/landing/sections/{{landingSectionId}}/visibility", "description": "STATE-CHANGING. Success 204. Writes an immutable audit row with the value. Unknown id returns 404 Cms.LandingSection.NotFound." } },
-        { "name": "Delete landing section draft (manual mutation)", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/landing/sections/{{landingSectionId}}", "description": "STATE-CHANGING. Drafts only; success 204 and an immutable audit row. Published or archived history is retained: deleting it returns 409 Cms.LandingSection.PublishedHistory; unknown id 404." } },
-        { "name": "Reorder landing sections (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"items\": [\n    { \"id\": \"{{landingSectionId}}\", \"displayOrder\": 0 }\n  ]\n}" }, "url": "{{baseUrl}}/api/v1/admin/landing/sections/reorder", "description": "STATE-CHANGING batch displayOrder setter. Success 204. Duplicate or unknown ids return 400 Cms.Landing.ReorderInvalid." } },
-        { "name": "Upload landing media (manual multipart)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "body": { "mode": "formdata" }, "url": "{{baseUrl}}/api/v1/admin/landing/media", "description": "STATE-CHANGING manual multipart example. Set body mode to form-data with file (JPEG/PNG/WebP signature checked, max 5 MB). Success 201 {key}; invalid content or size returns 400. Use the returned key as imagePath on create/update." } }
+        {
+          "name": "List landing sections",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/landing/sections?status={{landingStatus}}&type={{landingType}}&search={{landingSearch}}&page=1&pageSize=20",
+            "description": "Read-only paged admin list across all statuses. status=Draft|Published|Archived and type (registry key e.g. hero, about) are optional; invalid values return 400. Response is {items, page, pageSize, totalCount}."
+          }
+        },
+        {
+          "name": "Create landing section draft (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"about\",\n  \"arabicTitle\": \"من نحن\",\n  \"englishTitle\": \"About\",\n  \"arabicBody\": null,\n  \"englishBody\": null,\n  \"contentJson\": null,\n  \"imagePath\": null,\n  \"displayOrder\": 0,\n  \"isVisible\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/landing/sections",
+            "description": "STATE-CHANGING. Creates a Draft (drafts may be partial). type is a registry key (hero, partner-logos, about, features, activity-cards, steps, dashboard-promo, testimonials, faq, contact-form, footer); unknown types return 400 Cms.Landing.InvalidType. Success 201."
+          }
+        },
+        {
+          "name": "Update landing section draft (manual mutation)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"arabicTitle\": \"من نحن\",\n  \"englishTitle\": \"About\",\n  \"displayOrder\": 0,\n  \"isVisible\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/landing/sections/{{landingSectionId}}",
+            "description": "STATE-CHANGING. Edits a Draft in place. Targeting a Published id creates (or updates) its draft twin and returns it (200); Archived targets return 400; unknown ids 404 Cms.LandingSection.NotFound. Do not run without owner-approved disposable CMS fixture data."
+          }
+        },
+        {
+          "name": "Publish landing section (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/landing/sections/{{landingSectionId}}/publish",
+            "description": "STATE-CHANGING. Draft to Published; previously published rows of the same type move to Archived (history retained). Writes an immutable audit row (actor, section, action, UTC). Requires bilingual titles (hero also requires a cover image); incomplete returns 400 Cms.LandingSection.Incomplete naming the gap; unknown id 404; non-draft 400."
+          }
+        },
+        {
+          "name": "Set landing section visibility (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"value\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/landing/sections/{{landingSectionId}}/visibility",
+            "description": "STATE-CHANGING. Success 204. Writes an immutable audit row with the value. Unknown id returns 404 Cms.LandingSection.NotFound."
+          }
+        },
+        {
+          "name": "Delete landing section draft (manual mutation)",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/landing/sections/{{landingSectionId}}",
+            "description": "STATE-CHANGING. Drafts only; success 204 and an immutable audit row. Published or archived history is retained: deleting it returns 409 Cms.LandingSection.PublishedHistory; unknown id 404."
+          }
+        },
+        {
+          "name": "Reorder landing sections (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"items\": [\n    { \"id\": \"{{landingSectionId}}\", \"displayOrder\": 0 }\n  ]\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/landing/sections/reorder",
+            "description": "STATE-CHANGING batch displayOrder setter. Success 204. Duplicate or unknown ids return 400 Cms.Landing.ReorderInvalid."
+          }
+        },
+        {
+          "name": "Upload landing media (manual multipart)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "formdata"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/landing/media",
+            "description": "STATE-CHANGING manual multipart example. Set body mode to form-data with file (JPEG/PNG/WebP signature checked, max 5 MB). Success 201 {key}; invalid content or size returns 400. Use the returned key as imagePath on create/update."
+          }
+        }
       ]
     },
     {
@@ -3175,7 +4456,10 @@
       "request": {
         "method": "GET",
         "header": [
-          { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
         ],
         "url": "{{baseUrl}}/api/v1/admin/caregivers/medical-access-audit?page=1&pageSize=50",
         "description": "Read-only audit list for Normal SuperAdmin/SupportAdmin; ContentAdmin and app accounts are denied. Optional filters: fromUtc/throughUtc (UTC, at most 12 months), actorUserId, dependentId, granteeUserId, action (CreateGrant/RevokeGrant), decision (Allowed/Denied). Defaults: latest 30 days, page=1, pageSize=50 (maximum 100). Response: { items, page, pageSize, totalCount, totalPages }. Invalid filters return 400 Api.Validation.Failed; authentication/policy failures return 401/403."
@@ -3185,10 +4469,78 @@
       "name": "21. Support inbox (SuperAdmin/SupportAdmin)",
       "description": "Support ticket inbox. Policy SupportInboxAdmin: a Normal JWT with account_type SuperAdmin or SupportAdmin; ContentAdmin, FinanceAdmin and app accounts receive a bare 403, and a missing/expired/non-normal token receives 401. Status contract: New=1, InProgress=2, Resolved=3, Closed=4 and movement is FORWARD ONLY. A backward move, a same-status no-op, or anything leaving Closed returns 409 Identity.Support.Conflict and writes nothing; a status outside 1-4 returns a bare 400. A reply never changes the status, and a reply to a Closed ticket is 409 with nothing written. The reply is persisted before delivery is attempted, so email/in-app failures are swallowed and the reply stays readable by the owner through GET /api/v1/support/tickets/{id}. Ticket ids are plain UUIDs; set {{supportTicketId}} from a ticket created by POST /api/v1/support/contact (the Sanad Auth collection captures it automatically).",
       "item": [
-        { "name": "List support tickets", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/support-tickets?page=1&pageSize=25", "description": "Safe read. Newest first; page defaults to 1 and pageSize to 25 (clamped 1-100). Optional status filter (1-4) can be appended as &status={{supportTicketStatus}}. Response { items, page, pageSize, totalCount } with items { ticketId, userId, subject, status, createdOnUtc }." } },
-        { "name": "Get support ticket detail", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }], "url": "{{baseUrl}}/api/v1/admin/support-tickets/{{supportTicketId}}", "description": "Safe read. Returns { ticketId, userId, subject, message, status, createdOnUtc, notifiedOnUtc, statusChangedByUserId, statusChangedOnUtc, replies[] } with replies oldest first. Unknown id returns 404 Identity.Support.NotFound." } },
-        { "name": "Change support ticket status (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"status\": 2\n}" }, "url": "{{baseUrl}}/api/v1/admin/support-tickets/{{supportTicketId}}/status", "description": "STATE-CHANGING. Forward only: New->InProgress/Resolved/Closed, InProgress->Resolved/Closed, Resolved->Closed; nothing leaves Closed and a no-op is refused. Success 204 and records statusChangedByUserId/statusChangedOnUtc. A refused transition returns 409 Identity.Support.Conflict with nothing written; status outside 1-4 returns a bare 400; unknown id 404 Identity.Support.NotFound. Do not replay against a ticket you need to keep in its current state." } },
-        { "name": "Reply to support ticket (manual mutation)", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"body\": \"We are looking into this.\"\n}" }, "url": "{{baseUrl}}/api/v1/admin/support-tickets/{{supportTicketId}}/replies", "description": "STATE-CHANGING. Success 200 with { replyId, actorUserId, body, createdOnUtc }. The reply is persisted before delivery is attempted, so an email/in-app failure never fails the request or loses the reply. Replying to a Closed ticket returns 409 Identity.Support.Conflict and writes nothing; unknown id 404 Identity.Support.NotFound. Use only an approved disposable ticket." } }
+        {
+          "name": "List support tickets",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/support-tickets?page=1&pageSize=25",
+            "description": "Safe read. Newest first; page defaults to 1 and pageSize to 25 (clamped 1-100). Optional status filter (1-4) can be appended as &status={{supportTicketStatus}}. Response { items, page, pageSize, totalCount } with items { ticketId, userId, subject, status, createdOnUtc }."
+          }
+        },
+        {
+          "name": "Get support ticket detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/support-tickets/{{supportTicketId}}",
+            "description": "Safe read. Returns { ticketId, userId, subject, message, status, createdOnUtc, notifiedOnUtc, statusChangedByUserId, statusChangedOnUtc, replies[] } with replies oldest first. Unknown id returns 404 Identity.Support.NotFound."
+          }
+        },
+        {
+          "name": "Change support ticket status (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": 2\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/support-tickets/{{supportTicketId}}/status",
+            "description": "STATE-CHANGING. Forward only: New->InProgress/Resolved/Closed, InProgress->Resolved/Closed, Resolved->Closed; nothing leaves Closed and a no-op is refused. Success 204 and records statusChangedByUserId/statusChangedOnUtc. A refused transition returns 409 Identity.Support.Conflict with nothing written; status outside 1-4 returns a bare 400; unknown id 404 Identity.Support.NotFound. Do not replay against a ticket you need to keep in its current state."
+          }
+        },
+        {
+          "name": "Reply to support ticket (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"body\": \"We are looking into this.\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/support-tickets/{{supportTicketId}}/replies",
+            "description": "STATE-CHANGING. Success 200 with { replyId, actorUserId, body, createdOnUtc }. The reply is persisted before delivery is attempted, so an email/in-app failure never fails the request or loses the reply. Replying to a Closed ticket returns 409 Identity.Support.Conflict and writes nothing; unknown id 404 Identity.Support.NotFound. Use only an approved disposable ticket."
+          }
+        }
       ]
     }
   ]

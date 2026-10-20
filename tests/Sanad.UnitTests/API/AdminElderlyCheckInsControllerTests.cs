@@ -28,6 +28,7 @@ public sealed class AdminElderlyCheckInsControllerTests
         Assert.Equal("{checkInId:guid}", typeof(AdminElderlyCheckInsController).GetMethod(nameof(AdminElderlyCheckInsController.Get))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
         Assert.Equal("timeline/{elderlyId:guid}", typeof(AdminElderlyCheckInsController).GetMethod(nameof(AdminElderlyCheckInsController.Timeline))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
         Assert.Equal("aggregate", typeof(AdminElderlyCheckInsController).GetMethod(nameof(AdminElderlyCheckInsController.Aggregate))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
+        Assert.Equal("missed", typeof(AdminElderlyCheckInsController).GetMethod(nameof(AdminElderlyCheckInsController.Missed))!.GetCustomAttribute<HttpGetAttribute>()!.Template);
     }
 
     [Fact]
@@ -85,6 +86,27 @@ public sealed class AdminElderlyCheckInsControllerTests
         Assert.Equal("Families.AdminCheckIn.NotFound", ((ProblemDetails)objectResult.Value!).Extensions["code"]);
     }
 
+    [Fact]
+    public async Task MissedIndeterminateMapsTo409()
+    {
+        var sender = new CapturingSender(Result<PagedMissedCheckIns>.Failure(new Error("Families.AdminCheckIn.IndeterminateEvaluation", "x")));
+        var controller = Create(sender);
+        var result = await controller.Missed(new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 2), 1, 20, null, CancellationToken.None);
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status409Conflict, objectResult.StatusCode);
+        Assert.Equal("Families.AdminCheckIn.IndeterminateEvaluation", ((ProblemDetails)objectResult.Value!).Extensions["code"]);
+    }
+
+    [Fact]
+    public async Task MissedUnavailableMapsTo503()
+    {
+        var sender = new CapturingSender(Result<PagedMissedCheckIns>.Failure(new Error("Families.AdminCheckIn.EvaluationUnavailable", "x")));
+        var controller = Create(sender);
+        var result = await controller.Missed(new DateOnly(2026, 9, 1), new DateOnly(2026, 9, 2), 1, 20, null, CancellationToken.None);
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status503ServiceUnavailable, objectResult.StatusCode);
+    }
+
     private static AdminElderlyCheckInsController Create(CapturingSender sender)
     {
         var controller = new AdminElderlyCheckInsController(sender)
@@ -122,6 +144,7 @@ public sealed class AdminElderlyCheckInsControllerTests
             {
                 GetAdminElderlyCheckInTimelineQuery => Result<IReadOnlyList<AdminElderlyCheckInRecord>>.Success([]),
                 GetAdminElderlyCheckInQuery => Result<AdminElderlyCheckInRecord>.Success(default!),
+                GetAdminMissedCheckInsQuery => Result<PagedMissedCheckIns>.Success(new PagedMissedCheckIns(DateTime.UtcNow, [], 1, 20, 0)),
                 _ => Result.Success()
             };
             return Task.FromResult((TResponse)(object)result);

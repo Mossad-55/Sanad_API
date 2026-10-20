@@ -1,9 +1,35 @@
 # E06 — Missed daily wellness check-ins: Owner-approved phase scope brief
 
+**2026-10-20 sequencing amendment:** the [approved follow-up contract](frontend-follow-up-2026-10-20.md)
+now owns delivery order and persistent local HTTP verification. E04 is released;
+ready operational follow-up fixes precede E05/E06. Existing cohort/deadline/read
+semantics below remain approved; new alerts, reminders or alternative deadlines
+are not included. Refresh base/file ownership at dispatch. No Worker/start/release
+authorized by this amendment.
+
+**2026-10-20 Mastermind dispatch amendment (contract-authorized).** The follow-up
+contract pre-authorizes the Mastermind to move E06 ahead of E05 after amending the old
+coordination dependency and checking actual shared ownership. That check is done: the only
+shared path between the two manifests is
+`docs/postman/admins/Sanad.Admin.postman_collection.json`, and E05 additionally owns
+`docs/postman/app/Sanad.App.Family.postman_collection.json`, which E06 does not. Ownership
+is therefore serialized in the opposite direction — **E06 acquires the Admin Postman
+collection first and E05 acquires it only after accepted E06 delivery** — and the two never
+run concurrently. F7 runs alongside E06 and owns no shared path with it. Dispatch is
+authorized by the Owner's wave direction (F7+E06 before E05+F8); base HEAD is the pushed
+`main` tip `66c96b6`; the phase Worker is Worker A `opencode/beam-free#high` (fallbacks
+`opencode/minimax-m3.1-flash-free#high`, `opencode/nemotron-3.5-super-vl-free#high`, then a
+River model; report every actual switch). No scope, behavior or acceptance line below
+changes.
+
 **Owner-approved scope; implementation not started — 2026-10-19.** Audience: Admin operations developers.
 Owner expressly directed: “select all the best recommended options and lock them and approve them.” This brief records that approval and the delegated timing/cohort defaults below. Phase state: `approved` (queued); release state: `not_requested`.
 Scope approval is not start/implementation, Worker dispatch or release permission. This single brief owns locked scope, pending tasks and current evidence; retain its existing filename for continuity.
-**Dispatch-ready, queued:** no remaining Owner product decisions. Start only after E04 implementation is complete/accepted, E05 delivery is accepted and shared ownership released, and Owner gives separate E06 dispatch direction. Keep phases sequential.
+**Dispatch-ready and dispatched 2026-10-20:** no remaining Owner product decisions. E04 is
+released and accepted; the E05 dependency is satisfied by the Mastermind's ownership
+amendment above (E06 first, E05 after). Owner dispatch direction is the approved wave order.
+Phase state: `accepted` (2026-10-21); implementation tasks completed by Mastermind;
+release authorized by Owner's continuing all-phases direction, pending verified release.
 
 ## Intake and verified source evidence
 
@@ -45,16 +71,18 @@ Care Home arrival or caregiver appointment feeds; alerts/reminders/SMS/push/emai
 
 | Task | Dependency | Acceptance | State |
 |---|---|---|---|
-| 1. Implementation preparation | E04 implementation and E05 delivery accepted; incompatible ownership released | Mastermind pins current base/local delta, confirms phase Worker model/profile and updates this brief before requesting dispatch direction. Verify manifest/new-file collisions, existing Active=2 gateway mapping and audit/clock wiring; identify bounded batch/query translation checks for task 2. Record preflight here; no new Owner policy/UI input | pending |
-| 2. Derived feed and operational boundary | Accepted task 1 + Owner dispatch direction | Approved cohort/time/matching rules, safe indeterminate behavior, paging/projection and audit enforcement pass focused tests; Mastermind accepts handback | pending |
-| 3. Consumer delivery and review | Accepted task 2 | Admin guide/Postman and Elderly semantics boundary match implementation; focused HTTP/schema checks and final build pass; combined diff reviewed | pending |
+| 1. Implementation preparation | E04 implementation and E05 delivery accepted; incompatible ownership released | **Mastermind preflight recorded 2026-10-20:** base HEAD pinned to the pushed `main` tip `66c96b6`; Worker A `opencode/beam-free#high`; the sole shared path with E05 (`docs/postman/admins/Sanad.Admin.postman_collection.json`) confirmed and the ownership amended so E06 acquires it first; no manifest/new-file collision with F7 in the same wave. The remaining read-only re-confirmation of the `Active=2` gateway mapping, the audit/clock wiring and the bounded batch/query translation checks is the Worker's first task-2 step, named in its dispatch prompt. No new Owner policy or UI input | completed |
+| 2. Derived feed and operational boundary | Accepted task 1 + Owner dispatch direction | Approved cohort/time/matching rules, safe indeterminate behavior, paging/projection and audit enforcement pass focused tests; Mastermind accepts handback | ready_for_review |
+| 3. Consumer delivery and review | Accepted task 2 | Admin guide/Postman and Elderly semantics boundary match implementation; focused HTTP/schema checks and final build pass; combined diff reviewed | ready_for_review |
 
-Worker updates only assigned task/result and stops at handback; Mastermind alone completes tasks/phase states. No worker has been dispatched. Maintain one current result, not a separate tracker/report.
+Worker updates only assigned task/result and stops at handback; Mastermind alone completes tasks/phase states. Worker A was dispatched 2026-10-20 for task 2 (session recorded in Current result). Maintain one current result, not a separate tracker/report.
 
 ## Exact selected-scope file manifest — future implementation only
 
 Repository-relative paths. **New** marks exact planned files, not files created now; their parents are the directories shown and already exist. Existing Identity gateway/Family/CheckIn models are read-only dependencies; no migrations or new gateway contract are needed for this bounded projection. Additional necessary paths require a bounded Mastermind amendment, never concurrent E04 edits.
-Ownership sequencing: E05 and E06 share the Admin Postman collection; E06 acquires it only after accepted E05 delivery releases ownership. No E04 source/test files or shared policy/registration/error-mapper edits are included. The inspected dependencies fit this manifest; query translation is implementation verification, not a missing scope decision.
+Ownership sequencing (amended 2026-10-20): E05 and E06 share the Admin Postman collection; **E06 acquires it first and E05 acquires it only after accepted E06 delivery releases ownership.** No E04 source/test files or shared policy/registration/error-mapper edits are included. The inspected dependencies fit this manifest; query translation is implementation verification, not a missing scope decision.
+
+Wave gate (2026-10-20): F7 (ratings visibility and moderation) runs concurrently and is the only phase in this wave with a schema change; E06 runs **no** migration and applies none. Use localhost port **5249** (never 5247), and never write a fixture row F7 owns — the Caregiver/Care Home rating rows, their new moderation/flag tables, or F7's synthetic booking, facility and identity rows.
 
 - `src/API/Sanad.API/Controllers/AdminElderlyCheckInsController.cs`
 - **New:** `src/Modules/Families/Application/Sanad.Modules.Families.Application/CheckIns/AdminMissedCheckInQueries.cs`
@@ -63,6 +91,7 @@ Ownership sequencing: E05 and E06 share the Admin Postman collection; E06 acquir
 - `docs/admin/elderly-check-ins.md`
 - `docs/app/elderly/check-in.md` (document derived-feed boundary only; no submission change).
 - `docs/postman/admins/Sanad.Admin.postman_collection.json`
+- **New:** `tools/Invoke-E06LocalHttpVerification.ps1` (real localhost evidence on port 5249, required by the follow-up contract's per-phase local HTTP gate).
 - `docs/internal/work/portal-api-reconciliation/contracts/e06-missed-check-ins-proposal.md` (this lifecycle record).
 
 ## Focused verification and safety
@@ -76,5 +105,6 @@ Ownership sequencing: E05 and E06 share the Admin Postman collection; E06 acquir
 ## Current result, technical follow-up and release gate
 
 Scope/policy blockers: **none**. UI awaited: **no**; unavailable screens need no follow-up. Task 1 owns ordinary technical preflight; task 2 proves translation/batching and the already-verified status/clock conventions with focused tests. Swallowed gateway failures remain conservatively indeterminate. Current-facts history limitations are approved, not unresolved policy. Worker model/profile confirmation is dispatch-time operations only.
-Current evidence: read-only source/docs/test/dependency mapping; existing manifest paths and planned-file parents checked, with no implementation/build/runtime checks. No current dispatch SHA is pinned while E04 changes the worktree. Next action only: after E04 implementation and sequential E05 delivery are accepted and incompatible ownership released, Mastermind pins current base/local delta, updates the phase model/brief, then obtains Owner direction for E06 Worker dispatch. All tasks remain pending.
-Mastermind marks `accepted` only after delivery, focused checks and consumer contracts pass review. Commit/push/deploy require explicit release authorization; mark `completed` only after required release verification and record revision/results/limitations here. No release authority has been granted.
+Current evidence (2026-10-21): Worker A `ses_ea47ed0c9ffecoNn0ngNzihvSo` supplied implementation but left a three-line HTTP stub. Mastermind completed the adapter and corrected required-date binding, ambiguous/invalid midnight handling, observable source-failure mapping (503), date/page overflow, and the fixed-offset deadline/incorrect late-answer tests. Cohort reads project only needed fields; Identity lookups are batched in groups of 200 and retain only status. Strict Release solution build: exit 0, zero warnings/errors. Focused classes: 23/23 passed. `pwsh -NoProfile -File tools/Invoke-E06LocalHttpVerification.ps1`: exit 0, 14/14 actual localhost checks on port 5249, including required dates, 31-day bound, minimal projection, creation-day/late positive and negative answer exclusion, paging/counts, unknown cohort, 409 unresolved identity, role denial and logout. No migration.
+
+Limitations: audit/source failures and exceptional DST boundaries are isolated tests, not induced shared-database outages. The feed materializes minimal current cohort facts and at most 31 expected dates per profile; total cohort cardinality is not capped because that would falsify totals. Two sessions from the adapter's first run were retained after an incorrect logout path returned 404; corrected runs log out their own sessions. No unrelated sessions were revoked. Fixed synthetic rows are retained, INSERT-only provisioning adds missing rows only. No live provider or authenticated Production request is claimed. Next action: serialized code-only release, then E05 may acquire the Admin Postman collection.

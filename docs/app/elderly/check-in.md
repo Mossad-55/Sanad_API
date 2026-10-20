@@ -2,6 +2,8 @@
 
 The authenticated Elderly account can submit one final daily reassurance answer for its own profile:
 
+Derived missed-check-in reporting is an Admin-only operational read; it does not change submission, retry or conflict behavior.
+
 `POST /api/v1/elderly/check-ins`
 
 Authorization is an Elderly JWT with `Normal` access. The server resolves the profile from the authenticated identity; the request does not accept an Elderly or Family ID.
