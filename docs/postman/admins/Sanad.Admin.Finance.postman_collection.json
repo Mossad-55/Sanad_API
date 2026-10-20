@@ -62,7 +62,7 @@
             "url": "{{baseUrl}}/api/v1/admin/finance/platform-charge-rules/current",
             "description": "FinanceOperationalAdmin. Returns 200 with the active PlatformChargeRuleResponse, or 204 with no body before the first rule exists (never JSON null)."
           },
-          "description": "Returns 200 with the effective active rule, or JSON null when no effective rule exists. SuperAdmin and SupportAdmin only."
+          "description": "Returns 200 with the effective active rule, or 204 with no body when no effective rule exists. SuperAdmin and SupportAdmin only."
         },
         {
           "name": "Get platform charge rule history",

@@ -40,7 +40,7 @@ public sealed class GetAdminElderlyCheckInsQueryHandler(IFamiliesDbContext db) :
         await AdminElderlyCheckInAccess.AuditAsync(db, r.ActorUserId, r.ActorAccountType, "ListCheckIns", null, r.CorrelationId, ct);
         int page = Math.Max(1, r.Page), size = r.PageSize is < 1 or > 100 ? 20 : r.PageSize;
         var q = db.ElderlyCheckIns.AsNoTracking().Join(db.Elderlies.AsNoTracking(), c => c.ElderlyId, e => e.Id, (c, e) => new { c, e }).Where(x => db.Families.Any(f => f.Id == x.e.FamilyId && f.DeletedOnUtc == null));
-        if (r.ElderlyId.HasValue) q = q.Where(x => x.e.Id.Value == r.ElderlyId.Value);
+        if (r.ElderlyId.HasValue) q = q.Where(x => x.e.Id == new ElderlyId(r.ElderlyId.Value));
         if (r.StartDate.HasValue) q = q.Where(x => x.c.LocalDate >= r.StartDate.Value);
         if (r.EndDate.HasValue) q = q.Where(x => x.c.LocalDate <= r.EndDate.Value);
         if (r.Answer.HasValue) q = q.Where(x => x.c.Answer == r.Answer.Value);
@@ -66,7 +66,7 @@ public sealed class GetAdminElderlyCheckInTimelineQueryHandler(IFamiliesDbContex
     {
         if (!AdminElderlyCheckInAccess.ValidRange(r.StartDate, r.EndDate)) return Result<IReadOnlyList<AdminElderlyCheckInRecord>>.Failure(new Error("Families.AdminCheckIn.InvalidDateRange", "The check-in timeline must use an inclusive range of 31 days or fewer."));
         await AdminElderlyCheckInAccess.AuditAsync(db, r.ActorUserId, r.ActorAccountType, "GetCheckInTimeline", r.ElderlyId, r.CorrelationId, ct);
-        var rows = await db.ElderlyCheckIns.AsNoTracking().Where(c => c.ElderlyId.Value == r.ElderlyId && c.LocalDate >= r.StartDate && c.LocalDate <= r.EndDate).Join(db.Elderlies.AsNoTracking(), c => c.ElderlyId, e => e.Id, (c, e) => new { c, e }).Where(x => db.Families.Any(f => f.Id == x.e.FamilyId && f.DeletedOnUtc == null)).OrderBy(x => x.c.LocalDate).ToListAsync(ct);
+        var rows = await db.ElderlyCheckIns.AsNoTracking().Where(c => c.ElderlyId == new ElderlyId(r.ElderlyId) && c.LocalDate >= r.StartDate && c.LocalDate <= r.EndDate).Join(db.Elderlies.AsNoTracking(), c => c.ElderlyId, e => e.Id, (c, e) => new { c, e }).Where(x => db.Families.Any(f => f.Id == x.e.FamilyId && f.DeletedOnUtc == null)).OrderBy(x => x.c.LocalDate).ToListAsync(ct);
         return rows.Select(x => AdminElderlyCheckInMapping.Map(x.c, x.e)).ToList();
     }
 }
@@ -81,8 +81,10 @@ public sealed class GetAdminElderlyCheckInAggregateQueryHandler(IFamiliesDbConte
         var q = db.ElderlyCheckIns.AsNoTracking()
             .Join(db.Elderlies.AsNoTracking(), c => c.ElderlyId, e => e.Id, (c, e) => new { c, e })
             .Where(x => db.Families.Any(f => f.Id == x.e.FamilyId && f.DeletedOnUtc == null))
-            .Where(x => (!r.ElderlyId.HasValue || x.c.ElderlyId.Value == r.ElderlyId) && (!r.StartDate.HasValue || x.c.LocalDate >= r.StartDate) && (!r.EndDate.HasValue || x.c.LocalDate <= r.EndDate))
             .Select(x => x.c);
+        if (r.ElderlyId.HasValue) q = q.Where(c => c.ElderlyId == new ElderlyId(r.ElderlyId.Value));
+        if (r.StartDate.HasValue) q = q.Where(c => c.LocalDate >= r.StartDate.Value);
+        if (r.EndDate.HasValue) q = q.Where(c => c.LocalDate <= r.EndDate.Value);
         var counts = await q.GroupBy(c => c.Answer).Select(g => new { g.Key, Count = g.Count() }).ToListAsync(ct);
         int positive = counts.FirstOrDefault(x => x.Key)?.Count ?? 0, negative = counts.FirstOrDefault(x => !x.Key)?.Count ?? 0;
         return new AdminElderlyCheckInAggregate(positive + negative, positive, negative);

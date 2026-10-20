@@ -13,7 +13,7 @@ public sealed class UpdateHelpFaqCommandValidator
             .NotEqual(HelpFaqId.Empty);
 
         RuleFor(command => command.Audience)
-            .IsInEnum()
+            .Must(audience => audience.IsHelpAudience())
             .WithMessage(
                 "Audience must be 1 (Family), 2 (MedicalCaregiver), " +
                 "3 (CompanionCaregiver), or 4 (Elderly).");

@@ -52,6 +52,8 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         { "get", "/api/v1/admin/elderly/check-ins", 200, "ref", "PagedAdminElderlyCheckIns" },
         { "get", "/api/v1/admin/elderly/check-ins/aggregate", 200, "ref", "AdminElderlyCheckInAggregate" },
         { "get", "/api/v1/admin/elderly/help-requests", 200, "ref", "PagedElderlyHelpRequests" },
+        { "get", "/api/v1/admin/elderly/help-requests/{requestId}", 200, "ref", "ElderlyHelpRequestResponse" },
+        { "get", "/api/v1/admin/elderly/help-requests/{requestId}/history", 200, "array", "ElderlyHelpRequestHistoryResponse" },
         { "get", "/api/v1/admin/elderly/help-requests/aggregate", 200, "dict", "HelpRequestAggregate" },
         { "get", "/api/v1/admin/elderly/medications", 200, "ref", "PagedAdminMedicationRecords" },
         { "get", "/api/v1/admin/elderly/medications/adherence", 200, "ref", "AdminMedicationAdherenceAggregate" },
@@ -60,6 +62,7 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         { "get", "/api/v1/admin/cms/elderly-welcome", 200, "ref", "ElderlyWelcomeResponse" },
         { "get", "/api/v1/admin/finance/platform-charge-rules/current", 200, "ref", "PlatformChargeRuleResponse" },
         { "get", "/api/v1/admin/finance/platform-charge-rules/history", 200, "array", "PlatformChargeRuleResponse" },
+        { "post", "/api/v1/admin/finance/platform-charge-rules", 201, "guid", "" },
         { "get", "/api/v1/admin/platform-controls", 200, "ref", "PlatformControlResponse" },
         { "put", "/api/v1/admin/platform-controls", 200, "ref", "PlatformControlResponse" },
         { "get", "/api/v1/platform/status", 200, "ref", "PublicPlatformStatusResponse" },
@@ -67,9 +70,36 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         { "get", "/api/v1/admin/notifications/{notificationId}", 200, "ref", "AdminNotificationRecord" },
         { "get", "/api/v1/admin/notifications/timeline", 200, "ref", "AdminNotificationPage" },
         { "get", "/api/v1/admin/notifications/aggregate", 200, "ref", "AdminNotificationAggregate" },
+        { "get", "/api/v1/notifications/unread-count", 200, "integer", "" },
         { "get", "/api/v1/admin/sentence-builder/catalog", 200, "ref", "SentenceBuilderCatalogPage" },
         { "get", "/api/v1/admin/wellness-tips", 200, "ref", "WellnessTipPageResponse" },
         { "get", "/api/v1/care-homes/inventory/admin/{facilityId}", 200, "ref", "CareHomeInventoryDto" },
+        { "get", "/api/v1/care-homes/inventory/mine", 200, "ref", "CareHomeInventoryDto" },
+        { "post", "/api/v1/care-homes/inventory/mine/room-types", 200, "ref", "CareHomeInventoryDto" },
+        { "put", "/api/v1/care-homes/inventory/mine/room-types/{id}", 200, "ref", "CareHomeInventoryDto" },
+        { "post", "/api/v1/care-homes/inventory/mine/room-types/{id}/media", 201, "ref", "CareHomeRoomTypeMediaDto" },
+        { "delete", "/api/v1/care-homes/inventory/mine/room-types/{id}/media/{mediaId}", 204, "none", "" },
+        { "post", "/api/v1/care-homes/inventory/mine/room-types/{id}/archive", 200, "ref", "CareHomeInventoryDto" },
+        { "post", "/api/v1/care-homes/inventory/mine/rooms", 200, "ref", "CareHomeInventoryDto" },
+        { "put", "/api/v1/care-homes/inventory/mine/rooms/{id}", 200, "ref", "CareHomeInventoryDto" },
+        { "post", "/api/v1/care-homes/inventory/mine/rooms/{id}/media", 201, "ref", "CareHomeRoomMediaDto" },
+        { "delete", "/api/v1/care-homes/inventory/mine/rooms/{id}/media/{mediaId}", 204, "none", "" },
+        { "post", "/api/v1/care-homes/inventory/mine/rooms/{id}/archive", 200, "ref", "CareHomeInventoryDto" },
+        { "post", "/api/v1/care-homes/inventory/mine/beds", 200, "ref", "CareHomeInventoryDto" },
+        { "put", "/api/v1/care-homes/inventory/mine/beds/{id}", 200, "ref", "CareHomeInventoryDto" },
+        { "post", "/api/v1/care-homes/inventory/mine/beds/{id}/archive", 200, "ref", "CareHomeInventoryDto" },
+        { "post", "/api/v1/care-homes/inventory/mine/maintenance", 200, "ref", "CareHomeInventoryDto" },
+        { "put", "/api/v1/care-homes/inventory/mine/maintenance/{id}", 200, "ref", "CareHomeInventoryDto" },
+        { "post", "/api/v1/care-homes/inventory/mine/maintenance/{id}/cancel", 200, "ref", "CareHomeInventoryDto" },
+        { "post", "/api/v1/care-homes/inventory/mine/availability", 200, "array", "CareHomeAvailability" },
+        { "post", "/api/v1/care-homes/inventory/admin/{facilityId}/availability", 200, "array", "CareHomeAvailability" },
+        { "get", "/api/v1/care-homes/booking-requests/mine", 200, "array", "CareHomeBookingListItem" },
+        { "get", "/api/v1/care-homes/visits/mine", 200, "array", "CareHomeVisitResponse" },
+        { "get", "/api/v1/care-homes/facilities/mine/visit-settings", 200, "ref", "CareHomeVisitSettingsResponse" },
+        { "put", "/api/v1/care-homes/facilities/mine/visit-settings", 200, "ref", "CareHomeVisitSettingsResponse" },
+        { "get", "/api/v1/care-homes/dashboard/mine", 200, "ref", "CareHomeDashboard" },
+        { "get", "/api/v1/care-homes/revenue/mine", 200, "ref", "CareHomeRevenueReport" },
+        { "get", "/api/v1/care-homes/payouts/mine", 200, "array", "CareHomePayoutLedgerItem" },
         { "post", "/api/v1/admin/users", 201, "ref", "RegisterUserResponse" },
         { "post", "/api/v1/admin/users/{userId}/suspend", 200, "ref", "AdminUserStatusResponse" },
         { "post", "/api/v1/admin/users/{userId}/block", 200, "ref", "AdminUserStatusResponse" },
@@ -88,6 +118,13 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         Assert.True(
             operation.GetProperty("responses").TryGetProperty(status.ToString(), out JsonElement response),
             $"Missing {status} response for {method.ToUpperInvariant()} {path}.");
+
+        if (kind == "none")
+        {
+            Assert.False(response.TryGetProperty("content", out _), "A 204 response must not publish a body schema.");
+            return;
+        }
+
         Assert.True(
             TryGetJsonSchema(response, out JsonElement schema),
             $"Missing application/json schema for {method.ToUpperInvariant()} {path} {status}.");
@@ -102,6 +139,20 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         else if (kind == "dict")
         {
             Assert.Equal("object", schema.GetProperty("type").GetString());
+        }
+        else if (kind == "integer")
+        {
+            JsonElement type = schema.GetProperty("type");
+            bool isInteger = type.ValueKind == JsonValueKind.String
+                ? type.GetString() == "integer"
+                : type.ValueKind == JsonValueKind.Array
+                    && type.EnumerateArray().Any(value => value.GetString() == "integer");
+            Assert.True(isInteger, "Expected a bare integer response schema.");
+        }
+        else if (kind == "guid")
+        {
+            Assert.Equal("string", schema.GetProperty("type").GetString());
+            Assert.Equal("uuid", schema.GetProperty("format").GetString());
         }
         else
         {
@@ -288,7 +339,6 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
             responses.TryGetProperty("204", out JsonElement noContent),
             "Missing 204 first-run response for the current charge rule.");
         Assert.False(noContent.TryGetProperty("content", out _), "204 must carry no body schema.");
-
         Assert.True(responses.TryGetProperty("200", out _), "Populated 200 response must be retained.");
     }
 

@@ -126,10 +126,27 @@ Create or rename a bed with `POST /mine/beds` or `PUT /mine/beds/{id}`:
 Archive or restore a bed with
 `POST /mine/beds/{id}/archive?expectedVersion=3&restore=false`.
 
-All owner mutations require `expectedVersion`; stale versions return the
-standard conflict result. Invalid input returns a Care Homes inventory error,
-including `CareHomes.Inventory.Invalid`, `InvalidTarget`, `RoomNumberTaken`,
-`ActiveOccupancy`, or `InvalidRange` as applicable.
+All owner mutations require `expectedVersion`; a stale inventory version returns
+`409 CareHomes.Inventory.Conflict`. Other duplicate/resource conflicts retain
+their specific codes rather than one generic conflict:
+
+| HTTP | Code | Meaning |
+|---|---|---|
+| 400 | `CareHomes.Inventory.Invalid` | Invalid room/type/bed fields or domain input. |
+| 400 | `CareHomes.Inventory.InvalidTarget` | Missing, archived, or out-of-facility room/bed target. |
+| 400 | `CareHomes.Inventory.InvalidRange` | Invalid or non-increasing maintenance/availability range, or an amended block that must remain in the future. |
+| 400 | `CareHomes.Inventory.MediaInvalid` | Unsupported/invalid image or an invalid media removal. |
+| 400 | `CareHomes.Inventory.RoomMediaRequired` | Room type lacks the required cover and gallery images for publication/bookability. |
+| 404 | `CareHomes.Inventory.NotFound` | Facility, inventory asset, or maintenance block is absent/inaccessible. |
+| 404 | `CareHomes.Inventory.MediaNotFound` | Room or room-type media entry is absent. |
+| 409 | `CareHomes.Inventory.Conflict` | Stale inventory version or a database concurrency/unique-race conflict. |
+| 409 | `CareHomes.Inventory.RoomNumberTaken` / `LabelTaken` | Duplicate room number in a facility or bed label in a room. |
+| 409 | `CareHomes.Inventory.ActiveOccupancy` | A room/bed change or maintenance block conflicts with a current hold/stay. |
+| 409 | `CareHomes.Inventory.Overlap` | Maintenance intervals overlap on the same room/bed relationship. |
+| 409 | `CareHomes.Inventory.InvalidState` | A past/started/cancelled maintenance block cannot be amended or cancelled. |
+
+The inventory codes above are mapped by the API result mapper; a caller should
+not infer that every conflict is an HTTP 409 with the generic `Conflict` code.
 
 ## Maintenance and derived availability
 

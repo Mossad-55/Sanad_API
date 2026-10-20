@@ -150,7 +150,7 @@ public sealed class AdminListElderlySosQueryHandler(IFamiliesDbContext db) : IQu
         await SosAdminAccess.Audit(db, r.ActorUserId, r.ActorAccountType, "ListSos", null, r.CorrelationId, ct);
         var q = db.ElderlySos.AsNoTracking().Join(db.Elderlies.AsNoTracking(), x => x.ElderlyIdentityUserId, e => e.IdentityUserId, (x, e) => new { x, e }).Where(x => db.Families.Any(f => f.Id == x.e.FamilyId && f.DeletedOnUtc == null));
         if (r.Status.HasValue) q = q.Where(x => x.x.Status == r.Status);
-        if (r.ElderlyId.HasValue) q = q.Where(x => x.e.Id.Value == r.ElderlyId);
+        if (r.ElderlyId.HasValue) q = q.Where(x => x.e.Id == new ElderlyId(r.ElderlyId.Value));
         var total = await q.CountAsync(ct); var page = Math.Max(1, r.Page); var size = Math.Clamp(r.PageSize, 1, 100);
         var rows = await q.OrderByDescending(x => x.x.CreatedOnUtc).Skip((page - 1) * size).Take(size).ToListAsync(ct);
         return new PagedElderlySos(rows.Select(x => SosMap.Map(x.x, x.e.Id.Value)).ToList(), page, size, total);

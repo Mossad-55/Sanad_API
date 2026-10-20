@@ -65,7 +65,14 @@ public sealed class AdminFinanceControllerTests
     public async Task Current_and_history_dispatch_their_read_queries()
     {
         var current = await new AdminFinanceController(new CapturingSender(Result<PlatformChargeRuleResponse?>.Success(null))).Current(default);
-        Assert.Null(Assert.IsType<OkObjectResult>(current).Value);
+        Assert.IsType<NoContentResult>(current);
+
+        PlatformChargeRuleResponse currentRule = new(
+            Guid.NewGuid(), 10m, 14m, 1, DateTime.UtcNow, DateTime.UtcNow, true);
+        var populated = await new AdminFinanceController(
+            new CapturingSender(Result<PlatformChargeRuleResponse?>.Success(currentRule)))
+            .Current(default);
+        Assert.Same(currentRule, Assert.IsType<OkObjectResult>(populated).Value);
 
         var history = new List<PlatformChargeRuleResponse>();
         var sender = new CapturingSender(Result<IReadOnlyList<PlatformChargeRuleResponse>>.Success(history));

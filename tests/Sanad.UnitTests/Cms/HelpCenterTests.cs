@@ -1,9 +1,16 @@
+using FluentValidation;
+using FluentValidation.Results;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Sanad.API.ProblemDetail;
+using Sanad.BuildingBlocks.Application.Behaviors;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.Modules.Cms.Application.Help;
 using Sanad.Modules.Cms.Application.Legal;
 using Sanad.Modules.Cms.Domain.Help;
 using Sanad.Modules.Cms.Domain.Legal;
 using Sanad.Modules.Cms.Infrastructure.Persistence;
+using System.Text.Json;
 
 namespace Sanad.UnitTests.Cms;
 
@@ -295,6 +302,268 @@ public sealed class HelpCenterTests
 
         Assert.Empty(dbContext.HelpFaqs);
     }
+
+    [Theory]
+    [InlineData(LegalAudience.Family)]
+    [InlineData(LegalAudience.MedicalCaregiver)]
+    [InlineData(LegalAudience.CompanionCaregiver)]
+    [InlineData(LegalAudience.Elderly)]
+    public async Task CreateFaqValidator_AcceptsSupportedAppAudiences(
+        LegalAudience audience)
+    {
+        var result = await new CreateHelpFaqCommandValidator()
+            .ValidateAsync(ValidCreateCommand(audience));
+
+        Assert.True(result.IsValid);
+        Assert.Empty(result.Errors);
+    }
+
+    [Theory]
+    [InlineData(LegalAudience.Family)]
+    [InlineData(LegalAudience.MedicalCaregiver)]
+    [InlineData(LegalAudience.CompanionCaregiver)]
+    [InlineData(LegalAudience.Elderly)]
+    public async Task UpdateFaqValidator_AcceptsSupportedAppAudiences(
+        LegalAudience audience)
+    {
+        var result = await new UpdateHelpFaqCommandValidator()
+            .ValidateAsync(
+                ValidUpdateCommand(
+                    new HelpFaqId(UnknownFaqGuid),
+                    audience));
+
+        Assert.True(result.IsValid);
+        Assert.Empty(result.Errors);
+    }
+
+    [Theory]
+    [InlineData(LegalAudience.CareHomeOwner)]
+    [InlineData((LegalAudience)9)]
+    public async Task CreateFaqValidator_RejectsUnsupportedAudienceOnAudienceField(
+        LegalAudience audience)
+    {
+        var result = await new CreateHelpFaqCommandValidator()
+            .ValidateAsync(ValidCreateCommand(audience));
+
+        Assert.False(result.IsValid);
+
+        ValidationFailure failure = Assert.Single(result.Errors);
+        Assert.Equal("Audience", failure.PropertyName, ignoreCase: true);
+        Assert.Contains(
+            "Audience must be 1 (Family)",
+            failure.ErrorMessage);
+    }
+
+    [Theory]
+    [InlineData(LegalAudience.CareHomeOwner)]
+    [InlineData((LegalAudience)9)]
+    public async Task UpdateFaqValidator_RejectsUnsupportedAudienceOnAudienceField(
+        LegalAudience audience)
+    {
+        var result = await new UpdateHelpFaqCommandValidator()
+            .ValidateAsync(
+                ValidUpdateCommand(
+                    new HelpFaqId(UnknownFaqGuid),
+                    audience));
+
+        Assert.False(result.IsValid);
+
+        ValidationFailure failure = Assert.Single(result.Errors);
+        Assert.Equal("Audience", failure.PropertyName, ignoreCase: true);
+        Assert.Contains(
+            "Audience must be 1 (Family)",
+            failure.ErrorMessage);
+    }
+
+    [Fact]
+    public async Task CreateFaq_UnsupportedAudience_IsRejectedBeforeAnyRowIsCreated()
+    {
+        await using CmsDbContext dbContext = CreateDbContext();
+
+        ValidationException exception =
+            await Assert.ThrowsAsync<ValidationException>(
+                () => RunCreatePipelineAsync(
+                    dbContext,
+                    LegalAudience.CareHomeOwner));
+
+        // The request field is named, so a consumer can map the coded failure
+        // back to the offending property instead of seeing an unexpected 500
+        // from the HelpFaq domain guard.
+        Assert.Contains(
+            exception.Errors,
+            failure => failure.PropertyName == "Audience");
+        Assert.Empty(dbContext.HelpFaqs);
+
+        ProblemSummary problem = await SummarizeAsync(exception);
+        Assert.Equal(StatusCodes.Status400BadRequest, problem.Status);
+        Assert.Equal("Api.Validation.Failed", problem.Code);
+        Assert.Contains("Audience", problem.Fields);
+    }
+
+    [Fact]
+    public async Task UpdateFaq_UnsupportedAudience_IsRejectedAndLeavesStoredRowUnchanged()
+    {
+        await using CmsDbContext dbContext = CreateDbContext();
+
+        HelpFaqId faqId = SeedFaq(
+            dbContext,
+            LegalAudience.Family,
+            "سؤال",
+            "Question",
+            displayOrder: 0,
+            isActive: true);
+        await dbContext.SaveChangesAsync();
+
+        var behavior =
+            new ValidationBehavior<UpdateHelpFaqCommand,
+                Result<HelpFaqResponse>>(
+                [new UpdateHelpFaqCommandValidator()]);
+        UpdateHelpFaqCommand command =
+            new(
+                faqId,
+                LegalAudience.CareHomeOwner,
+                "سؤال محدّث",
+                "Updated question",
+                "إجابة محدّثة",
+                "Updated answer",
+                5,
+                false);
+
+        ValidationException exception =
+            await Assert.ThrowsAsync<ValidationException>(
+                () => behavior.Handle(
+                    command,
+                    _ => new UpdateHelpFaqCommandHandler(dbContext)
+                        .Handle(command, CancellationToken.None),
+                    CancellationToken.None));
+
+        Assert.Contains(
+            exception.Errors,
+            failure => failure.PropertyName == "Audience");
+
+        HelpFaq stored = dbContext.HelpFaqs.Single();
+        Assert.Equal(LegalAudience.Family, stored.Audience);
+        Assert.Equal("Question", stored.EnglishQuestion);
+        Assert.Equal(0, stored.DisplayOrder);
+        Assert.True(stored.IsActive);
+    }
+
+    [Fact]
+    public async Task CreateAndUpdateFaq_ElderlyAudience_RetainSupportedBehavior()
+    {
+        await using CmsDbContext dbContext = CreateDbContext();
+
+        var created = await RunCreatePipelineAsync(
+            dbContext,
+            LegalAudience.Elderly);
+        Assert.True(created.IsSuccess);
+        Assert.Equal(LegalAudience.Elderly, created.Value.Audience);
+
+        var behavior =
+            new ValidationBehavior<UpdateHelpFaqCommand,
+                Result<HelpFaqResponse>>(
+                [new UpdateHelpFaqCommandValidator()]);
+        UpdateHelpFaqCommand command =
+            new(
+                created.Value.Id,
+                LegalAudience.Elderly,
+                "سؤال محدّث",
+                "Updated question",
+                "إجابة محدّثة",
+                "Updated answer",
+                3,
+                true);
+
+        var updated = await behavior.Handle(
+            command,
+            _ => new UpdateHelpFaqCommandHandler(dbContext)
+                .Handle(command, CancellationToken.None),
+            CancellationToken.None);
+
+        Assert.True(updated.IsSuccess);
+        Assert.Equal(LegalAudience.Elderly, updated.Value.Audience);
+        Assert.Equal("Updated question", updated.Value.EnglishQuestion);
+
+        HelpFaq stored = dbContext.HelpFaqs.Single();
+        Assert.Equal(LegalAudience.Elderly, stored.Audience);
+        Assert.Equal(3, stored.DisplayOrder);
+    }
+
+    private static CreateHelpFaqCommand ValidCreateCommand(
+        LegalAudience audience) =>
+        new(
+            audience,
+            "سؤال",
+            "Question",
+            "إجابة",
+            "Answer",
+            0,
+            true);
+
+    private static UpdateHelpFaqCommand ValidUpdateCommand(
+        HelpFaqId id,
+        LegalAudience audience) =>
+        new(
+            id,
+            audience,
+            "سؤال",
+            "Question",
+            "إجابة",
+            "Answer",
+            0,
+            true);
+
+    private static Task<Result<HelpFaqResponse>> RunCreatePipelineAsync(
+        CmsDbContext dbContext,
+        LegalAudience audience)
+    {
+        var behavior =
+            new ValidationBehavior<CreateHelpFaqCommand,
+                Result<HelpFaqResponse>>(
+                [new CreateHelpFaqCommandValidator()]);
+        CreateHelpFaqCommand command = ValidCreateCommand(audience);
+
+        // Mirrors the production MediatR pipeline: the validator runs before
+        // the handler, so a rejected audience never reaches the domain.
+        return behavior.Handle(
+            command,
+            _ => new CreateHelpFaqCommandHandler(dbContext)
+                .Handle(command, CancellationToken.None),
+            CancellationToken.None);
+    }
+
+    private static async Task<ProblemSummary> SummarizeAsync(
+        ValidationException exception)
+    {
+        var httpContext = new DefaultHttpContext();
+
+        httpContext.Request.Path = "/api/v1/admin/cms/help/faqs";
+        httpContext.Response.Body = new MemoryStream();
+
+        bool handled = await new ValidationExceptionHandler()
+            .TryHandleAsync(
+                httpContext,
+                exception,
+                CancellationToken.None);
+        Assert.True(handled);
+
+        httpContext.Response.Body.Position = 0;
+
+        using JsonDocument document = await JsonDocument.ParseAsync(
+            httpContext.Response.Body);
+        JsonElement root = document.RootElement;
+        JsonElement errors = root.GetProperty("errors");
+
+        return new ProblemSummary(
+            httpContext.Response.StatusCode,
+            root.GetProperty("code").GetString() ?? string.Empty,
+            errors.EnumerateObject().Select(x => x.Name).ToArray());
+    }
+
+    private sealed record ProblemSummary(
+        int Status,
+        string Code,
+        IReadOnlyList<string> Fields);
 
     private static HelpFaqId SeedFaq(
         CmsDbContext dbContext,

@@ -168,7 +168,7 @@ public sealed class AdminListElderlyHelpRequestsQueryHandler(IFamiliesDbContext 
             .Join(db.Elderlies.AsNoTracking(), x => x.ElderlyIdentityUserId, e => e.IdentityUserId, (x, e) => new { x, e })
             .Where(x => x.x.CreatedOnUtc >= cutoff && db.Families.Any(f => f.Id == x.e.FamilyId && f.DeletedOnUtc == null));
         if (r.Status.HasValue) q = q.Where(x => x.x.Status == r.Status);
-        if (r.ElderlyId.HasValue) q = q.Where(x => x.e.Id.Value == r.ElderlyId);
+        if (r.ElderlyId.HasValue) q = q.Where(x => x.e.Id == new ElderlyId(r.ElderlyId.Value));
         var total = await q.CountAsync(ct);
         var page = Math.Max(1, r.Page);
         var size = Math.Clamp(r.PageSize, 1, 100);

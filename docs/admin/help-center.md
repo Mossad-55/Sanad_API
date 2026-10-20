@@ -29,6 +29,12 @@ LegalAudience: Family = 1, MedicalCaregiver = 2, CompanionCaregiver = 3, Elderly
 An FAQ belongs to exactly one of the four app audiences. There is no FAQ or
 support-contact audience for admin account types.
 
+Create/update validate the audience as an app Help Center audience, not merely
+as any defined `LegalAudience` enum value. A defined but unsupported value such
+as `CareHomeOwner = 5`, or an undefined numeric value, returns the standard
+`400 Api.Validation.Failed` response with an `audience` field error; it must not
+fall through to an unexpected server error. This does not add Owner FAQ support.
+
 ## Endpoints summary
 
 ```text
