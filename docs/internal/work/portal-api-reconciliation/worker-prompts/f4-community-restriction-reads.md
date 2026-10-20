@@ -32,11 +32,9 @@ migration or reset. Release is `verified`; the Mastermind closes the phase. Only
 nine-file F4 manifest was committed; the unchanged `CommunityAuthorRestrictionTests.cs`
 was excluded, and all F3/unrelated worktree edits were left untouched.
 
-Phase: `in_progress` (Owner authorized); task: `ready_for_review` (implementation and
-runtime verification are green; handed back for Mastermind acceptance); release: authorized
-conditionally after Mastermind acceptance, no release by Worker. Base:
+Phase: **completed** — closed by the coordinating Mastermind on 2026-10-20 after reviewing the verified release receipt above and the actual source diff; task `completed`. Receipt commit `6839c48ce36f10b6e9773c196c2df15bf40bfd29` is on `origin/main`. Base:
 `ea3c3bb6b50b58b39bbea954767621d70029e763`. Worker B:
-`river/deepseek-ai/DeepSeek-V4.1-Flash#high`. Record dispatched session in Current result.
+`river/deepseek-ai/DeepSeek-V4.1-Flash#high` (session `ses_ea5b2f5fdffeSdPYTavoUhRvtF`); release executor reused the F2 release session. Historical instructions below are retained evidence only; no further F4 work or fixture repair is authorized.
 
 Read root/governance, handoff and [approved F4 scope](../contracts/frontend-follow-up-2026-10-20.md#f4--community-restriction-discoverability-a1).
 F3 runs concurrently with disjoint CareHomes ownership. Preserve existing dirty

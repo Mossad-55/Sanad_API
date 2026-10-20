@@ -17,8 +17,8 @@
   `72.62.92.144:8091`, service `sanad-api.service`, directory `/root/sanad-api`,
   environment `/etc/sanad/sanad.env`. Only the exact 16-file F2 manifest was staged;
   every unrelated Owner/local worktree edit was preserved untouched. Release is
-  `verified`; the phase/task state is left for the coordinating Mastermind to close
-  (this executor does not mark the phase `completed`).
+   `verified`; coordinating Mastermind reviewed the executor receipt and closes the
+   phase/task as **completed**. Receipt commit: `ea3c3bb6b50b58b39bbea954767621d70029e763`.
 - **Package.** `deploy/releases/f2-24ad602/sanad-api-f2-24ad602.tar.gz`, 11,887,816
   bytes, SHA-256 `097e966bed5227891365b5d0ba6e54958d710507dd8752a2a198068d2065f133`;
   build-machine and server hashes matched. It excludes all `appsettings*.json`, `.env`,
@@ -56,7 +56,8 @@
   `ses_ea5e84e50ffevX4XWYvxEZNiMm` (`river/deepseek-ai/DeepSeek-V4.1-Flash#high`); the
   13/13 localhost HTTP checks (twice) and 303 offline checks they produced are retained
   below. Those earlier state labels are history; the release receipt above is current.
-- Owner follow-up (2026-10-20): close the local HTTP evidence gaps before returning F2 for release approval. The successor Worker/session/model named above owns this bounded verification extension (audit and corrections only). Prior local implementation acceptance/evidence is retained below; F2 is not completed and is reopened for this verification task.
+- Historical verification/reopening notes below are retained evidence, not current
+  instructions. F2 is complete and released; no further fixture repair is authorized.
 
 ## Objective and boundaries
 
