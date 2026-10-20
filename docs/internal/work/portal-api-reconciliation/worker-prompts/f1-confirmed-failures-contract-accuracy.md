@@ -10,11 +10,11 @@
 
 ## Current checkpoint
 
-- Phase state: `accepted` locally by Mastermind. Release state: `authorized` by
-  Owner on 2026-10-20 for commit/push and VPS deployment after the final preflight.
-  Owner confirmed treating the earlier `SanadF1VerifyDb` as disposable. No
-  persistent-data migration is part of F1; deployment must verify the Production
-  database is already at the package's nine migration heads before restart.
+- Phase state: `completed`; Mastermind accepted F1 and the Owner-authorized
+  commit/push/deployment workflow is verified. Source commit
+  `0dbb74bc9f43e4d9ed586bd5a584b6efaf826f2c` is pushed to `origin/main`; the VPS
+  reports that exact revision. Release is verified. No F1 migration was added or
+  applied; no provider call or production-data mutation was performed.
 - Base revision: `d81afb122ed368e630f0b7d5e5da4ee47fbf5325` (`main`, pushed).
 - Pre-existing modified/untracked work remains in `.codex/`, `README.md`, the
   handoff/governance, E05/E06 proposals, bridge tooling, audit files, follow-up
@@ -188,9 +188,10 @@ environment files, or unrelated Postman collections.
   the old fixed target failed to establish its current existence/contents (the
   first could not load Npgsql; the second connection/query failed with details
   suppressed). No write or migration was performed by those inspections; no
-  further operation targeted that fixed database. Owner subsequently authorized
-  treating this specific fixed test target as disposable; no Production or
-  persistent `SanadDb` target was authorized or used by the corrected tests.
+  further operation targeted that fixed database. Owner explicitly authorized
+  treating this specific fixed test target as disposable; its former contents
+  remain unknown and no claim is made about them. The corrected tests use a fresh
+  unique target and do not touch persistent `SanadDb` or the fixed-name target.
 - Mastermind replaced the unsafe test target: require loopback PostgreSQL port
   5432, generate a unique nonce-bearing database name, prove that exact target
   absent before creating it, apply Families migrations only there, and delete
@@ -230,10 +231,20 @@ environment files, or unrelated Postman collections.
   `docs/care-homes/inventory-and-availability.md`, this brief, and
   `docs/postman/admins/Sanad.Admin.Finance.postman_collection.json`. Unrelated
   work remains untouched.
-- No commit/push/deploy/release or provider call has occurred. The Owner has now
-  authorized treating the earlier fixed-name test database as disposable and
-  authorized the F1 release workflow. **Next action:** stage/commit only F1-owned
-  files, push `main`, publish the exact pushed revision, verify the Production
-  target and nine migration heads before restart, then deploy and run the standard
-  verifier. Stop before cutover if any migration head is pending or the target
-  differs; F1 has no migration files and no persistent data migration is approved.
+- Release receipt: implementation commit/manifest revision is
+  `0dbb74bc9f43e4d9ed586bd5a584b6efaf826f2c`, pushed to `origin/main` and
+  confirmed by `git ls-remote`. Archive `deploy/f1-0dbb74b.tar.gz`: 11,885,926
+  bytes, SHA-256 `86B11A2F81ADF9571B041BD47DF885CB260EF14FB4BAF6AEC65CCE472D259F18`;
+  excluded appsettings, `.env`, local settings, keys and certificates. Deployed
+  only to the previously authorized Production target `72.62.92.144:8091`,
+  service `sanad-api.service`, directory `/root/sanad-api`.
+- Preflight was active at E04 revision `bdc06057caa2c4b4589565c8c7c456ea57bdf8e9`,
+  Production, DB reachable; all nine applied migration heads already matched the
+  F1 manifest. A private binary/config backup was made. Startup applied zero
+  migrations across nine contexts. Post-deploy service is active, `NRestarts=0`,
+  revision matches F1, DB is reachable, host service/environment/appsettings
+  fingerprints are unchanged, and `Verify-SanadDeployment.ps1` passed 9/9 heads
+  and anonymous lookup smoke HTTP 200. Temporary SSH tunnel was closed. No
+  authenticated Production feature request or provider call was made.
+- Next action: report and stop. F1 is deployed and verified; do not start F2 or
+  another phase without new Owner direction.
