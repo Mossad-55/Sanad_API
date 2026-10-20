@@ -401,6 +401,22 @@ public static class DependencyInjection
                         AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
                 });
 
+            options.AddPolicy(AuthorizationPolicies.SupportInboxAdmin, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType,
+                    AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+            });
+
+            options.AddPolicy(AuthorizationPolicies.OperationalReadAdmin, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType,
+                    AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+            });
+
             options.AddPolicy(AuthorizationPolicies.FinanceOperationalAdmin, policy =>
             {
                 policy.RequireAuthenticatedUser();

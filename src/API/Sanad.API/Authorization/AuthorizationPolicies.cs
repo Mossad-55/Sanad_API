@@ -60,6 +60,20 @@ public static class AuthorizationPolicies
     public const string SuperAdminOnly = "SuperAdminOnly";
 
     /// <summary>
+    /// F5 support inbox: authenticated SuperAdmin + SupportAdmin management of
+    /// retained support tickets (list/detail/reply/status). ContentAdmin and
+    /// FinanceAdmin are deliberately excluded, as are all app audiences.
+    /// </summary>
+    public const string SupportInboxAdmin = "SupportInboxAdmin";
+
+    /// <summary>
+    /// F6 new operational reads: authenticated SuperAdmin + SupportAdmin only.
+    /// Used by read-only operational surfaces that must not widen existing
+    /// Finance access or any app audience's access to family data.
+    /// </summary>
+    public const string OperationalReadAdmin = "OperationalReadAdmin";
+
+    /// <summary>
     /// E04 platform controls: authenticated SuperAdmin-only read/update of the
     /// operational/maintenance state and Card/Wallet switches.
     /// </summary>
