@@ -27,7 +27,9 @@ participant `accountType` + facility display, `createdOnUtc` on message
 timestamps, attachment serve by attachment id, read mark over `POST`).
 Messages, unread counts, and reports (endpoints 3–4, 8, 11) plus the
 `/api/v1/admin/chat` support routes (12–15) are specified in `messages.md` /
-`reports.md`.
+`reports.md`. The conversation list additionally reports each row's persisted
+`scope`/`bookingId` (see the list section below); the rest of Lane A is
+unchanged by that addition.
 
 **Privacy posture (applies to every route below).** An unknown id, a foreign
 row, and an ineligible row are indistinguishable: they answer `404` with the
@@ -67,6 +69,8 @@ GET /api/v1/chat/conversations?page=1&pageSize=20
   "items": [
     {
       "id": "0198e2c2-4444-7a10-8000-00000000c001",
+      "scope": 0,
+      "bookingId": null,
       "participant": {
         "userId": "00000000-0000-0000-0000-000000000002",
         "displayName": "Salma Nasr",
@@ -83,6 +87,15 @@ GET /api/v1/chat/conversations?page=1&pageSize=20
   "totalPages": 1
 }
 ```
+
+`scope` and `bookingId` are the persisted `Conversation.Scope` and the
+conversation's booking reference of the row that produced the item: a
+booking-scoped conversation reports `scope: 1` (`Booking`) with its
+`bookingId`, and a direct conversation reports `scope: 0` (`Direct`) with
+`bookingId: null`. `scope` uses the repository-wide numeric-enum wire format
+(`Direct = 0`, `Booking = 1`), not a string. Neither field adds a
+stay/room-type or other booking summary, and neither changes participant
+visibility, hiding, ordering, `lastMessage` or `unreadCount`.
 
 `participant` is always the *other* side of the 1:1 pair, resolved through the
 Identity profile lookup: `displayName` prefers the English full name and falls

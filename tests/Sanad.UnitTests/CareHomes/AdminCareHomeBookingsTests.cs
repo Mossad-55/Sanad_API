@@ -45,6 +45,51 @@ public sealed class AdminCareHomeBookingsTests
     }
 
     [Fact]
+    public async Task List_reports_persisted_tax_and_extension_link_for_a_base_and_an_extension_row()
+    {
+        await using var db = CreateDb();
+        CareHomeId facility = CareHomeId.New();
+        CareHomeBooking baseBooking = CreateBooking(facility, Now);
+        baseBooking.MarkPaid(8201, Now.AddMinutes(1));
+        baseBooking.Accept(Now.AddMinutes(2));
+        CareHomeBooking extension = CareHomeBooking.CreateExtension(
+            baseBooking, baseBooking.FamilyUserId, 1000m, 100m, 70m, 5, Now.AddMinutes(3));
+        db.Bookings.AddRange(baseBooking, extension);
+        await db.SaveChangesAsync();
+
+        var page = await new ListAdminCareHomeBookingsHandler(db).Handle(new(), default);
+
+        Assert.True(page.IsSuccess);
+        Assert.Equal(2, page.Value.TotalCount);
+        AdminCareHomeBookingListItem baseRow = page.Value.Items.Single(x => x.BookingId == baseBooking.Id);
+        Assert.Null(baseRow.ExtensionOfBookingId);
+        Assert.Equal(baseBooking.TaxAmount, baseRow.TaxAmount);
+        Assert.Equal(50m, baseRow.TaxAmount);
+        AdminCareHomeBookingListItem extensionRow = page.Value.Items.Single(x => x.BookingId == extension.Id);
+        Assert.Equal(baseBooking.Id, extensionRow.ExtensionOfBookingId);
+        Assert.Equal(70m, extensionRow.TaxAmount);
+        Assert.Equal(extension.TotalAmount, extensionRow.TotalAmount);
+        Assert.Equal(CareHomeBookingStatus.PendingPayment, extensionRow.BookingStatus);
+        Assert.Equal("EGP", extensionRow.Currency);
+
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        Assert.Contains("\"extensionOfBookingId\":null", JsonSerializer.Serialize(baseRow, options), StringComparison.Ordinal);
+        Assert.Contains("\"taxAmount\":50", JsonSerializer.Serialize(baseRow, options), StringComparison.Ordinal);
+        Assert.Contains($"\"extensionOfBookingId\":\"{baseBooking.Id:D}\"", JsonSerializer.Serialize(extensionRow, options), StringComparison.Ordinal);
+
+        // Existing filters/search and the read-only posture are unchanged: only
+        // the projection gained fields.
+        var byStatus = await new ListAdminCareHomeBookingsHandler(db)
+            .Handle(new(BookingStatus: CareHomeBookingStatus.PendingPayment), default);
+        Assert.Equal([extension.Id], byStatus.Value.Items.Select(x => x.BookingId).ToArray());
+        var bySearch = await new ListAdminCareHomeBookingsHandler(db)
+            .Handle(new(Search: extension.MerchantReference), default);
+        Assert.Equal(extension.Id, Assert.Single(bySearch.Value.Items).BookingId);
+        Assert.Equal(2, await db.Bookings.CountAsync());
+        Assert.Null((await db.Bookings.AsNoTracking().SingleAsync(x => x.Id == baseBooking.Id)).ExtensionOfBookingId);
+    }
+
+    [Fact]
     public async Task List_rejects_invalid_paging_status_and_range()
     {
         await using var db = CreateDb();
@@ -120,7 +165,8 @@ public sealed class AdminCareHomeBookingsTests
         var facility = CareHomeFacility.CreateDraft(UserId.New(), Now);
         db.Facilities.Add(facility);
         await db.SaveChangesAsync();
-        db.Bookings.Add(CreateBooking(facility.Id, Now));
+        CareHomeBooking stored = CreateBooking(facility.Id, Now);
+        db.Bookings.Add(stored);
         await db.SaveChangesAsync();
 
         var result = await new ListAdminCareHomeBookingsHandler(db)
@@ -128,6 +174,11 @@ public sealed class AdminCareHomeBookingsTests
 
         Assert.True(result.IsSuccess);
         Assert.Equal(1, result.Value.TotalCount);
+        // F2 scalars must survive the relational projection, not just InMemory.
+        AdminCareHomeBookingListItem row = Assert.Single(result.Value.Items);
+        Assert.Equal(stored.TaxAmount, row.TaxAmount);
+        Assert.Null(row.ExtensionOfBookingId);
+        Assert.Equal("Resident", row.ResidentEnglishName);
 
         var unfiltered = await new ListAdminCareHomeBookingsHandler(db)
             .Handle(new(), default);

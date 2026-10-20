@@ -8,12 +8,18 @@ using Sanad.Modules.CareHomes.Domain.Facilities;
 
 namespace Sanad.Modules.CareHomes.Application.Bookings;
 
+/// <summary>
+/// Admin booking register row. F2 adds the persisted charge tax amount and
+/// the nullable link to the segment a row extends; both are read from the
+/// stored booking and neither changes a filter, page or booking state.
+/// </summary>
 public sealed record AdminCareHomeBookingListItem(
     Guid BookingId, Guid FacilityId, Guid RoomTypeId, string ResidentArabicName, string ResidentEnglishName,
     DateOnly StartDate, DateOnly EndDate, CareHomeBookingStatus BookingStatus,
     CareHomeBookingPaymentStatus PaymentStatus, CareHomeRefundStatus RefundStatus,
     decimal TotalAmount, string Currency, DateTime CreatedOnUtc, DateTime? PaymentCompletedOnUtc,
-    DateTime? RefundCompletedOnUtc, decimal? RefundAmount, Guid? AssignedRoomId, Guid? AssignedBedId);
+    DateTime? RefundCompletedOnUtc, decimal? RefundAmount, Guid? AssignedRoomId, Guid? AssignedBedId,
+    Guid? ExtensionOfBookingId, decimal TaxAmount);
 
 public sealed record AdminCareHomeBookingPage(int Page, int PageSize, int TotalCount,
     IReadOnlyList<AdminCareHomeBookingListItem> Items);
@@ -98,7 +104,11 @@ public sealed class ListAdminCareHomeBookingsHandler(ICareHomesDbContext db)
                 x.ElderlyArabicName, x.ElderlyEnglishName, x.StartDate, x.EndDate, x.Status,
                 x.PaymentStatus, x.RefundStatus, x.TotalAmount, "EGP", x.CreatedOnUtc,
                 x.PaymentCompletedOnUtc, x.RefundCompletedOnUtc, x.RefundAmount,
-                x.AssignedRoomId, x.AssignedBedId)).ToListAsync(ct);
+                x.AssignedRoomId, x.AssignedBedId,
+                // F2: persisted extension link and charge tax, projected as
+                // plain scalars so the query still translates on a relational
+                // store; no filter/paging/state behavior changes.
+                x.ExtensionOfBookingId, x.TaxAmount)).ToListAsync(ct);
         return new AdminCareHomeBookingPage(request.Page, request.PageSize, count, items);
     }
 

@@ -475,7 +475,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings?page=1&pageSize=25",
-            "description": "All filters except page/pageSize are optional. Page size is 1–100. State filters use numeric enum values. Stay dates are inclusive and select overlapping stays. Search matches an exact booking GUID or merchant reference. Results order newest first then booking ID. The response contains page, pageSize, totalCount and items. Invalid query returns 400 CareHomes.Admin.InvalidQuery. Authenticated runtime evidence is not claimed by this authored request."
+            "description": "All filters except page/pageSize are optional. Page size is 1–100. State filters use numeric enum values. Stay dates are inclusive and select overlapping stays. Search matches an exact booking GUID or merchant reference. Results order newest first then booking ID. The response contains page, pageSize, totalCount and items; each row also carries the persisted charge taxAmount and the nullable extensionOfBookingId (null for a base booking, the extended segment's booking ID for an extension row). Invalid query returns 400 CareHomes.Admin.InvalidQuery. Authenticated runtime evidence is not claimed by this authored request."
           },
           "event": [
             {
@@ -484,7 +484,7 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('booking list contract status', () => pm.expect([200, 400, 401, 403]).to.include(pm.response.code));",
-                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('items').that.is.an('array'); pm.expect(body.items.length).to.be.at.most(100); }"
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('items').that.is.an('array'); pm.expect(body.items.length).to.be.at.most(100); if (body.items.length > 0) { pm.expect(body.items[0]).to.have.property('taxAmount'); pm.expect(body.items[0]).to.have.property('extensionOfBookingId'); } }"
                 ]
               }
             }

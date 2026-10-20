@@ -119,6 +119,10 @@ public sealed class GetConversationsQueryHandler
 
             items.Add(new ConversationListItemResponse(
                 conversation.Id.Value,
+                // F2: the persisted scope/booking reference of this same row —
+                // read, not inferred from the participant or message state.
+                conversation.Scope,
+                conversation.BookingId?.Value,
                 new ParticipantResponse(
                     otherParticipant.Value,
                     displayName,

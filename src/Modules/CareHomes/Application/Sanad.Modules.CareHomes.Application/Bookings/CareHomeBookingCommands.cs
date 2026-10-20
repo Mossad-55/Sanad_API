@@ -20,11 +20,29 @@ namespace Sanad.Modules.CareHomes.Application.Bookings;
 
 public sealed record CareHomeBookingResponse(Guid Id, Guid FacilityId, Guid ElderlyId, Guid RoomTypeId, DateOnly StartDate, DateOnly EndDate, DateTime EarliestArrivalUtc, CareHomeBookingStatus Status, CareHomeBookingPaymentStatus PaymentStatus, decimal BaseAmount, decimal PlatformFeeAmount, decimal TaxAmount, decimal TotalAmount, string Currency, DateTime? HoldUntilUtc, string? DecisionReason, Guid? AssignedRoomId = null, Guid? AssignedBedId = null, DateTime? ActualCheckInOnUtc = null, DateTime? ActualCheckOutOnUtc = null, DateTime? FamilyCheckInConfirmedOnUtc = null, CareHomeRefundStatus RefundStatus = CareHomeRefundStatus.None, decimal? RefundAmount = null, string? RefundReference = null, DateTime? RefundCompletedOnUtc = null, Guid? RefundCompletedBy = null, string? RefundFailureReason = null, Guid? ExtensionOfBookingId = null);
 public sealed record CareHomeBookingPaymentIntentResponse(Guid BookingId, string MerchantReference, string PaymobOrderId, string IntentionOrderId, string ClientSecret, string PublicKey);
-public sealed record CareHomeBookingListItem(Guid Id, Guid FacilityId, Guid RoomTypeId, DateOnly StartDate, DateOnly EndDate, CareHomeBookingStatus Status, CareHomeBookingPaymentStatus PaymentStatus, decimal TotalAmount, string Currency, string ElderlyEnglishName, Guid? AssignedRoomId = null, Guid? AssignedBedId = null, DateTime? ActualCheckInOnUtc = null, DateTime? ActualCheckOutOnUtc = null, DateTime? FamilyCheckInConfirmedOnUtc = null, CareHomeRefundStatus RefundStatus = CareHomeRefundStatus.None, decimal? RefundAmount = null, Guid? ExtensionOfBookingId = null);
+/// <summary>
+/// F2 facility-owner booking-request row. It carries the owner list's
+/// pre-existing fields plus the stored resident identity/age snapshots, the
+/// stored responsible contact values and care notes, and the persisted decision
+/// deadline. <c>DecisionHoldUntilUtc</c> is the stored
+/// <c>CareHomeBooking.DecisionHoldUntilUtc</c>, read back only while the
+/// booking is <c>PaidAwaitingDecision</c>; it is never calculated or extended
+/// here, and the clinical medical snapshot is deliberately absent. The Family
+/// list keeps its own separate <see cref="CareHomeFamilyBookingListItem"/>
+/// shape, which this row type does not change.
+/// </summary>
+public sealed record CareHomeBookingListItem(Guid Id, Guid FacilityId, Guid RoomTypeId, DateOnly StartDate, DateOnly EndDate, CareHomeBookingStatus Status, CareHomeBookingPaymentStatus PaymentStatus, decimal TotalAmount, string Currency, string ElderlyEnglishName, Guid? AssignedRoomId = null, Guid? AssignedBedId = null, DateTime? ActualCheckInOnUtc = null, DateTime? ActualCheckOutOnUtc = null, DateTime? FamilyCheckInConfirmedOnUtc = null, CareHomeRefundStatus RefundStatus = CareHomeRefundStatus.None, decimal? RefundAmount = null, Guid? ExtensionOfBookingId = null, string? ElderlyArabicName = null, int? ElderlyAge = null, string? ResponsibleContactName = null, string? ResponsibleContactPhone = null, string? ResponsibleContactRelationship = null, string? CareNeedsNotes = null, DateTime? DecisionHoldUntilUtc = null);
+/// <summary>
+/// Family booking-list row. It keeps exactly the field set the Family list
+/// route published before F2: the owner-only resident/contact/care-notes and
+/// decision-deadline additions live on <see cref="CareHomeBookingListItem"/>
+/// and never reach this shape.
+/// </summary>
+public sealed record CareHomeFamilyBookingListItem(Guid Id, Guid FacilityId, Guid RoomTypeId, DateOnly StartDate, DateOnly EndDate, CareHomeBookingStatus Status, CareHomeBookingPaymentStatus PaymentStatus, decimal TotalAmount, string Currency, string ElderlyEnglishName, Guid? AssignedRoomId = null, Guid? AssignedBedId = null, DateTime? ActualCheckInOnUtc = null, DateTime? ActualCheckOutOnUtc = null, DateTime? FamilyCheckInConfirmedOnUtc = null, CareHomeRefundStatus RefundStatus = CareHomeRefundStatus.None, decimal? RefundAmount = null, Guid? ExtensionOfBookingId = null);
 
 public sealed record CheckoutCareHomeBookingCommand(UserId Actor, FamilyId FamilyId, ElderlyIntakeResolution Intake, Guid FacilityId, Guid RoomTypeId, DateOnly StartDate, DateTime UtcNow) : ICommand<CareHomeBookingResponse>;
 public sealed record CreateCareHomeBookingExtensionCommand(UserId Actor, FamilyId FamilyId, Guid BookingId, DateTime UtcNow) : ICommand<CareHomeBookingResponse>;
-public sealed record ListFamilyCareHomeBookingsQuery(UserId Actor, FamilyId FamilyId) : IQuery<IReadOnlyList<CareHomeBookingListItem>>;
+public sealed record ListFamilyCareHomeBookingsQuery(UserId Actor, FamilyId FamilyId) : IQuery<IReadOnlyList<CareHomeFamilyBookingListItem>>;
 public sealed record GetFamilyCareHomeBookingQuery(UserId Actor, FamilyId FamilyId, Guid BookingId, DateTime UtcNow) : IQuery<CareHomeBookingResponse>;
 public sealed record CreateCareHomePaymentIntentCommand(UserId Actor, FamilyId FamilyId, Guid BookingId, PaymentMethod Method, PaymobBillingData Billing, DateTime UtcNow) : ICommand<CareHomeBookingPaymentIntentResponse>;
 public sealed record ListOwnerCareHomeBookingsQuery(UserId Actor, DateTime UtcNow) : IQuery<IReadOnlyList<CareHomeBookingListItem>>;
@@ -90,8 +108,8 @@ public sealed class CheckoutHandler(ICareHomesDbContext db, IPlatformChargeRuleR
     internal static CareHomeBookingResponse Map(CareHomeBooking x) => new(x.Id, x.FacilityId.Value, x.ElderlyId.Value, x.RoomTypeId, x.StartDate, x.EndDate, x.EarliestArrivalUtc, x.Status, x.PaymentStatus, x.BaseAmount, x.PlatformFeeAmount, x.TaxAmount, x.TotalAmount, "EGP", x.Status == CareHomeBookingStatus.PendingPayment ? x.CheckoutHoldUntilUtc : x.DecisionHoldUntilUtc, x.DecisionReason, x.AssignedRoomId, x.AssignedBedId, x.ActualCheckInOnUtc, x.ActualCheckOutOnUtc, x.FamilyCheckInConfirmedOnUtc, x.RefundStatus, x.RefundAmount, x.RefundReference, x.RefundCompletedOnUtc, x.RefundCompletedBy?.Value, x.RefundFailureReason, x.ExtensionOfBookingId);
 }
 
-public sealed class FamilyListHandler(ICareHomesDbContext db) : IQueryHandler<ListFamilyCareHomeBookingsQuery, IReadOnlyList<CareHomeBookingListItem>>
-{ public async Task<Result<IReadOnlyList<CareHomeBookingListItem>>> Handle(ListFamilyCareHomeBookingsQuery r, CancellationToken ct) => await db.Bookings.AsNoTracking().Where(x => x.FamilyId == r.FamilyId).OrderByDescending(x => x.CreatedOnUtc).Select(x => new CareHomeBookingListItem(x.Id, x.FacilityId.Value, x.RoomTypeId, x.StartDate, x.EndDate, x.Status, x.PaymentStatus, x.TotalAmount, "EGP", x.ElderlyEnglishName, x.AssignedRoomId, x.AssignedBedId, x.ActualCheckInOnUtc, x.ActualCheckOutOnUtc, x.FamilyCheckInConfirmedOnUtc, x.RefundStatus, x.RefundAmount, x.ExtensionOfBookingId)).ToListAsync(ct); }
+public sealed class FamilyListHandler(ICareHomesDbContext db) : IQueryHandler<ListFamilyCareHomeBookingsQuery, IReadOnlyList<CareHomeFamilyBookingListItem>>
+{ public async Task<Result<IReadOnlyList<CareHomeFamilyBookingListItem>>> Handle(ListFamilyCareHomeBookingsQuery r, CancellationToken ct) => await db.Bookings.AsNoTracking().Where(x => x.FamilyId == r.FamilyId).OrderByDescending(x => x.CreatedOnUtc).Select(x => new CareHomeFamilyBookingListItem(x.Id, x.FacilityId.Value, x.RoomTypeId, x.StartDate, x.EndDate, x.Status, x.PaymentStatus, x.TotalAmount, "EGP", x.ElderlyEnglishName, x.AssignedRoomId, x.AssignedBedId, x.ActualCheckInOnUtc, x.ActualCheckOutOnUtc, x.FamilyCheckInConfirmedOnUtc, x.RefundStatus, x.RefundAmount, x.ExtensionOfBookingId)).ToListAsync(ct); }
 public sealed class FamilyDetailHandler(ICareHomesDbContext db) : IQueryHandler<GetFamilyCareHomeBookingQuery, CareHomeBookingResponse>
 { public async Task<Result<CareHomeBookingResponse>> Handle(GetFamilyCareHomeBookingQuery r, CancellationToken ct) { var x = await db.Bookings.SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FamilyId == r.FamilyId, ct); if (x is null) return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.NotFound", "Booking was not found.")); x.ExpireIfNeeded(r.UtcNow); return CheckoutHandler.Map(x); } }
 
@@ -122,7 +140,21 @@ public sealed class PaymentIntentHandler(ICareHomesDbContext db, IPaymobClient p
 }
 
 public sealed class OwnerListHandler(ICareHomesDbContext db) : IQueryHandler<ListOwnerCareHomeBookingsQuery, IReadOnlyList<CareHomeBookingListItem>>
-{ public async Task<Result<IReadOnlyList<CareHomeBookingListItem>>> Handle(ListOwnerCareHomeBookingsQuery r, CancellationToken ct) { var f = await db.Facilities.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == r.Actor, ct); if (f is null) return Result<IReadOnlyList<CareHomeBookingListItem>>.Failure(new Error("CareHomes.Bookings.NotFound", "Facility was not found.")); var xs = await db.Bookings.AsNoTracking().Where(x => x.FacilityId == f.Id && x.PaymentStatus != CareHomeBookingPaymentStatus.Pending && x.PaymentStatus != CareHomeBookingPaymentStatus.Failed).OrderByDescending(x => x.CreatedOnUtc).ToListAsync(ct); return xs.Select(x => new CareHomeBookingListItem(x.Id, x.FacilityId.Value, x.RoomTypeId, x.StartDate, x.EndDate, x.Status, x.PaymentStatus, x.TotalAmount, "EGP", x.ElderlyEnglishName, x.AssignedRoomId, x.AssignedBedId, x.ActualCheckInOnUtc, x.ActualCheckOutOnUtc, x.FamilyCheckInConfirmedOnUtc, x.RefundStatus, x.RefundAmount, x.ExtensionOfBookingId)).ToArray(); } }
+{
+    public async Task<Result<IReadOnlyList<CareHomeBookingListItem>>> Handle(ListOwnerCareHomeBookingsQuery r, CancellationToken ct)
+    {
+        var f = await db.Facilities.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == r.Actor, ct);
+        if (f is null) return Result<IReadOnlyList<CareHomeBookingListItem>>.Failure(new Error("CareHomes.Bookings.NotFound", "Facility was not found."));
+        // F2 owner read completeness: the stored resident identities/age, the
+        // stored responsible contact and care notes, and the persisted
+        // decision deadline. The deadline is projected only for a booking that
+        // is actually awaiting the facility decision; it is read, not derived.
+        // The medical snapshot stays out of this shape and the existing
+        // paid-only selection, ordering and facility scoping are unchanged.
+        var xs = await db.Bookings.AsNoTracking().Where(x => x.FacilityId == f.Id && x.PaymentStatus != CareHomeBookingPaymentStatus.Pending && x.PaymentStatus != CareHomeBookingPaymentStatus.Failed).OrderByDescending(x => x.CreatedOnUtc).ToListAsync(ct);
+        return xs.Select(x => new CareHomeBookingListItem(x.Id, x.FacilityId.Value, x.RoomTypeId, x.StartDate, x.EndDate, x.Status, x.PaymentStatus, x.TotalAmount, "EGP", x.ElderlyEnglishName, x.AssignedRoomId, x.AssignedBedId, x.ActualCheckInOnUtc, x.ActualCheckOutOnUtc, x.FamilyCheckInConfirmedOnUtc, x.RefundStatus, x.RefundAmount, x.ExtensionOfBookingId, x.ElderlyArabicName, x.ElderlyAge, x.ResponsibleContactName, x.ResponsibleContactPhone, x.ResponsibleContactRelationship, x.CareNeedsNotes, x.Status == CareHomeBookingStatus.PaidAwaitingDecision ? x.DecisionHoldUntilUtc : null)).ToArray();
+    }
+}
 public sealed class DecideHandler(ICareHomesDbContext db, IPaymobClient paymob) : ICommandHandler<DecideCareHomeBookingCommand, CareHomeBookingResponse>
 {
     public async Task<Result<CareHomeBookingResponse>> Handle(DecideCareHomeBookingCommand r, CancellationToken ct)

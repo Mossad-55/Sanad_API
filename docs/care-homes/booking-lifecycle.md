@@ -106,6 +106,44 @@ These routes require `CareHomeOwnerAccess` and scope every read or decision to t
 
 Decision JSON is `{ "accept": true, "reason": null }` for acceptance or `{ "accept": false, "reason": "Capacity unavailable" }` for rejection. A rejection reason is required. A paid booking is `PaidAwaitingDecision = 2` with a 24-hour decision hold. Acceptance moves it to `Accepted = 3`. Rejection moves it to `RefundPending = 7` and claims/initiates a full Paymob refund when a transaction exists. A decision outside the paid decision state returns `409 CareHomes.Bookings.InvalidState`; another facility or unknown booking returns `404 CareHomes.Bookings.NotFound`.
 
+The owner list keeps its paid-only selection (`Pending` and `Failed` payments are excluded), its owned-facility scoping (an owner without a facility receives `404 CareHomes.Bookings.NotFound`; another facility's requests never appear) and its newest-first order. Its row type stays `CareHomeBookingListItem` (the same OpenAPI component ID as before this change), and each row additionally carries the stored resident identity/age, the stored responsible contact and care notes, and the stored decision deadline:
+
+```json
+[
+  {
+    "id": "<booking-guid>",
+    "facilityId": "<facility-guid>",
+    "roomTypeId": "<room-type-guid>",
+    "startDate": "2026-11-10",
+    "endDate": "2026-12-10",
+    "status": 2,
+    "paymentStatus": 2,
+    "totalAmount": 1150,
+    "currency": "EGP",
+    "elderlyEnglishName": "Resident English",
+    "assignedRoomId": "<room-guid-or-null>",
+    "assignedBedId": "<bed-guid-or-null>",
+    "actualCheckInOnUtc": null,
+    "actualCheckOutOnUtc": null,
+    "familyCheckInConfirmedOnUtc": null,
+    "refundStatus": 0,
+    "refundAmount": null,
+    "extensionOfBookingId": null,
+    "elderlyArabicName": "اسم المقيم",
+    "elderlyAge": 77,
+    "responsibleContactName": "Family member",
+    "responsibleContactPhone": "+201000000000",
+    "responsibleContactRelationship": "Daughter",
+    "careNeedsNotes": "Optional note captured at checkout",
+    "decisionHoldUntilUtc": "2026-11-10T12:24:00Z"
+  }
+]
+```
+
+`decisionHoldUntilUtc` is the stored decision hold (payment time plus the 24-hour decision window) and is returned **only** while `status` is `PaidAwaitingDecision = 2`; every other state (including an already accepted request, whose stored hold is retained on the booking) returns `null`. The list never calculates, extends or re-derives the deadline. The clinical medical snapshot is never returned, and the resident, contact and care-needs values are the snapshots stored at checkout — the list is a read of persisted state and adds no request/decision behavior.
+
+The Family list route (`GET /api/v1/family/care-home-bookings`) keeps its own separate row type `CareHomeFamilyBookingListItem` unchanged: the same fields in the same order, the same family scoping, no added member, and the same absence of a published response schema. The owner-only additions above cannot appear on a Family row.
+
 ## Paymob callback and lifecycle states
 
 `POST /api/v1/payments/webhooks/paymob` remains anonymous at the HTTP authorization layer but requires the configured Paymob HMAC. A valid `chb_` merchant reference dispatches to the Care-home aggregate. Amount mismatch returns `400` (`Paymob.AmountMismatch`); a different transaction for an already paid booking returns `409` (`CareHomes.Bookings.PaymentConflict`); duplicate same-transaction callbacks are acknowledged idempotently. Successful payment during the checkout hold sets `PaidAwaitingDecision = 2`, `PaymentStatus = Paid = 2`, and a 24-hour decision hold. A successful late callback enters `RefundPending` for refund initiation. A failed non-pending callback sets `Cancelled = 6` and `PaymentStatus = Failed = 3`.

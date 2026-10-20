@@ -16,6 +16,7 @@ using Sanad.Modules.CareHomes.Application.Inventory;
 using Sanad.Modules.CareHomes.Application.Visits;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
+using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Families.Application.HelpRequests;
 using Sanad.Modules.Families.Domain.HelpRequests;
 using Sanad.Modules.Finance.Application;
@@ -219,6 +220,140 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
     }
 
     [Fact]
+    public void F2ReadSchemas_PublishTheAddedFieldsWithTheirNullabilityAndEnumConventions()
+    {
+        JsonElement root = FetchDocument();
+
+        // 1. Owner booking-request list item. It keeps the pre-F2 component ID
+        // CareHomeBookingListItem; the F2 additions live on it, while the Family
+        // list keeps its own separate row type and publishes no schema.
+        JsonElement ownerItem = ResolveRef(root, "#/components/schemas/CareHomeBookingListItem");
+        JsonElement ownerProperties = ownerItem.GetProperty("properties");
+        foreach (string field in new[]
+                 {
+                     "id", "facilityId", "roomTypeId", "startDate", "endDate", "status",
+                     "paymentStatus", "totalAmount", "currency", "elderlyEnglishName",
+                     "assignedRoomId", "assignedBedId", "actualCheckInOnUtc", "actualCheckOutOnUtc",
+                     "familyCheckInConfirmedOnUtc", "refundStatus", "refundAmount", "extensionOfBookingId"
+                 })
+            Assert.True(ownerProperties.TryGetProperty(field, out _),
+                $"Owner booking-request item schema lost its pre-existing field {field}.");
+        foreach (string field in new[]
+                 {
+                     "elderlyArabicName", "elderlyAge", "responsibleContactName",
+                     "responsibleContactPhone", "responsibleContactRelationship",
+                     "careNeedsNotes", "decisionHoldUntilUtc"
+                 })
+            Assert.True(ownerProperties.TryGetProperty(field, out _),
+                $"Owner booking-request item schema is missing {field}.");
+        Assert.True(SchemaTypeContains(ownerProperties.GetProperty("elderlyAge"), "integer"),
+            $"elderlyAge is not an integer: {ownerProperties.GetProperty("elderlyAge").GetRawText()}");
+        Assert.True(SchemaTypeContains(ownerProperties.GetProperty("decisionHoldUntilUtc"), "string"),
+            "decisionHoldUntilUtc is not a string date-time.");
+        foreach (string field in new[]
+                 {
+                     "elderlyArabicName", "elderlyAge", "responsibleContactPhone",
+                     "responsibleContactRelationship", "careNeedsNotes", "decisionHoldUntilUtc"
+                 })
+            Assert.True(PermitsNull(ownerProperties.GetProperty(field)),
+                $"Owner booking-request field {field} must allow null: {ownerProperties.GetProperty(field).GetRawText()}");
+        Assert.False(ownerProperties.TryGetProperty("medicalSnapshotJson", out _),
+            "The medical snapshot must not be part of the booking-request list schema.");
+
+        // The owner operation must still resolve to the pre-F2 component ID,
+        // and the Family-only row type must not be published for it.
+        JsonElement ownerOperation = GetOperation(root, "/api/v1/care-homes/booking-requests/mine", "get");
+        Assert.True(
+            ownerOperation.GetProperty("responses").TryGetProperty("200", out JsonElement ownerOk),
+            "Missing 200 response for GET /api/v1/care-homes/booking-requests/mine.");
+        Assert.True(
+            TryGetJsonSchema(ownerOk, out JsonElement ownerSchema),
+            "Missing application/json schema for GET /api/v1/care-homes/booking-requests/mine 200.");
+        Assert.Equal("array", ownerSchema.GetProperty("type").GetString());
+        Assert.Equal(
+            "CareHomeBookingListItem",
+            AssertRef(ownerSchema.GetProperty("items"), root).Split('/')[^1]);
+        Assert.False(ownerItem.GetRawText().Contains("CareHomeFamilyBookingListItem", StringComparison.Ordinal),
+            "The Family-only row type leaked into the owner booking-request item schema.");
+
+        // The Family booking list keeps its own row type and stays undocumented
+        // in the same way it was before F2: no JSON response schema is published
+        // for it, and the owner-only additions are absent from that operation.
+        JsonElement familyOperation = GetOperation(root, "/api/v1/family/care-home-bookings", "get");
+        Assert.True(
+            familyOperation.GetProperty("responses").TryGetProperty("200", out JsonElement familyOk),
+            "Missing 200 response for GET /api/v1/family/care-home-bookings.");
+        Assert.False(TryGetJsonSchema(familyOk, out _),
+            "The Family booking list must not start publishing a response schema in F2.");
+        Assert.False(
+            familyOperation.GetRawText().Contains("CareHomeBookingListItem", StringComparison.Ordinal)
+            || familyOperation.GetRawText().Contains("decisionHoldUntilUtc", StringComparison.Ordinal),
+            "Owner-only F2 fields leaked into the Family booking list operation.");
+
+        // 2. Admin booking register row.
+        JsonElement adminRow = ResolveListItems(root, "/api/v1/admin/care-homes/bookings", "get", out string adminRef);
+        Assert.EndsWith("AdminCareHomeBookingListItem", adminRef);
+        JsonElement adminProperties = adminRow.GetProperty("properties");
+        Assert.True(SchemaTypeContains(adminProperties.GetProperty("taxAmount"), "number"),
+            $"taxAmount is not numeric: {adminProperties.GetProperty("taxAmount").GetRawText()}");
+        JsonElement extensionLink = adminProperties.GetProperty("extensionOfBookingId");
+        Assert.True(SchemaTypeContains(extensionLink, "string"),
+            $"extensionOfBookingId is not a uuid string: {extensionLink.GetRawText()}");
+        Assert.Equal("uuid", extensionLink.GetProperty("format").GetString());
+        Assert.True(PermitsNull(extensionLink),
+            $"extensionOfBookingId must allow null: {extensionLink.GetRawText()}");
+
+        // 3. Chat conversation list item.
+        JsonElement conversationRow = ResolveListItems(root, "/api/v1/chat/conversations", "get", out string conversationRef);
+        Assert.EndsWith("ConversationListItemResponse", conversationRef);
+        JsonElement conversationProperties = conversationRow.GetProperty("properties");
+        JsonElement scope = ResolvePropertyRef(root, conversationRow, "scope", "ConversationScope");
+        Assert.Equal(
+            new[] { 0, 1 },
+            scope.GetProperty("enum").EnumerateArray().Select(v => v.GetInt32()).ToArray());
+        Assert.Equal(
+            new[] { "Direct", "Booking" },
+            scope.GetProperty("x-enumNames").EnumerateArray().Select(v => v.GetString()).ToArray());
+        JsonElement bookingReference = conversationProperties.GetProperty("bookingId");
+        Assert.Equal("uuid", bookingReference.GetProperty("format").GetString());
+        Assert.True(PermitsNull(bookingReference),
+            $"Chat bookingId must allow null: {bookingReference.GetRawText()}");
+    }
+
+    private static bool PermitsNull(JsonElement property)
+    {
+        bool nullable = property.TryGetProperty("nullable", out JsonElement nullableFlag)
+            && nullableFlag.ValueKind == JsonValueKind.True;
+        bool permitsNullUnion = new[] { "anyOf", "oneOf" }.Any(key =>
+            property.TryGetProperty(key, out JsonElement union)
+            && union.EnumerateArray().Any(option =>
+                option.TryGetProperty("type", out JsonElement type) && type.GetString() == "null"));
+        bool nullTypeMember = property.TryGetProperty("type", out JsonElement typeProperty)
+            && typeProperty.ValueKind == JsonValueKind.Array
+            && typeProperty.EnumerateArray().Any(v => v.ValueKind == JsonValueKind.String && v.GetString() == "null");
+        return nullable || permitsNullUnion || nullTypeMember;
+    }
+
+    /// <summary>
+    /// Resolves the item schema of a paged 200 response ({ items: [ ... ] })
+    /// without assuming the envelope's generated schema name.
+    /// </summary>
+    private static JsonElement ResolveListItems(JsonElement root, string path, string method, out string reference)
+    {
+        JsonElement operation = GetOperation(root, path, method);
+        Assert.True(
+            operation.GetProperty("responses").TryGetProperty("200", out JsonElement response),
+            $"Missing 200 response for {method.ToUpperInvariant()} {path}.");
+        Assert.True(TryGetJsonSchema(response, out JsonElement schema),
+            $"Missing application/json schema for {method.ToUpperInvariant()} {path} 200.");
+        JsonElement envelope = ResolveRef(root, AssertRef(schema, root));
+        JsonElement items = envelope.GetProperty("properties").GetProperty("items");
+        Assert.Equal("array", items.GetProperty("type").GetString());
+        reference = AssertRef(items.GetProperty("items"), root);
+        return ResolveRef(root, reference);
+    }
+
+    [Fact]
     public async Task InventoryMine_PopulatedFixture_Returns200InventoryDto()
     {
         DateTime now = DateTime.UtcNow;
@@ -246,6 +381,136 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
         JsonElement type = Assert.Single(body.RootElement.GetProperty("roomTypes").EnumerateArray());
         Assert.Equal(seed.RoomType.Id.ToString("D"), type.GetProperty("id").GetString());
         Assert.Equal((int)CareHomeAllocationMode.Shared, type.GetProperty("allocationMode").GetInt32());
+    }
+
+    /// <summary>
+    /// F2 local HTTP proof for the owner booking-request read: the real
+    /// production pipeline, authorization policy, controller, MediatR dispatch
+    /// and query handler over the isolated in-process Care Homes store seeded
+    /// with minimal synthetic rows, read back through HTTP only.
+    /// </summary>
+    [Fact]
+    public async Task OwnerBookingRequests_RealHandler_ReturnsStoredReadFieldsAndRerunsFacilityScoping()
+    {
+        DateTime now = DateTime.UtcNow;
+        User owner = CareHomeOwnerPortalFixture.CreateUser(AccountType.CareHomeOwner, 51);
+        User otherOwner = CareHomeOwnerPortalFixture.CreateUser(AccountType.CareHomeOwner, 52);
+        await using CareHomesDbContext db = CareHomeOwnerPortalFixture.CreateDb();
+        CareHomeFacility facility = CareHomeOwnerPortalFixture.SeedFacility(db, owner.Id, now, withProfile: false);
+        CareHomeOwnerPortalFixture.InventorySeed seed =
+            CareHomeOwnerPortalFixture.SeedInventory(db, facility.Id, now);
+        CareHomeBooking awaiting = CareHomeOwnerPortalFixture.SeedPaidBooking(
+            db, facility.Id, seed.RoomType.Id, now, 5151, accept: false);
+        CareHomeBooking accepted = CareHomeOwnerPortalFixture.SeedPaidBooking(
+            db, facility.Id, seed.RoomType.Id, now, 5152, accept: true);
+        CareHomeFacility otherFacility = CareHomeOwnerPortalFixture.SeedFacility(db, otherOwner.Id, now, withProfile: false);
+        CareHomeBooking foreign = CareHomeOwnerPortalFixture.SeedPaidBooking(
+            db, otherFacility.Id, Guid.NewGuid(), now, 5153, accept: true);
+        Assert.NotNull(awaiting.DecisionHoldUntilUtc);
+
+        using var factory = CareHomeOwnerPortalFixture.OverrideCareHomes(_host, db);
+        using HttpClient client = CareHomeOwnerPortalFixture.CreateClient(factory);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", CareHomeOwnerPortalFixture.CreateToken(_host, owner));
+
+        using HttpResponseMessage response = await client.GetAsync("/api/v1/care-homes/booking-requests/mine");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        string raw = await response.Content.ReadAsStringAsync();
+        using JsonDocument body = JsonDocument.Parse(raw);
+        Assert.Equal(2, body.RootElement.GetArrayLength());
+        JsonElement awaitingRow = body.RootElement.EnumerateArray()
+            .Single(row => row.GetProperty("id").GetString() == awaiting.Id.ToString("D"));
+        JsonElement acceptedRow = body.RootElement.EnumerateArray()
+            .Single(row => row.GetProperty("id").GetString() == accepted.Id.ToString("D"));
+        Assert.DoesNotContain(foreign.Id.ToString("D"), raw, StringComparison.Ordinal);
+
+        Assert.Equal((int)CareHomeBookingStatus.PaidAwaitingDecision, awaitingRow.GetProperty("status").GetInt32());
+        Assert.Equal((int)CareHomeBookingPaymentStatus.Paid, awaitingRow.GetProperty("paymentStatus").GetInt32());
+        Assert.Equal(
+            awaiting.DecisionHoldUntilUtc,
+            awaitingRow.GetProperty("decisionHoldUntilUtc").GetDateTime().ToUniversalTime());
+        Assert.Equal("رعاية", awaitingRow.GetProperty("elderlyArabicName").GetString());
+        Assert.Equal("Care", awaitingRow.GetProperty("elderlyEnglishName").GetString());
+        Assert.Equal(75, awaitingRow.GetProperty("elderlyAge").GetInt32());
+        Assert.Equal("Contact", awaitingRow.GetProperty("responsibleContactName").GetString());
+        Assert.Equal("+201000000000", awaitingRow.GetProperty("responsibleContactPhone").GetString());
+        Assert.Equal(JsonValueKind.Null, awaitingRow.GetProperty("responsibleContactRelationship").ValueKind);
+        Assert.Equal(JsonValueKind.Null, awaitingRow.GetProperty("careNeedsNotes").ValueKind);
+        Assert.False(awaitingRow.TryGetProperty("medicalSnapshotJson", out _));
+        Assert.False(awaitingRow.TryGetProperty("medicalProfile", out _));
+
+        // A decided booking still stores its decision hold, but the read shape
+        // exposes the deadline only while a facility decision is pending.
+        Assert.NotNull(accepted.DecisionHoldUntilUtc);
+        Assert.Equal(JsonValueKind.Null, acceptedRow.GetProperty("decisionHoldUntilUtc").ValueKind);
+        Assert.Equal((int)CareHomeBookingStatus.Accepted, acceptedRow.GetProperty("status").GetInt32());
+
+        // The facility-derived filter is unchanged: the other owner sees only
+        // its own facility's booking.
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", CareHomeOwnerPortalFixture.CreateToken(_host, otherOwner));
+        using HttpResponseMessage otherResponse = await client.GetAsync("/api/v1/care-homes/booking-requests/mine");
+
+        Assert.Equal(HttpStatusCode.OK, otherResponse.StatusCode);
+        using JsonDocument otherBody = JsonDocument.Parse(await otherResponse.Content.ReadAsStringAsync());
+        JsonElement otherRow = Assert.Single(otherBody.RootElement.EnumerateArray());
+        Assert.Equal(foreign.Id.ToString("D"), otherRow.GetProperty("id").GetString());
+    }
+
+    /// <summary>
+    /// F2 local HTTP proof for the admin booking register: the same isolated
+    /// in-process store with one base booking and its linked extension row.
+    /// </summary>
+    [Fact]
+    public async Task AdminBookingList_RealHandler_ReturnsPersistedTaxAndExtensionLinkOverHttp()
+    {
+        DateTime now = DateTime.UtcNow;
+        User admin = CareHomeOwnerPortalFixture.CreateUser(AccountType.SuperAdmin, 53);
+        await using CareHomesDbContext db = CareHomeOwnerPortalFixture.CreateDb();
+        CareHomeFacility facility = CareHomeOwnerPortalFixture.SeedFacility(db, UserId.New(), now, withProfile: false);
+        CareHomeOwnerPortalFixture.InventorySeed seed =
+            CareHomeOwnerPortalFixture.SeedInventory(db, facility.Id, now);
+        CareHomeBooking baseBooking = CareHomeOwnerPortalFixture.SeedPaidBooking(
+            db, facility.Id, seed.RoomType.Id, now, 5351, accept: true);
+        CareHomeBooking extension = CareHomeBooking.CreateExtension(
+            baseBooking, baseBooking.FamilyUserId, 1000m, 100m, 65m, 4, now);
+        db.Bookings.Add(extension);
+        await db.SaveChangesAsync();
+
+        using var factory = CareHomeOwnerPortalFixture.OverrideCareHomes(_host, db);
+        using HttpClient client = CareHomeOwnerPortalFixture.CreateClient(factory);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", CareHomeOwnerPortalFixture.CreateToken(_host, admin));
+
+        using HttpResponseMessage response =
+            await client.GetAsync("/api/v1/admin/care-homes/bookings?page=1&pageSize=25");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(2, body.RootElement.GetProperty("totalCount").GetInt32());
+        JsonElement items = body.RootElement.GetProperty("items");
+        JsonElement baseRow = items.EnumerateArray()
+            .Single(row => row.GetProperty("bookingId").GetString() == baseBooking.Id.ToString("D"));
+        JsonElement extensionRow = items.EnumerateArray()
+            .Single(row => row.GetProperty("bookingId").GetString() == extension.Id.ToString("D"));
+
+        Assert.Equal(JsonValueKind.Null, baseRow.GetProperty("extensionOfBookingId").ValueKind);
+        Assert.Equal(50m, baseRow.GetProperty("taxAmount").GetDecimal());
+        Assert.Equal(baseBooking.Id.ToString("D"), extensionRow.GetProperty("extensionOfBookingId").GetString());
+        Assert.Equal(65m, extensionRow.GetProperty("taxAmount").GetDecimal());
+        Assert.Equal(extension.TotalAmount, extensionRow.GetProperty("totalAmount").GetDecimal());
+
+        // The extension filter/search behavior is unchanged and the read is
+        // still read-only.
+        using HttpResponseMessage filtered =
+            await client.GetAsync("/api/v1/admin/care-homes/bookings?bookingStatus=1");
+        Assert.Equal(HttpStatusCode.OK, filtered.StatusCode);
+        using JsonDocument filteredBody = JsonDocument.Parse(await filtered.Content.ReadAsStringAsync());
+        Assert.Equal(extension.Id.ToString("D"),
+            Assert.Single(filteredBody.RootElement.GetProperty("items").EnumerateArray())
+                .GetProperty("bookingId").GetString());
+        Assert.Equal(2, await db.Bookings.CountAsync());
     }
 
     [Theory]
@@ -319,7 +584,20 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
         using HttpResponseMessage bookings = await client.GetAsync("/api/v1/care-homes/booking-requests/mine");
         Assert.Equal(HttpStatusCode.OK, bookings.StatusCode);
         using JsonDocument bookingsBody = JsonDocument.Parse(await bookings.Content.ReadAsStringAsync());
-        Assert.Equal((int)CareHomeBookingStatus.Accepted, bookingsBody.RootElement[0].GetProperty("status").GetInt32());
+        JsonElement bookingRow = bookingsBody.RootElement[0];
+        Assert.Equal((int)CareHomeBookingStatus.PaidAwaitingDecision, bookingRow.GetProperty("status").GetInt32());
+        // F2 additive owner-list fields over the real MVC/JSON pipeline.
+        Assert.Equal("عربي", bookingRow.GetProperty("elderlyArabicName").GetString());
+        Assert.Equal("John Doe", bookingRow.GetProperty("elderlyEnglishName").GetString());
+        Assert.Equal(79, bookingRow.GetProperty("elderlyAge").GetInt32());
+        Assert.Equal("Responsible Contact", bookingRow.GetProperty("responsibleContactName").GetString());
+        Assert.Equal("+201000000000", bookingRow.GetProperty("responsibleContactPhone").GetString());
+        Assert.Equal("Daughter", bookingRow.GetProperty("responsibleContactRelationship").GetString());
+        Assert.Equal("Care needs notes", bookingRow.GetProperty("careNeedsNotes").GetString());
+        Assert.Equal(
+            CannedSender.DecisionHoldUntilUtc,
+            bookingRow.GetProperty("decisionHoldUntilUtc").GetDateTime().ToUniversalTime());
+        Assert.False(bookingRow.TryGetProperty("medicalSnapshotJson", out _));
 
         using HttpResponseMessage visits = await client.GetAsync("/api/v1/care-homes/visits/mine");
         Assert.Equal(HttpStatusCode.OK, visits.StatusCode);
@@ -500,6 +778,8 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
     /// </summary>
     private sealed class CannedSender(int unreadCount = 0, Guid? createdRuleId = null) : ISender
     {
+        internal static readonly DateTime DecisionHoldUntilUtc = new(2026, 11, 1, 9, 0, 0, DateTimeKind.Utc);
+
         private static readonly Guid FacilityId = Guid.Parse("0198e2c2-4444-7777-8888-000000000001");
         private static readonly Guid RoomTypeId = Guid.Parse("0198e2c2-4444-7777-8888-000000000002");
         private static readonly Guid RoomId = Guid.Parse("0198e2c2-4444-7777-8888-000000000003");
@@ -535,8 +815,11 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
                     [new(RoomTypeId, 2, 4, 3, 6)]),
                 Sanad.Modules.CareHomes.Application.Bookings.ListOwnerCareHomeBookingsQuery => Result<IReadOnlyList<CareHomeBookingListItem>>.Success(
                     [new(Guid.Parse("0198e2c2-4444-7777-8888-0000000000d1"), FacilityId, RoomTypeId,
-                        new DateOnly(2027, 1, 5), new DateOnly(2027, 2, 5), CareHomeBookingStatus.Accepted,
-                        CareHomeBookingPaymentStatus.Paid, 1150m, "EGP", "John Doe")]),
+                        new DateOnly(2027, 1, 5), new DateOnly(2027, 2, 5), CareHomeBookingStatus.PaidAwaitingDecision,
+                        CareHomeBookingPaymentStatus.Paid, 1150m, "EGP", "John Doe",
+                        null, null, null, null, null, CareHomeRefundStatus.None, null, null,
+                        "عربي", 79, "Responsible Contact", "+201000000000", "Daughter",
+                        "Care needs notes", DecisionHoldUntilUtc)]),
                 Sanad.Modules.CareHomes.Application.Bookings.ListOwnerCareHomeCheckInDisputesQuery q =>
                     Result<OwnerCareHomeCheckInDisputesResponse>.Success(new(
                         q.Page, q.PageSize, 1,

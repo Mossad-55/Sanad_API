@@ -1,5 +1,6 @@
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Application.Results;
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Application.Bookings;
@@ -343,6 +344,149 @@ public sealed class CareHomeBookingLifecycleTests
         var duplicate = await handler.Handle(new CreateCareHomeBookingExtensionCommand(UserId.New(), family, original.Id, Now), default);
         Assert.False(duplicate.IsSuccess);
         Assert.Equal("CareHomes.Bookings.InvalidState", duplicate.Error.Code);
+    }
+
+    // ------------------------------------------------------------------
+    // F2 — facility-owner booking-request list read completeness.
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Owner_list_reports_stored_resident_contact_care_notes_and_the_persisted_decision_deadline_only_while_awaiting_decision()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db);
+        CareHomeBooking awaitingDecision = CreateOwnerBooking(facility, new DateOnly(2026, 10, 10), accept: false, transactionId: 911);
+        CareHomeBooking accepted = CreateOwnerBooking(facility, new DateOnly(2026, 10, 11), accept: true, transactionId: 912);
+        CareHomeBooking unpaid = CareHomeBooking.Create(facility.Id, UserId.New(), FamilyId.New(), ElderlyId.New(), Guid.NewGuid(),
+            new DateOnly(2026, 10, 12), 12000m, 600m, 630m, 4, "غير مدفوع", "Unpaid", 80, null,
+            "Unpaid Contact", null, null, null, Now);
+        db.Bookings.AddRange(awaitingDecision, accepted, unpaid);
+        await db.SaveChangesAsync();
+
+        var result = await new OwnerListHandler(db).Handle(new ListOwnerCareHomeBookingsQuery(facility.OwnerUserId, Now), default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Count);
+        Assert.DoesNotContain(result.Value, x => x.Id == unpaid.Id);
+
+        CareHomeBookingListItem paidAwaiting = result.Value.Single(x => x.Id == awaitingDecision.Id);
+        Assert.Equal(CareHomeBookingStatus.PaidAwaitingDecision, paidAwaiting.Status);
+        // The deadline is the stored decision hold (payment time + the decision window), read back as persisted.
+        Assert.Equal(Now.AddMinutes(1).AddHours(24), awaitingDecision.DecisionHoldUntilUtc);
+        Assert.Equal(awaitingDecision.DecisionHoldUntilUtc, paidAwaiting.DecisionHoldUntilUtc);
+        Assert.Equal("مقيم عربي", paidAwaiting.ElderlyArabicName);
+        Assert.Equal("Resident English", paidAwaiting.ElderlyEnglishName);
+        Assert.Equal(81, paidAwaiting.ElderlyAge);
+        Assert.Equal("Responsible Contact", paidAwaiting.ResponsibleContactName);
+        Assert.Equal("+201000000000", paidAwaiting.ResponsibleContactPhone);
+        Assert.Equal("Daughter", paidAwaiting.ResponsibleContactRelationship);
+        Assert.Equal("Care needs notes", paidAwaiting.CareNeedsNotes);
+
+        CareHomeBookingListItem decided = result.Value.Single(x => x.Id == accepted.Id);
+        Assert.Equal(CareHomeBookingStatus.Accepted, decided.Status);
+        // The aggregate still stores the deadline it was given, but the list exposes it only while awaiting a decision.
+        Assert.NotNull(accepted.DecisionHoldUntilUtc);
+        Assert.Null(decided.DecisionHoldUntilUtc);
+
+        string json = JsonSerializer.Serialize(result.Value, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.Contains("\"responsibleContactName\":\"Responsible Contact\"", json, StringComparison.Ordinal);
+        Assert.Contains("\"elderlyAge\":81", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("medicalSnapshotJson", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("bloodType", json, StringComparison.Ordinal);
+        using JsonDocument document = JsonDocument.Parse(json);
+        JsonElement awaitingJson = document.RootElement.EnumerateArray()
+            .Single(x => x.GetProperty("id").GetString() == awaitingDecision.Id.ToString("D"));
+        Assert.Equal(awaitingDecision.DecisionHoldUntilUtc,
+            awaitingJson.GetProperty("decisionHoldUntilUtc").GetDateTime().ToUniversalTime());
+        Assert.Equal(JsonValueKind.Null, document.RootElement.EnumerateArray()
+            .Single(x => x.GetProperty("id").GetString() == accepted.Id.ToString("D"))
+            .GetProperty("decisionHoldUntilUtc").ValueKind);
+    }
+
+    [Fact]
+    public async Task Owner_list_stays_facility_scoped_and_returns_an_empty_list_for_an_owner_without_bookings()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility mine = AddApprovedFacility(db);
+        CareHomeFacility otherOwners = AddApprovedFacility(db);
+        CareHomeFacility withoutBookings = AddApprovedFacility(db);
+        CareHomeBooking own = CreateOwnerBooking(mine, new DateOnly(2026, 10, 13), accept: true, transactionId: 913);
+        CareHomeBooking foreign = CreateOwnerBooking(otherOwners, new DateOnly(2026, 10, 14), accept: true, transactionId: 914);
+        db.Bookings.AddRange(own, foreign);
+        await db.SaveChangesAsync();
+
+        var mineResult = await new OwnerListHandler(db).Handle(new ListOwnerCareHomeBookingsQuery(mine.OwnerUserId, Now), default);
+        Assert.True(mineResult.IsSuccess);
+        Assert.Equal([own.Id], mineResult.Value.Select(x => x.Id).ToArray());
+
+        var otherResult = await new OwnerListHandler(db).Handle(new ListOwnerCareHomeBookingsQuery(otherOwners.OwnerUserId, Now), default);
+        Assert.Equal([foreign.Id], otherResult.Value.Select(x => x.Id).ToArray());
+
+        var emptyResult = await new OwnerListHandler(db).Handle(new ListOwnerCareHomeBookingsQuery(withoutBookings.OwnerUserId, Now), default);
+        Assert.True(emptyResult.IsSuccess);
+        Assert.Empty(emptyResult.Value);
+
+        var noFacility = await new OwnerListHandler(db).Handle(new ListOwnerCareHomeBookingsQuery(UserId.New(), Now), default);
+        Assert.False(noFacility.IsSuccess);
+        Assert.Equal("CareHomes.Bookings.NotFound", noFacility.Error.Code);
+    }
+
+    /// <summary>
+    /// F2 correction: the Family booking list keeps its own row type
+    /// <see cref="CareHomeFamilyBookingListItem"/> and must not receive the
+    /// owner additions that live on <see cref="CareHomeBookingListItem"/>. The
+    /// same persisted booking is read through both list handlers, and the Family
+    /// row keeps exactly its pre-existing JSON property set while the owner row
+    /// carries the seven additions.
+    /// </summary>
+    [Fact]
+    public async Task Owner_list_additions_do_not_change_the_family_booking_list_wire_shape()
+    {
+        await using var db = CreateBookingDb();
+        CareHomeFacility facility = AddApprovedFacility(db);
+        FamilyId family = FamilyId.New();
+        var booking = CareHomeBooking.Create(facility.Id, UserId.New(), family, ElderlyId.New(), Guid.NewGuid(),
+            new DateOnly(2026, 10, 16), 12000m, 600m, 630m, 4, "مقيم عربي", "Resident English", 81,
+            "{\"bloodType\":\"Secret\"}", "Responsible Contact", "+201000000000", "Daughter", "Care needs notes", Now);
+        booking.MarkPaid(916, Now.AddMinutes(1));
+        db.Bookings.Add(booking);
+        await db.SaveChangesAsync();
+        var serializer = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+
+        var familyList = await new FamilyListHandler(db).Handle(new ListFamilyCareHomeBookingsQuery(UserId.New(), family), default);
+        Assert.True(familyList.IsSuccess);
+        CareHomeFamilyBookingListItem familyRow = Assert.IsType<CareHomeFamilyBookingListItem>(Assert.Single(familyList.Value));
+        string familyJson = JsonSerializer.Serialize(familyRow, serializer);
+        string[] familyNames = JsonDocument.Parse(familyJson).RootElement.EnumerateObject()
+            .Select(x => x.Name).Order(StringComparer.Ordinal).ToArray();
+        Assert.Equal(
+            new[]
+            {
+                "actualCheckInOnUtc", "actualCheckOutOnUtc", "assignedBedId", "assignedRoomId", "currency",
+                "elderlyEnglishName", "endDate", "extensionOfBookingId", "facilityId",
+                "familyCheckInConfirmedOnUtc", "id", "paymentStatus", "refundAmount", "refundStatus",
+                "roomTypeId", "startDate", "status", "totalAmount"
+            },
+            familyNames);
+        Assert.DoesNotContain("decisionHoldUntilUtc", familyJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("responsibleContact", familyJson, StringComparison.Ordinal);
+        Assert.DoesNotContain("careNeedsNotes", familyJson, StringComparison.Ordinal);
+
+        var ownerList = await new OwnerListHandler(db).Handle(new ListOwnerCareHomeBookingsQuery(facility.OwnerUserId, Now), default);
+        Assert.True(ownerList.IsSuccess);
+        CareHomeBookingListItem ownerRow = Assert.IsType<CareHomeBookingListItem>(Assert.Single(ownerList.Value));
+        string ownerJson = JsonSerializer.Serialize(ownerRow, serializer);
+        string[] ownerNames = JsonDocument.Parse(ownerJson).RootElement.EnumerateObject()
+            .Select(x => x.Name).ToArray();
+        Assert.Equal(25, ownerNames.Distinct(StringComparer.Ordinal).Count());
+        foreach (string field in familyNames)
+            Assert.Contains(field, ownerNames, StringComparer.Ordinal);
+        foreach (string field in new[]
+                 {
+                     "elderlyArabicName", "elderlyAge", "responsibleContactName", "responsibleContactPhone",
+                     "responsibleContactRelationship", "careNeedsNotes", "decisionHoldUntilUtc"
+                 })
+            Assert.Contains($"\"{field}\"", ownerJson, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -853,6 +997,22 @@ public sealed class CareHomeBookingLifecycleTests
 
     private static CareHomesDbContext CreateBookingDb() =>
         new(new DbContextOptionsBuilder<CareHomesDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+
+    /// <summary>
+    /// F2 owner-list input: one paid booking carrying the stored resident,
+    /// contact and care-notes snapshots plus a medical snapshot that must
+    /// never reach the list shape. <paramref name="accept"/> = false leaves it
+    /// in <c>PaidAwaitingDecision</c> with a live decision hold.
+    /// </summary>
+    private static CareHomeBooking CreateOwnerBooking(CareHomeFacility facility, DateOnly start, bool accept, long transactionId)
+    {
+        var booking = CareHomeBooking.Create(facility.Id, UserId.New(), FamilyId.New(), ElderlyId.New(), Guid.NewGuid(),
+            start, 12000m, 600m, 630m, 4, "مقيم عربي", "Resident English", 81, "{\"bloodType\":\"Secret\"}",
+            "Responsible Contact", "+201000000000", "Daughter", "Care needs notes", Now);
+        booking.MarkPaid(transactionId, Now.AddMinutes(1));
+        if (accept) booking.Accept(Now.AddMinutes(2));
+        return booking;
+    }
 
     private static CheckoutHandler CreateCheckoutHandler(CareHomesDbContext db, FixedPlatformControls? controls = null) =>
         new(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard(), controls ?? FixedPlatformControls.Operational());

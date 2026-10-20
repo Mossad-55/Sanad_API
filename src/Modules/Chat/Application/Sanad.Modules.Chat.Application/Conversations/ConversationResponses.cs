@@ -1,3 +1,5 @@
+using Sanad.Modules.Chat.Domain.Conversations;
+
 namespace Sanad.Modules.Chat.Application.Conversations;
 
 /// <summary>
@@ -18,8 +20,18 @@ public sealed record LastMessageResponse(
     string Text,
     DateTime CreatedOnUtc);
 
+/// <summary>
+/// Conversation-list row. <c>Scope</c>/<c>BookingId</c> are the persisted
+/// <c>Conversation.Scope</c> and <c>Conversation.BookingId</c> of the same
+/// row that produced the participant: a booking-scoped conversation reports
+/// <c>Booking</c> plus its booking id, a direct conversation reports
+/// <c>Direct</c> and a null booking id. <c>Scope</c> serializes as the
+/// repository-wide numeric enum value (Direct = 0, Booking = 1).
+/// </summary>
 public sealed record ConversationListItemResponse(
     Guid Id,
+    ConversationScope Scope,
+    Guid? BookingId,
     ParticipantResponse Participant,
     LastMessageResponse? LastMessage,
     int UnreadCount);

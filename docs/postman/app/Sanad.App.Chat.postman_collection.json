@@ -34,7 +34,7 @@
               { "key": "Authorization", "value": "Bearer {{accessToken}}" }
             ],
             "url": "{{baseUrl}}/api/v1/chat/conversations?page=1&pageSize=20",
-              "description": "Endpoint 1 → 200 PagedResult {items, page, pageSize, totalCount, totalPages}, ordered by lastActivityOnUtc descending. page is clamped up to 1; pageSize is clamped to 1–100 (default 20). Only the caller's conversations appear, minus rows the caller hid; foreign rows are never an error. participant is always the other side of the pair (Identity display name, English preferred with Arabic fallback; avatarUrl may be null) with the counterpart's accountType (Identity AccountType integer; a care-home owner presents as the facility name/cover). Lane A stub: lastMessage is null and unreadCount is 0 until Lane B owns messages. 401 without a token."
+              "description": "Endpoint 1 → 200 PagedResult {items, page, pageSize, totalCount, totalPages}, ordered by lastActivityOnUtc descending. page is clamped up to 1; pageSize is clamped to 1–100 (default 20). Only the caller's conversations appear, minus rows the caller hid; foreign rows are never an error. participant is always the other side of the pair (Identity display name, English preferred with Arabic fallback; avatarUrl may be null) with the counterpart's accountType (Identity AccountType integer; a care-home owner presents as the facility name/cover). scope/bookingId are the persisted conversation scope (numeric enum: Direct = 0, Booking = 1) and the conversation's booking reference (null for a direct row); no stay/room-type summary is added. Lane A stub: lastMessage is null and unreadCount is 0 until Lane B owns messages. 401 without a token."
           },
           "response": [
             {
@@ -53,7 +53,7 @@
                 { "key": "Content-Type", "value": "application/json" }
               ],
               "cookie": [],
-              "body": "{\n  \"items\": [\n    {\n      \"id\": \"0198e2c2-4444-7a10-8000-00000000c001\",\n      \"participant\": {\n        \"userId\": \"00000000-0000-0000-0000-000000000002\",\n        \"displayName\": \"Salma Nasr\",\n        \"avatarUrl\": null,\n        \"accountType\": 1\n      },\n      \"lastMessage\": null,\n      \"unreadCount\": 0\n    }\n  ],\n  \"page\": 1,\n  \"pageSize\": 20,\n  \"totalCount\": 1,\n  \"totalPages\": 1\n}"
+              "body": "{\n  \"items\": [\n    {\n      \"id\": \"0198e2c2-4444-7a10-8000-00000000c001\",\n      \"scope\": 0,\n      \"bookingId\": null,\n      \"participant\": {\n        \"userId\": \"00000000-0000-0000-0000-000000000002\",\n        \"displayName\": \"Salma Nasr\",\n        \"avatarUrl\": null,\n        \"accountType\": 1\n      },\n      \"lastMessage\": null,\n      \"unreadCount\": 0\n    },\n    {\n      \"id\": \"0198e2c2-4444-7a10-8000-00000000c002\",\n      \"scope\": 1,\n      \"bookingId\": \"0198e2c2-4444-7a10-8000-00000000b001\",\n      \"participant\": {\n        \"userId\": \"00000000-0000-0000-0000-000000000003\",\n        \"displayName\": \"Sunrise Care Home\",\n        \"avatarUrl\": \"/cover/1\",\n        \"accountType\": 8\n      },\n      \"lastMessage\": null,\n      \"unreadCount\": 0\n    }\n  ],\n  \"page\": 1,\n  \"pageSize\": 20,\n  \"totalCount\": 2,\n  \"totalPages\": 1\n}"
             }
           ]
         },

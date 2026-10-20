@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
 using System.Security.Claims;
+using System.Text.Json;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -537,6 +538,53 @@ public sealed class ConversationTests
         Assert.Equal("avatar-newest", item.Participant.AvatarUrl);
         Assert.Null(item.LastMessage); // STUB: messages are Lane B.
         Assert.Equal(0, item.UnreadCount); // STUB: unread is Lane B.
+        Assert.Equal(ConversationScope.Direct, item.Scope);
+        Assert.Null(item.BookingId);
+    }
+
+    [Fact]
+    public async Task GetConversations_ReturnsPersistedScopeAndNullableBookingIdForDirectAndBookingRows()
+    {
+        await using ChatDbContext db = CreateDb();
+        UserId requester = UserId.New();
+        UserId peer = UserId.New();
+        UserId owner = UserId.New();
+        BookingId bookingId = BookingId.New();
+        Conversation direct = CreateDirect(requester, peer, UtcStamp);
+        Conversation booking = Conversation.Create(
+            requester, owner, ConversationScope.Booking, bookingId, UtcStamp.AddMinutes(1));
+        db.Conversations.AddRange(direct, booking);
+        await db.SaveChangesAsync();
+
+        var lookup = new FakeChatUserLookup();
+        lookup.Add(peer, "Peer");
+        lookup.Add(owner, "Owner");
+        var handler = new GetConversationsQueryHandler(db, lookup, new FakeChatFacilityLookup());
+
+        PagedResult<ConversationListItemResponse> page = (await handler.Handle(
+            new GetConversationsQuery(requester), default)).Value;
+
+        Assert.Equal(2, page.TotalCount);
+
+        ConversationListItemResponse directRow = page.Items.Single(item => item.Id == direct.Id.Value);
+        Assert.Equal(ConversationScope.Direct, directRow.Scope);
+        Assert.Null(directRow.BookingId);
+        Assert.Equal(peer.Value, directRow.Participant.UserId);
+
+        ConversationListItemResponse bookingRow = page.Items.Single(item => item.Id == booking.Id.Value);
+        Assert.Equal(ConversationScope.Booking, bookingRow.Scope);
+        Assert.Equal(bookingId.Value, bookingRow.BookingId);
+        Assert.Equal(owner.Value, bookingRow.Participant.UserId);
+
+        // Wire convention: camelCase names, numeric enum values (Direct = 0,
+        // Booking = 1), null bookingId for a direct row.
+        var options = new JsonSerializerOptions(JsonSerializerDefaults.Web);
+        string directJson = JsonSerializer.Serialize(directRow, options);
+        Assert.Contains("\"scope\":0", directJson, StringComparison.Ordinal);
+        Assert.Contains("\"bookingId\":null", directJson, StringComparison.Ordinal);
+        string bookingJson = JsonSerializer.Serialize(bookingRow, options);
+        Assert.Contains("\"scope\":1", bookingJson, StringComparison.Ordinal);
+        Assert.Contains($"\"bookingId\":\"{bookingId.Value:D}\"", bookingJson, StringComparison.Ordinal);
     }
 
     [Fact]
