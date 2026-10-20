@@ -3513,35 +3513,6 @@
             "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins/missed?startDate={{checkInStartDate}}&endDate={{checkInEndDate}}&page=1&pageSize=20",
             "description": "Derived missed daily wellness check-ins. Required inclusive startDate/endDate (max 31 days). Optional elderlyId. Returns evaluationOnUtc, items (elderlyId, familyId, localDate, dueOnUtc), page, pageSize, totalCount. Minimal projection only."
           }
-        },
-        {
-          "name": "List missed Elderly check-ins (manual read)",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('admin missed check-in contract', function () { pm.expect([200, 400, 401, 403, 409, 503]).to.include(pm.response.code); });"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [
-              {
-                "key": "Authorization",
-                "value": "Bearer {{accessToken}}"
-              },
-              {
-                "key": "X-Correlation-ID",
-                "value": "postman-admin-missed-check-in-list"
-              }
-            ],
-            "url": "{{baseUrl}}/api/v1/admin/elderly/check-ins/missed?startDate={{checkInStartDate}}&endDate={{checkInEndDate}}&page=1&pageSize=20",
-            "description": "Derived missed daily wellness check-ins. Required inclusive startDate/endDate (max 31 days). Optional elderlyId. Returns evaluationOnUtc, items (elderlyId, familyId, localDate, dueOnUtc), page, pageSize, totalCount. Minimal projection only."
-          }
         }
       ]
     },
