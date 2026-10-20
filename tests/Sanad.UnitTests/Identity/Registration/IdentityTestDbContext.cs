@@ -35,6 +35,9 @@ internal sealed class IdentityTestDbContext :
     public DbSet<SupportTicket> SupportTickets =>
         Set<SupportTicket>();
 
+    public DbSet<SupportTicketReply> SupportTicketReplies =>
+        Set<SupportTicketReply>();
+
     public DbSet<Sanad.Modules.Identity.Domain.Feedback> Feedbacks => Set<Sanad.Modules.Identity.Domain.Feedback>();
 
     public DbSet<AdminUserAction> AdminUserActions => Set<AdminUserAction>();

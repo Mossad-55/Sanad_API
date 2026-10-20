@@ -158,18 +158,9 @@ public sealed class OwnerLegalAudienceApiTests
     }
 
     [Fact]
-    public async Task HelpCenter_DoesNotSupportOwnerAudience()
+    public async Task HelpCenter_SupportsOwnerAudience()
     {
-        Assert.False(LegalAudience.CareHomeOwner.IsHelpAudience());
-        Assert.Throws<DomainException>(() =>
-            HelpFaq.Create(
-                LegalAudience.CareHomeOwner,
-                "س",
-                "Q",
-                "ج",
-                "A",
-                0,
-                true));
+        Assert.True(LegalAudience.CareHomeOwner.IsHelpAudience());
 
         GetHelpCenterQueryHandler handler = new(CreateDbContext());
         Result<HelpCenterResponse> result =
@@ -177,8 +168,8 @@ public sealed class OwnerLegalAudienceApiTests
                 new GetHelpCenterQuery(LegalAudience.CareHomeOwner),
                 CancellationToken.None);
 
-        Assert.True(result.IsFailure);
-        Assert.Equal(ContentErrors.UnsupportedAudience.Code, result.Error.Code);
+        // Owner FAQs are served; empty store yields success with no items.
+        Assert.True(result.IsSuccess);
     }
 
     [Fact]

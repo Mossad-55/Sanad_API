@@ -226,6 +226,14 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("integer")
                         .HasColumnName("status");
 
+                    b.Property<Guid?>("StatusChangedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("status_changed_by_user_id");
+
+                    b.Property<DateTime?>("StatusChangedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("status_changed_on_utc");
+
                     b.Property<string>("Subject")
                         .IsRequired()
                         .HasMaxLength(150)
@@ -239,6 +247,35 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                     b.HasKey("Id");
 
                     b.ToTable("support_tickets", "identity");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Identity.Domain.Support.SupportTicketReply", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<string>("Body")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("body");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<Guid>("TicketId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("ticket_id");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("support_ticket_replies", "identity");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Identity.Domain.Users.AdminUserAction", b =>

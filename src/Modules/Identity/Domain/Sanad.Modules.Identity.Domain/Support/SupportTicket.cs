@@ -23,7 +23,9 @@ public sealed class SupportTicket :
         string message,
         SupportTicketStatus status,
         DateTime createdOnUtc,
-        DateTime? notifiedOnUtc)
+        DateTime? notifiedOnUtc,
+        UserId? statusChangedByUserId,
+        DateTime? statusChangedOnUtc)
         : base(id)
     {
         UserId = userId;
@@ -32,6 +34,8 @@ public sealed class SupportTicket :
         Status = status;
         CreatedOnUtc = createdOnUtc;
         NotifiedOnUtc = notifiedOnUtc;
+        StatusChangedByUserId = statusChangedByUserId;
+        StatusChangedOnUtc = statusChangedOnUtc;
     }
 
     public UserId UserId { get; private set; }
@@ -41,6 +45,8 @@ public sealed class SupportTicket :
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime? NotifiedOnUtc { get; private set; }
     public bool IsNotified => NotifiedOnUtc is not null;
+    public UserId? StatusChangedByUserId { get; private set; }
+    public DateTime? StatusChangedOnUtc { get; private set; }
 
     public static SupportTicket Create(
         UserId userId,
@@ -84,6 +90,8 @@ public sealed class SupportTicket :
             trimmedMessage,
             SupportTicketStatus.New,
             createdOnUtc,
+            null,
+            null,
             null);
     }
 
@@ -96,5 +104,25 @@ public sealed class SupportTicket :
         }
 
         NotifiedOnUtc = utcNow;
+    }
+
+    public void ChangeStatus(
+        SupportTicketStatus newStatus,
+        UserId changedByUserId,
+        DateTime utcNow)
+    {
+        if (changedByUserId == UserId.Empty)
+        {
+            throw new DomainException("Changed by user ID is required.");
+        }
+
+        if (utcNow.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException("Operation time must be in UTC.");
+        }
+
+        Status = newStatus;
+        StatusChangedByUserId = changedByUserId;
+        StatusChangedOnUtc = utcNow;
     }
 }

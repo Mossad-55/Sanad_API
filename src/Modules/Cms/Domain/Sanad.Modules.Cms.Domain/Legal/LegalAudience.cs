@@ -1,8 +1,8 @@
 namespace Sanad.Modules.Cms.Domain.Legal;
 
 /// <summary>
-/// The four normal app audiences. There is no legal or help audience for
-/// SuperAdmin, ContentAdmin, or SupportAdmin.
+/// The five normal app audiences. There is no legal or help audience for the
+/// admin account types.
 /// </summary>
 public enum LegalAudience
 {
@@ -17,8 +17,8 @@ public static class LegalAudienceExtensions
 {
     /// <summary>
     /// Legal content audiences, including the Care Home Owner audience added
-    /// by E02. Help Center/FAQ code must use <see cref="IsHelpAudience"/>
-    /// instead so Owner does not gain Help Center access.
+    /// by E02. Help Center/FAQ code uses <see cref="IsHelpAudience"/>, which
+    /// has granted the Owner audience since F5.
     /// </summary>
     public static bool IsDefined(
         this LegalAudience audience)
@@ -38,6 +38,7 @@ public static class LegalAudienceExtensions
             LegalAudience.Family or
             LegalAudience.MedicalCaregiver or
             LegalAudience.CompanionCaregiver or
-            LegalAudience.Elderly;
+            LegalAudience.Elderly or
+            LegalAudience.CareHomeOwner;
     }
 }

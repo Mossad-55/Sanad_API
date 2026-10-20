@@ -18,22 +18,22 @@ bare 401/403 with no business `code`). Missing/invalid token → **401**.
 | Super Admin | `SuperAdmin` | Yes |
 | Content Admin | `ContentAdmin` | Yes |
 | Support Admin | `SupportAdmin` | No (read-only; not granted) |
-| Family / Caregiver / Elderly | app types | No (they use the signed-in `GET /api/v1/help-center`) |
+| Family / Caregiver / Elderly / Care-home Owner | app types | No (they use the signed-in `GET /api/v1/help-center`) |
 
 ## Enum values (numeric JSON binding)
 
 ```text
-LegalAudience: Family = 1, MedicalCaregiver = 2, CompanionCaregiver = 3, Elderly = 4
+LegalAudience: Family = 1, MedicalCaregiver = 2, CompanionCaregiver = 3, Elderly = 4, CareHomeOwner = 5
 ```
 
-An FAQ belongs to exactly one of the four app audiences. There is no FAQ or
-support-contact audience for admin account types.
+An FAQ belongs to exactly one of the five app audiences. `CareHomeOwner = 5`
+is part of the Help Center surface as of F5: a Care-home Owner signs in and
+reads its own FAQ list like the other app roles. There is no FAQ or
+support-contact audience for the three admin account types.
 
-Create/update validate the audience as an app Help Center audience, not merely
-as any defined `LegalAudience` enum value. A defined but unsupported value such
-as `CareHomeOwner = 5`, or an undefined numeric value, returns the standard
-`400 Api.Validation.Failed` response with an `audience` field error; it must not
-fall through to an unexpected server error. This does not add Owner FAQ support.
+Create/update validate the audience as a Help Center audience. An undefined
+numeric value returns the standard `400 Api.Validation.Failed` response with an
+`audience` field error and must not fall through to an unexpected server error.
 
 ## Endpoints summary
 

@@ -48,4 +48,15 @@ public sealed class DevelopmentEmailSender :
 
         return Task.CompletedTask;
     }
+
+    public Task SendSupportReplyAsync(
+        string? recipientEmail,
+        string subject,
+        string replyBody,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        Console.WriteLine($"[DevEmail] Support reply to {recipientEmail}: {subject}");
+        return Task.CompletedTask;
+    }
 }

@@ -32,6 +32,7 @@ using Sanad.API.CaregiversIntegration;
 using Sanad.API.Seeding;
 using Sanad.API.Options;
 using Sanad.API.NotificationsIntegration;
+using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.API.CareHomesIntegration;
 using Sanad.Modules.Notifications.Infrastructure;
 using Sanad.Modules.Notifications.Application.Abstractions.Recipients;
@@ -151,6 +152,7 @@ public static class DependencyInjection
         services.AddScoped<ICaregiverBookingRatingEligibility, CaregiverBookingRatingEligibilityGateway>();
         services.AddScoped<IHelpRequestCatalogGateway, HelpRequestCatalogGateway>();
         services.AddScoped<IHelpRequestNotificationGateway, HelpRequestNotificationGateway>();
+        services.AddScoped<ISupportReplyNotifier, SupportReplyNotificationGateway>();
         services.AddScoped<IMedicationLatenessSettingGateway, MedicationLatenessSettingGateway>();
         services.AddScoped<IMedicationLateAlertGateway, MedicationLateAlertGateway>();
         services.AddScoped<IElderlyIntakeResolver, FamilyElderlyIntakeResolver>();

@@ -18,6 +18,8 @@ public interface IIdentityDbContext
 
     DbSet<SupportTicket> SupportTickets { get; }
 
+    DbSet<SupportTicketReply> SupportTicketReplies => null!;
+
     DbSet<FeedbackEntity> Feedbacks { get; }
 
     DbSet<AdminUserAction> AdminUserActions { get; }

@@ -9,10 +9,14 @@ contact card.
 **Success:** `200`
 
 The audience is derived from the JWT `account_type` claim
-(`Family=1, MedicalCaregiver=2, CompanionCaregiver=3, Elderly=4`). There is
-no audience query parameter — a role can never read another role's FAQ list
-by URL manipulation. Admin account types receive
+(`Family=1, MedicalCaregiver=2, CompanionCaregiver=3, Elderly=4,
+CareHomeOwner=5`). There is no audience query parameter — a role can never
+read another role's FAQ list by URL manipulation. Admin account types receive
 `403 Cms.Content.UnsupportedAudience`.
+
+The Care-home Owner account type is a Help Center audience as of F5: an owner
+token reads its own FAQ list and the shared contact card exactly like the other
+app roles.
 
 ## Response
 
@@ -74,6 +78,22 @@ HTTP 200
 | 200 | — | Empty/unseeded list is a success, not an error |
 
 `id` is the repository's strongly typed id JSON shape `{ "value": "<guid>" }`.
+
+## Support tickets from the app
+
+Reaching support with a tracked request uses the ticket routes, not the contact
+card (see `docs/auth/support-contact.md`):
+
+```text
+POST /api/v1/support/contact        Submit a request -> 200
+GET  /api/v1/support/contact        Anonymous contact card -> 200
+GET  /api/v1/support/tickets        The caller's own tickets -> 200
+GET  /api/v1/support/tickets/{id}   One own ticket with the admin replies -> 200
+```
+
+Ticket status: `1` New, `2` In Progress, `3` Resolved, `4` Closed. An admin
+moves a ticket forward and replies; the reply appears in the ticket detail.
+Another user's ticket id is `404`, never data.
 
 ## Admin management
 

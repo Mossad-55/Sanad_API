@@ -27,6 +27,7 @@ Apply them in order. Do not rewrite history.
 | `AddSocialChallengeEmailAuthority` | Historical social challenge column |
 | `RemoveSocialAuthentication` | Drops social/nonce/challenge tables |
 | `20261005101531_AddFeedback` | Adds the `identity.feedback` app-rating table |
+| `20261020191733_AddSupportTicketWorkflow` | Adds the support-ticket status-change audit columns and the `identity.support_ticket_replies` table (F5). |
 
 Social authentication is cancelled. Those earlier migrations stay in the project so existing databases can upgrade. `RemoveSocialAuthentication` is the cleanup step.
 
@@ -85,6 +86,7 @@ is recorded below:
 - Families: `20261005101503_AddBookingReviewsAndMedicalAccessGrants`
 - Families: `20261005111105_AddMedicalAccessGrantGrantee`
 - Identity: `20261005101531_AddFeedback`
+- Identity: `20261020191733_AddSupportTicketWorkflow`
 - Community: `20261005101553_InitialCommunity`
 - Care Homes: `20261008041054_AddCareHomeProfileMedia`
 - Care Homes: `20261008052316_AddCareHomePayoutLedger`

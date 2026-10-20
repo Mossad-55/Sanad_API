@@ -2242,6 +2242,118 @@
               }
             }
           ]
+        },
+        {
+          "name": "Get support contact card (anonymous)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/support/contact",
+            "description": "No token. Returns the one global support phone + email pair - the same pair the Help Center card shows. Both fields are null when nothing is configured. The route never sends SMS or email and never touches the ticket tables."
+          },
+          "response": [
+            {
+              "name": "200 Contact card",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"supportPhone\": \"+201000000001\",\n  \"supportEmail\": \"support@sanad.example\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "List my support tickets",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/support/tickets?page=1&pageSize=25",
+            "description": "Requires Normal JWT. Returns only the caller's own tickets, newest first; page defaults to 1 and pageSize to 25 (clamped 1-100). Status values: 1 New, 2 InProgress, 3 Resolved, 4 Closed."
+          },
+          "response": [
+            {
+              "name": "200 Own tickets page",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"items\": [\n    {\n      \"ticketId\": \"018f0000-0000-7000-8000-000000000001\",\n      \"subject\": \"Help needed\",\n      \"status\": 2,\n      \"createdOnUtc\": \"2026-09-11T10:00:00Z\"\n    }\n  ],\n  \"page\": 1,\n  \"pageSize\": 25,\n  \"totalCount\": 1\n}"
+            },
+            {
+              "name": "401 Missing or invalid token",
+              "status": "Unauthorized",
+              "code": 401,
+              "_postman_previewlanguage": "json",
+              "body": "{\n  \"title\": \"Unauthorized\",\n  \"status\": 401\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get my support ticket detail",
+          "request": {
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{accessToken}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/support/tickets/{{supportTicketId}}",
+            "description": "Requires Normal JWT. Returns one of the caller's own tickets with its admin replies, oldest first. Another user's ticket id - or an unknown one - returns 404 Identity.Support.NotFound, never data. Run Contact Support first so supportTicketId is captured."
+          },
+          "response": [
+            {
+              "name": "200 Ticket with replies",
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"ticketId\": \"018f0000-0000-7000-8000-000000000001\",\n  \"subject\": \"Help needed\",\n  \"message\": \"I need assistance with my account.\",\n  \"status\": 2,\n  \"createdOnUtc\": \"2026-09-11T10:00:00Z\",\n  \"notifiedOnUtc\": \"2026-09-11T10:00:05Z\",\n  \"replies\": [\n    {\n      \"replyId\": \"018f0000-0000-7000-8000-000000000009\",\n      \"actorUserId\": \"018f0000-0000-7000-8000-000000000010\",\n      \"body\": \"We are looking into this.\",\n      \"createdOnUtc\": \"2026-09-11T12:00:00Z\"\n    }\n  ]\n}"
+            },
+            {
+              "name": "404 Not own / unknown ticket",
+              "status": "Not Found",
+              "code": 404,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/problem+json"
+                }
+              ],
+              "body": "{\n  \"type\": \"https://httpstatuses.com/404\",\n  \"title\": \"Not Found\",\n  \"status\": 404,\n  \"detail\": \"The requested resource was not found.\",\n  \"instance\": \"/api/v1/support/tickets/018f0000-0000-7000-8000-000000000001\",\n  \"code\": \"Identity.Support.NotFound\",\n  \"traceId\": \"00-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-bbbbbbbbbbbbbbbb-00\"\n}"
+            }
+          ]
         }
       ]
     },

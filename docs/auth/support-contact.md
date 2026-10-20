@@ -50,7 +50,79 @@ Validation limits:
 | 404 | `Identity.Account.UserNotFound` |
 | 409 | `Identity.Account.InvalidOperation` |
 
-The admin reply feature is a separate feature not covered here.
+## GET `/api/v1/support/contact` (anonymous)
+
+The contact card without a session, for the pre-login support screen. The
+response is exactly the same single global phone/email pair as the Help Center
+card, and nothing else:
+
+```bash
+curl -sS https://localhost:7296/api/v1/support/contact
+```
+
+`200` response (both fields are `null` when no pair has been configured yet):
+
+```json
+{
+  "supportPhone": "+201000000001",
+  "supportEmail": "support@sanad.example"
+}
+```
+
+The route is `[AllowAnonymous]`. It never sends SMS or email and never touches
+the ticket tables.
+
+## GET `/api/v1/support/tickets`
+
+The signed-in user's own tickets, newest first. `page` defaults to `1`;
+`pageSize` defaults to `25` (clamped to `1-100`).
+
+```json
+{
+  "items": [
+    {
+      "ticketId": "018f0000-0000-7000-8000-000000000001",
+      "subject": "Help needed",
+      "status": 2,
+      "createdOnUtc": "2026-09-11T10:00:00Z"
+    }
+  ],
+  "page": 1,
+  "pageSize": 25,
+  "totalCount": 1
+}
+```
+
+## GET `/api/v1/support/tickets/{id}`
+
+One of the caller's own tickets together with the admin replies, oldest first.
+A ticket that belongs to another user — or does not exist — is
+`404 Identity.Support.NotFound`, so the route never confirms someone else's
+ticket.
+
+```json
+{
+  "ticketId": "018f0000-0000-7000-8000-000000000001",
+  "subject": "Help needed",
+  "message": "I need assistance with my account.",
+  "status": 2,
+  "createdOnUtc": "2026-09-11T10:00:00Z",
+  "notifiedOnUtc": "2026-09-11T10:00:05Z",
+  "replies": [
+    {
+      "replyId": "018f0000-0000-7000-8000-000000000009",
+      "actorUserId": "018f0000-0000-7000-8000-000000000010",
+      "body": "We are looking into this.",
+      "createdOnUtc": "2026-09-11T12:00:00Z"
+    }
+  ]
+}
+```
+
+`status`: `1` New, `2` In Progress, `3` Resolved, `4` Closed. The admin inbox
+that moves a ticket forward and answers it is documented in
+`docs/admin/support-inbox.md`; the list and detail item ids are plain UUIDs
+here (the submit response keeps its typed `{ "value": ... }` shape).
 
 ## Help Center support contact card (separate, read-only)
 

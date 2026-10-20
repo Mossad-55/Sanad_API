@@ -337,7 +337,6 @@ public sealed class HelpCenterTests
     }
 
     [Theory]
-    [InlineData(LegalAudience.CareHomeOwner)]
     [InlineData((LegalAudience)9)]
     public async Task CreateFaqValidator_RejectsUnsupportedAudienceOnAudienceField(
         LegalAudience audience)
@@ -355,7 +354,6 @@ public sealed class HelpCenterTests
     }
 
     [Theory]
-    [InlineData(LegalAudience.CareHomeOwner)]
     [InlineData((LegalAudience)9)]
     public async Task UpdateFaqValidator_RejectsUnsupportedAudienceOnAudienceField(
         LegalAudience audience)
@@ -384,7 +382,7 @@ public sealed class HelpCenterTests
             await Assert.ThrowsAsync<ValidationException>(
                 () => RunCreatePipelineAsync(
                     dbContext,
-                    LegalAudience.CareHomeOwner));
+                    (LegalAudience)9));
 
         // The request field is named, so a consumer can map the coded failure
         // back to the offending property instead of seeing an unexpected 500
@@ -421,7 +419,7 @@ public sealed class HelpCenterTests
         UpdateHelpFaqCommand command =
             new(
                 faqId,
-                LegalAudience.CareHomeOwner,
+                (LegalAudience)9,
                 "سؤال محدّث",
                 "Updated question",
                 "إجابة محدّثة",

@@ -51,6 +51,15 @@ public sealed class SupportTicketConfiguration :
         builder.Property(ticket => ticket.NotifiedOnUtc)
             .HasColumnName("notified_on_utc");
 
+        builder.Property(ticket => ticket.StatusChangedByUserId)
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? new UserId(value.Value) : null)
+            .HasColumnName("status_changed_by_user_id");
+
+        builder.Property(ticket => ticket.StatusChangedOnUtc)
+            .HasColumnName("status_changed_on_utc");
+
         builder.Ignore(ticket => ticket.IsNotified);
         builder.Ignore(ticket => ticket.DomainEvents);
     }

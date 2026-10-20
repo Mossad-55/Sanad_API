@@ -152,6 +152,13 @@ public static class ResultProblemDetailsMapper
             ["Identity.Account.ElderlyManagedByFamily"] = 409,
             ["Identity.Account.OwnershipTransferRequired"] = 409,
 
+            // F5 support inbox: an unknown ticket id is a real 404 (the owner's
+            // own-ticket read deliberately reports another user's ticket the
+            // same way), and a refused status transition or a reply to a closed
+            // ticket is a 409.
+            ["Identity.Support.NotFound"] = 404,
+            ["Identity.Support.Conflict"] = 409,
+
             ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
             ["Cms.Splash.NotFound"] = 404,
 

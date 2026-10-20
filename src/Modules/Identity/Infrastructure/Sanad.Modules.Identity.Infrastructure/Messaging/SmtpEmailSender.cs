@@ -293,4 +293,35 @@ public sealed class SmtpEmailSender : IEmailSender
             true,
             cancellationToken);
     }
+
+    public async Task SendSupportReplyAsync(
+        string? recipientEmail,
+        string subject,
+        string replyBody,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(recipientEmail))
+        {
+            return;
+        }
+
+        cancellationToken.ThrowIfCancellationRequested();
+
+        var mimeMessage = new MimeMessage();
+        mimeMessage.From.Add(new MailboxAddress(
+            string.IsNullOrWhiteSpace(_options.FromName) ? "Sanad Care" : _options.FromName,
+            _options.FromAddress));
+        mimeMessage.To.Add(MailboxAddress.Parse(recipientEmail));
+        mimeMessage.Subject = $"Re: {subject}";
+        mimeMessage.Body = new TextPart("plain") { Text = replyBody };
+
+        using var client = new SmtpClient();
+        await client.ConnectAsync(_options.Host, _options.Port, _options.UseSsl ? SecureSocketOptions.Auto : SecureSocketOptions.None, cancellationToken);
+        if (!string.IsNullOrWhiteSpace(_options.Username))
+        {
+            await client.AuthenticateAsync(_options.Username, _options.Password, cancellationToken);
+        }
+        await client.SendAsync(mimeMessage, cancellationToken);
+        await client.DisconnectAsync(true, cancellationToken);
+    }
 }

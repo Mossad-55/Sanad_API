@@ -28,4 +28,11 @@ public interface IEmailSender
         string subject,
         string message,
         CancellationToken cancellationToken);
+
+    Task SendSupportReplyAsync(
+        string? recipientEmail,
+        string subject,
+        string replyBody,
+        CancellationToken cancellationToken) =>
+        Task.CompletedTask;
 }

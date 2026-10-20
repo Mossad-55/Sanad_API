@@ -123,6 +123,8 @@ public abstract class ApiControllerBase :
                 LegalAudience.CompanionCaregiver,
             nameof(AccountType.Elderly) =>
                 LegalAudience.Elderly,
+            nameof(AccountType.CareHomeOwner) =>
+                LegalAudience.CareHomeOwner,
             _ => default
         };
 

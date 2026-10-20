@@ -36,6 +36,10 @@ public sealed class IdentityDbContext :
         SupportTickets =>
             Set<SupportTicket>();
 
+    public DbSet<SupportTicketReply>
+        SupportTicketReplies =>
+            Set<SupportTicketReply>();
+
     public DbSet<FeedbackEntity>
         Feedbacks =>
             Set<FeedbackEntity>();
