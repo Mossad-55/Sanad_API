@@ -126,11 +126,10 @@ scope above. At handback report exact files, commands/results, fixture target
 verification without secrets, repeat/idempotence evidence, script diagnostics,
 limitations and next action. Worker may set task `ready_for_review`, never
 `completed`. Mastermind reviews actual diff/evidence once and owns acceptance.
-Commit and push are Owner-authorized after local acceptance. VPS deployment is
-not applicable for this local-only workflow; no runtime Production behavior is
-being released. Migration
-application is authorized only for the verified, non-destructive pending set on
-local `SanadDb`, under this brief's exact-set gate.
+Commit/push were Owner-authorized and verified at `5953c6048f597bf6eee7429156cfdd5f2fca2d7b`
+on `origin/main`. VPS deployment is not applicable for this local-only workflow;
+no runtime Production behavior is being released. The one local migration
+application was separately Owner-authorized and is recorded in the current result.
 
 - Worker session: `ses_ea7b6534affefii0P3HQjPSvA2`
   (model `opencode/mimo-v2.6-flash-free`, no variant), dispatched 2026-10-20;
