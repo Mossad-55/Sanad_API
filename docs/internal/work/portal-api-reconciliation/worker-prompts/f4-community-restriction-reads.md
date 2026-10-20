@@ -1,4 +1,4 @@
-# F4 — Community restriction discoverability
+# F4 — Community restriction discoverability (RELEASE VERIFIED)
 
 **Mastermind acceptance (2026-10-20):** phase `accepted`; release `authorized`.
 Actual source diff reviewed: policy preserved, typed-ID author filter, bounded
@@ -10,6 +10,27 @@ F3's separate test-ordering failure does not alter F4 source/evidence; exclude a
 F3 files from release. Release executor may stage ONLY F4 manifest, publish clean
 pushed source, deploy/verify existing target per runbooks; no migration expected.
 Mastermind alone closes after verified receipt. Earlier task labels are historical.
+
+**Release verified (2026-10-20, delegated release executor).** Implementation commit
+`4d3cab488bd6a57447352d265c9955378f1b243c` is on `main`/`origin/main`, published from a
+clean detached checkout of that revision (F4-alone compilation green), and deployed to
+the existing Production target `72.62.92.144:8091`, service `sanad-api.service`, directory
+`/root/sanad-api`, environment `/etc/sanad/sanad.env`. Package:
+`deploy/releases/f4-4d3cab4/sanad-api-f4-4d3cab4.tar.gz`, 11,893,957 bytes, SHA-256
+`4a744c1859cece06fe351a080d8976cc5c93c9e75ce37b772cfcb3d30dabec17` (build and server
+hashes matched; excludes all `appsettings*.json`, `.env`, keys/certs). Startup checked
+all nine contexts and applied **zero** migrations; `Verify-SanadDeployment.ps1` passed
+(revision match, Production, 9/9 applied heads, startup 9/9, anonymous lookup smoke HTTP
+200). Service active with `NRestarts=0`; env/unit/`appsettings.json` fingerprints
+unchanged; host `appsettings.Development.json` preserved. Anonymous live smoke: new
+`GET /api/v1/admin/community/restrictions` returns 401, and `GET /openapi/v1.json`
+publishes the route with `authorId/isActive/page/pageSize`, the
+`AdminCommunityRestrictionsPage`/`AdminCommunityRestrictionListItem` shapes and the
+post-detail nullable `activeRestriction` retaining `authorId`. No authenticated Production
+GET was made (no preapproved credentials available); no fixture/data write, provider call,
+migration or reset. Release is `verified`; the Mastermind closes the phase. Only the
+nine-file F4 manifest was committed; the unchanged `CommunityAuthorRestrictionTests.cs`
+was excluded, and all F3/unrelated worktree edits were left untouched.
 
 Phase: `in_progress` (Owner authorized); task: `ready_for_review` (implementation and
 runtime verification are green; handed back for Mastermind acceptance); release: authorized
@@ -76,9 +97,10 @@ Session `ses_ea5b2f5fdffeSdPYTavoUhRvtF` (Worker B,
 `ea3c3bb6b50b58b39bbea954767621d70029e763` unchanged: no commit, push, migration,
 release, provider contact or phase-state edit. The earlier verification blocker was
 cleared when the Mastermind fixed F3's `CS0136`; the runtime slot then ran on the
-frozen tree. Implementation, focused tests and the real localhost proof are all
-green, so this is a `ready_for_review` handback; acceptance stays with the
-Mastermind.
+frozen tree. Implementation, focused tests and the real localhost proof were all
+green, so this was a `ready_for_review` handback; acceptance was with the
+Mastermind, and the phase has since been released and is now `verified` (see the
+release receipt at the top of this brief).
 
 ### Changed paths (all inside the writable manifest)
 
@@ -146,5 +168,6 @@ Mastermind.
 
 ### Next action for the Mastermind
 
-Review the F4 diff and either accept F4 or return bounded corrections; the task is
-`ready_for_review` and the worker session is idle pending that decision.
+The F4 diff was reviewed and accepted, then released and verified (see the release
+receipt at the top of this brief). No further Worker action is pending; the Mastermind
+closes the phase/task. Earlier `ready_for_review` labels above are historical.
