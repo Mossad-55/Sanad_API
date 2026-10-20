@@ -1,4 +1,4 @@
-# F2 — Booking/chat read completeness (ACTIVE WORKER BRIEF)
+# F2 — Booking/chat read completeness (RELEASE VERIFIED)
 
 ## Read first
 
@@ -10,47 +10,52 @@
 
 ## Current checkpoint
 
-- **Final coordinating Mastermind decision (2026-10-20): accepted; release authorized.**
-  Luna review could not start (subscription-sharing usage limit); coordinating
-  Mastermind used the Owner-approved direct-review fallback. Inspected actual four
-  production diffs, DTO separation/backcompat, unchanged scoping, chat gateway party
-  rules, verifier linkage/session cleanup and the final attributed worker evidence.
-  Accept the final 13/13 twice +303 offline results with prior unchanged build/
-  implementation evidence. Count discrepancy is explained by two same-name tests.
-  No new product blocker found. The retained SQL-only local fixture is explicitly
-  excluded from authorization evidence; no cleanup/delete is authorized or required
-  for this read-only product release. Trace-correlation limits, existing session
-  caps, reused in-process two-owner proof and baseline failing test remain explicit.
-  Verifier size is not a pattern to copy into later phases; prefer existing reusable
-  helpers and smaller feature scripts. Do not delay this release for a tooling rewrite.
-  Release executor may commit/push only the exact F2 manifest, publish clean pushed
-  source, deploy to the verified existing F1 target and run the standing verifier.
-  No migrations or Production fixture writes expected/authorized. Stop on mismatch.
-  This is the current acceptance/release state; earlier state labels below are history.
+- **Release verified (2026-10-20).** The F2 implementation commit
+  `24ad602909b2f1f3ac9ecf6ca68332994a89be94` is committed to `main`, pushed to
+  `origin/main` (`git ls-remote` confirms), published from a clean detached checkout of
+  that exact revision, and deployed to the previously verified Production target
+  `72.62.92.144:8091`, service `sanad-api.service`, directory `/root/sanad-api`,
+  environment `/etc/sanad/sanad.env`. Only the exact 16-file F2 manifest was staged;
+  every unrelated Owner/local worktree edit was preserved untouched. Release is
+  `verified`; the phase/task state is left for the coordinating Mastermind to close
+  (this executor does not mark the phase `completed`).
+- **Package.** `deploy/releases/f2-24ad602/sanad-api-f2-24ad602.tar.gz`, 11,887,816
+  bytes, SHA-256 `097e966bed5227891365b5d0ba6e54958d710507dd8752a2a198068d2065f133`;
+  build-machine and server hashes matched. It excludes all `appsettings*.json`, `.env`,
+  local settings, keys and certificates; the manifest revision equals the pushed
+  revision and lists all nine contexts.
+- **Preflight / cutover.** Before cutover the live service was active (`NRestarts=0`)
+  at the prior F1 revision `0dbb74bc9f43e4d9ed586bd5a584b6efaf826f2c`, Production, DB
+  reachable, and all nine applied migration heads already matched the F2 manifest (no
+  pending migration; F2 adds none). A private binary/config backup was written under
+  `/root/sanad-releases/f2-24ad602-20261020/`. The service was stopped, verified
+  application files were overlaid without deleting host configuration, then restarted.
+- **Startup / verification.** Startup checked all nine contexts and applied **zero**
+  migrations each. `Verify-SanadDeployment.ps1` passed: manifest revision `24ad602`,
+  remote revision match, Production, 9/9 applied heads match, startup log 9/9 contexts,
+  anonymous `GET /api/v1/lookups/services` HTTP 200. Post-cutover the service is active
+  with `NRestarts=0`; service-unit, environment-file and `appsettings.json` fingerprints
+  are unchanged; the host `appsettings.Development.json` was preserved.
+- **Live schema smoke (anonymous).** `GET /openapi/v1.json` (HTTP 200) shows the deployed
+  F2 shapes: `CareHomeBookingListItem` keeps its pre-F2 component ID with the seven owner
+  additions and no `medicalSnapshotJson`; `AdminCareHomeBookingListItem` adds nullable
+  `extensionOfBookingId` and `taxAmount`; `ConversationListItemResponse` adds `scope`
+  (`ConversationScope` enum `[0,1]`) and nullable `bookingId`. The three F2 routes answer
+  anonymous 401.
+- **Limitations.** No authenticated Production F2 GET was made — no preapproved
+  credentials were readily available in this scope, so it was not attempted and no test
+  account was created. No Production fixture/data mutation, provider call, migration,
+  reset or database write/backup occurred. Verification used the existing public
+  plain-HTTP `:8091` path (HTTPS is not served on `:8091`); no SSH tunnel was created.
 
-- **Owner-directed takeover (2026-10-20):** coordinating Mastermind now reviews
-  directly. Old Luna Sub Mastermind and River Worker are idle: interrupt returned
-  false for both and neither appears in active sessions. Do not resume either.
-  Fresh River/high Worker owns only remaining verification audit/corrections.
-  Latest old handback reports 13/13 localhost HTTP checks and 266 offline checks;
-  inspect retained evidence before repeating tests. Conditional release authority
-  stays with Mastermind after review, not the replacement Worker.
-- **Replacement task:** inspect existing F2 diff and 1886-line verifier for
-  minimality, fixture/domain consistency, idempotence/session reuse, trustworthy
-  scoping assertions and diagnostics. Investigate booking-scoped conversations
-  whose participants may not own the referenced booking; synthetic SQL linkage
-  is not authorization proof. No fixture delete/reset; report exact required
-  repair before changing existing records. Reconcile 213/1 versus 212/0 test
-  counts and stale status text. Bounded corrections only within current manifest;
-  reuse valid evidence. Return ready_for_review, no commit/push/deploy/migration,
-  new phase or further delegation. This supersedes old same-Worker instructions.
-
-- Phase state: `in_progress` for Owner-directed persistent-local HTTP verification. Release: `authorized` by Owner for Mastermind execution only after final verification and scoped-diff review; no commit, push, deployment, migration or Production mutation has occurred.
-- Pinned base: `d985860eda7efa354db4fe43bd005455d8b2c810` (`main`, equal to `origin/main` at preparation).
-- Preparation delta: handoff, governance, agent configuration, README, E05/E06 proposals, bridge tooling, audits, E03 prompts, follow-up contract/clarifications and L1/F1 briefs/evidence already have unrelated local modifications/untracked files. No F2 implementation-owned source, test, consumer-guide, or Postman file was dirty at preparation. Preserve all unrelated changes.
-- Worker: `river/deepseek-ai/DeepSeek-V4.1-Flash#high` (River AI; active and `high` variant verified in model catalog). Native Worker session: `ses_ea65f0ac6ffeIhzhmHmqlCt70w`, dispatched 2026-10-20 with that exact `--model` value and agent `sanad-worker`.
-- Successor Worker (current, same model): `river/deepseek-ai/DeepSeek-V4.1-Flash#high`, native session `ses_ea5e84e50ffevX4XWYvxEZNiMm`. It owns only the remaining F2 verification audit/corrections; the session above remains the source of the retained implementation diff and the first persistent-local extension evidence, which are reused where still valid.
-- F1 release `0dbb74bc9f43e4d9ed586bd5a584b6efaf826f2c` is already deployed/verified; L1 is already completed. Neither phase is part of this work.
+- **Superseded checkpoint (history, retained).** Before this release the phase was
+  `in_progress` and release `authorized`, pinned base
+  `d985860eda7efa354db4fe43bd005455d8b2c810`. Implementation and the Owner-directed
+  persistent-local HTTP verification were carried by Worker session
+  `ses_ea65f0ac6ffeIhzhmHmqlCt70w` and successor audit session
+  `ses_ea5e84e50ffevX4XWYvxEZNiMm` (`river/deepseek-ai/DeepSeek-V4.1-Flash#high`); the
+  13/13 localhost HTTP checks (twice) and 303 offline checks they produced are retained
+  below. Those earlier state labels are history; the release receipt above is current.
 - Owner follow-up (2026-10-20): close the local HTTP evidence gaps before returning F2 for release approval. The successor Worker/session/model named above owns this bounded verification extension (audit and corrections only). Prior local implementation acceptance/evidence is retained below; F2 is not completed and is reopened for this verification task.
 
 ## Objective and boundaries
@@ -93,13 +98,13 @@ The same F2 Worker may modify/reuse only the L1 verifier/script tests listed abo
 
 ## Task and handback
 
-- **F2 implementation/tests/docs/Postman plus Owner-directed persistent-local HTTP verification** — Same Worker line owns the bounded follow-up, now carried by the successor Worker session `ses_ea5e84e50ffevX4XWYvxEZNiMm` (audit/corrections only). Task state `ready_for_review` at this handback; Worker may set `ready_for_review`, never `completed`. Prior implementation was locally accepted, but the phase is reopened and cannot be completed before separately approved/verified release.
+- **F2 implementation/tests/docs/Postman plus Owner-directed persistent-local HTTP verification** — Same Worker line owns the bounded follow-up, now carried by the successor Worker session `ses_ea5e84e50ffevX4XWYvxEZNiMm` (audit/corrections only). Task state was `ready_for_review` at that handback (only Mastermind accepts; a Worker may never set `completed`). The phase was subsequently released by the delegated release executor and is now `verified` — see the current checkpoint above; the coordinating Mastermind closes the phase.
 - At handback replace this brief's current result with session/model/base, exact changed-file manifest, commands and exact results, local target/preflight and fixture details without secrets, HTTP trace/log correlation, docs/schema validation, limitations, and next action. Do not commit/push/deploy/apply migrations or update the Mastermind handoff.
 - Mastermind reviews the actual diff/evidence, sends bounded corrections to the same Worker, reruns only invalidated/affected gates, and alone accepts the phase. Release is separate from acceptance and still requires explicit delegated release approval.
 
 ## Current result
 
-**Verification audit and corrections — result (current).** The Owner-directed takeover work is complete and handed back. The successor Worker audited the existing verifier and its offline tests, corrected four bounded defects inside the manifest, added one domain-consistent fixture conversation (INSERT-only) so the booking-scope proof no longer rests on a pair the API could never have produced, made every run release exactly the sessions it created, and reconciled the reported test counts. Worker task state `ready_for_review` (only Mastermind accepts); phase state stays `in_progress`; release `not_requested`. No commit, push, deployment, migration, provider call, Full/bulk seed, destructive action, non-fixture database write or Production request occurred. No source file, existing test assertion, consumer guide, Postman collection, L1 seeder, configuration or migration was touched, so the accepted Release build and the implementation-focused test evidence remain valid and were not rerun.
+**Verification audit and corrections — result (current).** The Owner-directed takeover work is complete and handed back. The successor Worker audited the existing verifier and its offline tests, corrected four bounded defects inside the manifest, added one domain-consistent fixture conversation (INSERT-only) so the booking-scope proof no longer rests on a pair the API could never have produced, made every run release exactly the sessions it created, and reconciled the reported test counts. This paragraph records that audit-time handback, when the task was at `ready_for_review` and release `not_requested`; the phase has since been released and is now `verified` per the current checkpoint above. No commit, push, deployment, migration, provider call, Full/bulk seed, destructive action, non-fixture database write or Production request occurred. No source file, existing test assertion, consumer guide, Postman collection, L1 seeder, configuration or migration was touched, so the accepted Release build and the implementation-focused test evidence remain valid and were not rerun.
 
 - **Session / model / base.** Successor Worker session `ses_ea5e84e50ffevX4XWYvxEZNiMm`, `river/deepseek-ai/DeepSeek-V4.1-Flash#high`, base `d985860eda7efa354db4fe43bd005455d8b2c810` (working tree still at that revision; the verifier summary's own `head` field reports the same hash). All 38 pre-existing dirty/untracked worktree entries were preserved. The four `src/` entries and the five `tests/Sanad.UnitTests` entries remain the already-accepted F2 slice, byte-unchanged by this audit (their last write times precede it).
 
@@ -125,7 +130,7 @@ The same F2 Worker may modify/reuse only the L1 verifier/script tests listed abo
 
 - **Requested repair, not executed (needs Mastermind approval before any run).** The clean end state would remove the legacy conversation `f2000000-0000-4000-8000-000000000303` from the local Development `SanadDb` and from the verifier fixture definition, leaving three conversations (8 feature rows) with no non-domain-producible row. It cannot be normalized onto `…0304` instead: both rows would then share the same booking and participant pair, which the unique pair/booking index on `chat."Conversations"` rejects. Executing it needs a destructive local write (`DELETE FROM chat."Conversations" WHERE "Id" = 'f2000000-0000-4000-8000-000000000303';` through the same loopback psql client, after a read-only exact-target preflight) plus the matching verifier/test edits (conversation count 4 → 3, inserts 13 → 12, the fixture owner's expected chat rows 3 → 2, feature rows 9 → 8). This row is verification-owned synthetic data, not product data, but the approved boundary authorizes INSERT-only fixture provisioning, so the change was reported instead of performed and the row is kept and labelled in the meantime.
 
-- **Next action.** Mastermind reviews the actual diff and the two-run evidence above, and either accepts it with the legacy row kept as a labelled fixture or approves the repair in the previous bullet for this same Worker/session to execute. F2 stays `in_progress` with the task at `ready_for_review` until Mastermind accepts. Release remains `not_requested` and separate: it still requires explicit delegated release approval, and no Production or provider action is authorized or performed.
+- **Next action.** Mastermind reviews the actual diff and the two-run evidence above, and either accepts it with the legacy row kept as a labelled fixture or approves the repair in the previous bullet for this same Worker/session to execute. F2 stays `in_progress` with the task at `ready_for_review` until Mastermind accepts. That was the pre-release state; the phase was subsequently released and is now `verified` (see the current checkpoint above), so no further request is pending here.
 
 **Retained first-extension evidence (historical, prior Worker session `ses_ea65f0ac6ffeIhzhmHmqlCt70w`).** The bullets below are that session's own record of the first persistent-local extension, retained for attribution. They describe the same verifier before this audit, when it had three conversation fixtures and twelve inserts; the audit changed those (four conversations, thirteen inserts, the linkage proof, session cleanup and a `session-cleanup` check), so the superseded counts and session-headroom statements there must not be read as current state.
 
@@ -137,7 +142,7 @@ The same F2 Worker may modify/reuse only the L1 verifier/script tests listed abo
 - **Trace / log correlation.** Local API logs were captured safely (final run: stdout 797 bytes / 6 lines, stderr 0 bytes, and **0** `fail:`/`Exception`/`ERROR` lines in that stdout). Correlation is **unavailable**: in the final run 7 responses carried no trace id at all and 6 carried a trace id that no captured log line contains (success bodies emit no trace id and the run uses Warning-level logging), so no request-level trace line could be matched; this is reported explicitly rather than claimed.
 - **Gates (executed in this session; nothing author-reported).** `pwsh -NoProfile -File tools/Invoke-F2LocalHttpVerification.ps1` → **exit 0, 13/13 checks passed**, provisioning idempotent, 0 duplicate rows. `pwsh -NoProfile -File tests/LocalFixtureVerification.Tests.ps1` → **266 checks passed** (offline; no API, database, HTTP request or dotnet process invoked). PowerShell parser check on the new tool → `SYNTAX-OK`. Reused unchanged: the accepted Release solution build (0 warnings/0 errors), the focused class gate (213 passed / 1 pre-existing `PortalRemainingResponseContractTests.NestedResponseRefs_ResolveToActualShapes` failure) and the Mastermind rerun (212 passed / 0 failed excluding that baseline); this extension edited no source and no existing test, so those results are not invalidated and were not rerun. Two defects were found and corrected inside this same task before the final run: the shared L1 library was dot-sourced into this script's scope and its identically named parameters (including `-LibraryOnly`) overwrote this script's parameters, and the psql environment restore left an empty `PGCLIENTENCODING` that the started API inherited, which PostgreSQL rejected (22023) and which surfaced as HTTP 500 on every request until the restore deleted truly-unset variables instead.
 - **Limitations / flags for Mastermind.** (1) The existing family-owner identity was **not** checked in the final run: its state snapshot showed 5 already-active device sessions, the policy maximum, so no login was attempted and its check is reported not run; direct- and booking-scope coverage therefore comes from the provisioned owner fixture (both scopes) plus the existing caregiver. Every identity login consumes one of the five active-session slots, so repeated runs of this verifier shrink that headroom. (2) Cross-owner isolation is proven by facility scoping plus the two role-denied 403 cases, not by a second Care Home owner identity, because only one Care Home owner fixture is authorized. (3) The fixture facility is a domain-valid Draft (approval would need verified documents and an operational-admin review); the two routes under proof do not depend on facility status. (4) Conversation `…0303` pairs the reused caregiver booking with the provisioned owner fixture because the reused family/caregiver credentials are used best-effort only; no state-changing write is made for them. (5) No local HTTP/domain path can produce a paid Care Home booking (the Paymob webhook answers 503 without the absent local HMAC secret and extensions need an accepted paid base), which is why the fixtures mirror the persisted factory shapes through INSERT-only SQL rather than driving the domain. (6) Request-level trace correlation is unavailable as noted above. (7) The verifier requires the local `psql` client and fails closed before any write without it.
-- **Next action.** Mastermind reviews the actual diff/evidence above and sends any bounded corrections to this same Worker/session; F2 stays `in_progress` with the task at `ready_for_review` until Mastermind accepts. Release remains `not_requested` and separate: it still requires explicit delegated release approval, and no Production or provider action is authorized or performed.
+- **Next action.** Mastermind reviews the actual diff/evidence above and sends any bounded corrections to this same Worker/session; F2 stays `in_progress` with the task at `ready_for_review` until Mastermind accepts. That was the pre-release state; the phase was subsequently released and is now `verified` (see the current checkpoint above), so no further request is pending here.
 
 **Prior implementation acceptance (historical checkpoint).** Mastermind reviewed and locally accepted the code/docs/Postman diff and both bounded DTO corrections. The owner route preserves its prior OpenAPI component ID `CareHomeBookingListItem`, and the Family route has a distinct `CareHomeFamilyBookingListItem` with its byte-identical pre-F2 field set. Earlier worker build/tests and Mastermind’s independent focused test are recorded below. This is not current F2 completion or release approval.
 
