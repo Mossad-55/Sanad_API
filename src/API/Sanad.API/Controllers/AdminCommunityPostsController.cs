@@ -13,8 +13,9 @@ namespace Sanad.API.Controllers;
 /// FUR-07 Community moderation. Keeps the existing Community moderation
 /// policy (normal authenticated SuperAdmin or ContentAdmin) for every
 /// moderation read/action. The route family stays under
-/// <c>api/v1/admin/community</c>; the report-resolution and author-restriction
-/// routes use absolute paths so they can live in this one owned controller.
+/// <c>api/v1/admin/community</c>; the report-resolution, retention-read and
+/// author-restriction routes use absolute paths so they can live in this one
+/// owned controller.
 /// <para>
 /// Statuses for the new Community.* codes are forced here rather than in the
 /// shared ResultProblemDetailsMapper (whose manifest is outside this phase):
@@ -52,6 +53,28 @@ public sealed class AdminCommunityPostsController(ISender sender) : ApiControlle
         CancellationToken cancellationToken = default)
     {
         var result = await sender.Send(new GetAdminCommunityPostDetailQuery(postId), cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : ToError(result.Error);
+    }
+
+    /// <summary>
+    /// Retained restriction reads (F4). Optional author and active filters with
+    /// the existing moderation paging conventions; the role policy is the
+    /// controller-level Community moderation policy, so no route-level policy
+    /// or new action is added.
+    /// </summary>
+    [HttpGet("/api/v1/admin/community/restrictions")]
+    [ProducesResponseType(typeof(AdminCommunityRestrictionsPage), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ListRestrictions(
+        [FromQuery] Guid? authorId = null,
+        [FromQuery] bool? isActive = null,
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        CancellationToken cancellationToken = default)
+    {
+        var result = await sender.Send(
+            new GetAdminCommunityRestrictionsQuery(authorId, isActive, page, pageSize),
+            cancellationToken);
         return result.IsSuccess ? Ok(result.Value) : ToError(result.Error);
     }
 

@@ -88,7 +88,16 @@
         "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
         "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}"
       },
-      "description": "Returns post detail, retained reports, and chronological publish/rejection history. Author email and phone are not included. Unknown posts return 404."
+      "description": "Returns post detail, retained reports, chronological publish/rejection history, and a nullable activeRestriction ({restrictionId, expiresOnUtc}) that is null unless the author is currently restricted. Author email and phone are not included. Unknown posts return 404."
+    },
+    {
+      "name": "List Community restrictions",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/restrictions?page=1&pageSize=25&authorId=&isActive="
+      },
+      "description": "ContentAdmin or SuperAdmin only. Paged retained restrictions, newest first by stored start instant with a stable ID tie-break. Optional authorId and isActive filters (isActive=false returns expired/revoked rows); page size defaults to 25 and is capped at 100. totalCount is the count for the current filter. Items carry author ID and display names plus the stored duration/reason/note/timestamps/revocation facts and an isActive flag resolved at one captured UTC instant — never contact details."
     },
     {
       "name": "Resolve Community report",

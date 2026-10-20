@@ -41,8 +41,15 @@ Each item includes bilingual post content, image/category data, anonymity and
 status, timestamps, report totals, and the author's ID and Arabic/English
 display names. Contact details are never returned. `GET
 /api/v1/admin/community/posts/{postId}` returns the same post details together
-with retained reports and chronological publish/rejection history. Unknown
-post IDs return 404. Invalid status filters return 400.
+with retained reports, chronological publish/rejection history, and a nullable
+`activeRestriction` that is `null` unless that post's author is currently
+restricted:
+
+```json
+{ "activeRestriction": { "restrictionId": "…", "expiresOnUtc": "2026-10-27T09:00:00Z" } }
+```
+
+Unknown post IDs return 404. Invalid status filters return 400.
 
 ## Publish and reject
 
@@ -78,6 +85,34 @@ author. Unknown report IDs return 404; an already resolved report returns
 409; invalid input returns 400. Reports are retained and cannot be deleted.
 
 ## Community-only author restrictions
+
+Read retained restrictions with
+`GET /api/v1/admin/community/restrictions`. Every query parameter is optional:
+
+| Parameter | Meaning |
+| --- | --- |
+| `authorId` | Only restrictions for this author |
+| `isActive` | `true` for restrictions active now, `false` for expired or revoked ones |
+| `page` | 1-based page; values below 1 are treated as 1 |
+| `pageSize` | Defaults to 25; capped at 100 |
+
+Restrictions are ordered newest first by stored start instant with a stable ID
+tie-break, and `totalCount` is the count for the current filter:
+
+```json
+{ "items": [], "page": 1, "pageSize": 25, "totalCount": 0 }
+```
+
+Each item returns `restrictionId`, `authorId`, `authorArabicName`,
+`authorEnglishName`, `moderatorId`, the wire `duration` and `reasonCode`,
+`note`, `startsOnUtc`, `expiresOnUtc`, `isActive`, and the available revocation
+facts (`revokedBy`, `revokedOnUtc`, `revocationReason`). Contact details are
+never returned. `isActive` is derived from the persisted revocation and expiry
+facts at one captured UTC instant, exactly as the write commands evaluate them,
+so a restriction reported active is one the Community write commands refuse and
+the reverse; the stored start instant is reported but is not a gate. A read for
+an author with no retained restriction — or with no matching rows — returns an
+empty page, and unknown author or restriction identifiers simply match nothing.
 
 Create a restriction with
 `POST /api/v1/admin/community/authors/{authorId}/restrictions`:

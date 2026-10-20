@@ -44,6 +44,19 @@ public sealed record AdminCommunityPostReportItem(
     DateTime? ResolvedOnUtc,
     string? ResolutionNote);
 
+/// <summary>
+/// The post author's currently active Community restriction, so a moderator
+/// reading a post can see that the author is restricted and when it ends. Only
+/// the retained restriction id and its stored expiry are returned; the full
+/// retained row (reason, note, moderator, revocation facts) stays available
+/// through the restriction reads. Null means the author has no active
+/// restriction at the detail's captured UTC instant, which is exactly the
+/// instant the Community write gate evaluates.
+/// </summary>
+public sealed record AdminCommunityActiveRestriction(
+    Guid RestrictionId,
+    DateTime ExpiresOnUtc);
+
 public sealed record AdminCommunityPostDetail(
     Guid Id,
     string TitleArabic,
@@ -62,7 +75,8 @@ public sealed record AdminCommunityPostDetail(
     string AuthorArabicName,
     string AuthorEnglishName,
     IReadOnlyList<AdminCommunityPostReportItem> Reports,
-    IReadOnlyList<AdminCommunityModerationEvent> ModerationHistory);
+    IReadOnlyList<AdminCommunityModerationEvent> ModerationHistory,
+    AdminCommunityActiveRestriction? ActiveRestriction);
 
 /// <summary>
 /// Actual persisted/query-derived queue counters, never fabricated zeroes.
@@ -324,6 +338,21 @@ public sealed class GetAdminCommunityPostDetailQueryHandler(ICommunityDbContext 
             .ThenByDescending(r => r.Id)
             .ToListAsync(cancellationToken);
 
+        // One captured instant, and the same active predicate the write gate
+        // uses: the detail can never report an author as restricted while the
+        // gate would allow the write, or the reverse. At most one active row
+        // exists per author (creation rejects a second); the newest stored
+        // start is read deterministically if retained rows ever overlap.
+        DateTime now = DateTime.UtcNow;
+        CommunityAuthorRestriction? activeRestriction = await dbContext
+            .CommunityAuthorRestrictions
+            .AsNoTracking()
+            .Where(r => r.AuthorId == post.AuthorId)
+            .ActiveAt(now)
+            .OrderByDescending(r => r.StartsOnUtc)
+            .ThenByDescending(r => r.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
         var authorNames = await dbContext.GetCommunityAuthorNamesAsync(
             [post.AuthorId.Value], cancellationToken);
         authorNames.TryGetValue(post.AuthorId.Value, out CommunityAuthorName? author);
@@ -382,6 +411,11 @@ public sealed class GetAdminCommunityPostDetailQueryHandler(ICommunityDbContext 
             author?.ArabicFullName ?? string.Empty,
             author?.EnglishFullName ?? string.Empty,
             reportItems,
-            history));
+            history,
+            activeRestriction is null
+                ? null
+                : new AdminCommunityActiveRestriction(
+                    activeRestriction.Id.Value,
+                    activeRestriction.ExpiresOnUtc)));
     }
 }
