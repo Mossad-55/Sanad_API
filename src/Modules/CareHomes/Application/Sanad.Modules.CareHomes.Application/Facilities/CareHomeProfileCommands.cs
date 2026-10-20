@@ -17,6 +17,7 @@ public sealed record CareHomeOwnerProfile(
     int Version,
     Guid? SubmittedRevisionId,
     Guid? ApprovedRevisionId,
+    Guid? OpenRevisionId,
     CareHomeProfileDraft? Draft,
     CareHomeProfileRevisionProfile? SubmittedProfile,
     CareHomeProfileRevisionProfile? ApprovedProfile,
@@ -70,7 +71,7 @@ public sealed class CreateCareHomeFacilityCommandHandler(ICareHomesDbContext db)
         CareHomeProfileDraft? profile = draft is null ? null : ToDraft(draft);
         return new CareHomeOwnerProfile(
             facility.Id.Value, facility.Status, facility.Version, facility.SubmittedRevisionId,
-            facility.ApprovedRevisionId, profile,
+            facility.ApprovedRevisionId, draft?.Id, profile,
             ToRevisionProfile(facility, facility.SubmittedRevisionId, CareHomeStatus.PendingReview),
             ToRevisionProfile(facility, facility.ApprovedRevisionId, null),
             facility.Documents.Select(UploadCareHomeDocumentCommandHandler.ToResponse).ToArray(),
@@ -138,9 +139,19 @@ public sealed class SaveMyCareHomeProfileCommandHandler(ICareHomesDbContext db)
         if (facility.Version != request.ExpectedVersion)
             return Result<CareHomeOwnerProfile>.Failure(Conflict);
 
+        bool hadEditableRevision = facility.Revisions.Any(revision => !revision.IsFrozen);
+        CareHomeProfileRevision savedRevision;
         try
         {
-            facility.SaveDraft(request.ActorUserId, request.ExpectedVersion, request.Draft, DateTime.UtcNow);
+            savedRevision = facility.SaveDraft(request.ActorUserId, request.ExpectedVersion, request.Draft, DateTime.UtcNow);
+            if (!hadEditableRevision && facility.ApprovedRevisionId is Guid approvedRevisionId &&
+                savedRevision.Id != approvedRevisionId)
+            {
+                var approvedMedia = await db.ProfileMedia
+                    .Where(media => media.ProfileRevisionId == approvedRevisionId).ToListAsync(ct);
+                foreach (var approvedImage in approvedMedia)
+                    db.ProfileMedia.Add(CareHomeProfileMedia.Clone(approvedImage, savedRevision.Id));
+            }
             await db.SaveChangesAsync(ct);
         }
         catch (DomainException)

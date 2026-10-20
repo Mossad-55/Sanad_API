@@ -40,6 +40,25 @@ public sealed class CareHomeProfileMedia : Entity<Guid>
         Position = position;
     }
 
+    public static CareHomeProfileMedia Clone(CareHomeProfileMedia source, Guid profileRevisionId)
+    {
+        if (source is null)
+            throw new DomainException("Care-home profile media source is required.");
+        if (profileRevisionId == Guid.Empty)
+            throw new DomainException("Care-home profile media revision is required.");
+
+        var clone = new CareHomeProfileMedia();
+        clone.Id = Guid.CreateVersion7();
+        clone.ProfileRevisionId = profileRevisionId;
+        clone.Kind = source.Kind;
+        clone.Position = source.Position;
+        clone.StorageKey = source.StorageKey;
+        clone.ContentType = source.ContentType;
+        clone.Length = source.Length;
+        clone.CreatedOnUtc = source.CreatedOnUtc;
+        return clone;
+    }
+
     public static CareHomeProfileMedia Create(Guid profileRevisionId, CareHomeProfileMediaKind kind,
         int position, string storageKey, string contentType, long length, DateTime utcNow)
     {

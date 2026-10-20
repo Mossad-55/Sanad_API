@@ -34,18 +34,35 @@ public sealed class UploadCareHomeProfileMediaCommandHandler(ICareHomesDbContext
             return Result<CareHomeProfileMediaResponse>.Failure(InvalidMedia);
 
         CareHomeFacility? facility = await db.Facilities.Include(x => x.Revisions)
+            .Include(x => x.Documents)
             .SingleOrDefaultAsync(x => x.OwnerUserId == request.ActorUserId, ct);
         if (facility is null)
             return Result<CareHomeProfileMediaResponse>.Failure(NotFound);
         if (facility.Version != request.ExpectedVersion)
             return Result<CareHomeProfileMediaResponse>.Failure(Conflict);
 
+        bool hadEditableRevision = facility.Revisions.Any(item => !item.IsFrozen);
         CareHomeProfileRevision revision;
         try { revision = facility.PrepareProfileMediaRevision(request.ActorUserId, request.ExpectedVersion, DateTime.UtcNow); }
         catch (DomainException) { return Result<CareHomeProfileMediaResponse>.Failure(InvalidMedia); }
 
-        var sameKind = await db.ProfileMedia.Where(x => x.ProfileRevisionId == revision.Id && x.Kind == request.Kind)
+        var clonedMedia = new List<CareHomeProfileMedia>();
+        if (!hadEditableRevision && facility.ApprovedRevisionId is Guid approvedRevisionId &&
+            revision.Id != approvedRevisionId)
+        {
+            var approvedMedia = await db.ProfileMedia.AsNoTracking()
+                .Where(media => media.ProfileRevisionId == approvedRevisionId).ToListAsync(ct);
+            foreach (var media in approvedMedia)
+                clonedMedia.Add(CareHomeProfileMedia.Clone(media, revision.Id));
+        }
+
+        var persistedSameKind = await db.ProfileMedia
+            .Where(x => x.ProfileRevisionId == revision.Id && x.Kind == request.Kind)
             .OrderBy(x => x.Position).ToListAsync(ct);
+        var sameKind = persistedSameKind
+            .Concat(clonedMedia.Where(clone => clone.Kind == request.Kind &&
+                !persistedSameKind.Any(existing => existing.Id == clone.Id)))
+            .OrderBy(x => x.Position).ToList();
         if (request.Kind == CareHomeProfileMediaKind.Cover && sameKind.Count != 0 ||
             request.Kind == CareHomeProfileMediaKind.Gallery && sameKind.Count >= 10)
             return Result<CareHomeProfileMediaResponse>.Failure(InvalidMedia);
@@ -62,6 +79,8 @@ public sealed class UploadCareHomeProfileMediaCommandHandler(ICareHomesDbContext
                 request.Kind == CareHomeProfileMediaKind.Cover ? 0 : sameKind.Count,
                 saved.Value.Key, request.ContentType, bytes.LongLength, DateTime.UtcNow);
             facility.RecordProfileMediaChange(request.ActorUserId, facility.Version, DateTime.UtcNow);
+            foreach (var clone in clonedMedia)
+                db.ProfileMedia.Add(clone);
             db.ProfileMedia.Add(media);
             await db.SaveChangesAsync(ct);
             return new CareHomeProfileMediaResponse(media.Id, media.Kind, media.Position, media.ContentType,
@@ -138,8 +157,11 @@ public sealed class RemoveCareHomeProfileMediaCommandHandler(ICareHomesDbContext
                 x.Kind == CareHomeProfileMediaKind.Gallery && x.Position > media.Position).ToListAsync(ct);
             foreach (var item in later)
                 item.SetPosition(item.Position - 1);
+            bool stillReferenced = await db.ProfileMedia.AnyAsync(item =>
+                item.Id != media.Id && item.StorageKey == media.StorageKey, ct);
             await db.SaveChangesAsync(ct);
-            await storage.DeleteAsync(media.StorageKey, ct);
+            if (!stillReferenced)
+                await storage.DeleteAsync(media.StorageKey, ct);
             return Result.Success();
         }
         catch (DomainException)

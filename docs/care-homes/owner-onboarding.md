@@ -16,7 +16,9 @@ No request body. Creates the caller's single facility in `Draft` status and retu
 
 Returns `200 OK` with the caller's facility, current editable draft, document metadata, revision identifiers, version, status, and review history. Returns `404 CareHomes.Facility.NotFound` when the account has not created a facility. No caller-supplied facility ID is accepted, preventing cross-owner reads.
 
-Alongside `draft`, the response carries two nullable revision-bound readbacks. `submittedProfile` (`revisionId` plus profile projection) is populated only while a submitted revision is pending review; `approvedProfile` follows `approvedRevisionId` and remains available while a newer editable draft exists. A `GET` never creates, saves, or mutates a draft. Owner private contact fields stay on this owner route and are never returned through public discovery.
+Alongside `draft`, the response carries two nullable revision-bound readbacks. `submittedProfile` (`revisionId` plus profile projection) is populated only while a submitted revision is pending review; `approvedProfile` follows `approvedRevisionId` and remains available while a newer editable draft exists. `openRevisionId` identifies the current editable revision, when one exists; otherwise it is `null`. A `GET` never creates, saves, mutates, or backfills a draft or revision assets. Owner private contact fields stay on this owner route and are never returned through public discovery.
+
+When an approved facility is edited, the new editable revision inherits the approved documents and media through new revision records that reference the same stored files. Document verification attribution, expiry, and verification/rejection status are preserved; expired or rejected documents remain unusable until replaced and normally reviewed. Removing or replacing an inherited media record removes only that revision reference and does not delete the shared file while another revision still references it.
 
 ## Save my profile draft
 

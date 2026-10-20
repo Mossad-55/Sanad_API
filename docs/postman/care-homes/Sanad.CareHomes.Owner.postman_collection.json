@@ -150,7 +150,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine",
-            "description": "CareHomeOwnerAccess. Returns 200 with the caller's facility (id, status, version, draft, submittedProfile, approvedProfile, documents, review history) including Draft facilities; 404 CareHomes.Facility.NotFound when the owner has no facility. submittedProfile is the pending-review revision (revisionId plus profile projection) and is null otherwise; approvedProfile follows approvedRevisionId and remains available while a newer editable draft exists. The GET never creates, saves, or mutates a draft. Verified PORTAL-05 on an isolated host."
+            "description": "CareHomeOwnerAccess. Returns 200 with the caller's facility (id, status, version, openRevisionId, draft, submittedProfile, approvedProfile, documents, review history) including Draft facilities; 404 CareHomes.Facility.NotFound when the owner has no facility. submittedProfile is the pending-review revision (revisionId plus profile projection) and is null otherwise; approvedProfile follows approvedRevisionId and remains available while a newer editable draft exists. openRevisionId identifies the current editable revision or null. Editing an approved facility creates a new editable revision that inherits approved documents/media by referencing the same stored files; document verification attribution/expiry and rejected or expired states are preserved, and removing an inherited media record does not delete a shared file while another revision references it. The GET never creates, saves, mutates, or backfills a draft or revision assets. Verified PORTAL-05 on an isolated host."
           },
           "event": [
             {

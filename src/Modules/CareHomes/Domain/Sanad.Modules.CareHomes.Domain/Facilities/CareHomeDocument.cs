@@ -114,6 +114,34 @@ public sealed class CareHomeDocument : Entity<Guid>
         UpdatedOnUtc = utcNow;
     }
 
+    internal static CareHomeDocument Clone(CareHomeDocument source, Guid profileRevisionId, DateTime utcNow)
+    {
+        if (source is null)
+            throw new DomainException("Care-home document source is required.");
+        if (profileRevisionId == Guid.Empty)
+            throw new DomainException("Care-home document revision is required.");
+        EnsureUtc(utcNow);
+
+        var clone = new CareHomeDocument
+        {
+            Id = Guid.CreateVersion7(),
+            Type = source.Type,
+            ProfileRevisionId = profileRevisionId,
+            PrivateStorageKey = source.PrivateStorageKey,
+            ContentType = source.ContentType,
+            Length = source.Length,
+            ExpiryDate = source.ExpiryDate,
+            VerifiedNonExpiring = source.VerifiedNonExpiring,
+            Status = source.Status,
+            VerifiedByUserId = source.VerifiedByUserId,
+            VerifiedOnUtc = source.VerifiedOnUtc,
+            ReviewReason = source.ReviewReason,
+            CreatedOnUtc = source.CreatedOnUtc,
+            UpdatedOnUtc = utcNow
+        };
+        return clone;
+    }
+
     public bool IsUsableOn(DateOnly date) => Status == CareHomeDocumentStatus.Verified &&
         (VerifiedNonExpiring || (ExpiryDate is not null && ExpiryDate >= date));
 

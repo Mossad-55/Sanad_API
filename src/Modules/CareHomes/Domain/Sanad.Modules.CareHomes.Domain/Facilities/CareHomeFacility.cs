@@ -72,14 +72,22 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
             throw new DomainException("A submitted or approved care-home profile cannot be edited in place.");
 
         CareHomeProfileRevision? current = _revisions.LastOrDefault(revision => !revision.IsFrozen);
+        bool createdRevision = false;
         if (current is null)
         {
             current = CareHomeProfileRevision.Create(_revisions.Count + 1, actorUserId, draft, utcNow);
             _revisions.Add(current);
+            createdRevision = true;
         }
         else
         {
             current.UpdateDraft(draft, utcNow);
+        }
+
+        if (createdRevision && ApprovedRevisionId is Guid approvedRevisionId)
+        {
+            foreach (var document in _documents.Where(item => item.ProfileRevisionId == approvedRevisionId).ToList())
+                _documents.Add(CareHomeDocument.Clone(document, current.Id, utcNow));
         }
 
         if (ApprovedRevisionId is null)
@@ -157,6 +165,13 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
 
         editable = CareHomeProfileRevision.Create(_revisions.Count + 1, actorUserId, source.ToDraft(), utcNow);
         _revisions.Add(editable);
+
+        if (ApprovedRevisionId is Guid approvedRevisionId && source.Id == approvedRevisionId)
+        {
+            foreach (var document in _documents.Where(item => item.ProfileRevisionId == approvedRevisionId).ToList())
+                _documents.Add(CareHomeDocument.Clone(document, editable.Id, utcNow));
+        }
+
         UpdatedOnUtc = utcNow;
         Version++;
         return editable;
