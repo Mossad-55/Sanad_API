@@ -1,4 +1,4 @@
-# F3 — Approved-facility revision carry-forward
+# F3 — Approved-facility revision carry-forward (RELEASE VERIFIED)
 
 **Mastermind acceptance (2026-10-20):** phase `accepted`; release `authorized`.
 Reviewed the actual diff myself: carry-forward clones revision-bound document records
@@ -25,6 +25,46 @@ source, deploy/verify the existing target; no migration expected. Mastermind alo
 Phase: `in_progress` (Owner authorized); task: `ready_for_review`; release: authorized
 conditionally after Mastermind acceptance, no release by Worker. Base:
 `ea3c3bb6b50b58b39bbea954767621d70029e763`. Worker A: `opencode/beam-free#high`.
+
+**Release verified (2026-10-20, delegated release executor).** Implementation commit
+`607d33fcb651bed25239050989cb94a8cb36de41` is on `main`/`origin/main`, published from a
+clean detached checkout of that exact revision (local clone of the pushed repo, detached
+HEAD, clean tree), and deployed to the existing Production target `72.62.92.144:8091`,
+service `sanad-api.service`, directory `/root/sanad-api`, environment
+`/etc/sanad/sanad.env`. Package: `deploy/releases/f3-607d33f/sanad-api-f3-607d33f.tar.gz`,
+11,895,649 bytes, SHA-256
+`a5d52d730b4138508dc22d3585f307fb314134e1cdcc1068feeca58806819870` (build-machine and
+server hashes matched; the archive contains no `appsettings*.json`, `.env`, key or cert
+entry). Only the exact eleven-file F3 manifest was staged and committed; every unrelated
+local edit was preserved untouched (governance/handoff/README/agent configs/tools/
+contracts, the E03 prompts, and the concurrent F5/F6 briefs plus their in-flight
+Identity/Cms/Community/Families edits).
+
+Preflight revalidated the live target before any write: the service was active with
+`NRestarts=0` at the prior F4 revision `4d3cab488bd6a57447352d265c9955378f1b243c`,
+Production, database reachable, and all nine applied heads already equal to the manifest
+heads — F3 adds no migration, so **zero pending migrations** were confirmed for all nine
+contexts (source heads identical to F4). A private pre-cutover backup of the app
+directory plus copies of the host env file and unit were written under
+`/root/sanad-releases/f3-607d33f-20261020/` (directory mode 700, files 600; no secrets
+printed). The service was stopped, only the verified archive was overlaid, then started.
+Startup checked all nine contexts and applied **zero** migrations each.
+`Verify-SanadDeployment.ps1` passed: manifest revision `607d33f`, remote revision match,
+Production, all 9 required/applied heads match, startup log 9/9 contexts, anonymous
+`GET /api/v1/lookups/services` HTTP 200. Post-cutover the service is active (`running`,
+`NRestarts=0`) and the unit / env-file / `appsettings.json` /
+`appsettings.Development.json` / DataProtection-key SHA-256 fingerprints are
+byte-identical to the pre-cutover values; the host storage root `/var/sanad/files` is
+untouched.
+
+Anonymous live smoke (no account created, no fixture/data write, no provider call, no OTP,
+local adapter **not** run against Production): `GET /api/v1/care-homes/facilities/mine`
+→ HTTP 401 and `GET /api/v1/care-homes/facilities/mine/media/{id}/file` → HTTP 401. The
+published schema (`deploy/releases/f3-607d33f/openapi-live.json`, HTTP 200) carries
+`CareHomeOwnerProfile.openRevisionId` as a nullable string, while the same document
+fetched from the pre-cutover F4 revision contained no `openRevisionId` — the live
+F3-only additive field is proven published. Release is `verified`; the coordinating
+Mastermind closes the phase (this executor does not mark it `completed`).
 Session is returned by dispatch and recorded by Worker in Current result.
 
 Read root/governance, Mastermind handoff and [approved F3 scope](../contracts/frontend-follow-up-2026-10-20.md#f3--approved-facility-revision-carry-forward-a2aa13).
