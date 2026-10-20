@@ -1,6 +1,12 @@
 # F3 — Approved-facility revision carry-forward (RELEASE VERIFIED)
 
-**Mastermind acceptance (2026-10-20):** phase `accepted`; release `authorized`.
+**Mastermind acceptance (2026-10-20):** phase `accepted`; release `authorized`; now
+**`completed`** — the delegated release was verified end to end (implementation
+`607d33fcb651bed25239050989cb94a8cb36de41`, receipt `3dba7b98357e8a72e07bdc1d580d4032bdb4e5e3`
+pushed, deployed remote revision `607d33f`, 9/9 applied heads matching, zero migrations
+applied in all nine contexts, service active `NRestarts=0`, env/unit/appsettings/keyring
+fingerprints unchanged, live OpenAPI proves the additive nullable `openRevisionId`; no
+authenticated Production request was made).
 Reviewed the actual diff myself: carry-forward clones revision-bound document records
 (type/status/verifier/time/expiry/CreatedOnUtc preserved, so an older verified copy can
 never supersede a newer rejected replacement and ordering within a revision is stable),
