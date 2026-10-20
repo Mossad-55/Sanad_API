@@ -61,9 +61,14 @@ public static class ApplicationBuilderExtensions
             });
         }
 
-        if (StartupMigrationPolicy.ShouldApplyModuleMigrations(
-                app.Configuration,
-                app.Environment))
+        // Startup migration switch, evaluated once. The L1 fixture workflow
+        // disables startup migrations, so this must never reach an
+        // ApplyMigrations call in that mode.
+        bool applyMigrations = StartupMigrationPolicy.ShouldApplyModuleMigrations(
+            app.Configuration,
+            app.Environment);
+
+        if (applyMigrations)
         {
             ApplyMigrations<IdentityDbContext>(app);
             ApplyMigrations<CmsDbContext>(app);
@@ -79,7 +84,18 @@ public static class ApplicationBuilderExtensions
             {
                 ApplyMigrations<FinanceDbContext>(app);
             }
+        }
 
+        // Fixture seeding is decoupled from the migration switch: the
+        // persistent-local fixture workflow runs the API with startup
+        // migrations explicitly disabled (never invoked above) and still
+        // needs the existing SuperAdmin/FinanceAdmin/TestUser seeding. Every
+        // other host keeps the original behavior: seed only together with
+        // migrations. The seed target guard itself refuses non-Development
+        // or non-local targets before anything is written.
+        if (applyMigrations
+            || TestUserSeedTargetGuard.IsPersistentLocalFixtureRun(app.Configuration))
+        {
             SeedSuperAdmin(app);
             SeedFinanceAdmin(app);
             SeedTestUsers(app);

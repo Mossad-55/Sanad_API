@@ -23,17 +23,6 @@ using Sanad.Modules.Identity.Infrastructure.Persistence;
 
 namespace Sanad.API.Seeding;
 
-public sealed record TestUserSeedOptions
-{
-    public const string SectionName = "App:TestUserSeed";
-
-    public bool Enabled { get; init; }
-
-    public string Password { get; init; } = "Test-1234!";
-
-    public string? ElderlyPassword { get; init; }
-}
-
 // Opt-in idempotent fixture for end-to-end testing (Development environments ONLY).
 // Mirrors SuperAdminSeeder. Never enable against a live Paymob key or real users.
 //
@@ -49,6 +38,22 @@ public sealed record TestUserSeedOptions
 // test plan for plan-change payment-intent coverage.
 public sealed class TestUserDataSeeder
 {
+    /// <summary>Deterministic fixture e-mail for the Content Admin identity.</summary>
+    public const string MinimalFixtureContentAdminEmail = "content.admin@test.sanad.local";
+
+    /// <summary>Deterministic fixture e-mail for the Family viewer identity.</summary>
+    public const string MinimalFixtureFamilyViewerEmail = "family.viewer@test.sanad.local";
+
+    /// <summary>
+    /// The exact identities produced by <c>App:TestUserSeed:Scope=Minimal</c>,
+    /// used by the read-only verification report to count fixture presence.
+    /// </summary>
+    public static readonly IReadOnlyList<string> MinimalFixtureIdentityEmails =
+    [
+        MinimalFixtureContentAdminEmail,
+        MinimalFixtureFamilyViewerEmail
+    ];
+
     private static readonly SemaphoreSlim SubscriptionFixtureGate = new(1, 1);
 
     private static readonly string[] AllowedEnvironmentNames =
@@ -102,6 +107,14 @@ public sealed class TestUserDataSeeder
 
         if (!_options.Enabled)
         {
+            return;
+        }
+
+        string scope = ResolveScope();
+
+        if (string.Equals(scope, TestUserSeedOptions.ScopeMinimal, StringComparison.OrdinalIgnoreCase))
+        {
+            await SeedMinimalIdentitiesAsync(cancellationToken);
             return;
         }
 
@@ -1277,6 +1290,75 @@ public sealed class TestUserDataSeeder
         }
 
         return normalized.ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Resolves <c>App:TestUserSeed:Scope</c>. Unknown values fail closed.
+    /// Only reached when the seed is enabled, so a disabled seed never
+    /// inspects the scope.
+    /// </summary>
+    private string ResolveScope()
+    {
+        string? raw = _options.Scope;
+
+        if (string.IsNullOrWhiteSpace(raw)
+            || string.Equals(raw, TestUserSeedOptions.ScopeFull, StringComparison.OrdinalIgnoreCase))
+        {
+            return TestUserSeedOptions.ScopeFull;
+        }
+
+        if (string.Equals(raw, TestUserSeedOptions.ScopeMinimal, StringComparison.OrdinalIgnoreCase))
+        {
+            return TestUserSeedOptions.ScopeMinimal;
+        }
+
+        throw new InvalidOperationException(
+            "App:TestUserSeed:Scope must be 'Full' or 'Minimal'.");
+    }
+
+    /// <summary>
+    /// Minimal fixture scope: exactly the two deterministic identities needed
+    /// by the L1 verification path (admin wellness-tips list + family viewer),
+    /// each with a ready-to-use password login. No elderly password, no RunId,
+    /// no families, caregivers, bookings, subscriptions or catalog rows.
+    /// Idempotent: repeated runs keep the same two identities.
+    /// </summary>
+    private async Task SeedMinimalIdentitiesAsync(CancellationToken cancellationToken)
+    {
+        string? paymobSecretKey =
+            _configuration["Paymob:SecretKey"];
+
+        if (!string.IsNullOrWhiteSpace(paymobSecretKey)
+            && paymobSecretKey.StartsWith("sk_live", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                "App:TestUserSeed:Enabled must never be true against a LIVE Paymob key.");
+        }
+
+        DateTime utcNow = _dateTimeProvider.UtcNow;
+
+        User contentAdmin = await EnsureUserAsync(
+            arabicFullName: "إدارة المحتوى التجريبية",
+            englishFullName: "Test Content Admin",
+            email: MinimalFixtureContentAdminEmail,
+            phoneNumber: "+201000000009",
+            AccountType.ContentAdmin,
+            utcNow,
+            cancellationToken);
+
+        User familyViewer = await EnsureUserAsync(
+            arabicFullName: "فرد العيلة التجريبي",
+            englishFullName: "Test Family Viewer",
+            email: MinimalFixtureFamilyViewerEmail,
+            phoneNumber: "+201000000002",
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        await EnsureFixtureLoginCapacityAsync(
+            [contentAdmin.Id, familyViewer.Id],
+            utcNow,
+            cancellationToken);
     }
 
     private static string FixtureEmail(string prefix, string runId) =>
