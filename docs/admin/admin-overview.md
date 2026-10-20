@@ -31,6 +31,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | National ID review | `docs/admin/admin-identity-documents.md` |
 | Care-needs assessment quiz | `docs/admin/care-assessments.md` |
 | Bookings (cancellations & refunds) | `docs/admin/bookings.md` |
+| Family register (families, members, dependents) | `docs/admin/families.md` |
 | Subscription plans, publication/retirement, and coupon configuration | `docs/admin/subscriptions.md` |
 | Elderly medication operational reads (prescriptions, dose logs, adherence) | `docs/admin/elderly-medications.md` |
 | Medication lateness CMS and operational evaluation | `docs/admin/elderly-medications.md` |
@@ -43,7 +44,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Caregiver payout accounts and payouts | `docs/app/caregivers/payouts.md` |
 | Community moderation | `docs/app/community/writes.md` |
 | Caregiver medical-access decision audit | `docs/admin/caregiver-medical-access-audit.md` |
-| Postman | General Admin: `docs/postman/admins/Sanad.Admin.postman_collection.json`; Care Homes operations: `docs/postman/admins/Sanad.Admin.CareHomes.postman_collection.json` |
+| Postman | General Admin: `docs/postman/admins/Sanad.Admin.postman_collection.json`; Care Homes operations: `docs/postman/admins/Sanad.Admin.CareHomes.postman_collection.json`; Family register: `docs/postman/admins/Sanad.Admin.Families.postman_collection.json` |
 
 ## Durable notification inspection
 

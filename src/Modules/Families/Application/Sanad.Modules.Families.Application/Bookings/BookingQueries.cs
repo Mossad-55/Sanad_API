@@ -52,7 +52,16 @@ public sealed record BookingDetailResponse(
     DateTime? CompletedOnUtc,
     DateTime? CancelledOnUtc,
     DateTime? RefundedOnUtc,
-    BookingRefundState RefundState);
+    BookingRefundState RefundState,
+    // F6 caregiver-detail additions. They are additive and default to null so
+    // every existing construction keeps its meaning; only the caregiver detail
+    // read populates them from the persisted cancellation fact, so no other
+    // detail response gains a value and no existing field changes.
+    BookingCancellationActorSide? CancellationActorSide = null,
+    BookingCancellationAction? CancellationAction = null,
+    string? CancellationReasonCategory = null,
+    BookingRefundEntitlement? RefundEntitlement = null,
+    BookingRefundDecisionReason? RefundDecisionReason = null);
 
 // ============================= Family Queries =============================
 

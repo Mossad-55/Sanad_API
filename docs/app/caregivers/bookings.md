@@ -41,7 +41,21 @@ Past includes cancellations **by the family and by the caregiver**. `PendingPaym
 
 List item: booking id, family/elderly ids, senior names, slot, `shiftType`, `status`, amount, `cancellationReason`, `cancelledOnUtc`, `refundState` (`1` NotApplicable, `2` Failed, `3` Succeeded, `4` NoRefundDue).
 
-Detail matches family booking detail plus `refundedOnUtc` and `refundState`.
+### Detail
+
+`GET /api/v1/caregiver/bookings/{bookingId}` matches family booking detail plus `refundedOnUtc` and `refundState`.
+
+When a cancellation fact was recorded for the booking, the caregiver detail read also fills five additive members from that persisted fact; without a fact they stay `null`:
+
+| Field | Values |
+|---|---|
+| `cancellationActorSide` | `1` Family, `2` Caregiver |
+| `cancellationAction` | `1` Cancel, `2` Reject |
+| `cancellationReasonCategory` | Recorded category name as a string: `Emergency`, `MedicalIssues`, `TransportationIssues`, `AccountDeletion`, `Other`; `null` when none was recorded |
+| `refundEntitlement` | `1` NoRefundDue, `2` FullCapturedRefund |
+| `refundDecisionReason` | `1` NothingCaptured, `2` FamilyCancellationBeforeAcceptance, `3` CaregiverRejectionBeforeAcceptance, `4` CaregiverCancellationAfterAcceptance, `5` FamilyCancellationWithinGraceWindow, `6` FamilyCancellationOutsideGraceWindow |
+
+With a fact present, `refundState` is resolved from the fact, so a policy denial reads `4` `NoRefundDue` rather than a failed refund. The booking's own note (`ReasonNote`), the internal `isCaregiverIncident` flag, a status ledger, an event history and any derived timeline are never exposed; the added values are read straight from the stored row, and no amount, eligibility rule or existing field changes. The caregiver-only boundary is unchanged: another caregiver's booking is still `404 Bookings.NotFound`.
 
 ## Actions
 

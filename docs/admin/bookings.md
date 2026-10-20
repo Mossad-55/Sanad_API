@@ -50,6 +50,8 @@ GET /api/v1/admin/bookings/{bookingId}
 
 Same `BookingDetailResponse` as family/caregiver detail, including `refundedOnUtc` and `refundState`. Fact-backed cancellation details render `NoRefundDue` instead of the legacy failed-refund derivation. `404 Bookings.NotFound` when unknown.
 
+`BookingDetailResponse` also carries five additive members that are `null` on these Admin and family reads and are populated only by the caregiver booking-detail read: `cancellationActorSide` (`1` Family, `2` Caregiver), `cancellationAction` (`1` Cancel, `2` Reject), `cancellationReasonCategory` (the recorded category name as a string, matching the cancellation-history item's `reasonCategory`), `refundEntitlement` (`1` NoRefundDue, `2` FullCapturedRefund) and `refundDecisionReason` (`1` NothingCaptured, `2` FamilyCancellationBeforeAcceptance, `3` CaregiverRejectionBeforeAcceptance, `4` CaregiverCancellationAfterAcceptance, `5` FamilyCancellationWithinGraceWindow, `6` FamilyCancellationOutsideGraceWindow). See [caregiver bookings](../app/caregivers/bookings.md#detail) for when the caregiver read fills them in. No other field, amount, eligibility rule or access boundary changes, and no ledger or event timeline is added.
+
 ## Cancellation history
 
 ```http

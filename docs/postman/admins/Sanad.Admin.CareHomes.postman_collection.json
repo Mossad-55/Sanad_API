@@ -59,6 +59,10 @@
     {
       "key": "careHomeLicenseThroughDate",
       "value": "2026-12-31"
+    },
+    {
+      "key": "careHomeVisitId",
+      "value": ""
     }
   ],
   "item": [
@@ -506,6 +510,54 @@
                 "exec": [
                   "pm.test('booking detail contract status', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));",
                   "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('bookingId'); pm.expect(body).to.have.property('assignmentHistory').that.is.an('array'); pm.expect(JSON.stringify(body)).not.to.include('PaymentClientSecret'); pm.expect(JSON.stringify(body)).not.to.include('MedicalSnapshotJson'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08. Visit requests",
+      "description": "Read-only operational register and detail for care-home visit requests, under CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin, owners, Family and anonymous callers are denied). No Admin scheduling, approval, rejection, cancellation or override route exists; no fixture or database mutation is performed. These examples are authored, not runtime evidence.",
+      "item": [
+        {
+          "name": "List care-home visits",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/visits?page=1&pageSize=25&facilityId=&status=&from=&to=",
+            "description": "Read-only. facilityId, status and the scheduled from/to window are optional. from/to are inclusive UTC days matched as overlap against the scheduled window (a visit matches when endsAtUtc is after the start of from and startsAtUtc is before the end of to). Paging is clamped, never an error: page is at least 1 and pageSize defaults to 25 and is capped at 100. Only an empty facilityId, an undefined status or an inverted window (to before from) returns 400 CareHomes.Admin.InvalidQuery. Results order newest first by startsAtUtc then visitId. The response contains page, pageSize, totalCount and items; each item carries visitId, facilityId, familyId, nullable elderlyId, kind (1 Prospective, 2 Resident), status (1 Pending, 2 Approved, 3 Rejected, 4 FamilyCancelled, 5 FacilityCancelled, 6 Expired, 7 ReschedulePending, 8 Rescheduled), startsAtUtc, endsAtUtc, nullable rescheduleOfVisitId, the recorded decision facts (decidedByUserId, decidedOnUtc, decisionReason) and cancellation facts (cancelledByUserId, cancelledOnUtc, cancellationReason), and createdOnUtc. Visitor name and phone, visitorCount, the requesting familyUserId, decisionExpiresOnUtc and version are never returned."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('visit list contract status', () => pm.expect([200, 400, 401, 403]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('page'); pm.expect(body).to.have.property('pageSize'); pm.expect(body).to.have.property('items').that.is.an('array'); pm.expect(body.items.length).to.be.at.most(100); if (body.items.length > 0) { pm.expect(body.items[0]).to.have.property('visitId'); pm.expect(body.items[0]).to.have.property('status'); pm.expect(JSON.stringify(body)).not.to.include('visitorPhone'); pm.expect(JSON.stringify(body)).not.to.include('visitorName'); pm.expect(JSON.stringify(body)).not.to.include('visitorCount'); pm.expect(JSON.stringify(body)).not.to.include('decisionExpiresOnUtc'); } }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get care-home visit detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/visits/{{careHomeVisitId}}",
+            "description": "Read-only. Returns the list fields plus updatedOnUtc, read from the stored row only. Visitor name and phone, visitorCount, the requesting familyUserId, decisionExpiresOnUtc and version are never returned, and no event history or timeline is derived. Unknown or empty visit ids return 404 CareHomes.Visits.NotFound. Set careHomeVisitId from a list item first."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('visit detail contract status', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('visitId'); pm.expect(body).to.have.property('kind'); pm.expect(body).to.have.property('status'); pm.expect(body).to.have.property('updatedOnUtc'); pm.expect(JSON.stringify(body)).not.to.include('visitorPhone'); pm.expect(JSON.stringify(body)).not.to.include('visitorName'); pm.expect(JSON.stringify(body)).not.to.include('familyUserId'); }"
                 ]
               }
             }

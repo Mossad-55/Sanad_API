@@ -104,6 +104,14 @@ public sealed record GetCaregiverBookingDetailQuery(
     CaregiverId CaregiverId,
     BookingId BookingId) : IQuery<BookingDetailResponse>;
 
+/// <summary>
+/// Caregiver-only booking detail (unchanged access boundary: the booking must
+/// belong to the calling caregiver). F6 adds the persisted cancellation facts to
+/// the response for this read only: the recorded actor side, action, reason
+/// category, refund entitlement and refund decision reason, plus a refund state
+/// resolved with the fact. No status ledger, event history or derived timeline
+/// is invented — every added value is read from the stored row.
+/// </summary>
 public sealed class GetCaregiverBookingDetailQueryHandler
     : IQueryHandler<GetCaregiverBookingDetailQuery, BookingDetailResponse>
 {
@@ -134,8 +142,26 @@ public sealed class GetCaregiverBookingDetailQueryHandler
             .AsNoTracking()
             .SingleOrDefaultAsync(e => e.Id == booking.ElderlyId, cancellationToken);
 
-        return Result<BookingDetailResponse>.Success(
-            BookingDetailMapper.ToResponse(booking, elderly));
+        BookingDetailResponse response = BookingDetailMapper.ToResponse(booking, elderly);
+
+        BookingCancellationFact? fact = await _dbContext.BookingCancellationFacts
+            .AsNoTracking()
+            .SingleOrDefaultAsync(f => f.BookingId == request.BookingId, cancellationToken);
+
+        if (fact is not null)
+        {
+            response = response with
+            {
+                RefundState = BookingRefundStates.ResolveWithFact(booking, fact),
+                CancellationActorSide = fact.ActorSide,
+                CancellationAction = fact.Action,
+                CancellationReasonCategory = fact.ReasonCategory?.ToString(),
+                RefundEntitlement = fact.RefundEntitlement,
+                RefundDecisionReason = fact.RefundDecisionReason
+            };
+        }
+
+        return Result<BookingDetailResponse>.Success(response);
     }
 }
 

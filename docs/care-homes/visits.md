@@ -75,8 +75,56 @@ examples do not claim runtime execution.
 
 When a reschedule is requested, the approved original remains active and continues to reserve capacity. Approval of the replacement changes both records in one transaction; rejection, expiry, or cancellation leaves the original appointment intact. Either the Family or facility owner may cancel until the appointment start time.
 
+## Admin read (operational register)
+
+The operational Admin register is read-only. It uses the same policy as the
+sibling Admin Care Homes bookings read, `CareHomesOperationalAdmin`: Normal
+`SuperAdmin (5)` or `SupportAdmin (7)` only. `ContentAdmin`, `FinanceAdmin`,
+owners, Family accounts, caregivers and anonymous callers are denied
+(`403`/`401`). There is **no** Admin scheduling, approval, rejection,
+cancellation, reschedule or override route for visits; the family and owner
+routes above stay the only mutation paths, and the Admin read never widens
+`CareHomeOwnerAccess` or `FamilyAccess`.
+
+| Method and route | Purpose |
+|---|---|
+| `GET /api/v1/admin/care-homes/visits` | Paged visit register |
+| `GET /api/v1/admin/care-homes/visits/{visitId}` | Single visit with its recorded facts |
+
+List query parameters: `facilityId`, `status`, `from`, `to`, `page`, `pageSize`.
+
+- `facilityId` is an exact facility id.
+- `status` is a numeric `CareHomeVisitStatus`.
+- `from`/`to` are inclusive `YYYY-MM-DD` **UTC** days matched against the
+  scheduled window: a visit is in range when its `endsAtUtc` is after the start
+  of `from` and its `startsAtUtc` is before the end of `to`.
+- `page` is clamped to at least `1` and `pageSize` defaults to `25` and is
+  clamped to `1–100`; neither is an error.
+- The only rejected inputs are an empty (`00000000-…`) `facilityId`, an
+  undefined `status`, and an inverted window (`to` before `from`), each
+  returning `400 CareHomes.Admin.InvalidQuery`.
+
+The page is ordered newest-first by scheduled start and then visit id, and
+returns `page`, `pageSize`, `totalCount` and `items`. Each item contains
+`visitId`, `facilityId`, `familyId`, nullable `elderlyId`, `kind`
+(`1` Prospective, `2` Resident), `status` (`1` Pending, `2` Approved,
+`3` Rejected, `4` FamilyCancelled, `5` FacilityCancelled, `6` Expired,
+`7` ReschedulePending, `8` Rescheduled), `startsAtUtc`, `endsAtUtc`, nullable
+`rescheduleOfVisitId`, the recorded decision facts (`decidedByUserId`,
+`decidedOnUtc`, nullable `decisionReason`), the recorded cancellation facts
+(`cancelledByUserId`, `cancelledOnUtc`, nullable `cancellationReason`) and
+`createdOnUtc`.
+
+The detail route returns the same fields plus `updatedOnUtc`. An unknown or
+empty `visitId` returns `404 CareHomes.Visits.NotFound`.
+
+The register deliberately omits `visitorName` and `visitorPhone` (visitor PII),
+`visitorCount`, the requesting `familyUserId`, the pending-decision expiry
+(`decisionExpiresOnUtc`) and the row `version`. It reads persisted facts only,
+derives no event history or timeline, and mutates nothing.
+
 ## Persistence and verification limits
 
 Migration `20261008154517_AddCareHomeVisits` adds `care_homes.visit_settings` and `care_homes.visits`, with schedule JSONB, capacity/version, lifecycle timestamps/actors, indexes, and facility/self-reschedule foreign keys. It is generated and has not been applied to any database. No destructive reset or deployment is part of this change.
 
-Postman examples are authored contracts, not evidence of runtime execution. Bruno was not run: no approved disposable API fixture state was prepared for visits. Focused unit tests cover visit lifecycle, Cairo slots, reservation capacity behavior, authorization metadata, and route contracts; database-backed capacity races and HTTP middleware/model binding remain unverified.
+Postman examples are authored contracts, not evidence of runtime execution. Bruno was not run: no approved disposable API fixture state was prepared for visits. Focused unit tests cover visit lifecycle, Cairo slots, reservation capacity behavior, authorization metadata, and route contracts; database-backed capacity races and HTTP middleware/model binding remain unverified. The Admin operational read routes were authored with focused unit tests and an authored local HTTP adapter; their runtime HTTP proof is pending and is recorded in the F6 worker brief.
