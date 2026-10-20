@@ -25,6 +25,7 @@ public sealed class CaregiversDbContext :
 
     public DbSet<Caregiver> Caregivers => Set<Caregiver>();
     public DbSet<CaregiverRating> CaregiverRatings => Set<CaregiverRating>();
+    public DbSet<CaregiverRatingModerationAction> RatingModerationActions => Set<CaregiverRatingModerationAction>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<Language> Languages => Set<Language>();
     public DbSet<Bank> Banks => Set<Bank>();
@@ -204,6 +205,7 @@ public sealed class CaregiversDbContext :
             WHERE c.status = 4
               AND c.show_profile = TRUE
               AND c.show_rating = TRUE
+              AND r.moderation_state = 0 -- RatingModerationState.Visible (F7)
             GROUP BY c.id, c.type, u.arabic_full_name, u.english_full_name, u.avatar_url
             ORDER BY AVG(r.stars) DESC, COUNT(*) DESC, c.id ASC
             LIMIT 10

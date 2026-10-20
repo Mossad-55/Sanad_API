@@ -4,9 +4,24 @@ using Sanad.Modules.CareHomes.Domain.Facilities;
 
 namespace Sanad.Modules.CareHomes.Domain.Bookings;
 
+/// <summary>
+/// F7 visibility state of a Care Home rating. Identical semantics to the
+/// caregiver target: Visible is the default and the only state a family write
+/// can produce; Hidden is set and cleared exclusively by the attributed admin
+/// moderation actions.
+/// </summary>
+public enum CareHomeRatingModerationState
+{
+    Visible = 0,
+    Hidden = 1
+}
+
 public sealed class CareHomeRating : Entity<Guid>
 {
     public const int MaximumReviewTextLength = 2000;
+
+    /// <summary>F7 bound on the attributed hide/restore reason.</summary>
+    public const int MaximumModerationReasonLength = 500;
 
     private CareHomeRating() { }
 
@@ -33,6 +48,18 @@ public sealed class CareHomeRating : Entity<Guid>
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
 
+    /// <summary>
+    /// F7 moderation state. A family edit never changes it: a re-rated hidden
+    /// rating stays hidden.
+    /// </summary>
+    public CareHomeRatingModerationState ModerationState { get; private set; } = CareHomeRatingModerationState.Visible;
+
+    public UserId? HiddenByUserId { get; private set; }
+    public DateTime? HiddenOnUtc { get; private set; }
+    public string? HideReason { get; private set; }
+
+    public bool IsHidden => ModerationState == CareHomeRatingModerationState.Hidden;
+
     public static CareHomeRating Create(Guid bookingId, CareHomeId careHomeId, FamilyId familyId,
         UserId actor, int stars, string? reviewText, DateTime utcNow)
     {
@@ -48,6 +75,55 @@ public sealed class CareHomeRating : Entity<Guid>
         ReviewText = Normalize(reviewText);
         UpdatedByUserId = actor;
         UpdatedOnUtc = utcNow;
+    }
+
+    /// <summary>
+    /// F7 hide. Never mutates stars, text or authorship; an already-hidden
+    /// rating is a caller error (mapped to 409), never a silent no-op.
+    /// </summary>
+    public void Hide(UserId actor, string reason, DateTime utcNow)
+    {
+        if (IsHidden)
+            throw new InvalidOperationException("CareHomes.Rating.AlreadyHidden");
+        if (actor == UserId.Empty || utcNow.Kind != DateTimeKind.Utc)
+            throw new ArgumentException("A valid actor and UTC timestamp are required.");
+
+        ModerationState = CareHomeRatingModerationState.Hidden;
+        HiddenByUserId = actor;
+        HiddenOnUtc = utcNow;
+        HideReason = NormalizeModerationReason(reason);
+    }
+
+    /// <summary>
+    /// F7 restore. Returns the rating to every non-admin read and aggregate;
+    /// the reason is validated here and retained only in the append-only
+    /// moderation action record.
+    /// </summary>
+    public void Restore(UserId actor, string reason, DateTime utcNow)
+    {
+        if (!IsHidden)
+            throw new InvalidOperationException("CareHomes.Rating.AlreadyVisible");
+        if (actor == UserId.Empty || utcNow.Kind != DateTimeKind.Utc)
+            throw new ArgumentException("A valid actor and UTC timestamp are required.");
+
+        _ = NormalizeModerationReason(reason);
+
+        ModerationState = CareHomeRatingModerationState.Visible;
+        HiddenByUserId = null;
+        HiddenOnUtc = null;
+        HideReason = null;
+    }
+
+    private static string NormalizeModerationReason(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new ArgumentException("A moderation reason is required.");
+
+        string normalized = reason.Trim();
+        if (normalized.Length > MaximumModerationReasonLength)
+            throw new ArgumentException("Moderation reason exceeds the maximum length.");
+
+        return normalized;
     }
 
     private static void Validate(Guid bookingId, CareHomeId careHomeId, FamilyId familyId,

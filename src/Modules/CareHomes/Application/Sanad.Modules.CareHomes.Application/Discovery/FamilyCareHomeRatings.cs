@@ -81,6 +81,7 @@ public sealed class GetTopRatedCareHomesQueryHandler(ICareHomesDbContext db, IDa
         List<CareHomeId> eligibleIds = await reader.EligibleQuery(today)
             .Select(x => x.Id).ToListAsync(ct);
         var aggregates = await db.Ratings.AsNoTracking().Where(x => eligibleIds.Contains(x.CareHomeId))
+            .Where(x => x.ModerationState == CareHomeRatingModerationState.Visible)
             .GroupBy(x => x.CareHomeId)
             .Select(group => new { CareHomeId = group.Key, Average = group.Average(x => (decimal)x.Stars), Count = group.Count() })
             .OrderByDescending(x => x.Average).ThenByDescending(x => x.Count).ThenBy(x => x.CareHomeId)

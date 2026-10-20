@@ -20,6 +20,8 @@ public sealed class CareHomesDbContext(DbContextOptions<CareHomesDbContext> opti
     public DbSet<CareHomeBooking> Bookings => Set<CareHomeBooking>();
     public DbSet<CareHomeInternalBookingNote> InternalBookingNotes => Set<CareHomeInternalBookingNote>();
     public DbSet<CareHomeRating> Ratings => Set<CareHomeRating>();
+    public DbSet<CareHomeRatingModerationAction> RatingModerationActions => Set<CareHomeRatingModerationAction>();
+    public DbSet<CareHomeRatingFlag> RatingFlags => Set<CareHomeRatingFlag>();
     public DbSet<CareHomePayout> Payouts => Set<CareHomePayout>();
     public DbSet<CareHomePayoutDebt> PayoutDebts => Set<CareHomePayoutDebt>();
     public DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => Set<CareHomeBookingAssignmentHistory>();

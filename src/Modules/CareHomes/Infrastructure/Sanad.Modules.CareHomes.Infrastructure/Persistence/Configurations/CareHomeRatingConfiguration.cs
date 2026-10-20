@@ -22,9 +22,20 @@ public sealed class CareHomeRatingConfiguration : IEntityTypeConfiguration<CareH
         b.Property(x => x.ReviewText).HasColumnName("review_text").HasMaxLength(CareHomeRating.MaximumReviewTextLength);
         b.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
         b.Property(x => x.UpdatedOnUtc).HasColumnName("updated_on_utc").IsRequired();
+
+        b.Property(x => x.ModerationState).HasConversion<int>().HasColumnName("moderation_state").IsRequired();
+        b.Property(x => x.HiddenByUserId)
+            .HasConversion(x => x.HasValue ? x.Value.Value : (Guid?)null,
+                x => x.HasValue ? new UserId(x.Value) : (UserId?)null)
+            .HasColumnName("hidden_by_user_id");
+        b.Property(x => x.HiddenOnUtc).HasColumnName("hidden_on_utc");
+        b.Property(x => x.HideReason).HasColumnName("hide_reason").HasMaxLength(CareHomeRating.MaximumModerationReasonLength);
+
         b.HasOne<CareHomeFacility>().WithMany().HasForeignKey(x => x.CareHomeId).OnDelete(DeleteBehavior.Restrict);
         b.HasOne<CareHomeBooking>().WithMany().HasForeignKey(x => x.BookingId).OnDelete(DeleteBehavior.Restrict);
         b.HasIndex(x => x.BookingId).IsUnique();
         b.HasIndex(x => new { x.CareHomeId, x.Stars });
+        // Moderation reads and aggregate recomputes filter on the state.
+        b.HasIndex(x => new { x.CareHomeId, x.ModerationState });
     }
 }

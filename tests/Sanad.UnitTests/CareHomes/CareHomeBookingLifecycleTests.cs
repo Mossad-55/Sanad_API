@@ -1135,6 +1135,8 @@ public sealed class CareHomeBookingLifecycleTests
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeBooking> Bookings => inner.Bookings;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeInternalBookingNote> InternalBookingNotes => inner.InternalBookingNotes;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeRating> Ratings => inner.Ratings;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeRatingModerationAction> RatingModerationActions => inner.RatingModerationActions;
+        public Microsoft.EntityFrameworkCore.DbSet<CareHomeRatingFlag> RatingFlags => inner.RatingFlags;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomePayout> Payouts => inner.Payouts;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomePayoutDebt> PayoutDebts => inner.PayoutDebts;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => inner.BookingAssignmentHistory;

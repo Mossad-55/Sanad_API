@@ -122,6 +122,12 @@ internal static class LandingRefResolver
                     continue;
                 }
 
+                // F7: a hidden caregiver rating is a valid ref with no public
+                // surface, not a broken one, so it is skipped without counting
+                // as dangling.
+                if (rating.ModerationState == RatingModerationState.Hidden)
+                    continue;
+
                 (string arabicName, string englishName) = await FamilyNamesOrFallbackAsync(
                     familiesDb, rating.FamilyId, cancellationToken);
                 items.Add(new TestimonialItem(

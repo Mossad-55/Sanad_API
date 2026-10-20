@@ -47,6 +47,14 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Rating.CaregiverNotFound"] = 404,
             ["Caregivers.Rating.Conflict"] = 409,
 
+            // F7 caregiver-rating moderation: an unknown rating is a 404, a bad
+            // reason or filter a 400, and an illegal visibility transition a 409.
+            ["Caregivers.Rating.NotFound"] = 404,
+            ["Caregivers.Rating.InvalidReason"] = 400,
+            ["Caregivers.Rating.InvalidQuery"] = 400,
+            ["Caregivers.Rating.AlreadyHidden"] = 409,
+            ["Caregivers.Rating.AlreadyVisible"] = 409,
+
             ["Caregivers.Payouts.NotFound"] = 404,
             ["Caregivers.Payouts.Ineligible"] = 409,
             ["Caregivers.Payouts.Conflict"] = 409,
@@ -55,6 +63,16 @@ public static class ResultProblemDetailsMapper
 
             ["CareHomes.Rating.BookingNotEligible"] = 404,
             ["CareHomes.Rating.Conflict"] = 409,
+
+            // F7 Care Home rating moderation + owner flag: an unknown rating (or
+            // a rating that is not about the caller's facility) is a 404, a bad
+            // reason/filter a 400, and a refusal to hide/keep/restore a 409.
+            ["CareHomes.Rating.NotFound"] = 404,
+            ["CareHomes.Rating.InvalidReason"] = 400,
+            ["CareHomes.Rating.InvalidQuery"] = 400,
+            ["CareHomes.Rating.AlreadyHidden"] = 409,
+            ["CareHomes.Rating.AlreadyVisible"] = 409,
+            ["CareHomes.Rating.NoOpenFlag"] = 409,
 
             ["CareHomes.Facility.AlreadyExists"] = 409,
             ["CareHomes.Facility.NotFound"] = 404,

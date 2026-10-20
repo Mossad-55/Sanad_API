@@ -28,7 +28,16 @@ not-completed booking returns 404 without exposing booking data; inconsistent
 legacy rating ownership returns 409. Repeated edits are safe and no booking or
 
 The caregiver summary (`averageRating`, `reviewsCount`) is recalculated from
-stored ratings on each write. SMS is not used. The Care homes rating endpoint
+stored ratings on each write.
+
+An admin may hide a caregiver rating, and a hidden rating is excluded from every
+non-admin read and from every aggregate, including this summary, the discovery
+search (with its `minRating` filter) and the top-10 ranking. Restoring it returns
+it to both. Moderation never changes stars, text or authorship, and a repeated
+`PUT` edits a hidden rating without unhiding it. See
+[Admin ratings moderation](../admin/ratings-moderation.md).
+
+SMS is not used. The Care homes rating endpoint
 and ranking remain separate and are tracked in the
 [Care homes task checklist](../../internal/operations/care-homes/Care_Homes_Tasks.md).
 

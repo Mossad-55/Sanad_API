@@ -832,6 +832,8 @@ public sealed class CareHomeStayLifecycleTests
         public DbSet<CareHomeBooking> Bookings => inner.Bookings;
         public DbSet<CareHomeInternalBookingNote> InternalBookingNotes => inner.InternalBookingNotes;
         public DbSet<CareHomeRating> Ratings => inner.Ratings;
+        public DbSet<CareHomeRatingModerationAction> RatingModerationActions => inner.RatingModerationActions;
+        public DbSet<CareHomeRatingFlag> RatingFlags => inner.RatingFlags;
         public DbSet<CareHomePayout> Payouts => inner.Payouts;
         public DbSet<CareHomePayoutDebt> PayoutDebts => inner.PayoutDebts;
         public DbSet<CareHomeCheckInDispute> CheckInDisputes => inner.CheckInDisputes;
@@ -868,6 +870,8 @@ public sealed class CareHomeStayLifecycleTests
         public DbSet<CareHomeBooking> Bookings => inner.Bookings;
         public DbSet<CareHomeInternalBookingNote> InternalBookingNotes => inner.InternalBookingNotes;
         public DbSet<CareHomeRating> Ratings => inner.Ratings;
+        public DbSet<CareHomeRatingModerationAction> RatingModerationActions => inner.RatingModerationActions;
+        public DbSet<CareHomeRatingFlag> RatingFlags => inner.RatingFlags;
         public DbSet<CareHomePayout> Payouts => inner.Payouts;
         public DbSet<CareHomePayoutDebt> PayoutDebts => inner.PayoutDebts;
         public DbSet<CareHomeCheckInDispute> CheckInDisputes => inner.CheckInDisputes;

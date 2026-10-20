@@ -246,9 +246,9 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                         .HasColumnName("reviewed_on_utc");
 
                     b.Property<int>("Revision")
+                        .IsConcurrencyToken()
                         .HasColumnType("integer")
-                        .HasColumnName("revision")
-                        .IsConcurrencyToken();
+                        .HasColumnName("revision");
 
                     b.Property<int>("Status")
                         .HasColumnType("integer")
@@ -354,6 +354,23 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("family_id");
 
+                    b.Property<Guid?>("HiddenByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("hidden_by_user_id");
+
+                    b.Property<DateTime?>("HiddenOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("hidden_on_utc");
+
+                    b.Property<string>("HideReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("hide_reason");
+
+                    b.Property<int>("ModerationState")
+                        .HasColumnType("integer")
+                        .HasColumnName("moderation_state");
+
                     b.Property<string>("ReviewText")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
@@ -376,9 +393,50 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                     b.HasIndex("BookingId")
                         .IsUnique();
 
+                    b.HasIndex("CaregiverId", "ModerationState");
+
                     b.HasIndex("CaregiverId", "Stars");
 
                     b.ToTable("caregiver_ratings", "caregivers");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverRatingModerationAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<Guid>("CaregiverId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caregiver_id");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_on_utc");
+
+                    b.Property<Guid>("RatingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rating_id");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RatingId", "OccurredOnUtc");
+
+                    b.ToTable("caregiver_rating_moderation_actions", "caregivers");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.Lookups.AcademicDegree", b =>
@@ -1179,6 +1237,15 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                     b.HasOne("Sanad.Modules.Caregivers.Domain.Caregivers.Caregiver", null)
                         .WithMany()
                         .HasForeignKey("CaregiverId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverRatingModerationAction", b =>
+                {
+                    b.HasOne("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverRating", null)
+                        .WithMany()
+                        .HasForeignKey("RatingId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

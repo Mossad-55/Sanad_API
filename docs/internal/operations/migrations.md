@@ -55,6 +55,18 @@ The `bookings` table is created by `AddBookingsAggregate`; `AddBookingAcceptance
 
 Caregivers uses PostgreSQL schema `caregivers` and also applies automatically at startup (`ApplyCaregiversMigrations`).
 
+| Migration | Purpose |
+|---|---|
+| `20261020210727_AddCaregiverRatingModeration` | Adds the rating moderation columns (`moderation_state`, `hidden_by_user_id`, `hidden_on_utc`, `hide_reason`), the `(caregiver_id, moderation_state)` index, and the append-only `caregivers.caregiver_rating_moderation_actions` table (F7). |
+
+## Care Homes migrations
+
+Care Homes uses PostgreSQL schema `care_homes`.
+
+| Migration | Purpose |
+|---|---|
+| `20261020210910_AddCareHomeRatingModeration` | Adds the same rating moderation columns to `care_homes.ratings`, the append-only `care_homes.rating_moderation_actions` table, and `care_homes.rating_flags` with the filtered unique index `IX_rating_flags_rating_id_owner_user_id` on `(rating_id, owner_user_id) WHERE status = 0` (F7). |
+
 ## Community migrations
 
 Community uses PostgreSQL schema `community` and has its own history table
@@ -95,6 +107,32 @@ is recorded below:
 - Care Homes: `20261008141359_AddCareHomeFinanceReporting`
 
 HC-TASK-060 adds generated migration `20261008221643_AddCareHomeBookingNotificationOutbox` for the durable booking-notification outbox, event-key uniqueness, retry scheduling, and optimistic claim version. It is unapplied; do not run `database update` without exact-target authorization. The migration's `Down` removes only this new outbox table.
+
+## F7 rating moderation migrations (2026-10-20)
+
+F7 adds the first rating-moderation schema in this wave. Both migrations were
+generated from the module Infrastructure project with
+`dotnet ef migrations add <Name> --project <Infrastructure csproj> --context <DbContext> --output-dir Persistence/Migrations`
+and applied to the local Development database `localhost:5432/SanadDb` only —
+Caregivers first, then Care Homes:
+
+| Migration | Context | Applied |
+|---|---|---|
+| `20261020210727_AddCaregiverRatingModeration` | `CaregiversDbContext` (`caregivers`) | Local `SanadDb`, first |
+| `20261020210910_AddCareHomeRatingModeration` | `CareHomesDbContext` (`care_homes`) | Local `SanadDb`, second |
+
+Neither migration is applied to staging or production; that stays a separate,
+serialized release step. Generate Care Homes migrations with the API startup
+project (`--startup-project src/API/Sanad.API/Sanad.API.csproj`); Caregivers has
+its own design-time factory.
+
+Confirm the target before any `database update`: with
+`App__TestUserSeed__Enabled=true` in the environment, the fixture-seed guard pins
+the CareHomes context to the disposable Bruno database `SanadBrunoTestDb`, so a
+CareHomes `database update` resolves there rather than to `SanadDb`. Run
+`dotnet ef dbcontext info` for the exact context first, and set
+`App__TestUserSeed__Enabled=false` for the migration command when the intended
+target is `SanadDb`.
 
 To inspect SQL without changing a database, use the module Infrastructure
 project and the API startup project:

@@ -16,6 +16,8 @@ public interface ICareHomesDbContext
     DbSet<CareHomeBooking> Bookings { get; }
     DbSet<CareHomeInternalBookingNote> InternalBookingNotes { get; }
     DbSet<CareHomeRating> Ratings { get; }
+    DbSet<CareHomeRatingModerationAction> RatingModerationActions { get; }
+    DbSet<CareHomeRatingFlag> RatingFlags { get; }
     DbSet<CareHomePayout> Payouts { get; }
     DbSet<CareHomePayoutDebt> PayoutDebts { get; }
     DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory { get; }

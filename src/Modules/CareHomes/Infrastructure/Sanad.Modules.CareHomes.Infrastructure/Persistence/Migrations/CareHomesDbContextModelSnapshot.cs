@@ -615,6 +615,23 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("family_id");
 
+                    b.Property<Guid?>("HiddenByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("hidden_by_user_id");
+
+                    b.Property<DateTime?>("HiddenOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("hidden_on_utc");
+
+                    b.Property<string>("HideReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("hide_reason");
+
+                    b.Property<int>("ModerationState")
+                        .HasColumnType("integer")
+                        .HasColumnName("moderation_state");
+
                     b.Property<string>("ReviewText")
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
@@ -637,9 +654,110 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.HasIndex("BookingId")
                         .IsUnique();
 
+                    b.HasIndex("CareHomeId", "ModerationState");
+
                     b.HasIndex("CareHomeId", "Stars");
 
                     b.ToTable("ratings", "care_homes");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeRatingFlag", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("CareHomeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("care_home_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<Guid>("OwnerUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("owner_user_id");
+
+                    b.Property<Guid>("RatingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rating_id");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.Property<int?>("Resolution")
+                        .HasColumnType("integer")
+                        .HasColumnName("resolution");
+
+                    b.Property<Guid?>("ResolvedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resolved_by_user_id");
+
+                    b.Property<DateTime?>("ResolvedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resolved_on_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status");
+
+                    b.HasIndex("RatingId", "OwnerUserId")
+                        .IsUnique()
+                        .HasFilter("\"status\" = 0");
+
+                    b.ToTable("rating_flags", "care_homes");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeRatingModerationAction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<Guid>("CareHomeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("care_home_id");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_on_utc");
+
+                    b.Property<Guid>("RatingId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("rating_id");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reason");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RatingId", "OccurredOnUtc");
+
+                    b.ToTable("rating_moderation_actions", "care_homes");
                 });
 
             modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeTransferNotificationOutbox", b =>
@@ -1541,6 +1659,24 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.HasOne("Sanad.Modules.CareHomes.Domain.Facilities.CareHomeFacility", null)
                         .WithMany()
                         .HasForeignKey("CareHomeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeRatingFlag", b =>
+                {
+                    b.HasOne("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeRating", null)
+                        .WithMany()
+                        .HasForeignKey("RatingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeRatingModerationAction", b =>
+                {
+                    b.HasOne("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeRating", null)
+                        .WithMany()
+                        .HasForeignKey("RatingId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

@@ -48,6 +48,21 @@ public sealed class CaregiverRatingConfiguration : IEntityTypeConfiguration<Care
             .HasColumnName("updated_on_utc")
             .IsRequired();
 
+        builder.Property(rating => rating.ModerationState)
+            .HasConversion<int>()
+            .HasColumnName("moderation_state")
+            .IsRequired();
+        builder.Property(rating => rating.HiddenByUserId)
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? new UserId(value.Value) : (UserId?)null)
+            .HasColumnName("hidden_by_user_id");
+        builder.Property(rating => rating.HiddenOnUtc)
+            .HasColumnName("hidden_on_utc");
+        builder.Property(rating => rating.HideReason)
+            .HasColumnName("hide_reason")
+            .HasMaxLength(CaregiverRating.MaximumModerationReasonLength);
+
         builder.HasOne<Caregiver>()
             .WithMany()
             .HasForeignKey(rating => rating.CaregiverId)
@@ -55,5 +70,7 @@ public sealed class CaregiverRatingConfiguration : IEntityTypeConfiguration<Care
         builder.HasIndex(rating => rating.BookingId)
             .IsUnique();
         builder.HasIndex(rating => new { rating.CaregiverId, rating.Stars });
+        // Moderation reads and aggregate recomputes filter on the state.
+        builder.HasIndex(rating => new { rating.CaregiverId, rating.ModerationState });
     }
 }

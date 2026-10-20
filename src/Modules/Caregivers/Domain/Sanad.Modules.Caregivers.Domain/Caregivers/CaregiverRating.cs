@@ -4,9 +4,23 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
 namespace Sanad.Modules.Caregivers.Domain.Caregivers;
 
+/// <summary>
+/// F7 visibility state of a caregiver rating. Visible is the default and the
+/// only state a family write can produce; Hidden is set and cleared
+/// exclusively by the attributed admin moderation actions.
+/// </summary>
+public enum RatingModerationState
+{
+    Visible = 0,
+    Hidden = 1
+}
+
 public sealed class CaregiverRating : Entity<Guid>
 {
     public const int MaximumReviewTextLength = 2000;
+
+    /// <summary>F7 bound on the attributed hide/restore reason.</summary>
+    public const int MaximumModerationReasonLength = 500;
 
     private CaregiverRating()
     {
@@ -43,6 +57,19 @@ public sealed class CaregiverRating : Entity<Guid>
     public string? ReviewText { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
+
+    /// <summary>
+    /// F7 moderation state. Always <see cref="RatingModerationState.Visible"/>
+    /// on create and after an edit, because a family re-rating never changes
+    /// moderation (a re-rated hidden rating stays hidden).
+    /// </summary>
+    public RatingModerationState ModerationState { get; private set; } = RatingModerationState.Visible;
+
+    public UserId? HiddenByUserId { get; private set; }
+    public DateTime? HiddenOnUtc { get; private set; }
+    public string? HideReason { get; private set; }
+
+    public bool IsHidden => ModerationState == RatingModerationState.Hidden;
 
     public static CaregiverRating Create(
         CaregiverId caregiverId,
@@ -90,6 +117,64 @@ public sealed class CaregiverRating : Entity<Guid>
         ReviewText = NormalizeReviewText(reviewText);
         UpdatedByUserId = actorUserId;
         UpdatedOnUtc = utcNow;
+    }
+
+    /// <summary>
+    /// F7 hide. Hiding never mutates stars, text or authorship: it only makes
+    /// the rating invisible to non-admin reads and excludes it from every
+    /// aggregate until <see cref="Restore"/>. An already-hidden rating is a
+    /// caller error (mapped to 409), never a silent no-op.
+    /// </summary>
+    public void Hide(UserId actorUserId, string reason, DateTime utcNow)
+    {
+        if (IsHidden)
+            throw new DomainException("The rating is already hidden.");
+        if (actorUserId == UserId.Empty)
+            throw new DomainException("Rating moderator is required.");
+        if (utcNow.Kind != DateTimeKind.Utc)
+            throw new DomainException("Rating timestamps must be UTC.");
+
+        string normalizedReason = NormalizeModerationReason(reason);
+
+        ModerationState = RatingModerationState.Hidden;
+        HiddenByUserId = actorUserId;
+        HiddenOnUtc = utcNow;
+        HideReason = normalizedReason;
+    }
+
+    /// <summary>
+    /// F7 restore. Returns the rating to every non-admin read and aggregate;
+    /// the reason is validated here and retained only in the append-only
+    /// moderation action record.
+    /// </summary>
+    public void Restore(UserId actorUserId, string reason, DateTime utcNow)
+    {
+        if (!IsHidden)
+            throw new DomainException("The rating is already visible.");
+        if (actorUserId == UserId.Empty)
+            throw new DomainException("Rating moderator is required.");
+        if (utcNow.Kind != DateTimeKind.Utc)
+            throw new DomainException("Rating timestamps must be UTC.");
+
+        _ = NormalizeModerationReason(reason);
+
+        ModerationState = RatingModerationState.Visible;
+        HiddenByUserId = null;
+        HiddenOnUtc = null;
+        HideReason = null;
+    }
+
+    private static string NormalizeModerationReason(string reason)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+            throw new DomainException("A moderation reason is required.");
+
+        string normalized = reason.Trim();
+        if (normalized.Length > MaximumModerationReasonLength)
+            throw new DomainException(
+                $"Moderation reason cannot exceed {MaximumModerationReasonLength} characters.");
+
+        return normalized;
     }
 
     private static int ValidateStars(int stars)

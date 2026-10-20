@@ -12,6 +12,7 @@ public interface ICaregiversDbContext
 {
     DbSet<Caregiver> Caregivers { get; }
     DbSet<CaregiverRating> CaregiverRatings { get; }
+    DbSet<CaregiverRatingModerationAction> RatingModerationActions { get; }
     DbSet<Service> Services { get; }
     DbSet<Language> Languages { get; }
     DbSet<Bank> Banks { get; }

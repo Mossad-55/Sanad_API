@@ -48,8 +48,9 @@ instances/beds, and resident clinical data.
 
 `GET /api/v1/family/care-home-ratings/top-10` requires a Family account. It
 returns up to ten rated Care homes that also meet the public discovery
-eligibility rules. Unrated and currently ineligible facilities are omitted.
-Ordering uses the unrounded average descending, review count descending, then
+eligibility rules. Unrated and currently ineligible facilities are omitted, and
+a rating hidden by an admin never contributes to the ranking. Ordering uses the
+unrounded average descending, review count descending, then
 Care-home ID ascending. The returned `averageRating` is rounded to two decimal
 places; each item contains `careHomeId`, bilingual names, `averageRating`, and
 `reviewsCount`.
@@ -60,14 +61,28 @@ The caller must own or belong to the Family on the booking, and the Family
 must have confirmed check-in. Review text is trimmed; blank text becomes null.
 Repeating the request edits the existing booking rating and preserves its
 review count. Validation errors return 400; missing, foreign, or unconfirmed
-bookings return the same ineligible response. No moderation workflow is
-included.
+bookings return the same ineligible response. Editing never changes a rating's
+moderation state: a re-rated hidden rating stays hidden.
+
+## Rating moderation and the owner ratings page
+
+Ratings are moderated by an admin, not by the facility: a hidden rating is
+excluded from every non-admin read and from every average and count, restoring
+it returns it to both, and moderation never changes the stars or the text. The
+facility owner can read the ratings about their own facility anonymously under
+`GET /api/v1/care-homes/facilities/mine/ratings` and flag one of them with
+`POST /api/v1/care-homes/facilities/mine/ratings/{ratingId}/flag`; the reviewer
+is never identified, hidden ratings leave that page and its aggregates, and at
+most one unresolved flag exists per rating per owner. Owners cannot hide or
+restore a rating. See [Admin ratings moderation](../admin/ratings-moderation.md)
+for the verbs, status codes and error codes.
 
 The Postman requests are in the Care Homes collection under
-`09. Family ratings (HC-TASK-041)`. Examples require the disposable Development
-fixture and are not runtime-verified. Bruno was not selected because focused
-automated tests provide sufficient evidence for this bounded behavior; no
-stateful HTTP evidence is claimed.
+`09. Family ratings (HC-TASK-041)` and the facility-owner ratings folder of the
+[owner collection](../postman/care-homes/Sanad.CareHomes.Owner.postman_collection.json).
+Examples require the disposable Development fixture and are not runtime-verified.
+Stateful localhost HTTP evidence for the moderation lifecycle is provided by
+`tools/Invoke-F7LocalHttpVerification.ps1` and recorded in the F7 worker brief.
 
 ## Verification and fixtures
 

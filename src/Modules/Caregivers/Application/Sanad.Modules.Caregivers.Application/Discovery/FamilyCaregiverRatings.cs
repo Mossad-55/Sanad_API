@@ -132,14 +132,16 @@ public sealed class RateCompletedCaregiverBookingCommandHandler
             _dbContext.CaregiverRatings.Add(rating);
         }
 
-        List<CaregiverRating> ratings = await _dbContext.CaregiverRatings
-            .Where(item => item.CaregiverId == caregiverId)
-            .ToListAsync(cancellationToken);
-        if (isNewRating)
-            ratings.Add(rating!);
+        // F7: the stored aggregate is recomputed over the non-hidden set, so a
+        // hidden rating leaves the average and the count, and a re-rating of a
+        // hidden rating stays hidden and stays out of the aggregate.
+        await CaregiverRatingAggregate.RefreshAsync(
+            _dbContext,
+            caregiver,
+            isNewRating ? rating : null,
+            request.UtcNow,
+            cancellationToken);
 
-        decimal average = ratings.Sum(item => (decimal)item.Stars) / ratings.Count;
-        caregiver.UpdateFamilyRatingSummary(average, ratings.Count, request.UtcNow);
         await _dbContext.SaveChangesAsync(cancellationToken);
 
         return Result<CaregiverRatingResponse>.Success(new CaregiverRatingResponse(
@@ -154,7 +156,6 @@ public sealed class RateCompletedCaregiverBookingCommandHandler
 }
 
 public sealed record GetTopRatedCaregiversQuery : IQuery<IReadOnlyList<TopRatedCaregiverCard>>;
-
 public sealed class GetTopRatedCaregiversQueryHandler
     : IQueryHandler<GetTopRatedCaregiversQuery, IReadOnlyList<TopRatedCaregiverCard>>
 {
@@ -168,3 +169,43 @@ public sealed class GetTopRatedCaregiversQueryHandler
         Result<IReadOnlyList<TopRatedCaregiverCard>>.Success(
             await _dbContext.GetTopRatedCaregiversAsync(cancellationToken));
 }
+
+/// <summary>
+/// F7 single source of truth for the stored caregiver rating aggregate. Every
+/// write path (family re-rating and admin hide/restore) recomputes over the
+/// non-hidden set, and an empty set resets the aggregate to 0 / 0 rather than
+/// dividing by zero. Both the identity-resolved tracked rows and a just-added
+/// (unsaved) rating are considered, so the recompute observes the transition
+/// that is about to be committed.
+/// </summary>
+internal static class CaregiverRatingAggregate
+{
+    public static async Task RefreshAsync(
+        ICaregiversDbContext dbContext,
+        Caregiver caregiver,
+        CaregiverRating? pendingRating,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        List<CaregiverRating> ratings = await dbContext.CaregiverRatings
+            .Where(item => item.CaregiverId == caregiver.Id)
+            .ToListAsync(cancellationToken);
+
+        if (pendingRating is not null &&
+            ratings.All(item => item.Id != pendingRating.Id))
+        {
+            ratings.Add(pendingRating);
+        }
+
+        List<CaregiverRating> visible = ratings
+            .Where(item => item.ModerationState == RatingModerationState.Visible)
+            .ToList();
+
+        decimal average = visible.Count == 0
+            ? 0m
+            : visible.Sum(item => (decimal)item.Stars) / visible.Count;
+
+        caregiver.UpdateFamilyRatingSummary(average, visible.Count, utcNow);
+    }
+}
+

@@ -45,6 +45,10 @@
       "value": ""
     },
     {
+      "key": "careHomeRatingId",
+      "value": ""
+    },
+    {
       "key": "hc023ConflictBookingId",
       "value": ""
     },
@@ -1480,6 +1484,223 @@
             "url": "{{baseUrl}}/api/v1/legal/terms",
             "description": "NormalAccess policy; Normal access token with active CareHomeOwner account-type claim. 200 LegalDocumentResponse or 404 Cms.Legal.NotPublished."
           }
+        }
+      ]
+    },
+    {
+      "name": "10. Facility ratings (F7)",
+      "description": "CareHomeOwnerAccess rating visibility. The owner reads the ratings about their own facility anonymously — hidden ratings leave the page and both aggregates and the reviewer is never identified — and may flag a rating for Sanad support. There is no owner hide, restore or keep. Owner read and flag only; these examples are authored, not runtime evidence.",
+      "item": [
+        {
+          "name": "List my facility ratings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/ratings?page=1&pageSize=25",
+            "description": "CareHomeOwnerAccess. Returns 200 with items, page, pageSize, totalCount (visible ratings counted before paging), averageStars (over the visible ratings, rounded half away from zero to two decimals) and ratingCount. Items are ordered newest-first and carry only ratingId, stars, reviewText, createdOnUtc, flagStatus (None/Open/Resolved for this owner's own latest flag), myFlagReason and myFlaggedOnUtc. Hidden ratings are excluded from both the page and the aggregates. Invalid paging is 400 CareHomes.Rating.InvalidQuery; an owner account with no facility is 404 CareHomes.Facility.NotFound."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('owner ratings read contract', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('page'); pm.expect(body).to.have.property('pageSize'); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('averageStars'); pm.expect(body).to.have.property('ratingCount'); pm.expect(body).to.have.property('items').that.is.an('array'); if (body.items.length > 0) { pm.collectionVariables.set('careHomeRatingId', body.items[0].ratingId); pm.expect(body.items[0]).to.have.property('stars'); pm.expect(body.items[0].flagStatus).to.be.oneOf(['None', 'Open', 'Resolved']); } const raw = JSON.stringify(body); pm.expect(raw).not.to.include('familyId'); pm.expect(raw).not.to.include('userId'); pm.expect(raw).not.to.include('reviewerName'); pm.expect(raw).not.to.include('phoneNumber'); pm.expect(raw).not.to.include('email'); pm.expect(raw).not.to.include('avatarUrl'); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Second page of my facility ratings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/ratings?page=2&pageSize=1",
+            "description": "Paging is echoed exactly: page 2 with pageSize 1 returns the second-newest visible rating. totalCount still counts every visible rating before paging and averageStars/ratingCount stay whole-set, so a single page never changes the aggregates."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('owner ratings paging contract', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.page).to.equal(2); pm.expect(body.pageSize).to.equal(1); pm.expect(body.items.length).to.be.at.most(1); }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Invalid paging is rejected",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/ratings?page=0&pageSize=500",
+            "description": "Paging is validated, never clamped: a page below 1 or a pageSize outside 1–100 returns 400 CareHomes.Rating.InvalidQuery rather than a silently different page."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('invalid paging contract', () => pm.expect([400, 401, 403, 404]).to.include(pm.response.code));",
+                  "if (pm.response.code === 400) pm.expect(pm.response.json().code).to.eql('CareHomes.Rating.InvalidQuery');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Flag a rating",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Review contains personal contact details\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/ratings/{{careHomeRatingId}}/flag",
+            "description": "CareHomeOwnerAccess. Opens one unresolved flag on a rating about the owner's own facility and returns 204 No Content; reason is required and at most 500 characters. An unknown rating, or a rating about another facility, is the same 404 CareHomes.Rating.NotFound; a blank or over-500-character reason is 400 CareHomes.Rating.InvalidReason. No reviewer identity appears in any outcome. Run \"List my facility ratings\" first to populate careHomeRatingId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('owner flag contract', () => pm.expect([204, 400, 401, 403, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repeat flag while open is a no-op",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Repeat while the case is still open\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/ratings/{{careHomeRatingId}}/flag",
+            "description": "Run immediately after \"Flag a rating\": at most one unresolved flag exists per rating per owner, so a repeat while it is still open returns 204 and writes nothing — no duplicate flag row and no history row — and the stored reason stays the first one. Flagging again after the case was resolved opens a fresh case."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('repeat flag is an idempotent 204', () => pm.expect([204, 400, 401, 403, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Blank flag reason is rejected",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"   \"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/ratings/{{careHomeRatingId}}/flag",
+            "description": "A missing, blank or over-500-character reason returns 400 CareHomes.Rating.InvalidReason. The reason is trimmed before it is stored and before this check, so whitespace alone is not a reason."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('blank flag reason contract', () => pm.expect([400, 401, 403, 404]).to.include(pm.response.code));",
+                  "if (pm.response.code === 400) pm.expect(pm.response.json().code).to.eql('CareHomes.Rating.InvalidReason');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Flag an unknown rating",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Unknown rating shape check\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/ratings/00000000-0000-0000-0000-000000000000/flag",
+            "description": "An unknown rating id and a rating about another facility answer the same 404 CareHomes.Rating.NotFound, so the route never confirms whether a foreign rating exists."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('unknown rating flag contract', () => pm.expect([404, 401, 403]).to.include(pm.response.code));",
+                  "if (pm.response.code === 404) pm.expect(pm.response.json().code).to.eql('CareHomes.Rating.NotFound');"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Owner is denied on the admin rating routes",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{careHomeOwnerJwt}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/ratings?page=1&pageSize=25",
+            "description": "CareHomesOperationalAdmin is a Normal-access SuperAdmin (5) or SupportAdmin (7) policy, so the same facility-owner token that reads /facilities/mine/ratings is 403 here. Owners cannot list, hide, keep or restore ratings."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('owner denied on admin ratings', () => pm.expect([401, 403]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
         }
       ]
     }
