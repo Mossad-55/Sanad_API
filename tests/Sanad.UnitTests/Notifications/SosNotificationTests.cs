@@ -38,8 +38,39 @@ public sealed class SosNotificationTests
     [Fact]
     public async Task Handler_PersistsDurableNotifications_AndMakesReplayIdempotent()
     {
-        await using var db = new NotificationsDbContext(new DbContextOptionsBuilder<NotificationsDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options); var handler = new CreateSosAlertNotificationsCommandHandler(db, new FixedRecipients(UserId.New(), UserId.New())); var command = new CreateSosAlertNotificationsCommand(new ElderlyRecipient(UserId.New(), Guid.NewGuid()), Guid.NewGuid(), DateTime.UtcNow);
+        await using var db = new NotificationsDbContext(new DbContextOptionsBuilder<NotificationsDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        // F8: one recipient keeps the Arabic default, one persists English.
+        var arabicRecipient = UserId.New();
+        var englishRecipient = UserId.New();
+        var sosId = Guid.NewGuid();
+        var languages = FixedNotificationLanguageGateway.For(englishRecipient.Value, UiLanguage.English);
+        var handler = new CreateSosAlertNotificationsCommandHandler(db, new FixedRecipients(arabicRecipient, englishRecipient), languages);
+        var command = new CreateSosAlertNotificationsCommand(new ElderlyRecipient(UserId.New(), Guid.NewGuid()), sosId, DateTime.UtcNow);
         var first = await handler.Handle(command, default); var replay = await handler.Handle(command, default); Assert.Equal(2, first.Value); Assert.Equal(0, replay.Value); Assert.Equal(2, await db.Notifications.CountAsync()); Assert.Equal(2, await db.Notifications.Select(x => x.IdempotencyKey).Distinct().CountAsync());
+
+        // F8: both recipients are answered by a single batch lookup, and each
+        // stored row reads in that recipient's own language with the structured
+        // SOS id kept on the destination instead of inside the copy.
+        // One batch per invocation: the first call and the idempotent replay
+        // each resolve copy once, never once per recipient.
+        Assert.Equal(2, languages.LookupCount);
+        Assert.Equal(new[] { arabicRecipient.Value, englishRecipient.Value }.OrderBy(x => x), languages.RequestedIds.OrderBy(x => x));
+        var rows = await db.Notifications.ToListAsync();
+        var arabicRow = Assert.Single(rows, x => x.RecipientUserId == arabicRecipient.Value);
+        var englishRow = Assert.Single(rows, x => x.RecipientUserId == englishRecipient.Value);
+        Assert.Equal(NotificationTextCatalog.SosAlert(UiLanguage.Arabic).Title, arabicRow.Title);
+        Assert.Equal(NotificationTextCatalog.SosAlert(UiLanguage.Arabic).Body, arabicRow.Body);
+        Assert.Equal(NotificationTextCatalog.SosAlert(UiLanguage.English).Title, englishRow.Title);
+        Assert.Equal(NotificationTextCatalog.SosAlert(UiLanguage.English).Body, englishRow.Body);
+        Assert.All(rows, row =>
+        {
+            Assert.Equal("ElderlySos", row.Category);
+            Assert.Equal("SosCreated", row.Type);
+            Assert.Equal("ElderlySos", row.DestinationEntityKind);
+            Assert.Equal(sosId, row.DestinationEntityId);
+            Assert.DoesNotContain(sosId.ToString(), row.Title + row.Body, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(sosId.ToString("N"), row.Title + row.Body, StringComparison.OrdinalIgnoreCase);
+        });
     }
 
     private static Booking ActiveBooking(FamilyId f, UserId o, ElderlyId e, CaregiverId c) { var b = PendingBooking(f, o, e, c); var n = DateTime.UtcNow; b.MarkAsPaid(Guid.NewGuid().ToString(), "tx", n); b.AcceptByCaregiver(n.AddMinutes(1)); return b; }

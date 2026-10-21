@@ -87,6 +87,12 @@ body: { "body": "We are looking into this." }     -> 200 SupportTicketReplyDto
   swallowed: it never fails the request and never removes the reply, which the
   owner still reads through `GET /api/v1/support/tickets/{id}`. Nothing is ever
   reported as delivered when delivery could not be attempted.
+- The in-app notification stores the administrator-authored body **byte for
+  byte** — the text is never reworded, translated, or trimmed by the API — and
+  only its title is localized for the ticket owner's persisted UI language
+  (`رد الدعم` for Arabic, `Support reply` for English; Arabic is the default for
+  an owner with no persisted language). The category/type
+  (`Support`/`SupportReply`) and the `SupportTicket` destination stay unchanged.
 
 ## Errors
 

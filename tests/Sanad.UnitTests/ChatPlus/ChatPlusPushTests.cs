@@ -195,7 +195,9 @@ public sealed class ChatPlusPushTests
         Guid conversationId = Guid.CreateVersion7();
         Guid messageId = Guid.CreateVersion7();
 
-        var producer = new CreateChatMessageNotificationCommandHandler(notifications);
+        var producer = new CreateChatMessageNotificationCommandHandler(
+            notifications,
+            Sanad.UnitTests.Notifications.FixedNotificationLanguageGateway.ArabicDefault);
         Sanad.BuildingBlocks.Application.Results.Result<Guid> created = await producer.Handle(
             new CreateChatMessageNotificationCommand(
                 recipient.Id.Value, conversationId, messageId, Now),

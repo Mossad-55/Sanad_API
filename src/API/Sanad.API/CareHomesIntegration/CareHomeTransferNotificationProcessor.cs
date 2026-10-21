@@ -60,15 +60,12 @@ public sealed class CareHomeTransferNotificationProcessor(
                 if (recipient is null)
                     throw new InvalidOperationException("The booking Family recipient is unavailable.");
 
-                string from = await ResourceLabelAsync(careHomes, transfer.FromRoomId, transfer.FromBedId, ct);
-                string to = await ResourceLabelAsync(careHomes, transfer.ToRoomId, transfer.ToBedId, ct);
+                (string Arabic, string English) from = await ResourceLabelsAsync(careHomes, transfer.FromRoomId, transfer.FromBedId, ct);
+                (string Arabic, string English) to = await ResourceLabelsAsync(careHomes, transfer.ToRoomId, transfer.ToBedId, ct);
                 bool arabic = recipient.UiLanguage == UiLanguage.Arabic;
-                const string titleAr = "تم تحديث تخصيص الغرفة";
-                const string titleEn = "Care-home room assignment updated";
-                string bodyAr = $"سيتغير تخصيص إقامتك من {from} إلى {to} بتاريخ {transfer.EffectiveDate:yyyy-MM-dd}. رقم الحجز: {booking.Id}.";
-                string bodyEn = $"Your care-home stay assignment changes from {from} to {to} on {transfer.EffectiveDate:yyyy-MM-dd}. Booking: {booking.Id}.";
-                string title = arabic ? titleAr : titleEn;
-                string body = arabic ? bodyAr : bodyEn;
+                var copy = Copy(from, to, transfer.EffectiveDate);
+                string title = arabic ? copy.TitleAr : copy.TitleEn;
+                string body = arabic ? copy.BodyAr : copy.BodyEn;
                 string prefix = $"care-home-transfer:{transfer.Id:N}:{booking.FamilyUserId.Value:N}";
                 var inAppKey = prefix + ":in-app";
                 if (!await notifications.Notifications.AnyAsync(x => x.IdempotencyKey == inAppKey, ct))
@@ -83,7 +80,8 @@ public sealed class CareHomeTransferNotificationProcessor(
                 var emailKey = prefix + ":email";
                 if (!await notifications.EmailOutboxMessages.AnyAsync(x => x.IdempotencyKey == emailKey, ct))
                 {
-                    var email = EmailTemplateCatalog.RenderBilingual(titleAr, titleEn, titleAr, titleEn, bodyAr, bodyEn);
+                    var email = EmailTemplateCatalog.RenderBilingual(copy.TitleAr, copy.TitleEn,
+                        copy.TitleAr, copy.TitleEn, copy.BodyAr, copy.BodyEn);
                     notifications.EmailOutboxMessages.Add(EmailOutboxMessage.Create(recipient.Email.Value,
                         email.Subject, email.PlainTextBody, email.HtmlBody, emailKey, now));
                     await SaveIdempotentlyAsync(notifications, ct);
@@ -103,13 +101,29 @@ public sealed class CareHomeTransferNotificationProcessor(
         }
     }
 
-    private static async Task<string> ResourceLabelAsync(CareHomesDbContext db, Guid? roomId, Guid? bedId, CancellationToken ct)
+    /// <summary>
+    /// F8 copy for one transfer: the labelled move in both languages with its
+    /// effective date, with the booking kept on the structured destination
+    /// instead of being repeated as a raw identifier inside the text.
+    /// </summary>
+    public static (string TitleAr, string TitleEn, string BodyAr, string BodyEn) Copy(
+        (string Arabic, string English) from, (string Arabic, string English) to, DateOnly effectiveDate) =>
+        ("تم تحديث تخصيص الغرفة",
+            "Care-home room assignment updated",
+            $"سيتغير تخصيص إقامتك من {from.Arabic} إلى {to.Arabic} بتاريخ {effectiveDate:yyyy-MM-dd}.",
+            $"Your care-home stay assignment changes from {from.English} to {to.English} on {effectiveDate:yyyy-MM-dd}.");
+
+    /// <summary>
+    /// F8: the labelled accommodation of a transfer segment, in both
+    /// languages, so an Arabic recipient reads Arabic room/bed labels.
+    /// </summary>
+    public static async Task<(string Arabic, string English)> ResourceLabelsAsync(CareHomesDbContext db, Guid? roomId, Guid? bedId, CancellationToken ct)
     {
-        if (roomId is null) return "unassigned accommodation";
+        if (roomId is null) return ("غير محدد", "unassigned");
         var room = await db.Rooms.AsNoTracking().SingleAsync(x => x.Id == roomId, ct);
-        if (bedId is not Guid id) return $"room {room.RoomNumber}";
+        if (bedId is not Guid id) return ($"غرفة {room.RoomNumber}", $"room {room.RoomNumber}");
         var bed = await db.Beds.AsNoTracking().SingleAsync(x => x.Id == id, ct);
-        return $"room {room.RoomNumber}, bed {bed.Label}";
+        return ($"غرفة {room.RoomNumber}، سرير {bed.Label}", $"room {room.RoomNumber}, bed {bed.Label}");
     }
 
     private static async Task SaveIdempotentlyAsync(NotificationsDbContext db, CancellationToken ct)

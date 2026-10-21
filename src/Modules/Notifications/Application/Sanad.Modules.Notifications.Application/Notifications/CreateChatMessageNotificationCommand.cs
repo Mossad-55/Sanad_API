@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.Modules.Notifications.Application.Abstractions.Data;
+using Sanad.Modules.Notifications.Application.Abstractions.Recipients;
 using Sanad.Modules.Notifications.Domain.Notifications;
 
 namespace Sanad.Modules.Notifications.Application.Notifications;
@@ -11,8 +12,9 @@ namespace Sanad.Modules.Notifications.Application.Notifications;
 /// Lane B — new-message in-app alert for chat, produced after a send
 /// commits. Frozen contract: ids only. The command carries the conversation
 /// id and the message id and never any message text, and the row it writes
-/// repeats those ids in the body while the title stays a fixed phrase — no
-/// chat content can reach the inbox through this seam.
+/// repeats those ids in the structured destination and the idempotency key
+/// while its localized copy stays a generic phrase — no chat content can
+/// reach the inbox through this seam, in either language (F8).
 /// Idempotency: <c>chat-message:{messageId:N}:{recipientId:N}</c> is unique
 /// per (message, recipient), so each recipient is alerted at most once per
 /// message even under a concurrent duplicate call; a repeat for a key that
@@ -35,7 +37,9 @@ public sealed class CreateChatMessageNotificationCommandValidator
     }
 }
 
-public sealed class CreateChatMessageNotificationCommandHandler(INotificationsDbContext db)
+public sealed class CreateChatMessageNotificationCommandHandler(
+    INotificationsDbContext db,
+    INotificationLanguageGateway languages)
     : ICommandHandler<CreateChatMessageNotificationCommand, Guid>
 {
     public async Task<Result<Guid>> Handle(
@@ -56,12 +60,19 @@ public sealed class CreateChatMessageNotificationCommandHandler(INotificationsDb
             return committedId.Value;
         }
 
+        // F8: the recipient's own persisted language decides the copy, and the
+        // copy is generic - the conversation and message ids stay on the
+        // structured destination and on the idempotency key above.
+        var recipientLanguages = await languages.GetUiLanguagesAsync([r.RecipientUserId], ct);
+        NotificationCopy copy = NotificationTextCatalog.ChatNewMessage(
+            NotificationTextCatalog.ResolveLanguage(recipientLanguages, r.RecipientUserId));
+
         var notification = Notification.Create(
             r.RecipientUserId,
             "Chat",
             "NewMessage",
-            "New chat message",
-            $"Conversation: {r.ConversationId}. Message: {r.MessageId}.",
+            copy.Title,
+            copy.Body,
             "ChatConversation",
             r.ConversationId,
             r.CreatedOnUtc,

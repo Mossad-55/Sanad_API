@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Npgsql;
+using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Domain.Users;
@@ -58,7 +59,7 @@ public sealed class CareHomeLicenseExpiryMonitor(
             var admins = await identity.Users.AsNoTracking()
                 .Where(x => x.Status == UserStatus.Active &&
                     x.Accounts.Any(a => a.AccountType == AccountType.SuperAdmin || a.AccountType == AccountType.SupportAdmin))
-                .Select(x => new { UserId = x.Id.Value, Email = x.Email == null ? null : x.Email.Value })
+                .Select(x => new { UserId = x.Id.Value, Email = x.Email == null ? null : x.Email.Value, x.UiLanguage })
                 .ToListAsync(ct);
 
             DateTime createdOnUtc = DateTime.UtcNow;
@@ -66,14 +67,20 @@ public sealed class CareHomeLicenseExpiryMonitor(
             foreach (var admin in admins)
             {
                 string baseKey = $"care-home-license-expiry:{currentDate:yyyy-MM-dd}:{facility.FacilityId:N}:{admin.UserId:N}";
-                string bodyAr = $"انتهت صلاحية ترخيص التشغيل لدار الرعاية {facility.FacilityId} ويحتاج إلى مراجعة.";
-                string bodyEn = $"Care home {facility.FacilityId} has an expired operating license and requires review.";
-                string body = bodyEn;
+                // F8: the admin reads the alert in their own persisted language,
+                // and the facility stays on the structured destination instead
+                // of being repeated as a raw identifier inside the text.
+                bool arabic = admin.UiLanguage == UiLanguage.Arabic;
+                string bodyAr = "انتهت صلاحية ترخيص التشغيل لدار رعاية ويحتاج إلى مراجعة.";
+                string bodyEn = "A care home has an expired operating license and requires review.";
+                string body = arabic ? bodyAr : bodyEn;
+                string titleAr = "انتهت صلاحية ترخيص دار الرعاية";
+                string title = arabic ? titleAr : "Care-home license expired";
                 string inAppKey = baseKey + ":in-app";
                 if (!await notifications.Notifications.AnyAsync(x => x.IdempotencyKey == inAppKey, ct))
                 {
                     var notification = Notification.Create(admin.UserId, "CareHomes", "LicenseExpired",
-                        "Care-home license expired", body, "CareHome", facility.FacilityId, createdOnUtc, inAppKey);
+                        title, body, "CareHome", facility.FacilityId, createdOnUtc, inAppKey);
                     notifications.Notifications.Add(notification);
                     try { await notifications.SaveChangesAsync(ct); }
                     catch (DbUpdateException ex) when (IsUniqueViolation(ex))
@@ -85,8 +92,8 @@ public sealed class CareHomeLicenseExpiryMonitor(
                     string emailKey = baseKey + ":email";
                     if (!await notifications.EmailOutboxMessages.AnyAsync(x => x.IdempotencyKey == emailKey, ct))
                     {
-                        var emailCopy = EmailTemplateCatalog.RenderBilingual("انتهت صلاحية ترخيص دار الرعاية",
-                            "Care-home operating license expired", "انتهت صلاحية ترخيص دار الرعاية",
+                        var emailCopy = EmailTemplateCatalog.RenderBilingual(titleAr,
+                            "Care-home operating license expired", titleAr,
                             "Care-home operating license expired", bodyAr, bodyEn);
                         var email = EmailOutboxMessage.Create(admin.Email, emailCopy.Subject,
                             emailCopy.PlainTextBody, emailCopy.HtmlBody, emailKey, createdOnUtc);

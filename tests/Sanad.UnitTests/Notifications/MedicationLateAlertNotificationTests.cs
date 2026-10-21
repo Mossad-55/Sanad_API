@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Notifications.Application.Abstractions.Recipients;
 using Sanad.Modules.Notifications.Application.Notifications;
@@ -16,7 +17,9 @@ public sealed class MedicationLateAlertNotificationTests
         await using var db = new NotificationsDbContext(new DbContextOptionsBuilder<NotificationsDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         var recipient = UserId.New();
-        var handler = new CreateMedicationLateAlertNotificationsCommandHandler(db, new Recipients(recipient));
+        // F8: the copy follows the recipient's persisted language, read in one batch.
+        var languages = FixedNotificationLanguageGateway.For(recipient.Value, UiLanguage.English);
+        var handler = new CreateMedicationLateAlertNotificationsCommandHandler(db, new Recipients(recipient), languages);
         var medication = Guid.NewGuid();
         var elderly = new ElderlyRecipient(UserId.New(), Guid.NewGuid());
         var request = new CreateMedicationLateAlertNotificationsCommand(elderly, medication,
@@ -31,6 +34,20 @@ public sealed class MedicationLateAlertNotificationTests
         Assert.Equal(recipient.Value, notification.RecipientUserId);
         Assert.Equal("MedicationReminders", notification.Category);
         Assert.Equal("MedicationDoseMissed", notification.Type);
+
+        // F8: English recipient reads English copy in one batch lookup, the
+        // structured destination keeps the medication id, and the generated
+        // copy never repeats an identifier.
+        // One batch per invocation: the first call and the idempotent replay
+        // each resolve copy once, never once per recipient.
+        Assert.Equal(2, languages.LookupCount);
+        Assert.Equal([recipient.Value], languages.RequestedIds);
+        Assert.Equal(NotificationTextCatalog.MedicationDoseMissed(UiLanguage.English).Title, notification.Title);
+        Assert.Equal(NotificationTextCatalog.MedicationDoseMissed(UiLanguage.English).Body, notification.Body);
+        Assert.Equal("Medication", notification.DestinationEntityKind);
+        Assert.Equal(medication, notification.DestinationEntityId);
+        Assert.DoesNotContain(medication.ToString(), notification.Title + notification.Body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(medication.ToString("N"), notification.Title + notification.Body, StringComparison.OrdinalIgnoreCase);
     }
 
     private sealed class Recipients(UserId recipient) : INotificationRecipientGateway

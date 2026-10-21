@@ -57,6 +57,8 @@ using Sanad.Modules.Identity.Application.Users.Admin;
 using Microsoft.Extensions.Options;
 using Sanad.Modules.Notifications.Application.Abstractions.Data;
 using Sanad.Modules.Notifications.Domain.Notifications;
+using Sanad.BuildingBlocks.Domain.Enums;
+using Sanad.Modules.Notifications.Application.Notifications;
 using Sanad.Modules.Families.Infrastructure.Payments;
 
 namespace Sanad.API;
@@ -650,6 +652,7 @@ public static class DependencyInjection
             MedicalCaregiverGateway>();
 
         services.AddScoped<INotificationRecipientGateway, FamilyNotificationRecipientGateway>();
+        services.AddScoped<INotificationLanguageGateway, NotificationLanguageGateway>();
         services.AddScoped<Sanad.Modules.Families.Application.Abstractions.Sos.ISosNotificationGateway, SosNotificationGateway>();
 
         services.AddScoped<
@@ -755,18 +758,25 @@ internal sealed class AdminUserSeedProtection(IOptions<AdminSeedOptions> options
 
 internal sealed class AdminUserStatusNoticePublisher(
     INotificationsDbContext db,
+    INotificationLanguageGateway languages,
     ILogger<AdminUserStatusNoticePublisher> logger) : IAdminUserStatusNoticePublisher
 {
     public async Task PublishAsync(AdminUserStatusNotice notice, CancellationToken cancellationToken)
     {
         try
         {
-            string title = notice.EventType == "PasswordReset" ? "Your account password was reset" : "Account status changed";
-            string message = notice.EventType == "PasswordReset" ? "Your account password was reset by an administrator. Contact support if you did not expect this." : $"Your account status is now {notice.Status}.";
+            // F8: the account owner's persisted language decides the in-app
+            // copy. The email keeps the English fields it has always carried -
+            // its subject, body and idempotency key are unchanged.
+            UiLanguage language = NotificationTextCatalog.ResolveLanguage(
+                await languages.GetUiLanguagesAsync([notice.UserId.Value], cancellationToken),
+                notice.UserId.Value);
+            NotificationCopy inApp = Copy(language, notice);
+            NotificationCopy email = Copy(UiLanguage.English, notice);
             string notificationType = notice.EventType == "PasswordReset" ? "AdminUserPasswordReset" : $"AdminUser{notice.Status}";
-            db.Notifications.Add(Notification.Create(notice.UserId.Value, "Identity", notificationType, title, message, "IdentityUser", notice.UserId.Value, notice.CreatedOnUtc));
+            db.Notifications.Add(Notification.Create(notice.UserId.Value, "Identity", notificationType, inApp.Title, inApp.Body, "IdentityUser", notice.UserId.Value, notice.CreatedOnUtc));
             if (!string.IsNullOrWhiteSpace(notice.Email))
-                db.EmailOutboxMessages.Add(EmailOutboxMessage.Create(notice.Email!, title, message, $"admin-user-{notice.EventType.ToLowerInvariant()}:{notice.UserId.Value:N}:{notice.Status}:{notice.CreatedOnUtc.Ticks}", notice.CreatedOnUtc));
+                db.EmailOutboxMessages.Add(EmailOutboxMessage.Create(notice.Email!, email.Title, email.Body, $"admin-user-{notice.EventType.ToLowerInvariant()}:{notice.UserId.Value:N}:{notice.Status}:{notice.CreatedOnUtc.Ticks}", notice.CreatedOnUtc));
             await db.SaveChangesAsync(cancellationToken);
         }
         catch (Exception ex)
@@ -774,6 +784,11 @@ internal sealed class AdminUserStatusNoticePublisher(
             logger.LogWarning(ex, "Could not enqueue the status-change notice for admin-managed user {UserId}.", notice.UserId.Value);
         }
     }
+
+    private static NotificationCopy Copy(UiLanguage language, AdminUserStatusNotice notice) =>
+        notice.EventType == "PasswordReset"
+            ? NotificationTextCatalog.AdminUserPasswordReset(language)
+            : NotificationTextCatalog.AdminUserStatus(language, notice.Status.ToString());
 }
 
 /// <summary>

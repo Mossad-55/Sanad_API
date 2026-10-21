@@ -52,10 +52,10 @@ there is no physical purge contract in this slice.
 {
   "items": [{
     "id": "018f0000-0000-7000-8000-000000000001",
-    "category": "check-in",
-    "type": "elderly-not-okay",
-    "title": "Check-in needs attention",
-    "body": "An elderly check-in was marked not okay.",
+    "category": "ElderlyCheckIn",
+    "type": "NegativeCheckIn",
+    "title": "Daily check-in alert",
+    "body": "An elderly family member reported that they are not feeling well today.",
     "destinationEntityKind": "Elderly",
     "destinationEntityId": "018f0000-0000-7000-8000-000000000002",
     "createdOnUtc": "2026-09-27T08:00:00Z",
@@ -69,6 +69,38 @@ there is no physical purge contract in this slice.
 Each item contains `category`, `type`, `title`, `body`, UTC `createdOnUtc`,
 nullable UTC `readOnUtc`, and the typed destination pair
 `destinationEntityKind` + `destinationEntityId`.
+
+## Localized copy without identifiers
+
+`title` and `body` are server-generated display copy. They are chosen from the
+recipient's persisted UI language (`UiLanguage`; Arabic = `1`, English = `2`). A
+recipient with no persisted language, or with a value the server does not
+recognize, keeps the Arabic default. One recipient's language never changes
+another recipient's copy: a fan-out to several recipients reads every
+recipient's language in a single batch lookup and then stores each row in that
+recipient's own language.
+
+The copy covers the chat new-message alert, the negative daily check-in alert,
+help requests, medication-late alerts, SOS alerts, the support-reply alert
+title, and the admin account-status/password notices. Care-home booking, review,
+transfer, and license notices keep their existing bilingual generated copy.
+
+Generated copy never repeats a raw identifier. Conversation, message, ticket,
+request, medication, SOS, elderly, and facility ids reach the client through the
+structured destination pair (`destinationEntityKind` + `destinationEntityId`)
+and, for push, through the payload data — never through `title` or `body`.
+Records that are already stored are not rewritten.
+
+Two further rules hold in generated copy:
+
+- The chat alert is generic in both languages. Message text, the conversation
+  id, and the message id never appear in its title or body.
+- Care-home accommodation labels (room and bed, for example `غرفة 101، سرير A`
+  or `room 101, bed A`) and effective dates are legitimate content and stay.
+  Arabic labels are written in Arabic.
+
+Human-authored text is never rewritten. A support reply stores the
+administrator-authored body byte for byte; only its title is localized.
 
 ## Unread count
 
@@ -162,7 +194,8 @@ switch immediately before sending. The current mapping is:
 
 Payload data contains notification/entity IDs, entity kind, and the deep link; it
 does not include message text. Push title/body use the in-app notification's
-own title/body. Likes, favorites, comments, money/payout events, and OTP are not
+own title/body, so they follow the same per-recipient localization as the inbox
+row. Likes, favorites, comments, money/payout events, and OTP are not
 pushed by this policy. Chat produces its in-app row through the durable Chat
 Plus outbox/dispatcher (staged in the Chat transaction, delivered after commit
 with bounded retries) — the mapping above applies when that seam creates the row.

@@ -102,20 +102,13 @@ public sealed class CareHomeReviewNotificationProcessor(
         return rows.Select(x => new ReviewRecipient(x.Id.Value, x.Email == null ? null : x.Email.Value, x.UiLanguage)).ToList();
     }
 
-    private static async Task WriteRecipientAsync(NotificationsDbContext db, Guid userId, string? email,
-        UiLanguage language, Guid facilityId, string eventKey, string action, DateTime occurredOnUtc, CancellationToken ct)
+    /// <summary>
+    /// F8 copy for one review action: a readable status sentence in both
+    /// languages, with the facility kept on the structured destination instead
+    /// of being repeated as a raw identifier inside the text.
+    /// </summary>
+    public static (string TitleAr, string TitleEn, string BodyAr, string BodyEn) Copy(string action)
     {
-        bool arabic = language == UiLanguage.Arabic;
-        string title = action switch
-        {
-            "Submitted" => arabic ? "تم إرسال طلب دار الرعاية" : "Care-home application submitted",
-            nameof(CareHomeReviewAction.CorrectionsRequested) => arabic ? "مطلوب استكمال بيانات دار الرعاية" : "Care-home corrections requested",
-            nameof(CareHomeReviewAction.Approved) => arabic ? "تمت الموافقة على دار الرعاية" : "Care-home application approved",
-            nameof(CareHomeReviewAction.Rejected) => arabic ? "تم رفض طلب دار الرعاية" : "Care-home application rejected",
-            nameof(CareHomeReviewAction.Suspended) => arabic ? "تم إيقاف دار الرعاية" : "Care home suspended",
-            nameof(CareHomeReviewAction.Reactivated) => arabic ? "تمت إعادة تفعيل دار الرعاية" : "Care home reactivated",
-            _ => arabic ? "تم تحديث حالة دار الرعاية" : "Care-home status updated"
-        };
         (string TitleAr, string TitleEn) titles = action switch
         {
             "Submitted" => ("تم إرسال طلب دار الرعاية", "Care-home application submitted"),
@@ -126,16 +119,23 @@ public sealed class CareHomeReviewNotificationProcessor(
             nameof(CareHomeReviewAction.Reactivated) => ("تمت إعادة تفعيل دار الرعاية", "Care home reactivated"),
             _ => ("تم تحديث حالة دار الرعاية", "Care-home status updated")
         };
-        string bodyAr = $"المنشأة: {facilityId}. الحالة: {titles.TitleAr}.";
-        string bodyEn = $"Facility: {facilityId}. Status: {titles.TitleEn}.";
-        string body = arabic ? bodyAr : bodyEn;
+        return (titles.TitleAr, titles.TitleEn, $"الحالة: {titles.TitleAr}.", $"Status: {titles.TitleEn}.");
+    }
+
+    private static async Task WriteRecipientAsync(NotificationsDbContext db, Guid userId, string? email,
+        UiLanguage language, Guid facilityId, string eventKey, string action, DateTime occurredOnUtc, CancellationToken ct)
+    {
+        var copy = Copy(action);
+        bool arabic = language == UiLanguage.Arabic;
+        string title = arabic ? copy.TitleAr : copy.TitleEn;
+        string body = arabic ? copy.BodyAr : copy.BodyEn;
         string prefix = $"care-home-onboarding:{eventKey}:{userId:N}";
         await SaveNotificationAsync(db, userId, title, body, facilityId, prefix + ":in-app", occurredOnUtc, ct);
         if (string.IsNullOrWhiteSpace(email)) return;
         string key = prefix + ":email";
         if (await db.EmailOutboxMessages.AnyAsync(x => x.IdempotencyKey == key, ct)) return;
-        var emailCopy = EmailTemplateCatalog.RenderBilingual(titles.TitleAr, titles.TitleEn,
-            titles.TitleAr, titles.TitleEn, bodyAr, bodyEn);
+        var emailCopy = EmailTemplateCatalog.RenderBilingual(copy.TitleAr, copy.TitleEn,
+            copy.TitleAr, copy.TitleEn, copy.BodyAr, copy.BodyEn);
         var message = EmailOutboxMessage.Create(email, emailCopy.Subject, emailCopy.PlainTextBody,
             emailCopy.HtmlBody, key, occurredOnUtc);
         db.EmailOutboxMessages.Add(message);

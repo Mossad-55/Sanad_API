@@ -1,6 +1,7 @@
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Chat.Application.Messages;
 using Sanad.Modules.Chat.Domain.Conversations;
@@ -9,15 +10,17 @@ using Sanad.Modules.Chat.Infrastructure.Persistence;
 using Sanad.Modules.Notifications.Application.Notifications;
 using Sanad.Modules.Notifications.Domain.Notifications;
 using Sanad.Modules.Notifications.Infrastructure.Persistence;
+using Sanad.UnitTests.Notifications;
 
 namespace Sanad.UnitTests.Chat;
 
 /// <summary>
 /// Lane B item 4 — the new-message in-app alert. Pins the seam contract:
 /// one ids-only row for the non-sender participant, the conversation as the
-/// destination, the per-(message, recipient) idempotency key, no message
-/// text anywhere in the row, no producer call and no second row on an exact
-/// replay, and a producer failure that surfaces instead of being swallowed.
+/// destination, the per-(message, recipient) idempotency key, a generic
+/// localized copy carrying no message text and no raw id (F8), no producer
+/// call and no second row on an exact replay, and a producer failure that
+/// surfaces instead of being swallowed.
 /// </summary>
 public sealed class ChatMessageNotificationTests
 {
@@ -70,11 +73,16 @@ public sealed class ChatMessageNotificationTests
             row.IdempotencyKey);
         Assert.Equal(DateTimeKind.Utc, row.CreatedOnUtc.Kind);
 
-        // Ids only: the body repeats the conversation and message ids, and
-        // neither title nor body carries a single character of the text.
-        Assert.Equal("New chat message", row.Title);
-        Assert.Contains(conversation.Id.Value.ToString(), row.Body, StringComparison.Ordinal);
-        Assert.Contains(stored.Id.Value.ToString(), row.Body, StringComparison.Ordinal);
+        // Ids only: the copy is a generic phrase in the recipient's language
+        // (Arabic here — the persisted-language default), the structured
+        // destination keeps the conversation id, and neither title nor body
+        // carries a raw id or a single character of the text.
+        Assert.Equal(NotificationTextCatalog.ChatNewMessage(UiLanguage.Arabic).Title, row.Title);
+        Assert.Equal(NotificationTextCatalog.ChatNewMessage(UiLanguage.Arabic).Body, row.Body);
+        Assert.DoesNotContain(conversation.Id.Value.ToString(), row.Title + row.Body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(conversation.Id.Value.ToString("N"), row.Title + row.Body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(stored.Id.Value.ToString(), row.Title + row.Body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(stored.Id.Value.ToString("N"), row.Title + row.Body, StringComparison.OrdinalIgnoreCase);
         Assert.DoesNotContain(MessageText, row.Title, StringComparison.Ordinal);
         Assert.DoesNotContain(MessageText, row.Body, StringComparison.Ordinal);
 
@@ -156,10 +164,13 @@ public sealed class ChatMessageNotificationTests
     public async Task Producer_writesTheKeyedRowOnceAndReplaysByIdempotencyKey()
     {
         await using NotificationsDbContext notifications = CreateNotificationsDb();
-        var handler = new CreateChatMessageNotificationCommandHandler(notifications);
         Guid recipient = UserId.New().Value;
         Guid conversationId = Guid.NewGuid();
         Guid messageId = Guid.NewGuid();
+        // F8: the producer localizes from the recipient's persisted language,
+        // read in one lookup for the single recipient of a direct message.
+        var languages = FixedNotificationLanguageGateway.For(recipient, UiLanguage.English);
+        var handler = new CreateChatMessageNotificationCommandHandler(notifications, languages);
         var command = new CreateChatMessageNotificationCommand(
             recipient, conversationId, messageId, DateTime.UtcNow);
 
@@ -179,8 +190,11 @@ public sealed class ChatMessageNotificationTests
         Assert.Equal("NewMessage", row.Type);
         Assert.Equal("ChatConversation", row.DestinationEntityKind);
         Assert.Equal(conversationId, row.DestinationEntityId);
-        Assert.Equal("New chat message", row.Title);
-        Assert.Equal($"Conversation: {conversationId}. Message: {messageId}.", row.Body);
+        Assert.Equal(NotificationTextCatalog.ChatNewMessage(UiLanguage.English).Title, row.Title);
+        Assert.Equal(NotificationTextCatalog.ChatNewMessage(UiLanguage.English).Body, row.Body);
+        Assert.Equal(1, languages.LookupCount);
+        Assert.DoesNotContain(conversationId.ToString(), row.Title + row.Body, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(messageId.ToString(), row.Title + row.Body, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]
@@ -254,7 +268,8 @@ public sealed class ChatMessageNotificationTests
     /// </summary>
     private sealed class NotificationSeamSender(NotificationsDbContext notifications) : ISender
     {
-        private readonly CreateChatMessageNotificationCommandHandler _producer = new(notifications);
+        private readonly CreateChatMessageNotificationCommandHandler _producer =
+            new(notifications, FixedNotificationLanguageGateway.ArabicDefault);
 
         public int ProducerCalls { get; private set; }
 

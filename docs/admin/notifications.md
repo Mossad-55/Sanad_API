@@ -91,6 +91,22 @@ The processor sends HTML and plain text as `multipart/alternative` when an HTML
 snapshot exists. Recipients and email bodies are not exposed by the Admin
 notification inspection routes.
 
+## Generated copy and language
+
+These inspection routes project metadata only, so the recipient-facing `title`
+and `body` of a notification are not exposed here. Those fields are
+server-generated display copy chosen from the recipient's persisted UI language
+(Arabic is the default; English when the recipient persists `2`), and a fan-out
+to several recipients reads every recipient's language in one batch lookup.
+Generated copy never repeats a raw identifier — ids belong to the structured
+destination pair and to the push payload. Stored rows are not rewritten.
+
+The admin notices an administrator triggers — account status change and password
+reset — localize their in-app row the same way. Their account-status email keeps
+the English subject, body, and idempotency key it already carried, so previously
+sent mail and existing outbox rows are unchanged. A support-reply notification
+keeps the administrator-authored body byte for byte and localizes only its title.
+
 ## OpenAPI contract
 
 All four views publish their actual success schemas (`200` page envelopes

@@ -2324,7 +2324,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/support/tickets/{{supportTicketId}}",
-            "description": "Requires Normal JWT. Returns one of the caller's own tickets with its admin replies, oldest first. Another user's ticket id - or an unknown one - returns 404 Identity.Support.NotFound, never data. Run Contact Support first so supportTicketId is captured."
+            "description": "Requires Normal JWT. Returns one of the caller's own tickets with its admin replies, oldest first. Another user's ticket id - or an unknown one - returns 404 Identity.Support.NotFound, never data. Run Contact Support first so supportTicketId is captured. An admin reply also raises an in-app alert whose title is localized to the caller's UI language and whose body is this reply text verbatim."
           },
           "response": [
             {
@@ -2359,7 +2359,7 @@
     },
     {
       "name": "12. Notifications inbox",
-      "description": "Shared authenticated NormalAccess inbox foundation. The recipient is always the authenticated user; restricted-verification tokens receive 403. List/unread/read operations use one-year read-time availability. The negative daily check-in producer now creates idempotent durable alerts; push/email provider, delivery retry policy, physical purge, complete category inventory, and Admin notification inspection remain separate or deferred.",
+      "description": "Shared authenticated NormalAccess inbox foundation. The recipient is always the authenticated user; restricted-verification tokens receive 403. List/unread/read operations use one-year read-time availability. The negative daily check-in producer now creates idempotent durable alerts; title/body are generated copy in the recipient's persisted UI language (Arabic default) and never repeat raw ids. Push/email provider, delivery retry policy, physical purge, complete category inventory, and Admin notification inspection remain separate or deferred.",
       "item": [
         {
           "name": "List notifications",
@@ -2376,7 +2376,7 @@
             },
             "method": "GET",
             "url": "{{baseUrl}}/api/v1/notifications?pageSize=20",
-            "description": "Optional opaque cursor is used as `cursor`. `pageSize` defaults to 20 and is bounded 1–100. Returns newest-first items, nextCursor, and unreadCount; only the caller's notifications created within the last year are available. Each item contains category, type, title, body, createdOnUtc, nullable readOnUtc, and destinationEntityKind + destinationEntityId. 400 for invalid pageSize or Notifications.InvalidCursor; 401 missing/invalid token; 403 restricted token."
+            "description": "Optional opaque cursor is used as `cursor`. `pageSize` defaults to 20 and is bounded 1–100. Returns newest-first items, nextCursor, and unreadCount; only the caller's notifications created within the last year are available. Each item contains category, type, title, body, createdOnUtc, nullable readOnUtc, and destinationEntityKind + destinationEntityId. title/body are generated display copy in the recipient's persisted UI language (Arabic default, English = 2); they never repeat a raw id — the conversation/message/ticket/entity id reaches the client through the destination pair. 400 for invalid pageSize or Notifications.InvalidCursor; 401 missing/invalid token; 403 restricted token."
           },
           "response": [
             {
@@ -2390,7 +2390,7 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"items\": [{\n    \"id\": \"018f0000-0000-7000-8000-000000000001\",\n    \"category\": \"check-in\",\n    \"type\": \"elderly-not-okay\",\n    \"title\": \"Check-in needs attention\",\n    \"body\": \"An elderly check-in was marked not okay.\",\n    \"destinationEntityKind\": \"Elderly\",\n    \"destinationEntityId\": \"018f0000-0000-7000-8000-000000000002\",\n    \"createdOnUtc\": \"2026-09-27T08:00:00Z\",\n    \"readOnUtc\": null\n  }],\n  \"nextCursor\": null,\n  \"unreadCount\": 1\n}"
+              "body": "{\n  \"items\": [{\n    \"id\": \"018f0000-0000-7000-8000-000000000001\",\n    \"category\": \"ElderlyCheckIn\",\n    \"type\": \"NegativeCheckIn\",\n    \"title\": \"Daily check-in alert\",\n    \"body\": \"An elderly family member reported that they are not feeling well today.\",\n    \"destinationEntityKind\": \"Elderly\",\n    \"destinationEntityId\": \"018f0000-0000-7000-8000-000000000002\",\n    \"createdOnUtc\": \"2026-09-27T08:00:00Z\",\n    \"readOnUtc\": null\n  }],\n  \"nextCursor\": null,\n  \"unreadCount\": 1\n}"
             }
           ],
           "event": [
