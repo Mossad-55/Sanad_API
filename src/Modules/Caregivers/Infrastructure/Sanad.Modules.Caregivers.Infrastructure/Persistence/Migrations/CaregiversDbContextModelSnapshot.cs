@@ -439,6 +439,37 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                     b.ToTable("caregiver_rating_moderation_actions", "caregivers");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverReviewNote", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("AuthorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_user_id");
+
+                    b.Property<Guid>("CaregiverId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("caregiver_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("Text")
+                        .IsRequired()
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CaregiverId", "CreatedOnUtc");
+
+                    b.ToTable("caregiver_review_notes", "caregivers");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.Lookups.AcademicDegree", b =>
                 {
                     b.Property<Guid>("Id")
@@ -1246,6 +1277,15 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                     b.HasOne("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverRating", null)
                         .WithMany()
                         .HasForeignKey("RatingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverReviewNote", b =>
+                {
+                    b.HasOne("Sanad.Modules.Caregivers.Domain.Caregivers.Caregiver", null)
+                        .WithMany()
+                        .HasForeignKey("CaregiverId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

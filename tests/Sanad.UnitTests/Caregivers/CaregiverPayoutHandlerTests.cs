@@ -926,6 +926,7 @@ public sealed class CaregiverPayoutHandlerTests
         public DbSet<Caregiver> Caregivers => inner.Caregivers;
         public DbSet<CaregiverRating> CaregiverRatings => inner.CaregiverRatings;
         public DbSet<CaregiverRatingModerationAction> RatingModerationActions => inner.RatingModerationActions;
+        public DbSet<CaregiverReviewNote> ReviewNotes => inner.ReviewNotes;
         public DbSet<Service> Services => inner.Services;
         public DbSet<Language> Languages => inner.Languages;
         public DbSet<Bank> Banks => inner.Banks;
@@ -999,6 +1000,7 @@ public sealed class CaregiverPayoutHandlerTests
         public DbSet<Caregiver> Caregivers => inner.Caregivers;
         public DbSet<CaregiverRating> CaregiverRatings => inner.CaregiverRatings;
         public DbSet<CaregiverRatingModerationAction> RatingModerationActions => inner.RatingModerationActions;
+        public DbSet<CaregiverReviewNote> ReviewNotes => inner.ReviewNotes;
         public DbSet<Service> Services => inner.Services;
         public DbSet<Language> Languages => inner.Languages;
         public DbSet<Bank> Banks => inner.Banks;

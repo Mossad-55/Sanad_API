@@ -127,3 +127,64 @@ Streams the stored scan from private storage (PDF/JPEG/PNG/WebP) as a file downl
 - `404 Storage.File.NotFound` — the stored file is missing.
 
 Certificate metadata (type, expiry, status, review reason) is in the detail response; never construct or share file URLs outside this endpoint. Caregiver self-service onboarding is documented under `docs/app/caregivers/`.
+
+## Review notes (append-only)
+
+Administrative notes about a caregiver, for the reviewing team's own record keeping. Both routes use the same **`CaregiverReviewAdmin`** policy as the rest of this group (Normal SuperAdmin or SupportAdmin; `ContentAdmin` is `403`), and neither route takes a reason, a status or an assignment.
+
+```http
+GET  /api/v1/admin/caregivers/{caregiverId}/notes?page=1&pageSize=20
+POST /api/v1/admin/caregivers/{caregiverId}/notes
+```
+
+### List notes
+
+`GET` returns one caregiver's notes, **newest first** by creation instant and then by note id descending as a stable tiebreak, with `totalCount` covering the caregiver's whole note set:
+
+```json
+{
+  "page": 1,
+  "pageSize": 20,
+  "totalCount": 1,
+  "items": [
+    {
+      "noteId": "guid",
+      "caregiverId": "guid",
+      "text": "Called about the late certificate upload; will re-submit a clear license.",
+      "authorUserId": "guid",
+      "createdOnUtc": "2026-10-21T10:00:00Z"
+    }
+  ]
+}
+```
+
+- Paging follows the house read convention and is **clamped, never rejected**: `page` is raised to 1, `pageSize` is capped at 100 with a floor of 1, and `pageSize` 0 or absent means the default **20**. The normalized values are echoed back.
+- A caregiver that exists but has never been annotated returns `200` with `items: []` and `totalCount: 0`; reading past the last page is an empty page too.
+- The projection carries only `noteId`, `caregiverId`, `text`, `authorUserId` and `createdOnUtc`. No caregiver identity document, phone number, email address, medical fact or caregiver name is ever returned by this route.
+
+### Add a note
+
+```http
+POST /api/v1/admin/caregivers/{caregiverId}/notes
+Content-Type: application/json
+
+{ "text": "Reviewer note…" }
+```
+
+Returns **`201 Created`** with the created note body (`noteId`, `caregiverId`, `text`, `authorUserId`, `createdOnUtc`) so the caller can read back exactly what was stored.
+
+- `text` is required, trimmed, and **1–2000 characters**; the trimmed text is stored verbatim (no masking, no truncation, no markdown). Exactly 2000 characters is accepted, 2001 is not.
+- **Attribution is server-owned.** The author is the authenticated actor's user id and the instant is the server's UTC clock (the same clock the other Caregivers writes use). A client-supplied `authorUserId`, `createdOnUtc` or `noteId` in the body is ignored.
+- **No side effects.** Appending a note changes no caregiver status, certificate, rating, payout or review decision, and emits no notification, email or domain event. It reads nothing beyond the caregiver's existence.
+
+### Append-only guarantee
+
+There is no `PUT`, `PATCH` or `DELETE` route for a note: a stored note's text can never change and a note can never be removed through the API. There is deliberately **no `409` and no `5xx` path reachable from request input** — nothing here is concurrent, mutable or stateful. Note reads and writes are recorded for the caregiver only; they are not caregiver-facing and are not shown on any Family, Care Home or app surface.
+
+### Errors
+
+- `404 Caregivers.ReviewNote.CaregiverNotFound` — no such caregiver. Checked **before** the text, so a bad text never masks a missing caregiver.
+- `400 Caregivers.ReviewNote.InvalidText` — `text` missing, null, empty or whitespace-only, or longer than 2000 characters after trimming.
+- `401` — missing, expired or non-`Normal` token; `403` — authenticated without SuperAdmin/SupportAdmin.
+
+Both codes are mapped locally by the caregiver review controller rather than through the shared problem-details mapper, so a missing caregiver is a real `404`. Responses keep the usual `code` and `traceId` extensions for client keying. A Postman collection with authored examples is at `docs/postman/admins/Sanad.Admin.CaregiverNotes.postman_collection.json`.

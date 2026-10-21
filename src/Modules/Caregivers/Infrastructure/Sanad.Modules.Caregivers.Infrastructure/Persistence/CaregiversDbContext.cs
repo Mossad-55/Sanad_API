@@ -26,6 +26,7 @@ public sealed class CaregiversDbContext :
     public DbSet<Caregiver> Caregivers => Set<Caregiver>();
     public DbSet<CaregiverRating> CaregiverRatings => Set<CaregiverRating>();
     public DbSet<CaregiverRatingModerationAction> RatingModerationActions => Set<CaregiverRatingModerationAction>();
+    public DbSet<CaregiverReviewNote> ReviewNotes => Set<CaregiverReviewNote>();
     public DbSet<Service> Services => Set<Service>();
     public DbSet<Language> Languages => Set<Language>();
     public DbSet<Bank> Banks => Set<Bank>();

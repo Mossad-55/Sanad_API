@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers.Requests;
+using Sanad.API.ProblemDetail;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
@@ -13,6 +15,13 @@ namespace Sanad.API.Controllers;
 public sealed record CaregiverAdminDetailResponse(
     CaregiverProfileResponse Profile,
     CaregiverCancellationSummaryResponse? Cancellations);
+
+/// <summary>
+/// E07 review-note body. There is deliberately no author and no timestamp
+/// member: both are taken from the authenticated request (the actor claim and
+/// the server clock), never from the client.
+/// </summary>
+public sealed record AddCaregiverReviewNoteRequest(string? Text);
 
 [Authorize(Policy = AuthorizationPolicies.CaregiverReviewAdmin)]
 [Route("api/v1/admin/caregivers")]
@@ -247,5 +256,122 @@ public sealed class AdminCaregiversController :
                 cancellationToken);
 
         return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// E07 append-only review notes. One caregiver's administrative notes,
+    /// newest first with the note id as a stable tiebreak; paging is clamped
+    /// (page at least 1, pageSize defaults to 20 and is capped at 100) and the
+    /// count always covers the caregiver's full note set. An unknown caregiver
+    /// is 404 and a caregiver with no notes is an empty page, never an error.
+    /// The projection carries the note text, its author and its creation
+    /// instant and nothing about the caregiver's identity or medical data.
+    /// </summary>
+    [HttpGet("{caregiverId:guid}/notes")]
+    [ProducesResponseType(
+       typeof(AdminCaregiverReviewNotePage),
+       StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetReviewNotes(
+       Guid caregiverId,
+       [FromQuery] int page = 1,
+       [FromQuery] int pageSize = 20,
+       CancellationToken cancellationToken = default) =>
+        ToReviewNoteActionResult(
+            await _sender.Send(
+                new ListAdminCaregiverReviewNotesQuery(
+                    new CaregiverId(caregiverId),
+                    page,
+                    pageSize),
+                cancellationToken));
+
+    /// <summary>
+    /// E07 appends exactly one immutable note and returns 201 with the created
+    /// body so the caller can read back exactly what was stored. The author is
+    /// the authenticated actor and the instant is this server's UTC clock; the
+    /// note text is trimmed and stored verbatim otherwise (no masking, no
+    /// truncation, no markdown). An unknown caregiver is 404, an empty,
+    /// whitespace-only or over-2000-character text is 400. Creating a note
+    /// changes no caregiver state and emits no notification or domain event.
+    /// </summary>
+    [HttpPost("{caregiverId:guid}/notes")]
+    [ProducesResponseType(
+       typeof(AdminCaregiverReviewNoteItem),
+       StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> AddReviewNote(
+       Guid caregiverId,
+       [FromBody] AddCaregiverReviewNoteRequest request,
+       CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId authorUserId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new AddAdminCaregiverReviewNoteCommand(
+                    new CaregiverId(caregiverId),
+                    authorUserId,
+                    request.Text,
+                    DateTime.UtcNow),
+                cancellationToken);
+
+        return result.IsSuccess
+            ? StatusCode(StatusCodes.Status201Created, result.Value)
+            : ToReviewNoteActionResult(result);
+    }
+
+    /// <summary>
+    /// E07 pins its two review-note status codes here instead of editing the
+    /// shared <see cref="ResultProblemDetailsMapper"/> (unknown codes there
+    /// default to 400): a missing caregiver must be a real 404 while a bad text
+    /// stays a 400. The response keeps the mapper's <c>code</c> and
+    /// <c>traceId</c> extensions so a client can key on the code. No 409 and no
+    /// 5xx path is reachable from request input — nothing in this phase is
+    /// concurrent or mutable.
+    /// </summary>
+    private static readonly IReadOnlyDictionary<string, int> ReviewNoteStatusCodesByErrorCode =
+        new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["Caregivers.ReviewNote.CaregiverNotFound"] = StatusCodes.Status404NotFound,
+            ["Caregivers.ReviewNote.InvalidText"] = StatusCodes.Status400BadRequest
+        };
+
+    private IActionResult ToReviewNoteActionResult<T>(Result<T> result)
+    {
+        if (result.IsSuccess)
+        {
+            return Ok(result.Value);
+        }
+
+        ProblemDetails problemDetails =
+            ResultProblemDetailsMapper.Create(result.Error, HttpContext);
+
+        if (ReviewNoteStatusCodesByErrorCode.TryGetValue(
+                result.Error.Code,
+                out int statusCode))
+        {
+            problemDetails.Type = $"https://httpstatuses.com/{statusCode}";
+            problemDetails.Status = statusCode;
+            problemDetails.Title = statusCode switch
+            {
+                StatusCodes.Status404NotFound => "Not Found",
+                _ => "Bad Request"
+            };
+            problemDetails.Detail = statusCode switch
+            {
+                StatusCodes.Status404NotFound =>
+                    "The requested resource was not found.",
+                _ => "The request could not be completed."
+            };
+        }
+
+        return StatusCode(
+            problemDetails.Status ??
+            StatusCodes.Status500InternalServerError,
+            problemDetails);
     }
 }
