@@ -38,6 +38,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Medication lateness CMS and operational evaluation | `docs/admin/elderly-medications.md` |
 | Elderly help-request operations and history | `docs/admin/elderly-help-requests.md` |
 | Elderly SOS operational reads, history, and status | `docs/admin/elderly-sos.md` |
+| Family home CMS (banners, quick links, featured services) | `docs/admin/family-home.md` |
 | Durable notification inspection | `docs/admin/notifications.md` |
 | Bank catalogue | `docs/admin/lookups-banks.md` |
 | Finance platform charges and caregiver payout policy | `docs/admin/finance-platform-charges.md` |

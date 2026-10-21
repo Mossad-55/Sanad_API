@@ -144,6 +144,11 @@
       "key": "libraryImageFile",
       "value": "",
       "description": "Local disposable JPEG/PNG/WebP cover file path for manual multipart create/update."
+    },
+    {
+      "key": "familyHomeSectionId",
+      "value": "",
+      "description": "Family home section UUID for the detail, update, publish, visibility, delete and reorder requests. The manual create request fills it from its test script when it returns 201; otherwise paste an existing section UUID."
     }
   ],
   "item": [
@@ -4513,6 +4518,172 @@
           }
         }
       ]
+    },
+    {
+      "name": "Family home sections (list)",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/v1/admin/family-home/sections",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "description": "Safe read. Paged Admin list of every family home section (drafts included), ordered by displayOrder then creation. Query: status=Draft|Published|Archived (case-insensitive), kind=banners|quick-links|featured-services, search (matches the stored item copy), page (default 1), pageSize (default 20, cap 100). Returns { items, page, pageSize, totalCount } with typed items - never a JSON string. An unknown status token returns 400 Cms.FamilyHome.SectionInvalid and an unknown kind token 400 Cms.FamilyHome.InvalidKind. A listed section whose stored content cannot be read fails the whole list with 400 Cms.FamilyHome.Incomplete instead of reporting an empty section."
+      }
+    },
+    {
+      "name": "Get family home section (detail)",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/admin/family-home/sections/{{familyHomeSectionId}}",
+        "description": "Safe read. Returns id, kind (kebab key), version, status, displayOrder, isVisible, sourceId (the published row a draft twin edits), typed items, createdOnUtc, updatedOnUtc, publishedOnUtc. Unknown id returns 404 Cms.FamilyHome.SectionNotFound; unreadable stored content returns 400 Cms.FamilyHome.Incomplete."
+      }
+    },
+    {
+      "name": "Create family home section draft",
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "if (pm.response.code === 201) {",
+              "  const body = pm.response.json();",
+              "  if (body.id) { pm.environment.set('familyHomeSectionId', body.id); }",
+              "}"
+            ]
+          }
+        }
+      ],
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"kind\": \"banners\",\n  \"items\": [\n    {\n      \"arabicTitle\": \"REPLACE_WITH_ARABIC_TITLE\",\n      \"englishTitle\": \"REPLACE_WITH_ENGLISH_TITLE\",\n      \"arabicBody\": null,\n      \"englishBody\": null,\n      \"imageKey\": \"landing/REPLACE_WITH_UPLOADED_KEY.png\",\n      \"iconKey\": null,\n      \"target\": null,\n      \"serviceId\": null\n    }\n  ],\n  \"displayOrder\": 0,\n  \"isVisible\": true\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/admin/family-home/sections",
+        "description": "STATE-CHANGING. Creates a draft and returns 201 with version 1 and sourceId null. kind accepts the kebab keys banners, quick-links, featured-services (the enum names are accepted case-insensitively; a bare number is refused with 400 Cms.FamilyHome.InvalidKind). Content violations return 400 Cms.FamilyHome.SectionInvalid: bilingual copy must be supplied in both languages or omitted in both, titles/labels max 200, bodies max 4000, keys max 500, at most 10 items, no serviceId outside featured entries, targets are exactly services (no id) or service (one id). imageKey/iconKey must be an existing public key - it never starts with private/, must stay inside the storage root and must exist on disk (upload it through the Landing CMS media route first). Drafts may be empty. Only an approved disposable section should be created."
+      }
+    },
+    {
+      "name": "Update family home section (draft or draft twin)",
+      "request": {
+        "method": "PUT",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    {\n      \"arabicTitle\": \"REPLACE_WITH_ARABIC_TITLE\",\n      \"englishTitle\": \"REPLACE_WITH_ENGLISH_TITLE\",\n      \"arabicBody\": null,\n      \"englishBody\": null,\n      \"imageKey\": \"landing/REPLACE_WITH_UPLOADED_KEY.png\",\n      \"iconKey\": null,\n      \"target\": null,\n      \"serviceId\": null\n    }\n  ],\n  \"displayOrder\": 1,\n  \"isVisible\": true,\n  \"expectedVersion\": 0\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/admin/family-home/sections/{{familyHomeSectionId}}",
+        "description": "STATE-CHANGING. Returns 200. Editing a draft updates it in place; editing a published row creates or updates its draft twin (sourceId = the published id) and leaves the published row untouched until it is published. expectedVersion 0 means no precondition (the row's current version is used), a positive value must equal the current version of the row being edited - otherwise 409 Cms.FamilyHome.StaleVersion - and a negative value is 400 Cms.FamilyHome.SectionInvalid. Media keys are validated like create. Unknown id 404 Cms.FamilyHome.SectionNotFound; an archived row 409 Cms.FamilyHome.ImmutableHistory."
+      }
+    },
+    {
+      "name": "Publish family home section",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"expectedVersion\": 0\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/admin/family-home/sections/{{familyHomeSectionId}}/publish",
+        "description": "STATE-CHANGING. Publishes the draft (200), appends an immutable Published history row and archives previously published sections of the same kind. Validates what is stored as well as the request: a banner without an image key, a quick link without a target, a featured entry without a catalog id or an empty section returns 400 Cms.FamilyHome.Incomplete, and referenced catalog services must exist and be active at publication. A stored imageKey/iconKey that is no longer a valid public key (missing file, private/ prefix, path outside the storage root) returns 400 Cms.FamilyHome.SectionInvalid. Publishing an already published row is 400 Cms.FamilyHome.SectionInvalid, an archived row 409 Cms.FamilyHome.ImmutableHistory, an unknown id 404 Cms.FamilyHome.SectionNotFound."
+      }
+    },
+    {
+      "name": "Set family home section visibility",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"value\": false,\n  \"expectedVersion\": 0\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/admin/family-home/sections/{{familyHomeSectionId}}/visibility",
+        "description": "STATE-CHANGING. Sets isVisible on a draft or published section and returns 204 after appending a VisibilityChanged history row. An archived row is 409 Cms.FamilyHome.ImmutableHistory, a stale expectedVersion 409 Cms.FamilyHome.StaleVersion and an unknown id 404 Cms.FamilyHome.SectionNotFound. Hidden published sections are never returned to the Family read."
+      }
+    },
+    {
+      "name": "Delete family home section draft",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/admin/family-home/sections/{{familyHomeSectionId}}",
+        "description": "STATE-CHANGING. Deletes a draft and returns 204, keeping the appended Deleted history row after the section is gone; deleting a draft twin never touches its published row. Published and archived sections are retained history and return 409 Cms.FamilyHome.PublishedHistoryConflict. Unknown id 404 Cms.FamilyHome.SectionNotFound. Use only on a disposable draft you created."
+      }
+    },
+    {
+      "name": "Reorder family home sections",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"items\": [\n    {\n      \"id\": \"{{familyHomeSectionId}}\",\n      \"displayOrder\": 0\n    }\n  ]\n}"
+        },
+        "url": "{{baseUrl}}/api/v1/admin/family-home/sections/reorder",
+        "description": "STATE-CHANGING. Batch displayOrder update returning 204; each entry must name an existing section exactly once with displayOrder >= 0, otherwise 400 Cms.FamilyHome.ReorderInvalid. Reordering bumps the version of every listed section, so re-read before editing."
+      }
     }
   ]
 }

@@ -2842,6 +2842,20 @@
             "description": "Returns a specific help request for the specified dependent. Requires FamilyAccess policy."
           }
         ]
+      },
+      {
+        "name": "Family home sections",
+        "request": {
+          "method": "GET",
+          "url": "{{baseUrl}}/api/v1/family/home/sections",
+          "header": [
+            {
+              "key": "Authorization",
+              "value": "Bearer {{familyToken}}"
+            }
+          ],
+          "description": "Safe read. Published, visible family home sections for the caller's own or member family, ordered by displayOrder then creation. Sections are typed: { id, kind (banners|quick-links|featured-services), displayOrder, items[] }. Quick links and banner actions carry targetType services|service plus targetServiceId; featured entries carry serviceId with the live catalog serviceNameArabic/serviceNameEnglish/serviceIconKey and serviceCaregiverType (1 medical, 2 companion). Returns [] when nothing is published - omit the CMS sections and keep normal app navigation, with no invented fallback cards. Requires FamilyAccess; a missing subject claim is 401 and an unresolvable or deleted family is 404 Families.Family.NotFound. A referenced service that became inactive is omitted with its item only, and a published section whose stored content cannot be read fails the read with 400 Cms.FamilyHome.Incomplete instead of returning an empty section."
+        }
       }
     ]
   }

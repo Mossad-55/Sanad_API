@@ -48,6 +48,9 @@ public sealed class CmsDbContext :
     public DbSet<LandingSection> LandingSections => Set<LandingSection>();
     public DbSet<LandingSectionHistory> LandingSectionHistory => Set<LandingSectionHistory>();
 
+    public DbSet<FamilyHomeSection> FamilyHomeSections => Set<FamilyHomeSection>();
+    public DbSet<FamilyHomeSectionHistory> FamilyHomeSectionHistory => Set<FamilyHomeSectionHistory>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

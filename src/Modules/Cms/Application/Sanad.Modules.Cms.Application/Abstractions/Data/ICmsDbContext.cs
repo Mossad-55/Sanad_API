@@ -38,6 +38,10 @@ public interface ICmsDbContext
 
     DbSet<LandingSectionHistory> LandingSectionHistory { get; }
 
+    DbSet<FamilyHomeSection> FamilyHomeSections { get; }
+
+    DbSet<FamilyHomeSectionHistory> FamilyHomeSectionHistory { get; }
+
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }
