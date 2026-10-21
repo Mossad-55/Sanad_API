@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Cms.Application.Abstractions.Data;
@@ -317,6 +318,115 @@ internal static class LandingAdminWarnings
         return resolved.TryGetValue(section.Id.Value, out ResolvedSectionRefs? refs)
             ? refs.DanglingRefCount
             : 0;
+    }
+}
+
+public sealed record DeleteLandingMediaCommand(string? Key) : ICommand;
+
+public sealed class DeleteLandingMediaCommandHandler(
+    ICmsDbContext db,
+    IFileStorage fileStorage)
+    : ICommandHandler<DeleteLandingMediaCommand>
+{
+    public async Task<Result> Handle(
+        DeleteLandingMediaCommand request, CancellationToken cancellationToken)
+    {
+        string normalized = NormalizeKey(request.Key);
+        if (string.IsNullOrWhiteSpace(normalized))
+            return Result.Failure(LandingErrors.MediaKeyInvalid);
+
+        if (normalized.StartsWith("private/", StringComparison.Ordinal) ||
+            !normalized.StartsWith("landing/", StringComparison.Ordinal))
+            return Result.Failure(LandingErrors.MediaKeyInvalid);
+
+        if (normalized.Contains("..", StringComparison.Ordinal))
+            return Result.Failure(LandingErrors.MediaKeyInvalid);
+
+        // Reference discovery (fail closed). A row that cannot be read is treated
+        // as a reference so an asset is never deleted on the strength of unreadable data.
+        if (await IsReferencedAsync(normalized, cancellationToken))
+            return Result.Failure(LandingErrors.MediaReferenced);
+
+        // Check and delete happen in this one handler with no second query round
+        // trip, which keeps the documented check-then-delete race as small as the
+        // implementation allows. LocalDiskFileStorage.DeleteAsync succeeds when the
+        // file is already absent, so the 404 decision belongs to the controller's
+        // existence probe, not here.
+        return await fileStorage.DeleteAsync(normalized, cancellationToken);
+    }
+
+    private static string NormalizeKey(string? key) =>
+        (key ?? string.Empty).Trim().Replace('\\', '/').Trim('/').ToLowerInvariant();
+
+    private async Task<bool> IsReferencedAsync(string normalizedKey, CancellationToken cancellationToken)
+    {
+        // Landing sections in every status.
+        List<LandingSection> landingSections = await db.LandingSections
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        foreach (LandingSection section in landingSections)
+        {
+            if (NormalizeKey(section.ImagePath) == normalizedKey)
+                return true;
+            if (!string.IsNullOrWhiteSpace(section.ContentJson) &&
+                section.ContentJson.Contains(normalizedKey, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        // Retained landing history rows.
+        List<LandingSectionHistory> landingHistory = await db.LandingSectionHistory
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        foreach (LandingSectionHistory history in landingHistory)
+        {
+            if (!string.IsNullOrWhiteSpace(history.Details) &&
+                history.Details.Contains(normalizedKey, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        // Family-home sections and their retained history.
+        List<FamilyHomeSection> familyHomeSections = await db.FamilyHomeSections
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        foreach (FamilyHomeSection section in familyHomeSections)
+        {
+            if (string.IsNullOrWhiteSpace(section.ItemsJson))
+                continue;
+
+            // Fail closed: unreadable payload counts as a reference.
+            IReadOnlyList<FamilyHomeItem> items;
+            try
+            {
+                items = FamilyHomeItems.Deserialize(section.ItemsJson);
+            }
+            catch (DomainException)
+            {
+                return true;
+            }
+
+            foreach (FamilyHomeItem item in items)
+            {
+                if (NormalizeKey(item.ImageKey) == normalizedKey ||
+                    NormalizeKey(item.IconKey) == normalizedKey)
+                    return true;
+            }
+
+            // Defensive raw scan in case a key appears outside the typed members.
+            if (section.ItemsJson.Contains(normalizedKey, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        List<FamilyHomeSectionHistory> familyHomeHistory = await db.FamilyHomeSectionHistory
+            .AsNoTracking()
+            .ToListAsync(cancellationToken);
+        foreach (FamilyHomeSectionHistory history in familyHomeHistory)
+        {
+            if (!string.IsNullOrWhiteSpace(history.Details) &&
+                history.Details.Contains(normalizedKey, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 }
 

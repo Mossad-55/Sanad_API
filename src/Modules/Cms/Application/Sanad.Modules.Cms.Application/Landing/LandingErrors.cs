@@ -21,4 +21,13 @@ public static class LandingErrors
 
     public static readonly Error ReorderInvalid =
         new("Cms.Landing.ReorderInvalid", "Reorder entries must reference known sections exactly once.");
+
+    public static readonly Error MediaKeyInvalid =
+        new("Cms.Landing.Media.InvalidKey", "Landing media key is missing, malformed or not a public landing asset.");
+
+    public static readonly Error MediaNotFound =
+        new("Cms.Landing.Media.NotFound", "Landing media asset was not found.");
+
+    public static readonly Error MediaReferenced =
+        new("Cms.Landing.Media.Referenced", "Landing media asset is still referenced by retained content.");
 }

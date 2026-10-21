@@ -4684,6 +4684,20 @@
         "url": "{{baseUrl}}/api/v1/admin/family-home/sections/reorder",
         "description": "STATE-CHANGING. Batch displayOrder update returning 204; each entry must name an existing section exactly once with displayOrder >= 0, otherwise 400 Cms.FamilyHome.ReorderInvalid. Reordering bumps the version of every listed section, so re-read before editing."
       }
+    },
+    {
+      "name": "Delete unreferenced landing media",
+      "request": {
+        "method": "DELETE",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{accessToken}}"
+          }
+        ],
+        "url": "{{baseUrl}}/api/v1/admin/landing/media?key={{landingMediaKey}}",
+        "description": "Deletes one public landing asset only when it is unreferenced. 204 empty body on success; 400 invalid key; 404 missing file; 409 still referenced."
+      }
     }
   ]
 }

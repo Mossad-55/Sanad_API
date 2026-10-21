@@ -33,6 +33,41 @@ Every publish, visibility change, and delete writes an immutable audit row
 record the type key). Audit rows survive section deletion and have no
 update/delete paths; there is no history read endpoint in v1.
 
+## Media deletion (unreferenced landing assets only)
+
+`DELETE /api/v1/admin/landing/media?key=<url-encoded key>`
+
+Single asset per request. Only public landing assets are eligible: the key must
+start with `landing/`, must not start with `private/`, must normalize to a
+relative path that stays inside the effective public storage root after
+`Path.GetFullPath` containment, and must resolve to a file that exists on
+disk. Anything else is rejected as `400 Cms.Landing.Media.InvalidKey` without
+touching the filesystem or storage interface.
+
+Statuses:
+
+- `204` — the asset existed and was unreferenced, so it was deleted (empty body).
+- `400` — missing, empty, malformed, traversal-escaping, `private/` or non-`landing/` key.
+- `404` — a well-formed landing key whose file does not exist (`Cms.Landing.Media.NotFound`).
+- `409` — the asset is still referenced by retained content (`Cms.Landing.Media.Referenced`); nothing is deleted.
+
+Reference discovery (safety core) searches every retained reference source for
+an exact match on the normalized key before deleting: every `cms.landing_sections`
+row in every status (Draft, Published, Archived); the retained
+`cms.landing_section_history` rows; every `cms.family_home_sections` row (including
+its `items_json` payload, where media keys are stored); and the retained
+`cms.family_home_section_history` rows. A stored payload that cannot be read is
+treated as a reference (fail closed). The match is performed on the normalized
+key (trim, backslash-to-slash, trim slashes, case-insensitive).
+
+Accepted limitation: reference discovery and physical deletion are not atomic
+with concurrent editorial writes; a reference created between the check and the
+delete can still leave a dangling path. There is no cross-module foreign key
+over a stored key and none is invented. The window is kept as small as the
+implementation allows (check and delete in one handler, no second query round
+trip). No bulk/folder/wildcard delete, no sweeper, no scheduled cleanup, and
+no deletion triggered by section edits.
+
 ## Endpoints summary
 
 ```text
@@ -44,6 +79,7 @@ POST   /api/v1/admin/landing/sections/{id}/visibility   Toggle isVisible {value:
 DELETE /api/v1/admin/landing/sections/{id}              Delete draft only -> 204
 POST   /api/v1/admin/landing/sections/reorder           Batch displayOrder -> 204
 POST   /api/v1/admin/landing/media                      Image upload -> 201 {key}
+DELETE /api/v1/admin/landing/media?key={key}            Delete one unreferenced asset -> 204 | 400 | 404 | 409
 ```
 
 ## Requests
