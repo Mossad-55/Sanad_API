@@ -199,10 +199,17 @@ deployed revision:
 - **Redaction incident (disclosed).** One early diagnostic command intended to
   list the environment-file keys with redacted values printed the multi-line
   content of `Push__Firebase__ServiceAccountJson` (including its private key),
-  because the redaction filter only masked the first `=` per line. That value
-  was not used, stored in the release directory, recorded here, or transmitted
-  anywhere else; every other value was correctly redacted. No further action was
-  possible for the already-rendered terminal output.
+  because the redaction filter only masked the first `=` per line. That rendered
+  output was not used, recorded here, or transmitted anywhere else; every other
+  value was correctly redacted. No further action was possible at the time for
+  the already-rendered terminal output.
+  *Corrected 2026-10-21.* An earlier version of this bullet also stated that the
+  value was "not stored in the release directory". That was true only of the
+  rendered diagnostic output, and is misleading about the release directory
+  itself: each release's `host-config` backup contained a plaintext copy of the
+  whole environment file and therefore of this variable, from the moment the
+  backup was taken. Those twelve copies (E04→F8) were located and redacted during
+  the key rotation — see `firebase-push-key-rotation.md`.
 - **Public HTTP.** The host answers plain HTTP on `:8091` (HTTPS is not served
   on that port), so both the standard verification and the public smokes used
   `http://72.62.92.144:8091`; the loopback smokes ran on the host against

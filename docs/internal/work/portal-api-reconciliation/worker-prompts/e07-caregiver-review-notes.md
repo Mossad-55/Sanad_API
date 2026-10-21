@@ -3,8 +3,8 @@
 Owner-approved minimum scope (follow-up contract, "Remaining roadmap"): append-only
 caregiver review notes with author/time, for SuperAdmin/SupportAdmin under the existing
 caregiver review policy. No edit, delete, workflow, assignment or notification.
-Phase state: `approved` (queued). Task state: `ready_for_review` — Mastermind-executed: migration
-applied to local `SanadDb`, adapter 22/22 on the frozen tree. Release state: `not_requested`.
+Phase state: `completed`. Task state: `completed`. Release state: **`released`** —
+revision `f66492d877ab61d7057d74551d27feb8767fe509`.
 Base, worker and runtime slot are recorded in the dispatch amendment below.
 
 ## Pinned behavior
@@ -264,9 +264,14 @@ handback; this block supersedes them.
 - Fixture footprint: three adapter runs appended 12 retained review notes for
   `019a2f9c-0003-7000-8000-000000000001`. Nothing was updated, deleted or reset; the
   note-free caregiver still holds zero notes.
-- Next action: commit `feat(e07)` (code + tests + tools + docs + Postman + this brief), then
-  release in a serialized slot after E08's own gate, with a pre-cutover backup, 9/9 head
-  verification, route/401 evidence and a release receipt.
+- Released: committed `f66492d` (18 files) and deployed on 2026-10-21 as revision
+  `f66492d877ab61d7057d74551d27feb8767fe509`. The one Caregivers migration
+  `20261021130000_AddCaregiverReviewNotes` was applied by the production startup policy
+  (exactly one `Applying migration`, 0 DI exceptions, 0 destructive statements), 9/9 heads
+  verified two independent ways, OpenAPI 515 → 516 paths with the new
+  `/api/v1/admin/caregivers/{caregiverId}/notes [get,post]` answering 401 anonymously, row
+  counts unchanged, `service=active` with `NRestarts=0`. Full evidence:
+  [e07-caregiver-review-notes-release.md](../reports/e07-caregiver-review-notes-release.md).
 
 ## Acceptance and release gate
 

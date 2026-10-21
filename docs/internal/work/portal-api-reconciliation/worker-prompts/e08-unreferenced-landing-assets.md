@@ -3,8 +3,8 @@
 Owner-approved minimum scope (follow-up contract, "Remaining roadmap"): delete only
 unreferenced landing assets; references include retained history/revisions and Family-home
 assets; reject referenced deletion; no automatic sweeper. Phase state: `approved` (queued).
-Task state: `ready_for_review` — Mastermind-executed: adapter 26/26 on the frozen tree.
-Release state: `not_requested`.
+Task state: `completed`. Release state: **`released`** — revision
+`042a7fd4dd898c2c93579335fe34dd1e61a4d2c5` (code-only, zero migrations).
 
 ## Pinned behavior
 
@@ -193,6 +193,14 @@ authority and a serialized release slot; record the deployed revision, migration
   family-home draft) and uses SQL only for the two INSERT-only identities. The effect is the
   same or stronger — no row is hand-written that the product cannot write itself — and the
   app-audience 403s are covered by the controller policy matrix test instead of over HTTP.
+- Released: committed `042a7fd` (9 files) and deployed on 2026-10-21 as revision
+  `042a7fd4dd898c2c93579335fe34dd1e61a4d2c5`, immediately after E07. Code-only: the
+  production restart applied **zero** migrations (9 contexts checked, 9 pending-zero lines,
+  0 DI exceptions, 0 destructive statements), 9/9 heads byte-identical, the OpenAPI document
+  still publishes 516 paths with `delete` added to `/api/v1/admin/landing/media`
+  (`[delete,post]`), anonymous `DELETE`/`POST` answer 401 and `GET` answers 405, row counts
+  unchanged, `service=active` with `NRestarts=0`. Full evidence:
+  [e08-unreferenced-landing-assets-release.md](../reports/e08-unreferenced-landing-assets-release.md).
 - No migration was authored by this phase, and no other module's snapshot changed.
 - Mastermind corrections to the handed-back code: the added Postman request was
   duplicated and the collection had lost its trailing newline (both fixed, 42 requests,
