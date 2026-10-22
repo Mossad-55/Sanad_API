@@ -46,6 +46,9 @@ public sealed class AdminSupportTicketsController :
     [ProducesResponseType(
         typeof(AdminSupportTicketDetail),
         StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetTicketById(
         Guid id,
         CancellationToken cancellationToken)
@@ -59,12 +62,51 @@ public sealed class AdminSupportTicketsController :
         return ToActionResult(result);
     }
 
+    [HttpGet("partner-contacts")]
+    [ProducesResponseType(
+        typeof(AdminPartnerContactsPage),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListPartnerContacts(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 25,
+        CancellationToken cancellationToken = default)
+    {
+        var result =
+            await _sender.Send(
+                new GetAdminPartnerContactsQuery(page, pageSize),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpGet("partner-contacts/{id:guid}")]
+    [ProducesResponseType(
+        typeof(AdminPartnerContactDetail),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPartnerContactById(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        var result =
+            await _sender.Send(
+                new GetAdminPartnerContactByIdQuery(id),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
     [HttpPost("{id:guid}/status")]
     [Consumes("application/json")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status409Conflict)]
@@ -101,6 +143,9 @@ public sealed class AdminSupportTicketsController :
     [ProducesResponseType(
         typeof(SupportTicketReplyDto),
         StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status409Conflict)]

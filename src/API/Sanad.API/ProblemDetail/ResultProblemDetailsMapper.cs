@@ -177,6 +177,15 @@ public static class ResultProblemDetailsMapper
             ["Identity.Support.NotFound"] = 404,
             ["Identity.Support.Conflict"] = 409,
 
+            // Anonymous partner contact: the caller's own bad request is a
+            // 400, a reused idempotency key with different content is a 409, an
+            // unknown contact id in the admin inbox is a 404, and the
+            // anti-spam window is a 429.
+            ["Identity.PartnerContact.Invalid"] = 400,
+            ["Identity.PartnerContact.NotFound"] = 404,
+            ["Identity.PartnerContact.IdempotencyConflict"] = 409,
+            ["Identity.PartnerContact.RateLimited"] = 429,
+
             ["Cms.Splash.InternalNameAlreadyInUse"] = 409,
             ["Cms.Splash.NotFound"] = 404,
 

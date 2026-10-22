@@ -1,4 +1,4 @@
-# Landing (app / public) — Phase 1 reads
+# Landing (app / public)
 
 Public landing content. Editorial copy is CMS-managed; every displayed number
 is either managed copy or a live aggregation — no displayed number is stored.
@@ -14,8 +14,7 @@ is either managed copy or a live aggregation — no displayed number is stored.
 Returns published, visible sections ordered by `displayOrder` ascending.
 Draft and hidden sections are never returned. The virtual `stats` key is never
 listed here; live counters come from `GET /api/v1/landing/stats` below.
-(Testimonial/FAQ reference resolution and dangling-ref skipping land in
-Phase 3; contact intake and history/audit land in later phases.)
+Testimonial and FAQ references are resolved live on this read (see below).
 
 ```http
 GET /api/v1/landing/sections
@@ -32,16 +31,51 @@ GET /api/v1/landing/sections
     "englishBody": "Body",
     "contentJson": null,
     "imagePath": null,
-    "displayOrder": 0
+    "displayOrder": 0,
+    "testimonials": null,
+    "faqs": null
   }
 ]
 ```
 
-`id` is a strongly typed id: JSON object `{ "value": "<guid>" }`.
+`id` is a strongly typed id: JSON object `{ "value": "<guid>" }`. Nullable
+fields serialize as `null` when empty.
+
+## Section shape (all 11 stored types)
+
 `type` is one of the closed registry keys: `hero`, `partner-logos`, `about`,
 `features`, `activity-cards`, `steps`, `dashboard-promo`, `testimonials`,
 `faq`, `contact-form`, `footer`. (`stats` is virtual and never listed.)
-Nullable fields serialize as `null` when empty.
+
+Every one of the 11 stored types returns the **same** envelope: the bilingual
+copy (`arabicTitle` / `englishTitle`, plus optional `arabicBody` /
+`englishBody`), the optional `imagePath` storage key, `displayOrder`, the two
+resolved-ref arrays, and the type-specific `contentJson`. There is no nested
+projection per type: `contentJson` is returned **raw**, exactly as the editor
+stored it (raw-vs-typed is a settled implementation choice). The server
+interprets it only where a type has a defined meaning:
+
+| `type` | `contentJson` |
+|---|---|
+| `hero` | free-form; publishing a hero also requires `imagePath` |
+| `partner-logos` | free-form |
+| `about` | free-form |
+| `features` | free-form |
+| `activity-cards` | free-form |
+| `steps` | free-form |
+| `dashboard-promo` | free-form |
+| `testimonials` | `{ "refs": [...] }` — resolved live into `testimonials` |
+| `faq` | `{ "refs": [...] }` — resolved live into `faqs` |
+| `contact-form` | field configuration; submissions use the shared support flow |
+| `footer` | free-form |
+
+"Free-form" means the API stores and returns the JSON string unchanged; it does
+not reshape or validate the inner schema.
+
+`testimonials` and `faqs` resolve only for their own section type. A
+`testimonials` section returns its resolved items in `testimonials` (possibly
+`[]` when every ref is dangling or hidden) and an empty `faqs`; a `faq` section
+is the mirror image. Every other section type returns `null` for both.
 
 ## Testimonials and FAQ (resolved refs)
 
@@ -82,6 +116,23 @@ Authenticated (app JWT). Body `{subject (3–150 chars), message (10–2000
 chars)}`. Success `200` with the ticket receipt; validation `400`,
 unauthenticated `401`. See the request in the Postman “04. Landing” folder.
 
+### Anonymous partner contact
+
+A visitor **without an account** (a partner enquiry, or any anonymous
+enquiry) uses the public partner-contact route instead — the destination is
+the same admin support inbox, but the submission is stored as request data on
+its own aggregate, because a support ticket always belongs to a signed-in
+user:
+
+```http
+POST /api/v1/partner-contact
+```
+
+Anonymous. Body `{name, company?, email, subject?, message}` plus the required
+`Idempotency-Key` header; at most 5 submissions per hour per caller.
+Success `200` with the receipt; `400` validation, `409` idempotency conflict,
+`429` rate limited. Full contract: [partner contact](partner-contact.md).
+
 ## Get live stats
 
 **Route:** `GET /api/v1/landing/stats`
@@ -90,6 +141,13 @@ unauthenticated `401`. See the request in the Postman “04. Landing” folder.
 Computed per request (no caching in v1; counts only, no PII):
 families exclude soft-deleted rows; caregivers count `Active` rows by type;
 facilities count `Approved` rows.
+
+`familiesCount`, `medicalCaregiversCount`, `companionCaregiversCount` and
+`approvedFacilitiesCount` are **live counts of real rows** — nothing here is a
+stored or hard-coded number, and a store with no matching rows returns `0`
+rather than a placeholder. `totalCaregiversCount` is the sum of the two
+caregiver counters. The client may serve these reads behind its 60-second ISR
+window; the endpoint itself stays per-request and has no revalidation webhook.
 
 ```http
 GET /api/v1/landing/stats

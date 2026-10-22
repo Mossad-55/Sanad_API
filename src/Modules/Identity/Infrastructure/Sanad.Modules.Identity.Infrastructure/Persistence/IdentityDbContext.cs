@@ -46,6 +46,10 @@ public sealed class IdentityDbContext :
 
     public DbSet<AdminUserAction> AdminUserActions => Set<AdminUserAction>();
 
+    public DbSet<PartnerContact>
+        PartnerContacts =>
+            Set<PartnerContact>();
+
 
     public override async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {

@@ -24,6 +24,14 @@ public interface IIdentityDbContext
 
     DbSet<AdminUserAction> AdminUserActions { get; }
 
+    /// <summary>
+    /// The anonymous partner-contact rows of the admin support inbox. Like
+    /// <see cref="SupportTicketReplies"/>, the default implementation keeps
+    /// the delegating test contexts compiling; the real Identity context
+    /// provides the set.
+    /// </summary>
+    DbSet<PartnerContact> PartnerContacts => null!;
+
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }
