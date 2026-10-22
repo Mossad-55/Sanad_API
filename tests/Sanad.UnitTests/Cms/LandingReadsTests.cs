@@ -123,6 +123,85 @@ public sealed class LandingReadsTests
     }
 
     [Fact]
+    public async Task Sections_AllElevenStoredTypes_RoundTripTheBilingualShape()
+    {
+        await using CmsDbContext db = CreateCmsContext();
+
+        (LandingSectionType Type, string Key)[] types =
+        [
+            (LandingSectionType.Hero, "hero"),
+            (LandingSectionType.PartnerLogos, "partner-logos"),
+            (LandingSectionType.About, "about"),
+            (LandingSectionType.Features, "features"),
+            (LandingSectionType.ActivityCards, "activity-cards"),
+            (LandingSectionType.Steps, "steps"),
+            (LandingSectionType.DashboardPromo, "dashboard-promo"),
+            (LandingSectionType.Testimonials, "testimonials"),
+            (LandingSectionType.Faq, "faq"),
+            (LandingSectionType.ContactForm, "contact-form"),
+            (LandingSectionType.Footer, "footer")
+        ];
+
+        foreach ((LandingSectionType type, string key) in types)
+        {
+            LandingSection section = LandingSection.Create(
+                type,
+                arabicTitle: $"عنوان {key}",
+                englishTitle: $"Title {key}",
+                arabicBody: $"متن {key}",
+                englishBody: $"Body {key}",
+                contentJson: $"{{\"shape\":\"{key}\"}}",
+                imagePath: $"landing/{key}.svg",
+                displayOrder: (int)type);
+            section.Publish();
+            db.LandingSections.Add(section);
+        }
+
+        await db.SaveChangesAsync();
+
+        var result = await new GetPublishedLandingSectionsQueryHandler(db, CreateFamiliesContext(), CreateCaregiversContext()).Handle(
+            new GetPublishedLandingSectionsQuery(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(11, result.Value.Count);
+
+        foreach ((LandingSectionType type, string key) in types)
+        {
+            LandingSectionPublicItem item = Assert.Single(result.Value, candidate => candidate.Type == key);
+
+            Assert.Equal($"عنوان {key}", item.ArabicTitle);
+            Assert.Equal($"Title {key}", item.EnglishTitle);
+            Assert.Equal($"متن {key}", item.ArabicBody);
+            Assert.Equal($"Body {key}", item.EnglishBody);
+
+            // contentJson is returned raw, exactly as stored (settled convention);
+            // the server does not reshape it per type.
+            Assert.Equal($"{{\"shape\":\"{key}\"}}", item.ContentJson);
+            Assert.Equal($"landing/{key}.svg", item.ImagePath);
+            Assert.Equal((int)type, item.DisplayOrder);
+
+            // Ref arrays resolve only for their own section type: a resolving
+            // section carries its own array plus an empty sibling array, and
+            // every other type carries null for both.
+            if (type == LandingSectionType.Testimonials)
+            {
+                Assert.NotNull(item.Testimonials);
+                Assert.Empty(item.Faqs!);
+            }
+            else if (type == LandingSectionType.Faq)
+            {
+                Assert.NotNull(item.Faqs);
+                Assert.Empty(item.Testimonials!);
+            }
+            else
+            {
+                Assert.Null(item.Testimonials);
+                Assert.Null(item.Faqs);
+            }
+        }
+    }
+
+    [Fact]
     public async Task Stats_EmptyStores_ReturnZeros()
     {
         await using FamiliesDbContext familiesDb = CreateFamiliesContext();
@@ -175,6 +254,44 @@ public sealed class LandingReadsTests
         Assert.Equal(1, result.Value.MedicalCaregiversCount);
         Assert.Equal(1, result.Value.CompanionCaregiversCount);
         Assert.Equal(1, result.Value.ApprovedFacilitiesCount);
+    }
+
+    [Fact]
+    public async Task Stats_ApprovedFacilitiesCount_IsTheLiveApprovedRowCount()
+    {
+        await using FamiliesDbContext familiesDb = CreateFamiliesContext();
+        await using CaregiversDbContext caregiversDb = CreateCaregiversContext();
+        await using CareHomesDbContext careHomesDb = CreateCareHomesContext();
+
+        var empty = await new GetLandingStatsQueryHandler(familiesDb, caregiversDb, careHomesDb).Handle(
+            new GetLandingStatsQuery(), CancellationToken.None);
+        Assert.True(empty.IsSuccess);
+        // Honest degrade with no facility rows: zero, never a placeholder.
+        Assert.Equal(0, empty.Value.ApprovedFacilitiesCount);
+
+        careHomesDb.Facilities.Add(CreateApprovedFacility());
+        careHomesDb.Facilities.Add(CreateApprovedFacility());
+        careHomesDb.Facilities.Add(CareHomeFacility.CreateDraft(UserId.New(), UtcNow()));
+        await careHomesDb.SaveChangesAsync();
+
+        var twoApproved = await new GetLandingStatsQueryHandler(familiesDb, caregiversDb, careHomesDb).Handle(
+            new GetLandingStatsQuery(), CancellationToken.None);
+        Assert.True(twoApproved.IsSuccess);
+        // The number comes from the facility rows on the store, not a constant:
+        // two approved rows plus one draft row are present.
+        Assert.Equal(2, twoApproved.Value.ApprovedFacilitiesCount);
+        Assert.Equal(
+            await careHomesDb.Facilities.CountAsync(facility => facility.Status == CareHomeStatus.Approved),
+            twoApproved.Value.ApprovedFacilitiesCount);
+
+        careHomesDb.Facilities.Add(CreateApprovedFacility());
+        await careHomesDb.SaveChangesAsync();
+
+        var threeApproved = await new GetLandingStatsQueryHandler(familiesDb, caregiversDb, careHomesDb).Handle(
+            new GetLandingStatsQuery(), CancellationToken.None);
+        Assert.True(threeApproved.IsSuccess);
+        // Adding one approved facility moves the live count by exactly one.
+        Assert.Equal(3, threeApproved.Value.ApprovedFacilitiesCount);
     }
 
     [Fact]

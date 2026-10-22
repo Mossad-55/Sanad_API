@@ -8,12 +8,29 @@ public sealed class LocalDiskFileStorage : IFileStorage
 {
     private const long PrivateMaxBytes = 5 * 1024 * 1024;
 
+    private const string SvgContentType = "image/svg+xml";
+
+    private const string SvgExtension = ".svg";
+
     private static readonly HashSet<string> AllowedContentTypes =
         new(StringComparer.OrdinalIgnoreCase)
         {
             "image/jpeg",
             "image/png",
-            "image/webp"
+            "image/webp",
+            "image/svg+xml"
+        };
+
+    // SVG is active content, so it is the one allowlisted type that is not
+    // accepted for every folder. The only public writer allowed to persist it is
+    // the landing media path, whose bytes are sanitized by LandingSvgSanitizer
+    // before they reach here. Every other public uploader (splash screens,
+    // assessment tiers, service icons, library covers, wellness tips) keeps
+    // rejecting image/svg+xml, so no other path can store an unsanitized SVG.
+    private static readonly HashSet<string> SvgAllowedFolders =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            "landing"
         };
 
     private static readonly HashSet<string> PrivateAllowedContentTypes =
@@ -57,14 +74,6 @@ public sealed class LocalDiskFileStorage : IFileStorage
             return StorageErrors.UnsupportedType;
         }
 
-        string extension = contentType.ToLowerInvariant() switch
-        {
-            "image/jpeg" => ".jpg",
-            "image/png" => ".png",
-            "image/webp" => ".webp",
-            _ => ".bin"
-        };
-
         string safeFolder =
             string.IsNullOrWhiteSpace(folder)
                 ? "uploads"
@@ -75,6 +84,21 @@ public sealed class LocalDiskFileStorage : IFileStorage
         {
             safeFolder = "uploads";
         }
+
+        if (string.Equals(contentType, SvgContentType, StringComparison.OrdinalIgnoreCase) &&
+            !SvgAllowedFolders.Contains(safeFolder))
+        {
+            return StorageErrors.UnsupportedType;
+        }
+
+        string extension = contentType.ToLowerInvariant() switch
+        {
+            "image/jpeg" => ".jpg",
+            "image/png" => ".png",
+            "image/webp" => ".webp",
+            SvgContentType => SvgExtension,
+            _ => ".bin"
+        };
 
         string key =
             $"{safeFolder}/{Guid.CreateVersion7():N}{extension}";

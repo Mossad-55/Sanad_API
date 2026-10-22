@@ -1,3 +1,5 @@
+using System.Text;
+using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.Options;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
@@ -227,6 +229,36 @@ public sealed class LocalDiskFileStorageTests : IDisposable
     }
 
     [Fact]
+    public async Task SavePrivate_ShouldRejectSvg()
+    {
+        // SVG is a public landing-media format only: private storage must never
+        // accept it, whatever folder is named.
+        byte[] payload =
+            Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"1\" height=\"1\"/></svg>");
+
+        using MemoryStream content =
+            new(payload);
+
+        Result<StoredFile> result =
+            await _storage.SavePrivateAsync(
+                content,
+                "image/svg+xml",
+                payload.Length,
+                "caregiver-certificates",
+                CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(
+            StorageErrors.UnsupportedType.Code,
+            result.Error.Code);
+        Assert.Empty(
+            Directory.GetFiles(
+                _rootPath,
+                "*",
+                SearchOption.AllDirectories));
+    }
+
+    [Fact]
     public async Task OpenRead_ShouldReturnSavedPrivateContent()
     {
         byte[] payload = [0x9, 0x8, 0x7];
@@ -299,6 +331,126 @@ public sealed class LocalDiskFileStorageTests : IDisposable
         Assert.True(result.IsFailure);
         Assert.Equal(StorageErrors.TooLarge.Code, result.Error.Code);
         Assert.Empty(Directory.GetFiles(_rootPath, "*", SearchOption.AllDirectories));
+    }
+
+    [Fact]
+    public async Task Save_ShouldStoreSvgUnderLandingKey()
+    {
+        byte[] payload =
+            Encoding.UTF8.GetBytes(
+                "<svg xmlns=\"http://www.w3.org/2000/svg\"><rect width=\"1\" height=\"1\"/></svg>");
+
+        using MemoryStream content = new(payload);
+
+        Result<StoredFile> result =
+            await _storage.SaveAsync(
+                content,
+                "image/svg+xml",
+                payload.Length,
+                "landing",
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.StartsWith("landing/", result.Value.Key);
+        Assert.EndsWith(".svg", result.Value.Key);
+
+        string storedPath =
+            Path.Combine(
+                _rootPath,
+                result.Value.Key.Replace('/', Path.DirectorySeparatorChar));
+
+        Assert.Equal(payload, await File.ReadAllBytesAsync(storedPath));
+    }
+
+    // Cross-path guard: the only public writer allowed to persist image/svg+xml
+    // is the landing media path (its bytes are sanitized first). Every other
+    // uploader keeps the shared raster allowlist behaviour and is rejected here,
+    // so no other path can store-and-serve an unsanitized SVG. Folders below are
+    // the real folders each controller passes to SaveAsync.
+    [Theory]
+    [InlineData("splash")]            // AdminSplashScreensController.SaveSplashImageAsync
+    [InlineData("assessment-tiers")]  // AdminAssessmentsController.SaveTierImageAsync
+    [InlineData("services")]          // AdminLookupsController.SaveIconAsync
+    [InlineData("library")]           // AdminLibraryController.SaveCoverAsync
+    [InlineData("wellness-tips")]     // AdminWellnessTipsController.SaveImageAsync
+    [InlineData("uploads")]           // default folder (no caller folder supplied)
+    public async Task Save_ShouldRejectSvgForEveryNonLandingFolder(string folder)
+    {
+        byte[] payload =
+            Encoding.UTF8.GetBytes(
+                "<svg xmlns=\"http://www.w3.org/2000/svg\"><script>alert('x')</script><rect/></svg>");
+
+        using MemoryStream content = new(payload);
+
+        Result<StoredFile> result =
+            await _storage.SaveAsync(
+                content,
+                "image/svg+xml",
+                payload.Length,
+                folder,
+                CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(StorageErrors.UnsupportedType.Code, result.Error.Code);
+        Assert.Empty(Directory.GetFiles(_rootPath, "*", SearchOption.AllDirectories));
+    }
+
+    [Theory]
+    [InlineData("image/jpeg", ".jpg")]
+    [InlineData("image/png", ".png")]
+    [InlineData("image/webp", ".webp")]
+    public async Task Save_ShouldKeepRasterTypesWorking(string contentType, string extension)
+    {
+        byte[] payload = [0x1, 0x2, 0x3, 0x4];
+
+        using MemoryStream content = new(payload);
+
+        Result<StoredFile> result =
+            await _storage.SaveAsync(
+                content,
+                contentType,
+                payload.Length,
+                "assessment-tiers",
+                CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.StartsWith("assessment-tiers/", result.Value.Key);
+        Assert.EndsWith(extension, result.Value.Key);
+    }
+
+    [Fact]
+    public void Serving_ShouldHardenSvgResponsesOnly()
+    {
+        var svgHeaders = new HeaderDictionary();
+
+        Sanad.API.ApplicationBuilderExtensions.ApplyStaticResponseHardening(
+            "landing/cover.svg",
+            svgHeaders);
+
+        Assert.Equal(
+            "nosniff",
+            svgHeaders["X-Content-Type-Options"].ToString());
+        Assert.Equal(
+            Sanad.API.ApplicationBuilderExtensions.SvgContentSecurityPolicy,
+            svgHeaders["Content-Security-Policy"].ToString());
+        Assert.Contains(
+            "default-src 'none'",
+            svgHeaders["Content-Security-Policy"].ToString(),
+            StringComparison.Ordinal);
+        Assert.Contains(
+            "sandbox",
+            svgHeaders["Content-Security-Policy"].ToString(),
+            StringComparison.Ordinal);
+
+        // Raster media keeps its current behaviour: no added headers.
+        var rasterHeaders = new HeaderDictionary();
+
+        Sanad.API.ApplicationBuilderExtensions.ApplyStaticResponseHardening(
+            "landing/cover.png",
+            rasterHeaders);
+
+        Assert.True(string.IsNullOrEmpty(rasterHeaders["X-Content-Type-Options"].ToString()));
+        Assert.True(string.IsNullOrEmpty(rasterHeaders["Content-Security-Policy"].ToString()));
     }
 
     public void Dispose()

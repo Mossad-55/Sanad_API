@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
@@ -96,6 +97,97 @@ public sealed class LandingRefsTests
             new GetLandingAdminListQuery(), CancellationToken.None);
         Assert.True(admin.IsSuccess);
         Assert.Equal(2, admin.Value.Items.Single().DanglingRefCount);
+    }
+
+    [Fact]
+    public async Task Testimonials_PreserveGenuineRatingsAndAnonymity_WithoutInventingIdentity()
+    {
+        await using CmsDbContext db = CreateCmsContext();
+        await using FamiliesDbContext familiesDb = CreateFamiliesContext();
+        await using CaregiversDbContext caregiversDb = CreateCaregiversContext();
+
+        Family named = Family.Create(UserId.New(), "Named Family");
+        familiesDb.Families.Add(named);
+
+        Booking booking = Booking.Create(
+            named.Id,
+            UserId.New(),
+            ElderlyId.New(),
+            CaregiverId.New(),
+            BookingCaregiverType.Companion,
+            BookingShiftType.Hourly,
+            new DateOnly(2026, 12, 1),
+            new TimeOnly(9, 0),
+            new TimeOnly(13, 0),
+            "Cairo",
+            null,
+            BookingPriceSnapshot.Calculate(100m, 0m, 0m, 1),
+            UtcNow().AddDays(1),
+            DateOnly.FromDateTime(UtcNow()),
+            UtcNow());
+        familiesDb.Bookings.Add(booking);
+
+        BookingReview attributed = BookingReview.Create(
+            booking.Id, UserId.New(), 5, "Genuine words", false, UtcNow());
+        BookingReview anonymous = BookingReview.Create(
+            BookingId.New(), UserId.New(), 3, "Private words", true, UtcNow());
+        familiesDb.BookingReviews.AddRange(attributed, anonymous);
+
+        CaregiverRating rating = CaregiverRating.Create(
+            CaregiverId.New(), Guid.NewGuid(), named.Id, UserId.New(), 4, "Caregiver words", UtcNow());
+        caregiversDb.CaregiverRatings.Add(rating);
+
+        await familiesDb.SaveChangesAsync();
+        await caregiversDb.SaveChangesAsync();
+
+        string json = "{\"refs\":[" +
+            "{\"kind\":\"family\",\"id\":\"" + attributed.Id.Value + "\"}," +
+            "{\"kind\":\"family\",\"id\":\"" + anonymous.Id.Value + "\"}," +
+            "{\"kind\":\"caregiver\",\"id\":\"" + rating.Id + "\"}]}";
+
+        LandingSection section = LandingSection.Create(
+            LandingSectionType.Testimonials, "آراء", "Voices", contentJson: json);
+        section.Publish();
+        db.LandingSections.Add(section);
+        await db.SaveChangesAsync();
+
+        var result = await new GetPublishedLandingSectionsQueryHandler(db, familiesDb, caregiversDb).Handle(
+            new GetPublishedLandingSectionsQuery(), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        TestimonialItem[] items = Assert.Single(result.Value).Testimonials!.ToArray();
+        Assert.Equal(3, items.Length);
+
+        // Genuine ratings and the authored text are preserved verbatim.
+        Assert.Equal(new[] { 5, 3, 4 }, items.Select(item => item.Stars).ToArray());
+        Assert.Equal(
+            new[] { "Genuine words", "Private words", "Caregiver words" },
+            items.Select(item => item.Text).ToArray());
+
+        // The attributed family keeps its real name; the anonymous one is served
+        // the verified-family badge and never its name.
+        Assert.Equal("Named Family", items[0].EnglishName);
+        Assert.Equal("Verified family", items[1].EnglishName);
+        Assert.Equal("عائلة موثقة", items[1].ArabicName);
+
+        // The wire shape carries only the six real testimonial members — no
+        // invented partner role, endorsement or extra identity field.
+        // Serialized with the API's web defaults (camelCase) so this asserts the
+        // real wire shape.
+        string wire = JsonSerializer.Serialize(
+            items[1],
+            new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        Assert.DoesNotContain("Named Family", wire, StringComparison.Ordinal);
+        Assert.DoesNotContain("anonymous", wire, StringComparison.OrdinalIgnoreCase);
+
+        using JsonDocument document = JsonDocument.Parse(wire);
+        Assert.Equal(
+            new[] { "arabicName", "englishName", "kind", "refId", "stars", "text" },
+            document.RootElement
+                .EnumerateObject()
+                .Select(property => property.Name)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray());
     }
 
     [Fact]

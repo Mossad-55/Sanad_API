@@ -218,8 +218,39 @@ public static class ApplicationBuilderExtensions
             {
                 FileProvider =
                     new PhysicalFileProvider(root),
-                RequestPath = "/files"
+                RequestPath = "/files",
+                OnPrepareResponse =
+                    context => ApplyStaticResponseHardening(
+                        context.File.Name,
+                        context.Context.Response.Headers)
             });
+    }
+
+    /// <summary>
+    /// Policy served with every SVG from <c>/files</c>. SVG is active content,
+    /// so it is never sniffed into another type and it runs with scripts,
+    /// external loads and navigation disabled. Landing SVG bytes are sanitized
+    /// before they are stored; this is defence in depth for the serving side.
+    /// </summary>
+    public const string SvgContentSecurityPolicy =
+        "default-src 'none'; style-src 'unsafe-inline'; sandbox";
+
+    /// <summary>
+    /// Applies the SVG response hardening. Non-SVG files are left untouched so
+    /// raster media keeps its current behaviour.
+    /// </summary>
+    public static void ApplyStaticResponseHardening(
+        string? fileName,
+        IHeaderDictionary headers)
+    {
+        if (fileName is null ||
+            !fileName.EndsWith(".svg", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        headers["X-Content-Type-Options"] = "nosniff";
+        headers["Content-Security-Policy"] = SvgContentSecurityPolicy;
     }
 }
 

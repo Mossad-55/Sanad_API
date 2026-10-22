@@ -2,7 +2,8 @@
 
 CMS authoring for the public landing sections served by
 `GET /api/v1/landing/sections` (see `docs/app/public/landing.md`).
-Testimonial/FAQ reference wiring lands in Phase 3; history/audit in Phase 4.
+Testimonial/FAQ reference resolution is live (see "Curated refs" below);
+landing history/audit rows are written but have no read endpoint in v1.
 
 **Base:** `/api/v1/admin/landing`
 **Policy:** `CmsContent`
@@ -78,7 +79,7 @@ POST   /api/v1/admin/landing/sections/{id}/publish      Publish (validates compl
 POST   /api/v1/admin/landing/sections/{id}/visibility   Toggle isVisible {value: bool} -> 204
 DELETE /api/v1/admin/landing/sections/{id}              Delete draft only -> 204
 POST   /api/v1/admin/landing/sections/reorder           Batch displayOrder -> 204
-POST   /api/v1/admin/landing/media                      Image upload -> 201 {key}
+POST   /api/v1/admin/landing/media                      Image upload (jpeg/png/webp or sanitized svg) -> 201 {key}
 DELETE /api/v1/admin/landing/media?key={key}            Delete one unreferenced asset -> 204 | 400 | 404 | 409
 ```
 
@@ -96,8 +97,33 @@ endpoint), `displayOrder >= 0`, and `isVisible`. Unknown ids return
 Reorder takes `{items: [{id, displayOrder}]}`; duplicate or unknown ids
 return `400 Cms.Landing.ReorderInvalid`.
 
-Media accepts `multipart/form-data` with a single `file` (jpeg/png/webp,
-signature-checked, 5 MB cap); invalid content or size returns `400`.
+Media accepts `multipart/form-data` with a single `file`. The request is capped
+at 5 MB (`[RequestSizeLimit]`); the file that is actually persisted is capped by
+`Storage:Local:MaxBytes` (`DefaultMaxBytes` = 2 MiB), so an upload between the
+two caps returns `400 Storage.File.TooLarge`:
+
+- `image/jpeg`, `image/png`, `image/webp` — accepted after a byte-signature check.
+- `image/svg+xml` — accepted only **after sanitization**, never on the declared
+  MIME type alone. The sanitizer parses the payload as XML with DTD processing
+  prohibited and no external resolver, so a DTD/entity payload (XXE or entity
+  expansion) fails to parse and is **rejected**, not filtered; a payload that
+  cannot be parsed safely, whose root element is not `<svg>`, or that nests
+  deeper than 256 elements is rejected too. From the parsed tree it removes
+  `<script>`, `<foreignObject>`, `<style>`, `<iframe>`, `<embed>`, `<object>`
+  and the SMIL animation elements (`<set>`, `<animate>`, `<animateTransform>`,
+  `<animateMotion>`, `<discard>`), XML comments and processing instructions,
+  every `on*` event-handler attribute, and every external reference
+  (`href`/`xlink:href`/`src` that is not a same-document `#fragment`, and any
+  retained attribute whose value carries a `url(...)` that is not a
+  same-document `url(#…)`). The **sanitized** bytes are what is stored, and an
+  SVG served from `/files` carries `X-Content-Type-Options: nosniff` and a
+  strict `Content-Security-Policy`.
+
+Invalid, unsafe or unparseable content and oversize files return `400`
+(`Storage.File.Empty`, `Storage.File.TooLarge` or `Storage.File.UnsupportedType`).
+SVG is the one allowlisted type that is restricted by folder: it can only be
+persisted through this landing route, so no other upload path can store an
+unsanitized SVG.
 
 ## Curated refs (testimonials, FAQ, contact config)
 

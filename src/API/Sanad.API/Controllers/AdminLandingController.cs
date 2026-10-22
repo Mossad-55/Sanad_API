@@ -251,6 +251,10 @@ public sealed class AdminLandingController(ISender sender, IFileStorage fileStor
         }
     }
 
+    private const string SvgContentType = "image/svg+xml";
+
+    private const string LandingMediaFolder = "landing";
+
     private async Task<Result<StoredFile>> SaveImageAsync(IFormFile? file, CancellationToken cancellationToken)
     {
         if (file is null || file.Length <= 0)
@@ -260,13 +264,37 @@ public sealed class AdminLandingController(ISender sender, IFileStorage fileStor
 
         await using var stream = new MemoryStream();
         await file.CopyToAsync(stream, cancellationToken);
-        if (!HasMatchingImageSignature(file.ContentType, stream.GetBuffer().AsSpan(0, (int)stream.Length)))
+        byte[] bytes = stream.GetBuffer();
+        int length = (int)stream.Length;
+
+        // SVG is active content, so it is accepted only after sanitization —
+        // never on the declared MIME type alone. Only the sanitized output is
+        // stored, so the raw upload (scripts, event handlers, external
+        // references, DTD/entity payloads) never reaches disk.
+        if (IsSvg(file.ContentType))
+        {
+            if (!LandingSvgSanitizer.TrySanitize(bytes.AsSpan(0, length), out byte[] sanitized))
+                return Result<StoredFile>.Failure(StorageErrors.UnsupportedType);
+
+            using var sanitizedStream = new MemoryStream(sanitized, writable: false);
+            return await fileStorage.SaveAsync(
+                sanitizedStream, SvgContentType, sanitized.Length, LandingMediaFolder, cancellationToken);
+        }
+
+        if (!HasMatchingImageSignature(file.ContentType, bytes.AsSpan(0, length)))
             return Result<StoredFile>.Failure(StorageErrors.UnsupportedType);
 
         stream.Position = 0;
-        return await fileStorage.SaveAsync(stream, file.ContentType, file.Length, "landing", cancellationToken);
+        return await fileStorage.SaveAsync(stream, file.ContentType, file.Length, LandingMediaFolder, cancellationToken);
     }
 
+    private static bool IsSvg(string? contentType) =>
+        string.Equals(contentType?.Trim(), SvgContentType, StringComparison.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// Byte-signature check for the raster types. SVG has no byte signature: it
+    /// is parsed and sanitized by <see cref="LandingSvgSanitizer"/> instead.
+    /// </summary>
     private static bool HasMatchingImageSignature(string contentType, ReadOnlySpan<byte> bytes) =>
         contentType.ToLowerInvariant() switch
         {
