@@ -390,6 +390,23 @@ SELECT json_build_object(
 "@
 }
 
+function Get-E07FootprintQuery {
+    <#
+        Read-only total count of the E07 feature table, so the fail-closed
+        footprint guard can weigh the rows already retained plus this run's
+        planned appends against the L1 cap before any fixture write. It selects
+        a count only and never writes, deletes or resets a row.
+    #>
+    [CmdletBinding()]
+    param()
+
+    return @"
+SELECT json_build_object(
+    'reviewNoteRows', (SELECT count(*)::int FROM caregivers.caregiver_review_notes)
+);
+"@
+}
+
 # ---------------------------------------------------------------------------
 # Fail-closed guards (pure)
 # ---------------------------------------------------------------------------
@@ -544,6 +561,49 @@ function Test-E07FixtureTarget {
     }
 
     return @{ Ok = ($problems.Count -eq 0); Problems = @($problems) }
+}
+
+function Test-E07ReviewNoteFootprint {
+    <#
+        Fail-closed feature-table footprint gate (F2), evaluated read-only before
+        any fixture write. The L1 contract preserves at most ten synthetic rows
+        per feature table, so the TOTAL footprint - the rows the E07 table
+        already retains plus the rows this run would append - must fit inside the
+        cap. A footprint above the cap denies the run: nothing is written, no
+        retained row is deleted and the cap is never relaxed.
+
+        The decision is a pure function of the counts, so the boundary cases can
+        be exercised offline with no database, API or file access at all.
+    #>
+    [CmdletBinding()]
+    param(
+        [Parameter(Mandatory)][int]$ExistingRows,
+        [Parameter(Mandatory)][int]$PlannedWrites,
+        [int]$Cap = 10
+    )
+
+    $total = $ExistingRows + $PlannedWrites
+    $valid = $Cap -ge 0 -and $ExistingRows -ge 0 -and $PlannedWrites -ge 0
+    $allowed = $valid -and $total -le $Cap
+
+    if (-not $valid) {
+        $reason = "the footprint cannot be evaluated (retained $ExistingRows + planned $PlannedWrites against cap $Cap), so the run fails closed"
+    }
+    elseif (-not $allowed) {
+        $reason = "footprint $total exceeds the $Cap-row feature-table cap (retained $ExistingRows + planned $PlannedWrites); no write, no delete and no cap relaxation"
+    }
+    else {
+        $reason = "footprint $total is within the $Cap-row feature-table cap (retained $ExistingRows + planned $PlannedWrites)"
+    }
+
+    return [pscustomobject]@{
+        Allowed       = $allowed
+        ExistingRows  = $ExistingRows
+        PlannedWrites = $PlannedWrites
+        Total         = $total
+        Cap           = $Cap
+        Reason        = $reason
+    }
 }
 
 # ---------------------------------------------------------------------------
@@ -1808,6 +1868,32 @@ try {
         [System.IO.File]::WriteAllText($reportPath, (Get-E07FixtureSql), (New-Object System.Text.UTF8Encoding($false)))
         $failureNotes += "SkipFixtureWrite is set: the provisioning SQL was written to $reportPath and nothing else ran."
         Write-E07Result -Passed $false -Phase 'report-only' -FixtureReport $null | ConvertTo-Json -Depth 8
+        exit 1
+    }
+
+    # 1b. Fail-closed feature-table footprint guard (F2). The total E07
+    #     feature-table footprint - the rows already retained plus this run's
+    #     planned appends - is read read-only and weighed against the L1 cap
+    #     before any fixture write. An over-cap table denies the run outright:
+    #     no write, no deletion of a retained row and no cap relaxation.
+    $footprintRead = Invoke-E07Psql -PsqlPath $psqlPath -Connection $connection -Sql (Get-E07FootprintQuery) -Tag 'footprint' -ExpectJson
+    if (-not $footprintRead.Ok) {
+        $failureNotes += ('The review-note footprint read failed: ' + $footprintRead.ErrorSummary)
+        Write-E07Result -Passed $false -Phase 'footprint-guard' -FixtureReport $null | ConvertTo-Json -Depth 8
+        exit 1
+    }
+
+    $existingNoteRows = 0
+    if (-not [int]::TryParse(([string]$footprintRead.Value.reviewNoteRows).Trim(), [ref]$existingNoteRows)) {
+        $failureNotes += 'The review-note footprint read returned no row count, so the run fails closed.'
+        Write-E07Result -Passed $false -Phase 'footprint-guard' -FixtureReport $null | ConvertTo-Json -Depth 8
+        exit 1
+    }
+
+    $footprint = Test-E07ReviewNoteFootprint -ExistingRows $existingNoteRows -PlannedWrites @(Get-E07NoteDefinition).Count
+    if (-not $footprint.Allowed) {
+        $failureNotes += ('The review-note footprint guard denied the run: ' + $footprint.Reason)
+        Write-E07Result -Passed $false -Phase 'footprint-guard' -FixtureReport $null | ConvertTo-Json -Depth 8
         exit 1
     }
 

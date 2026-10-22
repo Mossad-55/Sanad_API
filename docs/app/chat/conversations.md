@@ -12,7 +12,7 @@ client-selected session header. Anonymous callers receive `401`.
 > additionally bounded by sliding-window rate limits (`429` + `Retry-After`,
 > see [realtime.md](realtime.md#budgets)); the direct-chat role matrix in the
 > open section below is now enforced with retained-history reopening after
-> terminal bookings; list ordering has a stable id tie-break; read marks are
+> terminal bookings; list ordering has a per-page conversation-id tie-break; read marks are
 > validated and monotonic (see [messages.md](messages.md)); unbound uploads
 > expire after 24 h under a 100 MiB/user quota; reports resolve through the
 > paged history endpoint (see [reports.md](reports.md)). Privacy, sync, hub,
@@ -59,8 +59,10 @@ GET /api/v1/chat/conversations?page=1&pageSize=20
 
 - `page` is clamped up to a minimum of 1; `pageSize` is clamped to 1–100
   (default 20, values above 100 return 100 rows).
-- Ordering is `LastActivityOnUtc` descending with a stable conversation-id
-  tie-break. No two pages can disagree on equal timestamps.
+- Ordering is `LastActivityOnUtc` descending, with the conversation-id
+  tie-break applied in memory within the page. A tie split across a page
+  boundary keeps activity order and the id order restarts per page, so two
+  pages are not guaranteed to order equal-timestamp rows identically.
 - `totalCount` counts all visible rows; `totalPages` is
   `ceil(totalCount / pageSize)`.
 
@@ -378,8 +380,8 @@ asserted as state (the predicate is queryable, unblock clears it).
   `LastActivityOnUtc` is bumped only by the message flow (Lane B's
   `UpdateLastActivity` seam); read marks, hides, reopens, and blocks never
   touch it — this is what keeps list ordering stable.
-- List ordering: `LastActivityOnUtc` descending + stable conversation-id
-  tie-break; blocked-user list ordering:
+- List ordering: `LastActivityOnUtc` descending + a conversation-id tie-break
+  applied in memory within each page; blocked-user list ordering:
   `CreatedOnUtc` descending (most recent first).
 - `ConversationReadState.ReadOnUtc` is the server time of the latest mark.
 - `Attachment.UploadedOnUtc` is the upload time (not echoed in the `201`

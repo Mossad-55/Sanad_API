@@ -318,7 +318,7 @@ $failed = @($checks | Where-Object {-not $_.passed}).Count
     limitations = @(
         'Reference discovery for retained history rows, unreadable stored payloads and normalization equivalence is proved by the focused unit suite, not over HTTP.',
         'Over HTTP the policy denial is proved for an authenticated admin with the wrong account type (SupportAdmin); the app-audience denials (Family, caregivers, Elderly, CareHomeOwner, FinanceAdmin) are proved by the controller policy matrix test.',
-        'No database row, file or fixture is reset: the two identities are INSERT-only, and every asset and reference this script creates goes through the verified API and is left in place.',
+        'No database row, file or fixture is reset: the two identities are INSERT-only and retained, while every asset and reference this script creates is removed again by the verified API itself - each draft it creates is deleted, and then the asset that draft referenced is deleted - so no created asset or reference is left in place.',
         'The empty body of a 204 is asserted by the controller test (NoContentResult) and by this script on the delete checks.',
         'Trace correlation depends on captured logging.'
     )

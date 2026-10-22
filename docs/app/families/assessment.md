@@ -87,7 +87,7 @@ The question and tier GETs return only active CMS entries and may return an empt
     "backgroundColor": "#4CAF50",
     "arabicButtonText": "متابعة",
     "englishButtonText": "Continue",
-    "imagePath": "assessment-tiers/tier1.svg",
+    "imagePath": "assessment-tiers/tier1.png",
     "arabicRecommendations": [
       "زيارات تفقدية دورية",
       "مرافقة عند الخروج"
