@@ -41,8 +41,9 @@ itself is deleted, which is blocked while content references it.
 
 ## Content lifecycle
 
-Content moves `Draft → Published → Archived`, mirroring community posts but
-without moderation (authors are admins):
+Content moves `Draft → Published → Archived`, with one restore edge back from
+`Archived → Draft`, mirroring community posts but without moderation (authors
+are admins):
 
 - `POST /api/v1/admin/library/content` — multipart form create (see below);
   new content always starts `Draft`.
@@ -52,9 +53,15 @@ without moderation (authors are admins):
 - `POST /api/v1/admin/library/content/{id}/publish` — `Draft → Published`;
   sets `publishedOnUtc` on first publish. Publishing an already-published
   item is a no-op success; publishing `Archived` content returns `409
-  Cms.LibraryContent.InvalidOperation` (there is no restore-from-archive
-  action in V1).
+  Cms.LibraryContent.InvalidOperation` (an archived item must be restored
+  first).
 - `POST /api/v1/admin/library/content/{id}/archive` — `200`, idempotent.
+- `POST /api/v1/admin/library/content/{id}/restore` — `Archived → Draft` only,
+  returning `200` with the content response. Restoring anything that is not
+  archived is `409 Cms.LibraryContent.InvalidOperation`; an unknown id is
+  `404 Cms.LibraryContent.NotFound`. A restore is **not** a publication:
+  restored content is a normal draft again and must pass the same validation
+  before it can be published.
 - `GET /api/v1/admin/library/content?status=&type=&search=&page=&pageSize=`
   — admin paging list (all statuses; `search` matches both titles).
 - `GET /api/v1/admin/library/content/{id}` — admin detail (full sections and
@@ -110,6 +117,14 @@ Cms.Library.InvalidCategory`. Indexed section failures use paths such as
 `sectionsJson[0].displayOrder` and `sectionsJson[0].arabicBullets[0]`.
 The legacy JSON root `null` normalizes to an empty section array (so Article
 content rejects it); this differs from omitting the form field on update.
+
+The same `errors` map is returned whether the failure is caught by the
+controller (form parsing/validation) or by the command handler (domain
+invariants) — both carry the stable `Cms.LibraryContent.Invalid` code and the
+identical field paths (`arabicTitle`, `englishTitle`, `videoUrl`,
+`durationSeconds`, `sectionsJson`, `sectionsJson[N].*`). Errors that are not
+field-level validation (not-found, lifecycle, category failures) never carry
+an `errors` map.
 
 On update, omitted `sectionsJson` preserves the existing sections while an
 explicit `[]` clears the requested array and fails for Article; an omitted
@@ -258,5 +273,5 @@ Items use the same list shape, including `isLiked`/`isSaved`/`isPremium`/
 | `Cms.LibraryContent.NotFound` | 404 | Interaction target unknown/unpublished. |
 | `Cms.LibraryContent.NotPublished` | 404 | Public detail on non-published content. |
 | `Cms.LibraryContent.Invalid` | 400 | Content failed validation; the response carries a fixed detail plus an `errors` map and `traceId`. |
-| `Cms.LibraryContent.InvalidOperation` | 409 | Lifecycle violation (update after publish, re-publish archive rules). |
+| `Cms.LibraryContent.InvalidOperation` | 409 | Lifecycle violation (update after publish, restore of a non-archived item, publish of an archived item). |
 | `Cms.Library.InvalidType` / `InvalidSort` / `InvalidStatus` / `InvalidSections` | 400 | Query/form enum and section-JSON parsing failures. |

@@ -4,7 +4,8 @@ namespace Sanad.API.Controllers.Requests;
 
 /// <summary>
 /// SET-13 admin Help Center requests. Audience is one of the four app
-/// account types; support contact is one global pair.
+/// account types; support contact is one global pair whose two values are
+/// independent and may each be null (which clears that field).
 /// </summary>
 public sealed record CreateHelpFaqRequest(
     LegalAudience Audience,
@@ -25,5 +26,5 @@ public sealed record UpdateHelpFaqRequest(
     bool IsActive);
 
 public sealed record UpdateSupportContactRequest(
-    string SupportPhone,
-    string SupportEmail);
+    string? SupportPhone,
+    string? SupportEmail);

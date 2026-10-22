@@ -102,7 +102,7 @@ Post, comment and reply responses carry two additive author fields:
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `displayName` | string or `null` | The author's English full name, with the Arabic full name as fallback. `null` when the identity row is missing or when both names are blank — never a placeholder such as "Anonymous". |
-| `avatarUrl` | string or `null` | Always `null` today. Community has no publicly servable avatar source: the only stored avatar reference is the Identity private file key, which its owner alone can read through `GET /api/v1/auth/avatar`. The API never publishes a private storage key as if it were a URL. |
+| `avatarUrl` | string or `null` | The author's avatar **download path** — `/api/v1/community/authors/{authorId}/photo` — when the identity row carries a stored avatar, `null` otherwise. It is a path the API resolves, never the stored Identity private storage key. An anonymous author resolves to `null` (the route would answer `404` for them). Fetch the bytes with `GET /api/v1/community/authors/{authorId}/photo` (see [Authors and anonymity](README.md#authors-and-anonymity)). |
 
 The feed, post detail, recommendations, favorites, comments and replies each
 resolve the display names with **one batched identity lookup per page**; a
@@ -253,7 +253,9 @@ the authenticated identity and the target is named by **author id only**.
 - **The list is per caller.** It never lists an author blocked by anyone else.
   `displayName` is the author's English full name with the Arabic full name as
   fallback and is `null` when the identity row is missing; `avatarUrl` is
-  always `null` (Community has no publicly servable avatar). The names are
+  the author's avatar download path (`/api/v1/community/authors/{authorId}/photo`)
+  when the identity row carries a stored avatar, `null` otherwise — never the
+  stored private key. The names are
   resolved with **one batched identity lookup per page**, never one per row.
 - **Only post reads are filtered.** The blocked author's posts are excluded from
   the posts feed, post detail, recommendations and favorites. The predicate is

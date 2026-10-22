@@ -218,7 +218,7 @@ public sealed class CaregiverBookingDetailTests
             "Morning reading",
             now.AddHours(2),
             VisitReportAssessment.NeedsFollowUp,
-            now.AddHours(3),
+            now.AddHours(4),
             true,
             now.AddHours(3),
             caregiverUserId,

@@ -11,6 +11,11 @@
       "description": "User UUID for the SuperAdmin user detail read."
     },
     {
+      "key": "refundAttemptClaimId",
+      "value": "",
+      "description": "Current refundAttemptClaimId of the booking being reconciled. Read it from the admin bookings list; the reconcile request refuses a stale, omitted, or empty value."
+    },
+    {
       "key": "supportTicketId",
       "value": "",
       "description": "Support ticket UUID to inspect, move, or reply to. Paste one created through the Sanad Auth collection's Contact Support request, or set it manually before running the Support inbox requests."
@@ -2357,7 +2362,52 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/admin/bookings/{{bookingId}}/refund"
-          }
+          },
+          "description": "Retries a booking whose earlier refund attempt did not complete. The amount sent is only what is still owed: for a revision-2 booking, the award its cancellation fact records, less anything already settled and never more than the remaining captured amount (a failed 50% award is retried at 50%, and an award that already settled is 409 Bookings.AlreadyRefunded rather than paid twice); for a revision-1 booking, the remaining captured amount. A revision-2 fact without a recorded award is 409 Bookings.RefundNotEligible. Refused with 409 Bookings.RefundOutcomeAmbiguous while an unconfirmed or interrupted attempt stands on the booking — reconcile it first."
+        },
+        {
+          "name": "Record booking outcome",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"outcomeReason\": 6,\n  \"reasonCategory\": 5,\n  \"reason\": \"Platform could not access the recipient at the appointed time\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/bookings/{{bookingId}}/outcome"
+          },
+          "description": "Platform-attested outcome on a Confirmed booking. outcomeReason covers the clause-4/5 reasons a caregiver may not attest: lateness beyond the 60-minute threshold (with providerLatenessMinutes, customerConsentedToLateness), recipient inaccessibility, safety cancellation, and force majeure (forceMajeure). The accepted-booking feedback shape is mandatory. 204 success; 400 Bookings.Outcome.InvalidReason / Bookings.Cancel.Reason* ; 404 Bookings.NotFound; 409 Bookings.Domain.InvalidOperation; 503 Bookings.RefundSettlementIncomplete. The award is policy-determined and settles through the same provider path as the caregiver outcome, so an unconfirmed gateway result raises the ambiguity marker instead of being swallowed."
+        },
+        {
+          "name": "Reconcile refund ambiguity",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedAttemptClaimId\": \"{{refundAttemptClaimId}}\",\n  \"evidence\": \"Paymob dashboard shows refund 8812 completed on 2026-10-22\",\n  \"refundDidMove\": true,\n  \"verifiedProviderReference\": \"8812\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/bookings/{{bookingId}}/refund/reconcile"
+          },
+          "description": "The only command that clears a booking's unconfirmed-refund ambiguity marker or an interrupted pre-send refund claim (Owner decision #17), and the only thing that reopens refund attempts on it. Every refund attempt is claimed and committed before the gateway is called, so an attempt that crashed before its result was saved is reconciled here too. expectedAttemptClaimId is the refundAttemptClaimId returned by the admin list and must match the booking's current attempt; a stale or superseded attempt is refused. The operator states whether the money actually moved; on true the attempted award is recorded against the ceiling exactly once and the provider's own refund reference (verifiedProviderReference) is required, on false the ceiling is left open so the award can be re-attempted. A claim that is still in flight cannot be cleared with refundDidMove=false, because the provider call may still move the money. Records who reconciled and the evidence given, within the 300-character reconciliation record. 204 success; 400 Bookings.RefundReconciliation.EvidenceRequired / EvidenceTooLong / ProviderReferenceRequired; 404 Bookings.NotFound; 409 Bookings.RefundReconciliation.NoAmbiguousAttempt (nothing to reconcile), AttemptMismatch (not the current attempt), ClaimInFlight, ConcurrencyConflict (re-read and retry), or AwardUnknown."
         }
       ]
     },
@@ -2693,7 +2743,7 @@
     },
     {
       "name": "12. Help Center CMS (SET-13)",
-      "description": "FAQ management per app audience plus the ONE global support contact pair. CmsContent policy (SuperAdmin or ContentAdmin with a Normal token). FAQs are not versioned; deactivation hides them from apps - there is no delete route. Contact-card data only: no SMS, no email sending, no notification behavior. Write requests are manual authoring examples with PLACEHOLDER values only.",
+      "description": "FAQ management per app audience plus the ONE global support contact pair. CmsContent policy (SuperAdmin or ContentAdmin with a Normal token) on FAQ routes; the support-contact pair uses CmsHelpContact (SuperAdmin, SupportAdmin or ContentAdmin), so SupportAdmin owns the contact card without gaining FAQ/CMS writes. FAQs are not versioned; deactivation hides them from apps - there is no delete route. Contact-card data only: no SMS, no email sending, no notification behavior. Write requests are manual authoring examples with PLACEHOLDER values only.",
       "item": [
         {
           "name": "List FAQs (Admin)",
@@ -2814,7 +2864,7 @@
               }
             ]
           },
-          "description": "200 with the single global pair, or 404 Cms.Help.SupportContactNotFound when nothing has been configured yet."
+          "description": "200 with the single global pair. Each field may be null on its own, and an unconfigured contact card answers 200 with BOTH fields null (createdOnUtc/updatedOnUtc are the default instant) - it is never a 404. Readable and writable by SuperAdmin, SupportAdmin and ContentAdmin (CmsHelpContact); FAQ routes stay CmsContent only."
         },
         {
           "name": "Upsert support contact (manual)",
@@ -2836,7 +2886,7 @@
               "raw": "{\n  \"supportPhone\": \"+20XXXXXXXXXX\",\n  \"supportEmail\": \"support@sanad.example\"\n}"
             }
           },
-          "description": "Upserts THE one global row (phone must be E.164, e.g. +201000000001; email must be valid). 200 with the stored pair. Not per-role; sends nothing."
+          "description": "Upserts THE one global row (phone must be E.164, e.g. +201000000001; email must be valid). 200 with the stored pair. Replacement per field: a null value CLEARS that field and keeps the other (blank strings are rejected with 400; use null to clear), and {\"supportPhone\": null, \"supportEmail\": null} clears both while keeping the singleton row. Not per-role; sends nothing."
         }
       ]
     },
@@ -4275,6 +4325,20 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}/archive",
             "description": "STATE-CHANGING. Any status to Archived; idempotent. Unknown id returns 404 Cms.LibraryContent.NotFound. Archived content disappears from public reads."
+          }
+        },
+        {
+          "name": "Restore library content (manual mutation)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}/restore",
+            "description": "STATE-CHANGING. Archived to Draft; restore clears the archive state so the item can be edited and published again. Unknown id returns 404 Cms.LibraryContent.NotFound; content that is not Archived returns 409 Cms.LibraryContent.InvalidOperation."
           }
         }
       ]

@@ -153,7 +153,19 @@ public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext 
             .Where(x => facility.Revisions.Select(r => r.Id).Contains(x.ProfileRevisionId))
             .ToListAsync(ct);
 
-        return await Map(facility, media, sender, ct);
+        try
+        {
+            return await Map(facility, media, sender, ct);
+        }
+        catch (DomainException)
+        {
+            // A stored profile revision whose structured cancellation terms
+            // cannot be re-read fails the admin read closed with a stable
+            // code instead of a 500 (out-of-band corruption only; the save
+            // and review paths validate the terms themselves).
+            return Result<CareHomeAdminApplicationDetail>.Failure(new Error("CareHomes.Bookings.UnreadableSnapshot",
+                "A stored profile revision's cancellation terms could not be read; the application record requires correction."));
+        }
     }
 
     internal static async Task<CareHomeAdminApplicationDetail> Map(
@@ -191,7 +203,12 @@ public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext 
                         revision.ArabicDescription, revision.EnglishDescription, revision.ContactName,
                         revision.ContactPhone, revision.ContactEmail, revision.Governorate, revision.City,
                         revision.Area, revision.Address, revision.ArabicAdmissionConditions,
-                        revision.EnglishAdmissionConditions, revision.Amenities, revision.MedicalServices),
+                        revision.EnglishAdmissionConditions, revision.Amenities, revision.MedicalServices,
+                        // Decision #9: structured cancellation terms are part of
+                        // the published page, so the reviewer approves them with
+                        // the same view the booking flow snapshots.
+                        Sanad.Modules.CareHomes.Domain.Bookings.CareHomeCancellationTerms.Parse(
+                            revision.CancellationTermsJson)),
                     mapMedia(revision.Id, revisionMedia));
             }).ToArray(),
             facility.Documents.OrderByDescending(x => x.CreatedOnUtc)
@@ -261,7 +278,15 @@ public sealed class ReviewCareHomeDocumentCommandHandler(ICareHomesDbContext db,
         List<CareHomeProfileMedia> media = await db.ProfileMedia.AsNoTracking()
             .Where(x => facility.Revisions.Select(r => r.Id).Contains(x.ProfileRevisionId))
             .ToListAsync(ct);
-        return await GetAdminCareHomeApplicationQueryHandler.Map(facility, media, sender, ct);
+        try
+        {
+            return await GetAdminCareHomeApplicationQueryHandler.Map(facility, media, sender, ct);
+        }
+        catch (DomainException)
+        {
+            return Result<CareHomeAdminApplicationDetail>.Failure(new Error("CareHomes.Bookings.UnreadableSnapshot",
+                "A stored profile revision's cancellation terms could not be read; the application record requires correction."));
+        }
     }
 }
 
@@ -302,7 +327,15 @@ public sealed class ReviewCareHomeApplicationCommandHandler(ICareHomesDbContext 
         List<CareHomeProfileMedia> media = await db.ProfileMedia.AsNoTracking()
             .Where(x => facility.Revisions.Select(r => r.Id).Contains(x.ProfileRevisionId))
             .ToListAsync(ct);
-        return await GetAdminCareHomeApplicationQueryHandler.Map(facility, media, sender, ct);
+        try
+        {
+            return await GetAdminCareHomeApplicationQueryHandler.Map(facility, media, sender, ct);
+        }
+        catch (DomainException)
+        {
+            return Result<CareHomeAdminApplicationDetail>.Failure(new Error("CareHomes.Bookings.UnreadableSnapshot",
+                "A stored profile revision's cancellation terms could not be read; the application record requires correction."));
+        }
     }
 }
 

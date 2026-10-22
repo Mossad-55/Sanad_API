@@ -11,6 +11,33 @@ namespace Sanad.Modules.Caregivers.Application.Discovery;
 
 // ================================= Models & DTOs =================================
 
+/// <summary>
+/// The authorized download path of a caregiver's avatar on public discovery
+/// surfaces. It mirrors the Community <c>CommunityAuthorProfile.AvatarPathFor</c>
+/// convention (refund decision lock #32): the path carries no key material —
+/// only the caregiver id the photo route already knows — so the stored Identity
+/// private <c>avatar_url</c> key stays server-side and is never serialized.
+/// The bytes are served only by the authorized caregiver-photo route
+/// (<c>GET /api/v1/caregivers/{caregiverId}/photo</c>), which enforces the
+/// discoverability predicate (Active status, profile not hidden) and answers
+/// the generic 404 otherwise. A caregiver who has an avatar and then hides the
+/// profile after publication therefore leaves a stale path on cached surfaces
+/// that resolves to that sanctioned generic 404.
+/// </summary>
+public static class CaregiverAvatarPath
+{
+    public static string For(Guid caregiverId) =>
+        $"/api/v1/caregivers/{caregiverId}/photo";
+
+    /// <summary>
+    /// The authorized photo path when a stored avatar key exists, and
+    /// <c>null</c> when it does not — the honest absent value. The key itself
+    /// is inspected only for presence, never published.
+    /// </summary>
+    public static string? FromStoredKey(Guid caregiverId, string? storedKey) =>
+        string.IsNullOrWhiteSpace(storedKey) ? null : For(caregiverId);
+}
+
 public sealed record CaregiverSearchCardResponse(
     Guid Id,
     Guid UserId,
@@ -156,6 +183,8 @@ public sealed class SearchCaregiversQueryHandler : IQueryHandler<SearchCaregiver
             request.Search,
             request.Type.HasValue ? (int)request.Type.Value : null,
             request.Gender.HasValue ? (int)request.Gender.Value : null,
+            request.GovernorateId,
+            request.CityId,
             request.AreaId,
             request.SpecializationId,
             request.Availability.HasValue ? (int)request.Availability.Value : null,
@@ -325,7 +354,13 @@ public sealed class GetCaregiverPublicProfileQueryHandler : IQueryHandler<GetCar
             userHeader.ArabicFullName,
             userHeader.EnglishFullName,
             userHeader.Gender,
-            userHeader.AvatarUrl,
+            // The wire avatar value is the authorized photo path, never the
+            // stored identity key (refund decision lock #32); the header keeps
+            // the raw key as a server-side seam because the photo route reads
+            // it through GetDiscoverableCaregiverAvatarKeyAsync. A caregiver
+            // that hid the profile after publication leaves a stale path here
+            // that the photo route resolves to its sanctioned generic 404.
+            CaregiverAvatarPath.FromStoredKey(caregiver.Id.Value, userHeader.AvatarUrl),
             caregiver.Type,
             titleAr,
             titleEn,

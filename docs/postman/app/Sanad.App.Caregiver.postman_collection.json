@@ -568,7 +568,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}"
           },
-          "description": "Own bookings only; another caregiver's booking or an unknown id returns 404 Bookings.NotFound. Matches family booking detail plus refundedOnUtc and refundState. When a cancellation fact exists, this read also fills five additive members from it: cancellationActorSide (1 Family, 2 Caregiver), cancellationAction (1 Cancel, 2 Reject), cancellationReasonCategory (Emergency|MedicalIssues|TransportationIssues|AccountDeletion|Other, otherwise null), refundEntitlement (1 NoRefundDue, 2 FullCapturedRefund) and refundDecisionReason (1 NothingCaptured, 2 FamilyCancellationBeforeAcceptance, 3 CaregiverRejectionBeforeAcceptance, 4 CaregiverCancellationAfterAcceptance, 5 FamilyCancellationWithinGraceWindow, 6 FamilyCancellationOutsideGraceWindow); refundState is then resolved from the fact, so a policy denial reads 4 NoRefundDue instead of a failed refund. Without a fact the five members are null. The stored ReasonNote, the internal isCaregiverIncident flag, a status ledger, an event history and any derived timeline are never exposed, and no amount, eligibility rule or access boundary changes. Caregiver record additions: visitHistory = the real visit and medical reports recorded for THIS booking, newest first (null when no report exists), each item carrying reportId, reportType (visit|medical), caregiverType, observedCondition, activities, systolic, diastolic, pulse, temperature, notes, assessment, startedOnUtc, completedOnUtc, measurementTakenOnUtc, submittedOnUtc and photoAvailable (the medical photo is read from GET /api/v1/caregiver/bookings/medical-reports/{reportId}/photo); upcomingVisits = ALWAYS null (the 'upcoming' semantics are undecided, so no other or future booking is mapped as a visit); familyReview = the family's stored booking review (id, bookingId, rating 1-5, comment, isAnonymous, createdOnUtc) or null when the family has not reviewed. The senior summary carries healthNotes and hasPhoto; emergencyContact is ALWAYS null for a caregiver (no emergency-contact access model exists) and no medical profile or medication is published."
+          "description": "Own bookings only; another caregiver's booking or an unknown id returns 404 Bookings.NotFound. Matches family booking detail plus refundedOnUtc and refundState. When a cancellation fact exists, this read also fills five additive members from it: cancellationActorSide (1 Family, 2 Caregiver), cancellationAction (1 Cancel, 2 Reject), cancellationReasonCategory (Emergency|MedicalIssues|TransportationIssues|AccountDeletion|Other, otherwise null), refundEntitlement (1 NoRefundDue, 2 FullCapturedRefund) and refundDecisionReason (1 NothingCaptured, 2 FamilyCancellationBeforeAcceptance, 3 CaregiverRejectionBeforeAcceptance, 4 CaregiverCancellationAfterAcceptance, 5 FamilyCancellationWithinGraceWindow, 6 FamilyCancellationOutsideGraceWindow); refundState is then resolved from the fact, so a policy denial reads 4 NoRefundDue instead of a failed refund. Without a fact the five members are null. The stored ReasonNote, the internal isCaregiverIncident flag, a status ledger, an event history and any derived timeline are never exposed, and no amount, eligibility rule or access boundary changes. Caregiver record additions: visitHistory = the real visit and medical reports recorded for THIS booking, newest first (null when no report exists), each item carrying reportId, reportType (visit|medical), caregiverType, observedCondition, activities, systolic, diastolic, pulse, temperature, notes, assessment, startedOnUtc, completedOnUtc, measurementTakenOnUtc, submittedOnUtc and photoAvailable (the medical photo is read from GET /api/v1/caregiver/bookings/medical-reports/{reportId}/photo); upcomingVisits = ALWAYS null (the 'upcoming' semantics are undecided, so no other or future booking is mapped as a visit); familyReview = the family's stored booking review (id, bookingId, rating 1-5, comment, isAnonymous, createdOnUtc) or null when the family has not reviewed. The senior summary carries healthNotes and hasPhoto; emergencyContact is ALWAYS null on this detail read - the caregiver reads the contact only through GET /api/v1/caregiver/bookings/{bookingId}/emergency-contact (live visit window only) - and no medical profile or medication is published on this read; the structured medical profile is read only through GET /api/v1/caregiver/dependents/{dependentId}/medical-profile under an active grant."
         },
         {
           "name": "Accept booking",
@@ -638,6 +638,16 @@
           "description": "Manual one-shot lifecycle mutation. Confirmed requires valid reasonCategory and non-blank reason; 204 success, 400 invalid reason, 404 foreign/unknown booking, 409 policy/state conflict. Use only an approved pre-start confirmed fixture; refund behavior is policy-controlled."
         },
         {
+          "name": "Record provider outcome (cancelled / no-show)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Authorization", "value": "Bearer {{ caregiverToken }}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"outcomeReason\": 2,\n  \"reasonCategory\": 5,\n  \"reason\": \"لم يحضر مقدم الرعاية\"\n}" },
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/provider-outcome"
+          },
+          "description": "Caregiver attests a provider-side failure on a Confirmed booking. outcomeReason 1 ProviderCancelled or 2 ProviderNoShow only; the accepted-booking feedback shape is mandatory (defined reasonCategory + non-blank reason). 204 success; 400 Bookings.Outcome.InvalidReason / Bookings.Outcome.ReasonNotAllowed / Bookings.Cancel.ReasonCategoryRequired / Bookings.Cancel.ReasonCategoryInvalid / Bookings.Cancel.ReasonRequired; 404 Bookings.NotFound for another caregiver's booking; 409 Bookings.Domain.InvalidOperation when the booking is not Confirmed; 503 Bookings.RefundSettlementIncomplete when the disposition was recorded but the gateway movement did not complete (the award stays recorded for an ops retry). The award is policy-determined and is the amount sent to the gateway; an unconfirmed gateway outcome leaves an ambiguity marker that refuses every further refund until an administrator reconciles it."
+        },
+        {
           "name": "Complete visit",
           "request": {
             "method": "POST",
@@ -690,6 +700,33 @@
             "url": "{{baseUrl}}/api/v1/caregiver/bookings/medical-reports/{{medicalReportId}}/photo"
           },
           "description": "Safe inline private-image read by the submitting caregiver. 200 image, 401 unauthenticated, 403 unauthorized, 404 missing report/photo."
+        },
+        {
+          "name": "Get booking emergency contact",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ caregiverToken }}" }],
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/emergency-contact"
+          },
+          "description": "Own bookings only; another caregiver's booking or an unknown id returns 404 Bookings.NotFound. Returns the dependent's stored emergency contact { name, relationship, phoneNumber } (null when the dependent stores none). Available only across the live visit window - InProgress, or Confirmed and not yet started - otherwise 403 Bookings.EmergencyContactNotAllowed."
+        },
+        {
+          "name": "Get booking visit history",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ caregiverToken }}" }],
+            "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}/visit-history"
+          },
+          "description": "Own bookings only; another caregiver's booking or an unknown id returns 404 Bookings.NotFound. Returns this booking's recorded visit/medical report history (the same items the detail read publishes), newest first, or null when no report was recorded."
+        },
+        {
+          "name": "Get dependent medical profile (granted)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{ caregiverToken }}" }],
+            "url": "{{baseUrl}}/api/v1/caregiver/dependents/{{dependentId}}/medical-profile"
+          },
+          "description": "Caregiver access plus an active medical-access grant for this dependent whose granteeUserId is the caller and which carries canViewRecords. The gate is rechecked on every read. 403 MedicalAccess.RecordAccessDenied when no active view grant applies; 404 MedicalAccess.NotFound for an unknown dependent. Returns the same structured profile shape as the family read."
         }
       ]
     },

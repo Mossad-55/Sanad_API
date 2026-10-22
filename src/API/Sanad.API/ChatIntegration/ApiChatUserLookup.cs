@@ -77,7 +77,10 @@ public sealed class ApiChatUserLookup : IChatUserLookup
         return new UserProfile(
             profile.UserId,
             displayName,
-            profile.AvatarUrl,
+            // Avatar parity (#34): the raw identity storage key never crosses
+            // the module boundary — no authorized cross-user route exists, and
+            // keeping the key here invites a future re-leak seam.
+            null,
             profile.AccountType,
             currentTypes);
     }
@@ -137,7 +140,9 @@ public sealed class ApiChatUserLookup : IChatUserLookup
             profiles[userId] = new UserProfile(
                 profile.UserId,
                 displayName,
-                profile.AvatarUrl,
+                // Avatar parity (#34): the raw identity storage key never
+                // crosses the module boundary.
+                null,
                 profile.AccountType,
                 types);
         }

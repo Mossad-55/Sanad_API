@@ -67,6 +67,13 @@ public sealed class CareHomeProfileRevisionConfiguration : IEntityTypeConfigurat
         ConfigureText(builder.Property(x => x.EnglishAdmissionConditions), "english_admission_conditions", 4000);
         ConfigureJson(builder.Property(x => x.Amenities), "amenities_json");
         ConfigureJson(builder.Property(x => x.MedicalServices), "medical_services_json");
+
+        // The revision's structured cancellation terms, stored as the JSON the
+        // aggregate itself wrote (same text shape as the booking-side
+        // cancellation_terms_snapshot_json). Mapped explicitly so the EF model
+        // and the migration trio can never drift on name or type.
+        builder.Property(x => x.CancellationTermsJson).HasColumnName("cancellation_terms_json");
+
         builder.HasIndex("care_home_id", nameof(CareHomeProfileRevision.RevisionNumber)).IsUnique();
     }
 

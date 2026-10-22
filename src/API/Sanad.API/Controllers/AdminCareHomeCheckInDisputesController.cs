@@ -19,5 +19,6 @@ public sealed class AdminCareHomeCheckInDisputesController(ISender sender, IDate
     public async Task<IActionResult> List(CancellationToken ct) => ToActionResult(await sender.Send(new ListCareHomeCheckInDisputesQuery(), ct));
 
     [HttpPost("{caseId:guid}/resolve")]
+    [ProducesResponseType(typeof(CareHomeCheckInDisputeResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Resolve(Guid caseId, ResolveCareHomeCheckInDisputeRequest request, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new ResolveCareHomeCheckInDisputeCommand(actor, caseId, request.EffectiveCheckInOnUtc, request.Evidence, request.Reason, clock.UtcNow), ct)) : Unauthorized();
 }

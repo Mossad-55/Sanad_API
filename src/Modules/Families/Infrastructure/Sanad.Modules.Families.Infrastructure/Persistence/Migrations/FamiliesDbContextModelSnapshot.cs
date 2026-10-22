@@ -310,6 +310,18 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("family_id");
 
+                    b.Property<bool>("IsRefundAttemptInFlight")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_refund_attempt_in_flight");
+
+                    b.Property<bool>("IsRefundOutcomeAmbiguous")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("is_refund_outcome_ambiguous");
+
                     b.Property<DateTime?>("PaidOnUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("paid_on_utc");
@@ -328,6 +340,70 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
                         .HasColumnName("paymob_transaction_id");
+
+                    b.Property<long?>("RefundAmbiguityAwardMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("refund_ambiguity_award_minor_units");
+
+                    b.Property<string>("RefundAmbiguityClearedBy")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("refund_ambiguity_cleared_by");
+
+                    b.Property<DateTime?>("RefundAmbiguityClearedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refund_ambiguity_cleared_on_utc");
+
+                    b.Property<DateTime?>("RefundAmbiguityRaisedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refund_ambiguity_raised_on_utc");
+
+                    b.Property<string>("RefundAmbiguityReason")
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("refund_ambiguity_reason");
+
+                    b.Property<string>("RefundAmbiguityReference")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("refund_ambiguity_reference");
+
+                    b.Property<long?>("RefundAttemptAwardMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("refund_attempt_award_minor_units");
+
+                    b.Property<Guid?>("RefundAttemptClaimId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_attempt_claim_id");
+
+                    b.Property<DateTime?>("RefundAttemptClaimedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refund_attempt_claimed_on_utc");
+
+                    b.Property<int>("RefundAttemptVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(0)
+                        .HasColumnName("refund_attempt_version");
+
+                    b.Property<DateOnly>("RefundPolicyDocumentEffectiveOn")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("date")
+                        .HasDefaultValue(new DateOnly(1, 1, 1))
+                        .HasColumnName("refund_policy_document_effective_on");
+
+                    b.Property<int>("RefundPolicyVersion")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("integer")
+                        .HasDefaultValue(1)
+                        .HasColumnName("refund_policy_version");
+
+                    b.Property<long>("RefundedMinorUnits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L)
+                        .HasColumnName("refunded_minor_units");
 
                     b.Property<DateTime?>("RefundedOnUtc")
                         .HasColumnType("timestamp with time zone")
@@ -398,6 +474,10 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("actor_user_id");
 
+                    b.Property<long?>("AwardedMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("awarded_minor_units");
+
                     b.Property<Guid>("BookingId")
                         .HasColumnType("uuid")
                         .HasColumnName("booking_id");
@@ -413,6 +493,10 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.Property<bool>("IsCaregiverIncident")
                         .HasColumnType("boolean")
                         .HasColumnName("is_caregiver_incident");
+
+                    b.Property<long?>("PartialEntitlementMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("partial_entitlement_minor_units");
 
                     b.Property<int>("PolicyVersion")
                         .HasColumnType("integer")
@@ -2397,6 +2481,41 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                                 .HasForeignKey("BookingId");
                         });
 
+                    b.OwnsMany("Sanad.Modules.Families.Domain.Bookings.BookingSessionAllocation", "SessionAllocations", b1 =>
+                        {
+                            b1.Property<Guid>("BookingId")
+                                .HasColumnType("uuid")
+                                .HasColumnName("booking_id");
+
+                            b1.Property<int>("SessionIndex")
+                                .HasColumnType("integer")
+                                .HasColumnName("session_index");
+
+                            b1.Property<long>("AllocatedMinorUnits")
+                                .HasColumnType("bigint")
+                                .HasColumnName("allocated_minor_units");
+
+                            b1.Property<DateTime?>("DeliveredOnUtc")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("delivered_on_utc");
+
+                            b1.Property<int>("Outcome")
+                                .HasColumnType("integer")
+                                .HasColumnName("outcome");
+
+                            b1.HasKey("BookingId", "SessionIndex");
+
+                            b1.ToTable("booking_session_allocations", "families", t =>
+                                {
+                                    t.HasCheckConstraint("ck_booking_session_allocations_allocated_non_negative", "allocated_minor_units >= 0");
+
+                                    t.HasCheckConstraint("ck_booking_session_allocations_outcome_range", "outcome BETWEEN 1 AND 4");
+                                });
+
+                            b1.WithOwner()
+                                .HasForeignKey("BookingId");
+                        });
+
                     b.OwnsMany("Sanad.Modules.Families.Domain.Bookings.PaymentTransaction", "PaymentTransactions", b1 =>
                         {
                             b1.Property<Guid>("BookingId")
@@ -2469,6 +2588,8 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 
                     b.Navigation("PriceSnapshot")
                         .IsRequired();
+
+                    b.Navigation("SessionAllocations");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Bookings.BookingCancellationFact", b =>

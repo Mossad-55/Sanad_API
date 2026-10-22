@@ -12,9 +12,12 @@ using Sanad.Modules.Community.Domain.Blocks;
 /// One blocked author of the caller. <c>DisplayName</c> is the author's
 /// English full name with the Arabic full name as fallback, and is
 /// <c>null</c> when the identity row is missing — never a placeholder.
-/// <c>AvatarUrl</c> is always <c>null</c>: Community has no publicly servable
-/// avatar source (the stored Identity avatar is a private file reference only
-/// its owner can read), so the honest value is null.
+/// <c>AvatarUrl</c> is the author's authorized downloadable avatar path when
+/// the author has an avatar and has never authored anonymously; an author
+/// with at least one anonymous Community item is withheld entirely (both
+/// <c>DisplayName</c> and <c>AvatarUrl</c> come back null), the same way the
+/// shared <c>/community/authors/{id}/photo</c> route withholds them
+/// (community anonymity rule, refund decision lock #32).
 /// </summary>
 public sealed record BlockedCommunityAuthorResponse(
     Guid AuthorId,
@@ -61,6 +64,26 @@ public sealed class GetBlockedCommunityAuthorsQueryHandler(ICommunityDbContext d
                 blocks.Select(block => block.BlockedAuthorUserId.Value).ToArray(),
                 cancellationToken);
 
+        // Same server-side anonymity rule as the shared author-photo route:
+        // an author with at least one anonymous Community item is never
+        // identity-disclosed on this surface either — both the display name
+        // and the avatar path are withheld for them, whatever the viewer's
+        // relation to the author. All post states are scanned, conservatively.
+        // The Contains stays on the strongly-typed id so the value converter
+        // drives the translation on every provider.
+        UserId[] blockedAuthorIds = blocks
+            .Select(block => block.BlockedAuthorUserId)
+            .ToArray();
+        List<UserId> anonymousAuthorsList = await dbContext.Posts
+            .AsNoTracking()
+            .Where(post => blockedAuthorIds.Contains(post.AuthorId) && post.IsAnonymous)
+            .Select(post => post.AuthorId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        HashSet<Guid> anonymousAuthors = anonymousAuthorsList
+            .Select(authorId => authorId.Value)
+            .ToHashSet();
+
         List<BlockedCommunityAuthorResponse> items = blocks
             .Select(block =>
             {
@@ -73,8 +96,12 @@ public sealed class GetBlockedCommunityAuthorsQueryHandler(ICommunityDbContext d
 
                 return new BlockedCommunityAuthorResponse(
                     block.BlockedAuthorUserId.Value,
-                    profile.DisplayName,
-                    profile.AvatarUrl,
+                    anonymousAuthors.Contains(block.BlockedAuthorUserId.Value)
+                        ? null
+                        : profile.DisplayName,
+                    anonymousAuthors.Contains(block.BlockedAuthorUserId.Value)
+                        ? null
+                        : profile.AvatarUrl,
                     block.CreatedOnUtc);
             })
             .ToList();

@@ -11,6 +11,19 @@ namespace Sanad.Modules.Families.Infrastructure.Payments;
 
 public sealed class PaymobClient : IPaymobClient
 {
+    /// <summary>Maximum length of the sanitized upstream reason appended to a
+    /// gateway error description. Keeps operator-visible text bounded.</summary>
+    private const int MaxUpstreamReasonLength = 300;
+
+    /// <summary>Upstream body fields that may carry Paymob's rejection reason, in
+    /// the order they are preferred when more than one is present.</summary>
+    private static readonly string[] ReasonFieldNames = ["detail", "message", "status"];
+
+    /// <summary>Field names whose value must never be echoed back — anything that
+    /// can carry a credential rather than a rejection reason.</summary>
+    private static readonly string[] SensitiveFieldNames =
+        ["secret", "token", "key", "authorization", "password", "signature", "hmac", "auth"];
+
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly PaymobOptions _options;
 
@@ -103,9 +116,12 @@ public sealed class PaymobClient : IPaymobClient
 
             if (!response.IsSuccessStatusCode)
             {
+                string reason = DescribeUpstreamReason(body);
+
                 return Result<PaymobPaymentIntent>.Failure(
                     new Error("Paymob.GatewayError",
-                        $"Paymob intention request failed with status {(int)response.StatusCode}."));
+                        $"Paymob intention request failed with status {(int)response.StatusCode}."
+                        + (reason.Length == 0 ? string.Empty : $" upstream: {reason}")));
             }
 
             using JsonDocument document = JsonDocument.Parse(body);
@@ -222,9 +238,12 @@ public sealed class PaymobClient : IPaymobClient
 
             if (!response.IsSuccessStatusCode)
             {
+                string reason = DescribeUpstreamReason(body);
+
                 return Result<PaymobPaymentIntent>.Failure(
                     new Error("Paymob.GatewayError",
-                        $"Paymob intention request failed with status {(int)response.StatusCode}."));
+                        $"Paymob intention request failed with status {(int)response.StatusCode}."
+                        + (reason.Length == 0 ? string.Empty : $" upstream: {reason}")));
             }
 
             using JsonDocument document = JsonDocument.Parse(body);
@@ -320,6 +339,197 @@ public sealed class PaymobClient : IPaymobClient
             return response.IsSuccessStatusCode ? Result.Success() : Result.Failure(new Error("Paymob.GatewayError", $"Paymob subscription update failed with status {(int)response.StatusCode}."));
         }
         catch (HttpRequestException) { return Result.Failure(new Error("Paymob.GatewayError", "Unexpected payment gateway response.")); }
+    }
+
+    /// <summary>
+    /// Turns a non-success intention response body into a bounded, sanitized
+    /// operator- and client-facing reason (the surfaced <c>Paymob.GatewayError</c>
+    /// message reaches mobile clients in problem-detail <c>detail</c>, so it is
+    /// sanitized to the stricter client bar). The upstream provider text is only
+    /// ever surfaced through this allowlisted path: a body that is not JSON,
+    /// contains no recognized reason field, or would echo a credential or
+    /// billing-identifying value contributes nothing and the caller keeps its
+    /// status-only description.
+    /// </summary>
+    private static string DescribeUpstreamReason(string? body)
+    {
+        if (string.IsNullOrWhiteSpace(body))
+        {
+            return string.Empty;
+        }
+
+        if (!TryParseJson(body, out JsonElement root) || root.ValueKind != JsonValueKind.Object)
+        {
+            // Non-JSON or non-object payloads are not echoed: they are exactly
+            // the shapes most likely to embed a credential or stray markup.
+            return string.Empty;
+        }
+
+        foreach (string fieldName in ReasonFieldNames)
+        {
+            if (!root.TryGetProperty(fieldName, out JsonElement element))
+            {
+                continue;
+            }
+
+            string? value = element.ValueKind switch
+            {
+                JsonValueKind.String => element.GetString(),
+                JsonValueKind.Number => element.ToString(),
+                _ => null
+            };
+
+            string sanitized = SanitizeReason(value);
+
+            if (sanitized.Length > 0)
+            {
+                return sanitized;
+            }
+        }
+
+        return string.Empty;
+    }
+
+    private static bool TryParseJson(string body, out JsonElement root)
+    {
+        try
+        {
+            using JsonDocument document = JsonDocument.Parse(body);
+            root = document.RootElement.Clone();
+            return true;
+        }
+        catch (JsonException)
+        {
+            root = default;
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Conservative allowlist over a candidate reason: refuse anything that looks
+    /// like a credential, then collapse and bound the remaining text. Only ever
+    /// applied to the scalar reason fields, never to the whole provider body.
+    /// </summary>
+    private static string SanitizeReason(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return string.Empty;
+        }
+
+        string trimmed = value.Trim();
+
+        if (LooksSensitive(trimmed))
+        {
+            return string.Empty;
+        }
+
+        string flattened = FlattenControlCharacters(trimmed);
+
+        if (flattened.Length <= MaxUpstreamReasonLength)
+        {
+            return flattened;
+        }
+
+        string bounded = flattened[..MaxUpstreamReasonLength];
+
+        // Never end on a split surrogate pair: a lone high surrogate would
+        // serialize as a replacement character downstream.
+        if (char.IsHighSurrogate(bounded[^1]))
+        {
+            bounded = bounded[..^1];
+        }
+
+        return bounded;
+    }
+
+    /// <summary>
+    /// True when the text carries the shape of a credential — a <c>key=value</c>
+    /// pair, a JSON field, a bearer/jwt token (with or without a separator
+    /// space), a JWT-like payload, an email-like or phone-like value — or when
+    /// a Paymob secret/token prefix appears anywhere. The check is deliberately
+    /// textual and over-inclusive: dropping a legitimate reason is acceptable,
+    /// echoing a credential or any billing-identifying value is not.
+    /// </summary>
+    private static bool LooksSensitive(string value)
+    {
+        // "bearer" with or without a following space, so "Bearer:x" is caught.
+        if (value.Contains("secret", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("bearer", StringComparison.OrdinalIgnoreCase)
+            || value.Contains("sk_", StringComparison.Ordinal)
+            || value.Contains("pk_", StringComparison.Ordinal))
+        {
+            return true;
+        }
+
+        string[] fragments = value.Split(
+            [' ', '\t', '\r', '\n', ':', '=', '"', '\'', ',', ';', '{', '}', '[', ']', '(', ')'],
+            StringSplitOptions.RemoveEmptyEntries);
+
+        foreach (string fragment in fragments)
+        {
+            string candidate = fragment.TrimStart('"', '\'');
+
+            // JWT-shaped payloads ("eyJ…" base64url headers) are always
+            // credential material, whatever the surrounding identifier says.
+            if (candidate.StartsWith("eyJ", StringComparison.Ordinal))
+            {
+                return true;
+            }
+
+            // Email-shaped and phone-shaped fragments are billing-identifying
+            // values, not rejection reasons.
+            if (candidate.Contains('@') && candidate.Contains('.'))
+            {
+                return true;
+            }
+
+            if (candidate.Count(char.IsDigit) >= 9)
+            {
+                return true;
+            }
+
+            foreach (string sensitive in SensitiveFieldNames)
+            {
+                if (candidate.StartsWith(sensitive, StringComparison.OrdinalIgnoreCase)
+                    && candidate.Length > sensitive.Length)
+                {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /// <summary>Replaces control characters (newlines, tabs) with spaces so the
+    /// reason stays a single readable line, then collapses runs of whitespace.</summary>
+    private static string FlattenControlCharacters(string value)
+    {
+        var builder = new StringBuilder(value.Length);
+        bool previousWasSpace = false;
+
+        foreach (char character in value)
+        {
+            bool isControl = char.IsControl(character);
+
+            if (isControl || char.IsWhiteSpace(character))
+            {
+                if (previousWasSpace)
+                {
+                    continue;
+                }
+
+                builder.Append(' ');
+                previousWasSpace = true;
+                continue;
+            }
+
+            builder.Append(character);
+            previousWasSpace = false;
+        }
+
+        return builder.ToString().Trim();
     }
 
     private static long ToCents(decimal amount)

@@ -467,7 +467,8 @@ public sealed class AdminCommunityPostsModerationTests
             await context.Database.EnsureCreatedAsync();
             await context.Database.ExecuteSqlRawAsync(
                 "CREATE TABLE users (id TEXT NOT NULL PRIMARY KEY, " +
-                "arabic_full_name TEXT NOT NULL, english_full_name TEXT NOT NULL);");
+                "arabic_full_name TEXT NOT NULL, english_full_name TEXT NOT NULL, " +
+                "avatar_url TEXT NULL);");
             return new TestCommunityDb(connection, context);
         }
 

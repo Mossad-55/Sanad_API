@@ -180,9 +180,10 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"draft\": {\n    \"arabicName\": \"دار الأمل\",\n    \"englishName\": \"Hope House\",\n    \"arabicDescription\": \"رعاية وإقامة آمنة\",\n    \"englishDescription\": \"Safe care and accommodation\",\n    \"contactName\": \"Test Contact\",\n    \"contactPhone\": \"+201000000011\",\n    \"contactEmail\": \"carehome.owner@test.sanad.local\",\n    \"governorate\": \"Cairo\",\n    \"city\": \"Nasr City\",\n    \"area\": \"District 1\",\n    \"address\": \"1 Example Street\",\n    \"arabicAdmissionConditions\": \"الشروط متاحة عند التواصل\",\n    \"englishAdmissionConditions\": \"Contact us for admission conditions\",\n    \"amenities\": [],\n    \"medicalServices\": []\n  }\n}"
+              "raw": "{\n  \"expectedVersion\": {{careHomeFacilityVersion}},\n  \"draft\": {\n    \"arabicName\": \"دار الأمل\",\n    \"englishName\": \"Hope House\",\n    \"arabicDescription\": \"رعاية وإقامة آمنة\",\n    \"englishDescription\": \"Safe care and accommodation\",\n    \"contactName\": \"Test Contact\",\n    \"contactPhone\": \"+201000000011\",\n    \"contactEmail\": \"carehome.owner@test.sanad.local\",\n    \"governorate\": \"Cairo\",\n    \"city\": \"Nasr City\",\n    \"area\": \"District 1\",\n    \"address\": \"1 Example Street\",\n    \"arabicAdmissionConditions\": \"الشروط متاحة عند التواصل\",\n    \"englishAdmissionConditions\": \"Contact us for admission conditions\",\n    \"amenities\": [],\n    \"medicalServices\": [],\n    \"cancellationTerms\": {\n      \"tiers\": [\n        { \"refundPercentage\": 100, \"deadlineHoursBeforeStart\": 24 },\n        { \"refundPercentage\": 50, \"deadlineHoursBeforeStart\": 12 }\n      ]\n    }\n  }\n}"
             },
-            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/profile"
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/profile",
+            "description": "CareHomeOwnerAccess. Saves the editable draft and returns the refreshed facility. cancellationTerms is the facility's structured cancellation schedule (clause 6 of the approved refund policy): 1-6 tiers, each with refundPercentage 0-100 and deadlineHoursBeforeStart 0-8760; tiers are normalized longest-deadline-first and duplicate deadlines are rejected. Omitting cancellationTerms or sending null clears previously published terms (replacement semantics). Invalid tiers return the CareHomes.Facility.InvalidProfile failure. Terms become the snapshot a booking preserves once the Owner-approved refund policy is activated."
           },
           "event": [
             {
@@ -190,7 +191,8 @@
               "script": {
                 "exec": [
                   "pm.test('draft saved', () => pm.response.to.have.status(200));",
-                  "if (pm.response.code === 200) { pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version); pm.test('English name round-trips', () => pm.expect(pm.response.json().draft.englishName).to.eql('Hope House')); }"
+                  "if (pm.response.code === 200) { pm.collectionVariables.set('careHomeFacilityVersion', pm.response.json().version); pm.test('English name round-trips', () => pm.expect(pm.response.json().draft.englishName).to.eql('Hope House')); }",
+                  "if (pm.response.code === 200) pm.test('cancellation terms round-trip', () => { const tiers = pm.response.json().draft.cancellationTerms.tiers; pm.expect(tiers).to.have.lengthOf(2); pm.expect(tiers[0]).to.eql({ refundPercentage: 100, deadlineHoursBeforeStart: 24 }); pm.expect(tiers[1]).to.eql({ refundPercentage: 50, deadlineHoursBeforeStart: 12 }); });"
                 ]
               }
             }

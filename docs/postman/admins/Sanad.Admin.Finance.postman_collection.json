@@ -451,6 +451,170 @@
       ]
     },
     {
+      "name": "Reviewed complaints (SupportAdmin investigates; SuperAdmin decides)",
+      "description": "Quality-complaint review workflow under /api/v1/admin/finance/complaint-reviews. The class-level RefundWorkflowAdmin policy (SuperAdmin or SupportAdmin) admits the case surface: SupportAdmin receives, investigates and reads. The verdict is narrower — the approve and refuse endpoints additionally require the SuperAdminOnly policy, and the application seam re-checks the actor's account type, so neither SupportAdmin nor FinanceAdmin (excluded throughout) can decide an award. Approval records the verdict AND appends the resulting money movement to the case's append-only ledger in one unit of work: the awarded amount (awardMinorUnits, a pure movement record; zero is valid) is recorded under refundCaseId, so approval is not itself completion and no resulting balance is stored. Refusal moves no money and appends no ledger entry. A complaint is a reviewed outcome, never an automatic full refund. A complaint reported after 48 hours is still accepted and flagged for late review (timeliness 2, requiresLateReview true); a safety concern is never gated by the window (timeliness 3). Reporting party values are 1 Family, 2 Caregiver, 3 CareHomeFacility, 4 Staff. Review state values are 1 Received, 2 Investigating, 3 Resolved, 4 Refused. Manual fixture only.",
+      "item": [
+        {
+          "name": "Open complaint review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refundCaseId\": \"0198e2c1-3333-7777-8888-000000000001\",\n  \"familyId\": \"0198e2c1-1111-7777-8888-000000000009\",\n  \"reportingParty\": 1,\n  \"reportedOnUtc\": \"2026-10-05T09:00:00Z\",\n  \"visitedOnUtc\": \"2026-10-04T08:00:00Z\",\n  \"isSafetyConcern\": false,\n  \"description\": \"Caregiver arrived two hours late.\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/finance/complaint-reviews"
+          },
+          "description": "RefundWorkflowAdmin (SuperAdmin/SupportAdmin). Returns 201 with the opened complaint-review snapshot. The reporter is the authenticated administrator. A complaint reported within 48 hours of visitedOnUtc is timeliness 1 (WithinWindow); later is 2 (Late) and still accepted; isSafetyConcern true is 3 (Safety). 400 Finance.Complaint.FamilyRequired / Finance.Complaint.CaseRequired / Finance.Complaint.Invalid; 409 Finance.Complaint.Conflict when the refund case already has a review. Manual fixture only."
+        },
+        {
+          "name": "List complaint reviews",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/finance/complaint-reviews?state=2&familyId={{familyId}}"
+          },
+          "description": "Returns 200 with a bare array of complaint-review snapshots ordered by reported time descending. Optional state (1-4) and familyId filters. SuperAdmin and SupportAdmin only."
+        },
+        {
+          "name": "Get complaint review",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/finance/complaint-reviews/{{complaintReviewId}}"
+          },
+          "description": "Returns 200 with one complaint-review snapshot, or 404 with no body when it does not exist."
+        },
+        {
+          "name": "Get complaint review by refund case",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/finance/complaint-reviews/by-refund-case/{{refundCaseId}}"
+          },
+          "description": "Returns 200 with the review for a refund case, or 404 with no body. This is the join between the reviewed complaint and its ledger: both are keyed by refundCaseId with no cross-context relationship."
+        },
+        {
+          "name": "Begin complaint investigation",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startedOnUtc\": \"2026-10-05T10:00:00Z\",\n  \"evidenceReference\": \"support-case-000123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/finance/complaint-reviews/{{complaintReviewId}}/investigate"
+          },
+          "description": "SupportAdmin picks the case up; the reviewer is the authenticated administrator. The case must be in state 1 (Received). Returns 200 with state 2 (Investigating); 400 Finance.Complaint.Invalid for a bad transition; 404 Finance.Complaint.NotFound."
+        },
+        {
+          "name": "Approve complaint review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"approvedOnUtc\": \"2026-10-06T10:00:00Z\",\n  \"awardMinorUnits\": 15000,\n  \"decisionNote\": \"Reviewed and approved for a partial award.\",\n  \"evidenceReference\": \"support-case-000123\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/finance/complaint-reviews/{{complaintReviewId}}/approve"
+          },
+          "description": "SuperAdminOnly: a SupportAdmin token receives 403 Finance.Complaint.SuperAdminRequired (and is refused at the endpoint by the SuperAdminOnly policy). The case must be under investigation (state 2). Returns 200 with state 3 (Resolved) and the seven-business-day processing clock starting at approvedOnUtc. The award is recorded as one Approved money movement under the case's refundCaseId in the same unit of work — a pure movement record (#35), never a resulting balance; awardMinorUnits defaults to 0 and zero is valid (#31). 400 Finance.Complaint.AmountInvalid for a negative award; 404 Finance.Complaint.NotFound; 409 Finance.Complaint.Conflict (including a case whose ledger already holds a funded award: approval is refused so one case can never carry two movements). A complaint award is scoped to its own complaint case and does NOT claim a subscription refund capture budget; whether complaint compensation outside a specific capture should be capped remains a recorded Owner decision and is not enforced here."
+        },
+        {
+          "name": "Refuse complaint review",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refusedOnUtc\": \"2026-10-06T10:00:00Z\",\n  \"decisionNote\": \"Reviewed; no award is due.\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/finance/complaint-reviews/{{complaintReviewId}}/refuse"
+          },
+          "description": "SuperAdminOnly: a SupportAdmin token receives 403 Finance.Complaint.SuperAdminRequired. The reviewed award is refused: no money moves, so no ledger entry is appended. The case must be under investigation (state 2). Returns 200 with state 4 (Refused)."
+        }
+      ]
+    },
+    {
+      "name": "Subscription refunds (SuperAdmin or SupportAdmin)",
+      "description": "Platform-initiated subscription refunds under /api/v1/admin/finance/subscription-refunds. Requires the RefundWorkflowAdmin policy (SuperAdmin or SupportAdmin). An Ahlena service shutdown refunds the unused portion of the current paid period (clause 9 / Owner decision #6), prorated on the consideration settled for that period — the subscription's own current-period charge snapshot, which renewals and paid plan changes maintain (an all-time sum of renewals is not used and a paid plan change is not added on top) — banker's-rounded (ToEven) and floored at zero. The caller supplies no money figures. All clause-9 cases that draw on one paid period share a single Finance-owned refundable budget keyed by that CAPTURE (the succeeded payment attempt that paid for the period), with an optimistic concurrency token, so approved awards cannot exceed what that period captured — an older period's funds supply no headroom. The movement is recorded in the shared append-only Finance ledger. Manual fixture only.",
+      "item": [
+        {
+          "name": "Refund subscription on service shutdown",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"subscriptionId\": \"0198e2c1-1111-7777-8888-000000000001\",\n  \"shutdownOnUtc\": \"2026-10-15T00:00:00Z\",\n  \"idempotencyKey\": \"shutdown-0198e2c1-1111-7777-8888-000000000001\",\n  \"evidenceReference\": \"Ahlena shutdown notice 2026-10-15\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/finance/subscription-refunds/service-shutdown"
+          },
+          "description": "Returns 200 with the recorded outcome { refundCaseId, awardedMinorUnits, currency, outcome 3 (ServiceShutdown), isReplay }. A shutdown at or after the period end may compute exactly zero and the zero award is recorded as computed. 400 Subscriptions.Refund.MalformedInput for a non-UTC shutdownOnUtc; 404 Subscriptions.Refund.SubscriptionNotFound / Subscriptions.Refund.NothingToRefund; 409 Subscriptions.Refund.NotCurrent / Subscriptions.Refund.IdempotencyConflict, Subscriptions.Refund.ExceedsCaptured, Subscriptions.Refund.CaptureNotResolved (the current period's paying attempt could not be resolved; the refund fails closed instead of using a lifetime total). The proration base is the consideration settled for the CURRENT paid period (the subscription's own current-period snapshot), never an all-time sum of renewals and never the plan list price. Cumulative refundability across cases is enforced by Finance's per-capture budget: a duplicate-charge or earlier shutdown award against the same paid period reduces what remains, an older period's funds supply no headroom, and an award that no longer fits is refused rather than trimmed. Replaying the same idempotency key with the same content returns isReplay true; the same key with different content is the conflict. Manual fixture only."
+        }
+      ]
+    },
+    {
       "name": "Platform controls (SuperAdmin only)",
       "item": [
         {

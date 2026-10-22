@@ -10,6 +10,15 @@
 
 ## Current checkpoint
 
+- **Amendment (2026-10-23, refund-policy wave W3):** the Rentals module joined
+  the roster, so the persistent-local fixture surface is now **ten** module
+  contexts, not nine. `TestUserSeedTargetGuard.ModuleConnectionNames`,
+  `Program.ApplyPersistentLocalMigrationsAsync`, and every `--expect`
+  requirement below ("must name exactly the nine module contexts") now mean
+  **ten** contexts including `RentalsDatabase`; a nine-module expectation is
+  refused as incomplete. All "nine"-worded lines further down are historical
+  L1-phase evidence recorded before Rentals existed and are kept verbatim.
+
 - Phase state: `completed`; task completed by Mastermind after final focused
   verification. Commit `367a604cbdd99ab64a5360e73bc3fb7b1b0ac707` was pushed to
   `origin/main` and verified as the remote branch head. Owner authorized resolving the

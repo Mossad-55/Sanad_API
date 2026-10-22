@@ -305,9 +305,9 @@ public sealed class CaregiverDeclineFactTests
         Assert.Null(persisted.RefundedOnUtc);
         await AssertNoFactsAsync(store);
 
-        // Order of operations as merged: the provider refund is attempted before the single save, and
-        // a failed save does not undo a gateway call. Recorded here as observed behaviour.
-        Assert.Single(paymob.RefundCalls);
+        // Order of operations (W3 crash-safety): the provider send happens only after the
+        // claim + fact save committed, so a failed save never reaches the gateway.
+        Assert.Empty(paymob.RefundCalls);
     }
 
     [Fact]
@@ -349,9 +349,9 @@ public sealed class CaregiverDeclineFactTests
         Assert.Null(persisted.CancellationReason);
         await AssertNoFactsAsync(store);
 
-        // The refund was attempted before the single save (the merged order); nothing about that call
-        // is rolled back by the failed save.
-        Assert.Single(paymob.RefundCalls);
+        // The claim + fact save commits before the provider send (W3 crash-safety
+        // order), so the unrelated persistence failure escapes before any gateway call.
+        Assert.Empty(paymob.RefundCalls);
     }
 
     [Fact]

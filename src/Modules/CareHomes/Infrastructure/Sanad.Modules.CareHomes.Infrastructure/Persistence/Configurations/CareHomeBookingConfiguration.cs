@@ -24,10 +24,25 @@ public sealed class CareHomeBookingConfiguration : IEntityTypeConfiguration<Care
         b.Property(x => x.ExtensionRootBookingId).HasColumnName("extension_root_booking_id");
         b.HasIndex(x => new { x.ExtensionRootBookingId, x.StartDate });
         b.Property(x => x.RefundClaimedOnUtc).HasColumnName("refund_claimed_on_utc");
+        b.Property(x => x.RefundAttemptClaimId).HasColumnName("refund_attempt_claim_id");
         b.Property(x => x.RefundStatus).HasConversion<int>().HasColumnName("refund_status").IsRequired();
         b.Property(x => x.RefundAmount).HasColumnName("refund_amount").HasPrecision(18, 2);
         b.Property(x => x.RefundFailureReason).HasColumnName("refund_failure_reason").HasMaxLength(2000);
         b.Property(x => x.RefundCompletedOnUtc).HasColumnName("refund_completed_on_utc");
+
+        // The refund-policy snapshot and the refund-ambiguity state machine:
+        // every column is mapped explicitly in snake_case so the EF model and
+        // the migration trio (adding the same columns) can never drift apart
+        // on names or facets.
+        b.Property(x => x.RefundPolicyVersion).HasColumnName("refund_policy_version");
+        b.Property(x => x.RefundPolicyDocumentEffectiveOn).HasColumnName("refund_policy_document_effective_on");
+        b.Property(x => x.CancellationTermsSnapshotJson).HasColumnName("cancellation_terms_snapshot_json");
+        b.Property(x => x.IsRefundOutcomeAmbiguous).HasColumnName("is_refund_outcome_ambiguous");
+        b.Property(x => x.RefundAmbiguityReason).HasColumnName("refund_ambiguity_reason").HasMaxLength(2000);
+        b.Property(x => x.RefundAmbiguityRaisedOnUtc).HasColumnName("refund_ambiguity_raised_on_utc");
+        b.Property(x => x.RefundAmbiguityAwardAmount).HasColumnName("refund_ambiguity_award_amount").HasPrecision(18, 2);
+        b.Property(x => x.RefundAmbiguityClearedOnUtc).HasColumnName("refund_ambiguity_cleared_on_utc");
+        b.Property(x => x.RefundAmbiguityClearedBy).HasColumnName("refund_ambiguity_cleared_by").HasMaxLength(2000);
         b.Property(x => x.RefundCompletedBy).HasConversion(x => x.HasValue ? x.Value.Value : (Guid?)null, x => x.HasValue ? new UserId(x.Value) : (UserId?)null).HasColumnName("refund_completed_by");
         b.Property(x => x.PaymentCompletedOnUtc).HasColumnName("payment_completed_on_utc");
         b.Property(x => x.EarliestArrivalUtc).HasColumnName("earliest_arrival_utc");

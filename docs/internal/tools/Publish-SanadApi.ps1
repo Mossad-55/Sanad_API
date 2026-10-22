@@ -28,7 +28,7 @@ if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($revision)) {
 # manifest can silently lag an accepted phase migration and make deployment
 # verification compare the running database against the wrong requirement.
 $requiredMigrations = [ordered]@{}
-foreach ($module in @('Identity', 'Cms', 'Caregivers', 'Families', 'CareHomes', 'Notifications', 'Community', 'Finance', 'Chat')) {
+foreach ($module in @('Identity', 'Cms', 'Caregivers', 'Families', 'CareHomes', 'Notifications', 'Community', 'Finance', 'Chat', 'Rentals')) {
     $migrationDirectory = Join-Path $repositoryRoot "src\Modules\$module\Infrastructure\Sanad.Modules.$module.Infrastructure\Persistence\Migrations"
     if (-not (Test-Path -LiteralPath $migrationDirectory -PathType Container)) {
         throw "Migration directory was not found for $module."

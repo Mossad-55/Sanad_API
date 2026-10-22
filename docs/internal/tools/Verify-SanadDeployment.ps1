@@ -29,8 +29,8 @@ $requiredMigrations = @{}
 foreach ($context in $manifest.requiredMigrations.PSObject.Properties) {
     $requiredMigrations[$context.Name] = [string]$context.Value
 }
-if ($requiredMigrations.Count -ne 9) {
-    throw "Manifest must list all 9 module contexts; found $($requiredMigrations.Count)."
+if ($requiredMigrations.Count -ne 10) {
+    throw "Manifest must list all 10 module contexts; found $($requiredMigrations.Count)."
 }
 
 Add-Type -AssemblyName System.Net.Http
@@ -75,7 +75,7 @@ try {
         }
     }
     if ($mismatches.Count -gt 0) {
-        throw "Remote migration evidence does not cover all 9 contexts:`n  - $($mismatches -join "`n  - ")"
+        throw "Remote migration evidence does not cover all $($requiredMigrations.Count) contexts:`n  - $($mismatches -join "`n  - ")"
     }
 
     $smokeUri = "$base/api/v1/lookups/services"
@@ -100,8 +100,8 @@ if (-not [string]::IsNullOrWhiteSpace($StartupLogPath)) {
         }
     }
     $completedContexts = @($completedContexts | Sort-Object -Unique)
-    if ($completedContexts.Count -lt 9) {
-        throw "Startup log proves migration checks for $($completedContexts.Count) context(s) only ($($completedContexts -join ', ')); 9 contexts are required."
+    if ($completedContexts.Count -lt 10) {
+        throw "Startup log proves migration checks for $($completedContexts.Count) context(s) only ($($completedContexts -join ', ')); 10 contexts are required."
     }
     Write-Output "Startup log migration contexts: $($completedContexts -join ', ')"
 }
@@ -109,7 +109,7 @@ if (-not [string]::IsNullOrWhiteSpace($StartupLogPath)) {
 Write-Output "Manifest revision: $($manifest.revision)"
 Write-Output "Remote revision: $($info.manifestRevision) (match)"
 Write-Output "Remote environment: $($info.environment)"
-Write-Output 'Required/applied migrations (9/9 match):'
+Write-Output ("Required/applied migrations ({0}/{0} match):" -f $requiredMigrations.Count)
 foreach ($name in ($requiredMigrations.Keys | Sort-Object)) {
     Write-Output ("  {0}: {1}" -f $name, $requiredMigrations[$name])
 }

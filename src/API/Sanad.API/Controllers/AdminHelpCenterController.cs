@@ -10,10 +10,13 @@ using Sanad.Modules.Cms.Domain.Legal;
 namespace Sanad.API.Controllers;
 
 /// <summary>
-/// SET-13 admin Help Center. SuperAdmin and ContentAdmin only (CmsContent);
-/// SupportAdmin stays read-only. FAQ management is non-destructive (no
-/// delete route in this slice) and the support contact is one global row.
-/// Nothing here sends SMS, email, or notifications.
+/// SET-13 admin Help Center. FAQ management is SuperAdmin and ContentAdmin
+/// only (controller-level CmsContent). The support contact pair additionally
+/// admits SupportAdmin through the narrower CmsHelpContact policy, because
+/// support staff own the contact card; FAQ writes keep CmsContent. FAQ
+/// management is non-destructive (no delete route in this slice) and the
+/// support contact is one global row. Nothing here sends SMS, email, or
+/// notifications.
 /// </summary>
 [Authorize(Policy = AuthorizationPolicies.CmsContent)]
 [Route("api/v1/admin/help-center")]
@@ -155,6 +158,7 @@ public sealed class AdminHelpCenterController :
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = AuthorizationPolicies.CmsHelpContact)]
     [HttpGet("support-contact")]
     [ProducesResponseType(
         typeof(SupportContactResponse),
@@ -170,6 +174,7 @@ public sealed class AdminHelpCenterController :
         return ToActionResult(result);
     }
 
+    [Authorize(Policy = AuthorizationPolicies.CmsHelpContact)]
     [HttpPut("support-contact")]
     [Consumes("application/json")]
     [ProducesResponseType(

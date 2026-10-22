@@ -68,9 +68,13 @@ public sealed class CreateLibraryContentCommandHandler(ICmsDbContext db)
 
             return content.ToAdminResponse();
         }
-        catch (DomainException)
+        catch (DomainException exception)
         {
-            return LibraryErrors.ContentInvalid;
+            return LibraryErrors.ContentInvalidWith(
+                LibraryContentFieldDetail.FromDomainException(
+                    exception.Message,
+                    request.Type,
+                    request.Sections));
         }
     }
 }
@@ -135,9 +139,22 @@ public sealed class UpdateLibraryContentCommandHandler(ICmsDbContext db)
                 request.IsPremium,
                 sections);
         }
-        catch (DomainException)
+        catch (DomainException exception)
         {
-            return LibraryErrors.ContentInvalid;
+            IReadOnlyList<LibraryContentSectionInput> effectiveSections = sections
+                .Select(section => new LibraryContentSectionInput(
+                    section.DisplayOrder,
+                    section.ArabicTitle,
+                    section.EnglishTitle,
+                    section.ArabicBullets,
+                    section.EnglishBullets))
+                .ToList();
+
+            return LibraryErrors.ContentInvalidWith(
+                LibraryContentFieldDetail.FromDomainException(
+                    exception.Message,
+                    content.Type,
+                    effectiveSections));
         }
 
         await db.SaveChangesAsync(cancellationToken);
@@ -192,6 +209,43 @@ public sealed class ArchiveLibraryContentCommandHandler(ICmsDbContext db)
             return LibraryErrors.ContentNotFound;
 
         content.Archive();
+        await db.SaveChangesAsync(cancellationToken);
+
+        return content.ToAdminResponse();
+    }
+}
+
+public sealed record RestoreLibraryContentCommand(Guid Id)
+    : ICommand<LibraryAdminContentResponse>;
+
+/// <summary>
+/// Restores archived content to Draft (locked decision #24). It is not a
+/// publication: the restored row must pass the normal draft update validation
+/// before it can be published again. A non-archived target is the pinned
+/// lifecycle violation <c>Cms.LibraryContent.InvalidOperation</c> (409), the
+/// same code the publish-on-archived guard uses.
+/// </summary>
+public sealed class RestoreLibraryContentCommandHandler(ICmsDbContext db)
+    : ICommandHandler<RestoreLibraryContentCommand, LibraryAdminContentResponse>
+{
+    public async Task<Result<LibraryAdminContentResponse>> Handle(
+        RestoreLibraryContentCommand request, CancellationToken cancellationToken)
+    {
+        LibraryContent? content = await db.LibraryContents
+            .SingleOrDefaultAsync(
+                item => item.Id == new LibraryContentId(request.Id), cancellationToken);
+        if (content is null)
+            return LibraryErrors.ContentNotFound;
+
+        try
+        {
+            content.Restore();
+        }
+        catch (DomainException)
+        {
+            return LibraryErrors.ContentInvalidOperation;
+        }
+
         await db.SaveChangesAsync(cancellationToken);
 
         return content.ToAdminResponse();

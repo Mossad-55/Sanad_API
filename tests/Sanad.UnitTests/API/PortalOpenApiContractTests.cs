@@ -276,6 +276,33 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         Assert.Contains("value", schema.GetProperty("required").EnumerateArray().Select(v => v.GetString()));
     }
 
+    /// <summary>
+    /// Partner-contact request body. Only the three genuinely required fields
+    /// appear in the generated schema's <c>required</c> array; the optional
+    /// fields stay out. Wire names/casing are unchanged.
+    /// </summary>
+    [Fact]
+    public void PartnerContactBodySchema_RequiresOnlyNameEmailAndMessage()
+    {
+        JsonElement operation = GetOperation(Document, "/api/v1/partner-contact", "post");
+        JsonElement schema = operation
+            .GetProperty("requestBody").GetProperty("content")
+            .GetProperty("application/json").GetProperty("schema");
+        JsonElement body = ResolveRef(Document, AssertRef(schema, Document));
+
+        string[] required = body.TryGetProperty("required", out JsonElement requiredElement)
+            ? requiredElement.EnumerateArray().Select(value => value.GetString()!).ToArray()
+            : [];
+
+        Assert.Equal(["name", "email", "message"], required);
+
+        JsonElement properties = body.GetProperty("properties");
+        foreach (string property in new[] { "name", "email", "message", "company", "subject", "phone", "companyType", "city" })
+        {
+            Assert.True(properties.TryGetProperty(property, out _), $"Missing {property} in partner-contact schema.");
+        }
+    }
+
     [Fact]
     public void CommunityCategoryUpdateBody_DoesNotRequireId()
     {
@@ -584,14 +611,25 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
     private static void AssertAllowsNull(JsonElement schema, string property)
     {
         JsonElement element = schema.GetProperty("properties").GetProperty(property);
+        bool TypeMentionsNull(JsonElement typeElement) =>
+            typeElement.ValueKind == JsonValueKind.Array
+                ? typeElement.EnumerateArray().Any(v =>
+                    v.ValueKind == JsonValueKind.String && v.GetString() == "null")
+                : typeElement.GetString() == "null";
         bool allowsNull = (element.TryGetProperty("nullable", out JsonElement nullable) && nullable.GetBoolean()) ||
-            (element.TryGetProperty("type", out JsonElement type) &&
-                (type.ValueKind == JsonValueKind.Array
-                    ? type.EnumerateArray().Any(v => v.GetString() == "null")
-                    : type.GetString() == "null")) ||
+            (element.TryGetProperty("type", out JsonElement type) && TypeMentionsNull(type)) ||
             (element.TryGetProperty("anyOf", out JsonElement anyOf) &&
                 anyOf.EnumerateArray().Any(v => v.ValueKind == JsonValueKind.Object &&
-                    v.TryGetProperty("type", out JsonElement inner) && inner.GetString() == "null"));
+                    v.TryGetProperty("type", out JsonElement inner) &&
+                    (inner.ValueKind == JsonValueKind.Array
+                        ? TypeMentionsNull(inner)
+                        : inner.GetString() == "null"))) ||
+            (element.TryGetProperty("oneOf", out JsonElement oneOf) &&
+                oneOf.EnumerateArray().Any(v => v.ValueKind == JsonValueKind.Object &&
+                    v.TryGetProperty("type", out JsonElement innerOne) &&
+                    (innerOne.ValueKind == JsonValueKind.Array
+                        ? TypeMentionsNull(innerOne)
+                        : innerOne.GetString() == "null")));
         Assert.True(allowsNull, $"Property {property} does not allow null.");
     }
 }

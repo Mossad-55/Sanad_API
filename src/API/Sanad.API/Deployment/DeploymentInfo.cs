@@ -9,6 +9,7 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Finance.Infrastructure;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Notifications.Infrastructure.Persistence;
+using Sanad.Modules.Rentals.Infrastructure;
 
 namespace Sanad.API.Deployment;
 
@@ -112,6 +113,7 @@ public sealed class EfDeploymentMigrationProbe(IServiceProvider serviceProvider)
         await ProbeAsync<CommunityDbContext>("Community", applied, cancellationToken);
         await ProbeAsync<FinanceDbContext>("Finance", applied, cancellationToken);
         await ProbeAsync<ChatDbContext>("Chat", applied, cancellationToken);
+        await ProbeAsync<RentalsDbContext>("Rentals", applied, cancellationToken);
 
         foreach (string? value in applied.Values)
         {

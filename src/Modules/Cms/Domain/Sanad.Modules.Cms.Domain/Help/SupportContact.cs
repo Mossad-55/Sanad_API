@@ -7,7 +7,8 @@ namespace Sanad.Modules.Cms.Domain.Help;
 /// <summary>
 /// One global support contact pair (hotline phone + support email) shown in
 /// every app's Help Center. It is not per-role and it never sends an SMS or
-/// an email — it is contact-card data only.
+/// an email — it is contact-card data only. Either value may be unset:
+/// clients hide an unset contact option and fall back to in-app support.
 /// </summary>
 public sealed class SupportContact : Entity<int>
 {
@@ -25,8 +26,8 @@ public sealed class SupportContact : Entity<int>
     }
 
     private SupportContact(
-        string supportPhone,
-        string supportEmail,
+        string? supportPhone,
+        string? supportEmail,
         DateTime createdOnUtc)
         : base(SingletonId)
     {
@@ -36,14 +37,14 @@ public sealed class SupportContact : Entity<int>
         UpdatedOnUtc = createdOnUtc;
     }
 
-    public string SupportPhone { get; private set; } = string.Empty;
-    public string SupportEmail { get; private set; } = string.Empty;
+    public string? SupportPhone { get; private set; }
+    public string? SupportEmail { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
 
     public static SupportContact Create(
-        string supportPhone,
-        string supportEmail)
+        string? supportPhone,
+        string? supportEmail)
     {
         return new SupportContact(
             NormalizePhone(supportPhone),
@@ -51,19 +52,26 @@ public sealed class SupportContact : Entity<int>
             DateTime.UtcNow);
     }
 
-    public void Update(string supportPhone, string supportEmail)
+    /// <summary>
+    /// Replacement semantics: each supplied value replaces the stored one, and
+    /// a null value clears that field independently of the other. Blank values
+    /// normalize to a clear at the domain boundary; over HTTP the command
+    /// validator rejects blanks before the domain is reached.
+    /// </summary>
+    public void Update(
+        string? supportPhone,
+        string? supportEmail)
     {
         SupportPhone = NormalizePhone(supportPhone);
         SupportEmail = NormalizeEmail(supportEmail);
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
-    private static string NormalizePhone(string supportPhone)
+    private static string? NormalizePhone(string? supportPhone)
     {
         if (string.IsNullOrWhiteSpace(supportPhone))
         {
-            throw new DomainException(
-                "Support phone is required.");
+            return null;
         }
 
         // Reuse the shared E.164 rule so the hotline is always dialable.
@@ -79,12 +87,11 @@ public sealed class SupportContact : Entity<int>
         return phone.Value;
     }
 
-    private static string NormalizeEmail(string supportEmail)
+    private static string? NormalizeEmail(string? supportEmail)
     {
         if (string.IsNullOrWhiteSpace(supportEmail))
         {
-            throw new DomainException(
-                "Support email is required.");
+            return null;
         }
 
         Email email = Email.Create(supportEmail);

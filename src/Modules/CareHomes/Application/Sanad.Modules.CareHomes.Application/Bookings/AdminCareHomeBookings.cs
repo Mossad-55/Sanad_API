@@ -59,7 +59,14 @@ public sealed record AdminCareHomeBookingDetail(
     Guid? ActualCheckOutRecordedByUserId, DateTime? FamilyCheckInConfirmedOnUtc,
     Guid? FamilyCheckInConfirmedByUserId, Guid? ExtensionOfBookingId,
     IReadOnlyList<AdminCareHomeBookingAssignment> AssignmentHistory,
-    AdminCareHomeBookingDispute? CheckInDispute);
+    AdminCareHomeBookingDispute? CheckInDispute,
+    // Refund-policy / ambiguity surface (closure review: the reconcile
+    // endpoint's compare-and-swap needs the current attempt identity read
+    // from this detail, not guessed). Additive members only.
+    int RefundPolicyVersion, Guid? RefundAttemptClaimId,
+    bool IsRefundOutcomeAmbiguous, bool IsRefundAttemptInFlight,
+    decimal? RefundAmbiguityAwardAmount, string? RefundAmbiguityReason,
+    DateTime? RefundAmbiguityRaisedOnUtc, DateTime? RefundAmbiguityClearedOnUtc);
 
 public sealed record GetAdminCareHomeBookingQuery(Guid BookingId) : IQuery<AdminCareHomeBookingDetail>;
 
@@ -150,6 +157,10 @@ public sealed class GetAdminCareHomeBookingHandler(ICareHomesDbContext db)
             x.CheckoutHoldUntilUtc, x.DecisionHoldUntilUtc, x.AssignedRoomId, x.AssignedBedId,
             x.ActualCheckInOnUtc, x.ActualCheckInRecordedBy?.Value, x.ActualCheckOutOnUtc,
             x.ActualCheckOutRecordedBy?.Value, x.FamilyCheckInConfirmedOnUtc,
-            x.FamilyCheckInConfirmedBy?.Value, x.ExtensionOfBookingId, assignments, dispute);
+            x.FamilyCheckInConfirmedBy?.Value, x.ExtensionOfBookingId, assignments, dispute,
+            x.RefundPolicyVersion, x.RefundAttemptClaimId,
+            x.IsRefundOutcomeAmbiguous, x.IsRefundAttemptInFlight,
+            x.RefundAmbiguityAwardAmount, x.RefundAmbiguityReason,
+            x.RefundAmbiguityRaisedOnUtc, x.RefundAmbiguityClearedOnUtc);
     }
 }

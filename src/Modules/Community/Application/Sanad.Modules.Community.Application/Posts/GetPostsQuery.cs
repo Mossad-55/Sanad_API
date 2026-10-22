@@ -111,22 +111,36 @@ public sealed class GetPostsQueryHandler
 /// are blank — no placeholder name is invented.
 /// </para>
 /// <para>
-/// <c>AvatarUrl</c> is always <c>null</c>: Community has no publicly servable
-/// avatar source. The only stored avatar reference is the Identity file key,
-/// which lives in private storage and is readable only by its owner through
-/// <c>GET /api/v1/auth/avatar</c>; publishing that key as if it were a URL
-/// would hand the app a link that always 404s. The honest value is null.
+/// <c>AvatarUrl</c> is the **downloadable** path of the author's avatar when a
+/// stored one exists, and <c>null</c> otherwise. It is a route, never the
+/// stored Identity private storage key: the bytes are served only by the
+/// authorized Community author-avatar route, which enforces the anonymity rule
+/// (an anonymous author is never served). The stored key stays server-side and
+/// is never serialized. When no avatar is stored the honest value remains
+/// <c>null</c>.
 /// </para>
 /// </summary>
 public sealed record CommunityAuthorProfile(string? DisplayName, string? AvatarUrl)
 {
     /// <summary>
+    /// The authorized download path of an author's avatar. It carries no key
+    /// material — only the author id the route already knows — so an anonymous
+    /// author resolving to this path still leaks nothing (the route resolves
+    /// anonymity independently and answers 404 for it).
+    /// </summary>
+    public static string AvatarPathFor(Guid authorId) =>
+        $"/api/v1/community/authors/{authorId}/photo";
+
+    /// <summary>
     /// The stored author name as a display name: English full name preferred,
     /// Arabic fallback, and <c>null</c> when the identity row is missing or
-    /// both names are blank — no placeholder name is invented.
+    /// both names are blank — no placeholder name is invented. The avatar path
+    /// is published only when the identity row carries a stored avatar key.
     /// </summary>
     public static CommunityAuthorProfile FromAuthorName(CommunityAuthorName? name) =>
-        new(DisplayNameOf(name), null);
+        new(
+            DisplayNameOf(name),
+            string.IsNullOrWhiteSpace(name?.AvatarKey) ? null : AvatarPathFor(UserIdOf(name!)));
 
     private static string? DisplayNameOf(CommunityAuthorName? name)
     {
@@ -141,6 +155,8 @@ public sealed record CommunityAuthorProfile(string? DisplayName, string? AvatarU
 
         return string.IsNullOrWhiteSpace(preferred) ? null : preferred;
     }
+
+    private static Guid UserIdOf(CommunityAuthorName name) => name.UserId;
 }
 
 /// <summary>

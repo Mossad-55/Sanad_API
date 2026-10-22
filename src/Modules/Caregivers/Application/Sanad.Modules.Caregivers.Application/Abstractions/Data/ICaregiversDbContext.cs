@@ -53,6 +53,8 @@ public interface ICaregiversDbContext
         string? search,
         int? type,
         int? gender,
+        Guid? governorateId,
+        Guid? cityId,
         Guid? areaId,
         Guid? specializationId,
         int? availability,
@@ -67,6 +69,15 @@ public interface ICaregiversDbContext
     // Dynamic User Header Method querying identity.users
     Task<CaregiverUserHeader?> GetCaregiverUserHeaderAsync(
         UserId userId,
+        CancellationToken cancellationToken = default);
+
+    // Resolves the stored Identity avatar key of a caregiver that the public
+    // discovery predicate would return (Active status, show_profile not
+    // disabled, identity join). Returns null when the caregiver is unknown,
+    // not discoverable or has no stored avatar, so the authorized photo read
+    // answers a generic 404 without exposing the raw private storage key.
+    Task<string?> GetDiscoverableCaregiverAvatarKeyAsync(
+        CaregiverId caregiverId,
         CancellationToken cancellationToken = default);
 
     Task<PayoutRecordSaveResult> SavePayoutIfAccountRevisionVerifiedAsync(

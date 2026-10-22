@@ -359,8 +359,13 @@ public sealed class PlatformControlsTests
         await using var keepAlive = new SqliteConnection(connectionString);
         await keepAlive.OpenAsync();
 
+        // The Finance model carries a PostgreSQL check constraint that uses
+        // char_length; SQLite has no such built-in. Register the portable
+        // equivalent so EnsureCreated can build the same relational guard.
+        keepAlive.CreateFunction("char_length", (string? value) => value?.Length ?? 0);
+
         DbContextOptions<FinanceDbContext> options = new DbContextOptionsBuilder<FinanceDbContext>()
-            .UseSqlite(connectionString)
+            .UseSqlite(keepAlive)
             .Options;
 
         await using (var setup = new FinanceDbContext(options))

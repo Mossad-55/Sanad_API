@@ -353,9 +353,9 @@ public sealed class CancelBookingCommandHandlerTests
         Assert.Null(persisted.CancellationReason);
         Assert.Null(persisted.PaymobRefundTransactionId);
 
-        // Order of operations as merged: the provider refund is attempted before the single save, and a
-        // failed save does not undo a gateway call. Recorded here as observed behaviour for the reviewer.
-        Assert.Single(paymob.RefundCalls);
+        // Order of operations (W3 crash-safety): the provider send happens only after the
+        // claim + fact save committed, so a failed save never reaches the gateway.
+        Assert.Empty(paymob.RefundCalls);
     }
 
     [Fact]

@@ -70,7 +70,8 @@ curl -sS https://localhost:7296/api/v1/support/contact
 ```
 
 The route is `[AllowAnonymous]`. It never sends SMS or email and never touches
-the ticket tables.
+the ticket tables. Either field may be `null` on its own when the admin has
+configured only one of them; clients show only the options that are set.
 
 ## GET `/api/v1/support/tickets`
 
@@ -153,7 +154,10 @@ contact pair itself.
 ```
 
 When no contact has been configured yet, the same route returns `200` with
-`"supportContact": null` — the app hides the card. The pair is global: every
+`"supportContact": null` — the app hides the card. An individually unset value
+arrives as `null` inside a populated pair (for example
+`{ "supportPhone": null, "supportEmail": "support@sanad.example" }`), so the app
+hides only the missing option. The pair is global: every
 app role sees the same phone and email. Admin management (and the explicit
 rule that `POST /api/v1/support/contact` is unchanged by it) lives in
 `docs/admin/help-center.md`; the app surface is documented in

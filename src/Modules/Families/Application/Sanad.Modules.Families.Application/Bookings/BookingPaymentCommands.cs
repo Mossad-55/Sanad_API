@@ -369,11 +369,32 @@ public sealed class ConfirmBookingPaymentCommandHandler
 
         string outcome;
 
+        // The late-payment refund is claimed and committed before the provider call, so the final
+        // save may lose the row to a competing writer. Only a settled movement is protected here;
+        // when no refund was attempted the ordinary save stays authoritative.
+        long? claimedRefundAwardMinorUnits = null;
+        long settledRefundMinorUnits = 0;
+
         // Late payment: the acceptance window closed while the gateway was processing.
         if (booking.Status == BookingStatus.PendingCaregiverApproval
             && request.UtcNow > booking.AcceptanceDeadlineUtc)
         {
             booking.Expire(request.UtcNow);
+
+            // The automatic late-payment refund moves real money, so it follows the same
+            // claim-before-send rule as every policy-awarded settlement: the attempt, its exact
+            // award and its correlation id are committed first, which makes it exclusive and
+            // leaves durable evidence if the process dies before the outcome is saved.
+            long refundableMinorUnits = booking.RefundableCeilingMinorUnits();
+
+            if (refundableMinorUnits > 0)
+            {
+                Guid claimId = Guid.NewGuid();
+                booking.ClaimRefundAttempt(claimId, refundableMinorUnits, request.UtcNow);
+                claimedRefundAwardMinorUnits = refundableMinorUnits;
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
 
             Result<string?> refund = await _paymobClient.RefundPaymentAsync(
                 paymobTransactionId,
@@ -382,11 +403,37 @@ public sealed class ConfirmBookingPaymentCommandHandler
 
             if (refund.IsSuccess)
             {
+                if (refundableMinorUnits > 0)
+                {
+                    booking.RecordRefundedAmount(refundableMinorUnits, request.UtcNow);
+                    settledRefundMinorUnits = refundableMinorUnits;
+                }
+
                 booking.MarkRefunded(refund.Value, request.UtcNow);
+                booking.ReleaseRefundAttempt(request.UtcNow);
                 outcome = "PaidExpired";
             }
             else
             {
+                // An unconfirmed outcome must not be retried blindly; a definitive refusal proves
+                // nothing moved, so the claim is released and the settlement can be retried.
+                if (refundableMinorUnits > 0
+                    && string.Equals(
+                        refund.Error?.Code,
+                        "Paymob.RefundOutcomeUnknown",
+                        StringComparison.Ordinal))
+                {
+                    booking.MarkRefundOutcomeAmbiguous(
+                        paymobTransactionId,
+                        refund.Error!.Code,
+                        request.UtcNow,
+                        refundableMinorUnits);
+                }
+                else
+                {
+                    booking.ReleaseRefundAttempt(request.UtcNow);
+                }
+
                 outcome = "PaidExpiredRefundPending";
             }
         }
@@ -395,8 +442,24 @@ public sealed class ConfirmBookingPaymentCommandHandler
             outcome = "Paid";
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
+        if (claimedRefundAwardMinorUnits is not null)
+        {
+            // A late provider confirmation is saved idempotently even if a competing writer won
+            // the row; an unrecorded movement leaves the committed claim in flight so the attempt
+            // stays blocked until an operator reconciles it (decision #17).
+            if (!await BookingRefundPersistence.TrySaveClaimedOutcomeAsync(
+                    _dbContext,
+                    booking.Id,
+                    settledRefundMinorUnits,
+                    cancellationToken))
+            {
+                outcome = "PaidExpiredRefundPending";
+            }
+        }
+        else
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
         return Result<ConfirmBookingPaymentResponse>.Success(
             new ConfirmBookingPaymentResponse(booking.Id.Value, outcome));
     }

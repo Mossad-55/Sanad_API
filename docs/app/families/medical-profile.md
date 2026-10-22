@@ -126,14 +126,17 @@ every medical route and its authorization:
 | `GET /api/v1/elderly/medications` | the elderly account's own medication rows | the elderly account's own token. |
 | `GET /api/v1/admin/elderly/medications` | medication administration | the Admin medication policy. |
 | `GET /api/v1/caregiver/bookings/{bookingId}` | `elderly.healthNotes` only | `CaregiverAccess`; the booking must belong to the calling caregiver (`404 Bookings.NotFound` otherwise). |
+| `GET /api/v1/caregiver/dependents/{dependentId}/medical-profile` | the structured medical profile | `CaregiverAccess` **plus an active medical-access grant** to the caller carrying `canViewRecords`, rechecked on every read (`403 MedicalAccess.RecordAccessDenied`; `404 MedicalAccess.NotFound` for an unknown dependent). |
 
-**There is no caregiver route that reads the structured medical profile or the
-medications.** The medical-access grant model
-(`/api/v1/family/dependents/{dependentId}/medical-access-grants`) records the
-family's decision, but no caregiver record-read route consumes a grant yet, so
-the caregiver booking detail publishes no medical profile and no medication —
-see [medical access](medical-access.md). Adding that read is an Owner-level
-authorization decision, not an app-side contract.
+**A caregiver reads the structured medical profile only through an active
+grant.** `GET /api/v1/caregiver/dependents/{dependentId}/medical-profile`
+consumes the grant row
+(`/api/v1/family/dependents/{dependentId}/medical-access-grants`): the grant must
+be active (not revoked, not expired), name the caller as `granteeUserId`, and
+carry `canViewRecords`. The gate is re-evaluated on every read, so a revocation
+takes effect immediately. **Medications** remain family-scoped — no caregiver
+route reads them, and the caregiver booking detail publishes no medical profile
+and no medication. See [medical access](medical-access.md).
 
 ---
 

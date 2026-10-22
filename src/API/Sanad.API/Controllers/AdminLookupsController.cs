@@ -120,6 +120,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPut("lookups/services/{id:guid}")]
+    [ProducesResponseType(
+        typeof(ServiceResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> RenameService(
         Guid id,
         [FromBody] RenameServiceRequest request,
@@ -141,6 +144,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPost("lookups/services/{id:guid}/activate")]
+    [ProducesResponseType(
+        typeof(ServiceResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> ActivateService(
         Guid id,
         CancellationToken cancellationToken)
@@ -160,6 +166,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPost("lookups/services/{id:guid}/deactivate")]
+    [ProducesResponseType(
+        typeof(ServiceResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> DeactivateService(
         Guid id,
         CancellationToken cancellationToken)
@@ -206,6 +215,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPut("lookups/languages/{id:guid}")]
+    [ProducesResponseType(
+        typeof(LanguageResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> RenameLanguage(
         Guid id,
         [FromBody] RenameLanguageRequest request,
@@ -223,6 +235,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPost("lookups/languages/{id:guid}/activate")]
+    [ProducesResponseType(
+        typeof(LanguageResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> ActivateLanguage(
         Guid id,
         CancellationToken cancellationToken)
@@ -238,6 +253,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPost("lookups/languages/{id:guid}/deactivate")]
+    [ProducesResponseType(
+        typeof(LanguageResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> DeactivateLanguage(
         Guid id,
         CancellationToken cancellationToken)
@@ -295,6 +313,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPut("lookups/banks/{id:guid}")]
+    [ProducesResponseType(
+        typeof(BankResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> RenameBank(
         Guid id,
         [FromBody] RenameBankRequest request,
@@ -312,6 +333,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPost("lookups/banks/{id:guid}/activate")]
+    [ProducesResponseType(
+        typeof(BankResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> ActivateBank(
         Guid id,
         CancellationToken cancellationToken)
@@ -327,6 +351,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPost("lookups/banks/{id:guid}/deactivate")]
+    [ProducesResponseType(
+        typeof(BankResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> DeactivateBank(
         Guid id,
         CancellationToken cancellationToken)
@@ -368,6 +395,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPut("lookups/governorates/{id:guid}")]
+    [ProducesResponseType(
+        typeof(GovernorateResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> RenameGovernorate(
         Guid id,
         [FromBody] RenameGovernorateRequest request,
@@ -385,6 +415,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPost("lookups/governorates/{id:guid}/activate")]
+    [ProducesResponseType(
+        typeof(GovernorateResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> ActivateGovernorate(
         Guid id,
         CancellationToken cancellationToken)
@@ -400,6 +433,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPost("lookups/governorates/{id:guid}/deactivate")]
+    [ProducesResponseType(
+        typeof(GovernorateResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> DeactivateGovernorate(
         Guid id,
         CancellationToken cancellationToken)
@@ -440,6 +476,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPut("lookups/cities/{id:guid}")]
+    [ProducesResponseType(
+        typeof(CityResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> RenameCity(
         Guid id,
         [FromBody] RenameCityRequest request,
@@ -457,6 +496,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPost("lookups/cities/{id:guid}/activate")]
+    [ProducesResponseType(
+        typeof(CityResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> ActivateCity(
         Guid id,
         CancellationToken cancellationToken) =>
@@ -464,6 +506,9 @@ public sealed class AdminLookupsController :
             new SetCityActiveCommand(new CityId(id), true), cancellationToken));
 
     [HttpPost("lookups/cities/{id:guid}/deactivate")]
+    [ProducesResponseType(
+        typeof(CityResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> DeactivateCity(
         Guid id,
         CancellationToken cancellationToken) =>
@@ -506,6 +551,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPut("lookups/areas/{id:guid}")]
+    [ProducesResponseType(
+        typeof(AreaResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> RenameArea(
         Guid id,
         [FromBody] RenameAreaRequest request,
@@ -523,6 +571,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPost("lookups/areas/{id:guid}/activate")]
+    [ProducesResponseType(
+        typeof(AreaResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> ActivateArea(
         Guid id,
         CancellationToken cancellationToken) =>
@@ -530,6 +581,9 @@ public sealed class AdminLookupsController :
             new SetAreaActiveCommand(new AreaId(id), true), cancellationToken));
 
     [HttpPost("lookups/areas/{id:guid}/deactivate")]
+    [ProducesResponseType(
+        typeof(AreaResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> DeactivateArea(
         Guid id,
         CancellationToken cancellationToken) =>
@@ -566,6 +620,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPut("lookups/specializations/{id:guid}")]
+    [ProducesResponseType(
+        typeof(SpecializationResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> RenameSpecialization(
         Guid id,
         [FromBody] RenameSpecializationRequest request,
@@ -578,6 +635,9 @@ public sealed class AdminLookupsController :
                     cancellationToken));
 
     [HttpPost("lookups/specializations/{id:guid}/activate")]
+    [ProducesResponseType(
+        typeof(SpecializationResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> ActivateSpecialization(
         Guid id,
         CancellationToken cancellationToken) =>
@@ -587,6 +647,9 @@ public sealed class AdminLookupsController :
                 cancellationToken));
 
     [HttpPost("lookups/specializations/{id:guid}/deactivate")]
+    [ProducesResponseType(
+        typeof(SpecializationResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> DeactivateSpecialization(Guid id, CancellationToken cancellationToken) =>
         ToActionResult(await _sender.Send(new SetSpecializationActiveCommand(
             new SpecializationId(id),
@@ -623,6 +686,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPut("lookups/professional-titles/{id:guid}")]
+    [ProducesResponseType(
+        typeof(ProfessionalTitleResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> RenameProfessionalTitle(
         Guid id,
         [FromBody] RenameProfessionalTitleRequest request,
@@ -635,6 +701,9 @@ public sealed class AdminLookupsController :
                 cancellationToken));
 
     [HttpPost("lookups/professional-titles/{id:guid}/activate")]
+    [ProducesResponseType(
+        typeof(ProfessionalTitleResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> ActivateProfessionalTitle(
         Guid id,
         CancellationToken cancellationToken) =>
@@ -644,6 +713,9 @@ public sealed class AdminLookupsController :
                 cancellationToken));
 
     [HttpPost("lookups/professional-titles/{id:guid}/deactivate")]
+    [ProducesResponseType(
+        typeof(ProfessionalTitleResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> DeactivateProfessionalTitle(
         Guid id,
         CancellationToken cancellationToken) =>
@@ -679,6 +751,9 @@ public sealed class AdminLookupsController :
     }
 
     [HttpPut("lookups/academic-degrees/{id:guid}")]
+    [ProducesResponseType(
+        typeof(AcademicDegreeResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> RenameAcademicDegree(
         Guid id,
         [FromBody] RenameAcademicDegreeRequest request,
@@ -690,6 +765,9 @@ public sealed class AdminLookupsController :
             cancellationToken));
 
     [HttpPost("lookups/academic-degrees/{id:guid}/activate")]
+    [ProducesResponseType(
+        typeof(AcademicDegreeResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> ActivateAcademicDegree(
         Guid id,
         CancellationToken cancellationToken) =>
@@ -699,6 +777,9 @@ public sealed class AdminLookupsController :
                 cancellationToken));
 
     [HttpPost("lookups/academic-degrees/{id:guid}/deactivate")]
+    [ProducesResponseType(
+        typeof(AcademicDegreeResponse),
+        StatusCodes.Status200OK)]
     public async Task<IActionResult> DeactivateAcademicDegree(
         Guid id,
         CancellationToken cancellationToken) =>

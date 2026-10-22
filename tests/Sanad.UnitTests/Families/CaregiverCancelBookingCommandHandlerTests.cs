@@ -510,10 +510,9 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
         Assert.Null(persisted.RefundedOnUtc);
         await AssertNoFactsAsync(store);
 
-        // Order of operations as merged: the provider refund is attempted before the single save, and
-        // a failed save does not undo a gateway call. Recorded here as observed behaviour for the
-        // reviewer (same observation as the family handler's N10).
-        Assert.Single(paymob.RefundCalls);
+        // Order of operations (W3 crash-safety): the provider send happens only after the
+        // claim + fact save committed, so a failed save never reaches the gateway.
+        Assert.Empty(paymob.RefundCalls);
     }
 
     [Fact]
@@ -552,9 +551,10 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
         Assert.Null(persisted.CancelledOnUtc);
         await AssertNoFactsAsync(store);
 
-        // The refund was attempted before the single save (the merged order); nothing about that call
-        // is rolled back by the failed save.
-        Assert.Single(paymob.RefundCalls);
+        // The claim + fact save commits before the provider send (W3 crash-safety
+        // order), so the unrelated persistence failure escapes the handler before
+        // any gateway call is made.
+        Assert.Empty(paymob.RefundCalls);
     }
 
     // =============================================================================================
@@ -844,7 +844,7 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
     }
 
     [Fact]
-    public async Task A20_SuccessfulCancel_SavesExactlyOnce_AndASecondSequentialCancelIsRefusedWithoutAddingAFact()
+    public async Task A20_SuccessfulCancel_SavesTheClaimAndTheOutcome_AndASecondSequentialCancelIsRefusedWithoutAddingAFact()
     {
         string databaseName = NewDatabaseName();
         using FamiliesDbContext dbContext = CreateDbContext(databaseName);
@@ -870,8 +870,9 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
 
         Assert.True(result.IsSuccess);
 
-        // The booking mutation and the recorded fact commit in the handler's single SaveChangesAsync.
-        Assert.Equal(1, seam.SaveCalls);
+        // W3 crash-safety order: the first save commits the fact + refund claim before the
+        // provider send; the second save records the claimed attempt's outcome.
+        Assert.Equal(2, seam.SaveCalls);
 
         // A second, sequential cancel hits the already-ended (Refunded) booking: the policy refuses
         // it with the coded domain failure, and nothing is saved again. No category is supplied —
@@ -888,7 +889,7 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
             reasonCategory: null);
 
         AssertFailedWith(second, "Bookings.Domain.InvalidOperation");
-        Assert.Equal(1, seam.SaveCalls);
+        Assert.Equal(2, seam.SaveCalls);
 
         using FamiliesDbContext store = CreateDbContext(databaseName);
 

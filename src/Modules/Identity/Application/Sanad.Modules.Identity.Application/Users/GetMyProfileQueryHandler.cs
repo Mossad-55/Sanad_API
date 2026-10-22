@@ -51,6 +51,9 @@ public sealed class GetMyProfileQueryHandler :
             accountType,
             user.EmailVerified,
             user.PhoneVerified,
-            user.AvatarUrl);
+            // Avatar parity (Owner lock #34): raw storage keys never leave the
+            // API. GET /api/v1/auth/avatar is the authorized route for the
+            // caller's own avatar, so the profile wires its path, never the key.
+            user.AvatarUrl is null ? null : "/api/v1/auth/avatar");
     }
 }

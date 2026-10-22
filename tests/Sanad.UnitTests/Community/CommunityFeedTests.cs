@@ -589,6 +589,80 @@ public sealed class CommunityFeedTests
     }
 
     [Fact]
+    public async Task Blocked_author_with_avatar_publishes_the_authorized_photo_path()
+    {
+        await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();
+        var viewer = UserId.New();
+        var blocked = UserId.New();
+        await harness.AddIdentityUserAsync(
+            blocked.Value, "محظور", "Blocked Author", avatarKey: "private/avatars/blocked.jpg");
+
+        await harness.BlockAuthorAsync(viewer, blocked);
+
+        var result = await new GetBlockedCommunityAuthorsQueryHandler(harness.Context)
+            .Handle(new GetBlockedCommunityAuthorsQuery(viewer), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        BlockedCommunityAuthorResponse item = Assert.Single(result.Value);
+        Assert.Equal(blocked.Value, item.AuthorId);
+        Assert.Equal("Blocked Author", item.DisplayName);
+        // The wire value is the authorized download route, mirroring the feed
+        // projection — the stored Identity key is consumed server-side only.
+        Assert.Equal($"/api/v1/community/authors/{blocked.Value}/photo", item.AvatarUrl);
+    }
+
+    [Fact]
+    public async Task Blocked_author_with_an_anonymous_post_withholds_name_and_avatar()
+    {
+        await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();
+        var viewer = UserId.New();
+        var blocked = UserId.New();
+        await harness.AddIdentityUserAsync(
+            blocked.Value, "محظور", "Blocked Author", avatarKey: "private/avatars/blocked.jpg");
+        await harness.AddPublishedPostAsync(blocked.Value, isAnonymous: true);
+
+        await harness.BlockAuthorAsync(viewer, blocked);
+
+        var result = await new GetBlockedCommunityAuthorsQueryHandler(harness.Context)
+            .Handle(new GetBlockedCommunityAuthorsQuery(viewer), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        BlockedCommunityAuthorResponse item = Assert.Single(result.Value);
+        // The anonymity rule outranks the block-list relation: the avatar the
+        // author stored is never disclosed on this surface either.
+        Assert.Null(item.DisplayName);
+        Assert.Null(item.AvatarUrl);
+    }
+
+    [Fact]
+    public async Task Blocked_author_avatar_wire_value_never_carries_the_private_key()
+    {
+        await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();
+        var viewer = UserId.New();
+        var blocked = UserId.New();
+        var other = UserId.New();
+        await harness.AddIdentityUserAsync(
+            blocked.Value, "محظور", "Blocked Author", avatarKey: "private/avatars/blocked.jpg");
+        await harness.AddIdentityUserAsync(
+            other.Value, "آخر", "Other Author", avatarKey: "private/avatars/other.jpg");
+
+        await harness.BlockAuthorAsync(viewer, blocked);
+        await harness.BlockAuthorAsync(viewer, other);
+
+        var result = await new GetBlockedCommunityAuthorsQueryHandler(harness.Context)
+            .Handle(new GetBlockedCommunityAuthorsQuery(viewer), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(2, result.Value.Count);
+
+        string wire = harness.Serialize(result.Value);
+        Assert.Contains("/api/v1/community/authors/", wire);
+        Assert.DoesNotContain("private/", wire);
+        Assert.All(result.Value, item =>
+            Assert.Equal($"/api/v1/community/authors/{item.AuthorId}/photo", item.AvatarUrl));
+    }
+
+    [Fact]
     public async Task Blocked_authors_list_is_per_viewer()
     {
         await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();
@@ -843,15 +917,30 @@ internal sealed class CommunityAuthorProjectionHarness : IAsyncDisposable
         // batched author lookup reads it directly.
         await inner.Database.ExecuteSqlRawAsync(
             "CREATE TABLE users (id TEXT NOT NULL PRIMARY KEY, " +
-            "arabic_full_name TEXT NOT NULL, english_full_name TEXT NOT NULL);");
-
+            "arabic_full_name TEXT NOT NULL, english_full_name TEXT NOT NULL, " +
+            "avatar_url TEXT NULL);");
         return new CommunityAuthorProjectionHarness(connection, inner);
     }
 
-    public Task AddIdentityUserAsync(Guid userId, string arabicName, string englishName) =>
-        _inner.Database.ExecuteSqlRawAsync(
-            "INSERT INTO users (id, arabic_full_name, english_full_name) VALUES ({0}, {1}, {2});",
-            userId, arabicName, englishName);
+    public Task AddIdentityUserAsync(
+        Guid userId,
+        string arabicName,
+        string englishName,
+        string? avatarKey = null)
+    {
+        // Raw ADO rather than EF raw SQL: a null avatar binds as a plain
+        // DBNull through SqliteParameter, which EF's standalone raw-SQL
+        // parameter mapping cannot resolve a type mapping for.
+        SqliteCommand command = _connection.CreateCommand();
+        command.CommandText =
+            "INSERT INTO users (id, arabic_full_name, english_full_name, avatar_url) " +
+            "VALUES ($id, $arabicName, $englishName, $avatarKey);";
+        command.Parameters.AddWithValue("$id", userId);
+        command.Parameters.AddWithValue("$arabicName", arabicName);
+        command.Parameters.AddWithValue("$englishName", englishName);
+        command.Parameters.AddWithValue("$avatarKey", (object?)avatarKey ?? DBNull.Value);
+        return command.ExecuteNonQueryAsync();
+    }
 
     public async Task<Guid> AddPublishedPostAsync(
         Guid authorId,

@@ -29,7 +29,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Pu
 
 The publisher compiles the API as part of `dotnet publish`; do not run a second
 solution build just for packaging. It derives the latest migration source heads
-for all nine contexts and writes `sanad-deployment-manifest.json`. It also
+for all ten contexts and writes `sanad-deployment-manifest.json`. It also
 refuses to publish if `appsettings.Development.json` appears in the output.
 The output directory is `deploy/publish-out/` (git-ignored and cleared for each
 run so files from an older package cannot leak into the new one). Packaging
@@ -38,8 +38,8 @@ does not run tests.
 Confirm once that:
 
 - the manifest `revision` equals pushed `main` HEAD;
-- the manifest contains all nine contexts (Identity, Cms, Caregivers, Families,
-  CareHomes, Notifications, Community, Finance, Chat);
+- the manifest contains all ten contexts (Identity, Cms, Caregivers, Families,
+  CareHomes, Notifications, Community, Finance, Chat, Rentals);
 - the output has no `.env`, local settings, keys, certificates, or other secrets.
 
 The manifest migration heads are source-derived by the publisher. Do not repeat

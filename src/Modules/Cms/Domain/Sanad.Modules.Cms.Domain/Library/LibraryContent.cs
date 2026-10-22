@@ -144,6 +144,22 @@ public sealed class LibraryContent : AggregateRoot<LibraryContentId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Restores archived content to <see cref="LibraryContentStatus.Draft"/>
+    /// (locked decision #24). Only archived content can be restored; every
+    /// other status is a lifecycle violation. Restored content then follows the
+    /// normal draft rules — update and validation apply before it can be
+    /// published again.
+    /// </summary>
+    public void Restore()
+    {
+        if (Status != LibraryContentStatus.Archived)
+            throw new DomainException("Only archived library content can be restored.");
+
+        Status = LibraryContentStatus.Draft;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
     public void IncrementViews() => ViewCount = checked(ViewCount + 1);
     public void IncrementLikes() => LikesCount = checked(LikesCount + 1);
     public void DecrementLikes() => LikesCount = Math.Max(0, LikesCount - 1);

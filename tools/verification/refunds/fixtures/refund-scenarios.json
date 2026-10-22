@@ -1,0 +1,731 @@
+﻿{
+  "$schema": "sanad.refund-verification-scenarios/v1",
+  "pack": "tools/verification/refunds",
+  "lane": "W2-V0",
+  "stage": "S7",
+  "status": "AUTHORED-NOT-RUN",
+  "authority": "docs/internal/work/portal-api-reconciliation/contracts/refund-policy-owner-contract-2026-10-22.md",
+  "conventions": {
+    "amountUnit": "piastres (EGP minor units) — Owner decision #4",
+    "rounding": {
+      "newPolicy": "MidpointRounding.ToEven (Money.FromMajorUnits / Money.ScaleBy)",
+      "legacyCareHome": "MidpointRounding.AwayFromZero (CareHomeBooking.cs:273) — historic rows only",
+      "prorationFloor": "zero is an acceptable award — Owner decision #31; never round up"
+    },
+    "businessCalendar": "Africa/Cairo, Sunday–Thursday, official Egyptian public holidays excluded — IMPLEMENTED per Owner decision #36 (fixed Gregorian dates, Coptic computus Easter/Sham El-Nessim, UmAlQura Islamic feasts, announced-holiday override seam). Remaining Owner input: only the annual moon-sighting announcements feed.",
+    "timestamps": "persisted UTC only",
+    "seedStyle": "declarative entity + row listings, never SQL",
+    "providerDouble": "DevelopmentPaymobClient — key-presence-gated selection (W0 D4); every scenario requires the asserted double",
+    "legacyPolicyVersion": "1 (pre-activation bookings keep their captured rules — decisions #7, #8)",
+    "newPolicyVersion": "activation value recorded separately from the approved document date — decision #7"
+  },
+  "scenarios": [
+    {
+      "id": "B7-STATE-01-requested",
+      "category": "b7-refund-state",
+      "title": "Refund case opened — Requested entry only",
+      "preconditions": {
+        "entities": [
+          { "type": "FamilyAccount", "ref": "family-a", "status": "Active" },
+          { "type": "CaregiverProfile", "ref": "caregiver-a", "status": "Active", "availability": "Available" },
+          { "type": "CaregiverBooking", "ref": "booking-a", "family": "family-a", "caregiver": "caregiver-a", "bookingStatus": "Completed", "paymentStatus": "Paid", "policyVersion": 2 }
+        ],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Requested", "amountMinorUnits": 0, "actorUserId": "family-a-user", "occurredOnUtc": "2026-10-22T09:00:00Z" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "RefundLedger.Request returns Success and appends exactly one Requested entry",
+        "HasUnresolvedTimeout is false",
+        "TotalCompleted() is EGP 0.00",
+        "the two-business-day initial-response clock starts at the Requested instant (decision #2)"
+      ],
+      "contractDecisions": [2, 4, 11]
+    },
+    {
+      "id": "B7-STATE-02-investigating",
+      "category": "b7-refund-state",
+      "title": "SupportAdmin investigation phase before SuperAdmin approval",
+      "preconditions": {
+        "entities": [
+          { "type": "FamilyAccount", "ref": "family-a", "status": "Active" },
+          { "type": "StaffUser", "ref": "support-admin-1", "role": "SupportAdmin" },
+          { "type": "StaffUser", "ref": "super-admin-1", "role": "SuperAdmin" }
+        ],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Requested", "amountMinorUnits": 25000, "actorUserId": "family-a-user", "occurredOnUtc": "2026-10-22T09:00:00Z" },
+          { "table": "finance.complaint_reviews (REQUIRES-W3: the complaint-review aggregate is a pending Finance lane deliverable, not in the current schema; run only after that lane is accepted)", "ref": "review-a", "refundCaseId": "case-a", "reviewState": "Investigating", "reportedOnUtc": "2026-10-22T09:30:00Z", "reportedPartyType": "Family", "supportAdminUserId": "support-admin-1" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "the case is readable in an Investigating review state attributable to SupportAdmin",
+        "no Approved entry exists yet, so no seven-business-day processing clock has started (decision #2)",
+        "SupportAdmin alone cannot approve the award — approval requires SuperAdmin (decision #12)",
+        "evidence fields (reporting party, timestamps, dispute decision) are recorded — decision #14"
+      ],
+      "contractDecisions": [2, 11, 12, 14]
+    },
+    {
+      "id": "B7-STATE-03-approved",
+      "category": "b7-refund-state",
+      "title": "SuperAdmin approved the reviewed award — processing clock starts",
+      "preconditions": {
+        "entities": [
+          { "type": "StaffUser", "ref": "super-admin-1", "role": "SuperAdmin" },
+          { "type": "FamilyAccount", "ref": "family-a", "status": "Active" }
+        ],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Requested", "amountMinorUnits": 25000, "actorUserId": "family-a-user", "occurredOnUtc": "2026-10-22T09:00:00Z" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Approved", "amountMinorUnits": 25000, "actorUserId": "super-admin-1", "occurredOnUtc": "2026-10-23T11:00:00Z" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "Approve returns Success and appends an Approved entry",
+        "the seven-business-day refund-processing clock starts at the Approved instant, not at submission (decision #2)",
+        "Approval is a money-movement entry for NetRecorded (decision #35) while TotalCompleted() stays EGP 0.00 — approval alone is not completion (decision #16)",
+        "Approved is not yet a completion state: no TransferConfirmed or CreditBalancePosted entry exists"
+      ],
+      "contractDecisions": [2, 12, 16]
+    },
+    {
+      "id": "B7-STATE-04-rejected",
+      "category": "b7-refund-state",
+      "title": "Refund awarded refused — no money moves",
+      "preconditions": {
+        "entities": [{ "type": "StaffUser", "ref": "super-admin-1", "role": "SuperAdmin" }],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Requested", "amountMinorUnits": 40000, "actorUserId": "family-a-user", "occurredOnUtc": "2026-10-22T09:00:00Z" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Rejected", "amountMinorUnits": 0, "actorUserId": "super-admin-1", "occurredOnUtc": "2026-10-24T10:00:00Z", "evidenceReference": "review-notes-1" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "Reject returns Success and appends a zero-amount Rejected entry",
+        "TotalCompleted() is EGP 0.00 and NetRecorded() is EGP 0.00",
+        "the case is terminal unless a new Requested entry opens a fresh case",
+        "a reviewed refusal is distinct from an automatic policy outcome (decision #11)"
+      ],
+      "contractDecisions": [11, 12]
+    },
+    {
+      "id": "B7-STATE-05-transfer-initiated",
+      "category": "b7-refund-state",
+      "title": "Bank/wallet transfer instructed but not confirmed",
+      "preconditions": {
+        "entities": [{ "type": "FamilyAccount", "ref": "family-a", "status": "Active" }],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Approved", "amountMinorUnits": 30000, "actorUserId": "super-admin-1", "occurredOnUtc": "2026-10-23T11:00:00Z" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "TransferInitiated", "amountMinorUnits": 30000, "actorUserId": "finance-admin-1", "occurredOnUtc": "2026-10-24T09:00:00Z", "evidenceReference": "customer-bank-destination-1" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "InitiateTransfer returns Success and stores the customer's selected destination as evidence",
+        "TotalCompleted() is still EGP 0.00 — initiation is not completion (decision #16)",
+        "no provider reference exists yet on this entry"
+      ],
+      "contractDecisions": [10, 16]
+    },
+    {
+      "id": "B7-STATE-06-transfer-confirmed",
+      "category": "b7-refund-state",
+      "title": "Transfer confirmed with provider reference and completion evidence",
+      "preconditions": {
+        "entities": [{ "type": "FamilyAccount", "ref": "family-a", "status": "Active" }],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "TransferInitiated", "amountMinorUnits": 30000, "actorUserId": "finance-admin-1", "occurredOnUtc": "2026-10-24T09:00:00Z", "evidenceReference": "customer-bank-destination-1" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "TransferConfirmed", "amountMinorUnits": 30000, "actorUserId": "finance-admin-1", "occurredOnUtc": "2026-10-24T15:00:00Z", "providerReference": "dev-refund-9f1c2b7a4e5d4f6a8b0c1d2e3f405162", "evidenceReference": "completion-receipt-1" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "ConfirmTransfer returns Success and appends TransferConfirmed",
+        "TotalCompleted() becomes EGP 300.00",
+        "blank/whitespace providerReference is refused by the aggregate with a DomainException - ledger guards are domain exceptions, not stable error codes by design",
+        "the provider reference is the deterministic double's dev-refund-{guid}, never a real Paymob id"
+      ],
+      "contractDecisions": [10, 16]
+    },
+    {
+      "id": "B7-STATE-07-failed",
+      "category": "b7-refund-state",
+      "title": "Transfer attempt failed — retry allowed after reconciliation",
+      "preconditions": {
+        "entities": [{ "type": "FamilyAccount", "ref": "family-a", "status": "Active" }],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "TransferInitiated", "amountMinorUnits": 30000, "actorUserId": "finance-admin-1", "occurredOnUtc": "2026-10-24T09:00:00Z" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Failed", "amountMinorUnits": 30000, "actorUserId": "finance-admin-1", "occurredOnUtc": "2026-10-24T09:05:00Z", "providerReference": "dev-decline-0a1b2c3d4e5f60718293a4b5c6d7e8f9" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "Fail returns Success and records the provider failure reference",
+        "HasUnresolvedTimeout is false — a clean failure is not an ambiguous outcome",
+        "a retry is permitted, unlike the TimedOut case",
+        "TotalCompleted() is EGP 0.00"
+      ],
+      "contractDecisions": [16, 17]
+    },
+    {
+      "id": "B7-STATE-08-timed-out",
+      "category": "b7-refund-state",
+      "title": "Ambiguous provider timeout — retry and confirmation blocked until reconciled",
+      "preconditions": {
+        "entities": [{ "type": "FamilyAccount", "ref": "family-a", "status": "Active" }],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Approved", "amountMinorUnits": 30000, "actorUserId": "super-admin-1", "occurredOnUtc": "2026-10-23T11:00:00Z" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "TimedOut", "amountMinorUnits": 30000, "actorUserId": null, "occurredOnUtc": "2026-10-24T09:00:00Z", "providerReference": "dev-timeout-112233445566778899aabbccddeeff00" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "HasUnresolvedTimeout is true",
+        "every transition except ReconcileTimeout is refused by the aggregate (DomainException) while the timeout is unresolved — no stable error code by design; retry attempts are blocked at the domain, not at the API",
+        "the case is not retried blindly (decision #17)",
+        "the sweep dry-run selects this row as an unknown-outcome candidate"
+      ],
+      "contractDecisions": [17]
+    },
+    {
+      "id": "B7-STATE-09-credit-balance-posted",
+      "category": "b7-refund-state",
+      "title": "Customer chose app credit — real non-withdrawable balance plus ledger entry",
+      "preconditions": {
+        "entities": [
+          { "type": "FamilyAccount", "ref": "family-a", "status": "Active" },
+          { "type": "StaffUser", "ref": "super-admin-1", "role": "SuperAdmin" }
+        ],
+        "seedRows": [
+          { "table": "finance.credit_balances", "ref": "credit-a", "familyRef": "family-a", "balanceMinorUnits": 0 },
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "PostCredit appends a CreditBalancePosted entry and the balance movement is written in the same unit of work",
+        "TotalCompleted() includes the posted credit",
+        "CreditBalance.Post of a zero or negative amount throws a DomainException, surfaced by the application as the stable error Finance.Credit.Invalid — a zero-piastre proration award is recorded on the ledger but posts nothing (decisions #15, #31)",
+        "the balance is non-withdrawable: ApplyToInvoice/RefundToCustomer cannot drive it below zero"
+      ],
+      "contractDecisions": [10, 15, 31]
+    },
+
+    {
+      "id": "M1-CAREGIVER-01-qualified-discovery",
+      "category": "m1-qualified-caregiver",
+      "title": "Qualified caregiver fixture satisfies discovery so refund fixtures are not empty",
+      "preconditions": {
+        "entities": [
+          { "type": "CaregiverProfile", "ref": "caregiver-a", "status": "Active", "caregiverType": "Medical", "availability": "Available", "cityRef": "cairo", "governorateRef": "cairo", "hasUpcomingAvailability": true, "verificationComplete": true }
+        ],
+        "seedRows": [
+          { "table": "caregivers.caregiver_profiles", "ref": "caregiver-a", "userRef": "caregiver-user-a", "status": 4, "caregiverType": 1, "availability": 1 },
+          { "table": "caregivers.caregiver_area_selections (discovery joins caregiver_area_selections -> areas -> cities; CaregiversDbContext.cs:384-389)", "caregiverRef": "caregiver-a", "cityRef": "cairo" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "the caregiver appears in discovery with a non-empty 200",
+        "eligibility predicates remain enforced — an ineligible caregiver stays hidden",
+        "an empty 200 alone is not accepted as proof that the fixture is eligible (S0/M1 rule)"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [1]
+    },
+    {
+      "id": "M1-CAREGIVER-02-city-filter-real",
+      "category": "m1-qualified-caregiver",
+      "title": "cityId/governorateId filters actually filter (W0 D4 silent no-op bug)",
+      "preconditions": {
+        "entities": [
+          { "type": "CaregiverProfile", "ref": "caregiver-cairo", "status": "Active", "cityRef": "cairo", "availability": "Available" },
+          { "type": "CaregiverProfile", "ref": "caregiver-alex", "status": "Active", "cityRef": "alexandria", "availability": "Available" }
+        ],
+        "seedRows": [
+          { "table": "caregivers.caregiver_area_selections (discovery joins caregiver_area_selections -> areas -> cities; CaregiversDbContext.cs:384-389)", "caregiverRef": "caregiver-cairo", "cityRef": "cairo" },
+          { "table": "caregivers.caregiver_area_selections (discovery joins caregiver_area_selections -> areas -> cities; CaregiversDbContext.cs:384-389)", "caregiverRef": "caregiver-alex", "cityRef": "alexandria" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "filtering by cityId=cairo returns caregiver-cairo and never caregiver-alex",
+        "the EXISTS clause translates to SQL on Npgsql (not an in-memory-only no-op)",
+        "this is the parked W1 V0 item: SQLite SQL-level test for the city/governorate EXISTS clause"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [1]
+    },
+    {
+      "id": "M1-CAREGIVER-03-eligibility-blocked-by-refund-state",
+      "category": "m1-qualified-caregiver",
+      "title": "A caregiver with an open failed-refund booking remains discoverable unless eligibility says otherwise",
+      "preconditions": {
+        "entities": [
+          { "type": "CaregiverProfile", "ref": "caregiver-a", "status": "Active", "availability": "Available" },
+          { "type": "CaregiverBooking", "ref": "booking-a", "caregiver": "caregiver-a", "bookingStatus": "Refunded", "policyVersion": 2 }
+        ],
+        "seedRows": []
+      },
+      "expectedObservableOutcomes": [
+        "a refunded booking does not silently remove caregiver eligibility",
+        "eligibility remains enforced by the discovery predicate alone"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [4]
+    },
+
+    {
+      "id": "FAMILY-ACCESS-01-own-booking-refund",
+      "category": "family-access",
+      "title": "A family reads only its own refund case",
+      "preconditions": {
+        "entities": [
+          { "type": "FamilyAccount", "ref": "family-a", "status": "Active" },
+          { "type": "FamilyAccount", "ref": "family-b", "status": "Active" },
+          { "type": "CaregiverBooking", "ref": "booking-a", "family": "family-a", "caregiver": "caregiver-a", "bookingStatus": "Completed" }
+        ],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a", "familyRef": "family-a" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "family-a can read its own refund case",
+        "family-b receives 404 (not 403) for family-a's case — no existence disclosure",
+        "an anonymous caller receives 401"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [10, 11]
+    },
+    {
+      "id": "FAMILY-ACCESS-02-cancellation-entitlement-new-policy",
+      "category": "family-access",
+      "title": "New-policy family cancellation at the 24-hour boundary",
+      "preconditions": {
+        "entities": [
+          { "type": "CaregiverBooking", "ref": "b-24h", "family": "family-a", "caregiver": "caregiver-a", "policyVersion": 2, "scheduledStartUtc": "2026-10-25T12:00:00Z", "cancelledOnUtc": "2026-10-24T12:00:00Z", "capturedMinorUnits": 40000 },
+          { "type": "CaregiverBooking", "ref": "b-just-under", "family": "family-a", "caregiver": "caregiver-a", "policyVersion": 2, "scheduledStartUtc": "2026-10-25T12:00:00Z", "cancelledOnUtc": "2026-10-24T12:00:00.0000001Z", "capturedMinorUnits": 40000 },
+          { "type": "CaregiverBooking", "ref": "b-at-start", "family": "family-a", "caregiver": "caregiver-a", "policyVersion": 2, "scheduledStartUtc": "2026-10-25T12:00:00Z", "cancelledOnUtc": "2026-10-25T12:00:00Z", "capturedMinorUnits": 40000 }
+        ],
+        "seedRows": []
+      },
+      "expectedObservableOutcomes": [
+        "exactly 24 hours before start: full refund (40000 piastres) — clause 2",
+        "immediately below 24 hours: 50% (20000 piastres), rounding ToEven",
+        "at/after start: no refund (0 piastres)",
+        "timing is relative to scheduled service, not provider acceptance"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [2, 4]
+    },
+    {
+      "id": "FAMILY-ACCESS-03-multi-session-discounted-allocation",
+      "category": "family-access",
+      "title": "Multi-session cancellation refunds unused sessions at their allocated discounted price",
+      "preconditions": {
+        "entities": [
+          { "type": "CaregiverBooking", "ref": "package-a", "family": "family-a", "caregiver": "caregiver-a", "policyVersion": 2, "paidPackageMinorUnits": 100000, "sessions": 3 }
+        ],
+        "seedRows": [
+          { "table": "families.booking_session_allocations (REQUIRES-W3: decision #5 session allocation is a pending lane deliverable, not in the current schema)", "packageRef": "package-a", "sessionIndex": 1, "allocatedMinorUnits": 33334, "delivered": true },
+          { "table": "families.booking_session_allocations (REQUIRES-W3: decision #5 session allocation is a pending lane deliverable, not in the current schema)", "packageRef": "package-a", "sessionIndex": 2, "allocatedMinorUnits": 33333, "delivered": false },
+          { "table": "families.booking_session_allocations (REQUIRES-W3: decision #5 session allocation is a pending lane deliverable, not in the current schema)", "packageRef": "package-a", "sessionIndex": 3, "allocatedMinorUnits": 33333, "delivered": false }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "allocations sum exactly to the paid package total (100000) — decision #5",
+        "delivered session 1 is non-refundable",
+        "unused sessions 2 and 3 refund at 66666, not a standalone undiscounted price",
+        "cumulative refunds never exceed captured funds less previous refunds — decision #4"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [3, 4, 5]
+    },
+    {
+      "id": "FAMILY-ACCESS-04-provider-failure-60-minutes",
+      "category": "family-access",
+      "title": "Provider no-show / lateness over 60 minutes refunds the session fully",
+      "preconditions": {
+        "entities": [
+          { "type": "CaregiverBooking", "ref": "b-late-60", "policyVersion": 2, "providerLatenessMinutes": 60, "customerConsented": false, "capturedMinorUnits": 40000 },
+          { "type": "CaregiverBooking", "ref": "b-late-61", "policyVersion": 2, "providerLatenessMinutes": 61, "customerConsented": false, "capturedMinorUnits": 40000 }
+        ],
+        "seedRows": []
+      },
+      "expectedObservableOutcomes": [
+        "exactly 60 minutes without consent does not trigger the clause-4 refund; greater than 60 does",
+        "the refund is full for that session",
+        "customer may choose a replacement at no extra cost, coordinated by staff, not auto-assigned — decisions #4, #18"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [4, 18]
+    },
+    {
+      "id": "FAMILY-ACCESS-05-complaint-48h-late-review",
+      "category": "family-access",
+      "title": "Quality complaint inside and after the 48-hour window",
+      "preconditions": {
+        "entities": [
+          { "type": "QualityComplaint", "ref": "complaint-in", "visitedOnUtc": "2026-10-20T10:00:00Z", "reportedOnUtc": "2026-10-21T09:00:00Z" },
+          { "type": "QualityComplaint", "ref": "complaint-late", "visitedOnUtc": "2026-10-20T10:00:00Z", "reportedOnUtc": "2026-10-23T09:00:00Z" }
+        ],
+        "seedRows": []
+      },
+      "expectedObservableOutcomes": [
+        "within 48 hours: accepted for review, no automatic full refund (clause 5)",
+        "after 48 hours: still accepted but flagged for late review, no automatic compensation promise — decision #13",
+        "safety reports remain available regardless of the window"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [11, 13]
+    },
+
+    {
+      "id": "M7-REPLAY-01-sequential-same-key",
+      "category": "m7-idempotency-replay",
+      "title": "Sequential replay of a visit/cancellation with the same idempotency key",
+      "preconditions": {
+        "entities": [
+          { "type": "FamilyAccount", "ref": "family-a", "status": "Active" },
+          { "type": "CaregiverBooking", "ref": "booking-a", "family": "family-a", "caregiver": "caregiver-a", "bookingStatus": "Completed" }
+        ],
+        "seedRows": [],
+        "idempotencyKey": "refund-replay-key-001",
+        "requestPayloadHash": "sha256:seed-identical-body"
+      },
+      "expectedObservableOutcomes": [
+        "first call: 200 receipt",
+        "second call with the identical key and content: the same receipt is returned, no second ledger entry",
+        "exactly one Requested entry exists after both calls"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [17]
+    },
+    {
+      "id": "M7-REPLAY-02-conflicting-replay",
+      "category": "m7-idempotency-replay",
+      "title": "Conflicting replay with the same idempotency key but different content",
+      "preconditions": {
+        "entities": [{ "type": "FamilyAccount", "ref": "family-a", "status": "Active" }],
+        "seedRows": [
+          { "table": "families.<target-request-table> (REQUIRES-W3 M7 seam: the real mechanism is the column-level IdempotencyKey + unique (ElderlyIdentityUserId, IdempotencyKey) on help-request/SOS tables, not a receipts table)", "idempotencyKey": "refund-replay-key-002", "requestPayloadHash": "sha256:original-body" }
+        ],
+        "idempotencyKey": "refund-replay-key-002",
+        "requestPayloadHash": "sha256:differing-body"
+      },
+      "expectedObservableOutcomes": [
+        "the second call is rejected with 409 conflict (matching the partner-contact contract precedent)",
+        "no new ledger entry and no money movement",
+        "the original receipt remains unchanged"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [17]
+    },
+    {
+      "id": "M7-REPLAY-03-raced-replay",
+      "category": "m7-idempotency-replay",
+      "title": "Two concurrent calls with the same key — relational race check (disposable PostgreSQL REQUIRED)",
+      "preconditions": {
+        "entities": [
+          { "type": "FamilyAccount", "ref": "family-a", "status": "Active" },
+          { "type": "CaregiverBooking", "ref": "booking-a", "family": "family-a", "caregiver": "caregiver-a", "bookingStatus": "Completed" }
+        ],
+        "seedRows": [
+          { "table": "families.<target-request-table> (REQUIRES-W3 M7 seam: unique (ElderlyIdentityUserId, IdempotencyKey) column constraint on the real request table)", "idempotencyKey": "refund-race-key-003" }
+        ],
+        "idempotencyKey": "refund-race-key-003",
+        "concurrency": 2,
+        "requiresRelational": true
+      },
+      "expectedObservableOutcomes": [
+        "exactly one Requested entry survives; the loser observes the winner's receipt or a unique-violation retry",
+        "no duplicate refund, credit or cancellation fact",
+        "this scenario CANNOT be proven by an in-memory provider — it requires the disposable PostgreSQL (decision #29)"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [17, 29]
+    },
+    {
+      "id": "M7-REPLAY-04-concurrent-cancel-vs-provider-callback",
+      "category": "m7-idempotency-replay",
+      "title": "Concurrent cancellation and provider callback cannot double-refund",
+      "preconditions": {
+        "entities": [
+          { "type": "CaregiverBooking", "ref": "booking-a", "bookingStatus": "Confirmed", "capturedMinorUnits": 40000 },
+          { "type": "ProviderCallback", "ref": "callback-1", "paymobTransactionRef": "dev-txn-shared-1" }
+        ],
+        "seedRows": [],
+        "concurrency": 2,
+        "requiresRelational": true
+      },
+      "expectedObservableOutcomes": [
+        "the booking reaches Refunded exactly once with a single provider refund reference",
+        "a second MarkRefunded throws, matching BookingPaymentTests.MarkAsPaid_ShouldSettleMatchingPendingTransaction_AndRecordRefundGuards",
+        "cumulative refunds never exceed captured funds less previous refunds — decision #4"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [4, 17]
+    },
+
+    {
+      "id": "ROUNDING-01-legacy-carehome-awayfromzero",
+      "category": "rounding-legacy-vs-new",
+      "title": "Legacy care-home half-amount keeps AwayFromZero; new money core uses ToEven",
+      "preconditions": {
+        "entities": [
+          { "type": "CareHomeBooking", "ref": "ch-legacy-half", "policyVersion": 1, "totalAmountMajorUnits": "100.005", "checkInRecorded": true, "roundingAtBooking": "AwayFromZero" }
+        ],
+        "seedRows": []
+      },
+      "expectedObservableOutcomes": [
+        "legacy CancelByFamily after check-in rounds 50.0025 EGP AwayFromZero to 50.01 (historic row, never recomputed — decisions #7, #12)",
+        "an equivalent new-policy amount routed through Money.FromMajorUnits rounds ToEven",
+        "the two values differ for an exact .5 midpoint, proving the contradiction is preserved not silently unified"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [4, 7, 12]
+    },
+    {
+      "id": "ROUNDING-02-new-policy-toeven-midpoint",
+      "category": "rounding-legacy-vs-new",
+      "title": "New-policy midpoint rounds half to even symmetrically",
+      "preconditions": {
+        "entities": [
+          { "type": "MoneyInput", "ref": "m-2505", "majorUnits": "25.005" },
+          { "type": "MoneyInput", "ref": "m-2515", "majorUnits": "25.015" },
+          { "type": "MoneyInput", "ref": "m-neg", "majorUnits": "-25.005" }
+        ],
+        "seedRows": []
+      },
+      "expectedObservableOutcomes": [
+        "25.005 -> 2500 piastres (even); 25.015 -> 2502 piastres (even)",
+        "-25.005 -> -2500 piastres (symmetric)",
+        "matches MoneyTests / FinanceMoneyCorePersistenceModelTests expectations"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [4]
+    },
+    {
+      "id": "ROUNDING-03-historic-settled-refund-unchanged",
+      "category": "rounding-legacy-vs-new",
+      "title": "A previously settled refund is never retrospectively recalculated",
+      "preconditions": {
+        "entities": [
+          { "type": "RefundLedger", "ref": "ledger-legacy", "settledBeforeActivation": true, "recordedMinorUnits": 5001 }
+        ],
+        "seedRows": [
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-legacy", "entryType": "TransferConfirmed", "amountMinorUnits": 5001, "occurredOnUtc": "2026-09-15T10:00:00Z", "providerReference": "legacy-provider-1" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "activating the new policy does not reprice the settled 5001-piastre entry",
+        "no retrospective recalculation of settled refunds — clause 12 and decision #7"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [7, 12]
+    },
+
+    {
+      "id": "PRORATION-FLOOR-01-subscription-shutdown-zero",
+      "category": "proration-floor-zero",
+      "title": "Subscription shutdown proration may compute exactly zero piastres",
+      "preconditions": {
+        "entities": [
+          { "type": "FamilySubscription", "ref": "sub-a", "paidPeriodStartUtc": "2026-10-01T00:00:00Z", "paidPeriodEndUtc": "2026-11-01T00:00:00Z", "amountPaidMinorUnits": 30000 }
+        ],
+        "seedRows": [],
+        "shutdownOnUtc": "2026-10-31T23:59:59Z"
+      },
+      "expectedObservableOutcomes": [
+        "unused-duration proration returns 0 piastres (well under one piastre) — decision #31",
+        "the award is recorded as computed; it is never rounded up to 1 EGP or any minimum",
+        "no money movement is created for a zero award, but the distinct shutdown reason is still recorded — decisions #6, #31",
+        "zero-award and a positive shutdown proration produce distinct, attributable outcomes"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [6, 15, 31]
+    },
+    {
+      "id": "PRORATION-FLOOR-02-subscription-shutdown-bounded",
+      "category": "proration-floor-zero",
+      "title": "Shutdown proration is capped by remaining refundable value and amount actually paid",
+      "preconditions": {
+        "entities": [
+          { "type": "FamilySubscription", "ref": "sub-b", "paidPeriodStartUtc": "2026-10-01T00:00:00Z", "paidPeriodEndUtc": "2026-11-01T00:00:00Z", "amountPaidMinorUnits": 30000, "alreadyRefundedMinorUnits": 20000 }
+        ],
+        "seedRows": [],
+        "shutdownOnUtc": "2026-10-15T12:00:00Z"
+      },
+      "expectedObservableOutcomes": [
+        "award is min(unused-duration portion, amount actually paid less already refunded) — decision #6",
+        "the cap prevents cumulative refunds exceeding captured funds — decision #4",
+        "the result is prorated at the new ToEven rounding"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [4, 6]
+    },
+    {
+      "id": "PRORATION-FLOOR-03-duplicate-charge-full-refund",
+      "category": "proration-floor-zero",
+      "title": "Erroneous/duplicate charge refunds in full — distinct from shutdown proration",
+      "preconditions": {
+        "entities": [
+          { "type": "FamilySubscription", "ref": "sub-c", "chargeReason": "DuplicateCharge", "chargedMinorUnits": 30000 }
+        ],
+        "seedRows": []
+      },
+      "expectedObservableOutcomes": [
+        "a duplicate-charge refund is the full 30000 piastres, not a prorated amount",
+        "it carries a distinct reason and outcome from a shutdown proration — decision #6 / clause 9",
+        "no ordinary current-period partial refund is produced for a normal cancel-renewal"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [6]
+    },
+
+    {
+      "id": "TIMEOUT-SWEEP-01-select-unknown-outcome",
+      "category": "timeout-reconciliation-sweep",
+      "title": "Sweep selects unknown-outcome (TimedOut) rows and proposes reconcile-or-retry",
+      "preconditions": {
+        "entities": [{ "type": "FamilyAccount", "ref": "family-a", "status": "Active" }],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "TimedOut", "amountMinorUnits": 30000, "actorUserId": null, "occurredOnUtc": "2026-10-24T09:00:00Z" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "the sweep dry-run selects case-a as an unknown-outcome candidate",
+        "it prints the decision it WOULD take without writing anything",
+        "it does not blind-retry (decision #17)"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [17]
+    },
+    {
+      "id": "TIMEOUT-SWEEP-02-reconcile-clears-block",
+      "category": "timeout-reconciliation-sweep",
+      "title": "ReconcileTimeout with evidence clears the unresolved-timeout block",
+      "preconditions": {
+        "entities": [{ "type": "StaffUser", "ref": "finance-admin-1", "role": "FinanceAdmin" }],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "TimedOut", "amountMinorUnits": 30000, "occurredOnUtc": "2026-10-24T09:00:00Z" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "ReconcileTimeout requires non-blank evidenceReference, else the aggregate throws a DomainException (no stable code by design)",
+        "it appends a zero-amount Failed entry (a resolution, not a money movement)",
+        "after reconciliation HasUnresolvedTimeout is false and a retry or confirmation is permitted",
+        "reconciling when no timeout is pending throws a DomainException (no stable code by design)"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [17]
+    },
+    {
+      "id": "TIMEOUT-SWEEP-03-no-double-refund-after-reconcile",
+      "category": "timeout-reconciliation-sweep",
+      "title": "Reconciled case then confirmed transfer does not double-refund",
+      "preconditions": {
+        "entities": [{ "type": "StaffUser", "ref": "finance-admin-1", "role": "FinanceAdmin" }],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Approved", "amountMinorUnits": 30000, "occurredOnUtc": "2026-10-23T11:00:00Z" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "TimedOut", "amountMinorUnits": 30000, "occurredOnUtc": "2026-10-24T09:00:00Z" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Failed", "amountMinorUnits": 0, "occurredOnUtc": "2026-10-24T12:00:00Z", "evidenceReference": "provider-statement-1" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "after reconciliation a single TransferConfirmed of 30000 yields TotalCompleted() = 30000, not 60000",
+        "the provider statement evidence is retained on the reconciliation entry",
+        "the reconciliation decision is observable and attributable — decision #14"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [14, 17]
+    },
+    {
+      "id": "TIMEOUT-SWEEP-04-dryrun-writes-nothing",
+      "category": "timeout-reconciliation-sweep",
+      "title": "The sweep dry-run performs zero writes",
+      "preconditions": {
+        "entities": [],
+        "seedRows": [
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "TimedOut", "amountMinorUnits": 30000, "occurredOnUtc": "2026-10-24T09:00:00Z" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "running refund-reconciliation-dryrun.ps1 without -Apply leaves the ledger row count unchanged",
+        "the script prints DRY-RUN and the proposed decision only",
+        "the script refuses to start if the resolved Paymob client is not DevelopmentPaymobClient",
+        "the script refuses a host outside localhost/127.0.0.1 and a database name outside the disposable pattern"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [29]
+    },
+    {
+      "id": "TIMEOUT-SWEEP-05-provider-evidence-needed",
+      "category": "timeout-reconciliation-sweep",
+      "title": "Real provider-outcome evidence for a timed-out refund",
+      "preconditions": {
+        "entities": [{ "type": "ProviderEvidence", "ref": "paymob-statement", "source": "owner-only" }],
+        "seedRows": []
+      },
+      "expectedObservableOutcomes": [
+        "with the deterministic double, reconciliation is exercised against a synthetic provider statement only",
+        "distinguishing a genuine provider timeout from a mapping defect requires the sanitized upstream body and merchant/integration evidence",
+        "PROVIDER SIMULATION IS NOT ACTUAL PROVIDER EVIDENCE (S7 rule)"
+      ],
+      "needsOwnerEvidence": {
+        "items": ["D1-H1", "D1-H3", "D1-H4"],
+        "reason": "Real Paymob upstream 400 body (M2 trace 0HNPG5KPDG28A:00000001) plus merchant/integration and subscription/plan evidence are Owner-only; without them a timed-out case can only be reconciled against the double."
+      },
+      "contractDecisions": [16, 17]
+    },
+    {
+      "id": "NET-RECORDED-01-movement-accounting",
+      "category": "money-movement-accounting",
+      "title": "NetRecorded counts only money-movement entries (decision #35)",
+      "preconditions": {
+        "entities": [{ "type": "FamilyAccount", "ref": "family-a", "status": "Active" }],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Requested", "amountMinorUnits": 50000, "actorUserId": "family-a-user", "occurredOnUtc": "2026-10-22T09:00:00Z" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Approved", "amountMinorUnits": 30000, "actorUserId": "super-admin-1", "occurredOnUtc": "2026-10-22T11:00:00Z" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "TransferInitiated", "amountMinorUnits": 30000, "actorUserId": "finance-admin-1", "occurredOnUtc": "2026-10-22T12:00:00Z", "evidenceReference": "customer-bank-destination-9" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Failed", "amountMinorUnits": -5000, "actorUserId": "finance-admin-1", "occurredOnUtc": "2026-10-22T13:00:00Z", "providerReference": "dev-fail-112233445566778899aabbccddeeff00" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "NetRecorded() reads EGP 250.00 (piastres 25000): Approved (+300) and the signed Failed reversal (-50) count; Requested and TransferInitiated never move money and are excluded (decision #35)",
+        "TotalCompleted() reads EGP 0.00 — nothing has reached the customer yet",
+        "the decision #4 completion check therefore awards against TotalCompleted(), not NetRecorded: a new award of EGP 250 is checkable; NetRecorded is only the in-flight risk ceiling while the transfer is open",
+        "no entry type other than Fail may carry a negative amount"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [4, 35]
+    },
+    {
+      "id": "DEADLINE-CLOCK-01-holiday-crossing",
+      "category": "deadline-clock",
+      "title": "Seven-business-day processing clock crosses Coptic Easter and Sham El-Nessim (decisions #2, #36)",
+      "preconditions": {
+        "entities": [
+          { "type": "FamilyAccount", "ref": "family-a", "status": "Active" },
+          { "type": "StaffUser", "ref": "super-admin-1", "role": "SuperAdmin" }
+        ],
+        "seedRows": [
+          { "table": "finance.refund_ledgers", "ref": "ledger-a", "refundCaseId": "case-a" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Requested", "amountMinorUnits": 30000, "actorUserId": "family-a-user", "occurredOnUtc": "2026-04-08T09:00:00Z" },
+          { "table": "finance.refund_ledger_entries", "ledger": "ledger-a", "entryType": "Approved", "amountMinorUnits": 30000, "actorUserId": "super-admin-1", "occurredOnUtc": "2026-04-09T09:15:00Z" }
+        ]
+      },
+      "expectedObservableOutcomes": [
+        "the Approved instant 2026-04-09 (Thursday) starts the seven-business-day processing clock; Friday 2026-04-10 and Saturday 2026-04-11 are the Cairo weekend",
+        "Sunday 2026-04-12 is Coptic Easter (computed via the Julian computus, not a fixed Gregorian date) and Monday 2026-04-13 is Sham El-Nessim — both are excluded per decision #36 even though Sunday is normally a business day",
+        "business day 7 lands on Wednesday 2026-04-22; the deadline instant is end-of-day 2026-04-22 in Africa/Cairo LOCAL time (the UTC mapping must be resolved through the host's tzdata — Egypt enters DST during this window, so a pinned UTC instant would be wrong on a mis-tzdata host)",
+        "without the #36 calendar the naive Sun–Thu count would land on Monday 2026-04-20 — the two excluded holidays shift the deadline by exactly two business days"
+      ],
+      "needsOwnerEvidence": null,
+      "contractDecisions": [1, 2, 12, 36]
+    }
+  ]
+}

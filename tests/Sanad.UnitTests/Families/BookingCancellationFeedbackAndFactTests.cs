@@ -299,8 +299,12 @@ public sealed class BookingCancellationFeedbackAndFactTests
     // ---------------------------------------------------------------------------------------------
 
     [Fact]
-    public void FactCreate_HasNoFeedbackParameterAndIsTheOnlyPublicFactory()
+    public void FactCreate_PublicFactoriesAreTheLegacyAndPolicyDecisionShapes()
     {
+        // Fix 1: the policy-decision factory had to become public, because the application layer is
+        // where the booking is loaded and the fact is recorded. What stays domain-internal is the
+        // *construction* of the decision — a caller can only ever record a decision the policy
+        // produced, never invent an award or an entitlement.
         MethodInfo[] publicFactMethods = typeof(BookingCancellationFact)
             .GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly);
 
@@ -308,19 +312,31 @@ public sealed class BookingCancellationFeedbackAndFactTests
             .Where(method => method.Name == nameof(BookingCancellationFact.Create))
             .ToArray();
 
-        MethodInfo create = Assert.Single(createOverloads);
-        ParameterInfo[] parameters = create.GetParameters();
+        Assert.Equal(2, createOverloads.Length);
 
+        // The legacy shape carries no separate feedback/reason argument to swap in.
+        MethodInfo legacy = Assert.Single(
+            createOverloads,
+            method => method.GetParameters().Length == 3);
         Assert.Equal(
             "BookingId,UserId,BookingCancellationDecision",
-            string.Join(",", parameters.Select(parameter => parameter.ParameterType.Name)));
+            string.Join(",", legacy.GetParameters().Select(parameter => parameter.ParameterType.Name)));
 
-        // No overload can carry a separate feedback/reason argument to swap in.
-        Assert.DoesNotContain(
-            parameters,
-            parameter => parameter.ParameterType.Name.Contains("Feedback", StringComparison.Ordinal));
+        // The revision-2 shape takes a policy decision plus the feedback that decision was made
+        // with; the money travels on the decision, never as a loose argument.
+        MethodInfo scheduledStart = Assert.Single(
+            createOverloads,
+            method => method.GetParameters().Length == 4);
+        Assert.Equal(
+            "BookingId,UserId,BookingRefundDecision,BookingCancellationFeedback",
+            string.Join(",", scheduledStart.GetParameters().Select(parameter => parameter.ParameterType.Name)));
 
         Assert.Empty(typeof(BookingCancellationFact).GetConstructors(BindingFlags.Public | BindingFlags.Instance));
+
+        // The decision itself still cannot be constructed by a caller: its only factory is internal.
+        Assert.DoesNotContain(
+            typeof(BookingRefundDecision).GetMethods(BindingFlags.Public | BindingFlags.Static | BindingFlags.DeclaredOnly),
+            method => method.Name == "Create");
     }
 
     [Fact]

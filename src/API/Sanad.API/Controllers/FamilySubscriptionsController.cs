@@ -23,6 +23,20 @@ public sealed record CreateSubscriptionRenewalPaymentIntentRequest(
 public sealed record CreatePlanChangeQuoteRequest(Guid PlanVersionId);
 public sealed record CreatePlanChangePaymentIntentRequest(Guid PlanVersionId, SubscriptionPaymentMethod Method, PaymobBillingData Billing);
 public sealed record ReplacePendingDowngradeRequest(Guid PlanVersionId);
+/// <summary>
+/// Clause 9: an optional M7 idempotency key. When supplied, the cancel-renewal
+/// outcome (retained access, zero refund) is recorded through shared Finance so
+/// it is attributable and distinct from a duplicate-charge refund and a
+/// shutdown proration; a retry replays that same recorded outcome.
+/// </summary>
+public sealed record CancelSubscriptionRenewalRequest(string? IdempotencyKey = null);
+public sealed record RefundDuplicateSubscriptionChargeRequest(
+    Guid PaymentAttemptId,
+    string? IdempotencyKey = null,
+    string? EvidenceReference = null,
+    // Optional audit instant. When omitted the handler stamps the current UTC
+    // time; when supplied it must be UTC (a non-UTC value is a clean 400).
+    DateTime? RecordedOnUtc = null);
 
 [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
 [Route("api/v1/family/subscriptions")]
@@ -272,10 +286,13 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status403Forbidden)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
-    public async Task<IActionResult> CancelRenewal(CancellationToken cancellationToken)
+    public async Task<IActionResult> CancelRenewal(
+        [FromBody] CancelSubscriptionRenewalRequest? request,
+        CancellationToken cancellationToken)
     {
         if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
-        return ToSubscriptionCommandResult(await _sender.Send(new CancelSubscriptionRenewalCommand(userId), cancellationToken));
+        return ToSubscriptionCommandResult(await _sender.Send(
+            new CancelSubscriptionRenewalCommand(userId, request?.IdempotencyKey), cancellationToken));
     }
 
     [HttpPost("reenable-auto-renew")]
@@ -287,6 +304,53 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
     {
         if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
         return ToSubscriptionCommandResult(await _sender.Send(new ReenableSubscriptionAutoRenewCommand(userId), cancellationToken));
+    }
+
+    /// <summary>
+    /// Clause 9: a duplicate or erroneous subscription charge is refunded
+    /// <em>in full</em> (never prorated). The family owner names the charge; the
+    /// full captured amount is recorded through shared Finance under an
+    /// idempotency key so a retry replays the recorded outcome instead of paying
+    /// twice.
+    /// </summary>
+    [HttpPost("refunds/duplicate-charge")]
+    [ProducesResponseType(typeof(SubscriptionRefundResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RefundDuplicateCharge(
+        [FromBody] RefundDuplicateSubscriptionChargeRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var result = await _sender.Send(
+            new RefundDuplicateSubscriptionChargeCommand(
+                userId,
+                request.PaymentAttemptId,
+                request.IdempotencyKey,
+                request.EvidenceReference,
+                request.RecordedOnUtc),
+            cancellationToken);
+        return ToSubscriptionRefundResult(result);
+    }
+
+    private IActionResult ToSubscriptionRefundResult(Result<SubscriptionRefundResponse> result)
+    {
+        if (result.IsSuccess) return Ok(result.Value);
+        int status = result.Error.Code switch
+        {
+            "Subscriptions.Refund.NotOwner" => StatusCodes.Status403Forbidden,
+            "Subscriptions.Refund.SubscriptionNotFound" => StatusCodes.Status404NotFound,
+            "Subscriptions.Refund.NothingToRefund" => StatusCodes.Status404NotFound,
+            "Subscriptions.Refund.NotCurrent" => StatusCodes.Status409Conflict,
+            "Subscriptions.Refund.ExceedsCaptured" => StatusCodes.Status409Conflict,
+            "Subscriptions.Refund.CaptureNotResolved" => StatusCodes.Status409Conflict,
+            "Subscriptions.Refund.IdempotencyConflict" => StatusCodes.Status409Conflict,
+            "Subscriptions.Refund.FinanceRejected" => StatusCodes.Status409Conflict,
+            "Subscriptions.Refund.MalformedInput" => StatusCodes.Status400BadRequest,
+            _ => 0
+        };
+        return status == 0 ? ToActionResult(result) : Problem(status, result.Error);
     }
 
     private IActionResult ToSubscriptionCommandResult(Result result)

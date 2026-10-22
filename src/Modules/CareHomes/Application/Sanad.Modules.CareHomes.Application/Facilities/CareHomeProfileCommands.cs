@@ -82,7 +82,8 @@ public sealed class CreateCareHomeFacilityCommandHandler(ICareHomesDbContext db)
         revision.ArabicName, revision.EnglishName, revision.ArabicDescription, revision.EnglishDescription,
         revision.ContactName, revision.ContactPhone, revision.ContactEmail, revision.Governorate, revision.City,
         revision.Area, revision.Address, revision.ArabicAdmissionConditions, revision.EnglishAdmissionConditions,
-        revision.Amenities, revision.MedicalServices);
+        revision.Amenities, revision.MedicalServices,
+        Sanad.Modules.CareHomes.Domain.Bookings.CareHomeCancellationTerms.Parse(revision.CancellationTermsJson));
 
     private static CareHomeProfileRevisionProfile? ToRevisionProfile(
         CareHomeFacility facility, Guid? revisionId, CareHomeStatus? requiredStatus)
@@ -116,7 +117,30 @@ public sealed class GetMyCareHomeFacilityQueryHandler(ICareHomesDbContext db)
             return Result<CareHomeOwnerProfile>.Failure(NotFound);
         var media = await db.ProfileMedia.AsNoTracking()
             .Where(x => facility.Revisions.Select(r => r.Id).Contains(x.ProfileRevisionId)).ToListAsync(ct);
-        return CreateCareHomeFacilityCommandHandler.Map(facility, media);
+        return CareHomeStoredProfileMapper.Map(facility, media);
+    }
+}
+
+/// <summary>
+/// Fail-closed read guard shared by the owner profile surfaces: a revision
+/// whose stored structured cancellation terms cannot be re-read returns a
+/// stable profile error instead of a 500. The owner save and the admin
+/// review both validate the terms themselves, so only out-of-band corruption
+/// can reach this guard.
+/// </summary>
+internal static class CareHomeStoredProfileMapper
+{
+    public static Result<CareHomeOwnerProfile> Map(CareHomeFacility facility, IReadOnlyList<CareHomeProfileMedia>? media)
+    {
+        try
+        {
+            return CreateCareHomeFacilityCommandHandler.Map(facility, media);
+        }
+        catch (DomainException)
+        {
+            return Result<CareHomeOwnerProfile>.Failure(new Error("CareHomes.Facility.InvalidProfile",
+                "The stored care-home profile could not be read; contact an administrator."));
+        }
     }
 }
 
@@ -165,7 +189,7 @@ public sealed class SaveMyCareHomeProfileCommandHandler(ICareHomesDbContext db)
 
         var media = await db.ProfileMedia.AsNoTracking()
             .Where(x => facility.Revisions.Select(revision => revision.Id).Contains(x.ProfileRevisionId)).ToListAsync(ct);
-        return CreateCareHomeFacilityCommandHandler.Map(facility, media);
+        return CareHomeStoredProfileMapper.Map(facility, media);
     }
 }
 
@@ -215,6 +239,6 @@ public sealed class SubmitMyCareHomeApplicationCommandHandler(ICareHomesDbContex
 
         var media = await db.ProfileMedia.AsNoTracking()
             .Where(x => facility.Revisions.Select(revision => revision.Id).Contains(x.ProfileRevisionId)).ToListAsync(ct);
-        return CreateCareHomeFacilityCommandHandler.Map(facility, media);
+        return CareHomeStoredProfileMapper.Map(facility, media);
     }
 }

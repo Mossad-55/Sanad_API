@@ -52,6 +52,12 @@ idempotency content — the same `Idempotency-Key` replayed with a **different**
 `phone`, `companyType` or `city` is the same conflict as any other content
 difference.
 
+Exactly three fields are **required** — `name`, `email` and `message`. The
+other five (`company`, `subject`, `phone`, `companyType`, `city`) are optional
+in the request body **and** in the generated OpenAPI schema: only the three
+required fields appear in the schema's `required` array. Sending only the three
+required fields is a valid request.
+
 ## Success
 
 `200 OK` with the receipt only — the submitted details are not echoed back:

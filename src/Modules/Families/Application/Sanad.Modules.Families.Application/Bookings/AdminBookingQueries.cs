@@ -25,7 +25,10 @@ public sealed record AdminBookingListItemResponse(
     DateTime? PaidOnUtc,
     DateTime? CancelledOnUtc,
     DateTime? RefundedOnUtc,
-    string? CancellationReason);
+    string? CancellationReason,
+    Guid? RefundAttemptClaimId = null,
+    bool IsRefundOutcomeAmbiguous = false,
+    bool IsRefundAttemptInFlight = false);
 
 public sealed record PagedAdminBookings(
     IReadOnlyList<AdminBookingListItemResponse> Items,
@@ -129,7 +132,10 @@ public sealed class ListAdminBookingsQueryHandler
                 b.PaidOnUtc,
                 b.CancelledOnUtc,
                 b.RefundedOnUtc,
-                b.CancellationReason);
+                b.CancellationReason,
+                b.RefundAttemptClaimId,
+                b.IsRefundOutcomeAmbiguous,
+                b.IsRefundAttemptInFlight);
         }).ToList();
 
         return Result<PagedAdminBookings>.Success(

@@ -535,7 +535,10 @@ public sealed class ConversationTests
         Assert.Equal(third.Id.Value, item.Id);
         Assert.Equal(newest.Value, item.Participant.UserId);
         Assert.Equal("Newest Peer", item.Participant.DisplayName);
-        Assert.Equal("avatar-newest", item.Participant.AvatarUrl);
+        // Avatar parity (Owner lock #34): the stored key never reaches the wire;
+        // no authorized cross-user avatar route exists, so participants present
+        // null.
+        Assert.Null(item.Participant.AvatarUrl);
         Assert.Null(item.LastMessage); // STUB: messages are Lane B.
         Assert.Equal(0, item.UnreadCount); // STUB: unread is Lane B.
         Assert.Equal(ConversationScope.Direct, item.Scope);
@@ -792,7 +795,13 @@ public sealed class ConversationTests
             page.Items.Single(item => item.Id == careHome.Id.Value);
         Assert.Equal(owner.Value, facility.Participant.UserId);
         Assert.Equal("Sunrise Care Home", facility.Participant.DisplayName);
+        // Avatar parity (Owner lock #34): a care-home owner still presents the
+        // facility's approved cover media path — an authorized route.
         Assert.Equal("/cover/1", facility.Participant.AvatarUrl);
+        // The owner's personal avatar key never reaches the wire (#34); a
+        // care-home owner presents the facility's approved cover path instead.
+        Assert.All(page.Items, item => Assert.DoesNotContain("owner-avatar", item.Participant.AvatarUrl ?? string.Empty));
+        Assert.DoesNotContain("owner-avatar", page.Items.Select(i => i.Participant.AvatarUrl));
         Assert.Equal(8, facility.Participant.AccountType);
     }
 

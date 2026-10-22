@@ -35,10 +35,10 @@ public sealed class PartnerContactControllerTests
         IActionResult result = await controller.SubmitPartnerContact(
             new SubmitPartnerContactRequest(
                 "Nour Hassan",
-                "Hassani Care",
                 "nour@example.com",
-                "Partnership",
-                "We would like to discuss a partnership."),
+                "We would like to discuss a partnership.",
+                "Hassani Care",
+                "Partnership"),
             "key-1",
             default);
 
@@ -62,9 +62,7 @@ public sealed class PartnerContactControllerTests
         await controller.SubmitPartnerContact(
             new SubmitPartnerContactRequest(
                 "Nour Hassan",
-                null,
                 "nour@example.com",
-                null,
                 "We would like to discuss a partnership."),
             "key-1",
             default);
@@ -87,9 +85,7 @@ public sealed class PartnerContactControllerTests
         IActionResult result = await controller.SubmitPartnerContact(
             new SubmitPartnerContactRequest(
                 "Nour Hassan",
-                null,
                 "nour@example.com",
-                null,
                 "We would like to discuss a partnership."),
             null,
             default);
@@ -108,9 +104,7 @@ public sealed class PartnerContactControllerTests
         await controller.SubmitPartnerContact(
             new SubmitPartnerContactRequest(
                 "Nour Hassan",
-                null,
                 "nour@example.com",
-                null,
                 "We would like to discuss a partnership."),
             "key-1",
             default);
@@ -118,9 +112,7 @@ public sealed class PartnerContactControllerTests
         IActionResult result = await controller.SubmitPartnerContact(
             new SubmitPartnerContactRequest(
                 "Nour Hassan",
-                null,
                 "nour@example.com",
-                null,
                 "A completely different message body."),
             "key-1",
             default);
@@ -141,9 +133,7 @@ public sealed class PartnerContactControllerTests
             await controller.SubmitPartnerContact(
                 new SubmitPartnerContactRequest(
                     "Nour Hassan",
-                    null,
                     "nour@example.com",
-                    null,
                     "We would like to discuss a partnership."),
                 $"key-{index}",
                 default);
@@ -152,9 +142,7 @@ public sealed class PartnerContactControllerTests
         IActionResult result = await controller.SubmitPartnerContact(
             new SubmitPartnerContactRequest(
                 "Nour Hassan",
-                null,
                 "nour@example.com",
-                null,
                 "We would like to discuss a partnership."),
             "key-over-the-limit",
             default);
@@ -188,6 +176,45 @@ public sealed class PartnerContactControllerTests
             admin.GetCustomAttribute<AuthorizeAttribute>()!.Policy);
     }
 
+    /// <summary>
+    /// The generated schema must mark exactly the three genuinely required
+    /// fields. Positional record parameters without a default land in the JSON
+    /// schema <c>required</c> array; the optional fields carry <c>= null</c>
+    /// defaults and therefore stay out of it. The five optional fields keep
+    /// their exact wire names and casing.
+    /// </summary>
+    [Fact]
+    public void The_submit_body_schema_requires_only_name_email_and_message()
+    {
+        // The request type is a positional record: the same construction path
+        // the OpenAPI schema generator uses for its `required` array.
+        ConstructorInfo constructor = typeof(SubmitPartnerContactRequest)
+            .GetConstructors()
+            .Single();
+
+        ParameterInfo[] parameters = constructor.GetParameters();
+
+        string[] required = parameters
+            .Where(parameter => !parameter.HasDefaultValue)
+            .Select(parameter => parameter.Name!)
+            .ToArray();
+
+        Assert.Equal(["Name", "Email", "Message"], required);
+
+        string[] optional = parameters
+            .Where(parameter => parameter.HasDefaultValue)
+            .Select(parameter => parameter.Name!)
+            .ToArray();
+
+        Assert.Equal(
+            ["Company", "Subject", "Phone", "CompanyType", "City"],
+            optional);
+
+        // All eight fields are present; nothing was dropped to change the
+        // required set.
+        Assert.Equal(8, parameters.Length);
+    }
+
     [Fact]
     public async Task The_receipt_is_serialized_in_the_documented_web_shape()
     {
@@ -197,10 +224,10 @@ public sealed class PartnerContactControllerTests
         IActionResult result = await controller.SubmitPartnerContact(
             new SubmitPartnerContactRequest(
                 "Nour Hassan",
-                "Hassani Care",
                 "nour@example.com",
-                "Partnership",
-                "We would like to discuss a partnership."),
+                "We would like to discuss a partnership.",
+                "Hassani Care",
+                "Partnership"),
             "key-1",
             default);
 
@@ -276,10 +303,10 @@ public sealed class PartnerContactControllerTests
         IActionResult result = await controller.SubmitPartnerContact(
             new SubmitPartnerContactRequest(
                 "نور حسن",
-                "Hassani Care",
                 "nour@example.com",
-                "Partnership",
                 "We would like to discuss a partnership.",
+                "Hassani Care",
+                "Partnership",
                 "  +20 100 123 4567  ",
                 "  دار رعاية  ",
                 "  القاهرة  "),
@@ -304,13 +331,9 @@ public sealed class PartnerContactControllerTests
         IActionResult first = await controller.SubmitPartnerContact(
             new SubmitPartnerContactRequest(
                 "Nour Hassan",
-                null,
                 "nour@example.com",
-                null,
                 "We would like to discuss a partnership.",
-                "   ",
-                null,
-                null),
+                Phone: "   "),
             "key-1",
             default);
 
@@ -325,13 +348,9 @@ public sealed class PartnerContactControllerTests
         IActionResult conflicting = await controller.SubmitPartnerContact(
             new SubmitPartnerContactRequest(
                 "Nour Hassan",
-                null,
                 "nour@example.com",
-                null,
                 "We would like to discuss a partnership.",
-                "+20 100 123 4567",
-                null,
-                null),
+                Phone: "+20 100 123 4567"),
             "key-1",
             default);
 

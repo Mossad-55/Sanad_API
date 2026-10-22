@@ -491,6 +491,82 @@ public sealed class AdminLibraryControllerTests
     }
 
     [Fact]
+    public async Task Restore_ArchivedContent_Returns200AsDraft()
+    {
+        await using CmsDbContext db = CreateDb();
+        LibraryContent content = await CreateArticleAsync(db, null, CamelCaseSections, "library/old.png");
+        db.LibraryContents.Single(item => item.Id.Value == content.Id.Value).Publish();
+        await db.SaveChangesAsync();
+        db.LibraryContents.Single(item => item.Id.Value == content.Id.Value).Archive();
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, new RecordingStorage(), "restore-happy-trace");
+
+        IActionResult result = await controller.RestoreContent(content.Id.Value, CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        LibraryContent reloaded = await ReadAsync(db, content.Id.Value);
+        Assert.Equal("Draft", reloaded.Status.ToString());
+    }
+
+    [Fact]
+    public async Task Restore_NonArchivedOrMissing_PreservePinnedOutcomes()
+    {
+        await using CmsDbContext db = CreateDb();
+        LibraryContent draft = await CreateArticleAsync(db, null, CamelCaseSections, "library/old.png");
+        LibraryContent published = await CreateArticleAsync(db, null, CamelCaseSections, "library/old.png");
+        db.LibraryContents.Single(item => item.Id.Value == published.Id.Value).Publish();
+        await db.SaveChangesAsync();
+        var controller = CreateController(db, new RecordingStorage(), "restore-guard-trace");
+
+        AssertProblem(
+            await controller.RestoreContent(Guid.NewGuid(), CancellationToken.None),
+            404, "Cms.LibraryContent.NotFound", "restore-guard-trace");
+        AssertProblem(
+            await controller.RestoreContent(draft.Id.Value, CancellationToken.None),
+            409, "Cms.LibraryContent.InvalidOperation", "restore-guard-trace");
+        AssertProblem(
+            await controller.RestoreContent(published.Id.Value, CancellationToken.None),
+            409, "Cms.LibraryContent.InvalidOperation", "restore-guard-trace");
+    }
+
+    [Fact]
+    public async Task HandlerProducedContentInvalid_CarriesTheSameFieldErrorsAsTheController()
+    {
+        await using CmsDbContext db = CreateDb();
+        var controller = CreateController(db, new RecordingStorage(), "handler-error-trace");
+
+        // The request passes controller form validation (duplicate display
+        // order is only rejected by the domain), so the invalid code and its
+        // field map come from the command handler.
+        string duplicate = "[{\"displayOrder\":1,\"arabicTitle\":\"أ\",\"englishTitle\":\"A\",\"arabicBullets\":[],\"englishBullets\":[]}," +
+            "{\"displayOrder\":1,\"arabicTitle\":\"ب\",\"englishTitle\":\"B\",\"arabicBullets\":[],\"englishBullets\":[]}]";
+
+        ProblemDetails problem = AssertProblem(
+            await controller.CreateContent(ArticleRequest("Article", null, duplicate), PngFile(), CancellationToken.None),
+            400, "Cms.LibraryContent.Invalid", "handler-error-trace");
+
+        Assert.True(Errors(problem).ContainsKey("sectionsJson"));
+        Assert.Empty(await ReadAllAsync(db));
+    }
+
+    [Fact]
+    public async Task NonFieldErrors_DoNotCarryAnErrorsExtension()
+    {
+        await using CmsDbContext db = CreateDb();
+        var controller = CreateController(db, new RecordingStorage(), "no-errors-trace");
+
+        ProblemDetails problem = AssertProblem(
+            await controller.UpdateContent(
+                Guid.NewGuid(),
+                new UpdateLibraryContentRequest("Article", null, "عنوان", "Title", "ملخص", "Summary", null, null, false, CamelCaseSections),
+                null,
+                CancellationToken.None),
+            404, "Cms.LibraryContent.NotFound", "no-errors-trace");
+
+        Assert.False(problem.Extensions.ContainsKey("errors"));
+    }
+
+    [Fact]
     public async Task Create_RejectedRequest_LeavesNoCoverOrRow()
     {
         await using CmsDbContext db = CreateDb();
@@ -723,6 +799,7 @@ public sealed class AdminLibraryControllerTests
             {
                 CreateLibraryContentCommand command => (object)await new CreateLibraryContentCommandHandler(db).Handle(command, cancellationToken),
                 UpdateLibraryContentCommand command => (object)await new UpdateLibraryContentCommandHandler(db).Handle(command, cancellationToken),
+                RestoreLibraryContentCommand command => (object)await new RestoreLibraryContentCommandHandler(db).Handle(command, cancellationToken),
                 GetLibraryAdminContentQuery query => (object)await new GetLibraryAdminContentQueryHandler(db).Handle(query, cancellationToken),
                 _ => throw new NotSupportedException()
             };

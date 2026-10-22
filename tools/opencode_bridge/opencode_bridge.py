@@ -95,6 +95,7 @@ class Job:
     port: int
     base_url: str
     process: subprocess.Popen[Any]
+    attach_process: subprocess.Popen[Any] | None
     session_id: str
     password: str
     started_at: float = field(default_factory=time.time)
@@ -179,6 +180,37 @@ Execution rules:
 """
 
 
+def _open_visible_session(job: Job) -> tuple[bool, str]:
+    """Open a read-only-by-convention TUI view attached to this job's server."""
+    if os.name != "nt":
+        return False, "Automatic visible terminal attachment is currently supported on Windows only."
+
+    env = os.environ.copy()
+    env["OPENCODE_SERVER_USERNAME"] = "opencode"
+    env["OPENCODE_SERVER_PASSWORD"] = job.password
+    command = [DEFAULT_OPENCODE_COMMAND, "attach", job.base_url, "--session", job.session_id]
+    creationflags = getattr(subprocess, "CREATE_NEW_CONSOLE", 0)
+    try:
+        if DEFAULT_OPENCODE_COMMAND.lower().endswith((".cmd", ".bat")):
+            command_line = subprocess.list2cmdline(command)
+            job.attach_process = subprocess.Popen(
+                [os.environ.get("COMSPEC", "cmd.exe"), "/d", "/k", command_line],
+                cwd=job.workspace_directory,
+                env=env,
+                creationflags=creationflags,
+            )
+        else:
+            job.attach_process = subprocess.Popen(
+                command,
+                cwd=job.workspace_directory,
+                env=env,
+                creationflags=creationflags,
+            )
+        return True, "An OpenCode terminal is attached to this session for observation."
+    except OSError as error:
+        return False, f"Could not open the visible OpenCode terminal: {error}"
+
+
 def _create_job(arguments: dict[str, Any]) -> dict[str, Any]:
     workspace = os.path.abspath(str(arguments.get("workspace_directory", os.getcwd())))
     if not os.path.isdir(workspace):
@@ -220,12 +252,14 @@ def _create_job(arguments: dict[str, Any]) -> dict[str, Any]:
             port=port,
             base_url=base_url,
             process=process,
+            attach_process=None,
             session_id=session_id,
             password=password,
         )
         with JOBS_LOCK:
             JOBS[job.job_id] = job
         _send_prompt(job, _prompt_text(job, task, allowed_files, base_revision))
+        visible, visibility_message = _open_visible_session(job)
         return {
             "job_id": job.job_id,
             "session_id": session_id,
@@ -234,7 +268,8 @@ def _create_job(arguments: dict[str, Any]) -> dict[str, Any]:
             "phase": phase,
             "model_label": model_label,
             "reasoning": reasoning,
-            "message": "OpenCode is running. Use opencode_wait_task or opencode_get_report; do not start duplicate work.",
+            "visible_terminal_opened": visible,
+            "message": f"OpenCode is running. {visibility_message} Use opencode_wait_task or opencode_get_report; do not start duplicate work.",
         }
     except Exception:
         process.terminate()
@@ -316,6 +351,7 @@ def _refresh(job: Job) -> dict[str, Any]:
             "phase": job.phase,
             "report": job.last_report,
             "server_alive": job.process.poll() is None,
+            "visible_terminal_alive": job.attach_process is not None and job.attach_process.poll() is None,
         }
 
 

@@ -53,6 +53,8 @@ using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.Finance.Infrastructure;
 using Sanad.Modules.Finance.Application;
+using Sanad.Modules.Rentals.Infrastructure;
+using Sanad.Modules.Rentals.Application;
 using Sanad.Modules.Identity.Application.Users.Admin;
 using Microsoft.Extensions.Options;
 using Sanad.Modules.Notifications.Application.Abstractions.Data;
@@ -113,6 +115,7 @@ public static class DependencyInjection
         services.AddOpenApi(options =>
         {
             options.AddSchemaTransformer<OpenApi.PortalApiSchemaTransformer>();
+            options.AddSchemaTransformer<OpenApi.PortalNullableSchemaUnionTransformer>();
             options.AddOperationTransformer<OpenApi.PortalRequiredQueryTransformer>();
         });
 
@@ -142,6 +145,7 @@ public static class DependencyInjection
         services.AddCommunityInfrastructure(configuration);
         services.AddChatInfrastructure(configuration);
         services.AddFinanceInfrastructure(configuration);
+        services.AddRentalsInfrastructure(configuration);
         services.AddHostedService<CareHomeLicenseExpiryMonitor>();
         services.AddHostedService<CareHomeBookingExpiryHostedService>();
         services.AddHostedService<CareHomeTransferNotificationProcessor>();
@@ -351,6 +355,26 @@ public static class DependencyInjection
                     policy.RequireClaim(
                         AuthClaimNames.AccountType,
                         AccountType.SuperAdmin.ToString(),
+                        AccountType.ContentAdmin.ToString());
+                });
+
+            // The support contact pair is the one Help Center surface support
+            // staff own: SupportAdmin is added here only, never to CmsContent.
+            options.AddPolicy(
+                AuthorizationPolicies.CmsHelpContact,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AuthAccessType.Normal
+                            .ToString());
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccountType,
+                        AccountType.SuperAdmin.ToString(),
+                        AccountType.SupportAdmin.ToString(),
                         AccountType.ContentAdmin.ToString());
                 });
 
@@ -588,6 +612,18 @@ public static class DependencyInjection
                 policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
                 policy.RequireClaim(AuthClaimNames.SessionId);
             });
+
+            // W2-F0 refund workflow money core: SupportAdmin investigates and
+            // SuperAdmin approves reviewed awards (refund contract #12). Same
+            // shape as the other SuperAdmin+SupportAdmin operational policies;
+            // FinanceAdmin is deliberately excluded and no app audience gains
+            // access.
+            options.AddPolicy(AuthorizationPolicies.RefundWorkflowAdmin, policy =>
+            {
+                policy.RequireAuthenticatedUser();
+                policy.RequireClaim(AuthClaimNames.AccessType, AuthAccessType.Normal.ToString());
+                policy.RequireClaim(AuthClaimNames.AccountType, AccountType.SuperAdmin.ToString(), AccountType.SupportAdmin.ToString());
+            });
         });
 
         services.AddMediatR(configuration =>
@@ -618,6 +654,9 @@ public static class DependencyInjection
 
             configuration.RegisterServicesFromAssembly(
                 typeof(OpenConversationCommand).Assembly);
+
+            configuration.RegisterServicesFromAssembly(
+                typeof(IRentalsDbContext).Assembly);
         });
         services.AddScoped<Sanad.Modules.Families.Application.Subscriptions.ISubscriptionInvoiceService,
             Sanad.Modules.Families.Application.Subscriptions.SubscriptionInvoiceService>();
@@ -650,6 +689,9 @@ public static class DependencyInjection
         services.AddScoped<
             Sanad.Modules.Families.Application.Abstractions.Caregivers.IMedicalCaregiverGateway,
             MedicalCaregiverGateway>();
+        // W2-F0: the family credit-balance reader/writer seams are registered by
+        // the Finance module's own DependencyInjection (FamilyCreditBalanceStore);
+        // no API-host duplicate is needed.
 
         services.AddScoped<INotificationRecipientGateway, FamilyNotificationRecipientGateway>();
         services.AddScoped<INotificationLanguageGateway, NotificationLanguageGateway>();

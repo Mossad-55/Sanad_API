@@ -10,6 +10,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Bookings;
+using Sanad.Modules.Families.Application.Elderlies;
 using Sanad.Modules.Families.Application.Reports;
 using Sanad.Modules.Families.Domain.Reports;
 using Sanad.API.Controllers.Requests;
@@ -20,6 +21,10 @@ namespace Sanad.API.Controllers;
 public sealed record DeclineBookingRequest(string Reason);
 public sealed record CompleteBookingRequest(string? Notes);
 public sealed record CaregiverCancelBookingRequest(string? Reason, int? ReasonCategory);
+public sealed record CaregiverRecordProviderOutcomeRequest(
+    int OutcomeReason,
+    string? Reason,
+    int? ReasonCategory);
 public sealed record SubmitVisitReportRequest(
     string? ObservedCondition,
     string? Activities,
@@ -191,6 +196,108 @@ public sealed class CaregiverBookingsController : ApiControllerBase
             _dateTimeProvider.UtcNow);
 
         var result = await _sender.Send(command, cancellationToken);
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Records a provider-attested outcome (cancellation or uncontested no-show) on an accepted
+    /// booking. The refund is decided by the booking's sold policy revision, so a booking sold
+    /// under revision 1 keeps its legacy award and only revision-2 bookings use the approved
+    /// 24-hour / 50% / start rules.
+    /// </summary>
+    [HttpPost("{bookingId:guid}/provider-outcome")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> RecordProviderOutcome(
+        Guid bookingId,
+        [FromBody] CaregiverRecordProviderOutcomeRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var caregiver = await _caregiversDb.Caregivers
+            .SingleOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+
+        if (caregiver is null)
+        {
+            return Unauthorized();
+        }
+
+        var command = new CaregiverRecordProviderOutcomeCommand(
+            caregiver.Id,
+            userId,
+            new BookingId(bookingId),
+            request.OutcomeReason,
+            request.Reason ?? string.Empty,
+            request.ReasonCategory,
+            _dateTimeProvider.UtcNow);
+
+        var result = await _sender.Send(command, cancellationToken);
+        return ToActionResult(result);
+    }
+
+    [HttpGet("{bookingId:guid}/emergency-contact")]
+    [ProducesResponseType(typeof(EmergencyContactResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetEmergencyContact(
+        Guid bookingId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var caregiver = await _caregiversDb.Caregivers
+            .SingleOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+
+        if (caregiver is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new GetCaregiverBookingEmergencyContactQuery(
+                caregiver.Id,
+                new BookingId(bookingId)),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    [HttpGet("{bookingId:guid}/visit-history")]
+    [ProducesResponseType(typeof(IReadOnlyList<CaregiverBookingVisitHistoryItem>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetVisitHistory(
+        Guid bookingId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var caregiver = await _caregiversDb.Caregivers
+            .SingleOrDefaultAsync(c => c.UserId == userId, cancellationToken);
+
+        if (caregiver is null)
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new GetCaregiverBookingVisitHistoryQuery(
+                caregiver.Id,
+                new BookingId(bookingId)),
+            cancellationToken);
+
         return ToActionResult(result);
     }
 

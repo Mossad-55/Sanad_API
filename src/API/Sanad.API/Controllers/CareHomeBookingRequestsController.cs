@@ -22,24 +22,31 @@ public sealed class CareHomeBookingRequestsController(ISender sender, IDateTimeP
     public async Task<IActionResult> List(CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new ListOwnerCareHomeBookingsQuery(actor, clock.UtcNow), ct)) : Unauthorized();
 
     [HttpPost("{bookingId:guid}/decision")]
+    [ProducesResponseType(typeof(CareHomeBookingResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Decide(Guid bookingId, CareHomeBookingDecisionRequest request, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new DecideCareHomeBookingCommand(actor, bookingId, request.Accept, request.Reason, clock.UtcNow), ct)) : Unauthorized();
 
     [HttpPost("{bookingId:guid}/cancel")]
+    [ProducesResponseType(typeof(CareHomeBookingResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Cancel(Guid bookingId, CareHomeBookingCancellationRequest request, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new CancelOwnerCareHomeBookingCommand(actor, bookingId, request.Reason, clock.UtcNow), ct)) : Unauthorized();
 
     [HttpPost("{bookingId:guid}/assignment")]
+    [ProducesResponseType(typeof(CareHomeBookingResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Assign(Guid bookingId, CareHomeAssignmentRequest request, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new AssignCareHomeBookingCommand(actor, bookingId, request.RoomId, request.BedId, clock.UtcNow), ct)) : Unauthorized();
 
     [HttpPost("{bookingId:guid}/assignment/transfer")]
+    [ProducesResponseType(typeof(CareHomeBookingResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Transfer(Guid bookingId, CareHomeTransferRequest request, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new TransferCareHomeBookingCommand(actor, bookingId, request.RoomId, request.BedId, request.EffectiveDate, clock.UtcNow), ct)) : Unauthorized();
 
     [HttpPost("{bookingId:guid}/check-in")]
+    [ProducesResponseType(typeof(CareHomeBookingResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> CheckIn(Guid bookingId, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new RecordCareHomeCheckInCommand(actor, bookingId, clock.UtcNow), ct)) : Unauthorized();
 
     [HttpPost("{bookingId:guid}/check-out")]
+    [ProducesResponseType(typeof(CareHomeBookingResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> CheckOut(Guid bookingId, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new RecordCareHomeCheckOutCommand(actor, bookingId, clock.UtcNow), ct)) : Unauthorized();
 
     [HttpGet("{bookingId:guid}/operational")]
+    [ProducesResponseType(typeof(CareHomeOwnerBookingOperationalResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> Operational(Guid bookingId, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor) ? ToActionResult(await sender.Send(new GetOwnerCareHomeBookingOperationalQuery(actor, bookingId, clock.UtcNow), ct)) : Unauthorized();
 
     [HttpGet("~/api/v1/care-homes/check-in-disputes/mine")]
@@ -54,14 +61,17 @@ public sealed class CareHomeBookingRequestsController(ISender sender, IDateTimeP
             : Unauthorized();
 
     [HttpGet("{bookingId:guid}/receipt")]
+    [ProducesResponseType(typeof(CareHomeReceipt), StatusCodes.Status200OK)]
     public async Task<IActionResult> Receipt(Guid bookingId, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor)
         ? ToActionResult(await sender.Send(new GetOwnerCareHomeReceiptQuery(actor, bookingId), ct)) : Unauthorized();
 
     [HttpGet("{bookingId:guid}/internal-notes")]
+    [ProducesResponseType(typeof(IReadOnlyList<CareHomeInternalBookingNoteItem>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Notes(Guid bookingId, CancellationToken ct) => TryGetAuthenticatedUserId(out UserId actor)
         ? ToActionResult(await sender.Send(new GetOwnerCareHomeInternalBookingNotesQuery(actor, bookingId), ct)) : Unauthorized();
 
     [HttpPost("{bookingId:guid}/internal-notes")]
+    [ProducesResponseType(typeof(CareHomeInternalBookingNoteItem), StatusCodes.Status200OK)]
     public async Task<IActionResult> AddNote(Guid bookingId, [FromBody] AddCareHomeInternalNoteRequest request, CancellationToken ct) =>
         TryGetAuthenticatedUserId(out UserId actor)
             ? ToActionResult(await sender.Send(new AddOwnerCareHomeInternalBookingNoteCommand(actor, bookingId, request.Text, clock.UtcNow), ct))

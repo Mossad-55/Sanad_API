@@ -3,8 +3,11 @@ using System.Linq.Expressions;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
+using Sanad.Modules.CareHomes.Application.Bookings;
+using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 
 namespace Sanad.Modules.CareHomes.Application.Discovery;
@@ -47,7 +50,8 @@ public sealed record CareHomeDiscoveryDetail(
     IReadOnlyList<CareHomeDiscoveryRoomType> RoomTypes,
     string? CoverImageUrl,
     IReadOnlyList<string> GalleryImageUrls,
-    Guid? ContactUserId);
+    Guid? ContactUserId,
+    IReadOnlyList<CareHomeBookingCancellationTierView>? CancellationTerms = null);
 
 public sealed record GetCareHomeDiscoveryQuery(int Page, int PageSize) : IQuery<CareHomeDiscoveryPage>;
 
@@ -243,6 +247,33 @@ public sealed class GetCareHomeDiscoveryDetailQueryHandler(ICareHomesDbContext d
         var typeMedia = await db.RoomTypeMedia.AsNoTracking()
             .Where(x => typeIds.Contains(x.RoomTypeId)).ToListAsync(ct);
 
+        // Clause 6 / decisions #7, #9, #10: the family-facing page advertises the
+        // facility's structured cancellation terms exactly when a booking made
+        // right now would snapshot them. While the scheduled-start policy ships
+        // dormant, legacy bookings keep the pre-policy schedule, so the page
+        // hides the terms rather than promising a schedule no booking would
+        // receive. Reading the same switch CareHomeRefundPolicySnapshotResolver
+        // consults keeps display and snapshotting on one activation seam.
+        IReadOnlyList<CareHomeBookingCancellationTierView>? cancellationTerms;
+        try
+        {
+            cancellationTerms =
+                CareHomeRefundPolicySnapshotResolver.ScheduledStartPolicyActivated
+                    ? CareHomeCancellationTerms.Parse(revision.CancellationTermsJson)?.Tiers
+                        .Select(tier => new CareHomeBookingCancellationTierView(
+                            tier.RefundPercentage, tier.DeadlineHoursBeforeStart)).ToArray()
+                    : null;
+        }
+        catch (DomainException)
+        {
+            // Once activated, the public page must not 500 on a profile
+            // revision whose stored terms cannot be re-read: fail the read
+            // closed with a stable code (out-of-band corruption only — the
+            // owner save and admin review paths validate the terms).
+            return Result<CareHomeDiscoveryDetail>.Failure(new Error("CareHomes.Bookings.UnreadableSnapshot",
+                "The facility's stored cancellation terms could not be read."));
+        }
+
         return Result<CareHomeDiscoveryDetail>.Success(new(
             record.Summary,
             revision.Address,
@@ -254,6 +285,6 @@ public sealed class GetCareHomeDiscoveryDetailQueryHandler(ICareHomesDbContext d
                 x.Id, x.ArabicName, x.EnglishName, x.ArabicDescription, x.EnglishDescription,
                 x.AllocationMode, x.MonthlyPriceEgp, x.Amenities,
                 typeMedia.FirstOrDefault(m => m.RoomTypeId == x.Id && m.Kind == CareHomeRoomTypeMediaKind.Cover) is { } cover
-                    ? $"/api/v1/care-homes/discovery/{record.Summary.Id:D}/room-types/{x.Id:D}/media/{cover.Id:D}/file" : null)).ToArray(), coverUrl, galleryUrls, contactUserId));
+                    ? $"/api/v1/care-homes/discovery/{record.Summary.Id:D}/room-types/{x.Id:D}/media/{cover.Id:D}/file" : null)).ToArray(), coverUrl, galleryUrls, contactUserId, cancellationTerms));
     }
 }

@@ -1,6 +1,7 @@
 using Sanad.BuildingBlocks.Domain.Abstractions;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.CareHomes.Domain.Bookings;
 
 namespace Sanad.Modules.CareHomes.Domain.Facilities;
 
@@ -21,7 +22,8 @@ public sealed record CareHomeProfileDraft(
     string ArabicAdmissionConditions,
     string EnglishAdmissionConditions,
     IReadOnlyList<BilingualCareHomeItem> Amenities,
-    IReadOnlyList<BilingualCareHomeItem> MedicalServices);
+    IReadOnlyList<BilingualCareHomeItem> MedicalServices,
+    CareHomeCancellationTerms? CancellationTerms = null);
 
 public sealed class CareHomeProfileRevision : Entity<Guid>
 {
@@ -62,6 +64,13 @@ public sealed class CareHomeProfileRevision : Entity<Guid>
     public string Address { get; private set; } = string.Empty;
     public string ArabicAdmissionConditions { get; private set; } = string.Empty;
     public string EnglishAdmissionConditions { get; private set; } = string.Empty;
+    /// <summary>
+    /// The structured cancellation terms this revision displays (clause 6,
+    /// decision #9), rendered as the fixed terms JSON. Null when the facility
+    /// publishes no structured terms — the clause 2 default schedule then
+    /// governs bookings made against this revision.
+    /// </summary>
+    public string? CancellationTermsJson { get; private set; }
     public IReadOnlyList<BilingualCareHomeItem> Amenities { get; private set; } = [];
     public IReadOnlyList<BilingualCareHomeItem> MedicalServices { get; private set; } = [];
     public bool IsFrozen => SubmittedOnUtc is not null;
@@ -69,7 +78,8 @@ public sealed class CareHomeProfileRevision : Entity<Guid>
     internal CareHomeProfileDraft ToDraft() => new(
         ArabicName, EnglishName, ArabicDescription, EnglishDescription, ContactName, ContactPhone,
         ContactEmail, Governorate, City, Area, Address, ArabicAdmissionConditions,
-        EnglishAdmissionConditions, Amenities, MedicalServices);
+        EnglishAdmissionConditions, Amenities, MedicalServices,
+        CareHomeCancellationTerms.Parse(CancellationTermsJson));
 
     internal static CareHomeProfileRevision Create(
         int revisionNumber,
@@ -107,6 +117,10 @@ public sealed class CareHomeProfileRevision : Entity<Guid>
         Address = Optional(draft.Address, 1000, nameof(draft.Address));
         ArabicAdmissionConditions = Optional(draft.ArabicAdmissionConditions, 4000, nameof(draft.ArabicAdmissionConditions));
         EnglishAdmissionConditions = Optional(draft.EnglishAdmissionConditions, 4000, nameof(draft.EnglishAdmissionConditions));
+        // Replacement semantics: a null terms value on the draft clears any
+        // previously published structured terms on this revision, so the owner
+        // surface is always explicit about which schedule a facility offers.
+        CancellationTermsJson = draft.CancellationTerms?.ToJson();
         Amenities = NormalizeItems(draft.Amenities);
         MedicalServices = NormalizeItems(draft.MedicalServices);
         UpdatedOnUtc = utcNow;

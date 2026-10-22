@@ -21,9 +21,11 @@ public sealed class AdminElderlyCheckInsController(ISender sender) : ApiControll
         => await Send(new GetAdminElderlyCheckInsQuery(Actor(), AccountType(), CorrelationId(), page, pageSize, elderlyId, startDate, endDate, answer), ct);
 
     [HttpGet("{checkInId:guid}")]
+    [ProducesResponseType(typeof(AdminElderlyCheckInRecord), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(Guid checkInId, CancellationToken ct) => await Send(new GetAdminElderlyCheckInQuery(Actor(), AccountType(), CorrelationId(), checkInId), ct);
 
     [HttpGet("timeline/{elderlyId:guid}")]
+    [ProducesResponseType(typeof(IReadOnlyList<AdminElderlyCheckInRecord>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Timeline(Guid elderlyId, [FromQuery] DateOnly startDate, [FromQuery] DateOnly endDate, CancellationToken ct) => await Send(new GetAdminElderlyCheckInTimelineQuery(Actor(), AccountType(), CorrelationId(), elderlyId, startDate, endDate), ct);
 
     [HttpGet("aggregate")]

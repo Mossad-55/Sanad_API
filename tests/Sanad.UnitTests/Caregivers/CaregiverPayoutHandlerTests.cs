@@ -951,12 +951,12 @@ public sealed class CaregiverPayoutHandlerTests
             inner.CountAdminCaregiversAsync(status, type, cancellationToken);
 
         public Task<(IReadOnlyList<CaregiverSearchCardResponse> Items, int TotalCount)> SearchActiveCaregiversAsync(
-            string? search, int? type, int? gender, Guid? areaId, Guid? specializationId,
+            string? search, int? type, int? gender, Guid? governorateId, Guid? cityId, Guid? areaId, Guid? specializationId,
             int? availability, decimal? minPrice, decimal? maxPrice, decimal? minRating,
             int? minExperienceYears, int page, int pageSize,
             CancellationToken cancellationToken = default) =>
             inner.SearchActiveCaregiversAsync(
-                search, type, gender, areaId, specializationId, availability,
+                search, type, gender, governorateId, cityId, areaId, specializationId, availability,
                 minPrice, maxPrice, minRating, minExperienceYears, page, pageSize,
                 cancellationToken);
 
@@ -977,6 +977,11 @@ public sealed class CaregiverPayoutHandlerTests
                     "Mohamed Ahmed",
                     null,
                     null));
+
+        public Task<string?> GetDiscoverableCaregiverAvatarKeyAsync(
+            CaregiverId caregiverId,
+            CancellationToken cancellationToken = default) =>
+            inner.GetDiscoverableCaregiverAvatarKeyAsync(caregiverId, cancellationToken);
 
         public Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(
             CancellationToken cancellationToken = default) =>
@@ -1025,12 +1030,12 @@ public sealed class CaregiverPayoutHandlerTests
             inner.CountAdminCaregiversAsync(status, type, cancellationToken);
 
         public Task<(IReadOnlyList<CaregiverSearchCardResponse> Items, int TotalCount)> SearchActiveCaregiversAsync(
-            string? search, int? type, int? gender, Guid? areaId, Guid? specializationId,
+            string? search, int? type, int? gender, Guid? governorateId, Guid? cityId, Guid? areaId, Guid? specializationId,
             int? availability, decimal? minPrice, decimal? maxPrice, decimal? minRating,
             int? minExperienceYears, int page, int pageSize,
             CancellationToken cancellationToken = default) =>
             inner.SearchActiveCaregiversAsync(
-                search, type, gender, areaId, specializationId, availability,
+                search, type, gender, governorateId, cityId, areaId, specializationId, availability,
                 minPrice, maxPrice, minRating, minExperienceYears, page, pageSize,
                 cancellationToken);
 
@@ -1043,6 +1048,11 @@ public sealed class CaregiverPayoutHandlerTests
             UserId userId,
             CancellationToken cancellationToken = default) =>
             inner.GetCaregiverUserHeaderAsync(userId, cancellationToken);
+
+        public Task<string?> GetDiscoverableCaregiverAvatarKeyAsync(
+            CaregiverId caregiverId,
+            CancellationToken cancellationToken = default) =>
+            inner.GetDiscoverableCaregiverAvatarKeyAsync(caregiverId, cancellationToken);
 
         public Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(
             CancellationToken cancellationToken = default) =>

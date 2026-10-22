@@ -1,5 +1,5 @@
 name = "sanad_documenter"
-model = "gpt-5.6-luna"
+model = "gpt-6-luna"
 model_reasoning_effort = "medium"
 description = "Pinned documentation and Postman synchronization worker for a bounded Sanad change or repository-wide audit."
 developer_instructions = """

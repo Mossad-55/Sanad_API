@@ -209,10 +209,18 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
         })
         {
             JsonElement property = itemProperties.GetProperty(field);
+            bool TypeMentionsNull(JsonElement typeElement) =>
+                typeElement.ValueKind == JsonValueKind.Array
+                    ? typeElement.EnumerateArray().Any(v =>
+                        v.ValueKind == JsonValueKind.String && v.GetString() == "null")
+                    : typeElement.ValueKind == JsonValueKind.String && typeElement.GetString() == "null";
             bool nullable = property.TryGetProperty("nullable", out JsonElement nullableFlag) && nullableFlag.ValueKind == JsonValueKind.True;
             bool permitsNullUnion = new[] { "anyOf", "oneOf" }.Any(key => property.TryGetProperty(key, out JsonElement union)
-                && union.EnumerateArray().Any(option => option.TryGetProperty("type", out JsonElement type) && type.GetString() == "null"));
-            Assert.True(nullable || permitsNullUnion, $"Owner dispute field {field} must allow null.");
+                && union.EnumerateArray().Any(option => option.TryGetProperty("type", out JsonElement type) &&
+                    TypeMentionsNull(type)));
+            bool nullTypeMember = property.TryGetProperty("type", out JsonElement typeProperty) && TypeMentionsNull(typeProperty);
+            Assert.True(nullable || permitsNullUnion || nullTypeMember,
+                $"Owner dispute field {field} must allow null.");
         }
         foreach (string field in new[] { "evidence", "reason", "resolvedBy", "openedBy" })
             Assert.False(itemProperties.TryGetProperty(field, out _),
@@ -299,7 +307,8 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
         JsonElement extensionLink = adminProperties.GetProperty("extensionOfBookingId");
         Assert.True(SchemaTypeContains(extensionLink, "string"),
             $"extensionOfBookingId is not a uuid string: {extensionLink.GetRawText()}");
-        Assert.Equal("uuid", extensionLink.GetProperty("format").GetString());
+        Assert.True(DeclaredFormat(extensionLink) == "uuid",
+            $"extensionOfBookingId is not a uuid string: {extensionLink.GetRawText()}");
         Assert.True(PermitsNull(extensionLink),
             $"extensionOfBookingId must allow null: {extensionLink.GetRawText()}");
 
@@ -315,22 +324,49 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
             new[] { "Direct", "Booking" },
             scope.GetProperty("x-enumNames").EnumerateArray().Select(v => v.GetString()).ToArray());
         JsonElement bookingReference = conversationProperties.GetProperty("bookingId");
-        Assert.Equal("uuid", bookingReference.GetProperty("format").GetString());
+        Assert.Equal("uuid", DeclaredFormat(bookingReference));
         Assert.True(PermitsNull(bookingReference),
             $"Chat bookingId must allow null: {bookingReference.GetRawText()}");
+    }
+
+    private static string? DeclaredFormat(JsonElement schema)
+    {
+        if (schema.TryGetProperty("format", out JsonElement format) &&
+            format.ValueKind == JsonValueKind.String)
+            return format.GetString();
+
+        // Nullable unions produced by the portal transformer declare the format
+        // on the value branch, not on the union itself.
+        if (schema.TryGetProperty("anyOf", out JsonElement anyOf))
+        {
+            foreach (JsonElement branch in anyOf.EnumerateArray())
+            {
+                if (branch.ValueKind == JsonValueKind.Object && DeclaredFormat(branch) is { } branchFormat &&
+                    branchFormat != "null")
+                    return branchFormat;
+            }
+        }
+
+        return null;
     }
 
     private static bool PermitsNull(JsonElement property)
     {
         bool nullable = property.TryGetProperty("nullable", out JsonElement nullableFlag)
             && nullableFlag.ValueKind == JsonValueKind.True;
+        bool TypeMentionsNull(JsonElement typeElement) =>
+            typeElement.ValueKind == JsonValueKind.Array
+                ? typeElement.EnumerateArray().Any(v =>
+                    v.ValueKind == JsonValueKind.String && v.GetString() == "null")
+                : typeElement.ValueKind == JsonValueKind.String && typeElement.GetString() == "null";
         bool permitsNullUnion = new[] { "anyOf", "oneOf" }.Any(key =>
             property.TryGetProperty(key, out JsonElement union)
             && union.EnumerateArray().Any(option =>
-                option.TryGetProperty("type", out JsonElement type) && type.GetString() == "null"));
+                option.ValueKind == JsonValueKind.Object &&
+                option.TryGetProperty("type", out JsonElement type) &&
+                TypeMentionsNull(type)));
         bool nullTypeMember = property.TryGetProperty("type", out JsonElement typeProperty)
-            && typeProperty.ValueKind == JsonValueKind.Array
-            && typeProperty.EnumerateArray().Any(v => v.ValueKind == JsonValueKind.String && v.GetString() == "null");
+            && TypeMentionsNull(typeProperty);
         return nullable || permitsNullUnion || nullTypeMember;
     }
 
@@ -699,11 +735,20 @@ public sealed class PortalRemainingResponseContractTests : IClassFixture<PortalA
 
     private static bool SchemaTypeContains(JsonElement schema, string typeName)
     {
-        JsonElement type = schema.GetProperty("type");
-        if (type.ValueKind == JsonValueKind.String)
-            return type.GetString() == typeName;
-        return type.ValueKind == JsonValueKind.Array &&
-            type.EnumerateArray().Any(v => v.GetString() == typeName);
+        // OpenAPI 3.1 may nest the declared type either directly ("type" as a
+        // string or array) or inside a nullable anyOf union produced by the
+        // portal null-union transformer.
+        if (schema.TryGetProperty("type", out JsonElement type))
+        {
+            if (type.ValueKind == JsonValueKind.String
+                    ? type.GetString() == typeName
+                    : type.ValueKind == JsonValueKind.Array &&
+                        type.EnumerateArray().Any(v => v.ValueKind == JsonValueKind.String && v.GetString() == typeName))
+                return true;
+        }
+
+        return schema.TryGetProperty("anyOf", out JsonElement anyOf) &&
+            anyOf.EnumerateArray().Any(branch => branch.ValueKind == JsonValueKind.Object && SchemaTypeContains(branch, typeName));
     }
 
     private static bool TryGetJsonSchema(JsonElement response, out JsonElement schema)

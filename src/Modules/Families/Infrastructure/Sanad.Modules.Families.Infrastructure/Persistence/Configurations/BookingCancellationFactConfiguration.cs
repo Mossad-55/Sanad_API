@@ -75,6 +75,16 @@ public sealed class BookingCancellationFactConfiguration : IEntityTypeConfigurat
             .HasColumnName("is_caregiver_incident")
             .IsRequired();
 
+        // Revision-2 money evidence (Owner decision #4 and clause 2): the award the policy made,
+        // and for a partial award the full-refund basis it was a slice of. Nullable because
+        // revision-1 facts are amount-free; a null award means "read the entitlement", never
+        // "zero was refunded".
+        builder.Property(f => f.AwardedMinorUnits)
+            .HasColumnName("awarded_minor_units");
+
+        builder.Property(f => f.PartialEntitlementMinorUnits)
+            .HasColumnName("partial_entitlement_minor_units");
+
         // Exactly one durable cancellation fact per booking, enforced at the database level.
         builder.HasIndex(f => f.BookingId)
             .IsUnique()

@@ -221,12 +221,20 @@ public sealed class CaregiversDbContext :
             await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
             while (await reader.ReadAsync(cancellationToken))
             {
+                Guid caregiverId = reader.GetGuid(reader.GetOrdinal("CaregiverId"));
+
+                // The wire avatar value is the authorized photo path, never the
+                // stored identity key (refund decision lock #32). A caregiver
+                // that hid the profile after publication leaves a stale path
+                // that the photo route resolves to its sanctioned generic 404.
                 items.Add(new TopRatedCaregiverCard(
-                    reader.GetGuid(reader.GetOrdinal("CaregiverId")),
+                    caregiverId,
                     reader.GetInt32(reader.GetOrdinal("Type")),
                     reader.GetString(reader.GetOrdinal("ArabicFullName")),
                     reader.GetString(reader.GetOrdinal("EnglishFullName")),
-                    GetNullableString(reader, "AvatarUrl"),
+                    CaregiverAvatarPath.FromStoredKey(
+                        caregiverId,
+                        GetNullableString(reader, "AvatarUrl")),
                     reader.GetDecimal(reader.GetOrdinal("AverageRating")),
                     reader.GetInt32(reader.GetOrdinal("ReviewsCount"))));
             }
@@ -288,10 +296,59 @@ public sealed class CaregiversDbContext :
         }
     }
 
+    /// <summary>
+    /// Resolves the stored Identity <c>avatar_url</c> of a caregiver that the
+    /// public discovery search would return: the same predicate the search SQL
+    /// applies (Active status, <c>show_profile</c> not disabled and the
+    /// identity join). The returned value is a private storage key and must
+    /// stay server-side — it is consumed by the authorized photo read, never
+    /// serialized. A non-discoverable caregiver, a missing identity row and a
+    /// missing/blank avatar all resolve to null.
+    /// </summary>
+    public async Task<string?> GetDiscoverableCaregiverAvatarKeyAsync(
+        CaregiverId caregiverId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql =
+            """
+            SELECT u.avatar_url AS "AvatarUrl"
+            FROM caregivers.caregivers c
+            INNER JOIN identity.users u ON u.id = c.user_id
+            WHERE c.id = @caregiverId
+              AND c.status = 4 -- CaregiverStatus.Active
+              AND COALESCE(c.show_profile, true) = true
+            LIMIT 1
+            """;
+
+        await Database.OpenConnectionAsync(cancellationToken);
+
+        try
+        {
+            using DbCommand command = Database.GetDbConnection().CreateCommand();
+            command.CommandText = sql;
+            command.Parameters.Add(CreateParameter(command, "caregiverId", caregiverId.Value, DbType.Guid));
+
+            await using DbDataReader reader = await command.ExecuteReaderAsync(cancellationToken);
+
+            if (await reader.ReadAsync(cancellationToken))
+            {
+                return GetNullableString(reader, "AvatarUrl");
+            }
+
+            return null;
+        }
+        finally
+        {
+            await Database.CloseConnectionAsync();
+        }
+    }
+
     public async Task<(IReadOnlyList<CaregiverSearchCardResponse> Items, int TotalCount)> SearchActiveCaregiversAsync(
         string? search,
         int? type,
         int? gender,
+        Guid? governorateId,
+        Guid? cityId,
         Guid? areaId,
         Guid? specializationId,
         int? availability,
@@ -313,7 +370,7 @@ public sealed class CaregiversDbContext :
                 ON pt.id = c.medical_professional_title_id
             WHERE c.status = 4 -- CaregiverStatus.Active (fix: 3 was NeedsCorrection)
               AND COALESCE(c.show_profile, true) = true
-              AND (@search IS NULL OR u.arabic_full_name ILIKE '%' || @search || '%' OR u.english_full_name ILIKE '%' || @search || '%')
+              AND (@search IS NULL OR lower(u.arabic_full_name) LIKE lower('%' || @search || '%') OR lower(u.english_full_name) LIKE lower('%' || @search || '%'))
               AND (@typeFilter IS NULL OR c.type = @typeFilter)
               AND (@genderFilter IS NULL OR u.gender = @genderFilter)
               AND (@availabilityFilter IS NULL OR c.availability = @availabilityFilter)
@@ -321,6 +378,15 @@ public sealed class CaregiversDbContext :
               AND (@minExp IS NULL OR COALESCE(c.medical_years_of_experience, c.companion_years_of_experience, 0) >= @minExp)
               AND (@minPrice IS NULL OR COALESCE(c.companion_hourly_price, c.medical_eight_hour_shift_price, 0) >= @minPrice)
               AND (@maxPrice IS NULL OR COALESCE(c.companion_hourly_price, c.medical_eight_hour_shift_price, 0) <= @maxPrice)
+              AND (@governorateFilter IS NULL OR EXISTS (
+                    SELECT 1 FROM caregivers.caregiver_area_selections cas 
+                    INNER JOIN caregivers.areas a ON a.id = cas.area_id
+                    INNER JOIN caregivers.cities ci ON ci.id = a.city_id
+                    WHERE cas.caregiver_id = c.id AND ci.governorate_id = @governorateFilter))
+              AND (@cityFilter IS NULL OR EXISTS (
+                    SELECT 1 FROM caregivers.caregiver_area_selections cas 
+                    INNER JOIN caregivers.areas a ON a.id = cas.area_id
+                    WHERE cas.caregiver_id = c.id AND a.city_id = @cityFilter))
               AND (@areaFilter IS NULL OR EXISTS (
                     SELECT 1 FROM caregivers.caregiver_area_selections cas 
                     WHERE cas.caregiver_id = c.id AND cas.area_id = @areaFilter))
@@ -375,7 +441,7 @@ public sealed class CaregiversDbContext :
             using (DbCommand countCommand = Database.GetDbConnection().CreateCommand())
             {
                 countCommand.CommandText = countSql;
-                AddSearchParameters(countCommand, search, type, gender, areaId, specializationId, availability, minPrice, maxPrice, minRating, minExperienceYears);
+                AddSearchParameters(countCommand, search, type, gender, governorateId, cityId, areaId, specializationId, availability, minPrice, maxPrice, minRating, minExperienceYears);
                 object? countResult = await countCommand.ExecuteScalarAsync(cancellationToken);
                 totalCount = Convert.ToInt32(countResult);
             }
@@ -384,7 +450,7 @@ public sealed class CaregiversDbContext :
             using (DbCommand selectCommand = Database.GetDbConnection().CreateCommand())
             {
                 selectCommand.CommandText = selectSql;
-                AddSearchParameters(selectCommand, search, type, gender, areaId, specializationId, availability, minPrice, maxPrice, minRating, minExperienceYears);
+                AddSearchParameters(selectCommand, search, type, gender, governorateId, cityId, areaId, specializationId, availability, minPrice, maxPrice, minRating, minExperienceYears);
                 selectCommand.Parameters.Add(CreateParameter(selectCommand, "take", pageSize, DbType.Int32));
                 selectCommand.Parameters.Add(CreateParameter(selectCommand, "skip", (page - 1) * pageSize, DbType.Int32));
 
@@ -400,14 +466,22 @@ public sealed class CaregiversDbContext :
                     var cType = (CaregiverType)reader.GetInt32(reader.GetOrdinal("Type"));
                     string? specAr = GetNullableString(reader, "SpecializationAr");
                     string? specEn = GetNullableString(reader, "SpecializationEn");
+                    Guid caregiverId = reader.GetGuid(reader.GetOrdinal("CaregiverId"));
 
+                    // The wire avatar value is the authorized photo path, never
+                    // the stored identity key (refund decision lock #32). A
+                    // caregiver that hid the profile after publication leaves a
+                    // stale path that the photo route resolves to its
+                    // sanctioned generic 404.
                     items.Add(new CaregiverSearchCardResponse(
-                        reader.GetGuid(reader.GetOrdinal("CaregiverId")),
+                        caregiverId,
                         reader.GetGuid(reader.GetOrdinal("UserId")),
                         reader.GetString(reader.GetOrdinal("ArabicFullName")),
                         reader.GetString(reader.GetOrdinal("EnglishFullName")),
                         genderVal,
-                        GetNullableString(reader, "AvatarUrl"),
+                        CaregiverAvatarPath.FromStoredKey(
+                            caregiverId,
+                            GetNullableString(reader, "AvatarUrl")),
                         cType,
                         GetNullableString(reader, "ProfessionalTitleAr"),
                         GetNullableString(reader, "ProfessionalTitleEn"),
@@ -445,7 +519,7 @@ public sealed class CaregiversDbContext :
                 ON s.id = COALESCE(c.medical_specialization_id, c.companion_specialization_id)
             WHERE c.type = 1 -- CaregiverType.Medical
               AND c.status = 4 -- CaregiverStatus.Active
-              AND (@search IS NULL OR u.arabic_full_name ILIKE '%' || @search || '%' OR u.english_full_name ILIKE '%' || @search || '%')
+              AND (@search IS NULL OR lower(u.arabic_full_name) LIKE lower('%' || @search || '%') OR lower(u.english_full_name) LIKE lower('%' || @search || '%'))
             """;
 
         string countSql = $"SELECT COUNT(*) {baseSql}";
@@ -492,13 +566,21 @@ public sealed class CaregiversDbContext :
                 while (await reader.ReadAsync(cancellationToken))
                 {
                     int specializationOrdinal = reader.GetOrdinal("SpecializationId");
+                    Guid caregiverId = reader.GetGuid(reader.GetOrdinal("CaregiverId"));
 
+                    // The wire avatar value is the authorized photo path, never
+                    // the stored identity key (refund decision lock #32). A
+                    // caregiver that hid the profile after publication leaves a
+                    // stale path that the photo route resolves to its
+                    // sanctioned generic 404.
                     items.Add(new MedicalCaregiverRecipientItem(
-                        new CaregiverId(reader.GetGuid(reader.GetOrdinal("CaregiverId"))),
+                        new CaregiverId(caregiverId),
                         new UserId(reader.GetGuid(reader.GetOrdinal("UserId"))),
                         reader.GetString(reader.GetOrdinal("ArabicFullName")),
                         reader.GetString(reader.GetOrdinal("EnglishFullName")),
-                        GetNullableString(reader, "AvatarUrl"),
+                        CaregiverAvatarPath.FromStoredKey(
+                            caregiverId,
+                            GetNullableString(reader, "AvatarUrl")),
                         reader.IsDBNull(specializationOrdinal) ? null : reader.GetGuid(specializationOrdinal),
                         GetNullableString(reader, "SpecializationAr"),
                         GetNullableString(reader, "SpecializationEn")));
@@ -518,6 +600,8 @@ public sealed class CaregiversDbContext :
         string? search,
         int? type,
         int? gender,
+        Guid? governorateId,
+        Guid? cityId,
         Guid? areaId,
         Guid? specializationId,
         int? availability,
@@ -529,6 +613,8 @@ public sealed class CaregiversDbContext :
         command.Parameters.Add(CreateParameter(command, "search", (object?)search ?? DBNull.Value, DbType.String));
         command.Parameters.Add(CreateParameter(command, "typeFilter", (object?)type ?? DBNull.Value, DbType.Int32));
         command.Parameters.Add(CreateParameter(command, "genderFilter", (object?)gender ?? DBNull.Value, DbType.Int32));
+        command.Parameters.Add(CreateParameter(command, "governorateFilter", (object?)governorateId ?? DBNull.Value, DbType.Guid));
+        command.Parameters.Add(CreateParameter(command, "cityFilter", (object?)cityId ?? DBNull.Value, DbType.Guid));
         command.Parameters.Add(CreateParameter(command, "areaFilter", (object?)areaId ?? DBNull.Value, DbType.Guid));
         command.Parameters.Add(CreateParameter(command, "specFilter", (object?)specializationId ?? DBNull.Value, DbType.Guid));
         command.Parameters.Add(CreateParameter(command, "availabilityFilter", (object?)availability ?? DBNull.Value, DbType.Int32));

@@ -1,0 +1,366 @@
+{
+  "info": {
+    "name": "Sanad Admin — Rentals",
+    "description": "Equipment-rental catalog and clause 8 booking lifecycle operations (refund contract clause 8, Owner decisions #19-#22, #31, #33, #37). The catalog folder is SuperAdmin-only; booking operations ride the RefundWorkflowAdmin policy (SuperAdmin or SupportAdmin) and the SuperAdmin-only deduction approval is called out per request. All money crosses the wire as exact EGP piastre integers (12000 = 120.00 EGP) in request bodies and as EGP major-unit decimals in responses; refund awards are always policy-derived server-side — callers supply a destination and an idempotency key, never an amount. These requests are manual examples; do not run against production or shared data without owner authorization.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5235"
+    },
+    {
+      "key": "adminToken",
+      "value": ""
+    },
+    {
+      "key": "superAdminToken",
+      "value": ""
+    },
+    {
+      "key": "equipmentId",
+      "value": ""
+    },
+    {
+      "key": "rentalBookingId",
+      "value": ""
+    },
+    {
+      "key": "deductionId",
+      "value": ""
+    },
+    {
+      "key": "idempotencyKey",
+      "value": ""
+    },
+    {
+      "key": "refundCaseId",
+      "value": "",
+      "description": "Refund case id from a rental booking detail's pendingRefund.refundCaseId. Used only by the recovery folder."
+    }
+  ],
+  "item": [
+    {
+      "name": "Rental catalog (SuperAdmin only)",
+      "description": "Bounded rentable-equipment catalog under /api/v1/admin/rentals/catalog. SuperAdminOnly policy: a SupportAdmin token receives 403. Every booking snapshots the terms displayed at booking time, so edits and deactivations apply only to future bookings (Owner decision #10). There is no stock or quantity dimension. Rates and deposits are piastre integers: dailyRateMinorUnits 12000 and depositMinorUnits 50000 mean 120.00 EGP/day rent and 500.00 EGP deposit. Manual fixture only.",
+      "item": [
+        {
+          "name": "List rental equipment",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/rentals/catalog"
+          },
+          "description": "Returns 200 with every catalog item (active and inactive) ordered by newest first, each with dailyRate/deposit as EGP major-unit decimals. Reads are authorization-only; 401 unauthenticated, 403 non-SuperAdmin."
+        },
+        {
+          "name": "Create rental equipment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nameEnglish\": \"Wheelchair\",\n  \"nameArabic\": \"كرسي متحرك\",\n  \"descriptionEnglish\": \"Folding manual wheelchair, weekly discount available.\",\n  \"descriptionArabic\": \"كرسي متحرك يدوي قابل للطي، مع خصم أسبوعي.\",\n  \"dailyRateMinorUnits\": 12000,\n  \"depositMinorUnits\": 50000,\n  \"maximumRentalDays\": 30\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/rentals/catalog"
+          },
+          "description": "Returns 200 with the created item id. nameEnglish/nameArabic are required (1-200 characters each); descriptions are optional (trimmed, blank becomes null, max 2000 characters); dailyRateMinorUnits must be a positive piastre integer and depositMinorUnits non-negative; maximumRentalDays 1-365 (a 365-day cap is enforced by check constraint). 400 Rentals.Catalog.Invalid for any invariant violation. Manual fixture only."
+        },
+        {
+          "name": "Update rental equipment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"nameEnglish\": \"Wheelchair\",\n  \"nameArabic\": \"كرسي متحرك\",\n  \"descriptionEnglish\": \"Folding manual wheelchair, weekly discount available.\",\n  \"descriptionArabic\": \"كرسي متحرك يدوي قابل للطي، مع خصم أسبوعي.\",\n  \"dailyRateMinorUnits\": 15000,\n  \"depositMinorUnits\": 50000,\n  \"maximumRentalDays\": 30\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/rentals/catalog/{{equipmentId}}"
+          },
+          "description": "Full catalog replacement; the same validation as create. Existing bookings keep their snapshotted terms — the edit never rewrites history (Owner decision #10). Returns 204; 404 Rentals.Catalog.NotFound; 400 Rentals.Catalog.Invalid."
+        },
+        {
+          "name": "Set rental equipment active state",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"isActive\": false\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/rentals/catalog/{{equipmentId}}/activation"
+          },
+          "description": "Deactivation removes the item from the family catalog and refuses new bookings; existing bookings keep their snapshots and complete their lifecycle. Reactivation returns it to the catalog. Returns 204; 404 Rentals.Catalog.NotFound. Manual fixture only."
+        }
+      ]
+    },
+    {
+      "name": "Rental booking operations (SuperAdmin or SupportAdmin)",
+      "description": "The clause 8 lifecycle under /api/v1/admin/rentals/bookings. Class-level RefundWorkflowAdmin policy (SuperAdmin or SupportAdmin); FinanceAdmin is deliberately excluded. Physical delivery anchors the 24-hour period clock (#19); physical return anchors the seven-business-day deposit window computed with the shared Finance business-day calendar (#20) — the inspection cannot postpone it. Deduction approval is additionally SuperAdminOnly (Owner decision #21). The deposit settlement awards the policy-derived amount — deposit less approved on-time deductions, floored at zero (#31) — so the caller supplies only destination and idempotency key. Settling after the deadline releases the deposit in full; the hold window cannot be extended. Executable destinations are 1 OriginalPaymentMethod and 2 AppCredit; the bank/wallet transfer destinations (3, 4) are refused with 400 Rentals.Refund.DestinationUnavailable. Citation scope, stated precisely: refund contract #10 sentence 3 requires customer-selected bank/wallet/app-credit for CASH refunds; rentals capture only card/wallet through Paymob (#22/#33) and never cash, so #10's cash menu does not itself govern this endpoint - the two-destination set is a Rentals policy choice for card/wallet captures, not something #10 authorises or forbids; boundary condition: if a cash capture rail is ever added, destinations 3/4 MUST become executable per #10. Manual fixture only.",
+      "item": [
+        {
+          "name": "Get rental booking detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/rentals/bookings/{{rentalBookingId}}"
+          },
+          "description": "Returns 200 with the full booking snapshot: status (1 PendingPayment, 2 Confirmed, 3 CancelledBeforeDelivery, 4 Delivered, 5 Returned, 6 DepositSettled), captured total, delivery/return timestamps, the anchored settlement deadline, inspection notes, every damage deduction with its dispute state, and every recorded refund movement with its Finance refundCaseId, and pendingRefund (kind, refundCaseId, destination, claimedAmount) whenever a refund claim stands in flight - the destination is the claim's persisted authoritative choice, and for an ambiguous provider outcome the pending state marks a case awaiting operations reconciliation. 404 Rentals.Operations.BookingNotFound."
+        },
+        {
+          "name": "Record delivery",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/rentals/bookings/{{rentalBookingId}}/delivery"
+          },
+          "description": "Marks the item physically delivered; the prepaid 24-hour periods start counting here, not at booking (#19). Only a confirmed booking can be delivered. Returns 204; 404 Rentals.Operations.BookingNotFound; 409 Rentals.Operations.InvalidOperation or Conflict."
+        },
+        {
+          "name": "Record return",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/rentals/bookings/{{rentalBookingId}}/return"
+          },
+          "description": "Marks the item physically returned and anchors the seven-business-day deposit window at this instant; the stored deadline is computed server-side with the shared Finance business-day calendar (Africa/Cairo, official Egyptian holidays excluded) — not from this call's clock alone. Returns 204; 404 Rentals.Operations.BookingNotFound; 409 Rentals.Operations.InvalidOperation or Conflict."
+        },
+        {
+          "name": "Complete inspection",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"notes\": \"Returned clean; minor scratch on the left armrest.\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/rentals/bookings/{{rentalBookingId}}/inspection"
+          },
+          "description": "Records the receipt-and-inspection outcome at most once. Notes are optional (trimmed, max 2000 characters) and the returned booking status stays Returned — the inspection never extends the deposit window (#20). Returns 204; 404 Rentals.Operations.BookingNotFound; 409 Rentals.Operations.InvalidOperation (wrong state or already inspected)."
+        },
+        {
+          "name": "Record damage deduction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"descriptionEnglish\": \"Scratched armrest\",\n  \"descriptionArabic\": \"خدش في مسند الذراع\",\n  \"amountMinorUnits\": 10000,\n  \"evidenceReference\": \"damage/2026-10/rental-0007-armrest.jpg\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/rentals/bookings/{{rentalBookingId}}/deductions"
+          },
+          "description": "Appends one documented damage deduction found at inspection; the record is append-style and is never edited or deleted (#21). descriptionEnglish is required (1-1000); descriptionArabic optional (same cap); amountMinorUnits a positive piastre integer; evidenceReference is the stored documentation key (1-300) and is mandatory. Returns 200 with the deduction id. 404 Rentals.Operations.BookingNotFound; 400 Rentals.Operations.Invalid; 409 Rentals.Operations.InvalidOperation (only a returned booking accepts deductions) or Conflict."
+        },
+        {
+          "name": "Approve damage deduction (SuperAdmin only)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/rentals/bookings/deductions/{{deductionId}}/approval"
+          },
+          "description": "SuperAdminOnly inside the RefundWorkflowAdmin surface: a SupportAdmin token receives 403 (Owner decision #21). Approval is at most once and allowed only while the deposit is unsettled — past the settlement deadline an approval stays recorded evidence that never nets (Owner decision #20). Returns 204; 404 Rentals.Operations.DeductionNotFound; 409 Rentals.Operations.InvalidOperation (already approved, or the deposit is already settled — nothing is left to net) or Conflict."
+        },
+        {
+          "name": "Resolve deduction dispute",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/rentals/bookings/deductions/{{deductionId}}/dispute-resolution"
+          },
+          "description": "Staff resolution note for a disputed deduction; the dispute itself is never rewritten or deleted (#21). Only a disputed deduction can be resolved, at most once. Returns 204; 404 Rentals.Operations.DeductionNotFound; 409 Rentals.Operations.InvalidOperation or Conflict."
+        },
+        {
+          "name": "Settle deposit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{adminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"destination\": 2,\n  \"idempotencyKey\": \"settle-0198e2c2-7777-7777-8888-000000000009\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/rentals/bookings/{{rentalBookingId}}/settle-deposit"
+          },
+          "description": "Returns 200 with { rentalBookingId, status, reason, kind 3 (DepositSettlement), refundCaseId, destination, awarded, isReplay }. The award is policy-derived: the deposit less deductions approved on or before the deadline, floored at zero (#31) — a zero award is a valid, attributable outcome — and settling after the deadline releases the deposit in full (#20). The movement is recorded through the Finance refund seams; replaying the same key returns isReplay true with the original outcome. AppCredit postings land in the family credit balance as ONE Finance unit of work (authoritative Approved entry + attributable CreditBalancePosted entry + balance movement); OriginalPaymentMethod refunds through the payment rails. Statuses: 400 Rentals.Refund.DestinationUnavailable; 400 Rentals.Refund.IdempotencyKeyTooLong when the idempotency key exceeds the composed evidence budget (68 characters; validated before any claim, Finance record or provider call - nothing mutates); 400 Rentals.Booking.Invalid for a wrong derived amount (never possible from this endpoint's inputs in normal operation); 404 Rentals.Operations.BookingNotFound; 409 Rentals.Booking.InvalidOperation (bucket lifecycle) or Conflict; 409 Rentals.Refund.NoPaymentReference when the rails destination cannot proceed because no stored gateway transaction exists (refused before any claim is taken); 409 Rentals.Refund.OutcomePendingReconciliation for an ambiguous provider outcome (a durable Finance timeout is recorded and the claim stays PENDING until operations reconciles the refund case through the queued ops routes completion/reconciliation/timeout/reversal) and 409 Rentals.Refund.AttemptFailedRetryable for a verified provider refusal (signed reversal, case nets to zero, the claim is RELEASED, and the same request retried starts a fresh case at the standing award); the booking detail shows pending state under pendingRefund (kind, refundCaseId, destination, claimedAmount); 409 Rentals.Refund.AlreadyRecorded when another refund kind is already pending on the booking, or when differing content meets a recorded outcome - a completed movement always replays, never moves again. Manual fixture only."
+        }
+      ]
+    },
+    {
+      "name": "Refund-case recovery (SuperAdmin only)",
+      "description": "Operations recovery for a rental refund whose provider outcome was never confirmed (Owner decisions #17 and #35). Every route here is SuperAdminOnly; a SupportAdmin token receives 403. The timeout and reconciliation requests carry no amount: the timeout amount is derived from the case's standing approval. Completion and reversal accept amountMinorUnits only as a verified-movement assertion; the Finance seam refuses any value that does not equal the recorded award (409). The booking refund response distinguishes a blocked case (Rentals.Refund.OutcomePendingReconciliation, reconcile before any retry) from a released case (Rentals.Refund.AttemptFailedRetryable, a fresh attempt is safe). These requests are manual recovery examples; do not run them without the provider evidence named in the body.",
+      "item": [
+        {
+          "name": "Record a durable refund timeout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"providerSignal\": \"PAYMOB_REFUND_TIMEOUT\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/rentals/refund-cases/{{refundCaseId}}/timeout"
+          },
+          "description": "200 returns the case snapshot. The case must carry a standing Approved award; the seam derives the timeout amount from it, so the caller cannot name one. A repeated timeout for an already-timed-out case replays. 400 Finance.RentalRefund.Invalid when the case has no standing approval or the actor/time is invalid; 409 Finance.RentalRefund.Conflict when the case changed concurrently. Recording a timeout blocks the automatic refund path until reconciliation."
+        },
+        {
+          "name": "Reconcile a recorded timeout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"evidenceReference\": \"Paymob dashboard: refund 904 still processing\",\n  \"providerReference\": \"904\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/rentals/refund-cases/{{refundCaseId}}/reconciliation"
+          },
+          "description": "Moves no money: it records the operator's authenticated evidence (and the provider reference when one exists) on the timed-out case, which is the only transition an unresolved timeout allows. 400 Finance.RentalRefund.Invalid for missing evidence, actor or UTC time; 409 Finance.RentalRefund.Conflict when the case is not timed out, is already reconciled, or changed concurrently. The outcome is then accounted through completion (verified success) or reversal (verified nonpayment)."
+        },
+        {
+          "name": "Complete a verified refund movement",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountMinorUnits\": 30000,\n  \"providerReference\": \"904\",\n  \"evidenceReference\": \"Paymob dashboard: refund 904 completed\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/rentals/refund-cases/{{refundCaseId}}/completion"
+          },
+          "description": "Accounts a verified successful transfer and marks the booking refund completed. providerReference and evidenceReference are mandatory; amountMinorUnits is an assertion that must equal the case's recorded award, otherwise 409. 400 Finance.RentalRefund.Invalid for missing references, a non-UTC time or a zero/negative movement; 409 Finance.RentalRefund.ReconciliationRequired when the case is neither an already-confirmed transfer (idempotent replay) nor a recorded timeout that reconciliation has resolved - a plain in-flight approval must be left to the automatic executor; 409 Finance.RentalRefund.Conflict for an amount mismatch or a concurrent change."
+        },
+        {
+          "name": "Reverse a verified nonpayment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{superAdminToken}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amountMinorUnits\": 30000,\n  \"evidenceReference\": \"Paymob dashboard: refund 904 rejected; no movement\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/rentals/refund-cases/{{refundCaseId}}/reversal"
+          },
+          "description": "Accounts verified nonpayment after reconciliation: the signed reversal nets the case to zero so the booking can start a fresh attempt. amountMinorUnits must equal the standing award; a mismatch is 409. 400 Finance.RentalRefund.Invalid for an invalid actor/time; 409 Finance.RentalRefund.ReconciliationRequired when the case is not a recorded timeout resolved by reconciliation - a definitive provider refusal is recorded by the automatic executor itself, not by this route; 409 Finance.RentalRefund.Conflict when the case is already concluded or changed concurrently. The reversal evidence is carried on the approval entry because the frozen ledger Fail entry has no evidence slot."
+        }
+      ]
+    }
+  ]
+}

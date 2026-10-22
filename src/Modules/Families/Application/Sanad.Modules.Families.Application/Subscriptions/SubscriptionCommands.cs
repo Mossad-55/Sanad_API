@@ -6,10 +6,32 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
+using Sanad.Modules.Finance.Application;
+using Sanad.Modules.Finance.Domain;
 
 namespace Sanad.Modules.Families.Application.Subscriptions;
 
-public sealed record CancelSubscriptionRenewalCommand(UserId UserId) : ICommand;
+/// <summary>
+/// Cancel-renewal. When an <paramref name="IdempotencyKey"/> is supplied the
+/// handler also records the clause-9 cancel-renewal <em>outcome</em> — a
+/// zero-piastre, non-refund movement (access continues through the paid period,
+/// no partial-period refund) — through the Finance seam, so the cancel outcome
+/// is attributable and distinct from a duplicate-charge refund and a shutdown
+/// proration. The key is optional: a caller that does not need the recorded
+/// outcome keeps the pre-existing byte-identical lifecycle, and Finance alone
+/// persists the movement.
+/// <para>
+/// Replay (M3): a keyless retry of an already-cancelled renewal is still
+/// <c>AlreadyRequested</c>. With a key, an already-cancelled renewal is
+/// <em>not</em> short-circuited — the recorder is idempotent and
+/// conflict-detecting, so the same key with the same content replays the
+/// recorded outcome and a differing content yields the stable idempotency
+/// conflict.
+/// </para>
+/// </summary>
+public sealed record CancelSubscriptionRenewalCommand(
+    UserId UserId,
+    string? IdempotencyKey = null) : ICommand;
 public sealed record ReenableSubscriptionAutoRenewCommand(UserId UserId) : ICommand;
 
 public sealed record SubscriptionBenefitInput(
@@ -219,7 +241,13 @@ public sealed class CancelSubscriptionRenewalCommandHandler : ICommandHandler<Ca
     private static readonly Error SubscriptionNotFound = new("Subscriptions.Subscription.NotFound", "The current subscription was not found.");
     private static readonly Error AlreadyRequested = new("Subscriptions.CancelRenewal.AlreadyRequested", "Subscription renewal cancellation was already requested.");
     private readonly IFamiliesDbContext _db;
-    public CancelSubscriptionRenewalCommandHandler(IFamiliesDbContext db) => _db = db;
+    private readonly ISubscriptionRefundRecorder? _refunds;
+
+    public CancelSubscriptionRenewalCommandHandler(IFamiliesDbContext db, ISubscriptionRefundRecorder? refunds = null)
+    {
+        _db = db;
+        _refunds = refunds;
+    }
 
     public async Task<Result> Handle(CancelSubscriptionRenewalCommand request, CancellationToken cancellationToken)
     {
@@ -227,17 +255,76 @@ public sealed class CancelSubscriptionRenewalCommandHandler : ICommandHandler<Ca
         if (family is null || !FamilyAccess.IsOwner(family, request.UserId)) return Result.Failure(FamilyErrors.NotOwner);
         var subscription = await _db.FamilySubscriptions.SingleOrDefaultAsync(x => x.FamilyId == family.Id && x.IsCurrent, cancellationToken);
         if (subscription is null) return Result.Failure(SubscriptionNotFound);
-        if (!subscription.AutoRenewEnabled || subscription.CancellationRequestedOnUtc is not null) return Result.Failure(AlreadyRequested);
-        subscription.CancelRenewal(DateTime.UtcNow);
-        try
-        {
-            await _db.SaveChangesAsync(cancellationToken);
-        }
-        catch (DbUpdateConcurrencyException)
-        {
+
+        bool alreadyCancelled = !subscription.AutoRenewEnabled || subscription.CancellationRequestedOnUtc is not null;
+
+        // M3: a keyless retry of an already-cancelled renewal is still
+        // AlreadyRequested. But when the caller supplied an idempotency key we do
+        // NOT short-circuit: the recorder is idempotent and conflict-detecting, so
+        // we route the replay through it and return the recorded outcome — the same
+        // key with the same content replays the original, a differing content is
+        // the stable idempotency conflict. This makes the cancel outcome
+        // re-readable after the first commit.
+        if (alreadyCancelled && string.IsNullOrWhiteSpace(request.IdempotencyKey))
             return Result.Failure(AlreadyRequested);
+
+        DateTime requestedOnUtc = subscription.CancellationRequestedOnUtc ?? DateTime.UtcNow;
+        if (!alreadyCancelled)
+        {
+            subscription.CancelRenewal(requestedOnUtc);
+            try
+            {
+                await _db.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result.Failure(AlreadyRequested);
+            }
         }
+
+        // Clause 9: cancel-renewal retains access through the paid period and
+        // refunds nothing for the current period. When the caller supplies an
+        // idempotency key the handler records that zero-piastre outcome through
+        // the Finance seam so the cancellation is attributable and distinct from
+        // the other clause-9 reasons — the lifecycle above (when it ran) is already
+        // committed, so a rejected recording never rolls the cancellation back; the
+        // caller replays the same key to obtain the recorded outcome.
+        if (_refunds is not null && !string.IsNullOrWhiteSpace(request.IdempotencyKey))
+        {
+            // M4: cancel-renewal records a zero-piastre movement, so it claims no
+            // budget and names no capture. The subscription id is still passed for
+            // audit correlation.
+            Result<SubscriptionRefundSnapshot> recorded = await _refunds.RecordAsync(
+                CancelRenewalCaseId(subscription.Id),
+                family.Id.Value,
+                subscription.Id,
+                Guid.Empty,
+                0,
+                Sanad.Modules.Finance.Domain.Money.Zero,
+                SubscriptionRefundReason.CancelRenewal,
+                request.IdempotencyKey,
+                requestedOnUtc,
+                request.UserId.Value,
+                evidenceReference: null,
+                cancellationToken);
+
+            if (recorded.IsFailure)
+            {
+                return Result.Failure(recorded.Error.Code == "Finance.SubscriptionRefund.IdempotencyConflict"
+                    ? SubscriptionRefundErrors.IdempotencyConflict
+                    : new Error(SubscriptionRefundErrors.FinanceRejected.Code, recorded.Error.Message));
+            }
+        }
+
         return Result.Success();
+    }
+
+    private static Guid CancelRenewalCaseId(Guid subscriptionId)
+    {
+        Span<byte> source = stackalloc byte[16];
+        subscriptionId.TryWriteBytes(source);
+        source[0] ^= 0xC7;
+        return new Guid(source);
     }
 }
 

@@ -324,4 +324,57 @@ public sealed class ResultProblemDetailsMapperTests
             "Unknown.Error",
             problemDetails.Extensions["code"]);
     }
+
+    [Fact]
+    public void Create_ShouldNotAttachFieldErrorsWhenTheErrorCarriesNone()
+    {
+        var problemDetails =
+            ResultProblemDetailsMapper.Create(
+                new Error(
+                    "Cms.LibraryContent.NotFound",
+                    "Library content was not found."),
+                new DefaultHttpContext());
+
+        // Non-field errors keep the unchanged problem-detail body: no
+        // `errors` extension is invented.
+        Assert.False(problemDetails.Extensions.ContainsKey("errors"));
+    }
+
+    [Fact]
+    public void Create_ShouldAttachFieldErrorsInTheLibraryDictionaryShape()
+    {
+        var errors = new Dictionary<string, string[]>
+        {
+            ["arabicTitle"] = ["A value is required and must not exceed 200 characters."],
+            ["sectionsJson[0].displayOrder"] = ["Display order must be a positive number."]
+        };
+
+        var problemDetails =
+            ResultProblemDetailsMapper.Create(
+                new Error(
+                    "Cms.LibraryContent.Invalid",
+                    "Library content failed validation.",
+                    Errors: errors),
+                new DefaultHttpContext());
+
+        Assert.Equal(
+            StatusCodes.Status400BadRequest,
+            problemDetails.Status);
+
+        Assert.Equal(
+            "Cms.LibraryContent.Invalid",
+            problemDetails.Extensions["code"]);
+
+        var attached =
+            Assert.IsType<Dictionary<string, string[]>>(
+                problemDetails.Extensions["errors"]);
+
+        Assert.Equal(errors, attached);
+        Assert.Equal(
+            errors["arabicTitle"],
+            attached["arabicTitle"]);
+        Assert.Equal(
+            errors["sectionsJson[0].displayOrder"],
+            attached["sectionsJson[0].displayOrder"]);
+    }
 }

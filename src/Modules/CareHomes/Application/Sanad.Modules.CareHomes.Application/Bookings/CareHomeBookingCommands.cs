@@ -4,6 +4,7 @@ using MediatR;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Application.FamilyIntake;
@@ -18,7 +19,9 @@ using Sanad.Modules.Finance.Application;
 
 namespace Sanad.Modules.CareHomes.Application.Bookings;
 
-public sealed record CareHomeBookingResponse(Guid Id, Guid FacilityId, Guid ElderlyId, Guid RoomTypeId, DateOnly StartDate, DateOnly EndDate, DateTime EarliestArrivalUtc, CareHomeBookingStatus Status, CareHomeBookingPaymentStatus PaymentStatus, decimal BaseAmount, decimal PlatformFeeAmount, decimal TaxAmount, decimal TotalAmount, string Currency, DateTime? HoldUntilUtc, string? DecisionReason, Guid? AssignedRoomId = null, Guid? AssignedBedId = null, DateTime? ActualCheckInOnUtc = null, DateTime? ActualCheckOutOnUtc = null, DateTime? FamilyCheckInConfirmedOnUtc = null, CareHomeRefundStatus RefundStatus = CareHomeRefundStatus.None, decimal? RefundAmount = null, string? RefundReference = null, DateTime? RefundCompletedOnUtc = null, Guid? RefundCompletedBy = null, string? RefundFailureReason = null, Guid? ExtensionOfBookingId = null);
+public sealed record CareHomeBookingCancellationTierView(int RefundPercentage, int DeadlineHoursBeforeStart);
+
+public sealed record CareHomeBookingResponse(Guid Id, Guid FacilityId, Guid ElderlyId, Guid RoomTypeId, DateOnly StartDate, DateOnly EndDate, DateTime EarliestArrivalUtc, CareHomeBookingStatus Status, CareHomeBookingPaymentStatus PaymentStatus, decimal BaseAmount, decimal PlatformFeeAmount, decimal TaxAmount, decimal TotalAmount, string Currency, DateTime? HoldUntilUtc, string? DecisionReason, DateOnly RefundPolicyDocumentEffectiveOn, Guid? AssignedRoomId = null, Guid? AssignedBedId = null, DateTime? ActualCheckInOnUtc = null, DateTime? ActualCheckOutOnUtc = null, DateTime? FamilyCheckInConfirmedOnUtc = null, CareHomeRefundStatus RefundStatus = CareHomeRefundStatus.None, decimal? RefundAmount = null, string? RefundReference = null, DateTime? RefundCompletedOnUtc = null, Guid? RefundCompletedBy = null, string? RefundFailureReason = null, Guid? ExtensionOfBookingId = null, int RefundPolicyVersion = CareHomeRefundPolicyVersion.LegacyVersion, IReadOnlyList<CareHomeBookingCancellationTierView>? CancellationTerms = null, Guid? RefundAttemptClaimId = null);
 public sealed record CareHomeBookingPaymentIntentResponse(Guid BookingId, string MerchantReference, string PaymobOrderId, string IntentionOrderId, string ClientSecret, string PublicKey);
 /// <summary>
 /// F2 facility-owner booking-request row. It carries the owner list's
@@ -98,20 +101,68 @@ public sealed class CheckoutHandler(ICareHomesDbContext db, IPlatformChargeRuleR
             var snapshot = Sanad.BuildingBlocks.Domain.ValueObjects.BookingPriceSnapshot.Calculate(type.MonthlyPriceEgp, effective.PlatformFeeRatePercentage, effective.TaxRatePercentage, effective.Version);
             string medicalJson = JsonSerializer.Serialize(r.Intake.MedicalProfile);
             CareHomeBooking booking;
-            try { booking = CareHomeBooking.Create(facility.Id, r.Actor, r.FamilyId, r.Intake.ElderlyId, type.Id, r.StartDate, snapshot.BaseCaregiverFee, snapshot.PlatformFeeAmount, snapshot.TaxAmount, snapshot.PlatformChargeRuleVersion!.Value, r.Intake.ArabicFullName, r.Intake.EnglishFullName, r.Intake.Age, medicalJson, r.Intake.ResponsibleContact.Name, r.Intake.ResponsibleContact.PhoneNumber, r.Intake.ResponsibleContact.Relationship, r.Intake.CareNeedsNotes, r.UtcNow, _timing.CheckoutHoldDuration); }
+            try
+            {
+                booking = CareHomeBooking.Create(facility.Id, r.Actor, r.FamilyId, r.Intake.ElderlyId, type.Id, r.StartDate, snapshot.BaseCaregiverFee, snapshot.PlatformFeeAmount, snapshot.TaxAmount, snapshot.PlatformChargeRuleVersion!.Value, r.Intake.ArabicFullName, r.Intake.EnglishFullName, r.Intake.Age, medicalJson, r.Intake.ResponsibleContact.Name, r.Intake.ResponsibleContact.PhoneNumber, r.Intake.ResponsibleContact.Relationship, r.Intake.CareNeedsNotes, r.UtcNow, _timing.CheckoutHoldDuration,
+                    // Clause 6 / decisions #9-#10: the booking snapshots the
+                    // refund policy revision and, when published, the exact
+                    // structured cancellation terms displayed on the facility
+                    // page at booking time. Facility changes never reprice it.
+                    CareHomeRefundPolicySnapshotResolver.Resolve(facility, r.UtcNow));
+            }
             catch (ArgumentException ex) { return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.Invalid", ex.Message)); }
+            catch (DomainException)
+            {
+                // Fail closed when the facility's stored cancellation terms
+                // cannot be re-read at snapshot time: the purchase is refused
+                // with a stable code instead of snapshotting nothing silently
+                // or surfacing a 500.
+                return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.UnreadableSnapshot",
+                    "The facility's stored cancellation terms could not be read; the booking cannot be purchased until the profile is corrected."));
+            }
             db.Bookings.Add(booking); await db.SaveChangesAsync(ct); return Result<CareHomeBookingResponse>.Success(Map(booking));
         }, ct); }
         catch (CareHomeCapacityConflictException) { return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.CapacityConflict", "The selected room type is no longer available.")); }
         catch (DbUpdateConcurrencyException) { return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.CapacityConflict", "The selected room type is no longer available.")); }
     }
-    internal static CareHomeBookingResponse Map(CareHomeBooking x) => new(x.Id, x.FacilityId.Value, x.ElderlyId.Value, x.RoomTypeId, x.StartDate, x.EndDate, x.EarliestArrivalUtc, x.Status, x.PaymentStatus, x.BaseAmount, x.PlatformFeeAmount, x.TaxAmount, x.TotalAmount, "EGP", x.Status == CareHomeBookingStatus.PendingPayment ? x.CheckoutHoldUntilUtc : x.DecisionHoldUntilUtc, x.DecisionReason, x.AssignedRoomId, x.AssignedBedId, x.ActualCheckInOnUtc, x.ActualCheckOutOnUtc, x.FamilyCheckInConfirmedOnUtc, x.RefundStatus, x.RefundAmount, x.RefundReference, x.RefundCompletedOnUtc, x.RefundCompletedBy?.Value, x.RefundFailureReason, x.ExtensionOfBookingId);
+    internal static CareHomeBookingResponse Map(CareHomeBooking x) => new(x.Id, x.FacilityId.Value, x.ElderlyId.Value, x.RoomTypeId, x.StartDate, x.EndDate, x.EarliestArrivalUtc, x.Status, x.PaymentStatus, x.BaseAmount, x.PlatformFeeAmount, x.TaxAmount, x.TotalAmount, "EGP", x.Status == CareHomeBookingStatus.PendingPayment ? x.CheckoutHoldUntilUtc : x.DecisionHoldUntilUtc, x.DecisionReason, x.RefundPolicyDocumentEffectiveOn, x.AssignedRoomId, x.AssignedBedId, x.ActualCheckInOnUtc, x.ActualCheckOutOnUtc, x.FamilyCheckInConfirmedOnUtc, x.RefundStatus, x.RefundAmount, x.RefundReference, x.RefundCompletedOnUtc, x.RefundCompletedBy?.Value, x.RefundFailureReason, x.ExtensionOfBookingId, x.RefundPolicyVersion, CancellationTermsView(x), x.RefundAttemptClaimId);
+
+    /// <summary>
+    /// The cancellation terms as snapshotted on the booking (clause 6:
+    /// "Preserve booked terms") — null when the facility published no
+    /// structured terms, in which case the contract's clause 2 default
+    /// schedule governs the booking's cancellation entitlement.
+    /// </summary>
+    private static IReadOnlyList<CareHomeBookingCancellationTierView>? CancellationTermsView(CareHomeBooking x) =>
+        CareHomeCancellationTerms.Parse(x.CancellationTermsSnapshotJson)?
+            .Tiers.Select(tier => new CareHomeBookingCancellationTierView(tier.RefundPercentage, tier.DeadlineHoursBeforeStart))
+            .ToArray();
 }
 
 public sealed class FamilyListHandler(ICareHomesDbContext db) : IQueryHandler<ListFamilyCareHomeBookingsQuery, IReadOnlyList<CareHomeFamilyBookingListItem>>
 { public async Task<Result<IReadOnlyList<CareHomeFamilyBookingListItem>>> Handle(ListFamilyCareHomeBookingsQuery r, CancellationToken ct) => await db.Bookings.AsNoTracking().Where(x => x.FamilyId == r.FamilyId).OrderByDescending(x => x.CreatedOnUtc).Select(x => new CareHomeFamilyBookingListItem(x.Id, x.FacilityId.Value, x.RoomTypeId, x.StartDate, x.EndDate, x.Status, x.PaymentStatus, x.TotalAmount, "EGP", x.ElderlyEnglishName, x.AssignedRoomId, x.AssignedBedId, x.ActualCheckInOnUtc, x.ActualCheckOutOnUtc, x.FamilyCheckInConfirmedOnUtc, x.RefundStatus, x.RefundAmount, x.ExtensionOfBookingId)).ToListAsync(ct); }
 public sealed class FamilyDetailHandler(ICareHomesDbContext db) : IQueryHandler<GetFamilyCareHomeBookingQuery, CareHomeBookingResponse>
-{ public async Task<Result<CareHomeBookingResponse>> Handle(GetFamilyCareHomeBookingQuery r, CancellationToken ct) { var x = await db.Bookings.SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FamilyId == r.FamilyId, ct); if (x is null) return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.NotFound", "Booking was not found.")); x.ExpireIfNeeded(r.UtcNow); return CheckoutHandler.Map(x); } }
+{
+    public async Task<Result<CareHomeBookingResponse>> Handle(GetFamilyCareHomeBookingQuery r, CancellationToken ct)
+    {
+        var x = await db.Bookings.SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FamilyId == r.FamilyId, ct);
+        if (x is null) return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.NotFound", "Booking was not found."));
+        try
+        {
+            x.ExpireIfNeeded(r.UtcNow);
+            return CheckoutHandler.Map(x);
+        }
+        catch (DomainException)
+        {
+            // Stored-snapshot integrity: a persisted revision-2 snapshot whose
+            // JSON (or revision) cannot be re-read fails the read closed with
+            // a stable code instead of a 500. The aggregate refuses such rows
+            // at creation; only out-of-band corruption reaches this guard.
+            return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.UnreadableSnapshot",
+                "The booking's stored refund-policy snapshot could not be read; contact an administrator."));
+        }
+    }
+}
 
 public sealed class PaymentIntentHandler(ICareHomesDbContext db, IPaymobClient paymob, IPlatformControlReader controls, IPaymentMethodConfiguration paymentMethods) : ICommandHandler<CreateCareHomePaymentIntentCommand, CareHomeBookingPaymentIntentResponse>
 {
@@ -181,6 +232,14 @@ public sealed class DecideHandler(ICareHomesDbContext db, IPaymobClient paymob) 
                 if (refund.IsFailure) return Result<CareHomeBookingResponse>.Failure(refund.Error);
             }
             return CheckoutHandler.Map(x);
+        }
+        catch (DomainException)
+        {
+            // A revision-2 reject decides the award from the stored snapshot;
+            // an unreadable persisted snapshot (or unknown revision) fails
+            // closed with a stable code instead of a 500.
+            return Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.UnreadableSnapshot",
+                "The booking's stored refund-policy snapshot could not be read; contact an administrator."));
         }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException)
         {

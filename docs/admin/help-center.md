@@ -4,21 +4,28 @@ FAQ entries per app audience and one global support contact (hotline card).
 All content is CMS-managed; nothing is hardcoded in the API.
 
 **Base:** `/api/v1/admin/help-center`  
-**Policy:** `CmsContent`  
-Requires a **normal** JWT (`access_type` = `Normal`) and `account_type` of
-`SuperAdmin` or `ContentAdmin`.  
+**Policy:** `CmsContent` for FAQs; `CmsHelpContact` for the two
+`support-contact` actions  
+Requires a **normal** JWT (`access_type` = `Normal`) and:
+`SuperAdmin` or `ContentAdmin` for FAQ routes; `SuperAdmin`, `SupportAdmin`
+or `ContentAdmin` for `GET`/`PUT support-contact`.  
 Support Admin, Family, Medical Caregiver, Companion Caregiver, Elderly, and
-restricted verification tokens receive **403** (framework policy rejection —
-bare 401/403 with no business `code`). Missing/invalid token → **401**.
+restricted verification tokens receive **403** on FAQ routes (framework policy
+rejection — bare 401/403 with no business `code`). Missing/invalid token →
+**401**.
 
 ## Access table
 
-| Role | JWT `account_type` | FAQ + support-contact write/read (`CmsContent`) |
-|---|---|---|
-| Super Admin | `SuperAdmin` | Yes |
-| Content Admin | `ContentAdmin` | Yes |
-| Support Admin | `SupportAdmin` | No (read-only; not granted) |
-| Family / Caregiver / Elderly / Care-home Owner | app types | No (they use the signed-in `GET /api/v1/help-center`) |
+| Role | JWT `account_type` | FAQ read/write (`CmsContent`) | Support contact read/write (`CmsHelpContact`) |
+|---|---|---|---|
+| Super Admin | `SuperAdmin` | Yes | Yes |
+| Content Admin | `ContentAdmin` | Yes | Yes |
+| Support Admin | `SupportAdmin` | No (not granted) | Yes (contact card only) |
+| Family / Caregiver / Elderly / Care-home Owner | app types | No (they use the signed-in `GET /api/v1/help-center`) | No |
+
+Support Admin gains **only** the two `support-contact` actions. FAQ
+create/update/activate/deactivate and every other CMS write stay with
+`CmsContent`, so Support Admin still receives **403** there.
 
 ## Enum values (numeric JSON binding)
 
@@ -44,7 +51,7 @@ GET  /api/v1/admin/help-center/faqs/{id}             One FAQ
 PUT  /api/v1/admin/help-center/faqs/{id}             Update FAQ -> 200
 POST /api/v1/admin/help-center/faqs/{id}/activate    Idempotent activate -> 200
 POST /api/v1/admin/help-center/faqs/{id}/deactivate  Idempotent deactivate -> 200
-GET  /api/v1/admin/help-center/support-contact       Current global pair or 404
+GET  /api/v1/admin/help-center/support-contact       Current global pair (both null when unconfigured) -> 200
 PUT  /api/v1/admin/help-center/support-contact       Upsert the single global row -> 200
 ```
 
@@ -115,17 +122,37 @@ It is not per-role. It is contact-card data only:
 GET /api/v1/admin/help-center/support-contact
   200: { "supportPhone": "+201000000001", "supportEmail": "support@sanad.example",
          "createdOnUtc": "...", "updatedOnUtc": "..." }
-  404: Cms.Help.SupportContactNotFound   (not configured yet)
+  200: { "supportPhone": null, "supportEmail": null,
+         "createdOnUtc": "0001-01-01T00:00:00Z", "updatedOnUtc": "0001-01-01T00:00:00Z" }
+       (nothing configured yet — the empty state is a success, never 404)
 
 PUT /api/v1/admin/help-center/support-contact
   body: { "supportPhone": "+201000000001", "supportEmail": "support@sanad.example" }
   200 with the stored pair (upsert of the single global row)
 ```
 
-Both fields are required and validated (`supportPhone` must be E.164, max 16
-chars; `supportEmail` must be a valid address, max 254 chars). Repeated PUTs
-update the same row — persistence additionally guarantees the table holds at
-most one row (`id = 1` check constraint).
+Each field is **independently nullable** and is validated only when it is
+populated: `supportPhone` must be E.164, max 16 chars; `supportEmail` must be a
+valid address, max 254 chars. A malformed populated value is still
+`400 Api.Validation.Failed` naming that field.
+
+`PUT` has **replacement semantics per field**:
+
+- a supplied value replaces the stored one;
+- `null` **clears that field** and leaves the other untouched —
+  `{ "supportPhone": null, "supportEmail": null }` clears both;
+- a blank string (`""` or whitespace) is **rejected with `400`** for that
+  field; use `null` to clear;
+- the singleton row is preserved by a clear; it is never deleted, so a
+  subsequent `GET` returns `200` with null fields.
+
+Repeated PUTs update the same row — persistence additionally guarantees the
+table holds at most one row (`id = 1` check constraint).
+
+Clients hide an unset contact option and fall back to in-app support; the
+public reading surface is `GET /api/v1/support/contact` (see
+`docs/auth/support-contact.md`), which has always answered the same two-null
+shape when nothing is configured.
 
 ## App read (for completeness)
 
@@ -143,16 +170,20 @@ another role's FAQ list. Admin tokens on that route get
 |---|---|---|
 | 400 | `Api.Validation.Failed` | Request shape validation |
 | 401 | *(bare, no code)* | Missing/invalid JWT (framework policy) |
-| 403 | *(bare, no code)* | Policy rejection for accounts without `CmsContent` (framework policy) |
+| 403 | *(bare, no code)* | Policy rejection: accounts without `CmsContent` on FAQ routes, or without `CmsHelpContact` on the two `support-contact` actions (framework policy) |
 | 400 | `Cms.Content.InvalidAudience` | App read only: malformed/undefined `audience` (checked first, for every account class including admin) |
 | 400 | `Cms.Content.AudienceRequired` | App read only: `audience` omitted or empty/whitespace while the token owns more than one audience |
 | 403 | `Cms.Content.UnsupportedAudience` | Admin account types are not app audiences, or an app caller named an `audience` it does not own (app read route) |
 | 404 | `Cms.Help.FaqNotFound` | Unknown FAQ id |
-| 404 | `Cms.Help.SupportContactNotFound` | Admin GET before any support contact is configured |
 
 ## Migration
 
 The `cms.help_faqs` and `cms.support_contacts` tables (with the
 `audience + is_active + display_order` read index and the singleton check
 constraint) are created by the owner's EF migration
-`AddLegalAndHelpCenterContent`. The worker branch does not contain migrations.
+`AddLegalAndHelpCenterContent`. `cms.support_contacts.support_phone` and
+`cms.support_contacts.support_email` are made nullable by
+`MakeSupportContactNullable`, so an unset field is stored as SQL `NULL`
+(never an empty string). The worker branch does not contain applied
+migrations; the migration file is additive and is applied only in authorized
+release work.

@@ -11,6 +11,18 @@ public interface IFinanceDbContext
     DbSet<CaregiverPayoutPolicy> CaregiverPayoutPolicies { get; }
     DbSet<PlatformControlState> PlatformControlStates { get; }
     DbSet<PlatformControlAuditEntry> PlatformControlAuditEntries { get; }
+    DbSet<RefundLedger> RefundLedgers { get; }
+    DbSet<RefundLedgerEntry> RefundLedgerEntries { get; }
+    DbSet<CreditBalance> CreditBalances { get; }
+
+    /// <summary>W3-F3 additive: reviewed complaint cases (clause 5, decisions #11-#14).</summary>
+    DbSet<ComplaintReview> ComplaintReviews { get; }
+
+    /// <summary>W3-F3 additive: the M7 idempotency marker for subscription refund requests (design pin item 4).</summary>
+    DbSet<SubscriptionRefundRequest> SubscriptionRefundRequests { get; }
+
+    /// <summary>W3-F3 additive: the cumulative refundable budget of one capture — one succeeded payment attempt and the period it paid for (decisions #4 and #6).</summary>
+    DbSet<SubscriptionRefundBudget> SubscriptionRefundBudgets { get; }
     Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
 

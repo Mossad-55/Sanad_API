@@ -240,7 +240,7 @@
       ]
     },
     {
-      "name": "A review note has no update or delete verb",
+      "name": "[no-route] A review note has no update or delete verb",
       "request": {
         "method": "DELETE",
         "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],

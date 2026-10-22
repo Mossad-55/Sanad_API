@@ -36,9 +36,11 @@ public interface ICommunityDbContext
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 
     // Read-only moderator readback of an author's Arabic/English display
-    // names. The Community schema shares the Identity database, so the lookup
-    // reads identity.users directly and never returns contact data (email,
-    // phone) or any other Identity field.
+    // names plus the stored Identity private avatar key. The Community schema
+    // shares the Identity database, so the lookup reads identity.users
+    // directly and never returns contact data (email, phone) or any other
+    // Identity field. The avatar key is a private storage reference consumed
+    // only by the authorized avatar download route; it is never serialized.
     Task<IReadOnlyDictionary<Guid, CommunityAuthorName>> GetCommunityAuthorNamesAsync(
         IReadOnlyCollection<Guid> userIds,
         CancellationToken cancellationToken = default);
@@ -54,7 +56,15 @@ public interface ICommunityDbContext
 }
 
 /// <summary>
-/// Minimal moderator-safe author identity projection: only the Arabic and
-/// English display names, never contact data.
+/// Minimal moderator-safe author identity projection: the Arabic and English
+/// display names plus, since the S3 approved photo route (refund decision lock
+/// #32), the stored Identity private avatar key. The avatar key is a private
+/// storage reference (<c>private/avatars/…</c>) — it is never contact data and
+/// never serialized; it is consumed only by the authorized avatar download
+/// route, which streams the bytes after enforcing anonymity.
 /// </summary>
-public sealed record CommunityAuthorName(string ArabicFullName, string EnglishFullName);
+public sealed record CommunityAuthorName(
+    Guid UserId,
+    string ArabicFullName,
+    string EnglishFullName,
+    string? AvatarKey = null);

@@ -38,7 +38,13 @@ public sealed class GetSupportContactQueryHandler
 
         if (contact is null)
         {
-            return HelpErrors.SupportContactNotFound;
+            // No row is a valid unconfigured state, not a missing-resource
+            // error: the admin read answers 200 with both fields null.
+            return new SupportContactResponse(
+                null,
+                null,
+                default,
+                default);
         }
 
         return contact.ToResponse();
@@ -47,11 +53,13 @@ public sealed class GetSupportContactQueryHandler
 
 /// <summary>
 /// Upserts the single global support contact row. Contact-card data only:
-/// nothing here sends an SMS or an email.
+/// nothing here sends an SMS or an email. Each value is independent —
+/// a null value clears that field and leaves the other untouched; a blank
+/// string is rejected by validation, never treated as a clear.
 /// </summary>
 public sealed record UpsertSupportContactCommand(
-    string SupportPhone,
-    string SupportEmail)
+    string? SupportPhone,
+    string? SupportEmail)
     : ICommand<SupportContactResponse>;
 
 public sealed class UpsertSupportContactCommandValidator
@@ -59,17 +67,23 @@ public sealed class UpsertSupportContactCommandValidator
 {
     public UpsertSupportContactCommandValidator()
     {
+        // Null means "leave this field cleared", so the format rules apply
+        // only to values the caller actually supplies.
         RuleFor(command => command.SupportPhone)
-            .NotEmpty()
             .Matches(@"\A\+[1-9][0-9]{1,14}\z")
             .WithMessage(
                 "Support phone must be in E.164 format.")
+            .When(
+                command =>
+                    command.SupportPhone is not null)
             .MaximumLength(
                 SupportContact.MaximumPhoneLength);
 
         RuleFor(command => command.SupportEmail)
-            .NotEmpty()
             .EmailAddress()
+            .When(
+                command =>
+                    command.SupportEmail is not null)
             .MaximumLength(
                 SupportContact.MaximumEmailLength);
     }

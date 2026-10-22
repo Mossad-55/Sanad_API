@@ -13,13 +13,20 @@ namespace Sanad.API.Controllers;
 /// <summary>
 /// The body of a partner contact request. Every field is the submitter's own
 /// request data; there is no user, no account and no faked identity.
+/// <para>
+/// The three genuinely required fields (<c>Name</c>, <c>Email</c>,
+/// <c>Message</c>) come first so the generated schema marks exactly those as
+/// required; the optional fields carry <c>null</c> defaults, which keeps them
+/// out of the schema's <c>required</c> array. Wire names and casing are
+/// unchanged.
+/// </para>
 /// </summary>
 public sealed record SubmitPartnerContactRequest(
     string Name,
-    string? Company,
     string Email,
-    string? Subject,
     string Message,
+    string? Company = null,
+    string? Subject = null,
     string? Phone = null,
     string? CompanyType = null,
     string? City = null);

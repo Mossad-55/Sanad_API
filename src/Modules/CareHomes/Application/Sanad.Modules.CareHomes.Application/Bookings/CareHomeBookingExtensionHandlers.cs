@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Application.Discovery;
 using Sanad.Modules.CareHomes.Application.Inventory;
@@ -93,13 +94,26 @@ public sealed class CreateCareHomeBookingExtensionHandler(
                 CareHomeBooking extension;
                 try
                 {
+                    // Decision #8: a separately purchased extension snapshots
+                    // the policy/terms applicable at ITS purchase from the
+                    // facility's currently displayed (approved) revision — it
+                    // never inherits the root segment's snapshot.
                     extension = CareHomeBooking.CreateExtension(current, request.Actor,
                         snapshot.BaseCaregiverFee, snapshot.PlatformFeeAmount, snapshot.TaxAmount,
-                        snapshot.PlatformChargeRuleVersion!.Value, request.UtcNow, _timing.CheckoutHoldDuration);
+                        snapshot.PlatformChargeRuleVersion!.Value, request.UtcNow, _timing.CheckoutHoldDuration,
+                        CareHomeRefundPolicySnapshotResolver.Resolve(facility, request.UtcNow));
                 }
                 catch (InvalidOperationException)
                 {
                     return InvalidState();
+                }
+                catch (DomainException)
+                {
+                    // Fail closed on a facility profile revision whose stored
+                    // cancellation terms cannot be re-read: the purchase is
+                    // refused with a stable code instead of silently snapshotting
+                    // nothing or surfacing a 500.
+                    return UnreadableSnapshot();
                 }
 
                 db.Bookings.Add(extension);
@@ -122,4 +136,8 @@ public sealed class CreateCareHomeBookingExtensionHandler(
 
     private static Result<CareHomeBookingResponse> InvalidState() =>
         Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.InvalidState", "Only the current paid stay can be extended."));
+
+    private static Result<CareHomeBookingResponse> UnreadableSnapshot() =>
+        Result<CareHomeBookingResponse>.Failure(new Error("CareHomes.Bookings.UnreadableSnapshot",
+            "The facility's stored cancellation terms could not be read; the extension cannot be purchased until the profile is corrected."));
 }

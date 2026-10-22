@@ -80,6 +80,10 @@ function Read-PostmanItems($Items, [string]$Collection) {
                     Method = ([string]$item.request.method).ToUpperInvariant()
                     Route = Normalize-Route $route
                     Collection = $Collection
+                    # Requests named with this prefix deliberately document a route that
+                    # must NOT exist (append-only/negative boundary proof). They are valid
+                    # documentation but cannot be required to map to a controller route.
+                    NegativeRoute = ([string]$item.name).StartsWith('[no-route]')
                 })
             }
         }
@@ -96,6 +100,31 @@ Get-ChildItem $postmanRoot -Recurse -Filter '*collection.json' -File | ForEach-O
 # Bruno is intentionally excluded from this release gate (owner direction:
 # ignore Bruno entirely). Historical Bruno collections remain as history only
 # and must never fail or delay publication. Required coverage is Postman only.
+
+# The gate itself: every controller route/method must have a Postman request and
+# every Postman API request must resolve to a controller route. These sets were
+# previously printed without ever being computed, so the gate was vacuously green.
+$controllerKeys = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::Ordinal)
+foreach ($route in $controllerRoutes) {
+    [void]$controllerKeys.Add("$($route.Method) $($route.Route)")
+}
+
+$postmanKeys = [System.Collections.Generic.HashSet[string]]::new(
+    [System.StringComparer]::Ordinal)
+foreach ($route in $postmanRoutes) {
+    if (-not $route.NegativeRoute) {
+        [void]$postmanKeys.Add("$($route.Method) $($route.Route)")
+    }
+}
+
+$postmanMissing = @($controllerRoutes |
+    Where-Object { -not $postmanKeys.Contains("$($_.Method) $($_.Route)") })
+$postmanOrphan = @($postmanRoutes |
+    Where-Object {
+        -not $_.NegativeRoute -and
+        -not $controllerKeys.Contains("$($_.Method) $($_.Route)")
+    })
 
 Write-Output "Controller route-method signatures: $($controllerRoutes.Count)"
 Write-Output "Postman API requests: $($postmanRoutes.Count)"

@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Finance.Domain;
 using Sanad.Modules.Finance.Application;
+using Sanad.Modules.Finance.Infrastructure.Persistence.Configurations;
 
 namespace Sanad.Modules.Finance.Infrastructure;
 
@@ -11,6 +12,12 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<CaregiverPayoutPolicy> CaregiverPayoutPolicies => Set<CaregiverPayoutPolicy>();
     public DbSet<PlatformControlState> PlatformControlStates => Set<PlatformControlState>();
     public DbSet<PlatformControlAuditEntry> PlatformControlAuditEntries => Set<PlatformControlAuditEntry>();
+    public DbSet<RefundLedger> RefundLedgers => Set<RefundLedger>();
+    public DbSet<RefundLedgerEntry> RefundLedgerEntries => Set<RefundLedgerEntry>();
+    public DbSet<CreditBalance> CreditBalances => Set<CreditBalance>();
+    public DbSet<ComplaintReview> ComplaintReviews => Set<ComplaintReview>();
+    public DbSet<SubscriptionRefundRequest> SubscriptionRefundRequests => Set<SubscriptionRefundRequest>();
+    public DbSet<SubscriptionRefundBudget> SubscriptionRefundBudgets => Set<SubscriptionRefundBudget>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -96,5 +103,11 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
             builder.Property(x => x.InternalReason).HasColumnName("internal_reason");
             builder.Property(x => x.OccurredOnUtc).HasColumnName("occurred_on_utc").IsRequired();
         });
+        modelBuilder.ApplyConfiguration(new RefundLedgerConfiguration());
+        modelBuilder.ApplyConfiguration(new RefundLedgerEntryConfiguration());
+        modelBuilder.ApplyConfiguration(new CreditBalanceConfiguration());
+        modelBuilder.ApplyConfiguration(new ComplaintReviewConfiguration());
+        modelBuilder.ApplyConfiguration(new SubscriptionRefundRequestConfiguration());
+        modelBuilder.ApplyConfiguration(new SubscriptionRefundBudgetConfiguration());
     }
 }

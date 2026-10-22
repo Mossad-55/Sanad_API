@@ -107,7 +107,13 @@ public sealed class GetConversationsQueryHandler
             // facility — name and cover resolve over the owner's user id.
             // Users without a facility keep their personal profile.
             string displayName = profile?.DisplayName ?? string.Empty;
-            string? avatarUrl = profile?.AvatarUrl;
+            // Avatar parity (Owner lock #34): the participant's avatar storage
+            // key is never wired. No authorized cross-user avatar route exists,
+            // so personal participants present without an image; a care-home
+            // owner still presents the facility's approved cover media path
+            // below. A general identity-avatar route remains a separate Owner
+            // decision.
+            string? avatarUrl = null;
 
             if (facilities.TryGetValue(
                     otherParticipant,

@@ -6,11 +6,11 @@ The active development branch is `main`.
 
 ## Current status
 
-Repository workflow: synchronize affected `docs/` pages and Postman requests when a business rule or API contract changes, and update this README when the HTTP surface, setup, roadmap status, or workflow changes. The mastermind coordinates five bounded roles in one sequential pass for implementation goals.
+Repository workflow: synchronize affected `docs/` pages and Postman requests when a business rule or API contract changes, and update this README when the HTTP surface, setup, roadmap status, or workflow changes. Follow the approved phase contract and repository governance. The five Codex role profiles remain available for distinct needs; they are not a mandatory serial relay or mandatory participants in the OpenCode workflow.
 
-Default delivery: scout maps the task, implementer changes code, test author adds focused coverage, reviewer inspects the result, documenter synchronizes affected public artifacts, and mastermind integrates and reports. Skip a role's work when it does not apply to the task; do not start the historical 16-step release checklist.
+For an approved implementation phase, repository guidance prefers one OpenCode worker for the approved whole-phase scope, with the Mastermind integrating and reviewing the report. Use a Codex role profile only when it supplies a distinct needed result; do not start the historical 16-step release checklist.
 
-The persisted project model default is `gpt-5.6-luna` at `medium` reasoning effort for the mastermind and all five Sanad workers (scout, implementer, test author, reviewer, and documenter). A running session may retain its runtime-selected model; check it with `/status`. The persisted default applies after reload or in a new session.
+Mastermind model policy: The Mastermind uses the model explicitly selected by the Owner for the active session. No particular model is mandatory by default. Existing Codex model settings and role profiles remain available as configuration; the role profiles are optional in the OpenCode workflow.
 
 For a substantial release using the full lifecycle, record the selected workers, gates, owner actions, and handoff. For routine work, give a concise progress update and run only relevant checks.
 

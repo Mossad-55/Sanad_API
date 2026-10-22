@@ -10,6 +10,7 @@ using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Payments;
 using Sanad.Modules.CareHomes.Application.Bookings;
+using Sanad.Modules.Rentals.Application;
 
 namespace Sanad.API.Controllers;
 
@@ -149,6 +150,27 @@ public sealed class PaymobWebhookController : ControllerBase
                 if (subscriptionResult.Error.Code is "Subscriptions.Payment.NotFound"
                     or "Subscriptions.Payment.CurrentExists")
                     return Ok();
+                return StatusCode(StatusCodes.Status500InternalServerError);
+            }
+
+            return Ok();
+        }
+
+        if (merchantReference.StartsWith("rnt_", StringComparison.Ordinal))
+        {
+            var rentalsResult = await _sender.Send(
+                new ConfirmRentalPaymentCommand(merchantReference, transactionId, amountCents, success, pending, DateTime.UtcNow),
+                cancellationToken);
+
+            if (!rentalsResult.IsSuccess)
+            {
+                if (rentalsResult.Error.Code is "Paymob.AmountMismatch")
+                    return BadRequest();
+
+                // Unknown order after a valid HMAC: acknowledge so Paymob stops retrying.
+                if (rentalsResult.Error.Code is "Rentals.Payment.NotFound")
+                    return Ok();
+
                 return StatusCode(StatusCodes.Status500InternalServerError);
             }
 

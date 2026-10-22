@@ -5,7 +5,7 @@ Deployment is never implied by `publish`, a merge, or a passing gate battery. It
 ## 1. Pre-flight (on the build machine)
 
 1. Confirm the exact owner-authorized host/service/environment from the current order or immediately prior receipt. Revalidate that the live service is the same target before writing.
-2. Confirm clean pushed `main`, a fresh package, and manifest revision match. The publisher already derives and records all nine source migration heads; do not compare those folders a second time here.
+2. Confirm clean pushed `main`, a fresh package, and manifest revision match. The publisher already derives and records all ten source migration heads; do not compare those folders a second time here.
 3. Confirm the package contains no `.env`, `*.local.json`, keys/certs, or `appsettings.Development.json`. Transfer only the package archive; never transfer local secrets or host configuration.
 4. Read the remote deployment endpoint once before cutover to confirm the current revision, environment, database reachability, and applied migration heads. If the phase adds a migration or otherwise writes database state, privately verify the effective database identity, determine expected pending migrations, and make a validated backup on that exact target before restart. A binary rollback does not undo schema changes; prove compatibility or define separately authorized recovery. Never automatically restore a backup over new writes.
 
@@ -41,7 +41,7 @@ Prove ignore-status before every release: `git check-ignore -v .env deploy/publi
 
 ## 4. Verify on the target
 
-1. Capture the startup log once; confirm it records all nine context checks, pending/applied counts, and the listen URL. Pass it to the verifier so startup evidence is checked mechanically. This complements the remote endpoint's current applied-head report.
+1. Capture the startup log once; confirm it records all ten context checks, pending/applied counts, and the listen URL. Pass it to the verifier so startup evidence is checked mechanically. This complements the remote endpoint's current applied-head report.
 2. Run the verifier once from the build machine:
    ```powershell
    powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Verify-SanadDeployment.ps1 `

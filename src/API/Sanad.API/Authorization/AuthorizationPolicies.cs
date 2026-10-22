@@ -8,6 +8,16 @@ public static class AuthorizationPolicies
     public const string CmsContent =
         "CmsContent";
 
+    /// <summary>
+    /// SET-13 support contact pair: authenticated SuperAdmin, SupportAdmin or
+    /// ContentAdmin on a Normal token. Scoped to the two
+    /// <c>/admin/help-center/support-contact</c> actions so support staff can
+    /// manage the contact card without gaining FAQ/CMS write authority, which
+    /// stays with <see cref="CmsContent"/>.
+    /// </summary>
+    public const string CmsHelpContact =
+        "CmsHelpContact";
+
     public const string CommunityModeration = "CommunityModeration";
 
     public const string CaregiversAdmin =
@@ -78,4 +88,14 @@ public static class AuthorizationPolicies
     /// operational/maintenance state and Card/Wallet switches.
     /// </summary>
     public const string PlatformControlsAdmin = "PlatformControlsAdmin";
+
+    /// <summary>
+    /// W2-F0 refund workflow money core: authenticated SuperAdmin + SupportAdmin
+    /// on a Normal token. SupportAdmin receives and investigates refund
+    /// requests, SuperAdmin approves reviewed financial awards and exceptional
+    /// adjustments (refund contract decision #12). FinanceAdmin and every app
+    /// audience are deliberately excluded, and this policy grants nothing over
+    /// the existing shipment/payout or CMS surfaces.
+    /// </summary>
+    public const string RefundWorkflowAdmin = "RefundWorkflowAdmin";
 }

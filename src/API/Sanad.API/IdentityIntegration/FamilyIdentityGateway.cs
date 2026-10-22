@@ -129,7 +129,12 @@ public sealed class FamilyIdentityGateway : IFamilyIdentityGateway
                 profile.EnglishFullName,
                 profile.Email,
                 profile.PhoneNumber,
-                profile.AvatarUrl,
+                // Avatar parity (Owner lock #34): no authorized cross-user avatar
+                // route exists for family members (GET /auth/avatar serves only
+                // the caller's own avatar), so the raw key is dropped here and
+                // the field reads null on the wire. A general identity-avatar
+                // route remains a separate Owner decision.
+                null,
                 profile.Status,
                 profile.LastLoginOnUtc))
             .ToList();

@@ -22,5 +22,5 @@ public sealed record HelpCenterFaqItem(
     int DisplayOrder);
 
 public sealed record HelpCenterSupportContact(
-    string SupportPhone,
-    string SupportEmail);
+    string? SupportPhone,
+    string? SupportEmail);

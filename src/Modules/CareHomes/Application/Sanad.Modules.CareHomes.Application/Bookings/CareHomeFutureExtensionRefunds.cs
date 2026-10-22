@@ -14,6 +14,7 @@ public static class CareHomeFutureExtensionRefunds
         CareHomeBooking endedSegment,
         DateOnly endedOn,
         DateTime utcNow,
+        bool providerEnded,
         CancellationToken cancellationToken)
     {
         Guid rootId = endedSegment.ExtensionRootBookingId ?? endedSegment.Id;
@@ -27,7 +28,7 @@ public static class CareHomeFutureExtensionRefunds
             if (extension.Status is CareHomeBookingStatus.PendingPayment
                 or CareHomeBookingStatus.PaidAwaitingDecision
                 or CareHomeBookingStatus.Accepted)
-                extension.CancelUnusedExtension(endedOn, utcNow);
+                extension.CancelUnusedExtension(endedOn, utcNow, providerEnded);
         }
         if (future.Count > 0) await db.SaveChangesAsync(cancellationToken);
 

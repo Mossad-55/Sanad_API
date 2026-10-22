@@ -96,8 +96,10 @@ public sealed class GetMyProfileQueryHandlerTests
 
         Assert.True(result.IsSuccess);
 
+        // Avatar parity (Owner lock #34): the stored key is never wired; the
+        // response carries the authorized self-avatar route path instead.
         Assert.Equal(
-            "avatars/profile/test.png",
+            "/api/v1/auth/avatar",
             result.Value.AvatarUrl);
     }
 

@@ -122,6 +122,27 @@ amount, `403` non-owner, `404` unavailable plan, `409` current subscription or
 unavailable payment method, `502` provider failure, and `503` missing provider
 configuration.
 
+### Gateway rejection reasons
+
+When Paymob rejects an intention, the `502 Paymob.GatewayError` error keeps its
+existing message and appends a sanitized reason from the provider response:
+`Paymob intention request failed with status <code>.; upstream: <reason>`. The
+reason is the upstream `detail`, `message`, or `status` field, trimmed to a
+single bounded line (≤300 characters). It reflects only those fields; a body
+that is not JSON, contains no recognized reason field, or carries credential
+material (`secret`/`token`- or `key`-shaped values, bearer headers, Paymob
+secret prefixes) contributes nothing, and the description reverts to the
+status-only text. Neither the request payload, the billing email/phone, nor the
+Authorization token ever appears in the surfaced text.
+
+The reason is intended for support diagnosis of integration, currency, and
+plan-mapping rejections — for example a currency the selected integration does
+not accept. It is the provider's own wording and is not a stable, localized, or
+machine-parseable contract: show it as diagnostic detail only, never parse it
+for control flow. Surfacing the reason does not change the status code, the
+error code, or any other behavior; the upstream `4xx` root cause still has to be
+diagnosed from the reason plus gateway configuration.
+
 **Platform availability.** The initial payment intent is a new payment start,
 so it is refused while the platform is in Maintenance (`503
 Platform.Maintenance`), when the selected method is disabled or not configured
@@ -256,6 +277,10 @@ provider amount update leaves local pending state unchanged and is safe to
 retry; do not replay payment or downgrade mutations against shared data
 without an approved fixture.
 
+The plan-change payment intent goes through the same Paymob intention boundary,
+so its `502 Paymob.GatewayError` carries the same sanitized upstream reason
+described under [Gateway rejection reasons](#gateway-rejection-reasons).
+
 An immediate plan-change payment intent is a new payment start, so it is refused
 while the platform is in Maintenance (`503 Platform.Maintenance`), when the
 selected method is disabled or not configured (`400
@@ -335,6 +360,148 @@ Before the current period ends, the Owner can call
 `POST /api/v1/family/subscriptions/reenable-auto-renew` to restore auto-renew.
 Lifecycle mutations use optimistic concurrency; a stale concurrent mutation returns the same
 `409` conflict as an already-requested cancellation.
+
+## Subscription cancellation, refunds, and shutdown
+
+Clause 9 defines three economically different subscription money outcomes, and they must stay
+distinguishable. All three are recorded as movements in the shared, append-only Finance ledger
+(the movement, never a resulting balance); the `reason` in each response is part of the answer,
+not decoration.
+
+| Outcome | Trigger | Amount |
+| --- | --- | --- |
+| Cancellation (`CancelRenewal`, `1`) | Owner disables auto-renew | Nothing for the current period; access continues to the period end |
+| Duplicate charge (`DuplicateCharge`, `2`) | An erroneous or duplicate charge | The whole captured amount, refunded in full — never prorated |
+| Service shutdown (`ServiceShutdown`, `3`) | Ahlena service shutdown | The unused portion of the current paid period |
+
+These rules apply to a family premium subscription and to a care-home listing subscription
+alike; the two scopes carry the same clause-9 money rules.
+
+### Cancel-renewal
+
+`POST /api/v1/family/subscriptions/cancel-renewal` is Owner-only and returns `204`. The request
+body is optional:
+
+```json
+{ "idempotencyKey": "cancel-0198e2c1-1111-7777-8888-000000000001" }
+```
+
+When an `idempotencyKey` is supplied, the cancel-renewal outcome is recorded through shared
+Finance so the cancellation is attributable and distinct from the other two reasons. A repeat
+cancellation **without** a key still returns `409 Subscriptions.CancelRenewal.AlreadyRequested`.
+With a key, however, an already-cancelled renewal is not short-circuited: the recorder is
+idempotent and conflict-detecting, so replaying the same key with the same content returns the
+recorded outcome and reusing the same key with **different** content returns `409
+Subscriptions.Refund.IdempotencyConflict`. Omitting the key keeps the lifecycle exactly as before
+and records no movement.
+
+### Duplicate charge
+
+`POST /api/v1/family/subscriptions/refunds/duplicate-charge` is Owner-only and refunds the full
+captured amount of one succeeded subscription payment attempt:
+
+```json
+{
+  "paymentAttemptId": "0198e2c1-2222-7777-8888-000000000001",
+  "idempotencyKey": "dup-0198e2c1-2222-7777-8888-000000000001",
+  "evidenceReference": "Paymob double capture 000123"
+}
+```
+
+The response is the recorded outcome:
+
+```json
+{
+  "refundCaseId": "0198e2c1-3333-7777-8888-000000000001",
+  "awardedMinorUnits": 15000,
+  "currency": "EGP",
+  "outcome": 2,
+  "isReplay": false
+}
+```
+
+`PaymentAttemptId` must be a succeeded attempt belonging to the caller's family. `recordedOnUtc` is
+an optional audit instant (defaults to now) and must be UTC. Errors are `403
+Subscriptions.Refund.NotOwner`, `404 Subscriptions.Refund.NothingToRefund` (a missing or
+not-succeeded attempt), `400 Subscriptions.Refund.MalformedInput` (a non-UTC `recordedOnUtc`, or an
+attempt with no server-side subscription link and therefore no refundable capture to claim against),
+and `409 Subscriptions.Refund.IdempotencyConflict` when the same key is reused with different content.
+`Subscriptions.Refund.ExceedsCaptured` is returned when the full award no longer fits what that
+attempt captured.
+
+### Service shutdown
+
+An Ahlena service shutdown is a platform decision, not a family self-service action, so it is
+exposed to a SuperAdmin or SupportAdmin (the refund-workflow policy) and not on the family
+routes:
+
+`POST /api/v1/admin/finance/subscription-refunds/service-shutdown`
+
+```json
+{
+  "subscriptionId": "0198e2c1-1111-7777-8888-000000000001",
+  "shutdownOnUtc": "2026-10-15T00:00:00Z",
+  "idempotencyKey": "shutdown-0198e2c1-1111-7777-8888-000000000001",
+  "evidenceReference": "Ahlena shutdown notice 2026-10-15"
+}
+```
+
+The prorated award is the unused portion of the current paid period — the time remaining from
+`shutdownOnUtc` to the stored period end, as a ratio of the whole period, applied to the
+**consideration settled for that period**: the subscription's own current-period charge snapshot,
+which the initial capture and every renewal maintain and which a paid plan change updates to the
+target period's gross with the prorated credit already folded in. Neither an all-time sum of renewals
+nor the plan's list price is used, and a paid plan change is never added on top of the period it was
+credited against. The caller supplies no money figures. The award is banker's-rounded (ToEven) and
+floored at zero. A shutdown at or after the period end may legitimately compute exactly zero, and
+the zero award is recorded as computed rather than rounded up. The `outcome` is always `3`
+(`ServiceShutdown`). A non-UTC `shutdownOnUtc` is
+`400 Subscriptions.Refund.MalformedInput`; a shutdown for a subscription that is not current returns
+`409 Subscriptions.Refund.NotCurrent`; a missing subscription returns
+`Subscriptions.Refund.SubscriptionNotFound`; a paid period that settled nothing returns
+`404 Subscriptions.Refund.NothingToRefund`; and a current period whose paying attempt cannot be
+resolved returns `Subscriptions.Refund.CaptureNotResolved` rather than falling back to a lifetime
+total or an arbitrary latest attempt.
+
+### Refundable budget per capture
+
+All clause-9 cases that draw on one paid period share a single refundable budget, owned by Finance and
+keyed by the **capture** — the succeeded payment attempt that paid for that period. A
+duplicate-charge case is anchored on the very attempt it corrects; a shutdown case is anchored on the
+attempt that settled inside the current paid period. Both claim against that one row, so the same
+captured money cannot be refunded twice — in either order, and under different idempotency keys.
+Same-key uniqueness alone would not serialize them, which is why the budget exists.
+
+The scope is the capture because the ceiling is the money paid for *that* period. A budget keyed by
+the subscription and seeded with lifetime captures would let money already consumed in an older
+period supply headroom for the current one: refunding a current-period duplicate charge and then half
+of the same current period would "fit" under a lifetime total while refunding the current period
+twice. `subscription_id` is kept as an indexed audit column, so all of a subscription's budgets
+remain findable for reconciliation without widening any one ceiling.
+
+An approval is claimed once, as in-flight exposure; completing the transfer is the same money moving,
+so it is never claimed a second time. The cumulative claimed total is checked at the Finance
+persistence boundary in the same unit of work as the movement, against a single capture row carrying
+an optimistic concurrency token: concurrent claims resolve to one winner and the loser retries. An
+award that would exceed what the capture paid is refused with
+`Subscriptions.Refund.ExceedsCaptured` rather than silently trimmed, because a trimmed duplicate charge
+would no longer be a full refund. The caller never supplies a prior-refund offset or the captured
+amount.
+
+Cancel-renewal records a zero-piastre movement, so it claims no budget and names no capture.
+
+Out of scope for that budget: a quality-complaint award. It is scoped to its own complaint case, a
+case accepts at most one funded award, and it is recorded through the complaint-review workflow.
+Whether complaint compensation outside a specific capture should be capped remains an Owner decision.
+
+### Idempotency
+
+Callers pass an idempotency key (at most 200 characters). Shared Finance enforces uniqueness:
+replaying the same key **with the same content** returns the original recorded outcome with
+`isReplay: true`; reusing the same key with **different content** returns `409
+Subscriptions.Refund.IdempotencyConflict`. The refund case is derived deterministically from the
+corrected source — the payment attempt for a duplicate charge, the subscription for a shutdown or
+a cancel-renewal — so a retry can never open a second refund case for one charge.
 
 Unauthenticated requests receive `401`; authenticated requests failing the owner read rule receive `403`.
 

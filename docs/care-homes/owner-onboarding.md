@@ -44,14 +44,22 @@ Request body:
     "arabicAdmissionConditions": "الشروط",
     "englishAdmissionConditions": "Conditions",
     "amenities": [{ "arabic": "إقامة", "english": "Accommodation" }],
-    "medicalServices": []
+    "medicalServices": [],
+    "cancellationTerms": {
+      "tiers": [
+        { "refundPercentage": 100, "deadlineHoursBeforeStart": 24 },
+        { "refundPercentage": 50, "deadlineHoursBeforeStart": 12 }
+      ]
+    }
   }
 }
 ```
 
 Drafts may be incomplete; submission is the validation boundary for required bilingual public profile, contact, and address fields. Names are limited to 200 characters, descriptions/admission conditions to 4,000, address to 1,000, and contact fields to their corresponding 32/200/256 character limits. Each amenities/services array accepts at most 100 bilingual entries, each language value up to 200 characters. Successful saves return `200 OK` and increment `version`.
 
-Errors: `400 CareHomes.Facility.InvalidProfile` for field limits, `404 CareHomes.Facility.NotFound` when there is no facility, `409 CareHomes.Facility.Conflict` for stale versions or a non-editable lifecycle state, and `401/403` for authentication/account-policy failures.
+`cancellationTerms` is the facility's structured cancellation schedule under clause 6 of the approved refund policy (`2026-10-22`): it accepts one to six tiers, each with `refundPercentage` (whole 0–100 percent of the paid total) and `deadlineHoursBeforeStart` (whole 0–8760 hours before the scheduled stay start). Tiers are normalized longest-deadline-first, duplicate deadlines are rejected, and unreferenced by money while the Owner-approved refund policy ships dormant. Once activated, a booking made with the facility's approved revision snapshots exactly these terms. Omitting `cancellationTerms` or sending `null` clears previously published terms from the draft (replacement semantics); the clause-2 default schedule then governs bookings once the policy is activated.
+
+Errors: `400 CareHomes.Facility.InvalidProfile` for field limits and invalid cancellation terms (out-of-range percentage/deadline, duplicate deadlines, more than six tiers, a missing tiers list, or null tier entries), `404 CareHomes.Facility.NotFound` when there is no facility, `409 CareHomes.Facility.Conflict` for stale versions or a non-editable lifecycle state, and `401/403` for authentication/account-policy failures.
 
 ## Upload or replace an onboarding document
 

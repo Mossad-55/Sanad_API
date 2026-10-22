@@ -160,7 +160,7 @@ public sealed class ElderlyConfiguration :
                 var stringListComparer = new ValueComparer<IReadOnlyList<string>>(
                     (c1, c2) => (c1 == null && c2 == null) || (c1 != null && c2 != null && c1.SequenceEqual(c2)),
                     c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-                    c => c.ToList().AsReadOnly());
+                    c => c.ToList());
 
                 profile.Property(p => p.ChronicConditions)
                     .HasConversion(
@@ -175,7 +175,7 @@ public sealed class ElderlyConfiguration :
                 var allergyListComparer = new ValueComparer<IReadOnlyList<AllergyEntry>>(
                     (c1, c2) => (c1 == null && c2 == null) || (c1 != null && c2 != null && c1.SequenceEqual(c2)),
                     c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-                    c => c.ToList().AsReadOnly());
+                    c => c.ToList());
 
                 profile.Property(p => p.Allergies)
                     .HasConversion(
@@ -190,7 +190,7 @@ public sealed class ElderlyConfiguration :
                 var historyListComparer = new ValueComparer<IReadOnlyList<MedicalHistoryEntry>>(
                     (c1, c2) => (c1 == null && c2 == null) || (c1 != null && c2 != null && c1.SequenceEqual(c2)),
                     c => c.Aggregate(0, (a, v) => HashCode.Combine(a, v.GetHashCode())),
-                    c => c.ToList().AsReadOnly());
+                    c => c.ToList());
 
                 profile.Property(p => p.MedicalHistory)
                     .HasConversion(

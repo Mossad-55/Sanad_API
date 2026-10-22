@@ -118,6 +118,19 @@ public static class ResultProblemDetailsMapper
             ["CareHomes.Bookings.AssignmentConflict"] = 409,
             ["CareHomes.Bookings.InvalidTransferDate"] = 400,
             ["CareHomes.Bookings.TransferConflict"] = 409,
+
+            // S5 care-home refund policy: unreadable persisted policy state fails closed as a
+            // conflict, while reconciliation errors distinguish malformed requests from attempts
+            // that cannot be proven dead.
+            ["CareHomes.Bookings.UnreadableSnapshot"] = 409,
+            ["CareHomes.Refund.OutcomeAmbiguous"] = 409,
+            ["CareHomes.RefundReconciliation.EvidenceRequired"] = 400,
+            ["CareHomes.RefundReconciliation.InvalidAttemptClaim"] = 400,
+            ["CareHomes.RefundReconciliation.EvidenceTooLong"] = 400,
+            ["CareHomes.RefundReconciliation.AttemptMismatch"] = 409,
+            ["CareHomes.RefundReconciliation.AttemptInconclusive"] = 409,
+            ["CareHomes.RefundReconciliation.ConcurrencyConflict"] = 409,
+            ["CareHomes.RefundReconciliation.NoWindowToReconcile"] = 409,
             ["CareHomes.Visits.NotFound"] = 404,
             ["CareHomes.Visits.InvalidRequest"] = 400,
             ["CareHomes.Visits.InvalidState"] = 409,
@@ -210,7 +223,6 @@ public static class ResultProblemDetailsMapper
             ["Cms.SentenceBuilder.Conflict"] = 409,
 
             ["Cms.Help.FaqNotFound"] = 404,
-            ["Cms.Help.SupportContactNotFound"] = 404,
 
             ["Caregivers.Lookups.NameAlreadyInUse"] = 409,
             ["Caregivers.Lookups.LanguageCodeInUse"] = 409,
@@ -306,8 +318,26 @@ public static class ResultProblemDetailsMapper
             ["Bookings.NoRefundDue"] = 409,
             ["Bookings.Cancel.AlreadyProcessed"] = 409,
 
+            // S4 versioned care-booking refunds: an award above the money still
+            // refundable is a conflict with the booking's refund ledger, while a
+            // provider movement that did not complete is retryable by ops (503).
+            ["Bookings.RefundExceedsCeiling"] = 409,
+            ["Bookings.RefundSettlementIncomplete"] = 503,
+            ["Bookings.RefundOutcomeAmbiguous"] = 409,
+            ["Bookings.Outcome.InvalidReason"] = 400,
+            ["Bookings.Outcome.ReasonNotAllowed"] = 400,
+            ["Bookings.RefundReconciliation.EvidenceRequired"] = 400,
+            ["Bookings.RefundReconciliation.EvidenceTooLong"] = 400,
+            ["Bookings.RefundReconciliation.ProviderReferenceRequired"] = 400,
+            ["Bookings.RefundReconciliation.NoAmbiguousAttempt"] = 409,
+            ["Bookings.RefundReconciliation.AwardUnknown"] = 409,
+            ["Bookings.RefundReconciliation.AttemptMismatch"] = 409,
+            ["Bookings.RefundReconciliation.ClaimInFlight"] = 409,
+            ["Bookings.RefundReconciliation.ConcurrencyConflict"] = 409,
+
             ["Caregivers.Discovery.CaregiverNotFound"] = 404,
             ["Caregivers.Discovery.QuoteNotAvailable"] = 409,
+            ["Caregivers.Photo.NotFound"] = 404,
 
             ["Paymob.NotConfigured"] = 503,
             ["Paymob.MethodNotAvailable"] = 409,
@@ -355,6 +385,9 @@ public static class ResultProblemDetailsMapper
             , ["MedicalAccess.GrantNotFound"] = 404
             , ["MedicalAccess.GrantExists"] = 409
             , ["MedicalAccess.InvalidGrant"] = 400
+            , ["MedicalAccess.NotFound"] = 404
+            , ["MedicalAccess.RecordAccessDenied"] = 403
+            , ["Bookings.EmergencyContactNotAllowed"] = 403
             , ["Families.AccessDenied"] = 403
             , ["Families.AdminMedication.NotFound"] = 404
             , ["Families.Sos.NotFound"] = 404
@@ -389,11 +422,79 @@ public static class ResultProblemDetailsMapper
             , ["Community.CheckIn.Invalid"] = 400
             , ["Community.Image.Invalid"] = 400
             , ["Community.Image.NotFound"] = 404
+            , ["Community.Author.Photo.NotFound"] = 404
             , ["Community.CategoryNotFound"] = 404
             , ["Community.CategoryInactive"] = 409
             , ["Community.CategoryInUse"] = 409
             , ["Community.InvalidCategory"] = 400
             , ["Community.Category.Invalid"] = 400
+
+            // W3-F4 rentals (clause 8): catalog administration and browsing, the
+            // booking lifecycle, the Paymob intent surface and the refund
+            // destinations. Not-found codes are 404, invalid requests 400,
+            // lifecycle-state refusals 409, and Unknown outcomes 500.
+            , ["Rentals.Catalog.NotFound"] = 404
+            , ["Rentals.Catalog.Invalid"] = 400
+            , ["Rentals.Catalog.Unknown"] = 500
+            , ["Rentals.Booking.FamilyNotFound"] = 404
+            , ["Rentals.Booking.NotFound"] = 404
+            , ["Rentals.Booking.EquipmentNotFound"] = 404
+            , ["Rentals.Booking.Invalid"] = 400
+            , ["Rentals.Booking.InvalidOperation"] = 409
+            , ["Rentals.Booking.Conflict"] = 409
+            , ["Rentals.Booking.Unknown"] = 500
+            , ["Rentals.Payment.NotFound"] = 404
+            , ["Rentals.Payment.InvalidOperation"] = 409
+            , ["Rentals.Refund.DestinationUnavailable"] = 400
+            , ["Rentals.Refund.NoPaymentReference"] = 409
+            , ["Rentals.Refund.OutcomePendingReconciliation"] = 409
+            , ["Rentals.Refund.AttemptFailedRetryable"] = 409
+            , ["Rentals.Refund.IdempotencyKeyTooLong"] = 400
+            , ["Rentals.Refund.InvalidAmount"] = 400
+            , ["Rentals.Refund.AlreadyRecorded"] = 409
+            , ["Rentals.Operations.BookingNotFound"] = 404
+            , ["Rentals.Operations.DeductionNotFound"] = 404
+            , ["Rentals.Operations.Invalid"] = 400
+            , ["Rentals.Operations.InvalidOperation"] = 409
+            , ["Rentals.Operations.Conflict"] = 409
+            , ["Rentals.Operations.Unknown"] = 500
+
+            // W3-F4 Finance refund seam (the rental refund recorder): the same
+            // status semantics as the other refund families — a replayed
+            // conflicting case is a 409, an invalid movement a 400.
+            , ["Finance.RentalRefund.CaseRequired"] = 400
+            , ["Finance.RentalRefund.AwardInvalid"] = 400
+            , ["Finance.RentalRefund.Invalid"] = 400
+            , ["Finance.RentalRefund.ReconciliationRequired"] = 409
+            , ["Finance.RentalRefund.IdempotencyConflict"] = 409
+            , ["Finance.RentalRefund.Conflict"] = 409
+            , ["Finance.RentalRefund.Unknown"] = 500
+
+            // W3-F3 subscription refunds: a missing case/family/subscription or
+            // capture is a malformed request, an award above that capture's
+            // remaining funds is a ledger conflict, and a reused idempotency
+            // key with different content is a conflict.
+            , ["Finance.SubscriptionRefund.CaseRequired"] = 400
+            , ["Finance.SubscriptionRefund.FamilyRequired"] = 400
+            , ["Finance.SubscriptionRefund.SubscriptionRequired"] = 400
+            , ["Finance.SubscriptionRefund.CaptureRequired"] = 400
+            , ["Finance.SubscriptionRefund.AmountInvalid"] = 400
+            , ["Finance.SubscriptionRefund.Invalid"] = 400
+            , ["Finance.SubscriptionRefund.IdempotencyConflict"] = 409
+            , ["Finance.SubscriptionRefund.ExceedsCaptured"] = 409
+            , ["Finance.SubscriptionRefund.Conflict"] = 409
+            , ["Finance.SubscriptionRefund.Unknown"] = 500
+
+            // W3-F3 complaint review: approval is a SuperAdmin act, an invalid
+            // transition is a conflict, and a missing case is a 404.
+            , ["Finance.Complaint.FamilyRequired"] = 400
+            , ["Finance.Complaint.CaseRequired"] = 400
+            , ["Finance.Complaint.AmountInvalid"] = 400
+            , ["Finance.Complaint.NotFound"] = 404
+            , ["Finance.Complaint.Invalid"] = 409
+            , ["Finance.Complaint.SuperAdminRequired"] = 403
+            , ["Finance.Complaint.Conflict"] = 409
+            , ["Finance.Complaint.Unknown"] = 500
         };
 
     public static ProblemDetails Create(
@@ -435,6 +536,19 @@ public static class ResultProblemDetailsMapper
 
         problemDetails.Extensions["traceId"] =
             httpContext.TraceIdentifier;
+
+        // Field-level validation detail is attached only when the error
+        // actually carries it — an empty map must never surface as an empty
+        // "errors" object. The dictionary shape matches the one
+        // AdminLibraryController already emits, and every error without field
+        // detail produces an unchanged problem-details body.
+        if (error.Errors is { Count: > 0 })
+        {
+            problemDetails.Extensions["errors"] =
+                error.Errors.ToDictionary(
+                    pair => pair.Key,
+                    pair => pair.Value);
+        }
 
         return problemDetails;
     }

@@ -16,7 +16,20 @@ noted.
 
 Every post, comment and reply carries `displayName` (the author's English full
 name, Arabic as fallback, `null` when the identity row is missing) and
-`avatarUrl` (always `null` today — Community has no publicly servable avatar).
+`avatarUrl`. `avatarUrl` is the author's avatar **download path**
+(`/api/v1/community/authors/{authorId}/photo`) when the author has a stored
+avatar, and `null` otherwise; it never carries the stored private storage key.
+
+```text
+GET /api/v1/community/authors/{authorId}/photo   → 200 image bytes | 404
+```
+
+The route (the S3 approved photo route, refund decision lock #32) requires a
+Normal JWT and streams the image bytes only. An unknown author, an author with no
+stored avatar and an **anonymous** author all answer the same generic `404`
+(`Community.Author.Photo.NotFound`). Anonymity is resolved server-side from the
+stored `is_anonymous` flag of the author's posts — the request never carries (and
+cannot weaken) an anonymity hint.
 
 `isAnonymous` is unchanged on posts and is now also on comments and replies.
 An anonymous post carries no author identity at all, and a comment or reply

@@ -106,6 +106,16 @@
   <Folder Name="/src/Modules/Identity/Presentation/">
     <Project Path="src/Modules/Identity/Presentation/Sanad.Modules.Identity.Presentation/Sanad.Modules.Identity.Presentation.csproj" />
   </Folder>
+  <Folder Name="/src/Modules/Rentals/" />
+  <Folder Name="/src/Modules/Rentals/Application/">
+    <Project Path="src/Modules/Rentals/Application/Sanad.Modules.Rentals.Application/Sanad.Modules.Rentals.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Rentals/Domain/">
+    <Project Path="src/Modules/Rentals/Domain/Sanad.Modules.Rentals.Domain/Sanad.Modules.Rentals.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Rentals/Infrastructure/">
+    <Project Path="src/Modules/Rentals/Infrastructure/Sanad.Modules.Rentals.Infrastructure/Sanad.Modules.Rentals.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Sanad.ArchitectureTests/Sanad.ArchitectureTests.csproj" />
     <Project Path="tests/Sanad.UnitTests/Sanad.UnitTests.csproj" />

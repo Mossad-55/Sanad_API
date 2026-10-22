@@ -22,6 +22,14 @@ public static class LibraryErrors
     public static readonly Error ContentInvalid =
         new("Cms.LibraryContent.Invalid", "Library content failed validation.");
 
+    /// <summary>
+    /// The same stable <c>Cms.LibraryContent.Invalid</c> code and message, with
+    /// the handler-produced field-level detail attached (locked decision #28).
+    /// </summary>
+    public static Error ContentInvalidWith(
+        IReadOnlyDictionary<string, string[]> errors) =>
+        ContentInvalid with { Errors = errors };
+
     public static readonly Error ContentInvalidOperation =
         new("Cms.LibraryContent.InvalidOperation", "The requested library content operation is invalid.");
 

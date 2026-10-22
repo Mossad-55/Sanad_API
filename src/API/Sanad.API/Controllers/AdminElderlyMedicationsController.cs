@@ -24,10 +24,12 @@ public sealed class AdminElderlyMedicationsController : ApiControllerBase
         => await Send(new GetAdminMedicationsQuery(Actor(), AccountType(), CorrelationId(), page, pageSize, dependentId, status, search), ct);
 
     [HttpGet("{medicationId:guid}")]
+    [ProducesResponseType(typeof(AdminMedicationRecord), StatusCodes.Status200OK)]
     public async Task<IActionResult> Get(Guid medicationId, CancellationToken ct)
         => await Send(new GetAdminMedicationQuery(Actor(), AccountType(), CorrelationId(), new MedicationId(medicationId)), ct);
 
     [HttpGet("{medicationId:guid}/doses")]
+    [ProducesResponseType(typeof(IReadOnlyList<MedicationDoseResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> Doses(Guid medicationId, [FromQuery] DateOnly startDate, [FromQuery] DateOnly endDate, [FromQuery] DoseStatus? status = null, CancellationToken ct = default)
         => await Send(new GetAdminMedicationDoseTimelineQuery(Actor(), AccountType(), CorrelationId(), new MedicationId(medicationId), startDate, endDate, status), ct);
 
@@ -38,6 +40,7 @@ public sealed class AdminElderlyMedicationsController : ApiControllerBase
 
     [Authorize(Policy = AuthorizationPolicies.ElderlyMedicationOperationalManage)]
     [HttpPost("late/evaluate")]
+    [ProducesResponseType(typeof(MedicationLatenessEvaluationResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> EvaluateLate([FromQuery] Guid dependentId, CancellationToken ct)
         => ToActionResult(await _sender.Send(new EvaluateAdminMedicationLatenessCommand(Actor(), new ElderlyId(dependentId), AccountType(), CorrelationId(), DateTime.UtcNow), ct));
 

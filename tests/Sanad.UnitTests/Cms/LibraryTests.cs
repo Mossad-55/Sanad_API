@@ -157,6 +157,56 @@ public sealed class LibraryTests
     }
 
     [Fact]
+    public async Task Create_content_validation_failure_carries_field_level_errors()
+    {
+        await using CmsDbContext db = CreateCmsContext();
+        var handler = new CreateLibraryContentCommandHandler(db);
+
+        // Top-level required text: the handler now names the exact field.
+        var blankTitle = await handler.Handle(
+            ArticleCommand(null) with { ArabicTitle = "  " }, CancellationToken.None);
+        Assert.True(blankTitle.IsFailure);
+        Assert.Equal(LibraryErrors.ContentInvalid.Code, blankTitle.Error.Code);
+        Assert.NotNull(blankTitle.Error.Errors);
+        Assert.True(blankTitle.Error.Errors!.ContainsKey("arabicTitle"));
+
+        // Video-scoped rule: the field name matches the controller's key.
+        var videoWithoutDuration = await handler.Handle(
+            VideoCommand() with { DurationSeconds = null }, CancellationToken.None);
+        Assert.True(videoWithoutDuration.IsFailure);
+        Assert.Equal(LibraryErrors.ContentInvalid.Code, videoWithoutDuration.Error.Code);
+        Assert.NotNull(videoWithoutDuration.Error.Errors);
+        Assert.True(videoWithoutDuration.Error.Errors!.ContainsKey("durationSeconds"));
+
+        // Section-scoped rule: an indexed path, mirroring the controller.
+        var duplicateOrders = await handler.Handle(
+            ArticleCommand(null) with
+            {
+                Sections =
+                [
+                    new(1, "أ", "A", ["b1"], ["b1"]),
+                    new(1, "ب", "B", ["b2"], ["b2"])
+                ]
+            },
+            CancellationToken.None);
+        Assert.True(duplicateOrders.IsFailure);
+        Assert.Equal(LibraryErrors.ContentInvalid.Code, duplicateOrders.Error.Code);
+        Assert.True(duplicateOrders.Error.Errors!.ContainsKey("sectionsJson"));
+
+        // A missing required section title resolves to the failing index.
+        var blankSectionTitle = await handler.Handle(
+            ArticleCommand(null) with
+            {
+                Sections = [new(1, "  ", "First", ["b"], ["b"])]
+            },
+            CancellationToken.None);
+        Assert.True(blankSectionTitle.IsFailure);
+        Assert.True(blankSectionTitle.Error.Errors!.ContainsKey("sectionsJson[0].arabicTitle"));
+
+        Assert.Empty(db.LibraryContents);
+    }
+
+    [Fact]
     public async Task Draft_lifecycle_update_publish_archive_rules()
     {
         await using CmsDbContext db = CreateCmsContext();
@@ -195,6 +245,77 @@ public sealed class LibraryTests
             .Handle(new PublishLibraryContentCommand(draft.Id.Value), CancellationToken.None);
         Assert.True(republish.IsFailure);
         Assert.Equal(LibraryErrors.ContentInvalidOperation.Code, republish.Error.Code);
+    }
+
+    [Fact]
+    public async Task Restore_moves_archived_content_back_to_draft_and_republish_is_allowed()
+    {
+        await using CmsDbContext db = CreateCmsContext();
+        var handler = new RestoreLibraryContentCommandHandler(db);
+        LibraryContent archived = await CreatePublished(db, "Article", "Archived article");
+        Guid id = archived.Id.Value;
+
+        await new ArchiveLibraryContentCommandHandler(db)
+            .Handle(new ArchiveLibraryContentCommand(id), CancellationToken.None);
+        Assert.Equal(LibraryContentStatus.Archived, archived.Status);
+        DateTime updatedOnUtc = archived.UpdatedOnUtc;
+
+        var restore = await handler.Handle(new RestoreLibraryContentCommand(id), CancellationToken.None);
+        Assert.True(restore.IsSuccess);
+        Assert.Equal("Draft", restore.Value.Status);
+        Assert.True(archived.UpdatedOnUtc >= updatedOnUtc);
+
+        // Restore is not a publication: publish now behaves like a first publish.
+        var publish = await new PublishLibraryContentCommandHandler(db)
+            .Handle(new PublishLibraryContentCommand(id), CancellationToken.None);
+        Assert.True(publish.IsSuccess);
+        Assert.Equal("Published", publish.Value.Status);
+    }
+
+    [Fact]
+    public async Task Restore_rejects_missing_and_non_archived_targets()
+    {
+        await using CmsDbContext db = CreateCmsContext();
+        var handler = new RestoreLibraryContentCommandHandler(db);
+
+        var missing = await handler.Handle(new RestoreLibraryContentCommand(Guid.NewGuid()), CancellationToken.None);
+        Assert.True(missing.IsFailure);
+        Assert.Equal(LibraryErrors.ContentNotFound.Code, missing.Error.Code);
+
+        LibraryContent draft = await CreateDraft(db, "Article", "Draft");
+        var restoreDraft = await handler.Handle(new RestoreLibraryContentCommand(draft.Id.Value), CancellationToken.None);
+        Assert.True(restoreDraft.IsFailure);
+        Assert.Equal(LibraryErrors.ContentInvalidOperation.Code, restoreDraft.Error.Code);
+
+        LibraryContent published = await CreatePublished(db, "Article", "Published");
+        var restorePublished = await handler.Handle(new RestoreLibraryContentCommand(published.Id.Value), CancellationToken.None);
+        Assert.True(restorePublished.IsFailure);
+        Assert.Equal(LibraryErrors.ContentInvalidOperation.Code, restorePublished.Error.Code);
+    }
+
+    [Fact]
+    public async Task Publish_after_restore_still_requires_valid_content()
+    {
+        await using CmsDbContext db = CreateCmsContext();
+        LibraryContent archived = await CreatePublished(db, "Article", "Archived article");
+        Guid id = archived.Id.Value;
+        await new ArchiveLibraryContentCommandHandler(db)
+            .Handle(new ArchiveLibraryContentCommand(id), CancellationToken.None);
+
+        var restore = await new RestoreLibraryContentCommandHandler(db)
+            .Handle(new RestoreLibraryContentCommand(id), CancellationToken.None);
+        Assert.True(restore.IsSuccess);
+        Assert.Equal("Draft", restore.Value.Status);
+
+        // The restored row is a normal draft: an invalid update is refused, and
+        // validation still applies before publishing again.
+        var invalidUpdate = await new UpdateLibraryContentCommandHandler(db)
+            .Handle(new UpdateLibraryContentCommand(
+                id, null, "  ", "Title", "س", "S", null, null, null, false, null),
+            CancellationToken.None);
+        Assert.True(invalidUpdate.IsFailure);
+        Assert.Equal(LibraryErrors.ContentInvalid.Code, invalidUpdate.Error.Code);
+        Assert.NotNull(invalidUpdate.Error.Errors);
     }
 
     [Fact]

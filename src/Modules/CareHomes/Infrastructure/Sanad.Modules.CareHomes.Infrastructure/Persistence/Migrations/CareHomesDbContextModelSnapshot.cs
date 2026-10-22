@@ -57,6 +57,10 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("CancellationTermsSnapshotJson")
+                        .HasColumnType("text")
+                        .HasColumnName("cancellation_terms_snapshot_json");
+
                     b.Property<string>("CareNeedsNotes")
                         .HasColumnType("text");
 
@@ -128,6 +132,10 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasColumnType("text")
                         .HasColumnName("intention_order_id");
 
+                    b.Property<bool>("IsRefundOutcomeAmbiguous")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_refund_outcome_ambiguous");
+
                     b.Property<string>("MedicalSnapshotJson")
                         .HasColumnType("jsonb");
 
@@ -170,10 +178,37 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal?>("RefundAmbiguityAwardAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("refund_ambiguity_award_amount");
+
+                    b.Property<string>("RefundAmbiguityClearedBy")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("refund_ambiguity_cleared_by");
+
+                    b.Property<DateTime?>("RefundAmbiguityClearedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refund_ambiguity_cleared_on_utc");
+
+                    b.Property<DateTime?>("RefundAmbiguityRaisedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refund_ambiguity_raised_on_utc");
+
+                    b.Property<string>("RefundAmbiguityReason")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("refund_ambiguity_reason");
+
                     b.Property<decimal?>("RefundAmount")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)")
                         .HasColumnName("refund_amount");
+
+                    b.Property<Guid?>("RefundAttemptClaimId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_attempt_claim_id");
 
                     b.Property<DateTime?>("RefundClaimedOnUtc")
                         .HasColumnType("timestamp with time zone")
@@ -191,6 +226,14 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasMaxLength(2000)
                         .HasColumnType("character varying(2000)")
                         .HasColumnName("refund_failure_reason");
+
+                    b.Property<DateOnly>("RefundPolicyDocumentEffectiveOn")
+                        .HasColumnType("date")
+                        .HasColumnName("refund_policy_document_effective_on");
+
+                    b.Property<int>("RefundPolicyVersion")
+                        .HasColumnType("integer")
+                        .HasColumnName("refund_policy_version");
 
                     b.Property<string>("RefundReference")
                         .HasColumnType("text");
@@ -1272,6 +1315,10 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("area");
+
+                    b.Property<string>("CancellationTermsJson")
+                        .HasColumnType("text")
+                        .HasColumnName("cancellation_terms_json");
 
                     b.Property<string>("City")
                         .IsRequired()

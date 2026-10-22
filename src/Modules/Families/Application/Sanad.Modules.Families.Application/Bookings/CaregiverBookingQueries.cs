@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Elderlies;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Reports;
@@ -242,7 +243,7 @@ public sealed class GetCaregiverBookingDetailQueryHandler
     /// yet, so "nothing was recorded" is never confused with "something was
     /// recorded but empty".
     /// </summary>
-    private static IReadOnlyList<CaregiverBookingVisitHistoryItem>? BuildVisitHistory(
+    internal static IReadOnlyList<CaregiverBookingVisitHistoryItem>? BuildVisitHistory(
         List<VisitReport> visitReports,
         List<MedicalReport> medicalReports)
     {
@@ -293,6 +294,146 @@ public sealed class GetCaregiverBookingDetailQueryHandler
             .OrderByDescending(item => item.SubmittedOnUtc)
             .ThenByDescending(item => item.ReportId)
             .ToList();
+    }
+}
+
+/// <summary>
+/// Authorized caregiver read of the booking dependent's stored emergency
+/// contact (mobile item M5). Access is deliberately narrow: the booking must
+/// belong to the calling caregiver (else <c>Bookings.NotFound</c>, 404) and the
+/// visit must be live — <c>InProgress</c>, or <c>Confirmed</c> with the visit
+/// not yet checked in (no <c>StartedOnUtc</c>) — so the contact is available
+/// only across the visit window and never for a past, cancelled or merely
+/// pending booking. Otherwise the coded <c>Bookings.EmergencyContactNotAllowed</c>
+/// denial (403) is returned. The response reuses the family
+/// <see cref="EmergencyContactResponse"/> shape (<c>name</c>,
+/// <c>relationship</c>, <c>phoneNumber</c>) and is <c>null</c> when the
+/// dependent row stores none.
+/// </summary>
+public sealed record GetCaregiverBookingEmergencyContactQuery(
+    CaregiverId CaregiverId,
+    BookingId BookingId) : IQuery<EmergencyContactResponse?>;
+
+/// <summary>
+/// Shared not-found error for the caregiver booking record reads: an unknown
+/// booking and a booking that belongs to another caregiver are deliberately
+/// indistinguishable.
+/// </summary>
+public static class CaregiverBookingErrors
+{
+    public static readonly Error NotFound =
+        new("Bookings.NotFound", "Booking not found for this caregiver.");
+}
+
+public static class CaregiverBookingEmergencyContactErrors
+{
+    public static readonly Error NotAllowed =
+        new(
+            "Bookings.EmergencyContactNotAllowed",
+            "The emergency contact is available only while the visit is in progress or confirmed and not yet started.");
+}
+
+public sealed class GetCaregiverBookingEmergencyContactQueryHandler
+    : IQueryHandler<GetCaregiverBookingEmergencyContactQuery, EmergencyContactResponse?>
+{
+    private readonly IFamiliesDbContext _dbContext;
+
+    public GetCaregiverBookingEmergencyContactQueryHandler(IFamiliesDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<Result<EmergencyContactResponse?>> Handle(
+        GetCaregiverBookingEmergencyContactQuery request,
+        CancellationToken cancellationToken)
+    {
+        Booking? booking = await _dbContext.Bookings
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId,
+                cancellationToken);
+
+        if (booking is null)
+        {
+            return Result<EmergencyContactResponse?>.Failure(
+                CaregiverBookingErrors.NotFound);
+        }
+
+        // The emergency contact is exposed only across the live visit window.
+        // A Confirmed booking whose visit already started (StartedOnUtc is set)
+        // is past its check-in and is not allowed; a Completed/Cancelled/Expired
+        // booking never allows it either.
+        bool allowed =
+            booking.Status == BookingStatus.InProgress ||
+            (booking.Status == BookingStatus.Confirmed && booking.StartedOnUtc is null);
+
+        if (!allowed)
+        {
+            return Result<EmergencyContactResponse?>.Failure(
+                CaregiverBookingEmergencyContactErrors.NotAllowed);
+        }
+
+        Elderly? elderly = await _dbContext.Elderlies
+            .AsNoTracking()
+            .SingleOrDefaultAsync(e => e.Id == booking.ElderlyId, cancellationToken);
+
+        // Read from the dependent's stored fields via the existing family map:
+        // no new contact model is invented and a row without a contact stays null.
+        return Result<EmergencyContactResponse?>.Success(
+            elderly is null ? null : GetFamilyEmergencyContactQueryHandler.Map(elderly));
+    }
+}
+
+/// <summary>
+/// Authorized caregiver read of a booking's recorded visit/medical report
+/// history (mobile item M5) as its own route, reusing the exact projection the
+/// caregiver booking detail already builds. Ownership is unchanged: the
+/// booking must belong to the calling caregiver, else <c>Bookings.NotFound</c>
+/// (404). The list is <c>null</c> — not an empty array — when no report was
+/// recorded yet.
+/// </summary>
+public sealed record GetCaregiverBookingVisitHistoryQuery(
+    CaregiverId CaregiverId,
+    BookingId BookingId) : IQuery<IReadOnlyList<CaregiverBookingVisitHistoryItem>?>;
+
+public sealed class GetCaregiverBookingVisitHistoryQueryHandler
+    : IQueryHandler<GetCaregiverBookingVisitHistoryQuery, IReadOnlyList<CaregiverBookingVisitHistoryItem>?>
+{
+    private readonly IFamiliesDbContext _dbContext;
+
+    public GetCaregiverBookingVisitHistoryQueryHandler(IFamiliesDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<Result<IReadOnlyList<CaregiverBookingVisitHistoryItem>?>> Handle(
+        GetCaregiverBookingVisitHistoryQuery request,
+        CancellationToken cancellationToken)
+    {
+        Booking? booking = await _dbContext.Bookings
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                b => b.Id == request.BookingId && b.CaregiverId == request.CaregiverId,
+                cancellationToken);
+
+        if (booking is null)
+        {
+            return Result<IReadOnlyList<CaregiverBookingVisitHistoryItem>?>.Failure(
+                CaregiverBookingErrors.NotFound);
+        }
+
+        List<VisitReport> visitReports = await _dbContext.VisitReports
+            .AsNoTracking()
+            .Where(report => report.BookingId == request.BookingId)
+            .ToListAsync(cancellationToken);
+
+        List<MedicalReport> medicalReports = await _dbContext.MedicalReports
+            .AsNoTracking()
+            .Where(report => report.BookingId == request.BookingId)
+            .ToListAsync(cancellationToken);
+
+        return Result<IReadOnlyList<CaregiverBookingVisitHistoryItem>?>.Success(
+            GetCaregiverBookingDetailQueryHandler.BuildVisitHistory(visitReports, medicalReports));
     }
 }
 

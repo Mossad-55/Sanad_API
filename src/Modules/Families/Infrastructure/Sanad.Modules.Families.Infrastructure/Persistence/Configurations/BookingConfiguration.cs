@@ -109,6 +109,132 @@ public sealed class BookingConfiguration : IEntityTypeConfiguration<Booking>
             .HasColumnName("paymob_refund_transaction_id")
             .HasMaxLength(100);
 
+        // Refund policy revision preserved at booking time (Owner decisions #7, #8, clause 12).
+        // Legacy revision 1 is the column default, so existing rows keep the policy they were sold
+        // under without a backfill that could reprice them.
+        builder.Property(b => b.RefundPolicyVersion)
+            .HasColumnName("refund_policy_version")
+            .HasDefaultValue(BookingRefundPolicyVersion.LegacyVersion)
+            .IsRequired();
+
+        builder.Property(b => b.RefundPolicyDocumentEffectiveOn)
+            .HasColumnName("refund_policy_document_effective_on")
+            .HasColumnType("date")
+            .HasDefaultValue(default(DateOnly))
+            .IsRequired();
+
+        // Money already refunded against this booking, in piastres. Advances only through
+        // Booking.RecordRefundedAmount; the refundable ceiling is captured money less this value.
+        builder.Property(b => b.RefundedMinorUnits)
+            .HasColumnName("refunded_minor_units")
+            .HasDefaultValue(0L)
+            .IsRequired();
+
+        // Decision #17: an unconfirmed provider refund outcome is recorded on the booking and
+        // held there until an operator reconciles it. The whole marker block is additive and
+        // defaults to "no ambiguity", so existing rows keep their behaviour untouched.
+        builder.Property(b => b.IsRefundOutcomeAmbiguous)
+            .HasColumnName("is_refund_outcome_ambiguous")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        builder.Property(b => b.RefundAmbiguityReference)
+            .HasColumnName("refund_ambiguity_reference")
+            .HasMaxLength(100);
+
+        builder.Property(b => b.RefundAmbiguityReason)
+            .HasColumnName("refund_ambiguity_reason")
+            .HasMaxLength(64);
+
+        builder.Property(b => b.RefundAmbiguityRaisedOnUtc)
+            .HasColumnName("refund_ambiguity_raised_on_utc");
+
+        builder.Property(b => b.RefundAmbiguityAwardMinorUnits)
+            .HasColumnName("refund_ambiguity_award_minor_units");
+
+        builder.Property(b => b.RefundAmbiguityClearedOnUtc)
+            .HasColumnName("refund_ambiguity_cleared_on_utc");
+
+        builder.Property(b => b.RefundAmbiguityClearedBy)
+            .HasColumnName("refund_ambiguity_cleared_by")
+            .HasMaxLength(300);
+
+        // Refund-attempt claim (Owner decision #17 hardening). The claim is committed *before* any
+        // external refund call, so an interrupted attempt leaves the exact award, its correlation
+        // id and its in-flight flag on the record instead of only in memory. RefundAttemptVersion
+        // is the optimistic concurrency token (the same pattern as
+        // FamilySubscriptionConfiguration.LifecycleVersion): a competing request holding a stale
+        // value fails its own commit at the database boundary and therefore never calls the
+        // provider.
+        builder.Property(b => b.RefundAttemptVersion)
+            .HasColumnName("refund_attempt_version")
+            .HasDefaultValue(0)
+            .IsConcurrencyToken()
+            .IsRequired();
+
+        builder.Property(b => b.RefundAttemptClaimId)
+            .HasColumnName("refund_attempt_claim_id");
+
+        builder.Property(b => b.RefundAttemptClaimedOnUtc)
+            .HasColumnName("refund_attempt_claimed_on_utc");
+
+        builder.Property(b => b.RefundAttemptAwardMinorUnits)
+            .HasColumnName("refund_attempt_award_minor_units");
+
+        builder.Property(b => b.IsRefundAttemptInFlight)
+            .HasColumnName("is_refund_attempt_in_flight")
+            .HasDefaultValue(false)
+            .IsRequired();
+
+        // Per-session allocations of a discounted multi-session package (Owner decision #5).
+        // Owned by the booking; the sum of the allocated amounts equals the paid package total,
+        // enforced by BookingRefundPolicy.AllocatePackageSessions at purchase.
+        builder.OwnsMany(b => b.SessionAllocations, allocation =>
+        {
+            allocation.ToTable("booking_session_allocations");
+            allocation.WithOwner().HasForeignKey("BookingId");
+            allocation.Property<BookingId>("BookingId")
+                .HasConversion(id => id.Value, value => new BookingId(value))
+                .HasColumnName("booking_id")
+                .IsRequired();
+            allocation.Property(a => a.SessionIndex)
+                .HasColumnName("session_index")
+                .IsRequired()
+                // The index is a domain-assigned dense 1..N slice of the paid
+                // package, never a store-generated sequence; without this the
+                // EF 10 convention silently marks the composite-key column as
+                // identity-by-default and the model drifts from its migration.
+                .ValueGeneratedNever();
+            allocation.HasKey("BookingId", "SessionIndex");
+
+            allocation.Property(a => a.AllocatedMinorUnits)
+                .HasColumnName("allocated_minor_units")
+                .IsRequired();
+
+            allocation.Property(a => a.Outcome)
+                .HasColumnName("outcome")
+                .HasConversion<int>()
+                .IsRequired();
+
+            allocation.Property(a => a.DeliveredOnUtc)
+                .HasColumnName("delivered_on_utc");
+
+            // Database-level shape guards, mirroring the persisted enum-space checks the W2
+            // slice established for its own additive columns: the outcome must be a real
+            // BookingSessionOutcome member and an allocation can never be a negative slice of
+            // the paid package price. The domain validates both, so these only catch a writer
+            // that bypassed the aggregate.
+            allocation.ToTable(table =>
+            {
+                table.HasCheckConstraint(
+                    "ck_booking_session_allocations_outcome_range",
+                    "outcome BETWEEN 1 AND 4");
+                table.HasCheckConstraint(
+                    "ck_booking_session_allocations_allocated_non_negative",
+                    "allocated_minor_units >= 0");
+            });
+        });
+
         // Chat Plus immutable pricing attribution (nullable for legacy
         // bookings, which contribute no sample).
         builder.Property(b => b.BookingAreaId)

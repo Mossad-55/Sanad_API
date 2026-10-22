@@ -174,11 +174,21 @@ so no caregiver document or response may promise a public file URL.
   path or URL.
 - **Avatars are private too.** The avatar belongs to the Identity account:
   `PUT /api/v1/auth/avatar` stores it with the private file storage
-  (`private/avatars/...`) and the only avatar read route,
-  `GET /api/v1/auth/avatar`, serves the **caller's own** avatar. The
-  `avatarUrl` field on the caregiver discovery reads (`GET /api/v1/caregivers`
-  search cards and `GET /api/v1/caregivers/{caregiverId}` public profile) is
-  that stored reference, or `null` when the caregiver has no avatar. It is a
+  (`private/avatars/...`). The `avatarUrl` field on the caregiver discovery
+  reads (`GET /api/v1/caregivers` search cards and
+  `GET /api/v1/caregivers/{caregiverId}` public profile) is that stored
+  reference, or `null` when the caregiver has no avatar. It is a
   storage key, **not a fetchable URL**: it is not served under `/files`, so the
   app must not load it as an image URL and must render its own placeholder
   instead.
+
+  The avatar bytes are served only by authorized download routes, none of which
+  ever return the raw key:
+
+  - `GET /api/v1/auth/avatar` — the **caller's own** avatar;
+  - `GET /api/v1/caregivers/{caregiverId}/photo` — a **discoverable** caregiver's
+    avatar to any Normal JWT (the S3 approved photo route, refund decision lock
+    #32). It streams the image bytes only; a non-active or hidden caregiver and a
+    caregiver with no stored avatar are the same generic
+    `404 (Caregivers.Photo.NotFound)`. See
+    [caregiver discovery](../families/discovery.md).

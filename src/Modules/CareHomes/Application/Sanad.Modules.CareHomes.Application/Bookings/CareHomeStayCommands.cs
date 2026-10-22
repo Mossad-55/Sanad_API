@@ -2,6 +2,7 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Domain.Bookings;
@@ -57,6 +58,7 @@ public sealed class AssignCareHomeBookingHandler(ICareHomesDbContext db, ICareHo
                 });
                 if (conflicts) return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.AssignmentConflict", "The selected physical resource is occupied for this stay."));
                 try { booking.AssignPhysicalResource(r.RoomId, r.BedId, r.UtcNow); db.BookingAssignmentHistory.Add(CareHomeBookingAssignmentHistory.CreateInitial(booking.Id, r.RoomId, r.BedId, booking.StartDate, r.Actor, r.UtcNow)); await db.SaveChangesAsync(ct); return CheckoutHandler.Map(booking); }
+                catch (DomainException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.UnreadableSnapshot", "The booking's stored refund-policy snapshot could not be read.")); }
                 catch (InvalidOperationException ex) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.InvalidState", ex.Message)); }
             }, ct);
         }
@@ -77,10 +79,11 @@ public sealed class AssignCareHomeBookingHandler(ICareHomesDbContext db, ICareHo
 public sealed class RecordCareHomeCheckInHandler(ICareHomesDbContext db) : ICommandHandler<RecordCareHomeCheckInCommand, CareHomeBookingResponse>
 {
     public async Task<Result<CareHomeBookingResponse>> Handle(RecordCareHomeCheckInCommand r, CancellationToken ct)
-    { var b = await Owned(db, r.Actor, r.BookingId, ct); if (b is null) return Missing(); try { b.RecordCheckIn(r.Actor, r.UtcNow); await db.SaveChangesAsync(ct); return CheckoutHandler.Map(b); } catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Invalid(ex.Message); } }
+    { var b = await Owned(db, r.Actor, r.BookingId, ct); if (b is null) return Missing(); try { b.RecordCheckIn(r.Actor, r.UtcNow); await db.SaveChangesAsync(ct); return CheckoutHandler.Map(b); } catch (DomainException) { return SnapshotUnreadable(); } catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Invalid(ex.Message); } }
     internal static async Task<CareHomeBooking?> Owned(ICareHomesDbContext db, UserId actor, Guid id, CancellationToken ct) { var f = await db.Facilities.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor, ct); return f is null ? null : await db.Bookings.SingleOrDefaultAsync(x => x.Id == id && x.FacilityId == f.Id, ct); }
     private static Result<CareHomeBookingResponse> Missing() => Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.NotFound", "Booking was not found."));
     private static Result<CareHomeBookingResponse> Invalid(string m) => Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.InvalidState", m));
+    private static Result<CareHomeBookingResponse> SnapshotUnreadable() => Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.UnreadableSnapshot", "The booking's stored refund-policy snapshot could not be read."));
 }
 
 public sealed class OwnerCareHomeBookingOperationalHandler(ICareHomesDbContext db) : IQueryHandler<GetOwnerCareHomeBookingOperationalQuery, CareHomeOwnerBookingOperationalResponse>
@@ -117,17 +120,28 @@ public sealed class RecordCareHomeCheckOutHandler(ICareHomesDbContext db, IPaymo
         catch (DbUpdateException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.CheckInDispute.OpenConflict", "A check-in dispute was opened concurrently for this booking.")); }
         catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.InvalidState", ex.Message)); }
 
+        // A facility-recorded checkout proves only that the stay ended; it
+        // records no cause the refund policy can trust (decision #14:
+        // provider failure requires recorded evidence). With no cause data
+        // the un-stayed extension decides under its OWN schedule — the
+        // extension's snapshotted revision-2 terms, or its revision-1
+        // full-amount rule — and never the provider-failure full refund. A
+        // provider-caused early end must be recorded as a facility
+        // cancellation (which refunds in full) or raised through the
+        // dispute/review channel (decision #11).
         Result futureExtensions = await CareHomeFutureExtensionRefunds.ProcessAsync(
-            db, paymob, b, CareHomeFutureExtensionRefunds.CairoDate(r.UtcNow), r.UtcNow, ct);
+            db, paymob, b, CareHomeFutureExtensionRefunds.CairoDate(r.UtcNow), r.UtcNow,
+            providerEnded: false, ct);
         if (futureExtensions.IsFailure) return Result<CareHomeBookingResponse>.Failure(futureExtensions.Error);
-        return CheckoutHandler.Map(b);
+        try { return CheckoutHandler.Map(b); }
+        catch (DomainException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.UnreadableSnapshot", "The booking's stored refund-policy snapshot could not be read.")); }
     }
 }
 
 public sealed class ConfirmCareHomeCheckInHandler(ICareHomesDbContext db) : ICommandHandler<ConfirmCareHomeCheckInCommand, CareHomeBookingResponse>
 {
     public async Task<Result<CareHomeBookingResponse>> Handle(ConfirmCareHomeCheckInCommand r, CancellationToken ct)
-    { var b = await db.Bookings.SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FamilyId == r.FamilyId, ct); if (b is null) return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.NotFound", "Booking was not found.")); try { b.ConfirmFamilyCheckIn(r.Actor, r.UtcNow); await db.SaveChangesAsync(ct); return CheckoutHandler.Map(b); } catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.InvalidState", ex.Message)); } }
+    { var b = await db.Bookings.SingleOrDefaultAsync(x => x.Id == r.BookingId && x.FamilyId == r.FamilyId, ct); if (b is null) return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.NotFound", "Booking was not found.")); try { b.ConfirmFamilyCheckIn(r.Actor, r.UtcNow); await db.SaveChangesAsync(ct); return CheckoutHandler.Map(b); } catch (DomainException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.UnreadableSnapshot", "The booking's stored refund-policy snapshot could not be read.")); } catch (Exception ex) when (ex is InvalidOperationException or ArgumentException) { return Result<CareHomeBookingResponse>.Failure(new("CareHomes.Bookings.InvalidState", ex.Message)); } }
 }
 
 public sealed class CheckInDisputeHandlers(ICareHomesDbContext db) : IQueryHandler<ListCareHomeCheckInDisputesQuery, IReadOnlyList<AdminCareHomeCheckInDispute>>, ICommandHandler<ResolveCareHomeCheckInDisputeCommand, CareHomeCheckInDisputeResponse>, ICommandHandler<SubmitCareHomeCheckInDisputeCommand, CareHomeCheckInDisputeResponse>

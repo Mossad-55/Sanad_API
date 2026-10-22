@@ -193,7 +193,7 @@ public class CommunityDbContext : DbContext, ICommunityDbContext
 
         command.CommandText =
             "SELECT id AS \"UserId\", arabic_full_name AS \"ArabicFullName\", " +
-            "english_full_name AS \"EnglishFullName\" " +
+            "english_full_name AS \"EnglishFullName\", avatar_url AS \"AvatarKey\" " +
             $"FROM {prefix}users WHERE id IN ({string.Join(", ", placeholders)})";
 
         bool openedHere = Database.GetDbConnection().State != System.Data.ConnectionState.Open;
@@ -210,7 +210,8 @@ public class CommunityDbContext : DbContext, ICommunityDbContext
                 Guid id = reader.GetGuid(0);
                 string arabic = reader.IsDBNull(1) ? string.Empty : reader.GetString(1);
                 string english = reader.IsDBNull(2) ? string.Empty : reader.GetString(2);
-                names[id] = new CommunityAuthorName(arabic, english);
+                string? avatarKey = reader.IsDBNull(3) ? null : reader.GetString(3);
+                names[id] = new CommunityAuthorName(id, arabic, english, avatarKey);
             }
         }
         finally

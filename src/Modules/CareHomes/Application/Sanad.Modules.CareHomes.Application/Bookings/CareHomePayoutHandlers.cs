@@ -74,6 +74,13 @@ internal static class CareHomePayoutLedgerProjection
         ICareHomesDbContext db, IPlatformChargeRuleReader chargeRules, CareHomeId? facilityFilter,
         DateTime utcNow, bool settlementRowsOnly, CancellationToken ct)
     {
+        // Source rows: checkout-completed stays (the pre-refund-policy
+        // behavior, unchanged). TryGetRemainingAmounts re-validates rows and
+        // stays strictly behind pre-policy eligibility; the money states a
+        // revision-2 cancellation introduces (zero-award cancellations,
+        // refunds of never-started purchases) keep the captured money with
+        // the facility but are NOT payout-eligible until the Owner decides
+        // how that retained money is allocated.
         var bookings = await db.Bookings.AsNoTracking()
             .Where(x => x.ActualCheckOutOnUtc != null
                 && (x.PaymentStatus == CareHomeBookingPaymentStatus.Paid || x.PaymentStatus == CareHomeBookingPaymentStatus.Refunded)

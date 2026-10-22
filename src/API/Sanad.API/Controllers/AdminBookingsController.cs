@@ -9,6 +9,20 @@ using Sanad.Modules.Families.Domain.Bookings;
 
 namespace Sanad.API.Controllers;
 
+public sealed record AdminRecordBookingOutcomeRequest(
+    int OutcomeReason,
+    string? Reason,
+    int? ReasonCategory,
+    int? ProviderLatenessMinutes = null,
+    bool CustomerConsentedToLateness = false,
+    bool ForceMajeure = false);
+
+public sealed record AdminReconcileRefundAmbiguityRequest(
+    string Evidence,
+    bool RefundDidMove,
+    Guid? ExpectedAttemptClaimId = null,
+    string? VerifiedProviderReference = null);
+
 [Authorize(Policy = AuthorizationPolicies.CaregiversAdmin)]
 [Route("api/v1/admin/bookings")]
 public sealed class AdminBookingsController : ApiControllerBase
@@ -77,6 +91,79 @@ public sealed class AdminBookingsController : ApiControllerBase
             new AdminRefundBookingCommand(
                 new BookingId(bookingId),
                 _dateTimeProvider.UtcNow),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Records a platform-asserted provider outcome on an accepted booking: provider lateness
+    /// beyond the threshold, an inaccessible recipient, a safety cancellation, or a force-majeure
+    /// event. The refund is decided by the booking's sold policy revision and settled to the
+    /// payment provider.
+    /// </summary>
+    [HttpPost("{bookingId:guid}/outcome")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
+    public async Task<IActionResult> RecordOutcome(
+        Guid bookingId,
+        [FromBody] AdminRecordBookingOutcomeRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new AdminRecordBookingOutcomeCommand(
+                userId,
+                new BookingId(bookingId),
+                request.OutcomeReason,
+                request.Reason ?? string.Empty,
+                request.ReasonCategory,
+                request.ProviderLatenessMinutes,
+                request.CustomerConsentedToLateness,
+                request.ForceMajeure,
+                _dateTimeProvider.UtcNow),
+            cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Reconciles a refund attempt whose provider outcome could not be confirmed (Owner decision
+    /// #17). This is the only command that clears the booking's ambiguity marker, and until it
+    /// runs every refund path on that booking is refused. The operator states what they found —
+    /// whether the money actually moved — and that finding, not a guess, books the amount.
+    /// </summary>
+    [HttpPost("{bookingId:guid}/refund/reconcile")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> ReconcileRefundAmbiguity(
+        Guid bookingId,
+        [FromBody] AdminReconcileRefundAmbiguityRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new ReconcileBookingRefundAmbiguityCommand(
+                userId,
+                new BookingId(bookingId),
+                request.Evidence,
+                request.RefundDidMove,
+                _dateTimeProvider.UtcNow,
+                request.ExpectedAttemptClaimId,
+                request.VerifiedProviderReference),
             cancellationToken);
 
         return ToActionResult(result);

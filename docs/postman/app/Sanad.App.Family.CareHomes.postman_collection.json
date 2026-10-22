@@ -160,7 +160,7 @@
               "type": "noauth"
             },
             "url": "{{baseUrl}}/api/v1/care-homes/discovery/{{careHomeDiscoveryId}}",
-            "description": "Use careHomeDiscoveryId from a guarded disposable fixture. Detail includes the approved address, admission conditions, amenities, medical services, and active room-type cards; it does not expose private or resident data. Authenticated callers additionally receive contactUserId (the facility owner's user id) for opening a booking-less direct chat; anonymous callers receive null. Optional expectedCareHomeEnglishName and expectedStartingFromMonthlyPriceEgp variables enable exact fixture assertions."
+            "description": "Use careHomeDiscoveryId from a guarded disposable fixture. Detail includes the approved address, admission conditions, amenities, medical services, and active room-type cards; it does not expose private or resident data. Authenticated callers additionally receive contactUserId (the facility owner's user id) for opening a booking-less direct chat; anonymous callers receive null. Optional expectedCareHomeEnglishName and expectedStartingFromMonthlyPriceEgp variables enable exact fixture assertions. The detail also exposes cancellationTerms: while the Owner-approved care-home refund policy ships dormant this is null (bookings keep the legacy schedule); after activation it carries the facility's published tiers ({refundPercentage, deadlineHoursBeforeStart}) — the exact terms a booking made at that moment would snapshot."
           },
           "event": [
             {
@@ -337,7 +337,8 @@
               "script": {
                 "exec": [
                   "pm.test('checkout authored response', () => pm.expect([200, 400, 401, 404, 409, 503]).to.include(pm.response.code));",
-                  "if (pm.response.code === 200) pm.collectionVariables.set('careHomeBookingId', pm.response.json().id);"
+                  "if (pm.response.code === 200) pm.collectionVariables.set('careHomeBookingId', pm.response.json().id);",
+                  "if (pm.response.code === 200) pm.test('booking snapshots its refund policy', () => { pm.expect(pm.response.json().refundPolicyVersion).to.be.a('number'); pm.expect(pm.response.json().cancellationTerms).to.satisfy(t => t === null || Array.isArray(t)); });"
                 ]
               }
             }
@@ -561,7 +562,7 @@
     },
     {
       "name": "04. Family cancellation",
-      "description": "Requires separate disposable bookings in the indicated states. Family cancellation before recorded check-in refunds totalAmount; after recorded check-in it refunds 50%. Owner cancellation of an accepted stay refunds the full amount. Admin recovery requires a failed or externally completed refund. No requests reset or seed the database.",
+      "description": "Requires separate disposable bookings in the indicated states. Family cancellation before recorded check-in refunds totalAmount; after recorded check-in it refunds 50%. Owner cancellation of an accepted stay refunds the full amount. Admin recovery requires a failed or externally completed refund. No requests reset or seed the database. Each booking response carries refundPolicyVersion: version 1 is the legacy rule described here (full before check-in, half after, AwayFromZero rounding) and stays in force while the care-home refund policy ships dormant; version 2 decides from the facility's snapshotted cancellation terms or the clause-2 default schedule, and a zero-award cancellation then leaves the booking Cancelled and Paid with no refund entry (the facility retains the money). Under version 2 a cancellation after a recorded check-in refunds nothing: delivered care is not refundable, wherever the cancellation act sits on the window. If the gateway cannot confirm a refund outcome the response carries the stable CareHomes.Refund.OutcomeAmbiguous code and only an administrator can reconcile the attempt; the cancellation itself stays recorded.",
       "item": [
         {
           "name": "Family cancels before check-in",
@@ -604,7 +605,7 @@
               "mode": "none"
             },
             "url": "{{baseUrl}}/api/v1/family/care-home-bookings/{{hc035FamilyCheckedInBookingId}}/cancel",
-            "description": "Returns 50% of totalAmount after actual facility check-in is recorded; checkout must not yet be recorded."
+            "description": "Returns 50% of totalAmount after actual facility check-in is recorded; checkout must not yet be recorded. This is the version-1 rule; under version 2 a cancellation after a recorded check-in refunds nothing (delivered service)."
           }
         }
       ]

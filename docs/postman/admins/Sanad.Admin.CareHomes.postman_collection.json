@@ -53,6 +53,14 @@
       "value": ""
     },
     {
+      "key": "hc035AmbiguousRefundBookingId",
+      "value": ""
+    },
+    {
+      "key": "hc035AmbiguousRefundAttemptClaimId",
+      "value": ""
+    },
+    {
       "key": "careHomeProfileMediaId",
       "value": ""
     },
@@ -122,7 +130,7 @@
     },
     {
       "name": "02. Refund recovery",
-      "description": "Requires separate disposable bookings in the indicated states. Family cancellation before recorded check-in refunds totalAmount; after recorded check-in it refunds 50%. Owner cancellation of an accepted stay refunds the full amount. Admin recovery requires a failed or externally completed refund. No requests reset or seed the database.",
+      "description": "Requires separate disposable bookings in the indicated states. Family cancellation before recorded check-in refunds totalAmount; after recorded check-in it refunds 50% (version-1 rule; under version 2 a cancellation after a recorded check-in refunds nothing — delivered care is not refundable). Owner cancellation of an accepted stay refunds the full amount. Admin recovery requires a failed refund, an externally completed refund, or an unconfirmed refund attempt (Paymob.RefundOutcomeUnknown) parked under an ambiguity marker. The retry route only accepts a failed refund; reconcile clears the marker or recovers an interrupted claim using only verified evidence. No requests reset or seed the database.",
       "item": [
         {
           "name": "Admin retries failed refund",
@@ -152,6 +160,24 @@
             },
             "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035ManualRefundBookingId}}/refund/record-completed",
             "description": "Records completion only; this endpoint does not call Paymob. SuperAdmin/SupportAdmin only."
+          }
+        },
+        {
+          "name": "Admin reconciles an unconfirmed refund attempt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedAttemptClaimId\": \"{{hc035AmbiguousRefundAttemptClaimId}}\",\n  \"refundDidMove\": false,\n  \"verifiedProviderReference\": null,\n  \"evidence\": \"Provider console query confirms no refund was issued for the attempt\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035AmbiguousRefundBookingId}}/refund/reconcile",
+            "description": "Clears the refund-ambiguity marker (Paymob.RefundOutcomeUnknown, or a refund call cancelled/timed out before its outcome was read). expectedAttemptClaimId is the refundAttemptClaimId read from the Admin booking detail response (GET /api/v1/admin/care-homes/bookings/{bookingId}) and is a compare-and-swap key: an absent (empty) id returns 400 CareHomes.RefundReconciliation.InvalidAttemptClaim, and a mismatch with the booking's current attempt returns 409 CareHomes.RefundReconciliation.AttemptMismatch so a stale operator never reconciles a different attempt than the one verified. refundDidMove must state what the operator verified: true completes the recorded award exactly once, discharges the held claim, and requires verifiedProviderReference; false returns the booking to the retryable failed-refund state; the latest attempt's record is retained as the audit trail (a later ambiguous attempt overwrites it; isRefundOutcomeAmbiguous stays the authoritative gate). A claimed attempt with no recorded provider outcome is never reconcilable here: it returns 409 CareHomes.RefundReconciliation.AttemptInconclusive (recovery awaits the queued provider attempt-liveness seam). Blank evidence returns 400 CareHomes.RefundReconciliation.EvidenceRequired; evidence overflowing the composed 2000-character clearance column returns 400 CareHomes.RefundReconciliation.EvidenceTooLong; a concurrent writer recovering first returns 409 CareHomes.RefundReconciliation.ConcurrencyConflict; a booking with nothing to reconcile returns CareHomes.RefundReconciliation.NoWindowToReconcile. SuperAdmin/SupportAdmin only."
           }
         }
       ]
@@ -185,7 +211,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}",
-            "description": "Returns ownerArabicName/ownerEnglishName, revisions, document metadata and review history without private storage keys. Each revision carries ordered media metadata (id, kind, position, contentType, length, uri pointing at the Admin media file route). Each history entry carries actorArabicName/actorEnglishName and actorCurrentRoles (current account roles at read time, not historical roles; nulls when the identity is missing or anonymized). Unknown IDs return 404 CareHomes.Admin.ApplicationNotFound."
+            "description": "Returns ownerArabicName/ownerEnglishName, revisions, document metadata and review history without private storage keys. Each revision carries ordered media metadata (id, kind, position, contentType, length, uri pointing at the Admin media file route) and its draft projection, which now includes cancellationTerms ({tiers:[{refundPercentage, deadlineHoursBeforeStart}]}, or null when the facility publishes no structured terms) so reviewers approve the same terms the booking flow snapshots (clause 6, decision #9). Each history entry carries actorArabicName/actorEnglishName and actorCurrentRoles (current account roles at read time, not historical roles; nulls when the identity is missing or anonymized). Unknown IDs return 404 CareHomes.Admin.ApplicationNotFound."
           },
           "event": [
             {
@@ -500,7 +526,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{careHomeBookingId}}",
-            "description": "Returns persisted booking/charge/payment/refund/check-in/out facts and assignment/dispute history. Does not expose clinical intake, care notes, contact fields, or payment credentials. Unknown booking returns 404 CareHomes.Bookings.NotFound. Authenticated runtime evidence is not claimed by this authored request."
+            "description": "Returns persisted booking/charge/payment/refund/check-in/out facts and assignment/dispute history, plus the refund-policy/ambiguity surface: refundPolicyVersion, refundAttemptClaimId (the compare-and-swap key the refund reconcile call must present), isRefundOutcomeAmbiguous, isRefundAttemptInFlight, and the latest attempt's refundAmbiguityAwardAmount/reason/raisedOnUtc/clearedOnUtc. Read refundAttemptClaimId here to build the reconcile request — never guess it. Does not expose clinical intake, care notes, contact fields, or payment credentials. Unknown booking returns 404 CareHomes.Bookings.NotFound. Authenticated runtime evidence is not claimed by this authored request."
           },
           "event": [
             {

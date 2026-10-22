@@ -13,7 +13,7 @@ only through the guarded Bruno flow on disposable targets.
   `Sanad.App.{Chat, Community, Caregiver, Caregiver.Operations, Elderly,
   Family, Family.Operations, Family.CareHomes, Library, Public}`.
 - `admins/` — admin surfaces: `Sanad.Admin.{CareHomes, Chat, Community,
-  Finance}` plus the general `Sanad.Admin` collection (incl. the Library CMS folder).
+  Families, Finance, Ratings, Rentals}` plus the general `Sanad.Admin` collection (incl. the Library CMS folder).
 - `care-homes/` — the original Care Homes slice collections (`Sanad.CareHomes{,
   .Owner, .Finance}`) plus its [README](care-homes/README.md).
 

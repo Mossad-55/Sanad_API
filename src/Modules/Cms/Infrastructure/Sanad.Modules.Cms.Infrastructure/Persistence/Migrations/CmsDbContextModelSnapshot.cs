@@ -91,13 +91,11 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                         .HasColumnName("created_on_utc");
 
                     b.Property<string>("SupportEmail")
-                        .IsRequired()
                         .HasMaxLength(254)
                         .HasColumnType("character varying(254)")
                         .HasColumnName("support_email");
 
                     b.Property<string>("SupportPhone")
-                        .IsRequired()
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
                         .HasColumnName("support_phone");

@@ -40,6 +40,15 @@ served anonymously for approved facilities; anything else returns `404`.
 Room photos are served the same way under
 `.../rooms/{roomId}/media/{mediaId}/file`.
 
+Detail also exposes `cancellationTerms`. While the Owner-approved care-home
+refund policy ships dormant this field is `null`: bookings keep the pre-policy
+schedule, so the page does not advertise terms no booking would receive. After
+activation it carries the facility's published structured terms as
+`[{ "refundPercentage": 0-100, "deadlineHoursBeforeStart": 0-8760 }]` — the
+exact tiers a booking made at that moment snapshots (clause 6; decisions #7,
+#9, #10). Facilities with no published terms stay `null` and the clause-2
+default schedule governs.
+
 The public contract excludes contact details, owner identity, private
 documents/storage keys, review history, availability/capacity, room
 instances/beds, and resident clinical data.

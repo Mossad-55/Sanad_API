@@ -153,6 +153,173 @@ while carrying forward its effective platform-fee rate. Use the Finance routes
 for new configuration. Existing subscription-tax records and charge/invoice
 records are preserved; this adapter does not retroactively rewrite snapshots.
 
+## Reviewed complaints and subscription refunds
+
+These routes require the `RefundWorkflowAdmin` policy: **SuperAdmin or
+SupportAdmin** (normal access). FinanceAdmin is deliberately excluded, and no
+app audience gains access. The two roles are kept apart inside the application
+seam: SupportAdmin receives, investigates and reads; **only SuperAdmin** approves
+or refuses a reviewed financial award. The verdict routes additionally carry the
+`SuperAdminOnly` policy, and the handlers re-check the actor's account type, so
+the split cannot be bypassed by reaching a handler directly.
+
+### Reviewed quality complaints (clause 5)
+
+A quality complaint is a **reviewed outcome**, never an automatic full refund.
+The complaint case records the investigation and its verdict; the money movement
+an approved verdict produces is appended to the case's append-only ledger under
+the same `refundCaseId`, so the review and its money movement are joined by a
+plain Guid correlation key with no cross-context relationship.
+
+```text
+POST /api/v1/admin/finance/complaint-reviews
+GET  /api/v1/admin/finance/complaint-reviews?state=&familyId=
+GET  /api/v1/admin/finance/complaint-reviews/{complaintReviewId}
+GET  /api/v1/admin/finance/complaint-reviews/by-refund-case/{refundCaseId}
+POST /api/v1/admin/finance/complaint-reviews/{complaintReviewId}/investigate
+POST /api/v1/admin/finance/complaint-reviews/{complaintReviewId}/approve
+POST /api/v1/admin/finance/complaint-reviews/{complaintReviewId}/refuse
+```
+
+Open a case with:
+
+```json
+{
+  "refundCaseId": "0198e2c1-3333-7777-8888-000000000001",
+  "familyId": "0198e2c1-1111-7777-8888-000000000009",
+  "reportingParty": 1,
+  "reportedOnUtc": "2026-10-05T09:00:00Z",
+  "visitedOnUtc": "2026-10-04T08:00:00Z",
+  "isSafetyConcern": false,
+  "description": "Caregiver arrived two hours late."
+}
+```
+
+The reporter is the authenticated administrator. `reportingParty` is `1` Family,
+`2` Caregiver, `3` CareHomeFacility, or `4` Staff. The reporting party, reporter,
+and timestamps are mandatory evidence. `timeliness` is `1` WithinWindow when
+reported within 48 hours of `visitedOnUtc`, `2` Late when reported later (still
+**accepted**, flagged for late review, with no automatic compensation promise),
+or `3` Safety when `isSafetyConcern` is true (never gated by the window).
+`reviewState` is `1` Received, `2` Investigating, `3` Resolved, or `4` Refused.
+
+`investigate` moves a Received case to Investigating, recording the investigator
+and time; only an Investigating case can be `approve`d or `refuse`d. Only a
+SuperAdmin may `approve` or `refuse` — a SupportAdmin (or FinanceAdmin) token is
+refused with `403 Finance.Complaint.SuperAdminRequired`. Approval takes an
+`awardMinorUnits` (a `long`, at least `0`; zero is valid and recorded as
+computed) and an optional `evidenceReference`:
+
+```json
+{
+  "approvedOnUtc": "2026-10-06T10:00:00Z",
+  "awardMinorUnits": 15000,
+  "decisionNote": "Reviewed and approved for a partial award.",
+  "evidenceReference": "support-case-000123"
+}
+```
+
+Approving records the SuperAdmin verdict **and** appends the resulting award as a
+single Approved **movement** — a pure movement record, never a stored balance —
+through the frozen `RefundLedger`, under the case's `refundCaseId` and in the same
+unit of work as the verdict, so approval is never itself completion. It starts
+the seven-business-day processing clock at `approvedOnUtc`. Refusal moves no
+money and appends no ledger entry. A negative award is `400
+Finance.Complaint.AmountInvalid`. The wider decision-#4 ceiling check across a
+family's other cases is a recorded cross-lane follow-up and is **not** enforced
+here. One review exists per refund case: opening a second returns `409
+Finance.Complaint.Conflict`. Other errors are `400 Finance.Complaint.Invalid` (a
+bad transition or invalid input) and `404 Finance.Complaint.NotFound`.
+
+### Subscription service-shutdown refunds
+
+An Ahlena service shutdown is a platform decision, not a family self-service
+action:
+
+```text
+POST /api/v1/admin/finance/subscription-refunds/service-shutdown
+```
+
+```json
+{
+  "subscriptionId": "0198e2c1-1111-7777-8888-000000000001",
+  "shutdownOnUtc": "2026-10-15T00:00:00Z",
+  "idempotencyKey": "shutdown-0198e2c1-1111-7777-8888-000000000001",
+  "evidenceReference": "Ahlena shutdown notice 2026-10-15"
+}
+```
+
+The response is the recorded outcome
+`{ refundCaseId, awardedMinorUnits, currency, outcome, isReplay }`. `outcome` is
+`3` ServiceShutdown. The prorated award is the unused portion of the current paid
+period (the time remaining from `shutdownOnUtc` to the period end, as a ratio of
+the whole period, applied to the **consideration settled for that period**). That
+base is the subscription's own current-period charge snapshot, which the initial
+capture and every renewal maintain and which a paid plan change updates to the
+target period's gross with the prorated credit already folded in. Renewals are
+therefore not summed all-time, the plan's list price is never used, and a paid
+plan change is not added on top of the period it was credited against. The caller
+supplies no money figures. The award is banker's-rounded (ToEven) and floored at
+zero. A shutdown at or after the period end may legitimately compute exactly zero
+and the zero award is recorded as computed. A non-UTC `shutdownOnUtc` is
+`400 Subscriptions.Refund.MalformedInput`; a non-current subscription is
+`409 Subscriptions.Refund.NotCurrent`; a missing subscription or a subscription
+with no settled period consideration is `404 Subscriptions.Refund.NothingToRefund`.
+Passing an `idempotencyKey` (≤200 characters) makes a retry replay the same
+recorded award with `isReplay: true`; the same key with different content is
+`409 Subscriptions.Refund.IdempotencyConflict`.
+
+## Refundable budget per capture
+
+Decision #4 ("never refund more than captured funds less previous refunds") is
+enforced cumulatively across the clause-9 cases, and decision #6 scopes the
+shutdown award to the unused portion of *that* paid period. Finance therefore
+keeps one budget row per **capture** (`finance.subscription_refund_budgets`,
+unique on `payment_attempt_id`), and every funded subscription refund — a
+duplicate charge (anchored on the attempt it corrects) and a service shutdown
+(anchored on the attempt that paid for the current period) — claims against that
+row. The same captured money therefore cannot be refunded twice, in either order,
+under different refund cases or different idempotency keys; per-key uniqueness
+alone would not serialize those.
+
+The scope is the capture, not the subscription, because the ceiling is what that
+period paid. A subscription-scoped budget seeded with lifetime captures would let
+money already consumed in an older period supply headroom for the current one —
+refunding a current-period duplicate charge and then half of the same current
+period would fit under a lifetime total while refunding the current period twice.
+`subscription_id` remains as an indexed audit column so all of a subscription's
+budgets stay reachable for reconciliation without widening any one ceiling.
+
+Accounting is reservation-based. An approval is claimed once, as in-flight
+exposure; a completion (`TransferConfirmed` / `CreditBalancePosted`) is the same
+money finally moving, so it is deliberately not claimed again — summing approved
+and completed ledger entries would count a single award twice. The cumulative
+claimed total and the captured capacity are written in the same unit of work as
+the ledger movement, on a single row whose `version` column is the optimistic
+concurrency token: two concurrent claims cannot both commit, and the loser gets
+`409 Finance.SubscriptionRefund.Conflict` (surfaced to the caller as
+`Subscriptions.Refund.FinanceRejected`) and retries. The unique index on
+`payment_attempt_id` covers the first-claim race. The capacity itself is a
+Families fact (what that attempt/period actually paid) and only ever grows; the
+claimed total is Finance's own and is never supplied by a caller, so no
+caller-trusted prior-refund offset exists.
+
+An award that would exceed the capture's remaining refundable funds is refused
+with `409 Subscriptions.Refund.ExceedsCaptured` rather than silently trimmed,
+because a trimmed duplicate charge would no longer be a full refund. Zero-piastre
+awards — including cancel-renewal — consume no capacity and create no budget row.
+
+Not covered by that budget: a quality-complaint award. It is scoped to its own
+complaint case through the complaint-review workflow, a case accepts at most one
+funded award (a second approval is `409 Finance.Complaint.Conflict`), and whether
+complaint compensation outside a specific capture should be capped remains an
+Owner decision.
+
+The family-facing duplicate-charge refund
+(`POST /api/v1/family/subscriptions/refunds/duplicate-charge`) and the optional
+cancel-renewal idempotency key are documented in
+[family subscriptions](../app/families/subscriptions.md#subscription-cancellation-refunds-and-shutdown).
+
 ## Migration and startup safety
 
 The Finance schema is introduced by `20261002210606_AddPlatformChargeRulesEfMetadata`.
@@ -161,6 +328,15 @@ The related Family snapshot migration is:
 ```text
 20261002210659_AddPlatformChargeSnapshotMetadata
 ```
+
+The reviewed-complaint and subscription-refund tables were added by the additive
+Finance migration `20261022230000_AddComplaintReviewsAndSubscriptionRefundRequests`
+(tables `finance.complaint_reviews`, `finance.subscription_refund_requests` with
+its unique `(family_id, idempotency_key)` index and its `subscription_id`
+correlation column, and `finance.subscription_refund_budgets` with its unique
+`payment_attempt_id` index and non-unique `subscription_id` audit index). It is a
+files-only slot authored after `20261022210000_CreateFinanceMoneyCore` and is
+**not** applied by this change.
 
 In Development, Finance migration startup remains opt-in through
 `FinanceMigrations:ApplyOnStartup` (default `false`) so local host tests can

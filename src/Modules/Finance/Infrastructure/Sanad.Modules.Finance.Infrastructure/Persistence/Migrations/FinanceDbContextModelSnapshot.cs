@@ -67,6 +67,154 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.ComplaintReview", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("approved_by_user_id");
+
+                    b.Property<DateTime?>("ApprovedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_on_utc");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("decision_note");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("description");
+
+                    b.Property<string>("EvidenceReference")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("evidence_reference");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<DateTime?>("InvestigationStartedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("investigation_started_on_utc");
+
+                    b.Property<Guid?>("InvestigatorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("investigator_user_id");
+
+                    b.Property<DateTime>("ReportedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reported_on_utc");
+
+                    b.Property<Guid>("ReportedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reported_by_user_id");
+
+                    b.Property<int>("ReportingParty")
+                        .HasColumnType("integer")
+                        .HasColumnName("reporting_party");
+
+                    b.Property<Guid>("RefundCaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_case_id");
+
+                    b.Property<Guid?>("RefusedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refused_by_user_id");
+
+                    b.Property<DateTime?>("RefusedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("refused_on_utc");
+
+                    b.Property<int>("State")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
+
+                    b.Property<int>("Timeliness")
+                        .HasColumnType("integer")
+                        .HasColumnName("timeliness");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.Property<DateTime?>("VisitedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("visited_on_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RefundCaseId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_complaint_reviews_refund_case_id");
+
+                    b.HasIndex("FamilyId", "ReportedOnUtc")
+                        .HasDatabaseName("ix_complaint_reviews_family_reported_on_utc");
+
+                    b.HasIndex("State", "ReportedOnUtc")
+                        .HasDatabaseName("ix_complaint_reviews_state_reported_on_utc");
+
+                    b.ToTable("complaint_reviews", "finance", t =>
+                        {
+                            t.HasCheckConstraint("ck_complaint_reviews_reporting_party", "reporting_party IN (1, 2, 3, 4)");
+
+                            t.HasCheckConstraint("ck_complaint_reviews_resolution_attributable", "(state <> 3 OR (approved_by_user_id IS NOT NULL AND approved_on_utc IS NOT NULL)) AND (state <> 4 OR (refused_by_user_id IS NOT NULL AND refused_on_utc IS NOT NULL))");
+
+                            t.HasCheckConstraint("ck_complaint_reviews_single_verdict", "NOT (approved_on_utc IS NOT NULL AND refused_on_utc IS NOT NULL)");
+
+                            t.HasCheckConstraint("ck_complaint_reviews_state", "state IN (1, 2, 3, 4)");
+
+                            t.HasCheckConstraint("ck_complaint_reviews_timeliness", "timeliness IN (1, 2, 3)");
+                        });
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.CreditBalance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Balance")
+                        .IsConcurrencyToken()
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("balance");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamilyId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_credit_balances_family_id");
+
+                    b.ToTable("credit_balances", "finance", t =>
+                        {
+                            t.HasCheckConstraint("ck_credit_balances_balance_non_negative", "balance >= 0");
+                        });
+                });
+
             modelBuilder.Entity("Sanad.Modules.Finance.Domain.PlatformChargeRule", b =>
                 {
                     b.Property<Guid>("Id")
@@ -243,6 +391,222 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
 
                             t.HasCheckConstraint("ck_platform_control_states_version", "version > 0");
                         });
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.RefundLedger", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("RefundCaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_case_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RefundCaseId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_refund_ledgers_refund_case_id");
+
+                    b.ToTable("refund_ledgers", "finance");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.RefundLedgerEntry", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<int>("EntryType")
+                        .HasColumnType("integer")
+                        .HasColumnName("entry_type");
+
+                    b.Property<string>("EvidenceReference")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("evidence_reference");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_on_utc");
+
+                    b.Property<string>("ProviderReference")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider_reference");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("entry_sequence");
+
+                    b.Property<Guid>("RefundCaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_case_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("OccurredOnUtc")
+                        .HasDatabaseName("ix_refund_ledger_entries_occurred_on_utc");
+
+                    b.HasIndex("RefundCaseId")
+                        .HasDatabaseName("ix_refund_ledger_entries_refund_case_id");
+
+                    b.HasIndex("RefundCaseId", "Sequence")
+                        .IsUnique()
+                        .HasDatabaseName("ux_refund_ledger_entries_case_sequence");
+
+                    b.ToTable("refund_ledger_entries", "finance", t =>
+                        {
+                            t.HasCheckConstraint("ck_refund_ledger_entries_amount_precision", "amount = round(amount, 2)");
+                            t.HasCheckConstraint("ck_refund_ledger_entries_entry_type", "entry_type IN (1, 2, 3, 4, 5, 6, 7, 8)");
+                        });
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.SubscriptionRefundBudget", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("CapturedMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("captured_minor_units");
+
+                    b.Property<long>("ClaimedMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("claimed_minor_units");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<Guid>("PaymentAttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_attempt_id");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FamilyId")
+                        .HasDatabaseName("ix_subscription_refund_budgets_family_id");
+
+                    b.HasIndex("PaymentAttemptId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_subscription_refund_budgets_payment_attempt_id");
+
+                    b.HasIndex("SubscriptionId")
+                        .HasDatabaseName("ix_subscription_refund_budgets_subscription_id");
+
+                    b.ToTable("subscription_refund_budgets", "finance", t =>
+                        {
+                            t.HasCheckConstraint("ck_subscription_refund_budgets_captured", "captured_minor_units >= 0");
+
+                            t.HasCheckConstraint("ck_subscription_refund_budgets_claimed", "claimed_minor_units >= 0");
+
+                            t.HasCheckConstraint("ck_subscription_refund_budgets_version", "version > 0");
+
+                            t.HasCheckConstraint("ck_subscription_refund_budgets_within_captured", "claimed_minor_units <= captured_minor_units");
+                        });
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.SubscriptionRefundRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("EvidenceReference")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("evidence_reference");
+
+                    b.Property<Guid>("FamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_id");
+
+                    b.Property<string>("IdempotencyKey")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<int>("Reason")
+                        .HasColumnType("integer")
+                        .HasColumnName("reason");
+
+                    b.Property<Guid>("RefundCaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_case_id");
+
+                    b.Property<long>("RequestedAmountMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("requested_amount_minor_units");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("RefundCaseId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_subscription_refund_requests_refund_case_id");
+
+                    b.HasIndex("SubscriptionId")
+                        .HasDatabaseName("ix_subscription_refund_requests_subscription_id");
+
+                    b.HasIndex("FamilyId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_subscription_refund_requests_family_idempotency_key");
+
+                    b.ToTable("subscription_refund_requests", "finance", t =>
+                        {
+                            t.HasCheckConstraint("ck_subscription_refund_requests_amount", "requested_amount_minor_units >= 0");
+
+                            t.HasCheckConstraint("ck_subscription_refund_requests_key_length", "char_length(idempotency_key) BETWEEN 1 AND 200");
+
+                            t.HasCheckConstraint("ck_subscription_refund_requests_reason", "reason IN (1, 2, 3)");
+                        });
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.RefundLedgerEntry", b =>
+                {
+                    b.HasOne("Sanad.Modules.Finance.Domain.RefundLedger", null)
+                        .WithMany("Entries")
+                        .HasForeignKey("RefundCaseId")
+                        .HasPrincipalKey("RefundCaseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

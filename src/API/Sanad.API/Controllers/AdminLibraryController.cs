@@ -235,6 +235,13 @@ public sealed class AdminLibraryController(ISender sender, IFileStorage fileStor
     public async Task<IActionResult> ArchiveContent(Guid id, CancellationToken cancellationToken = default) =>
         ToActionResult(await sender.Send(new ArchiveLibraryContentCommand(id), cancellationToken));
 
+    [HttpPost("content/{id:guid}/restore")]
+    [ProducesResponseType(typeof(LibraryAdminContentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> RestoreContent(Guid id, CancellationToken cancellationToken = default) =>
+        ToActionResult(await sender.Send(new RestoreLibraryContentCommand(id), cancellationToken));
+
     private async Task<Result<StoredFile>> SaveCoverAsync(IFormFile? file, CancellationToken cancellationToken)
     {
         if (file is null || file.Length <= 0)

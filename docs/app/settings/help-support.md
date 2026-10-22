@@ -131,3 +131,6 @@ Another user's ticket id is `404`, never data.
 
 FAQ create/update/activate/deactivate and the global support-contact pair are
 maintained under `/api/v1/admin/help-center` — see `docs/admin/help-center.md`.
+Each contact value is optional there: an unconfigured card reads back as `200`
+with `supportPhone` and `supportEmail` both `null`, and the app hides whichever
+options the admin has left unset.

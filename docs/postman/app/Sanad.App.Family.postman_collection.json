@@ -2133,7 +2133,7 @@
               ],
               "url": "{{baseUrl}}/api/v1/caregivers?page=1&pageSize=10&type=1"
             },
-            "description": "Requires any Normal JWT (family token works). Paged Active caregivers with filters."
+            "description": "Requires any Normal JWT (family token works). Paged Active caregivers with filters. `search`, `type`, `gender`, `governorateId`, `cityId`, `areaId`, `specializationId`, `availability`, `minPrice`/`maxPrice`, `minRating`, `minExperienceYears`, `page`/`pageSize`. `governorateId`/`cityId`/`areaId` filter on the caregiver's working-area selections (active caregivers with a selection in that governorate/city/area). The card `avatarUrl` is the stored private storage key, not a fetchable URL - use the caregiver avatar route to load the image."
           },
           {
             "name": "Caregiver public profile",
@@ -2170,6 +2170,20 @@
               "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/quote?shiftType=1&startTime=10:00&endTime=12:00"
             },
             "description": "Requires a Normal JWT. Server-side quote — the exact engine checkout uses. Unknown or inactive caregiver IDs return 404 `Caregivers.Discovery.CaregiverNotFound`; unconfigured pricing or product/type mismatch returns 409 `Caregivers.Discovery.QuoteNotAvailable`."
+          },
+          {
+            "name": "Caregiver avatar",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{ familyToken }}"
+                }
+              ],
+              "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/photo"
+            },
+            "description": "Requires a Normal JWT. Streams the discoverable caregiver's avatar image bytes (the S3 approved photo route, lock #32). Never returns the stored private `avatar_url` key. A non-active or hidden caregiver, or a caregiver with no stored avatar / unreadable file, returns the same generic 404 `Caregivers.Photo.NotFound`."
           }
         ]
       },
@@ -2310,7 +2324,8 @@
               "body": {
                 "mode": "raw",
                 "raw": "{\n  \"reason\": \"ظرف طارئ\"\n}"
-              }
+              },
+              "description": "Family Owner or Editor only. From Confirmed, a valid reasonCategory and non-blank reason are mandatory (400 Bookings.Cancel.ReasonCategoryRequired / Bookings.Cancel.ReasonCategoryInvalid / Bookings.Cancel.ReasonRequired). The refund is decided by the policy revision the booking was sold under: revision 1 refunds in full before 60 minutes from the server-recorded acceptance and nothing after; revision 2 refunds in full at or before 24 hours before the scheduled start, 50% after that until the visit starts, and nothing once it has started. A multi-session package refunds only the sessions that were not delivered, and a partial award is reported as a partial entitlement, never as a full refund. The award never exceeds captured minus already refunded (409 Bookings.RefundExceedsCeiling), a policy-denied cancellation is 409 Bookings.NoRefundDue, and a provider movement that did not complete is 503 Bookings.RefundSettlementIncomplete with the award still recorded for an ops retry. If the gateway could not confirm the refund outcome, the booking is left with an ambiguity marker (409 Bookings.RefundOutcomeAmbiguous): no further refund is attempted on it until an administrator reconciles the attempt with evidence."
             }
           },
           {
@@ -2645,11 +2660,41 @@
                 {
                   "key": "Authorization",
                   "value": "Bearer {{ familyToken }}"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
                 }
               ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"idempotencyKey\": \"cancel-0198e2c1-1111-7777-8888-000000000001\"\n}"
+              },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/cancel-renewal"
             },
-            "description": "Owner only; success 204 disables renewal while access continues through CurrentPeriodEndsOnUtc. Repeat cancellation returns 409."
+            "description": "Owner only; success 204 disables renewal while access continues through CurrentPeriodEndsOnUtc. A repeat cancellation WITHOUT a key returns 409 Subscriptions.CancelRenewal.AlreadyRequested. The body is optional: when idempotencyKey is supplied, the cancel-renewal outcome (retained access, zero refund for the current period) is recorded through shared Finance so it is attributable and distinct from a duplicate-charge refund and a shutdown proration. With a key, an already-cancelled renewal is NOT short-circuited — the recorder is idempotent, so replaying the same key with the same content returns the recorded outcome and the same key with different content returns 409 Subscriptions.Refund.IdempotencyConflict."
+          },
+          {
+            "name": "Refund duplicate subscription charge",
+            "request": {
+              "method": "POST",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{ familyToken }}"
+                },
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": {
+                "mode": "raw",
+                "raw": "{\n  \"paymentAttemptId\": \"0198e2c1-2222-7777-8888-000000000001\",\n  \"idempotencyKey\": \"dup-0198e2c1-2222-7777-8888-000000000001\",\n  \"evidenceReference\": \"Paymob double capture 000123\"\n}"
+              },
+              "url": "{{baseUrl}}/api/v1/family/subscriptions/refunds/duplicate-charge"
+            },
+            "description": "Owner only; refunds the FULL captured amount of one succeeded subscription payment attempt (never prorated). Returns 200 with { refundCaseId, awardedMinorUnits, currency, outcome 2 (DuplicateCharge), isReplay }. Errors: 403 Subscriptions.Refund.NotOwner, 404 Subscriptions.Refund.NothingToRefund (missing or not-succeeded attempt), 400 Subscriptions.Refund.MalformedInput for a non-UTC recordedOnUtc or an attempt with no server-side subscription link, 409 Subscriptions.Refund.IdempotencyConflict when the same idempotency key is reused with different content, Subscriptions.Refund.ExceedsCaptured when the full amount no longer fits what that attempt captured (a duplicate charge and a shutdown against the same paid period share one per-capture budget, so neither can refund the same captured money twice and an older period's funds supply no headroom). recordedOnUtc is an optional audit instant (defaults to now). A refund case is derived from the payment attempt, so a retry can never open a second case for one charge. Manual fixture only; do not replay against shared data."
           },
           {
             "name": "Re-enable subscription auto-renew",

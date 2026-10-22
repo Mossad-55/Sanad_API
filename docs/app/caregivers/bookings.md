@@ -39,7 +39,7 @@ When `App:TestUserSeed` is explicitly enabled in Development, the test seeder cr
 
 Past includes cancellations **by the family and by the caregiver**. `PendingPayment` family cancels still appear if they share this caregiver id (unpaid).
 
-List item: booking id, family/elderly ids, senior names, slot, `shiftType`, `status`, amount, `cancellationReason`, `cancelledOnUtc`, `refundState` (`1` NotApplicable, `2` Failed, `3` Succeeded, `4` NoRefundDue).
+List item: booking id, family/elderly ids, senior names, slot, `shiftType`, `status`, amount, `cancellationReason`, `cancelledOnUtc`, `refundState` (`1` NotApplicable, `2` Failed, `3` Succeeded, `4` NoRefundDue, `5` Pending).
 
 ### Detail
 
@@ -54,7 +54,7 @@ record members:
 | `elderly.gender` / `elderly.dateOfBirth` | int or `null` | The senior's stored gender and date of birth; `null` when the dependent row is gone. |
 | `elderly.healthNotes` | string or `null` | The free-text health notes the family stored on the dependent row. This is the **only** medical context a caregiver can read today (see the medical-context mapping below). |
 | `elderly.hasPhoto` | bool | The dependent has a stored photo. A caregiver has **no** route to those bytes, so no photo URL is published. |
-| `elderly.emergencyContact` | object or `null` | Always `null` for a caregiver. No emergency-contact access or status model exists, so none is invented and no caregiver access is added. |
+| `elderly.emergencyContact` | object or `null` | Always `null` on the detail. The emergency contact is published only through the live-window route `GET /api/v1/caregiver/bookings/{bookingId}/emergency-contact` (below), never on the detail read. |
 | `visitHistory` | array or `null` | The real reports recorded for **this** booking (the visit report and/or the medical report), newest first. `null` — not an empty array — when no report was recorded yet. |
 | `upcomingVisits` | array or `null` | **Always `null`.** The meaning of "upcoming" is undecided (the mobile team's MOB-09 question: the same booking, or the caregiver's other bookings), so no other or future booking is mapped as a visit and no synthetic schedule is produced. |
 | `familyReview` | object or `null` | The family's stored booking review: `id`, `bookingId`, `rating` (1–5), `comment`, `isAnonymous`, `createdOnUtc`. `null` when the family has not reviewed the booking. The review author is never published, so an anonymous review stays anonymous. |
@@ -80,19 +80,22 @@ from it (see [payout amounts](payouts.md)).
 |---|---|---|
 | `GET /api/v1/caregiver/bookings/{bookingId}` | `elderly.healthNotes` (free text stored by the family on the dependent row) | `CaregiverAccess`; the booking must belong to the calling caregiver, otherwise `404 Bookings.NotFound`. |
 | `GET /api/v1/caregiver/bookings/medical-reports/{reportId}/photo` | the medical report photo bytes | `CaregiverAccess`; only the **submitting** caregiver (`403 Reports.Medical.AccessDenied` otherwise), and only when the report has a photo (`404 Reports.Medical.PhotoNotFound`). |
+| `GET /api/v1/caregiver/bookings/{bookingId}/emergency-contact` | `{ name, relationship, phoneNumber }` or `null` | `CaregiverAccess`; the booking must belong to the calling caregiver (`404 Bookings.NotFound`), and the visit must be live — `InProgress`, or `Confirmed` and not yet started — otherwise `403 Bookings.EmergencyContactNotAllowed`. |
+| `GET /api/v1/caregiver/bookings/{bookingId}/visit-history` | the visit/medical report items of this booking | `CaregiverAccess`; the booking must belong to the calling caregiver (`404 Bookings.NotFound`). `null` when no report was recorded. |
+| `GET /api/v1/caregiver/dependents/{dependentId}/medical-profile` | the structured medical profile | `CaregiverAccess` **plus an active medical-access grant** to the caller carrying `canViewRecords`, rechecked on every read (`403 MedicalAccess.RecordAccessDenied`; `404 MedicalAccess.NotFound` for an unknown dependent). |
 
 The dependent's **structured** medical profile (blood type, height, weight,
-chronic conditions, allergies, medical history) and **medications** are
-family-scoped only: `GET`/`PUT /api/v1/family/dependents/{dependentId}/medical-profile`
+chronic conditions, allergies, medical history) is readable by a caregiver
+**only through an active grant** for that dependent whose `granteeUserId` is the
+caller and which carries `canViewRecords` — the gate is re-evaluated on every
+read and takes effect immediately on revocation. **Medications** stay
+family-scoped: `GET`/`PUT /api/v1/family/dependents/{dependentId}/medical-profile`
 and `/api/v1/family/dependents/{dependentId}/medications` require the
-`FamilyAccess` policy and family membership. The medical-access grant model
-exists (`/api/v1/family/dependents/{dependentId}/medical-access-grants`), but
-**no caregiver route reads those records through a grant today** — so the
-caregiver booking detail publishes no medical profile and no medication. See
+`FamilyAccess` policy and family membership, and no caregiver route reads
+medications. See
 [medical profile](../families/medical-profile.md) and
-[medical access](../families/medical-access.md) for the exact mapping. A
-caregiver-facing medical-record read is a separate, authorized decision, not
-part of this contract.
+[medical access](../families/medical-access.md) for the exact mapping. The
+caregiver booking detail itself publishes no medical profile and no medication.
 
 When a cancellation fact was recorded for the booking, the caregiver detail read also fills five additive members from that persisted fact; without a fact they stay `null`:
 
@@ -104,7 +107,7 @@ When a cancellation fact was recorded for the booking, the caregiver detail read
 | `refundEntitlement` | `1` NoRefundDue, `2` FullCapturedRefund |
 | `refundDecisionReason` | `1` NothingCaptured, `2` FamilyCancellationBeforeAcceptance, `3` CaregiverRejectionBeforeAcceptance, `4` CaregiverCancellationAfterAcceptance, `5` FamilyCancellationWithinGraceWindow, `6` FamilyCancellationOutsideGraceWindow |
 
-With a fact present, `refundState` is resolved from the fact, so a policy denial reads `4` `NoRefundDue` rather than a failed refund. The booking's own note (`ReasonNote`), the internal `isCaregiverIncident` flag, a status ledger, an event history and any derived timeline are never exposed; the added values are read straight from the stored row, and no amount, eligibility rule or existing field changes. The caregiver-only boundary is unchanged: another caregiver's booking is still `404 Bookings.NotFound`.
+With a fact present, `refundState` is resolved from the fact, so a policy denial reads `4` `NoRefundDue` rather than a failed refund. For a revision-2 fact the state is derived from durable settled money against the award the policy owed — `3` `Succeeded` only once that award is recorded as refunded, `2` `Failed` when the provider refused it, and `5` `Pending` while the attempt is in flight or its outcome is unconfirmed. The booking's own note (`ReasonNote`), the internal `isCaregiverIncident` flag, a status ledger, an event history and any derived timeline are never exposed; the added values are read straight from the stored row, and no amount, eligibility rule or existing field changes. The caregiver-only boundary is unchanged: another caregiver's booking is still `404 Bookings.NotFound`.
 
 ## Actions
 
@@ -113,13 +116,37 @@ With a fact present, `refundState` is resolved from the fact, so a policy denial
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/accept` | — | Accept a paid booking awaiting approval; `204` |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/decline` | `{ "reason": string ≤ 500 }` | Decline; `204`, with a full refund attempted when a provider transaction reference exists |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/cancel` | `{ "reason": string?, "reasonCategory": int? }` | Cancel an accepted booking before the visit starts |
+| `POST` | `/api/v1/caregiver/bookings/{bookingId}/provider-outcome` | `{ "outcomeReason": int, "reason": string, "reasonCategory": int }` | Record a provider cancellation or no-show on an accepted booking |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/start` | — | Mark the visit as started |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/complete` | `{ "notes": string? ≤ 2000 }` | Complete the visit with optional notes |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/visit-report` | Visit report fields | Submit one immutable report after completion; see [family reports](../families/reports.md) |
 | `POST` | `/api/v1/caregiver/bookings/{bookingId}/medical-report` | multipart `report` JSON + optional `photo` | Medical caregiver only; submit one immutable report after completion |
+| `GET` | `/api/v1/caregiver/bookings/{bookingId}/emergency-contact` | — | Read the dependent's stored emergency contact across the live visit window only |
+| `GET` | `/api/v1/caregiver/bookings/{bookingId}/visit-history` | — | Read this booking's recorded visit/medical report history |
 | `GET` | `/api/v1/caregiver/bookings/medical-reports/{reportId}/photo` | — | Inline private photo read by the submitting caregiver |
 
 For a `Confirmed` booking, caregiver cancellation requires a valid reason category and a non-blank note. The policy is evaluated before mutation; a full captured refund is attempted when entitled, while `NoRefundDue` makes no provider call. The cancellation fact is recorded atomically. A cancellation outside the allowed state returns `409 Bookings.Domain.InvalidOperation`.
+
+### Provider outcome
+
+`POST /api/v1/caregiver/bookings/{bookingId}/provider-outcome`
+
+```json
+{ "outcomeReason": 2, "reason": "لم يحضر مقدم الرعاية", "reasonCategory": 5 }
+```
+
+A caregiver records what happened when **they** could not deliver the care. This is separate from `cancel`: it exists so a provider-side failure is attested as a named outcome rather than as a cancellation reason, and it always settles a **full** refund for the affected sessions.
+
+| `outcomeReason` | Meaning |
+|---|---|
+| `1` `ProviderCancelled` | The caregiver cancelled an accepted booking. Full refund. |
+| `2` `ProviderNoShow` | The caregiver did not appear. Full refund, and the family may take a replacement at no extra cost. |
+
+Only those two may be recorded here. Lateness beyond the threshold, recipient inaccessibility, safety cancellations and force majeure are platform findings, recorded by an administrator — a caregiver attesting one is `400 Bookings.Outcome.ReasonNotAllowed`. An undefined `outcomeReason` is `400 Bookings.Outcome.InvalidReason`.
+
+Because the booking was already accepted, the accepted-booking feedback shape is mandatory: `reasonCategory` must be a defined cancellation category and `reason` a non-blank note, otherwise `400 Bookings.Cancel.ReasonCategoryRequired` / `Bookings.Cancel.ReasonCategoryInvalid` / `Bookings.Cancel.ReasonRequired`. Only a `Confirmed` booking can record an outcome (`409 Bookings.Domain.InvalidOperation` otherwise), and a booking that already recorded one is `409 Bookings.Cancel.AlreadyProcessed`.
+
+The refund entitlement follows the policy revision the booking was **sold** under, and the awarded amount — not the whole captured amount — is what is sent to the gateway. A provider settlement that did not complete is `503 Bookings.RefundSettlementIncomplete`: the booking has transitioned and the award stays recorded for an ops retry. A refund whose outcome the gateway could not confirm leaves an **ambiguity marker** on the booking, and every further refund attempt on that booking is refused until an administrator reconciles it.
 
 ## Status rules
 
@@ -158,10 +185,19 @@ Accepting after the deadline returns `409 Bookings.Domain.InvalidOperation` — 
 | Code | HTTP | When |
 |---|---|---|
 | `Bookings.NotFound` | 404 | Booking id unknown **or not this caregiver**. |
+| `Bookings.EmergencyContactNotAllowed` | 403 | The emergency-contact read was attempted outside the live visit window (not `InProgress`, or `Confirmed` with the visit already started) or on a closed booking. |
+| `MedicalAccess.RecordAccessDenied` | 403 | The caregiver medical-profile read had no active grant to the caller carrying `canViewRecords`. |
+| `MedicalAccess.NotFound` | 404 | The caregiver medical-profile read named an unknown dependent. |
 | `Bookings.Domain.InvalidOperation` | 409 | Wrong status for the action, or acceptance window expired. |
 | `Bookings.Cancel.ReasonCategoryRequired` | 400 | Confirmed cancellation omitted the reason category. |
 | `Bookings.Cancel.ReasonCategoryInvalid` | 400 | Confirmed cancellation supplied an undefined category. |
 | `Bookings.Cancel.ReasonRequired` | 400 | Confirmed cancellation omitted a non-blank note. |
+| `Bookings.Outcome.InvalidReason` | 400 | `outcomeReason` is not a defined provider outcome. |
+| `Bookings.Outcome.ReasonNotAllowed` | 400 | A caregiver tried to attest an outcome only the platform may assert (lateness, inaccessibility, safety, force majeure). |
+| `Bookings.Cancel.AlreadyProcessed` | 409 | An outcome or cancellation was already recorded for this booking by a concurrent request. |
+| `Bookings.RefundExceedsCeiling` | 409 | The award would exceed the amount still refundable for the booking. |
+| `Bookings.RefundSettlementIncomplete` | 503 | The entitlement was recorded but the provider movement did not complete; the outstanding award is left for an ops retry. |
+| `Bookings.RefundOutcomeAmbiguous` | 409 | The gateway could not confirm a refund outcome; the booking carries an ambiguity marker and refuses every further refund until an administrator reconciles it. |
 
 ## Help Requests
 

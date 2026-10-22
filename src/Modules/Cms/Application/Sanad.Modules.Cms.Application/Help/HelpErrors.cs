@@ -8,9 +8,4 @@ public static class HelpErrors
         new(
             "Cms.Help.FaqNotFound",
             "FAQ entry was not found.");
-
-    public static readonly Error SupportContactNotFound =
-        new(
-            "Cms.Help.SupportContactNotFound",
-            "The global support contact has not been configured yet.");
 }

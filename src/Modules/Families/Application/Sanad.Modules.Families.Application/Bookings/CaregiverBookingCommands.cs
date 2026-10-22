@@ -105,44 +105,112 @@ public sealed class CaregiverDeclineBookingCommandHandler : ICommandHandler<Care
             BookingCancellationFeedback? feedback =
                 BookingCancellationFeedback.CreateOptionalNote(request.Reason);
 
-            var input = BookingCancellationPolicyInput.FromBooking(
-                booking,
-                BookingCancellationActorSide.Caregiver,
-                BookingCancellationAction.Reject,
-                request.UtcNow,
-                feedback);
-            var decision = BookingCancellationPolicy.Decide(input);
+            (BookingRefundDecision? scheduledStartDecision, BookingCancellationDecision? legacyDecision) =
+                BookingRefundPolicyDispatch.Decide(
+                    booking,
+                    BookingCancellationPolicyInput.FromBooking(
+                        booking,
+                        BookingCancellationActorSide.Caregiver,
+                        BookingCancellationAction.Reject,
+                        request.UtcNow,
+                        feedback),
+                    BookingRefundPolicyInput.ForCaregiverRejection(
+                        booking,
+                        request.UtcNow,
+                        feedback,
+                        allocations: booking.SessionAllocations.Count > 0
+                            ? booking.SessionAllocations
+                            : null));
 
             try
             {
                 booking.DeclineByCaregiver(request.Reason, request.UtcNow);
 
-                PaymentTransaction? paidTransaction = booking.PaymentTransactions.FirstOrDefault(
-                    t => t.Status == PaymentTransactionStatus.Succeeded
-                        && t.PaymobTransactionId is not null);
+                // Both revisions refund a rejection of an unaccepted booking in full; the
+                // revision-2 decision carries the amount, the revision-1 decision only the
+                // entitlement, so the revision-1 award is read from the booking's ceiling.
+                long awardedMinorUnits = scheduledStartDecision is not null
+                    ? scheduledStartDecision.AwardedMinorUnits
+                    : legacyDecision!.RefundEntitlement == BookingRefundEntitlement.FullCapturedRefund
+                        ? booking.RefundableCeilingMinorUnits()
+                        : 0L;
 
-                if (paidTransaction is not null)
-                {
-                    Result<string?> refund = await _paymobClient.RefundPaymentAsync(
-                        paidTransaction.PaymobTransactionId!,
-                        paidTransaction.Amount,
-                        cancellationToken);
-
-                    if (refund.IsSuccess)
-                    {
-                        booking.MarkRefunded(refund.Value, request.UtcNow);
-                    }
-                }
-
-                // The rejection fact commits in the same single save as the decline itself.
-                var fact = BookingCancellationFact.Create(
-                    booking.Id,
-                    request.ActorUserId,
-                    decision);
+                // The rejection fact is recorded before the external call, so the award is durable
+                // even if the process dies between the claim and the provider response.
+                BookingCancellationFact fact = scheduledStartDecision is not null
+                    ? BookingCancellationFact.Create(
+                        booking.Id,
+                        request.ActorUserId,
+                        scheduledStartDecision,
+                        feedback)
+                    : BookingCancellationFact.Create(booking.Id, request.ActorUserId, legacyDecision!);
                 await _cancellationFactRecorder.RecordAsync(fact, cancellationToken);
 
-                await _dbContext.SaveChangesAsync(cancellationToken);
+                // Claim + commit BEFORE the provider send: the committed claim is what makes the
+                // attempt exclusive, because a competing request with a stale concurrency token
+                // fails its own save and never reaches the provider.
+                Guid? claimId = null;
+
+                if (awardedMinorUnits > 0
+                    && BookingRefundSettlementExecutor.HasProviderCapture(booking))
+                {
+                    claimId = Guid.NewGuid();
+                    booking.ClaimRefundAttempt(claimId.Value, awardedMinorUnits, request.UtcNow);
+                }
+
+                try
+                {
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+                }
+                catch (DbUpdateConcurrencyException)
+                {
+                    return Result.Failure(
+                        new Error(
+                            "Bookings.Cancel.AlreadyProcessed",
+                            "This booking's refund was claimed by another request."));
+                }
+
+                // The award — never the whole captured amount — is what is sent to the gateway,
+                // and the executor is the one place that moves it and records the settled amount.
+                BookingRefundSettlement settlement = await BookingRefundSettlementExecutor.SettleWithProviderAsync(
+                    booking,
+                    awardedMinorUnits,
+                    _paymobClient,
+                    request.UtcNow,
+                    cancellationToken,
+                    claimId);
+
+                // A late provider confirmation survives a lost row race: the durable award is
+                // re-read and an already-recorded movement is treated as idempotent success.
+                if (!await BookingRefundPersistence.TrySaveClaimedOutcomeAsync(
+                        _dbContext,
+                        booking.Id,
+                        settlement.SettledMinorUnits,
+                        cancellationToken))
+                {
+                    return Result.Failure(BookingRefundSettlementErrors.SettlementIncomplete);
+                }
+
+                // Same legacy tolerance as the caregiver cancel endpoint: a gateway REFUSAL does
+                // not fail the decline — the booking transitioned and the fact records what the
+                // policy owed, so ops can retry the outstanding settlement. An UNCONFIRMED outcome
+                // is not tolerated: the booking carries the decision #17 marker and is surfaced.
+                if (settlement.Destination != BookingRefundDestination.None
+                    && !settlement.IsCompleted
+                    && booking.IsRefundOutcomeAmbiguous)
+                {
+                    return Result.Failure(
+                        settlement.Error ?? BookingRefundSettlementErrors.AmbiguousOutcome);
+                }
+
                 return Result.Success();
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result.Failure(
+                    new Error(
+                        "Bookings.Cancel.AlreadyProcessed",
+                        "This booking decline or its refund was already processed."));
             }
             catch (DbUpdateException exception) when (CancellationPersistenceGuard.IsFactUniqueViolation(exception))
             {
@@ -253,68 +321,115 @@ public sealed class CaregiverCancelBookingCommandHandler : ICommandHandler<Careg
                 feedback = BookingCancellationFeedback.CreateOptionalNote(request.Reason);
             }
 
-            // 3. Policy decision first — every rejection happens on an untouched aggregate
-            var input = BookingCancellationPolicyInput.FromBooking(
-                booking,
-                BookingCancellationActorSide.Caregiver,
-                BookingCancellationAction.Cancel,
-                request.UtcNow,
-                feedback);
-            var decision = BookingCancellationPolicy.Decide(input);
+            // 3. Policy decision first — every rejection happens on an untouched aggregate. Only the
+            //    legacy revision reaches the caregiver-cancel path today: the accepted-booking
+            //    caregiver cancellation is a full refund under both revisions, and a revision-2
+            //    booking takes the same full award through the scheduled-start policy.
+            (BookingRefundDecision? scheduledStartDecision, BookingCancellationDecision? legacyDecision) =
+                BookingRefundPolicyDispatch.Decide(
+                    booking,
+                    BookingCancellationPolicyInput.FromBooking(
+                        booking,
+                        BookingCancellationActorSide.Caregiver,
+                        BookingCancellationAction.Cancel,
+                        request.UtcNow,
+                        feedback),
+                    BookingRefundPolicyInput.ForCaregiverCancellation(
+                        booking,
+                        request.UtcNow,
+                        feedback,
+                        allocations: booking.SessionAllocations.Count > 0
+                            ? booking.SessionAllocations
+                            : null));
+
+            long awardedMinorUnits = scheduledStartDecision?.AwardedMinorUnits ?? 0;
+
+            // A revision-1 decision is amount-free; a full entitlement there means the whole
+            // captured amount, so the award is read from the booking's own ceiling.
+            if (scheduledStartDecision is null
+                && legacyDecision!.RefundEntitlement == BookingRefundEntitlement.FullCapturedRefund)
+            {
+                awardedMinorUnits = booking.RefundableCeilingMinorUnits();
+            }
 
             // 4. State transition — the aggregate's status guard stays authoritative
             booking.CancelByCaregiver(feedback?.Note ?? string.Empty, request.UtcNow);
 
-            // 5. Refund by entitlement: only a full-captured entitlement touches the provider
-            switch (decision.RefundEntitlement)
-            {
-                case BookingRefundEntitlement.FullCapturedRefund:
-                    {
-                        PaymentTransaction? paidTransaction = booking.PaymentTransactions.FirstOrDefault(
-                            t => t.Status == PaymentTransactionStatus.Succeeded
-                                && t.PaymobTransactionId is not null);
-
-                        if (paidTransaction is not null)
-                        {
-                            Result<string?> refund = await _paymobClient.RefundPaymentAsync(
-                                paidTransaction.PaymobTransactionId!,
-                                paidTransaction.Amount,
-                                cancellationToken);
-
-                            if (refund.IsSuccess)
-                            {
-                                booking.MarkRefunded(refund.Value, request.UtcNow);
-                            }
-                        }
-
-                        break;
-                    }
-
-                case BookingRefundEntitlement.NoRefundDue:
-                    // Policy denial (or nothing captured): no provider call, no status touch.
-                    break;
-
-                default:
-                    throw new System.Diagnostics.UnreachableException(
-                        $"Unexpected refund entitlement '{decision.RefundEntitlement}'.");
-            }
-
-            // 6. Record exactly one fact, after the refund attempt so the recorded
-            //    decision reflects the final state (immediate-refund success included)
-            var fact = BookingCancellationFact.Create(
-                booking.Id,
-                request.ActorUserId,
-                decision);
+            // 5. Record exactly one fact BEFORE the external call, so the award is durable even if
+            //    the process dies between the claim and the provider response.
+            BookingCancellationFact fact = scheduledStartDecision is not null
+                ? BookingCancellationFact.Create(booking.Id, request.ActorUserId, scheduledStartDecision, feedback)
+                : BookingCancellationFact.Create(booking.Id, request.ActorUserId, legacyDecision!);
             await _cancellationFactRecorder.RecordAsync(fact, cancellationToken);
 
-            // 7. Single save — booking mutation + fact commit atomically
-            await _dbContext.SaveChangesAsync(cancellationToken);
+            // 6. Claim + commit BEFORE the provider send. The committed claim is what makes the
+            //    attempt exclusive: a competing request with a stale concurrency token fails its
+            //    own save and never reaches the provider.
+            Guid? claimId = null;
+
+            if (awardedMinorUnits > 0 && BookingRefundSettlementExecutor.HasProviderCapture(booking))
+            {
+                claimId = Guid.NewGuid();
+                booking.ClaimRefundAttempt(claimId.Value, awardedMinorUnits, request.UtcNow);
+            }
+
+            try
+            {
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return Result.Failure(
+                    new Error(
+                        "Bookings.Cancel.AlreadyProcessed",
+                        "This booking's refund was claimed by another request."));
+            }
+
+            // 7. Provider send, then the final save that records the outcome of the claimed attempt.
+            BookingRefundSettlement settlement = await BookingRefundSettlementExecutor.SettleWithProviderAsync(
+                booking,
+                awardedMinorUnits,
+                _paymobClient,
+                request.UtcNow,
+                cancellationToken,
+                claimId);
+
+            // A late provider confirmation survives a lost row race: the durable award is re-read
+            // and an already-recorded movement is treated as idempotent success.
+            if (!await BookingRefundPersistence.TrySaveClaimedOutcomeAsync(
+                    _dbContext,
+                    booking.Id,
+                    settlement.SettledMinorUnits,
+                    cancellationToken))
+            {
+                return Result.Failure(BookingRefundSettlementErrors.SettlementIncomplete);
+            }
+
+            // Legacy tolerance on this endpoint: a gateway REFUSAL does not fail the cancellation —
+            // the booking has transitioned and the fact records what the policy owed, so the
+            // caller still sees success and ops can retry the outstanding settlement. An
+            // UNCONFIRMED outcome is different and is never tolerated: the booking now carries the
+            // decision #17 marker, so it is surfaced as a failure rather than reported as done.
+            if (settlement.Destination != BookingRefundDestination.None
+                && !settlement.IsCompleted
+                && booking.IsRefundOutcomeAmbiguous)
+            {
+                return Result.Failure(
+                    settlement.Error ?? BookingRefundSettlementErrors.AmbiguousOutcome);
+            }
 
             return Result.Success();
         }
         catch (DomainException exception)
         {
             return Result.Failure(new Error("Bookings.Domain.InvalidOperation", exception.Message));
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result.Failure(
+                new Error(
+                    "Bookings.Cancel.AlreadyProcessed",
+                    "This booking cancellation or its refund was already processed."));
         }
         catch (DbUpdateException exception) when (CancellationPersistenceGuard.IsFactUniqueViolation(exception))
         {
