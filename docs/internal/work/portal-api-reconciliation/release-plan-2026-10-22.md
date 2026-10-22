@@ -1,7 +1,6 @@
 # Release Plan — Frontend/Mobile Follow-up (T1–T11)
 
-**Prepared:** 2026-10-22 · **Status: DRAFT — nothing committed, pushed, deployed, or applied.**
-Execution starts only after the Owner's go/no-go. This plan consolidates the independently verified T1–T11 work (all gates green, per-task counts on record in the active brief).
+**Prepared:** 2026-10-22 · **Status: EXECUTED the same day** — go/no-go received (GO; D1 whole-file/last-commit, D2 drift repair inside T11, D3 brief set only); see the [release receipt](reports/frontend-follow-up-release.md). This file is retained as the approved plan of record.
 
 ## 1. What is being released
 
