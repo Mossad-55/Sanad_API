@@ -132,8 +132,13 @@ support email pair configured by a CMS admin; it never sends an SMS, never
 sends an email, and does not interact with the ticket route above.
 
 ```text
-GET /api/v1/help-center          (Normal JWT; audience derived from the token)
+GET /api/v1/help-center[?audience=]   (Normal JWT; audience from the token)
 ```
+
+The audience is derived from the token's owned accounts; a token that owns more
+than one audience names the wanted one with `?audience=` (see
+`docs/app/settings/help-support.md`). This changes nothing about the support
+contact pair itself.
 
 `200` response (excerpt — FAQ list omitted):
 

@@ -1455,7 +1455,7 @@
     },
     {
       "name": "Legal pages (app reads)",
-      "description": "Signed-in Care Home Owner legal content. LegalAudience numeric: CareHomeOwner=5. Audience is derived from the JWT; no audience query/body parameter. Returns only the current Published version; missing publication returns 404 Cms.Legal.NotPublished. No realistic legal text in examples.",
+      "description": "Signed-in Care Home Owner legal content. LegalAudience numeric: CareHomeOwner=5 (AccountType.CareHomeOwner is 8; the two value spaces are never cast into one another). Audience is derived from the token's account_type claims; an optional ?audience=5 query parameter names the owner audience explicitly when the token owns more than one, validated against the owned audiences (400 Cms.Content.InvalidAudience malformed, 400 Cms.Content.AudienceRequired omitted+multiple, 403 Cms.Content.UnsupportedAudience unowned). Returns only the current Published version; missing publication returns 404 Cms.Legal.NotPublished. No realistic legal text in examples.",
       "item": [
         {
           "name": "Privacy Policy",
@@ -1468,7 +1468,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/legal/privacy-policy",
-            "description": "NormalAccess policy; Normal access token with active CareHomeOwner account-type claim. 200 LegalDocumentResponse or 404 Cms.Legal.NotPublished."
+            "description": "NormalAccess policy; Normal access token with an active CareHomeOwner account-type claim. Resolves to LegalAudience.CareHomeOwner=5 (auto-selected when the token owns exactly one audience; otherwise send ?audience=5). 200 LegalDocumentResponse or 404 Cms.Legal.NotPublished; a malformed ?audience= is 400 Cms.Content.InvalidAudience and an unowned one is 403 Cms.Content.UnsupportedAudience."
           }
         },
         {
@@ -1482,7 +1482,21 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/legal/terms",
-            "description": "NormalAccess policy; Normal access token with active CareHomeOwner account-type claim. 200 LegalDocumentResponse or 404 Cms.Legal.NotPublished."
+            "description": "NormalAccess policy; Normal access token with an active CareHomeOwner account-type claim. Same audience rules as the privacy-policy request (?audience=5 names the owner audience when the token owns more than one). 200 LegalDocumentResponse or 404 Cms.Legal.NotPublished."
+          }
+        },
+        {
+          "name": "Help Center (FAQs + support contact)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{careHomeOwnerJwt}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/help-center?audience=5",
+            "description": "NormalAccess policy; authenticated Care Home Owner read. CareHomeOwner is a Help Center audience (F5): the owner reads only its own active FAQs plus the shared global support contact card. ?audience=5 selects the owner audience explicitly for a multi-account token. 200 HelpCenterResponse with faqs [] and supportContact null before any CMS seeding; a malformed ?audience= is 400 Cms.Content.InvalidAudience, an unowned one (or an admin account type) is 403 Cms.Content.UnsupportedAudience."
           }
         }
       ]

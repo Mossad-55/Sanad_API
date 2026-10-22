@@ -78,6 +78,39 @@ public sealed class HelpCenterTests
     }
 
     [Fact]
+    public async Task AppRead_OwnerAudience_ReturnsOnlyOwnerFaqs()
+    {
+        await using CmsDbContext dbContext = CreateDbContext();
+
+        SeedFaq(
+            dbContext,
+            LegalAudience.CareHomeOwner,
+            "سؤال مالك",
+            "Owner question",
+            displayOrder: 0,
+            isActive: true);
+        SeedFaq(
+            dbContext,
+            LegalAudience.Family,
+            "سؤال عائلي",
+            "Family question",
+            displayOrder: 0,
+            isActive: true);
+        await dbContext.SaveChangesAsync();
+
+        var result = await new GetHelpCenterQueryHandler(dbContext).Handle(
+            new GetHelpCenterQuery(LegalAudience.CareHomeOwner),
+            CancellationToken.None);
+
+        // Care Home Owner is a Help Center audience (F5); the owner read is
+        // parity with the legal routes and never leaks another audience's FAQs.
+        Assert.True(result.IsSuccess);
+        HelpCenterFaqItem ownerFaq = Assert.Single(result.Value.Faqs);
+        Assert.Equal(LegalAudience.CareHomeOwner, ownerFaq.Audience);
+        Assert.Equal("Owner question", ownerFaq.EnglishQuestion);
+    }
+
+    [Fact]
     public async Task AppRead_ReturnsGlobalSupportContactWhenConfigured()
     {
         await using CmsDbContext dbContext = CreateDbContext();

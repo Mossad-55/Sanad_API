@@ -61,8 +61,10 @@ GET /api/v1/legal/privacy-policy
 GET /api/v1/legal/terms
 ```
 
-Both require a normal app JWT; the audience is derived from the token and
-cannot be overridden. See `docs/app/settings/legal.md` (app) and
+Both require a normal app JWT; the audience is derived from the token's owned
+accounts and cannot be overridden by the client, apart from the optional
+`?audience=` parameter that names one of the audiences the token already owns
+when it owns more than one. See `docs/app/settings/legal.md` (app) and
 `docs/admin/legal-content.md` (admin). The carousel on this page
 (`GET /api/v1/splash-screens`) stays anonymous and is unrelated to legal
 content.

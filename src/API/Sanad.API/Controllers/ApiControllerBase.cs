@@ -4,6 +4,7 @@ using Sanad.API.ProblemDetail;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
+using Sanad.Modules.Cms.Application.Legal;
 using Sanad.Modules.Cms.Domain.Legal;
 using Sanad.Modules.Identity.Application.Authentication.Tokens;
 using Sanad.Modules.Identity.Domain.Users;
@@ -96,57 +97,183 @@ public abstract class ApiControllerBase :
     }
 
     /// <summary>
-    /// Maps the authenticated JWT AccountType claim to the four CMS app
-    /// audiences (SET-12/SET-13). Admin account types are not app
-    /// audiences: SuperAdmin, ContentAdmin, and SupportAdmin never resolve
-    /// an audience, so an admin calling an app content route receives the
-    /// mapped business error Cms.Content.UnsupportedAudience (403) instead
-    /// of an invented document. There is deliberately no audience supplied
-    /// by the request.
+    /// Coded 400 for a malformed or undefined audience value.
+    /// </summary>
+    protected const string InvalidContentAudienceCode =
+        "Cms.Content.InvalidAudience";
+
+    /// <summary>
+    /// Coded 400 for an omitted audience while the token owns more than one.
+    /// </summary>
+    protected const string ContentAudienceRequiredCode =
+        "Cms.Content.AudienceRequired";
+
+    /// <summary>
+    /// Every legal / Help Center audience the Normal JWT actually owns. A
+    /// Normal token carries one <c>account_type</c> claim per owned account in
+    /// <c>user.Accounts</c> order: duplicates are collapsed and the result is
+    /// ordered by enum value, so the resolved audience never depends on claim
+    /// order (SET-12/SET-13). Admin account types — SuperAdmin, ContentAdmin,
+    /// SupportAdmin and FinanceAdmin — are not app audiences and never map, so
+    /// an admin calling an app content route is denied instead of being served
+    /// an invented document. <see cref="LegalAudience"/> is a distinct value
+    /// space from <see cref="AccountType"/>: CareHomeOwner maps from 8 to 5 by
+    /// name, never by casting.
+    /// </summary>
+    protected IReadOnlyList<LegalAudience> GetOwnedContentAudiences()
+    {
+        return User
+            .FindAll(
+                AuthClaimNames.AccountType)
+            .Select(
+                claim =>
+                    MapAccountTypeToAudience(
+                        claim.Value))
+            .Where(
+                audience =>
+                    audience.IsDefined())
+            .Distinct()
+            .OrderBy(
+                audience =>
+                    audience)
+            .ToArray();
+    }
+
+    /// <summary>
+    /// Resolves the legal / Help Center audience for a Normal app read.
+    /// <paramref name="requestedAudience"/> is optional and must name an
+    /// audience the caller owns:
+    /// omitted with exactly one owned audience selects it; omitted with more
+    /// than one is <c>400 Cms.Content.AudienceRequired</c>; omitted with none
+    /// keeps the documented <c>403 Cms.Content.UnsupportedAudience</c> denial;
+    /// a malformed or undefined value is <c>400 Cms.Content.InvalidAudience</c>;
+    /// an owned value is served, and a valid value the caller does not own is
+    /// <c>403 Cms.Content.UnsupportedAudience</c>. Returns false with
+    /// <paramref name="failure"/> when the caller cannot be served.
+    /// </summary>
+    protected bool TryResolveContentAudience(
+        string? requestedAudience,
+        out LegalAudience audience,
+        out IActionResult? failure)
+    {
+        audience = default;
+        failure = null;
+
+        if (!string.IsNullOrWhiteSpace(
+                requestedAudience))
+        {
+            if (!TryParseContentAudience(
+                    requestedAudience,
+                    out LegalAudience requested))
+            {
+                failure = BadRequestWithCode(
+                    InvalidContentAudienceCode);
+
+                return false;
+            }
+
+            if (!GetOwnedContentAudiences()
+                    .Contains(requested))
+            {
+                failure = ToActionResult(
+                    Result.Failure(
+                        ContentErrors.UnsupportedAudience));
+
+                return false;
+            }
+
+            audience = requested;
+
+            return true;
+        }
+
+        IReadOnlyList<LegalAudience> owned =
+            GetOwnedContentAudiences();
+
+        if (owned.Count == 1)
+        {
+            audience = owned[0];
+
+            return true;
+        }
+
+        failure = owned.Count == 0
+            ? ToActionResult(
+                Result.Failure(
+                    ContentErrors.UnsupportedAudience))
+            : BadRequestWithCode(
+                ContentAudienceRequiredCode);
+
+        return false;
+    }
+
+    /// <summary>
+    /// Parses exactly one audience value: a numeric enum value (1–5) or an
+    /// enum name, case-insensitive. A comma-joined list, an unknown name or an
+    /// undefined number is not a single audience and is refused.
+    /// </summary>
+    protected static bool TryParseContentAudience(
+        string? value,
+        out LegalAudience audience)
+    {
+        audience = default;
+
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return false;
+        }
+
+        string trimmed =
+            value.Trim();
+
+        if (trimmed.IndexOf(',') >= 0)
+        {
+            return false;
+        }
+
+        if (Enum.TryParse(
+                trimmed,
+                ignoreCase: true,
+                out LegalAudience parsed) &&
+            parsed.IsDefined())
+        {
+            audience = parsed;
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Single-audience audience probe kept for the existing claims-mapping
+    /// test. Legal and Help Center routes resolve through
+    /// <see cref="TryResolveContentAudience"/>, which is claim-order
+    /// independent; this helper returns the first owned audience in enum
+    /// order (or false when the token owns no app audience).
     /// </summary>
     protected bool TryGetCmsAudienceFromClaims(
         out LegalAudience audience)
     {
         audience = default;
 
-        string? accountType =
-            User.FindFirst(
-                AuthClaimNames.AccountType)?.Value;
+        IReadOnlyList<LegalAudience> owned =
+            GetOwnedContentAudiences();
 
-        audience = accountType switch
+        if (owned.Count == 0)
         {
-            nameof(AccountType.Family) =>
-                LegalAudience.Family,
-            nameof(AccountType.MedicalCaregiver) =>
-                LegalAudience.MedicalCaregiver,
-            nameof(AccountType.CompanionCaregiver) =>
-                LegalAudience.CompanionCaregiver,
-            nameof(AccountType.Elderly) =>
-                LegalAudience.Elderly,
-            nameof(AccountType.CareHomeOwner) =>
-                LegalAudience.CareHomeOwner,
-            _ => default
-        };
+            return false;
+        }
 
-        return audience.IsDefined();
+        audience = owned[0];
+
+        return true;
     }
 
-    /// <summary>
-    /// Maps the authenticated JWT AccountType claim to legal-content audiences,
-    /// including CareHomeOwner. Used only by legal read routes; Help Center
-    /// reads continue to use <see cref="TryGetCmsAudienceFromClaims"/>, which
-    /// does not grant an Owner audience.
-    /// </summary>
-    protected bool TryGetLegalAudienceFromClaims(
-        out LegalAudience audience)
+    private static LegalAudience MapAccountTypeToAudience(
+        string? accountType)
     {
-        audience = default;
-
-        string? accountType =
-            User.FindFirst(
-                AuthClaimNames.AccountType)?.Value;
-
-        audience = accountType switch
+        return accountType switch
         {
             nameof(AccountType.Family) =>
                 LegalAudience.Family,
@@ -160,8 +287,6 @@ public abstract class ApiControllerBase :
                 LegalAudience.CareHomeOwner,
             _ => default
         };
-
-        return audience.IsDefined();
     }
 
     protected bool TryGetCurrentDeviceSessionId(

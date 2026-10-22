@@ -4,19 +4,49 @@ The signed-in Help Center screen (SET-13) reads its entire content from one
 route: the FAQ list for the caller's own audience plus the one global support
 contact card.
 
-**Route:** `GET /api/v1/help-center`  
-**Auth:** Normal JWT (any of the four app account types)  
+**Route:** `GET /api/v1/help-center[?audience=]`
+
+**Auth:** Normal JWT (any of the five app account types)
+
 **Success:** `200`
 
-The audience is derived from the JWT `account_type` claim
-(`Family=1, MedicalCaregiver=2, CompanionCaregiver=3, Elderly=4,
-CareHomeOwner=5`). There is no audience query parameter — a role can never
-read another role's FAQ list by URL manipulation. Admin account types receive
+The audience is derived from the JWT `account_type` claims, which carry one
+claim per owned account (`Family=1, MedicalCaregiver=2, CompanionCaregiver=3,
+Elderly=4, CareHomeOwner=5`). A role can never read another role's FAQ list by
+URL manipulation. Admin account types receive
 `403 Cms.Content.UnsupportedAudience`.
 
 The Care-home Owner account type is a Help Center audience as of F5: an owner
 token reads its own FAQ list and the shared contact card exactly like the other
 app roles.
+
+An optional `audience` query parameter selects the audience explicitly, using
+the same deterministic rules as the legal routes
+([legal.md](legal.md#audience-behavior)) — it is validated against the
+audiences the token owns:
+
+- owned `audience` → served;
+- omitted — or empty/whitespace, treated the same as omitted — with exactly
+  **one** owned audience → auto-selected;
+- omitted with **more than one** owned audience → coded
+  `400 Cms.Content.AudienceRequired` (account switching does not reissue a JWT,
+  so the caller must name the audience);
+- malformed or undefined `audience` → `400 Cms.Content.InvalidAudience`,
+  checked first and for every account class, so an admin token sending a
+  malformed value gets `400`, not `403`;
+- well-formed but unowned `audience`, or no owned app audience (admin account
+  types) → `403 Cms.Content.UnsupportedAudience`.
+
+A repeated parameter keeps the first value (framework scalar query binding,
+`ValueProviderResult.FirstValue`, with no custom binder registered); this is
+safe because the value is still validated against the token's owned audiences.
+
+Example — a multi-account token reading the Care Home Owner FAQ list:
+
+```text
+GET /api/v1/help-center?audience=5
+Authorization: Bearer <normal access token>
+```
 
 ## Response
 
@@ -74,7 +104,9 @@ HTTP 200
 |---|---|---|
 | 401 | *(bare, no code)* | Missing/invalid/expired JWT |
 | 403 | *(bare, no code)* | Restricted verification token (framework policy) |
-| 403 | `Cms.Content.UnsupportedAudience` | Admin account types are not app audiences |
+| 400 | `Cms.Content.InvalidAudience` | `audience` is malformed or undefined (non-numeric, out of range, or a comma list) — checked before ownership, for every account class including admin |
+| 400 | `Cms.Content.AudienceRequired` | `audience` omitted or empty/whitespace while the token owns more than one audience |
+| 403 | `Cms.Content.UnsupportedAudience` | `audience` is well-formed but not owned by the caller, or the caller owns no app audience (admin account types) |
 | 200 | — | Empty/unseeded list is a success, not an error |
 
 `id` is the repository's strongly typed id JSON shape `{ "value": "<guid>" }`.

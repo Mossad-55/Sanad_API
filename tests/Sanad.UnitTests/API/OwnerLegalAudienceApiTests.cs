@@ -33,12 +33,6 @@ public sealed class OwnerLegalAudienceApiTests
         GetPublishedLegalDocumentQueryHandler handler = new(CreateDbContext());
         ForwardingSender sender = new(handler);
 
-        (LegalController controller, CancellationToken token, LegalDocumentType expectedType)[] cases =
-        [
-            (CreateLegalController(sender, AccountType.CareHomeOwner), CancellationToken.None, LegalDocumentType.PrivacyPolicy),
-            (CreateLegalController(sender, AccountType.CareHomeOwner), CancellationToken.None, LegalDocumentType.TermsAndConditions)
-        ];
-
         // Invoke through the matching route method for each expected type.
         (LegalController controller, CancellationToken token, LegalDocumentType expectedType, Func<LegalController, CancellationToken, Task<IActionResult>> invoke)[] routes =
         [
@@ -188,6 +182,404 @@ public sealed class OwnerLegalAudienceApiTests
         }
     }
 
+    [Fact]
+    public async Task SingleAccount_OmittedAudience_AutoSelectsOwnedAudience()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        await PublishOwnerPrivacyAsync(dbContext);
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        LegalController controller = CreateLegalController(
+            sender,
+            AccountType.CareHomeOwner);
+
+        IActionResult result = await controller.GetPrivacyPolicy(
+            CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        LegalDocumentResponse document =
+            Assert.IsType<LegalDocumentResponse>(ok.Value);
+        Assert.Equal(LegalAudience.CareHomeOwner, document.Audience);
+    }
+
+    [Fact]
+    public async Task MultiAccount_ExplicitOwnerAudience_WinsOverClaimOrder()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        await PublishOwnerPrivacyAsync(dbContext);
+        RoutingSender sender = CreateRoutingSender(dbContext);
+
+        foreach (AccountType[] accountTypes in new[]
+        {
+            new[]
+            {
+                AccountType.Family,
+                AccountType.CareHomeOwner
+            },
+            new[]
+            {
+                AccountType.CareHomeOwner,
+                AccountType.Family
+            }
+        })
+        {
+            sender.LastRequest = null;
+            LegalController controller = CreateLegalController(
+                sender,
+                accountTypes);
+
+            IActionResult result = await controller.GetPrivacyPolicy(
+                CancellationToken.None,
+                ((int)LegalAudience.CareHomeOwner).ToString());
+
+            var ok = Assert.IsType<OkObjectResult>(result);
+            LegalDocumentResponse document =
+                Assert.IsType<LegalDocumentResponse>(ok.Value);
+            Assert.Equal(LegalAudience.CareHomeOwner, document.Audience);
+
+            GetPublishedLegalDocumentQuery sent =
+                Assert.IsType<GetPublishedLegalDocumentQuery>(
+                    sender.LastRequest);
+            Assert.Equal(LegalAudience.CareHomeOwner, sent.Audience);
+        }
+    }
+
+    [Fact]
+    public async Task MultiAccount_OmittedAudience_RequiresExplicitSelection()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        LegalController controller = CreateLegalController(
+            sender,
+            AccountType.Family,
+            AccountType.CareHomeOwner);
+
+        IActionResult result = await controller.GetPrivacyPolicy(
+            CancellationToken.None);
+
+        AssertProblem(
+            result,
+            StatusCodes.Status400BadRequest,
+            "Cms.Content.AudienceRequired");
+        Assert.Null(sender.LastRequest);
+    }
+
+    [Theory]
+    [InlineData("9")]
+    [InlineData("0")]
+    [InlineData("abc")]
+    [InlineData("1,2")]
+    public async Task MalformedAudience_IsCodedBadRequest(
+        string audience)
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        LegalController controller = CreateLegalController(
+            sender,
+            AccountType.Family,
+            AccountType.CareHomeOwner);
+
+        IActionResult result = await controller.GetPrivacyPolicy(
+            CancellationToken.None,
+            audience);
+
+        AssertProblem(
+            result,
+            StatusCodes.Status400BadRequest,
+            "Cms.Content.InvalidAudience");
+        Assert.Null(sender.LastRequest);
+    }
+
+    [Fact]
+    public async Task ValidButUnownedAudience_IsForbidden()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        LegalController controller = CreateLegalController(
+            sender,
+            AccountType.Family);
+
+        IActionResult result = await controller.GetPrivacyPolicy(
+            CancellationToken.None,
+            ((int)LegalAudience.CareHomeOwner).ToString());
+
+        AssertProblem(
+            result,
+            StatusCodes.Status403Forbidden,
+            ContentErrors.UnsupportedAudience.Code);
+        Assert.Null(sender.LastRequest);
+    }
+
+    [Fact]
+    public async Task HelpCenter_ExplicitOwnerAudience_WithDuplicateClaims_ResolvesOnce()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        HelpCenterController controller = CreateHelpCenterController(
+            sender,
+            AccountType.CareHomeOwner,
+            AccountType.CareHomeOwner,
+            AccountType.Family);
+
+        IActionResult result = await controller.GetHelpCenter(
+            CancellationToken.None,
+            ((int)LegalAudience.CareHomeOwner).ToString());
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        HelpCenterResponse response =
+            Assert.IsType<HelpCenterResponse>(ok.Value);
+        Assert.Empty(response.Faqs);
+
+        GetHelpCenterQuery sent =
+            Assert.IsType<GetHelpCenterQuery>(sender.LastRequest);
+        Assert.Equal(LegalAudience.CareHomeOwner, sent.Audience);
+    }
+
+    [Fact]
+    public async Task HelpCenter_OmittedSingle_AutoSelects_AndDuplicateClaimsCollapse()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        HelpCenterController controller = CreateHelpCenterController(
+            sender,
+            AccountType.Family,
+            AccountType.Family);
+
+        IActionResult result = await controller.GetHelpCenter(
+            CancellationToken.None);
+
+        // Duplicate Family claims collapse to one owned audience, so an
+        // omitted audience still auto-selects instead of requiring one.
+        Assert.IsType<OkObjectResult>(result);
+        GetHelpCenterQuery sent =
+            Assert.IsType<GetHelpCenterQuery>(sender.LastRequest);
+        Assert.Equal(LegalAudience.Family, sent.Audience);
+    }
+
+    [Fact]
+    public async Task HelpCenter_OmittedMultiple_RequiresExplicitSelection()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        HelpCenterController controller = CreateHelpCenterController(
+            sender,
+            AccountType.CareHomeOwner,
+            AccountType.Family);
+
+        IActionResult result = await controller.GetHelpCenter(
+            CancellationToken.None);
+
+        AssertProblem(
+            result,
+            StatusCodes.Status400BadRequest,
+            "Cms.Content.AudienceRequired");
+        Assert.Null(sender.LastRequest);
+    }
+
+    [Fact]
+    public async Task HelpCenter_MalformedAndUnowned_DenyLikeLegal()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        HelpCenterController controller = CreateHelpCenterController(
+            sender,
+            AccountType.Family);
+
+        AssertProblem(
+            await controller.GetHelpCenter(
+                CancellationToken.None,
+                "abc"),
+            StatusCodes.Status400BadRequest,
+            "Cms.Content.InvalidAudience");
+
+        AssertProblem(
+            await controller.GetHelpCenter(
+                CancellationToken.None,
+                ((int)LegalAudience.CareHomeOwner).ToString()),
+            StatusCodes.Status403Forbidden,
+            ContentErrors.UnsupportedAudience.Code);
+
+        Assert.Null(sender.LastRequest);
+    }
+
+    [Fact]
+    public async Task IrrelevantAdminClaim_IsIgnoredWhenAnAppAudienceIsOwned()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        HelpCenterController controller = CreateHelpCenterController(
+            sender,
+            AccountType.SupportAdmin,
+            AccountType.Family);
+
+        IActionResult result = await controller.GetHelpCenter(
+            CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        GetHelpCenterQuery sent =
+            Assert.IsType<GetHelpCenterQuery>(sender.LastRequest);
+        Assert.Equal(LegalAudience.Family, sent.Audience);
+    }
+
+    [Fact]
+    public async Task AdminRole_BothRoutes_KeepDocumentedDenial()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        LegalController legalController = CreateLegalController(
+            sender,
+            AccountType.SuperAdmin);
+        HelpCenterController helpController = CreateHelpCenterController(
+            sender,
+            AccountType.SuperAdmin);
+
+        AssertProblem(
+            await legalController.GetPrivacyPolicy(
+                CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            ContentErrors.UnsupportedAudience.Code);
+
+        AssertProblem(
+            await helpController.GetHelpCenter(
+                CancellationToken.None),
+            StatusCodes.Status403Forbidden,
+            ContentErrors.UnsupportedAudience.Code);
+
+        Assert.Null(sender.LastRequest);
+    }
+
+    [Fact]
+    public async Task AdminClaim_MalformedAudience_IsCodedBadRequestOnBothRoutes()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        LegalController legalController = CreateLegalController(
+            sender,
+            AccountType.SuperAdmin);
+        HelpCenterController helpController = CreateHelpCenterController(
+            sender,
+            AccountType.SuperAdmin);
+
+        // The malformed check runs before ownership, so an admin token that
+        // sends a malformed audience gets 400, not the admin 403.
+        AssertProblem(
+            await legalController.GetPrivacyPolicy(
+                CancellationToken.None,
+                "abc"),
+            StatusCodes.Status400BadRequest,
+            "Cms.Content.InvalidAudience");
+
+        AssertProblem(
+            await helpController.GetHelpCenter(
+                CancellationToken.None,
+                "abc"),
+            StatusCodes.Status400BadRequest,
+            "Cms.Content.InvalidAudience");
+
+        Assert.Null(sender.LastRequest);
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public async Task EmptyAudience_IsTreatedAsOmitted_OnBothRoutes(
+        string audience)
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        LegalController legalController = CreateLegalController(
+            sender,
+            AccountType.CareHomeOwner,
+            AccountType.Family);
+        HelpCenterController helpController = CreateHelpCenterController(
+            sender,
+            AccountType.CareHomeOwner,
+            AccountType.Family);
+
+        // Empty or whitespace behaves exactly like an omitted parameter, so a
+        // token that owns two audiences must still name one.
+        AssertProblem(
+            await legalController.GetPrivacyPolicy(
+                CancellationToken.None,
+                audience),
+            StatusCodes.Status400BadRequest,
+            "Cms.Content.AudienceRequired");
+
+        AssertProblem(
+            await helpController.GetHelpCenter(
+                CancellationToken.None,
+                audience),
+            StatusCodes.Status400BadRequest,
+            "Cms.Content.AudienceRequired");
+
+        Assert.Null(sender.LastRequest);
+    }
+
+    [Fact]
+    public async Task HelpCenter_OmittedSingle_OwnerClaim_IsServed()
+    {
+        using CmsDbContext dbContext = CreateDbContext();
+        RoutingSender sender = CreateRoutingSender(dbContext);
+        HelpCenterController controller = CreateHelpCenterController(
+            sender,
+            AccountType.CareHomeOwner);
+
+        // Care Home Owner is an approved Help Center audience (F5, domain
+        // IsHelpAudience), so a single-owned-audience owner token is served
+        // 200 on the same terms as the legal routes instead of being denied.
+        IActionResult result = await controller.GetHelpCenter(
+            CancellationToken.None);
+
+        Assert.IsType<OkObjectResult>(result);
+        GetHelpCenterQuery sent =
+            Assert.IsType<GetHelpCenterQuery>(sender.LastRequest);
+        Assert.Equal(LegalAudience.CareHomeOwner, sent.Audience);
+    }
+
+    private static void AssertProblem(
+        IActionResult result,
+        int expectedStatus,
+        string expectedCode)
+    {
+        ObjectResult objectResult =
+            Assert.IsAssignableFrom<ObjectResult>(result);
+        Assert.Equal(expectedStatus, objectResult.StatusCode);
+
+        ProblemDetails problem =
+            Assert.IsType<ProblemDetails>(objectResult.Value);
+        Assert.Equal(
+            expectedCode,
+            problem.Extensions["code"]);
+    }
+
+    private static RoutingSender CreateRoutingSender(
+        CmsDbContext dbContext)
+    {
+        return new RoutingSender(
+            new GetPublishedLegalDocumentQueryHandler(dbContext),
+            new GetHelpCenterQueryHandler(dbContext));
+    }
+
+    private static async Task PublishOwnerPrivacyAsync(
+        CmsDbContext dbContext)
+    {
+        CreateLegalDocumentCommandHandler createHandler = new(dbContext);
+        PublishLegalDocumentCommandHandler publishHandler = new(dbContext);
+
+        LegalDocumentId ownerPrivacy = (await createHandler.Handle(
+            new CreateLegalDocumentCommand(
+                LegalDocumentType.PrivacyPolicy,
+                LegalAudience.CareHomeOwner,
+                [
+                    Section(LegalSectionType.Text, 1),
+                    Section(LegalSectionType.UserRights, 2)
+                ]),
+            CancellationToken.None)).Value.Id;
+
+        await publishHandler.Handle(
+            new PublishLegalDocumentCommand(ownerPrivacy),
+            CancellationToken.None);
+    }
+
     private static CmsDbContext CreateDbContext()
     {
         DbContextOptions<CmsDbContext> options =
@@ -200,23 +592,39 @@ public sealed class OwnerLegalAudienceApiTests
 
     private static LegalController CreateLegalController(
         ISender sender,
-        AccountType accountType)
+        params AccountType[] accountTypes)
     {
         return new LegalController(sender)
         {
-            ControllerContext = new ControllerContext
+            ControllerContext = CreateContext(accountTypes)
+        };
+    }
+
+    private static HelpCenterController CreateHelpCenterController(
+        ISender sender,
+        params AccountType[] accountTypes)
+    {
+        return new HelpCenterController(sender)
+        {
+            ControllerContext = CreateContext(accountTypes)
+        };
+    }
+
+    private static ControllerContext CreateContext(
+        IReadOnlyList<AccountType> accountTypes)
+    {
+        return new ControllerContext
+        {
+            HttpContext = new DefaultHttpContext
             {
-                HttpContext = new DefaultHttpContext
-                {
-                    User = new ClaimsPrincipal(
-                        new ClaimsIdentity(
-                        [
-                            new Claim(
-                                AuthClaimNames.AccountType,
-                                accountType.ToString())
-                        ],
+                User = new ClaimsPrincipal(
+                    new ClaimsIdentity(
+                        accountTypes.Select(
+                            accountType =>
+                                new Claim(
+                                    AuthClaimNames.AccountType,
+                                    accountType.ToString())),
                         "test"))
-                }
             }
         };
     }
@@ -248,7 +656,7 @@ public sealed class OwnerLegalAudienceApiTests
         }
 
         [Fact]
-        public async Task LegalAudience_OpenApi_IncludesCareHomeOwnerFiveAndPreservesExisting()
+        public async Task LegalAudience_OpenApi_IncludesCareHomeOwnerFiveAndOptionalAudienceParameter()
         {
             using HttpClient client = _host.CreatePortalClient();
             using HttpResponseMessage response =
@@ -282,7 +690,8 @@ public sealed class OwnerLegalAudienceApiTests
             foreach (string path in new[]
             {
                 "/api/v1/legal/privacy-policy",
-                "/api/v1/legal/terms"
+                "/api/v1/legal/terms",
+                "/api/v1/help-center"
             })
             {
                 JsonElement operation =
@@ -290,21 +699,102 @@ public sealed class OwnerLegalAudienceApiTests
                         .GetProperty(path)
                         .GetProperty("get");
 
-                bool hasAudienceParameter = false;
-                if (operation.TryGetProperty("parameters", out JsonElement parameters))
-                {
-                    hasAudienceParameter = parameters.EnumerateArray().Any(parameter =>
-                        parameter.TryGetProperty("name", out JsonElement name) &&
+                Assert.True(
+                    operation.TryGetProperty("parameters", out JsonElement parameters),
+                    $"No parameters for {path}.");
+
+                // T3: legal and Help Center both accept the optional
+                // audience query parameter deterministically.
+                JsonElement audienceParameter = parameters
+                    .EnumerateArray()
+                    .Single(parameter =>
                         string.Equals(
-                            name.GetString(),
+                            parameter.GetProperty("name").GetString(),
                             "audience",
                             StringComparison.OrdinalIgnoreCase));
-                }
 
-                Assert.False(
-                    hasAudienceParameter,
-                    $"Legal route {path} must not expose an audience parameter.");
+                Assert.Equal(
+                    "query",
+                    audienceParameter.GetProperty("in").GetString());
+
+                if (audienceParameter.TryGetProperty(
+                        "required",
+                        out JsonElement required))
+                {
+                    Assert.False(
+                        required.GetBoolean(),
+                        $"audience must stay optional on {path}.");
+                }
             }
+        }
+    }
+
+    private sealed class RoutingSender : ISender
+    {
+        private readonly GetPublishedLegalDocumentQueryHandler _legalHandler;
+
+        private readonly GetHelpCenterQueryHandler _helpHandler;
+
+        public RoutingSender(
+            GetPublishedLegalDocumentQueryHandler legalHandler,
+            GetHelpCenterQueryHandler helpHandler)
+        {
+            _legalHandler = legalHandler;
+            _helpHandler = helpHandler;
+        }
+
+        public object? LastRequest { get; set; }
+
+        public async Task<TResponse> Send<TResponse>(
+            IRequest<TResponse> request,
+            CancellationToken cancellationToken = default)
+        {
+            LastRequest = request;
+
+            if (request is GetPublishedLegalDocumentQuery legalQuery)
+            {
+                return (TResponse)(object)await _legalHandler.Handle(
+                    legalQuery,
+                    cancellationToken);
+            }
+
+            if (request is GetHelpCenterQuery helpQuery)
+            {
+                return (TResponse)(object)await _helpHandler.Handle(
+                    helpQuery,
+                    cancellationToken);
+            }
+
+            throw new NotSupportedException();
+        }
+
+        public Task Send<TRequest>(
+            TRequest request,
+            CancellationToken cancellationToken = default)
+            where TRequest : IRequest
+        {
+            throw new NotSupportedException();
+        }
+
+        public Task<object?> Send(
+            object request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(
+            IStreamRequest<TResponse> request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
+        }
+
+        public IAsyncEnumerable<object?> CreateStream(
+            object request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new NotSupportedException();
         }
     }
 

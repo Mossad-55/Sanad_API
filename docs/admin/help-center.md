@@ -129,10 +129,13 @@ most one row (`id = 1` check constraint).
 
 ## App read (for completeness)
 
-Signed-in app audiences call `GET /api/v1/help-center` (see
-`docs/app/settings/help-support.md`). The audience is derived from the JWT;
-there is no query-string override, and no role can read another role's FAQ
-list. Admin tokens on that route get `403 Cms.Content.UnsupportedAudience`.
+Signed-in app audiences call `GET /api/v1/help-center[?audience=]` (see
+`docs/app/settings/help-support.md`). The audience is derived from the token's
+`account_type` claims; the optional `audience` query parameter names one the
+caller already owns when the token owns more than one, so no role can read
+another role's FAQ list. Admin tokens on that route get
+`403 Cms.Content.UnsupportedAudience` (a malformed `audience` is
+`400 Cms.Content.InvalidAudience` for every account class).
 
 ## Errors
 
@@ -141,7 +144,9 @@ list. Admin tokens on that route get `403 Cms.Content.UnsupportedAudience`.
 | 400 | `Api.Validation.Failed` | Request shape validation |
 | 401 | *(bare, no code)* | Missing/invalid JWT (framework policy) |
 | 403 | *(bare, no code)* | Policy rejection for accounts without `CmsContent` (framework policy) |
-| 403 | `Cms.Content.UnsupportedAudience` | Admin account types are not app audiences (app read route) |
+| 400 | `Cms.Content.InvalidAudience` | App read only: malformed/undefined `audience` (checked first, for every account class including admin) |
+| 400 | `Cms.Content.AudienceRequired` | App read only: `audience` omitted or empty/whitespace while the token owns more than one audience |
+| 403 | `Cms.Content.UnsupportedAudience` | Admin account types are not app audiences, or an app caller named an `audience` it does not own (app read route) |
 | 404 | `Cms.Help.FaqNotFound` | Unknown FAQ id |
 | 404 | `Cms.Help.SupportContactNotFound` | Admin GET before any support contact is configured |
 

@@ -13,9 +13,9 @@ Development base URL: https://localhost:7296
 | Log out this device (F12) | POST /api/v1/auth/sessions/logout | docs/auth/refresh-and-sessions.md |
 | Log out everywhere (F12) | POST /api/v1/auth/sessions/logout-all | docs/auth/refresh-and-sessions.md |
 | Revoke one session (F12) | DELETE /api/v1/auth/sessions/{sessionId} | docs/auth/refresh-and-sessions.md |
-| Privacy Policy page (F14) | GET /api/v1/legal/privacy-policy | docs/app/settings/legal.md |
-| Terms & Conditions (F15) | GET /api/v1/legal/terms | docs/app/settings/legal.md |
-| Help Center (FAQs + contact card) | GET /api/v1/help-center | docs/app/settings/help-support.md |
+| Privacy Policy page (F14) | GET /api/v1/legal/privacy-policy[?audience=] | docs/app/settings/legal.md |
+| Terms & Conditions (F15) | GET /api/v1/legal/terms[?audience=] | docs/app/settings/legal.md |
+| Help Center (FAQs + contact card) | GET /api/v1/help-center[?audience=] | docs/app/settings/help-support.md |
 
 ## Change password (F13)
 
@@ -92,13 +92,13 @@ Revocation is idempotent. Maximum five active sessions. The user must remove an 
 
 ## Privacy Policy (F14) and Terms & Conditions (F15)
 
-Both pages are admin-managed **legal documents** (SET-12) — not splash screens. `GET /api/v1/legal/privacy-policy` and `GET /api/v1/legal/terms` require the app JWT; the audience is derived from the token (Family, MedicalCaregiver, CompanionCaregiver, Elderly) and can never be overridden by the client. Each call returns exactly the current `Published` version for that token's audience and type, with bilingual ordered sections. There is no fallback: if that audience has no publication the API returns `404 Cms.Legal.NotPublished`, and admin account types get `403 Cms.Content.UnsupportedAudience`. Full contract: `docs/app/settings/legal.md`; admin authoring and publishing: `docs/admin/legal-content.md`.
+Both pages are admin-managed **legal documents** (SET-12) — not splash screens. `GET /api/v1/legal/privacy-policy` and `GET /api/v1/legal/terms` require the app JWT; the audience is derived from the token's `account_type` claims (Family, MedicalCaregiver, CompanionCaregiver, Elderly, CareHomeOwner). When the token owns more than one audience the caller names the wanted one with the optional `?audience=` query parameter; an owned value is required, and the audience can never be widened to one the caller does not own. Each call returns exactly the current `Published` version for the resolved audience and type, with bilingual ordered sections. There is no fallback: if that audience has no publication the API returns `404 Cms.Legal.NotPublished`, and admin account types get `403 Cms.Content.UnsupportedAudience` (malformed `audience` is `400 Cms.Content.InvalidAudience` for every account class). Full contract: `docs/app/settings/legal.md`; admin authoring and publishing: `docs/admin/legal-content.md`.
 
 The Terms agreement is captured in the registration flow; on this screen both pages are VIEW-ONLY.
 
 ## Help Center (support contact + FAQs)
 
-`GET /api/v1/help-center` (same JWT) returns the active FAQs for the token's audience ordered by `displayOrder`, plus the optional global support contact card (`supportPhone`, `supportEmail`) shown as “Contact us”. Before any content is configured it is a `200` with empty FAQs and a `null` contact — it never blocks the screen. Contract: `docs/app/settings/help-support.md`; admin management: `docs/admin/help-center.md`.
+`GET /api/v1/help-center` (same JWT) returns the active FAQs for the token's audience ordered by `displayOrder`, plus the optional global support contact card (`supportPhone`, `supportEmail`) shown as “Contact us”. The audience follows the same rules as the legal routes — derived from the token's owned accounts, with the optional `?audience=` parameter naming the wanted audience when the token owns more than one. Before any content is configured it is a `200` with empty FAQs and a `null` contact — it never blocks the screen. Contract: `docs/app/settings/help-support.md`; admin management: `docs/admin/help-center.md`.
 
 ## Not on this screen (yet)
 

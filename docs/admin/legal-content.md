@@ -184,7 +184,9 @@ success. Publishing an Archived document → `409`.
 | 400 | `Api.Validation.Failed` | Request shape validation (missing/long/blank fields, bad enum values, shape violations surfaced by validation) |
 | 401 | *(bare, no code)* | Missing/invalid JWT (framework policy) |
 | 403 | *(bare, no code)* | Policy rejection for accounts without `CmsContent` (framework policy) |
-| 403 | `Cms.Content.UnsupportedAudience` | Admin account types are not app audiences (app read routes only) |
+| 400 | `Cms.Content.InvalidAudience` | App read only: malformed/undefined `audience` (checked first, for every account class including admin) |
+| 400 | `Cms.Content.AudienceRequired` | App read only: `audience` omitted or empty/whitespace while the token owns more than one audience |
+| 403 | `Cms.Content.UnsupportedAudience` | Admin account types are not app audiences, or an app caller named an `audience` it does not own (app read routes only) |
 | 404 | `Cms.Legal.NotFound` | Unknown legal version id |
 | 404 | `Cms.Legal.NotPublished` | App read: no current Published version for the (type, audience) pair |
 | 409 | `Cms.Legal.DraftAlreadyExists` | A second Draft for the same (type, audience) pair |
@@ -196,12 +198,24 @@ success. Publishing an Archived document → `409`.
 Signed-in app audiences call (see `docs/app/settings/legal.md`):
 
 ```text
-GET /api/v1/legal/privacy-policy
-GET /api/v1/legal/terms
+GET /api/v1/legal/privacy-policy[?audience=]
+GET /api/v1/legal/terms[?audience=]
 ```
 
-They receive only the current Published version for their own audience,
-derived from the JWT. There is no audience parameter to override.
+They receive only the current Published version for their own audience, derived
+from the token's `account_type` claims (one per owned account). When the token
+owns more than one audience the caller names the wanted one with the optional
+`audience` query parameter — a `LegalAudience` value (`1`–`5`,
+`CareHomeOwner = 5`), accepted by number or enum name:
+
+- owned `audience` → served;
+- malformed/undefined `audience` → `400 Cms.Content.InvalidAudience` (checked
+  first, for every account class including admin);
+- well-formed but unowned `audience` → `403 Cms.Content.UnsupportedAudience`;
+- omitted (or empty/whitespace) with exactly one owned audience → auto-selected;
+- omitted with more than one owned audience → `400 Cms.Content.AudienceRequired`;
+- omitted with no owned app audience (admin account types) →
+  `403 Cms.Content.UnsupportedAudience`.
 
 ## Migration
 
