@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Community.Application.Abstractions.Data;
 using Sanad.Modules.Community.Application.Posts;
 using Sanad.Modules.Community.Domain.Categories;
+using Sanad.Modules.Community.Domain.Blocks;
 using Sanad.Modules.Community.Domain.CheckIns;
 using Sanad.Modules.Community.Domain.Comments;
 using Sanad.Modules.Community.Domain.Interactions;
@@ -455,6 +456,8 @@ public sealed class AdminCommunityRestrictionQueryTests
 
         public DbSet<CommunityAuthorRestriction> CommunityAuthorRestrictions =>
             inner.CommunityAuthorRestrictions;
+
+        public DbSet<CommunityAuthorBlock> CommunityAuthorBlocks => inner.CommunityAuthorBlocks;
 
         public Task<IDbContextTransaction?> BeginCommunityAuthorRestrictionTransactionAsync(
             UserId authorId,

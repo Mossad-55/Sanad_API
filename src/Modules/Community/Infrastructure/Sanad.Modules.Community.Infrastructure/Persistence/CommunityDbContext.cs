@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore.Storage;
 using System.Data;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Community.Application.Abstractions.Data;
+using Sanad.Modules.Community.Domain.Blocks;
 using Sanad.Modules.Community.Domain.Categories;
 using Sanad.Modules.Community.Domain.Comments;
 using Sanad.Modules.Community.Domain.Posts;
@@ -33,6 +34,7 @@ public class CommunityDbContext : DbContext, ICommunityDbContext
     public DbSet<CommunityCategory> Categories { get; set; } = null!;
     public DbSet<CommunityPostReport> CommunityPostReports { get; set; } = null!;
     public DbSet<CommunityAuthorRestriction> CommunityAuthorRestrictions { get; set; } = null!;
+    public DbSet<CommunityAuthorBlock> CommunityAuthorBlocks { get; set; } = null!;
 
     public async Task<IDbContextTransaction?> BeginCommunityAuthorRestrictionTransactionAsync(
         UserId authorId,
@@ -102,6 +104,9 @@ public class CommunityDbContext : DbContext, ICommunityDbContext
               AND NOT EXISTS (
                 SELECT 1 FROM {{schema}}"CheckIns" h
                 WHERE h."PostId" = p."Id" AND h."UserId" = @userId)
+              AND NOT EXISTS (
+                SELECT 1 FROM {{schema}}"CommunityAuthorBlocks" b
+                WHERE b."BlockerUserId" = @userId AND b."BlockedAuthorUserId" = p."AuthorId")
             ORDER BY (
                 EXISTS (
                     SELECT 1 FROM {{schema}}"Posts" a
@@ -152,6 +157,15 @@ public class CommunityDbContext : DbContext, ICommunityDbContext
     {
         var names = new Dictionary<Guid, CommunityAuthorName>();
         if (userIds is null || userIds.Count == 0)
+        {
+            return names;
+        }
+
+        // The identity schema lives in the shared database. A non-relational
+        // provider (the in-memory unit-test seam) has no such table, so the
+        // lookup degrades to "no names" instead of throwing; the caller then
+        // projects an honest null display name.
+        if (!Database.IsRelational())
         {
             return names;
         }

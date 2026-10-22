@@ -23,6 +23,30 @@ namespace Sanad.Modules.Community.Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Sanad.Modules.Community.Domain.Blocks.CommunityAuthorBlock", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BlockedAuthorUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("BlockerUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BlockerUserId");
+
+                    b.HasIndex("BlockerUserId", "BlockedAuthorUserId")
+                        .IsUnique();
+
+                    b.ToTable("CommunityAuthorBlocks", "community");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Community.Domain.Categories.CommunityCategory", b =>
                 {
                     b.Property<Guid>("Id")

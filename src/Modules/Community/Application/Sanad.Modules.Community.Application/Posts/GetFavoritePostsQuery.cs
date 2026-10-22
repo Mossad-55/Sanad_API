@@ -30,11 +30,30 @@ public sealed class GetFavoritePostsQueryHandler
 
         var user = new UserId(request.UserId);
 
-        List<Guid> favoritedPostIds = await _dbContext.Interactions
+        // The posts of the authors the viewer blocked. The relation is
+        // resolved with one constant query — never one per row — and the ids
+        // are compared against the interaction's target id, so the filter is
+        // composed inside the interaction query, before the ordering and the
+        // paging, and a page never shrinks silently. Accepted tech debt: the
+        // id array grows with the number of published posts the blocked
+        // authors have.
+        Guid[] blockedPostIds = await LoadBlockedPostIdsAsync(
+            _dbContext,
+            user,
+            cancellationToken);
+
+        IQueryable<CommunityInteraction> interactions = _dbContext.Interactions
             .AsNoTracking()
             .Where(i => i.TargetType == CommunityInteractionTarget.Post &&
                         i.Kind == CommunityInteractionKind.Favorite &&
-                        i.UserId == user)
+                        i.UserId == user);
+
+        if (blockedPostIds.Length > 0)
+        {
+            interactions = interactions.Where(i => !blockedPostIds.Contains(i.TargetId));
+        }
+
+        List<Guid> favoritedPostIds = await interactions
             .OrderByDescending(i => i.CreatedOnUtc)
             .ThenByDescending(i => i.Id)
             .Skip((page - 1) * pageSize)
@@ -63,5 +82,34 @@ public sealed class GetFavoritePostsQueryHandler
             _dbContext, request.UserId, ordered, cancellationToken);
 
         return Result<IReadOnlyList<PostFeedItem>>.Success(PostViewerState.Attach(ordered, state));
+    }
+
+    /// <summary>
+    /// The ids of the published posts written by the authors the viewer
+    /// blocked. One query for the whole page; the result is empty when the
+    /// viewer blocked nobody.
+    /// </summary>
+    private static async Task<Guid[]> LoadBlockedPostIdsAsync(
+        ICommunityDbContext dbContext,
+        UserId viewerUserId,
+        CancellationToken cancellationToken)
+    {
+        if (viewerUserId == UserId.Empty)
+        {
+            return [];
+        }
+
+        List<CommunityPostId> blockedPostIds = await dbContext.Posts
+            .AsNoTracking()
+            .Where(post =>
+                post.Status == PostStatus.Published &&
+                dbContext.CommunityAuthorBlocks.Any(
+                    block =>
+                        block.BlockerUserId == viewerUserId &&
+                        block.BlockedAuthorUserId == post.AuthorId))
+            .Select(post => post.Id)
+            .ToListAsync(cancellationToken);
+
+        return blockedPostIds.Select(id => id.Value).ToArray();
     }
 }

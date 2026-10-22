@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.Community.Domain.Blocks;
 using Sanad.Modules.Community.Domain.Categories;
 using Sanad.Modules.Community.Domain.Comments;
 using Sanad.Modules.Community.Domain.CheckIns;
@@ -23,6 +24,7 @@ public interface ICommunityDbContext
     DbSet<CommunityCategory> Categories { get; }
     DbSet<CommunityPostReport> CommunityPostReports { get; }
     DbSet<CommunityAuthorRestriction> CommunityAuthorRestrictions { get; }
+    DbSet<CommunityAuthorBlock> CommunityAuthorBlocks { get; }
 
     // Serializes a Community author restriction check-and-insert across
     // processes. Relational providers return a transaction; non-relational

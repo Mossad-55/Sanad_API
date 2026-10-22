@@ -19,11 +19,25 @@ public sealed class GetPostQueryHandler
 
     public async Task<Result<PostFeedItem?>> Handle(GetPostQuery request, CancellationToken cancellationToken)
     {
-        Post? post = await _dbContext.Posts.AsNoTracking()
+        IQueryable<Post> query = _dbContext.Posts.AsNoTracking()
             .Include(p => p.Category)
-            .SingleOrDefaultAsync(
-                post => post.Id == new CommunityPostId(request.PostId) && post.Status == PostStatus.Published,
-                cancellationToken);
+            .Where(post =>
+                post.Id == new CommunityPostId(request.PostId) &&
+                post.Status == PostStatus.Published);
+
+        // A post of an author the viewer blocked is not found — the same
+        // not-found shape as an unknown or unpublished post. The predicate is
+        // keyed on the stored author id and never exposes it.
+        if (request.ViewerUserId is Guid viewerId && viewerId != Guid.Empty)
+        {
+            UserId viewerUserId = new(viewerId);
+            query = query.Where(post => !_dbContext.CommunityAuthorBlocks.Any(
+                block =>
+                    block.BlockerUserId == viewerUserId &&
+                    block.BlockedAuthorUserId == post.AuthorId));
+        }
+
+        Post? post = await query.SingleOrDefaultAsync(cancellationToken);
 
         if (post is null)
             return Result<PostFeedItem?>.Success(null);

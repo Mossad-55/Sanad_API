@@ -64,6 +64,18 @@ public sealed class GetPostsQueryHandler
             query = query.Where(p => p.CreatedOnUtc <= to);
         }
 
+        // The viewer's blocked authors are excluded from the feed. The
+        // predicate is composed inside the query, before the ordering and the
+        // paging, so a page never shrinks silently.
+        if (request.ViewerUserId is Guid viewerId && viewerId != Guid.Empty)
+        {
+            UserId viewerUserId = new(viewerId);
+            query = query.Where(p => !_dbContext.CommunityAuthorBlocks.Any(
+                block =>
+                    block.BlockerUserId == viewerUserId &&
+                    block.BlockedAuthorUserId == p.AuthorId));
+        }
+
         query = request.Sort switch
         {
             CommunityPostsSort.Oldest =>
@@ -86,5 +98,76 @@ public sealed class GetPostsQueryHandler
             _dbContext, request.ViewerUserId ?? Guid.Empty, posts, cancellationToken);
 
         return Result<IReadOnlyList<PostFeedItem>>.Success(PostViewerState.Attach(posts, state));
+    }
+}
+
+/// <summary>
+/// The display projection of one Community author, resolved from the shared
+/// Identity database.
+/// <para>
+/// <c>DisplayName</c> is the English full name preferred with the Arabic full
+/// name as fallback (the same rule the Identity inbox and the Chat participant
+/// use). It is <c>null</c> when the identity row is missing or when both names
+/// are blank — no placeholder name is invented.
+/// </para>
+/// <para>
+/// <c>AvatarUrl</c> is always <c>null</c>: Community has no publicly servable
+/// avatar source. The only stored avatar reference is the Identity file key,
+/// which lives in private storage and is readable only by its owner through
+/// <c>GET /api/v1/auth/avatar</c>; publishing that key as if it were a URL
+/// would hand the app a link that always 404s. The honest value is null.
+/// </para>
+/// </summary>
+public sealed record CommunityAuthorProfile(string? DisplayName, string? AvatarUrl)
+{
+    /// <summary>
+    /// The stored author name as a display name: English full name preferred,
+    /// Arabic fallback, and <c>null</c> when the identity row is missing or
+    /// both names are blank — no placeholder name is invented.
+    /// </summary>
+    public static CommunityAuthorProfile FromAuthorName(CommunityAuthorName? name) =>
+        new(DisplayNameOf(name), null);
+
+    private static string? DisplayNameOf(CommunityAuthorName? name)
+    {
+        if (name is null)
+        {
+            return null;
+        }
+
+        string preferred = string.IsNullOrWhiteSpace(name.EnglishFullName)
+            ? name.ArabicFullName
+            : name.EnglishFullName;
+
+        return string.IsNullOrWhiteSpace(preferred) ? null : preferred;
+    }
+}
+
+/// <summary>
+/// One batched identity lookup for the authors of a page of Community items.
+/// The caller sends every distinct author id of the page at once; a per-row
+/// lookup would be an N+1 and is never performed.
+/// </summary>
+public sealed record GetCommunityAuthorProfilesQuery(IReadOnlyCollection<Guid> UserIds)
+    : IQuery<IReadOnlyDictionary<Guid, CommunityAuthorProfile>>;
+
+public sealed class GetCommunityAuthorProfilesQueryHandler(ICommunityDbContext dbContext)
+    : IQueryHandler<GetCommunityAuthorProfilesQuery, IReadOnlyDictionary<Guid, CommunityAuthorProfile>>
+{
+    public async Task<Result<IReadOnlyDictionary<Guid, CommunityAuthorProfile>>> Handle(
+        GetCommunityAuthorProfilesQuery request,
+        CancellationToken cancellationToken)
+    {
+        IReadOnlyDictionary<Guid, CommunityAuthorName> names =
+            await dbContext.GetCommunityAuthorNamesAsync(
+                request.UserIds ?? [], cancellationToken);
+
+        var profiles = new Dictionary<Guid, CommunityAuthorProfile>();
+        foreach (KeyValuePair<Guid, CommunityAuthorName> entry in names)
+        {
+            profiles[entry.Key] = CommunityAuthorProfile.FromAuthorName(entry.Value);
+        }
+
+        return Result<IReadOnlyDictionary<Guid, CommunityAuthorProfile>>.Success(profiles);
     }
 }
