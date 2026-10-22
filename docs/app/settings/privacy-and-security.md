@@ -15,6 +15,7 @@ Development base URL: https://localhost:7296
 | Revoke one session (F12) | DELETE /api/v1/auth/sessions/{sessionId} | docs/auth/refresh-and-sessions.md |
 | Privacy Policy page (F14) | GET /api/v1/legal/privacy-policy[?audience=] | docs/app/settings/legal.md |
 | Terms & Conditions (F15) | GET /api/v1/legal/terms[?audience=] | docs/app/settings/legal.md |
+| Privacy Policy / Terms (public website) | GET /api/v1/public/legal/{documentType} | docs/app/settings/legal.md |
 | Help Center (FAQs + contact card) | GET /api/v1/help-center[?audience=] | docs/app/settings/help-support.md |
 
 ## Change password (F13)
@@ -95,6 +96,8 @@ Revocation is idempotent. Maximum five active sessions. The user must remove an 
 Both pages are admin-managed **legal documents** (SET-12) — not splash screens. `GET /api/v1/legal/privacy-policy` and `GET /api/v1/legal/terms` require the app JWT; the audience is derived from the token's `account_type` claims (Family, MedicalCaregiver, CompanionCaregiver, Elderly, CareHomeOwner). When the token owns more than one audience the caller names the wanted one with the optional `?audience=` query parameter; an owned value is required, and the audience can never be widened to one the caller does not own. Each call returns exactly the current `Published` version for the resolved audience and type, with bilingual ordered sections. There is no fallback: if that audience has no publication the API returns `404 Cms.Legal.NotPublished`, and admin account types get `403 Cms.Content.UnsupportedAudience` (malformed `audience` is `400 Cms.Content.InvalidAudience` for every account class). Full contract: `docs/app/settings/legal.md`; admin authoring and publishing: `docs/admin/legal-content.md`.
 
 The Terms agreement is captured in the registration flow; on this screen both pages are VIEW-ONLY.
+
+The same two documents are also readable **without login** by the public website through `GET /api/v1/public/legal/{documentType}` (`{documentType}` = `1`/`PrivacyPolicy` or `2`/`TermsAndConditions`), which serves the current Published version authored for the anonymous `Public` audience (`400 Cms.Content.InvalidDocumentType`, `404 Cms.Legal.NotPublished`). That route is the only public legal read; the Help Center stays authenticated. Full contract: `docs/app/settings/legal.md`.
 
 ## Help Center (support contact + FAQs)
 

@@ -678,13 +678,17 @@ public sealed class OwnerLegalAudienceApiTests
                     .EnumerateArray()
                     .Select(value => value.GetInt32())
                     .ToArray();
-            Assert.Equal(new[] { 1, 2, 3, 4, 5 }, values);
+
+            // T9-B adds the anonymous Public audience as 0; the five app
+            // audiences keep their original 1–5 values.
+            Assert.Equal(new[] { 0, 1, 2, 3, 4, 5 }, values);
 
             string[] names =
                 schema.GetProperty("x-enumNames")
                     .EnumerateArray()
                     .Select(value => value.GetString()!)
                     .ToArray();
+            Assert.Contains("Public", names);
             Assert.Contains("CareHomeOwner", names);
 
             foreach (string path in new[]

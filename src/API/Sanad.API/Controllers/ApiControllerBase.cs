@@ -119,6 +119,14 @@ public abstract class ApiControllerBase :
     /// an invented document. <see cref="LegalAudience"/> is a distinct value
     /// space from <see cref="AccountType"/>: CareHomeOwner maps from 8 to 5 by
     /// name, never by casting.
+    /// <para>
+    /// The anonymous Public audience (0) added by T9-B is deliberately
+    /// excluded: it is served only by the anonymous public legal route, is
+    /// never derived from a token, and must not count as an owned audience.
+    /// The exclusion is also what keeps the unmapped-claim fallback — which is
+    /// <c>default(LegalAudience)</c> and therefore Public once Public is 0 —
+    /// from leaking a token-derived Public audience to an admin account.
+    /// </para>
     /// </summary>
     protected IReadOnlyList<LegalAudience> GetOwnedContentAudiences()
     {
@@ -131,7 +139,8 @@ public abstract class ApiControllerBase :
                         claim.Value))
             .Where(
                 audience =>
-                    audience.IsDefined())
+                    audience.IsDefined() &&
+                    audience is not LegalAudience.Public)
             .Distinct()
             .OrderBy(
                 audience =>
@@ -210,7 +219,10 @@ public abstract class ApiControllerBase :
     /// <summary>
     /// Parses exactly one audience value: a numeric enum value (1–5) or an
     /// enum name, case-insensitive. A comma-joined list, an unknown name or an
-    /// undefined number is not a single audience and is refused.
+    /// undefined number is not a single audience and is refused. The anonymous
+    /// Public audience (0) is refused too: it is not an app audience, so
+    /// <c>?audience=0</c> and <c>?audience=Public</c> stay the documented
+    /// <c>400 Cms.Content.InvalidAudience</c> on the authenticated app routes.
     /// </summary>
     protected static bool TryParseContentAudience(
         string? value,
@@ -235,7 +247,8 @@ public abstract class ApiControllerBase :
                 trimmed,
                 ignoreCase: true,
                 out LegalAudience parsed) &&
-            parsed.IsDefined())
+            parsed.IsDefined() &&
+            parsed is not LegalAudience.Public)
         {
             audience = parsed;
 

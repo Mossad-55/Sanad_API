@@ -9,10 +9,18 @@ the JWT `account_type` claims, which carry **one claim per owned account**.
 An optional `audience` query parameter selects the audience explicitly when
 the token owns more than one; there is no audience body field.
 
+The same two documents are also readable **without any login** through the
+anonymous public route (`GET /api/v1/public/legal/{documentType}`) when an
+admin has published them for the **Public** audience — see
+[Public (no-login) reads](#public-no-login-reads). The **Help Center is not
+public**: it stays on the authenticated route only.
+
 | Screen action | Endpoint | Auth |
 |---|---|---|
 | Privacy Policy | `GET /api/v1/legal/privacy-policy[?audience=]` | Normal JWT (Family, Medical Caregiver, Companion Caregiver, Elderly, or Care Home Owner) |
 | Terms & Conditions | `GET /api/v1/legal/terms[?audience=]` | Normal JWT (Family, Medical Caregiver, Companion Caregiver, Elderly, or Care Home Owner) |
+| Privacy Policy / Terms (public website) | `GET /api/v1/public/legal/{documentType}` | **Anonymous** — no token |
+
 
 ## Audience behavior
 
@@ -23,6 +31,12 @@ name is also accepted, case-insensitive). This value space is separate from
 ```text
 Family = 1, MedicalCaregiver = 2, CompanionCaregiver = 3, Elderly = 4, CareHomeOwner = 5
 ```
+
+`Public` (`0`) is the anonymous public-website audience. It is **not** a
+token-derived app audience, so it is never accepted on these routes:
+`?audience=0` and `?audience=Public` are `400 Cms.Content.InvalidAudience`
+(exactly like any other undefined value), and no token ever resolves to it.
+It is served only by the anonymous route below.
 
 An empty or whitespace-only value (`?audience=`) is treated exactly like an
 omitted parameter. If a client repeats the parameter
@@ -136,17 +150,89 @@ HTTP 404
 Show "not available yet"; do not cache a fabricated page. The client may
 also keep a bundled copy of the last fetched version for offline display.
 
+## Public (no-login) reads
+
+The public website can show the **Privacy Policy** and **Terms & Conditions**
+without any login (WEB-08 / T9-B decision 6A). This is deliberately a
+**minimal public set**: only those two published documents for the `Public`
+audience. The Help Center, FAQs and support-contact card remain
+authenticated-only (the signed-in routes above); there is no anonymous
+`?audience=` parameter and no anonymous Help Center route.
+
+```text
+GET /api/v1/public/legal/PrivacyPolicy
+GET /api/v1/public/legal/TermsAndConditions
+GET /api/v1/public/legal/1
+GET /api/v1/public/legal/2
+```
+
+- No `Authorization` header is required (and none is read). The audience is
+  fixed to `Public`; a caller can never request a different audience or a
+  different document type here.
+- `{documentType}` binds from the route as a `LegalDocumentType`: the numeric
+  value (`1` PrivacyPolicy, `2` TermsAndConditions) **or** the enum name,
+  case-insensitive. Only those two types exist.
+- The response is exactly the same `LegalDocumentResponse` shape as the app
+  read (bilingual ordered `sections` included), with `audience: 0`
+  (`Public`) and `status: 2` (Published). It returns only the current
+  **Published** version for `(type, Public)`; drafts and archived versions are
+  never served, and there is no fallback to a different audience (so a
+  published Family document does not satisfy a public read).
+
+Example:
+
+```text
+GET /api/v1/public/legal/TermsAndConditions
+```
+
+```json
+{
+  "id": { "value": "0191ae10-0000-7000-8000-0000000000a1" },
+  "documentType": 2,
+  "audience": 0,
+  "version": 1,
+  "status": 2,
+  "createdOnUtc": "2026-10-22T10:00:00Z",
+  "updatedOnUtc": "2026-10-22T10:00:00Z",
+  "publishedOnUtc": "2026-10-22T12:00:00Z",
+  "sections": [
+    {
+      "sectionType": 1,
+      "displayOrder": 1,
+      "arabicTitle": "الشروط",
+      "englishTitle": "Terms",
+      "arabicDescription": "…",
+      "englishDescription": "…",
+      "arabicBullets": [],
+      "englishBullets": []
+    }
+  ]
+}
+```
+
+Failures (same ProblemDetails shape as the app routes):
+
+| HTTP | `code` | When |
+|---|---|---|
+| 400 | `Cms.Content.InvalidDocumentType` | `{documentType}` is malformed or undefined (not `1`/`2`/`PrivacyPolicy`/`TermsAndConditions`) |
+| 404 | `Cms.Legal.NotPublished` | No current **Published** version exists for the requested type and the `Public` audience |
+
+Treat `404 Cms.Legal.NotPublished` as "not available yet" on the public site
+too — do not render a fabricated page or fall back to bundled app copy as if
+it were the current publication.
+
 ## Errors
 
 | HTTP | `code` | When |
 |---|---|---|
-| 401 | *(bare, no code)* | Missing/invalid/expired JWT |
+| 401 | *(bare, no code)* | Missing/invalid/expired JWT (app routes only; the public route is anonymous) |
 | 403 | *(bare, no code)* | Restricted verification token (framework policy) |
-| 400 | `Cms.Content.InvalidAudience` | `audience` is malformed or undefined (non-numeric, out of range, or a comma list) — checked before ownership, for every account class including admin |
-| 400 | `Cms.Content.AudienceRequired` | `audience` omitted or empty/whitespace while the token owns more than one audience |
-| 403 | `Cms.Content.UnsupportedAudience` | `audience` is well-formed but not owned by the caller, or the caller owns no app audience (admin account types) |
-| 404 | `Cms.Legal.NotPublished` | No current Published version for this pair |
-| 400 | `Api.Validation.Failed` | Request validation failures |
+| 400 | `Cms.Content.InvalidAudience` | App routes: `audience` is malformed or undefined (non-numeric, out of range, a comma list, or `0`/`Public`) — checked before ownership, for every account class including admin |
+| 400 | `Cms.Content.AudienceRequired` | App routes: `audience` omitted or empty/whitespace while the token owns more than one audience |
+| 403 | `Cms.Content.UnsupportedAudience` | App routes: `audience` is well-formed but not owned by the caller, or the caller owns no app audience (admin account types) |
+| 400 | `Cms.Content.InvalidDocumentType` | Public route: `{documentType}` is malformed or undefined (not `1`/`2`/`PrivacyPolicy`/`TermsAndConditions`) |
+| 404 | `Cms.Legal.NotPublished` | No current Published version for this (document type, audience) pair — app routes use the caller's audience, the public route uses `Public` |
+| 400 | `Api.Validation.Failed` | Request validation failures (app routes) |
 
 ## Authoring
 

@@ -313,6 +313,20 @@
           }
         }
       ]
+    },
+    {
+      "name": "08. Public legal",
+      "item": [
+        {
+          "name": "Get public legal document (anonymous)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/public/legal/{documentType}",
+            "description": "Anonymous - no Authorization header, no token is read. Serves the current Published Privacy Policy or Terms & Conditions authored for the anonymous Public audience (LegalAudience = 0), in the same LegalDocumentResponse shape as the signed-in app read /api/v1/legal/* (bilingual ordered sections; audience 0, status 2). {documentType} binds from the route as a LegalDocumentType: 1 or PrivacyPolicy, 2 or TermsAndConditions (numeric or enum name, case-insensitive). Only the current Published Public version is served - no drafts, no archived versions, and no fallback to a different audience (a published Family document does not satisfy a public read). Help Center is NOT public: it stays on the authenticated GET /api/v1/help-center. Examples: GET {{baseUrl}}/api/v1/public/legal/PrivacyPolicy and GET {{baseUrl}}/api/v1/public/legal/2. Success 200 with the document. Malformed or undefined {documentType} (0, 3, 9, abc, a comma list) -> 400 Cms.Content.InvalidDocumentType. No current Published Public version for the requested type -> 404 Cms.Legal.NotPublished."
+          }
+        }
+      ]
     }
   ],
   "variable": [

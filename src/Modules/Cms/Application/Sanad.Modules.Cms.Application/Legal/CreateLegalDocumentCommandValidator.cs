@@ -17,8 +17,9 @@ public sealed class CreateLegalDocumentCommandValidator
         RuleFor(command => command.Audience)
             .IsInEnum()
             .WithMessage(
-                "Audience must be 1 (Family), 2 (MedicalCaregiver), " +
-                "3 (CompanionCaregiver), or 4 (Elderly).");
+                "Audience must be 0 (Public), 1 (Family), " +
+                "2 (MedicalCaregiver), 3 (CompanionCaregiver), " +
+                "4 (Elderly), or 5 (CareHomeOwner).");
 
         RuleFor(command => command.Sections)
             .NotEmpty()

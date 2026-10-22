@@ -9,6 +9,16 @@ namespace Sanad.Modules.Cms.Application.Legal;
 /// </summary>
 public static class ContentErrors
 {
+    /// <summary>
+    /// Coded 400 for a malformed or undefined public legal document type. The
+    /// anonymous public legal route constructs it locally with
+    /// <c>BadRequestWithCode</c> (the same style as the app legal routes'
+    /// <c>Cms.Content.InvalidAudience</c>), so it needs no
+    /// <c>ResultProblemDetailsMapper</c> row.
+    /// </summary>
+    public const string InvalidDocumentTypeCode =
+        "Cms.Content.InvalidDocumentType";
+
     public static readonly Error UnsupportedAudience =
         new(
             "Cms.Content.UnsupportedAudience",

@@ -25,7 +25,7 @@ a bare 401/403 with no business `code`). Missing/invalid token → **401**.
 
 ```text
 LegalDocumentType: PrivacyPolicy = 1, TermsAndConditions = 2
-LegalAudience:     Family = 1, MedicalCaregiver = 2, CompanionCaregiver = 3, Elderly = 4, CareHomeOwner = 5
+LegalAudience:     Public = 0 (anonymous), Family = 1, MedicalCaregiver = 2, CompanionCaregiver = 3, Elderly = 4, CareHomeOwner = 5
 LegalDocumentStatus: Draft = 1, Published = 2, Archived = 3
 LegalSectionType:  Text = 1, UserRights = 2
 ```
@@ -33,6 +33,25 @@ LegalSectionType:  Text = 1, UserRights = 2
 There is **no** legal (or help) audience for `SuperAdmin`, `ContentAdmin`, or
 `SupportAdmin`. App reads always derive the audience from the JWT; an admin
 calling an app route receives `403 Cms.Content.UnsupportedAudience`.
+
+### The Public audience (anonymous)
+
+`LegalAudience.Public = 0` (T9-B decision 6A) is the **anonymous** audience
+read by the public website without any login. It is a normal authoring
+audience here — create/update/publish work exactly as for values 1–5 and the
+create validator accepts it — but two facts matter before publishing:
+
+- **Publishing a `Public` document makes it readable by anyone, with no
+  token.** The anonymous route
+  `GET /api/v1/public/legal/{documentType}` serves only the current
+  **Published** `Public` version of the Privacy Policy and Terms &
+  Conditions. Treat "publish a Public version" as a go-live action, not a
+  staging step.
+- Public is **not** a token-derived app audience and there is no fallback:
+  the signed-in app reads (`/api/v1/legal/*`) never serve it, and the Help
+  Center stays authenticated (Public is not a help audience). Values 1–5 keep
+  their original numbers, so existing rows are untouched.
+
 
 ## Endpoints summary
 
@@ -187,8 +206,9 @@ success. Publishing an Archived document → `409`.
 | 400 | `Cms.Content.InvalidAudience` | App read only: malformed/undefined `audience` (checked first, for every account class including admin) |
 | 400 | `Cms.Content.AudienceRequired` | App read only: `audience` omitted or empty/whitespace while the token owns more than one audience |
 | 403 | `Cms.Content.UnsupportedAudience` | Admin account types are not app audiences, or an app caller named an `audience` it does not own (app read routes only) |
+| 400 | `Cms.Content.InvalidDocumentType` | Public read only: `{documentType}` is malformed or undefined |
 | 404 | `Cms.Legal.NotFound` | Unknown legal version id |
-| 404 | `Cms.Legal.NotPublished` | App read: no current Published version for the (type, audience) pair |
+| 404 | `Cms.Legal.NotPublished` | No current Published version for the (type, audience) pair — signed-in app read, or the anonymous public read (`Public`) |
 | 409 | `Cms.Legal.DraftAlreadyExists` | A second Draft for the same (type, audience) pair |
 | 409 | `Cms.Legal.PublishedDocumentImmutable` | Update attempted on Published/Archived |
 | 409 | `Cms.Legal.InvalidOperation` | Publish of an Archived version or a domain rule violation |
@@ -216,6 +236,20 @@ owns more than one audience the caller names the wanted one with the optional
 - omitted with more than one owned audience → `400 Cms.Content.AudienceRequired`;
 - omitted with no owned app audience (admin account types) →
   `403 Cms.Content.UnsupportedAudience`.
+
+## Public reads (anonymous)
+
+The public website reads the two documents **without a token**:
+
+```text
+GET /api/v1/public/legal/{documentType}    # {documentType} = 1|2|PrivacyPolicy|TermsAndConditions
+```
+
+It serves the current **Published** version for `Audience == Public` in the
+same `LegalDocumentResponse` shape, and only for those two document types. The
+Help Center has no anonymous route. Malformed/undefined `{documentType}` →
+`400 Cms.Content.InvalidDocumentType`; no Published Public version →
+`404 Cms.Legal.NotPublished`.
 
 ## Migration
 
