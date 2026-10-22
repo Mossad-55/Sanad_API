@@ -1,6 +1,7 @@
 # Team-facing response — frontend (Q9–Q15, WEB-01–16) and mobile (MOB-01–15)
 
 **Date:** 2026-10-22
+**Amendment (2026-10-22, later the same day):** the previously in-progress WEB-10 gap is now **delivered** — the partner-contact form accepts optional `phone`, `companyType` and `city` as of release `153ad158349f4b6f942ab979f8f2a8d8c9195d99`; the WEB-10 entry below was updated accordingly. Everything else in this document is unchanged.
 **Scope:** one answer for every supplied frontend question (Q9–Q15), frontend request (WEB-01–WEB-16) and mobile request (MOB-01–MOB-15), based on the accepted contract reconciliation of the team replies follow-up brief.
 **Source baseline:** `6e9bba7f5ff90ffb7c7c742ee431aa2c03a1c664`.
 **Release state:** the October 22 frontend/mobile follow-up batch was released (revision `82b7af65d7b4f4ae1c01a45fa3ad5dfe68864a1c`) — a receipt exists for that release. This document states the **current-code** contract observed in the source at the baseline above.
@@ -177,11 +178,11 @@ Same contract as Q12. The `audience` query parameter is implemented at the basel
 Testimonials resolve from real caregiver/family ratings; there is no partner domain in source. **What the team should do:** only if the owner requests partner testimonials, supply the consent, source and role. No supplier domain is invented.
 
 ## WEB-10 — Contact-form reply promise + hardcoded company/city source
-**Classification:** Documentation + **approved gap (implementation in progress)**. **Evidence:** source verified and documented.
+**Classification:** Documentation + **approved gap — delivered (2026-10-22 release `153ad15`)**. **Evidence:** source verified and documented.
 
-**Released contract:** `POST /api/v1/partner-contact` is anonymous and its destination is the admin support inbox. The current request carries `name`, optional `company`, `email`, optional `subject`, `message`, plus a required `Idempotency-Key` header. There is **no `phone`, `companyType` or `city`** in the released request, and reply handling/reply-time promise is not modelled.
+**Released contract:** `POST /api/v1/partner-contact` is anonymous and its destination is the admin support inbox. The request carries `name`, optional `company`, `email`, optional `subject`, `message`, plus a required `Idempotency-Key` header.
 
-**Approved gap — in progress now:** optional `phone`, `companyType` and `city` are approved and are being implemented; `company` stays separate from `companyType`. **No date is promised.** Until that ships, the released contract above is authoritative.
+**Delivered (as of the 2026-10-22 release, revision `153ad158…`):** the previously approved gap is now live — optional `phone` (≤ 32 chars, digits with an optional leading `+`, at least one digit, common separators), `companyType` (free text ≤ 100; the select options remain frontend-owned) and `city` (free text ≤ 120) are accepted on the request, stored, surfaced to support staff in the admin inbox reads, and included in the idempotency comparison (same `Idempotency-Key` with a differing new field → `409 Identity.PartnerContact.IdempotencyConflict`). Absent or blank fields are stored as `null`. `company` stays separate from `companyType`. Full details: `docs/app/public/partner-contact.md`. Verified live on release day (valid submit → 200 receipt; same key + same content → same receipt; same key + differing `city` → 409; invalid phone shape → 400).
 
 **Deferred decision:** the contact **reply-time promise** remains a product decision (frequency/an owner-facing promise), not backend authority.
 
