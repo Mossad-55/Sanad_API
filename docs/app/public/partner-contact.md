@@ -88,6 +88,11 @@ never returned by any read).
 | 409 | `Identity.PartnerContact.IdempotencyConflict` | The same `Idempotency-Key` was already used with different content. |
 | 429 | `Identity.PartnerContact.RateLimited` | The per-caller hourly window is exhausted (`Retry-After` header). |
 
+## Response expectation
+
+The team **usually replies within 2 business days**. This is an expectation,
+not a guaranteed SLA.
+
 ## What the support team reads
 
 The admin support inbox lists and opens the submissions:

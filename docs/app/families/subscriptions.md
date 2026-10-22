@@ -29,6 +29,8 @@ Each catalog item also carries the optional bilingual copy authored for **that p
 
 The copy is display-only: it never changes price, cycle, currency, member limit, monthly-booking limit, rollover, or benefit inclusion.
 
+The approved AR/EN names, descriptions, and feature lists are an **authored Content deliverable**, entered through the admin plan-version fields; the API never generates the copy — or the prices, discounts, and benefits.
+
 ## Purchase quote
 
 `POST /api/v1/family/subscriptions/quote` returns a server-calculated, read-only
