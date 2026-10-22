@@ -130,7 +130,10 @@ public sealed class SubmitPartnerContactCommandHandler(
                 request.Message,
                 idempotencyKey,
                 clientKey,
-                now);
+                now,
+                request.Phone,
+                request.CompanyType,
+                request.City);
         }
         catch (DomainException)
         {
@@ -193,6 +196,9 @@ public sealed class SubmitPartnerContactCommandHandler(
         SubmitPartnerContactCommand request) =>
         contact.Name == request.Name.Trim() &&
         contact.Company == Normalize(request.Company) &&
+        contact.Phone == Normalize(request.Phone) &&
+        contact.CompanyType == Normalize(request.CompanyType) &&
+        contact.City == Normalize(request.City) &&
         contact.Email == request.Email.Trim() &&
         contact.Subject == Normalize(request.Subject) &&
         contact.Message == request.Message.Trim();

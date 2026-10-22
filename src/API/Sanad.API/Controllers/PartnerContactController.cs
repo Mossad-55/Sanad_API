@@ -19,7 +19,10 @@ public sealed record SubmitPartnerContactRequest(
     string? Company,
     string Email,
     string? Subject,
-    string Message);
+    string Message,
+    string? Phone = null,
+    string? CompanyType = null,
+    string? City = null);
 
 /// <summary>
 /// The anonymous partner/business contact surface. Its destination is the
@@ -79,7 +82,10 @@ public sealed class PartnerContactController :
                     request.Subject,
                     request.Message,
                     idempotencyKey ?? string.Empty,
-                    ClientKey()),
+                    ClientKey(),
+                    request.Phone,
+                    request.CompanyType,
+                    request.City),
                 cancellationToken);
 
         return ToPartnerContactActionResult(result);

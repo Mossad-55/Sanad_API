@@ -10,6 +10,7 @@ using Sanad.API.Authorization;
 using Sanad.API.Controllers;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.Modules.Identity.Application.Support;
+using Sanad.Modules.Identity.Domain.Support;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 
 namespace Sanad.UnitTests.API;
@@ -264,6 +265,79 @@ public sealed class PartnerContactControllerTests
         Assert.Equal("Hassani Care", item.Company);
         Assert.Equal("nour@example.com", item.Email);
         Assert.Equal(1, page.TotalCount);
+    }
+
+    [Fact]
+    public async Task Submit_forwards_the_optional_contact_fields_to_the_persisted_row()
+    {
+        await using IdentityDbContext dbContext = CreateDbContext();
+        PartnerContactController controller = CreateController(dbContext);
+
+        IActionResult result = await controller.SubmitPartnerContact(
+            new SubmitPartnerContactRequest(
+                "نور حسن",
+                "Hassani Care",
+                "nour@example.com",
+                "Partnership",
+                "We would like to discuss a partnership.",
+                "  +20 100 123 4567  ",
+                "  دار رعاية  ",
+                "  القاهرة  "),
+            "key-1",
+            default);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        Assert.IsType<PartnerContactResponse>(ok.Value);
+
+        PartnerContact stored = await dbContext.PartnerContacts.SingleAsync();
+        Assert.Equal("+20 100 123 4567", stored.Phone);
+        Assert.Equal("دار رعاية", stored.CompanyType);
+        Assert.Equal("القاهرة", stored.City);
+    }
+
+    [Fact]
+    public async Task Submit_stores_a_blank_optional_field_as_null_and_conflicts_when_only_it_differs()
+    {
+        await using IdentityDbContext dbContext = CreateDbContext();
+        PartnerContactController controller = CreateController(dbContext);
+
+        IActionResult first = await controller.SubmitPartnerContact(
+            new SubmitPartnerContactRequest(
+                "Nour Hassan",
+                null,
+                "nour@example.com",
+                null,
+                "We would like to discuss a partnership.",
+                "   ",
+                null,
+                null),
+            "key-1",
+            default);
+
+        Assert.IsType<OkObjectResult>(first);
+        PartnerContact stored = await dbContext.PartnerContacts.SingleAsync();
+        Assert.Null(stored.Phone);
+        Assert.Null(stored.CompanyType);
+        Assert.Null(stored.City);
+
+        // The same key with only the phone changed is the same content
+        // conflict as any other difference.
+        IActionResult conflicting = await controller.SubmitPartnerContact(
+            new SubmitPartnerContactRequest(
+                "Nour Hassan",
+                null,
+                "nour@example.com",
+                null,
+                "We would like to discuss a partnership.",
+                "+20 100 123 4567",
+                null,
+                null),
+            "key-1",
+            default);
+
+        var conflict = Assert.IsType<ObjectResult>(conflicting);
+        Assert.Equal(StatusCodes.Status409Conflict, conflict.StatusCode);
+        Assert.Single(dbContext.PartnerContacts);
     }
 
     private static PartnerContactController CreateController(

@@ -36,6 +36,30 @@ public sealed class SubmitPartnerContactCommandValidator :
             .When(command => command.Subject is not null);
 
         RuleFor(command =>
+                command.Phone)
+            .MaximumLength(
+                PartnerContact.MaximumPhoneNumberLength)
+            .When(command => command.Phone is not null);
+
+        RuleFor(command =>
+                command.Phone)
+            .Matches(PartnerContact.PhonePattern)
+            .When(command =>
+                !string.IsNullOrWhiteSpace(command.Phone));
+
+        RuleFor(command =>
+                command.CompanyType)
+            .MaximumLength(
+                PartnerContact.MaximumCompanyTypeLength)
+            .When(command => command.CompanyType is not null);
+
+        RuleFor(command =>
+                command.City)
+            .MaximumLength(
+                PartnerContact.MaximumCityLength)
+            .When(command => command.City is not null);
+
+        RuleFor(command =>
                 command.Message)
             .NotEmpty()
             .MinimumLength(

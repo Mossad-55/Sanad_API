@@ -30,6 +30,18 @@ public sealed class PartnerContactConfiguration :
             .HasColumnName("company")
             .HasMaxLength(PartnerContact.MaximumCompanyLength);
 
+        builder.Property(contact => contact.Phone)
+            .HasColumnName("phone")
+            .HasMaxLength(PartnerContact.MaximumPhoneNumberLength);
+
+        builder.Property(contact => contact.CompanyType)
+            .HasColumnName("company_type")
+            .HasMaxLength(PartnerContact.MaximumCompanyTypeLength);
+
+        builder.Property(contact => contact.City)
+            .HasColumnName("city")
+            .HasMaxLength(PartnerContact.MaximumCityLength);
+
         builder.Property(contact => contact.Email)
             .HasColumnName("email")
             .HasMaxLength(PartnerContact.MaximumEmailLength)

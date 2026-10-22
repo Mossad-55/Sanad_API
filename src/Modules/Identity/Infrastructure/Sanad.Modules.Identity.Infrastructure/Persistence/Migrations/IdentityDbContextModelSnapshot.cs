@@ -208,6 +208,11 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("City")
+                        .HasMaxLength(120)
+                        .HasColumnType("character varying(120)")
+                        .HasColumnName("city");
+
                     b.Property<string>("ClientKey")
                         .IsRequired()
                         .HasMaxLength(128)
@@ -218,6 +223,11 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("company");
+
+                    b.Property<string>("CompanyType")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("company_type");
 
                     b.Property<DateTime>("CreatedOnUtc")
                         .HasColumnType("timestamp with time zone")
@@ -246,6 +256,11 @@ namespace Sanad.Modules.Identity.Infrastructure.Persistence.Migrations
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
                         .HasColumnName("name");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(32)
+                        .HasColumnType("character varying(32)")
+                        .HasColumnName("phone");
 
                     b.Property<string>("Subject")
                         .HasMaxLength(150)

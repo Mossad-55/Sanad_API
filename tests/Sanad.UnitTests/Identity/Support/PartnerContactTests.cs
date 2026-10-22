@@ -402,6 +402,268 @@ public sealed class PartnerContactTests
         Assert.Empty(await inner.PartnerContacts.ToListAsync());
     }
 
+    [Fact]
+    public async Task Submit_normalizes_and_persists_the_optional_contact_fields()
+    {
+        await using IdentityDbContext dbContext = CreateDbContext();
+
+        Result<PartnerContactResponse> result = await CreateHandler(dbContext).Handle(
+            new SubmitPartnerContactCommand(
+                "نور حسن",
+                "  Hassani Care  ",
+                "nour@example.com",
+                null,
+                "رغبنا في التعاون مع دار الرعاية من",
+                "key-1",
+                "client-1",
+                "  +20 100 123 4567  ",
+                "  دار رعاية  ",
+                "  القاهرة  "),
+            CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+
+        PartnerContact stored = await dbContext.PartnerContacts.SingleAsync();
+        Assert.Equal("+20 100 123 4567", stored.Phone);
+        Assert.Equal("دار رعاية", stored.CompanyType);
+        Assert.Equal("القاهرة", stored.City);
+    }
+
+    [Fact]
+    public async Task Submit_stores_an_absent_or_blank_optional_field_as_null()
+    {
+        await using IdentityDbContext dbContext = CreateDbContext();
+
+        Result<PartnerContactResponse> absent = await CreateHandler(dbContext).Handle(
+            Command("key-absent"),
+            CancellationToken.None);
+
+        Result<PartnerContactResponse> blank = await CreateHandler(dbContext).Handle(
+            new SubmitPartnerContactCommand(
+                "Nour Hassan",
+                null,
+                "nour@example.com",
+                null,
+                "We would like to discuss a partnership.",
+                "key-blank",
+                "client-1",
+                "   ",
+                "   ",
+                ""),
+            CancellationToken.None);
+
+        Assert.True(absent.IsSuccess);
+        Assert.True(blank.IsSuccess);
+        Assert.All(
+            await dbContext.PartnerContacts.ToListAsync(),
+            contact =>
+            {
+                Assert.Null(contact.Phone);
+                Assert.Null(contact.CompanyType);
+                Assert.Null(contact.City);
+            });
+    }
+
+    [Fact]
+    public async Task A_legacy_row_created_before_the_optional_fields_reads_back_with_nulls()
+    {
+        await using IdentityDbContext dbContext = CreateDbContext();
+
+        // A row written before the optional fields existed, through the same
+        // aggregate without them — the shape of every pre-migration row.
+        dbContext.PartnerContacts.Add(PartnerContact.Create(
+            "Nour Hassan",
+            "Hassani Care",
+            "nour@example.com",
+            "Partnership",
+            "We would like to discuss a partnership.",
+            "key-1",
+            "client-1",
+            UtcNow));
+        await dbContext.SaveChangesAsync();
+
+        var page = await new GetAdminPartnerContactsQueryHandler(dbContext).Handle(
+            new GetAdminPartnerContactsQuery(),
+            CancellationToken.None);
+
+        Assert.True(page.IsSuccess);
+        AdminPartnerContactListItem item = Assert.Single(page.Value.Items);
+        Assert.Null(item.Phone);
+        Assert.Null(item.CompanyType);
+        Assert.Null(item.City);
+
+        var detail = await new GetAdminPartnerContactByIdQueryHandler(dbContext).Handle(
+            new GetAdminPartnerContactByIdQuery(item.ContactId),
+            CancellationToken.None);
+
+        Assert.True(detail.IsSuccess);
+        Assert.Equal("Nour Hassan", detail.Value.Name);
+        Assert.Equal("We would like to discuss a partnership.", detail.Value.Message);
+        Assert.Null(detail.Value.Phone);
+        Assert.Null(detail.Value.CompanyType);
+        Assert.Null(detail.Value.City);
+    }
+
+    [Fact]
+    public void Validator_rejects_new_fields_over_their_bounds_and_keeps_the_required_rules()
+    {
+        var validator = new SubmitPartnerContactCommandValidator();
+
+        var oversized = validator.Validate(
+            new SubmitPartnerContactCommand(
+                "Nour Hassan",
+                "company",
+                "nour@example.com",
+                "subject",
+                "We would like to discuss a partnership.",
+                "key-1",
+                "client-1",
+                new string('9', PartnerContact.MaximumPhoneNumberLength + 1),
+                new string('x', PartnerContact.MaximumCompanyTypeLength + 1),
+                new string('c', PartnerContact.MaximumCityLength + 1)));
+
+        Assert.Contains(oversized.Errors, failure => failure.PropertyName == nameof(SubmitPartnerContactCommand.Phone));
+        Assert.Contains(oversized.Errors, failure => failure.PropertyName == nameof(SubmitPartnerContactCommand.CompanyType));
+        Assert.Contains(oversized.Errors, failure => failure.PropertyName == nameof(SubmitPartnerContactCommand.City));
+
+        // The phone shape stays permissive on characters: digits with an
+        // optional leading '+' and the common separators, at least one digit.
+        var malformed = validator.Validate(
+            new SubmitPartnerContactCommand(
+                "Nour Hassan",
+                "company",
+                "nour@example.com",
+                "subject",
+                "We would like to discuss a partnership.",
+                "key-1",
+                "client-1",
+                "call me at nine",
+                null,
+                null));
+
+        Assert.Contains(malformed.Errors, failure => failure.PropertyName == nameof(SubmitPartnerContactCommand.Phone));
+
+        // A submission without the new fields still validates, and the
+        // existing required rules are unchanged.
+        var withoutNewFields = validator.Validate(
+            new SubmitPartnerContactCommand(
+                "  ",
+                "company",
+                "not-an-email",
+                "subject",
+                "short",
+                "key-1",
+                "client-1"));
+
+        Assert.False(withoutNewFields.IsValid);
+        Assert.Contains(withoutNewFields.Errors, failure => failure.PropertyName == nameof(SubmitPartnerContactCommand.Name));
+        Assert.Contains(withoutNewFields.Errors, failure => failure.PropertyName == nameof(SubmitPartnerContactCommand.Email));
+        Assert.Contains(withoutNewFields.Errors, failure => failure.PropertyName == nameof(SubmitPartnerContactCommand.Message));
+    }
+
+    [Fact]
+    public async Task Submit_rejects_a_phone_outside_the_allowed_shape_and_persists_nothing()
+    {
+        await using IdentityDbContext dbContext = CreateDbContext();
+
+        Result<PartnerContactResponse> result = await CreateHandler(dbContext).Handle(
+            new SubmitPartnerContactCommand(
+                "Nour Hassan",
+                "company",
+                "nour@example.com",
+                null,
+                "We would like to discuss a partnership.",
+                "key-1",
+                "client-1",
+                "call me at nine",
+                null,
+                null),
+            CancellationToken.None);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(PartnerContactErrors.Invalid.Code, result.Error.Code);
+        Assert.Empty(dbContext.PartnerContacts);
+    }
+
+    [Fact]
+    public async Task Submit_is_idempotent_when_the_optional_fields_repeat()
+    {
+        await using IdentityDbContext dbContext = CreateDbContext();
+        SubmitPartnerContactCommandHandler handler = CreateHandler(dbContext);
+
+        var command = new SubmitPartnerContactCommand(
+            "Nour Hassan",
+            "Hassani Care",
+            "nour@example.com",
+            null,
+            "We would like to discuss a partnership.",
+            "key-1",
+            "client-1",
+            "+20 100 123 4567",
+            "دار رعاية",
+            "القاهرة");
+
+        Result<PartnerContactResponse> first = await handler.Handle(command, CancellationToken.None);
+        Result<PartnerContactResponse> retry = await handler.Handle(command, CancellationToken.None);
+
+        Assert.True(first.IsSuccess);
+        Assert.True(retry.IsSuccess);
+        Assert.Equal(first.Value.ContactId, retry.Value.ContactId);
+        Assert.Single(await dbContext.PartnerContacts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Submit_conflicts_when_only_one_optional_field_differs()
+    {
+        await using IdentityDbContext dbContext = CreateDbContext();
+        SubmitPartnerContactCommandHandler handler = CreateHandler(dbContext);
+
+        var cases = new (string Key, string? Phone, string? CompanyType, string? City, string? Rival)[]
+        {
+            ("key-phone", "+20 100 123 4567", null, null, "+20 111 222 3333"),
+            ("key-type", null, "دار رعاية", null, "مستشفى"),
+            ("key-city", null, null, "القاهرة", "الإسكندرية"),
+        };
+
+        foreach (var (key, phone, companyType, city, rival) in cases)
+        {
+            Result<PartnerContactResponse> first = await handler.Handle(
+                new SubmitPartnerContactCommand(
+                    "Nour Hassan",
+                    null,
+                    "nour@example.com",
+                    null,
+                    "We would like to discuss a partnership.",
+                    key,
+                    "client-1",
+                    phone,
+                    companyType,
+                    city),
+                CancellationToken.None);
+
+            Result<PartnerContactResponse> conflicting = await handler.Handle(
+                new SubmitPartnerContactCommand(
+                    "Nour Hassan",
+                    null,
+                    "nour@example.com",
+                    null,
+                    "We would like to discuss a partnership.",
+                    key,
+                    "client-1",
+                    phone is null ? rival : phone,
+                    companyType is null ? rival : companyType,
+                    city is null ? rival : city),
+                CancellationToken.None);
+
+            Assert.True(first.IsSuccess);
+            Assert.True(conflicting.IsFailure);
+            Assert.Equal(PartnerContactErrors.Conflict.Code, conflicting.Error.Code);
+        }
+
+        // One row per key: the conflicting retries stored nothing.
+        Assert.Equal(cases.Length, await dbContext.PartnerContacts.CountAsync());
+    }
+
     private static SubmitPartnerContactCommand Command(string idempotencyKey) =>
         new(
             "Nour Hassan",

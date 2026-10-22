@@ -11,7 +11,9 @@ namespace Sanad.Modules.Identity.Application.Support;
 /// <c>IdempotencyKey</c> is the caller-supplied <c>Idempotency-Key</c> header
 /// value; <c>ClientKey</c> is the caller-scoped anti-spam key the API layer
 /// derives from the request (never supplied by the client). Both are
-/// anti-spam inputs, not contact data.
+/// anti-spam inputs, not contact data. <c>Phone</c>, <c>CompanyType</c> and
+/// <c>City</c> are the optional contact fields: absent or blank is stored as
+/// <c>null</c>, and each participates in the idempotency content comparison.
 /// </para>
 /// </summary>
 public sealed record SubmitPartnerContactCommand(
@@ -21,7 +23,10 @@ public sealed record SubmitPartnerContactCommand(
     string? Subject,
     string Message,
     string IdempotencyKey,
-    string ClientKey)
+    string ClientKey,
+    string? Phone = null,
+    string? CompanyType = null,
+    string? City = null)
     : ICommand<PartnerContactResponse>;
 
 /// <summary>

@@ -5,8 +5,9 @@ namespace Sanad.Modules.Identity.Domain.Support;
 
 /// <summary>
 /// A partner/business contact request submitted from the public contact
-/// form. The submitter's name, company, email and message are **request
-/// data** captured for the support inbox — they never become an account, and
+/// form. The submitter's name, company, phone, company type, city, email and
+/// message are **request data** captured for the support inbox — they never
+/// become an account, and
 /// no user id is stored: an anonymous submitter has no identity to borrow.
 /// <para>
 /// The idempotency key and the client key are anti-spam inputs supplied by
@@ -19,12 +20,24 @@ public sealed class PartnerContact :
     public const int MinimumNameLength = 2;
     public const int MaximumNameLength = 200;
     public const int MaximumCompanyLength = 200;
+    public const int MaximumPhoneNumberLength = 32;
+    public const int MaximumCompanyTypeLength = 100;
+    public const int MaximumCityLength = 120;
     public const int MaximumEmailLength = 320;
     public const int MaximumSubjectLength = 150;
     public const int MinimumMessageLength = 10;
     public const int MaximumMessageLength = 2000;
     public const int MaximumIdempotencyKeyLength = 200;
     public const int MaximumClientKeyLength = 128;
+
+    /// <summary>
+    /// The permissive contact-form phone shape: digits with an optional
+    /// leading <c>+</c> and the common separators (space, parentheses, dash,
+    /// dot). It requires at least one digit and is deliberately looser than
+    /// the account E.164 rule — a partner may type a locally formatted
+    /// number, and the options/select handling stays frontend-owned.
+    /// </summary>
+    public const string PhonePattern = @"^(?=.*[0-9])\+?[0-9()\-\. ]*$";
 
     private PartnerContact()
     {
@@ -34,6 +47,9 @@ public sealed class PartnerContact :
         PartnerContactId id,
         string name,
         string? company,
+        string? phone,
+        string? companyType,
+        string? city,
         string email,
         string? subject,
         string message,
@@ -44,6 +60,9 @@ public sealed class PartnerContact :
     {
         Name = name;
         Company = company;
+        Phone = phone;
+        CompanyType = companyType;
+        City = city;
         Email = email;
         Subject = subject;
         Message = message;
@@ -57,6 +76,19 @@ public sealed class PartnerContact :
 
     /// <summary>The submitter's own company, as submitted (optional).</summary>
     public string? Company { get; private set; }
+
+    /// <summary>The submitter's own phone number, as submitted (optional).</summary>
+    public string? Phone { get; private set; }
+
+    /// <summary>
+    /// The submitter's own company type, as submitted (optional, free text).
+    /// The suggested select options are frontend-owned; the API stores the
+    /// submitted value verbatim and never an enum.
+    /// </summary>
+    public string? CompanyType { get; private set; }
+
+    /// <summary>The submitter's own city, as submitted (optional).</summary>
+    public string? City { get; private set; }
 
     /// <summary>The submitter's own email, as submitted.</summary>
     public string Email { get; private set; } = default!;
@@ -86,7 +118,10 @@ public sealed class PartnerContact :
         string message,
         string idempotencyKey,
         string clientKey,
-        DateTime createdOnUtc)
+        DateTime createdOnUtc,
+        string? phone = null,
+        string? companyType = null,
+        string? city = null)
     {
         if (createdOnUtc.Kind != DateTimeKind.Utc)
         {
@@ -106,6 +141,18 @@ public sealed class PartnerContact :
             company,
             MaximumCompanyLength,
             "Company");
+
+        string? trimmedPhone = NormalizeOptionalPhone(phone);
+
+        string? trimmedCompanyType = NormalizeOptional(
+            companyType,
+            MaximumCompanyTypeLength,
+            "Company type");
+
+        string? trimmedCity = NormalizeOptional(
+            city,
+            MaximumCityLength,
+            "City");
 
         string trimmedEmail = email.Trim();
         if (trimmedEmail.Length == 0 ||
@@ -148,12 +195,48 @@ public sealed class PartnerContact :
             PartnerContactId.New(),
             trimmedName,
             trimmedCompany,
+            trimmedPhone,
+            trimmedCompanyType,
+            trimmedCity,
             trimmedEmail,
             trimmedSubject,
             trimmedMessage,
             trimmedIdempotencyKey,
             trimmedClientKey,
             createdOnUtc);
+    }
+
+    /// <summary>
+    /// The optional-input normalize of the phone field: absent or
+    /// whitespace-only is <c>null</c>, otherwise trimmed, length-bounded and
+    /// checked against <see cref="PhonePattern"/>. Same shape and error style
+    /// as <see cref="NormalizeOptional"/>.
+    /// </summary>
+    private static string? NormalizeOptionalPhone(string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        string normalized = value.Trim();
+        if (normalized.Length > MaximumPhoneNumberLength)
+        {
+            throw new DomainException(
+                $"Phone must not exceed {MaximumPhoneNumberLength} characters.");
+        }
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(
+                normalized,
+                PhonePattern,
+                System.Text.RegularExpressions.RegexOptions.CultureInvariant))
+        {
+            throw new DomainException(
+                "Phone must contain only digits, an optional leading '+', " +
+                "and the separators ' ', '(', ')', '-' and '.'.");
+        }
+
+        return normalized;
     }
 
     private static string? NormalizeOptional(
