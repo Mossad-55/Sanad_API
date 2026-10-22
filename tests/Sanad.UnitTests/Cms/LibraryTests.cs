@@ -487,6 +487,99 @@ public sealed class LibraryTests
         Assert.Equal(2, paged.Value.TotalCount);
     }
 
+    [Fact]
+    public async Task Public_content_reads_expose_the_cover_path_and_the_real_video_fields()
+    {
+        await using CmsDbContext db = CreateCmsContext();
+        await using FamiliesDbContext families = CreateFamiliesContext();
+
+        LibraryCategory health = LibraryCategory.Create("صحة", "Health", true, DateTime.UtcNow);
+        db.LibraryCategories.Add(health);
+        await db.SaveChangesAsync();
+
+        LibraryContent video = await CreatePublished(db, "Video", "Playable sample", health.Id.Value);
+        LibraryContent article = await CreatePublished(db, "Article", "Reading sample", health.Id.Value);
+        Guid videoId = video.Id.Value;
+        Guid articleId = article.Id.Value;
+
+        var list = await new GetLibraryContentListQueryHandler(db, families)
+            .Handle(new GetLibraryContentListQuery(), CancellationToken.None);
+        Assert.True(list.IsSuccess);
+
+        LibraryContentListItemResponse videoItem =
+            Assert.Single(list.Value, item => item.Id == videoId);
+        Assert.Equal("Video", videoItem.Type);
+        Assert.Equal("library/cover.png", videoItem.CoverImagePath);
+        Assert.Equal(300, videoItem.DurationSeconds);
+        Assert.Equal(health.Id.Value, videoItem.CategoryId);
+        Assert.Equal("Health", videoItem.CategoryEnglishName);
+        Assert.Equal("صحة", videoItem.CategoryArabicName);
+        Assert.True(videoItem.CanAccess);
+
+        LibraryContentListItemResponse articleItem =
+            Assert.Single(list.Value, item => item.Id == articleId);
+        Assert.Equal("Article", articleItem.Type);
+        Assert.Null(articleItem.DurationSeconds);
+
+        var recommendations = await new GetLibraryRecommendationsQueryHandler(db, families)
+            .Handle(new GetLibraryRecommendationsQuery(ContentId: articleId), CancellationToken.None);
+        Assert.True(recommendations.IsSuccess);
+        LibraryContentListItemResponse recommended =
+            Assert.Single(recommendations.Value, item => item.Id == videoId);
+        Assert.Equal("library/cover.png", recommended.CoverImagePath);
+        Assert.Equal(300, recommended.DurationSeconds);
+
+        var detail = await new GetLibraryContentQueryHandler(db, families)
+            .Handle(new GetLibraryContentQuery(videoId, Guid.NewGuid()), CancellationToken.None);
+        Assert.True(detail.IsSuccess);
+        Assert.Equal("https://youtu.be/abc123", detail.Value.VideoUrl);
+        Assert.Equal(300, detail.Value.DurationSeconds);
+        Assert.Equal("library/cover.png", detail.Value.CoverImagePath);
+        Assert.Empty(detail.Value.Sections);
+    }
+
+    [Fact]
+    public async Task Public_content_detail_returns_null_category_fields_when_the_content_has_no_category()
+    {
+        await using CmsDbContext db = CreateCmsContext();
+        await using FamiliesDbContext families = CreateFamiliesContext();
+
+        LibraryContent content = await CreatePublished(db, "Article", "No category");
+        Guid contentId = content.Id.Value;
+
+        var detail = await new GetLibraryContentQueryHandler(db, families)
+            .Handle(new GetLibraryContentQuery(contentId, Guid.NewGuid()), CancellationToken.None);
+
+        Assert.True(detail.IsSuccess);
+        Assert.Null(detail.Value.CategoryId);
+        Assert.Null(detail.Value.CategoryArabicName);
+        Assert.Null(detail.Value.CategoryEnglishName);
+        Assert.False(string.IsNullOrWhiteSpace(detail.Value.CoverImagePath));
+        Assert.NotEmpty(detail.Value.Sections);
+    }
+
+    [Fact]
+    public async Task Premium_video_detail_keeps_the_real_duration_and_hides_the_video_url_without_the_benefit()
+    {
+        await using CmsDbContext db = CreateCmsContext();
+        await using FamiliesDbContext families = CreateFamiliesContext();
+
+        LibraryContent premium = await CreatePublished(db, "Video", "Premium video", isPremium: true);
+        Guid premiumId = premium.Id.Value;
+
+        var detail = await new GetLibraryContentQueryHandler(db, families)
+            .Handle(new GetLibraryContentQuery(premiumId, Guid.NewGuid()), CancellationToken.None);
+
+        Assert.True(detail.IsSuccess);
+        Assert.True(detail.Value.IsPremium);
+        Assert.False(detail.Value.CanAccess);
+        Assert.Null(detail.Value.VideoUrl);
+        Assert.Empty(detail.Value.Sections);
+        // The teaser keeps the real stored duration and cover.
+        Assert.Equal(300, detail.Value.DurationSeconds);
+        Assert.Equal("library/cover.png", detail.Value.CoverImagePath);
+    }
+
     private static Task<Result<bool>> SetSaved(
         CmsDbContext db, Guid contentId, UserId user, bool value) =>
         new SetLibraryContentSavedCommandHandler(db)

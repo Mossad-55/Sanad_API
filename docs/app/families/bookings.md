@@ -116,11 +116,35 @@ from the public status route — see
 
 ### 2. Tab list
 
-`GET /api/v1/family/bookings?tab=1` → `FamilyBookingListItem[]`: booking id, caregiver id, senior Arabic/English names, date + time window, `shiftType`, `status`, `totalPayableAmount`, `currency`. The caregiver name/avatar fields are reserved and currently return `null` pending the caregiver-name join.
+`GET /api/v1/family/bookings?tab=1` → `FamilyBookingListItem[]`: booking id, caregiver id, senior Arabic/English names, date + time window, `shiftType`, `status`, `totalPayableAmount`, `currency`. The caregiver name/avatar fields are reserved and currently return `null` pending the caregiver-name join: a booking stores the **caregiver aggregate id**, and the caregiver's identity name lives behind the Caregivers/Identity boundary, which exposes no seam to the Families module today. They stay honest `null` — the app must not render an invented caregiver name. The caregiver's public card is available separately from `GET /api/v1/caregivers/{caregiverId}`.
+
+The senior's date of birth, gender and photo are **not** on the list item; they are on the booking detail (below) and on the dependent route.
 
 ### 3. Booking detail
 
 `GET /api/v1/family/bookings/{bookingId}` → the exposed price fields (`baseCaregiverFee`, `platformFeePercentage`, `platformFeeAmount`, `totalPayableAmount`, `currency`), the elderly summary (fields are `null` when the dependent record is absent — the API never fabricates values), lifecycle timestamps (`paidOnUtc`, `confirmedOnUtc`, `startedOnUtc`, `completedOnUtc`, `cancelledOnUtc`, `refundedOnUtc`), `refundState` (`1` NotApplicable, `2` Failed Paymob refund, `3` Succeeded, `4` NoRefundDue`), `cancellationReason`, and `caregiverNotes`. The persisted booking snapshot also contains the tax rate/amount and charge-rule version, but those fields are not currently exposed by this response contract.
+
+#### The elderly summary
+
+| Member | Type | Meaning |
+|---|---|---|
+| `elderlyId` | UUID | The dependent of the booking. |
+| `arabicFullName` / `englishFullName` | string or `null` | The senior's stored names; `null` when the dependent row is gone. |
+| `gender` / `dateOfBirth` | int or `null` | The senior's stored gender and date of birth; `null` when the dependent row is gone. |
+| `healthNotes` | string or `null` | The free-text health notes the family stored on the dependent row. |
+| `hasPhoto` | bool | The dependent has a stored photo. The bytes are read from `GET /api/v1/family/dependents/{elderlyId}/photo` (same family access as the booking detail); no photo URL is projected on the booking. |
+| `emergencyContact` | object or `null` | The dependent's stored emergency contact — `{ name, relationship, phoneNumber }`. It is `null` when none is stored. The family may already read the same contact on `GET /api/v1/family/dependents/{dependentId}/emergency-contact`, so projecting it here adds no new access. **A caregiver never receives it** — the caregiver booking detail always returns `emergencyContact: null` (there is no emergency-contact access or status model). |
+
+#### Where the other booking-screen values come from
+
+- **Family names and avatar** live on the family profile only: `GET /api/v1/family` returns the family name and each member's display name and avatar reference. The booking responses do not repeat them.
+- **The caregiver's name and avatar** are not on the booking (see the tab list above); use `GET /api/v1/caregivers/{caregiverId}`.
+
+#### Caregiver-only members
+
+`visitHistory`, `upcomingVisits` and `familyReview` belong to the caregiver
+booking detail and are always `null` on the family booking detail — they are
+read from the caregiver's own records, not from the family's.
 
 ### 4. Cancel
 

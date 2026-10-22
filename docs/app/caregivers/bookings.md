@@ -45,6 +45,55 @@ List item: booking id, family/elderly ids, senior names, slot, `shiftType`, `sta
 
 `GET /api/v1/caregiver/bookings/{bookingId}` matches family booking detail plus `refundedOnUtc` and `refundState`.
 
+The caregiver detail also carries the senior's summary and the caregiver-only
+record members:
+
+| Member | Type | Meaning |
+|---|---|---|
+| `elderly.arabicFullName` / `elderly.englishFullName` | string or `null` | The senior's stored names; `null` when the dependent row is gone. |
+| `elderly.gender` / `elderly.dateOfBirth` | int or `null` | The senior's stored gender and date of birth; `null` when the dependent row is gone. |
+| `elderly.healthNotes` | string or `null` | The free-text health notes the family stored on the dependent row. This is the **only** medical context a caregiver can read today (see the medical-context mapping below). |
+| `elderly.hasPhoto` | bool | The dependent has a stored photo. A caregiver has **no** route to those bytes, so no photo URL is published. |
+| `elderly.emergencyContact` | object or `null` | Always `null` for a caregiver. No emergency-contact access or status model exists, so none is invented and no caregiver access is added. |
+| `visitHistory` | array or `null` | The real reports recorded for **this** booking (the visit report and/or the medical report), newest first. `null` — not an empty array — when no report was recorded yet. |
+| `upcomingVisits` | array or `null` | **Always `null`.** The meaning of "upcoming" is undecided (the mobile team's MOB-09 question: the same booking, or the caregiver's other bookings), so no other or future booking is mapped as a visit and no synthetic schedule is produced. |
+| `familyReview` | object or `null` | The family's stored booking review: `id`, `bookingId`, `rating` (1–5), `comment`, `isAnonymous`, `createdOnUtc`. `null` when the family has not reviewed the booking. The review author is never published, so an anonymous review stays anonymous. |
+
+Each `visitHistory` item carries the stored report facts: `reportId`,
+`reportType` (`visit` or `medical`), `caregiverType`, `observedCondition`,
+`activities`, `systolic`, `diastolic`, `pulse`, `temperature`, `notes`,
+`assessment`, `startedOnUtc`, `completedOnUtc`, `measurementTakenOnUtc`,
+`submittedOnUtc` and `photoAvailable`. The fields of the other report kind stay
+`null`. `photoAvailable` says the medical report carries a photo; the photo
+bytes are read through
+`GET /api/v1/caregiver/bookings/medical-reports/{reportId}/photo`.
+
+The booking's own amounts (`baseCaregiverFee`, `platformFeePercentage`,
+`platformFeeAmount`, `totalPayableAmount`, `currency`) are the immutable
+price snapshot of that booking — the caregiver's entitlement is
+`baseCaregiverFee` in full and the family-paid platform fee is never deducted
+from it (see [payout amounts](payouts.md)).
+
+### Medical context a caregiver can read (route → field → authorization)
+
+| Route | Fields | Authorization |
+|---|---|---|
+| `GET /api/v1/caregiver/bookings/{bookingId}` | `elderly.healthNotes` (free text stored by the family on the dependent row) | `CaregiverAccess`; the booking must belong to the calling caregiver, otherwise `404 Bookings.NotFound`. |
+| `GET /api/v1/caregiver/bookings/medical-reports/{reportId}/photo` | the medical report photo bytes | `CaregiverAccess`; only the **submitting** caregiver (`403 Reports.Medical.AccessDenied` otherwise), and only when the report has a photo (`404 Reports.Medical.PhotoNotFound`). |
+
+The dependent's **structured** medical profile (blood type, height, weight,
+chronic conditions, allergies, medical history) and **medications** are
+family-scoped only: `GET`/`PUT /api/v1/family/dependents/{dependentId}/medical-profile`
+and `/api/v1/family/dependents/{dependentId}/medications` require the
+`FamilyAccess` policy and family membership. The medical-access grant model
+exists (`/api/v1/family/dependents/{dependentId}/medical-access-grants`), but
+**no caregiver route reads those records through a grant today** — so the
+caregiver booking detail publishes no medical profile and no medication. See
+[medical profile](../families/medical-profile.md) and
+[medical access](../families/medical-access.md) for the exact mapping. A
+caregiver-facing medical-record read is a separate, authorized decision, not
+part of this contract.
+
 When a cancellation fact was recorded for the booking, the caregiver detail read also fills five additive members from that persisted fact; without a fact they stay `null`:
 
 | Field | Values |

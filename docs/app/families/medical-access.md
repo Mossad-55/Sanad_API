@@ -39,6 +39,24 @@ grantee returns `MedicalAccess.InvalidGrant`. These endpoints do not themselves
 expose medical records; downstream record access must check the named grantee,
 grant permissions, expiry, and revocation state.
 
+## What a caregiver can read today (route → field → authorization)
+
+| Route | Fields | Authorization |
+|---|---|---|
+| `GET /api/v1/caregiver/bookings/{bookingId}` | `elderly.healthNotes` (free text the family stored on the dependent row) | `CaregiverAccess`; the booking must belong to the calling caregiver, otherwise `404 Bookings.NotFound`. |
+| `GET /api/v1/caregiver/bookings/medical-reports/{reportId}/photo` | the medical report photo bytes | `CaregiverAccess`; the **submitting** caregiver only (`403 Reports.Medical.AccessDenied` otherwise), and only when the report carries a photo (`404 Reports.Medical.PhotoNotFound`). |
+| `GET /api/v1/family/dependents/{dependentId}/medical-profile` | the structured medical profile | `FamilyAccess` plus family membership — **family only**. |
+| `GET /api/v1/family/dependents/{dependentId}/medications` | the medication rows | `FamilyAccess` plus family membership — **family only**. |
+
+**No caregiver route reads the medical records named by a grant.** The grant
+rows record the family's decision (grantee, type, permissions, expiry,
+revocation) and the audit records the decision, but there is no caregiver
+record-read route that consumes a grant, so nothing in a caregiver booking
+response contains a medical profile, a medication, or an emergency contact. A
+caregiver-facing medical-record read is a separate Owner-level authorization
+decision (a new route plus its access rules) and is deliberately not part of
+this contract.
+
 ## Recipient picker
 
 `GET /api/v1/family/dependents/{dependentId}/medical-access-recipients?search=&page=1&pageSize=20`

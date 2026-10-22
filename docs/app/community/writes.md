@@ -95,6 +95,40 @@ post). On the recommendations feed `isLiked`/`isFavorited` are always
 posts are excluded from recommendations by definition. The favorite toggle
 endpoint is unchanged.
 
+## Author fields and anonymity
+
+Post, comment and reply responses carry two additive author fields:
+
+| Field | Type | Meaning |
+| --- | --- | --- |
+| `displayName` | string or `null` | The author's English full name, with the Arabic full name as fallback. `null` when the identity row is missing or when both names are blank — never a placeholder such as "Anonymous". |
+| `avatarUrl` | string or `null` | Always `null` today. Community has no publicly servable avatar source: the only stored avatar reference is the Identity private file key, which its owner alone can read through `GET /api/v1/auth/avatar`. The API never publishes a private storage key as if it were a URL. |
+
+The feed, post detail, recommendations, favorites, comments and replies each
+resolve the display names with **one batched identity lookup per page**; a
+per-row lookup is never performed, and the ids of anonymous authors are never
+looked up at all.
+
+### Anonymity
+
+- `isAnonymous` on a post is the stored flag and is unchanged.
+- An **anonymous post carries no author identity at all**: `displayName` and
+  `avatarUrl` are `null`, and the post response has no author id field.
+- Comments and replies now carry `isAnonymous` too. Community stores
+  anonymity on the post only, so a comment or a reply is anonymous exactly
+  when it is written by the author of an anonymous post **inside that post's
+  own thread** — the one place where the post author would otherwise be
+  identified through their own words. Such a response carries
+  `authorId: null`, `displayName: null`, `avatarUrl: null` and
+  `isAnonymous: true`. Every other comment or reply is not anonymous and
+  carries its author id and display name.
+- `authorId` on comments and replies is now **nullable**; it is `null` exactly
+  when `isAnonymous` is `true`. It remains the ownership handle, and the
+  edit/delete endpoints keep enforcing ownership server-side.
+
+Render anonymity as **null identity** — no name and no avatar. The API never
+substitutes a placeholder name for an anonymous author.
+
 `GET /api/v1/community/favorites?page=&pageSize=` returns the caller's
 favorited published posts (same post shape and per-user fields as the feed),
 newest-favorited-first. Untoggling a favorite removes the post from the list
@@ -182,6 +216,72 @@ POST   /api/v1/community/comments/{commentId}/replies
 GET    /api/v1/community/comments/{commentId}/replies
 GET    /api/v1/community/help-request-catalog
 ```
+
+Comment and reply responses carry the author display fields and the anonymity
+rules described in
+[Author fields and anonymity](#author-fields-and-anonymity): `displayName`,
+`avatarUrl`, `isAnonymous`, and a nullable `authorId`.
+
+## Blocking an author (one-way, hide-posts-only)
+
+The caller can hide an author's **posts** from their own Community reads. The
+relation is Community-owned: no chat block is read or written, and it never
+denies a comment, a reply, a like, a rating, a check-in or any other
+interaction.
+
+```text
+POST   /api/v1/community/blocks
+DELETE /api/v1/community/blocks/{authorId}
+GET    /api/v1/community/blocks?page=&pageSize=
+```
+
+All three routes require an authenticated account (a normal JWT); the viewer is
+the authenticated identity and the target is named by **author id only**.
+
+| Route | Body / query | Success | Failures |
+|---|---|---|---|
+| `POST /api/v1/community/blocks` | `{ "authorId": "…" }` | `204` | `400 Community.Block.Invalid` (self-block, or an empty id); `404` with code `Community.Block.NotFound` (unknown target author — the generic 404 body; a known target returns `204` and an unknown one `404`, so this route **does** distinguish a registered account id from an unregistered one, exactly like the accepted Chat block design) |
+| `DELETE /api/v1/community/blocks/{authorId}` | — | `204` (always, even when nothing was blocked) | — |
+| `GET /api/v1/community/blocks?page=&pageSize=` | `page` (≥ 1), `pageSize` (1–100) | `200` with a bare list of `{ authorId, displayName, avatarUrl, blockedOnUtc }`, most-recent block first | — |
+
+- **Block is idempotent.** Blocking an already-blocked author succeeds again
+  (`204`) and never creates a duplicate row; the unique index on
+  `(blocker, blocked author)` is the database backstop.
+- **Unblock is idempotent.** Removing a relation that does not exist still
+  succeeds (`204`); unblock is the caller's own action and never reveals
+  whether a block existed. Removing the relation restores the author's posts.
+- **The list is per caller.** It never lists an author blocked by anyone else.
+  `displayName` is the author's English full name with the Arabic full name as
+  fallback and is `null` when the identity row is missing; `avatarUrl` is
+  always `null` (Community has no publicly servable avatar). The names are
+  resolved with **one batched identity lookup per page**, never one per row.
+- **Only post reads are filtered.** The blocked author's posts are excluded from
+  the posts feed, post detail, recommendations and favorites. The predicate is
+  composed inside the query, before the ordering and the paging, so a page
+  never shrinks silently. A blocked author's post detail answers the same
+  not-found shape as an unknown or unpublished post (`404`).
+- **Comments and interactions are not denied.** Comments, replies, likes,
+  ratings and check-ins keep their current behaviour for a blocked author, and
+  the caller can still comment on that author's posts.
+
+**Anonymity interaction (honest statement).** The filter is silent and keyed on
+the **stored author id**. A caller who blocked an author therefore also stops
+seeing that author's **anonymous** posts, because the filter cannot know that
+the post was written anonymously and deliberately does not look. No response
+carries the blocked author's id or name and the anonymous-post contract
+(`displayName`, `avatarUrl` and `authorId` all `null`) is unchanged — but the
+filtering is **observable across a block/unblock transition**: a caller who has
+seen an anonymous post can, in principle, block candidate authors and watch
+the post disappear to infer who wrote it. That inference channel is under the
+caller's own control, so the app must not use "block and observe" to unmask an
+anonymous author.
+
+**Accepted tech debt — the favourites read.** The favourites read resolves the
+blocked authors' published post ids with one constant extra query and compares
+them as an id array. The array grows with the number of published posts the
+blocked authors have, so a viewer who blocks a prolific author makes that
+query carry more ids. This is recorded as accepted, documented tech debt: the
+alternative shapes either shrink a page silently or need a raw-SQL read.
 
 Post ratings are unique per post/user; check-ins are unique per post/user/local
 date. Interactions are persisted in the `community` schema. The SQL mappings use

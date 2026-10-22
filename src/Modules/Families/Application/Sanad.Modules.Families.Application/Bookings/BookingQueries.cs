@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Elderlies;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 
@@ -16,13 +17,33 @@ public enum BookingTab
     Past = 3
 }
 
+/// <summary>
+/// The senior on a booking. The members are additive and nullable, and every
+/// one of them is read from the stored dependent row:
+/// <para>
+/// <c>HasPhoto</c> says the dependent has a stored photo — the family reads
+/// the bytes from <c>GET /api/v1/family/dependents/{elderlyId}/photo</c>;
+/// no photo URL is projected here because the caregiver audience has no route
+/// to the bytes.
+/// </para>
+/// <para>
+/// <c>EmergencyContact</c> is the dependent's stored emergency contact. It is
+/// populated on the family booking detail only — the family may already read
+/// the same contact on
+/// <c>GET /api/v1/family/dependents/{dependentId}/emergency-contact</c> — and
+/// it is always <c>null</c> on the caregiver booking detail: no emergency
+/// contact access or status model exists, so none is invented here.
+/// </para>
+/// </summary>
 public sealed record BookingElderlySummaryResponse(
     Guid ElderlyId,
     string? ArabicFullName,
     string? EnglishFullName,
     Gender? Gender,
     DateOnly? DateOfBirth,
-    string? HealthNotes);
+    string? HealthNotes,
+    EmergencyContactResponse? EmergencyContact = null,
+    bool HasPhoto = false);
 
 public sealed record BookingDetailResponse(
     Guid Id,
@@ -61,7 +82,13 @@ public sealed record BookingDetailResponse(
     BookingCancellationAction? CancellationAction = null,
     string? CancellationReasonCategory = null,
     BookingRefundEntitlement? RefundEntitlement = null,
-    BookingRefundDecisionReason? RefundDecisionReason = null);
+    BookingRefundDecisionReason? RefundDecisionReason = null,
+    // Caregiver-detail record additions (nullable, additive). Only the
+    // caregiver booking detail read populates them, from the real stored
+    // records; the family booking detail read leaves them null.
+    IReadOnlyList<CaregiverBookingVisitHistoryItem>? VisitHistory = null,
+    IReadOnlyList<CaregiverBookingListItemResponse>? UpcomingVisits = null,
+    BookingReviewResponse? FamilyReview = null);
 
 // ============================= Family Queries =============================
 
@@ -196,7 +223,12 @@ public sealed class GetFamilyBookingDetailQueryHandler : IQueryHandler<GetFamily
                 elderly.EnglishFullName.Value,
                 elderly.Gender,
                 elderly.DateOfBirth,
-                elderly.HealthNotes)
+                elderly.HealthNotes,
+                // The family may already read the same contact on
+                // GET /api/v1/family/dependents/{dependentId}/emergency-contact,
+                // so projecting it here adds no new access.
+                GetFamilyEmergencyContactQueryHandler.Map(elderly),
+                !string.IsNullOrWhiteSpace(elderly.ProfileImageKey))
             : new BookingElderlySummaryResponse(
                 booking.ElderlyId.Value,
                 null,

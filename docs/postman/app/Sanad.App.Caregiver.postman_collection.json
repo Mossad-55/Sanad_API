@@ -568,7 +568,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/bookings/{{bookingId}}"
           },
-          "description": "Own bookings only; another caregiver's booking or an unknown id returns 404 Bookings.NotFound. Matches family booking detail plus refundedOnUtc and refundState. When a cancellation fact exists, this read also fills five additive members from it: cancellationActorSide (1 Family, 2 Caregiver), cancellationAction (1 Cancel, 2 Reject), cancellationReasonCategory (Emergency|MedicalIssues|TransportationIssues|AccountDeletion|Other, otherwise null), refundEntitlement (1 NoRefundDue, 2 FullCapturedRefund) and refundDecisionReason (1 NothingCaptured, 2 FamilyCancellationBeforeAcceptance, 3 CaregiverRejectionBeforeAcceptance, 4 CaregiverCancellationAfterAcceptance, 5 FamilyCancellationWithinGraceWindow, 6 FamilyCancellationOutsideGraceWindow); refundState is then resolved from the fact, so a policy denial reads 4 NoRefundDue instead of a failed refund. Without a fact the five members are null. The stored ReasonNote, the internal isCaregiverIncident flag, a status ledger, an event history and any derived timeline are never exposed, and no amount, eligibility rule or access boundary changes."
+          "description": "Own bookings only; another caregiver's booking or an unknown id returns 404 Bookings.NotFound. Matches family booking detail plus refundedOnUtc and refundState. When a cancellation fact exists, this read also fills five additive members from it: cancellationActorSide (1 Family, 2 Caregiver), cancellationAction (1 Cancel, 2 Reject), cancellationReasonCategory (Emergency|MedicalIssues|TransportationIssues|AccountDeletion|Other, otherwise null), refundEntitlement (1 NoRefundDue, 2 FullCapturedRefund) and refundDecisionReason (1 NothingCaptured, 2 FamilyCancellationBeforeAcceptance, 3 CaregiverRejectionBeforeAcceptance, 4 CaregiverCancellationAfterAcceptance, 5 FamilyCancellationWithinGraceWindow, 6 FamilyCancellationOutsideGraceWindow); refundState is then resolved from the fact, so a policy denial reads 4 NoRefundDue instead of a failed refund. Without a fact the five members are null. The stored ReasonNote, the internal isCaregiverIncident flag, a status ledger, an event history and any derived timeline are never exposed, and no amount, eligibility rule or access boundary changes. Caregiver record additions: visitHistory = the real visit and medical reports recorded for THIS booking, newest first (null when no report exists), each item carrying reportId, reportType (visit|medical), caregiverType, observedCondition, activities, systolic, diastolic, pulse, temperature, notes, assessment, startedOnUtc, completedOnUtc, measurementTakenOnUtc, submittedOnUtc and photoAvailable (the medical photo is read from GET /api/v1/caregiver/bookings/medical-reports/{reportId}/photo); upcomingVisits = ALWAYS null (the 'upcoming' semantics are undecided, so no other or future booking is mapped as a visit); familyReview = the family's stored booking review (id, bookingId, rating 1-5, comment, isAnonymous, createdOnUtc) or null when the family has not reviewed. The senior summary carries healthNotes and hasPhoto; emergencyContact is ALWAYS null for a caregiver (no emergency-contact access model exists) and no medical profile or medication is published."
         },
         {
           "name": "Accept booking",
@@ -744,7 +744,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/legal/privacy-policy"
           },
-          "description": "SET-12 dedicated legal content — legal pages are NOT splash screens. The audience is derived from the JWT; there is no audience parameter. 200 with the current Published version (bilingual sections, version, publication metadata), 404 Cms.Legal.NotPublished when nothing is published for this audience, 401 unauthenticated."
+          "description": "SET-12 dedicated legal content — legal pages are NOT splash screens. The audience is derived from the token's account_type claims (one per owned account); an optional ?audience= query parameter names the wanted audience when the token owns more than one, and is validated against the owned audiences (400 Cms.Content.InvalidAudience when malformed, 400 Cms.Content.AudienceRequired when omitted with several owned, 403 Cms.Content.UnsupportedAudience when unowned). 200 with the current Published version (bilingual sections, version, publication metadata), 404 Cms.Legal.NotPublished when nothing is published for this audience, 401 unauthenticated."
         },
         {
           "name": "Get Terms & Conditions (signed-in)",
@@ -758,7 +758,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/legal/terms"
           },
-          "description": "SET-12. Same audience and status rules as the privacy-policy route; never falls back to another audience or document type."
+          "description": "SET-12. Same audience and status rules as the privacy-policy route (optional ?audience=); never falls back to another audience or document type."
         },
         {
           "name": "Get Help Center (FAQs + support contact)",
@@ -772,7 +772,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/help-center"
           },
-          "description": "SET-13 read surface. Returns only active FAQs for the caller audience (ordered by displayOrder) plus the one global support contact card. 200 with faqs [] and supportContact null before any CMS seeding. Read-only: sends no SMS/email; the support ticket POST /api/v1/support/contact is unchanged."
+          "description": "SET-13 read surface. Same optional ?audience= rules as the legal routes. Returns only active FAQs for the caller audience (ordered by displayOrder) plus the one global support contact card. 200 with faqs [] and supportContact null before any CMS seeding. Read-only: sends no SMS/email; the support ticket POST /api/v1/support/contact is unchanged."
         },
         {
           "name": "List device sessions",

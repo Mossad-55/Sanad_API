@@ -35,7 +35,7 @@
 						],
 						"url": "{{baseUrl}}/api/v1/library/categories"
 					},
-					"description": "Authenticated read. Active categories only, ordered by creation time then id. Bare list of {id, arabicName, englishName}."
+					"description": "Authenticated read. Active categories only, ordered by creation time then id. Bare list of {id, arabicName, englishName}. isActive and the timestamps are admin-only."
 				}
 			]
 		},
@@ -54,7 +54,7 @@
 						],
 						"url": "{{baseUrl}}/api/v1/library/content?type=&categoryId={{libraryCategoryId}}&search=&sort=Newest&page=1&pageSize=20"
 					},
-					"description": "Published content only. Filters: type=Article|Video, categoryId, search (titles+summaries, both languages), sort=Newest|MostViewed (default Newest; invalid → 400 Cms.Library.InvalidSort), page, pageSize (1–100). Bare list; every item carries isLiked, isSaved, isPremium, canAccess."
+					"description": "Published content only. Filters: type=Article|Video, categoryId, search (titles+summaries, both languages), sort=Newest|MostViewed (default Newest; invalid → 400 Cms.Library.InvalidSort), page, pageSize (1–100). Bare list; every item carries isLiked, isSaved, isPremium, canAccess, the counters, durationSeconds (videos) and coverImagePath. coverImagePath is the storage key of the uploaded cover (library/<file>); fetch it as {baseUrl}/files/{coverImagePath} without an Authorization header. categoryId/categoryArabicName/categoryEnglishName are null when the content has no category."
 				},
 				{
 					"name": "Get content detail",
@@ -68,7 +68,7 @@
 						],
 						"url": "{{baseUrl}}/api/v1/library/content/{{libraryContentId}}"
 					},
-					"description": "Published detail with sections (Article) or videoUrl+durationSeconds (Video). Premium content without the PremiumContent benefit returns metadata only: videoUrl=null, sections=[], canAccess=false (200, not an error). Unknown/draft/archived → 404 Cms.LibraryContent.NotPublished."
+					"description": "Published detail with sections (Article) or videoUrl+durationSeconds (Video). videoUrl is the administrator-stored absolute http(s) URL and durationSeconds is its real length - there is no video hosting and no built-in demo sample, so a playable sample exists only for a published Video row. Premium content without the PremiumContent benefit returns metadata only: videoUrl=null, sections=[], canAccess=false (200, not an error) while the teaser keeps durationSeconds and the cover. Unknown/draft/archived → 404 Cms.LibraryContent.NotPublished."
 				}
 			]
 		},
@@ -106,7 +106,7 @@
 						],
 						"url": "{{baseUrl}}/api/v1/library/saved?page=1&pageSize=20"
 					},
-					"description": "The caller's saved Published content, newest-saved-first, same item shape as the feed."
+					"description": "The caller's saved Published content, newest-saved-first, same item shape as the feed (coverImagePath, durationSeconds, isPremium, canAccess, isLiked, isSaved)."
 				},
 				{
 					"name": "Set saved",

@@ -101,7 +101,7 @@ Blank/whitespace clears the address (stored as `null`); whitespace is trimmed. `
 
 ## Response shape — `CaregiverProfileResponse`
 
-Returned by every profile/section save and by the GET. Certificate entries expose name/type/status only — **no file paths or URLs** (the scan is reachable solely through the admin-only download endpoint; see `docs/admin/caregivers-review.md`).
+Returned by every profile/section save and by the GET. Certificate entries expose name/type/status only — **no file paths or URLs** (the scan is reachable solely through the admin-only download endpoint; see `docs/admin/caregivers-review.md`). See [Avatar and certificate files](#avatar-and-certificate-files) for how the underlying files are served.
 
 ```json
 {
@@ -155,3 +155,30 @@ Returned by every profile/section save and by the GET. Certificate entries expos
 Companion responses carry `companionProfile` / `companionPricing` / `companionSchedule` instead of the medical fields.
 
 Certificate `verificationStatus`: `1` Pending, `2` Verified, `3` Rejected, `4` Revoked. A rejected/revoked certificate carries `reviewReason`.
+
+## Avatar and certificate files
+
+Verified against the source (2026-10-21): **neither file is publicly served**,
+so no caregiver document or response may promise a public file URL.
+
+- **Certificate files are private.** `POST /api/v1/caregiver/certificates` and
+  `PUT /api/v1/caregiver/certificates/{certificateId}/file` store the upload
+  with the private file storage under the `caregiver-certificates` folder, so
+  the stored key is `private/caregiver-certificates/...`. A private key is
+  written to the sibling `<storage-root>-private` directory, which the static
+  file host never serves, and every request for `/files/private/...` is
+  answered with `404`. The only download route is the admin-only
+  `GET /api/v1/admin/caregivers/{caregiverId}/certificates/{certificateId}/file`.
+  The caregiver's own profile and the public caregiver profile expose the
+  certificate **type, expiry date and verification status only** — never a file
+  path or URL.
+- **Avatars are private too.** The avatar belongs to the Identity account:
+  `PUT /api/v1/auth/avatar` stores it with the private file storage
+  (`private/avatars/...`) and the only avatar read route,
+  `GET /api/v1/auth/avatar`, serves the **caller's own** avatar. The
+  `avatarUrl` field on the caregiver discovery reads (`GET /api/v1/caregivers`
+  search cards and `GET /api/v1/caregivers/{caregiverId}` public profile) is
+  that stored reference, or `null` when the caregiver has no avatar. It is a
+  storage key, **not a fetchable URL**: it is not served under `/files`, so the
+  app must not load it as an image URL and must render its own placeholder
+  instead.

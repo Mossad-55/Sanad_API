@@ -64,9 +64,16 @@ public sealed class CommunityPostsController : ApiControllerBase
             PostStatus.Published, page, pageSize, search, categoryId,
             fromDate, toDate, postsSort, userId.Value);
         var result = await _sender.Send(query, cancellationToken);
-        return result.IsSuccess
-            ? Ok(result.Value.Select(ToResponse))
-            : ToActionResult(result);
+        if (!result.IsSuccess) return ToActionResult(result);
+
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(
+                result.Value
+                    .Where(item => !item.Post.IsAnonymous)
+                    .Select(item => item.Post.AuthorId.Value),
+                cancellationToken);
+
+        return Ok(result.Value.Select(item => ToResponse(item, profiles)));
     }
 
     [HttpGet("favorites")]
@@ -85,9 +92,16 @@ public sealed class CommunityPostsController : ApiControllerBase
 
         var query = new GetFavoritePostsQuery(userId.Value, page, pageSize);
         var result = await _sender.Send(query, cancellationToken);
-        return result.IsSuccess
-            ? Ok(result.Value.Select(ToResponse))
-            : ToActionResult(result);
+        if (!result.IsSuccess) return ToActionResult(result);
+
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(
+                result.Value
+                    .Where(item => !item.Post.IsAnonymous)
+                    .Select(item => item.Post.AuthorId.Value),
+                cancellationToken);
+
+        return Ok(result.Value.Select(item => ToResponse(item, profiles)));
     }
 
     [HttpGet("recommendations")]
@@ -106,9 +120,16 @@ public sealed class CommunityPostsController : ApiControllerBase
 
         var query = new GetCommunityRecommendationsQuery(userId.Value, page, pageSize);
         var result = await _sender.Send(query, cancellationToken);
-        return result.IsSuccess
-            ? Ok(result.Value.Select(p => ToResponse(p)))
-            : ToActionResult(result);
+        if (!result.IsSuccess) return ToActionResult(result);
+
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(
+                result.Value
+                    .Where(post => !post.IsAnonymous)
+                    .Select(post => post.AuthorId.Value),
+                cancellationToken);
+
+        return Ok(result.Value.Select(post => ToResponse(post, profiles)));
     }
 
     [HttpGet("posts/{postId:guid}")]
@@ -127,7 +148,16 @@ public sealed class CommunityPostsController : ApiControllerBase
         var query = new GetPostQuery(postId, userId.Value);
         var result = await _sender.Send(query, cancellationToken);
         if (!result.IsSuccess) return ToActionResult(result);
-        return result.Value?.Post is null ? NotFound() : Ok(ToResponse(result.Value));
+        if (result.Value?.Post is null) return NotFound();
+
+        Guid[] authorIds = result.Value.Post.IsAnonymous
+            ? Array.Empty<Guid>()
+            : new[] { result.Value.Post.AuthorId.Value };
+
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(authorIds, cancellationToken);
+
+        return Ok(ToResponse(result.Value, profiles));
     }
 
     [HttpPost("posts")]
@@ -146,7 +176,18 @@ public sealed class CommunityPostsController : ApiControllerBase
         command = command with { AuthorId = userId.Value };
         var result = await _sender.Send(command, cancellationToken);
         if (!result.IsSuccess) return ToActionResult(result);
-        return CreatedAtAction(nameof(GetPost), new { postId = result.Value.Id.Value }, ToResponse(result.Value));
+
+        Guid[] authorIds = result.Value.IsAnonymous
+            ? Array.Empty<Guid>()
+            : new[] { result.Value.AuthorId.Value };
+
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(authorIds, cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetPost),
+            new { postId = result.Value.Id.Value },
+            ToResponse(result.Value, profiles));
     }
 
     [HttpPost("posts/{postId:guid}/like")]
@@ -336,25 +377,67 @@ public sealed class CommunityPostsController : ApiControllerBase
         return ToActionResult(Result.Failure(error));
     }
 
-    private static CommunityPostResponse ToResponse(PostFeedItem item) =>
-        ToResponse(item.Post, item.IsLiked, item.IsFavorited, item.CurrentUserRating);
+    private static CommunityPostResponse ToResponse(PostFeedItem item,
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles) =>
+        ToResponse(item.Post, item.IsLiked, item.IsFavorited, item.CurrentUserRating, profiles);
+
+    private static CommunityPostResponse ToResponse(Post post,
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles) =>
+        ToResponse(post, false, false, null, profiles);
 
     private static CommunityPostResponse ToResponse(
         Post post,
-        bool isLiked = false,
-        bool isFavorited = false,
-        int? currentUserRating = null) => new(
-        post.Id.Value, post.TitleArabic, post.TitleEnglish, post.ContentArabic,
-        post.ContentEnglish, post.ImageUrl, post.IsAnonymous, post.Status.ToString(),
-        post.LikesCount, post.CommentsCount, post.FavoritesCount, post.CreatedOnUtc,
-        post.CategoryId?.Value, post.Category?.ArabicName, post.Category?.EnglishName,
-        isLiked, isFavorited, currentUserRating);
+        bool isLiked,
+        bool isFavorited,
+        int? currentUserRating,
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles)
+    {
+        // An anonymous post carries no author identity at all: no display name,
+        // no avatar and no author id (this response never carried one).
+        bool anonymous = post.IsAnonymous;
+        profiles.TryGetValue(post.AuthorId.Value, out CommunityAuthorProfile? author);
+
+        return new CommunityPostResponse(
+            post.Id.Value, post.TitleArabic, post.TitleEnglish, post.ContentArabic,
+            post.ContentEnglish, post.ImageUrl, post.IsAnonymous, post.Status.ToString(),
+            post.LikesCount, post.CommentsCount, post.FavoritesCount, post.CreatedOnUtc,
+            post.CategoryId?.Value, post.Category?.ArabicName, post.Category?.EnglishName,
+            isLiked, isFavorited, currentUserRating,
+            anonymous ? null : author?.DisplayName,
+            anonymous ? null : author?.AvatarUrl);
+    }
+
+    /// <summary>
+    /// One batched identity lookup for the authors of the page. The ids of
+    /// anonymous posts are never sent: an anonymous author is not looked up and
+    /// is not projected.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, CommunityAuthorProfile>> LoadAuthorProfilesAsync(
+        IEnumerable<Guid> authorIds,
+        CancellationToken cancellationToken)
+    {
+        Guid[] ids = authorIds.Distinct().ToArray();
+        if (ids.Length == 0)
+        {
+            return new Dictionary<Guid, CommunityAuthorProfile>();
+        }
+
+        Result<IReadOnlyDictionary<Guid, CommunityAuthorProfile>> result =
+            await _sender.Send(
+                new GetCommunityAuthorProfilesQuery(ids),
+                cancellationToken);
+
+        return result.IsSuccess
+            ? result.Value
+            : new Dictionary<Guid, CommunityAuthorProfile>();
+    }
 }
 
 public sealed record CommunityPostResponse(Guid Id, string TitleArabic, string TitleEnglish,
     string ContentArabic, string ContentEnglish, string? ImageUrl, bool IsAnonymous,
     string Status, int LikesCount, int CommentsCount, int FavoritesCount, DateTime CreatedOnUtc,
     Guid? CategoryId = null, string? CategoryArabicName = null, string? CategoryEnglishName = null,
-    bool IsLiked = false, bool IsFavorited = false, int? CurrentUserRating = null);
+    bool IsLiked = false, bool IsFavorited = false, int? CurrentUserRating = null,
+    string? DisplayName = null, string? AvatarUrl = null);
 
 public sealed record SubmitCommunityPostReportRequest(string? ReasonCode, string? Note);

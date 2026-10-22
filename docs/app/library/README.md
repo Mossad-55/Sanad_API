@@ -148,6 +148,58 @@ category names, and `durationSeconds` (videos).
 gating below. Unknown or unpublished ids → `404
 Cms.LibraryContent.NotPublished`.
 
+### Field sources and nullability
+
+Every field of the four reads (`/categories`, `/content`, `/content/{id}`,
+`/recommendations`) and of `/saved` comes from a stored row; nothing is
+invented and nothing is defaulted.
+
+| Field | List / detail | Source | `null` when |
+| --- | --- | --- | --- |
+| `id` | list + detail | the content row | never |
+| `type` | list + detail | the stored type (`Article` or `Video`) | never |
+| `arabicTitle` / `englishTitle` | list + detail | the content row | never |
+| `arabicSummary` / `englishSummary` | list + detail | the content row | never |
+| `coverImagePath` | list + detail | the stored storage key, e.g. `library/<file>.jpg` | never — a content row always has a cover |
+| `videoUrl` | detail only | the stored absolute http(s) URL | articles have no video, and a gated premium video returns `null` |
+| `durationSeconds` | list + detail | the stored duration | articles have no duration |
+| `sections` | detail only | the stored ordered sections | articles only; a gated premium article returns `[]` |
+| `categoryId` | list + detail | the stored category reference | the content has no category |
+| `categoryArabicName` / `categoryEnglishName` | list + detail | the referenced category row | the content has no category, or the category row is gone |
+| `isPremium` | list + detail | the stored flag | never |
+| `canAccess` | list + detail | the premium gate (below) | never |
+| `isLiked` / `isSaved` | list + detail | the caller's own interaction rows | never (`false` when the caller never acted) |
+| `viewCount` / `likesCount` | list + detail | the stored counters | never |
+| `createdOnUtc` / `publishedOnUtc` | list + detail | the stored timestamps | `publishedOnUtc` is `null` only before the first publish, which the public reads never serve |
+
+The category list (`GET /api/v1/library/categories`) returns the active
+categories only, as `{ id, arabicName, englishName }`; `isActive` and the
+timestamps are admin-only.
+
+### Covers
+
+`coverImagePath` is the **storage key** of the uploaded cover, saved under the
+`library/` prefix (`library/<file>.jpg`). It is served as a public static file:
+build the URL as `{baseUrl}/files/{coverImagePath}` and fetch it without an
+`Authorization` header. The API never rewrites the key into an absolute URL,
+and there is no image endpoint under `/api/v1/library`.
+
+### The playable sample
+
+A `Video` content is playable from its `videoUrl` — the external URL an
+administrator stored (YouTube, Vimeo or any other absolute http(s) URL) — and
+its real length is `durationSeconds`. There is no video hosting or transcoding
+in V1, no built-in demo sample, and no separate media endpoint: a playable
+sample exists only once an administrator has published a `Video` row with a
+`videoUrl` and a positive `durationSeconds`. An `Article` content has neither
+(`videoUrl` is `null`, `durationSeconds` is `null`) and is read through
+`sections`.
+
+Two card fields from the app design have **no implemented source** and are
+therefore not returned: the content **author** (content rows carry no author)
+and an article **read time** (no duration is stored for articles). Do not
+render invented values for them.
+
 ## Premium gating
 
 `isPremium` content is reserved for families whose **current** subscription
@@ -158,9 +210,9 @@ grant access.
 
 - `canAccess = !isPremium || subscription grants PremiumContent`.
 - Gated detail returns **metadata only** with `canAccess: false`: titles,
-  summaries, cover, category, counters, and `isPremium` stay visible;
-  `videoUrl` is `null` and `sections` is empty. No error status is returned —
-  clients render the teaser and prompt for upgrade.
+  summaries, cover, category, counters, `durationSeconds` and `isPremium` stay
+  visible; `videoUrl` is `null` and `sections` is empty. No error status is
+  returned — clients render the teaser and prompt for upgrade.
 - List items always include the teaser metadata with their `canAccess` flag.
 
 ## Saved, liked, and views

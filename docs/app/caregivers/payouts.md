@@ -238,6 +238,30 @@ Reading another caregiver's payout id returns `404 Caregivers.Payouts.NotFound` 
 - `requiresVerifiedBankAccount` — always `true`, derived from the enforced `Verified` gate on payout recording.
 - `minimumPayoutAmount` / `expectedProcessingDays` — honest `null`s: no minimum-amount or processing-time rule exists in the product and none is created.
 
+### Verified amount fields and the unavailable-payout policy
+
+Every amount the caregiver app reads comes from a stored row; none is derived
+from a missing record and none is zero-filled to look available.
+
+| Surface | Amount fields | Source |
+|---|---|---|
+| `GET /api/v1/caregiver/bookings/{bookingId}` | `baseCaregiverFee`, `platformFeePercentage`, `platformFeeAmount`, `totalPayableAmount`, `currency` | the booking's immutable price snapshot. The caregiver's entitlement is `baseCaregiverFee` in full; the family-paid `platformFeeAmount` is never deducted from it. |
+| `GET /api/v1/caregiver/payouts/summary` | `unpaidAmount`, `transferredAmount`, `failedAmount`, `currency`, `nextExpectedPayoutOnUtc` | the caregiver's payout rows and the completed+paid bookings of that caregiver. |
+| `GET /api/v1/caregiver/payouts` and `/payouts/{payoutId}` | `amount` (= `grossAmount`), `currency`, `bookingItems[].caregiverAmount` | the recorded payout row and its snapshotted booking amount. |
+
+The unavailable-value rules are honest `null`s, never a fabricated amount:
+
+- `minimumPayoutAmount` and `expectedProcessingDays` are **always** `null` —
+  no such rule exists in the product.
+- `currency` on the summary is `null` when the caregiver has neither a payout
+  row nor a completed booking.
+- `nextExpectedPayoutOnUtc` is `null` unless the payout account is `Verified`
+  and an unpaid booking exists.
+- `bankNameArabic`/`bankNameEnglish` are `null` when the snapshotted bank code
+  matches no catalogue row.
+- With no effective payout policy the summary **fails closed** with
+  `400 Finance.PayoutPolicy.Missing` rather than reporting a zero balance.
+
 ### Errors (caregiver reads)
 
 - `401` — missing/invalid token, or the identity has no caregiver profile.

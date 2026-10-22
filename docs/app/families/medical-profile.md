@@ -112,6 +112,31 @@ Returns the updated `ElderlyMedicalProfileResponse` (`200 OK`). Each history ite
 
 ---
 
+## Medical context on a caregiver booking (route → field → authorization)
+
+The caregiver booking detail is the only caregiver-facing surface that carries
+medical context, and it carries exactly one stored field. The full mapping of
+every medical route and its authorization:
+
+| Route | Fields | Authorization |
+|---|---|---|
+| `GET /api/v1/family/dependents/{dependentId}/medical-profile` | `bloodType`, `heightCm`, `weightKg`, `chronicConditions`, `allergies`, `medicalHistory`, `updatedOnUtc` | `FamilyAccess`; the caller must be a member of the dependent's own family (`404 Families.Elderly.NotFound` otherwise). Every successful GET is logged as a `ViewMedicalProfile` activity. |
+| `PUT /api/v1/family/dependents/{dependentId}/medical-profile` | the same body/response | `FamilyAccess` plus Owner or Editor role (a Viewer receives `403 Families.Elderly.AccessDenied`). |
+| `GET /api/v1/family/dependents/{dependentId}/medications` | the dependent's medication rows | `FamilyAccess` plus family membership. |
+| `GET /api/v1/elderly/medications` | the elderly account's own medication rows | the elderly account's own token. |
+| `GET /api/v1/admin/elderly/medications` | medication administration | the Admin medication policy. |
+| `GET /api/v1/caregiver/bookings/{bookingId}` | `elderly.healthNotes` only | `CaregiverAccess`; the booking must belong to the calling caregiver (`404 Bookings.NotFound` otherwise). |
+
+**There is no caregiver route that reads the structured medical profile or the
+medications.** The medical-access grant model
+(`/api/v1/family/dependents/{dependentId}/medical-access-grants`) records the
+family's decision, but no caregiver record-read route consumes a grant yet, so
+the caregiver booking detail publishes no medical profile and no medication —
+see [medical access](medical-access.md). Adding that read is an Owner-level
+authorization decision, not an app-side contract.
+
+---
+
 ## Enums Reference
 
 ### Blood Type (`bloodType`)

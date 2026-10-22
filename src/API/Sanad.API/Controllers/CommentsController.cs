@@ -1,7 +1,9 @@
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.Modules.Community.Application.Comments;
+using Sanad.Modules.Community.Application.Posts;
 using Sanad.Modules.Community.Domain.Comments;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
@@ -35,7 +37,15 @@ public sealed class CommentsController : ApiControllerBase
         command = command with { AuthorId = userId.Value, PostId = postId };
         var result = await _sender.Send(command, cancellationToken);
         if (!result.IsSuccess) return ToActionResult(result);
-        return CreatedAtAction(nameof(GetPostComments), new { postId }, ToResponse(result.Value));
+
+        CommunityThreadPost? thread = await LoadThreadPostAsync(postId, null, cancellationToken);
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(new[] { result.Value }, thread, cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetPostComments),
+            new { postId },
+            ToResponse(result.Value, thread, profiles));
     }
 
     [HttpGet("posts/{postId:guid}/comments")]
@@ -55,9 +65,13 @@ public sealed class CommentsController : ApiControllerBase
 
         var query = new GetCommentsQuery(postId, page, pageSize);
         var result = await _sender.Send(query, cancellationToken);
-        return result.IsSuccess
-            ? Ok(result.Value.Select(ToResponse))
-            : ToActionResult(result);
+        if (!result.IsSuccess) return ToActionResult(result);
+
+        CommunityThreadPost? thread = await LoadThreadPostAsync(postId, null, cancellationToken);
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(result.Value, thread, cancellationToken);
+
+        return Ok(result.Value.Select(comment => ToResponse(comment, thread, profiles)));
     }
 
     [HttpPut("comments/{commentId:guid}")]
@@ -79,7 +93,14 @@ public sealed class CommentsController : ApiControllerBase
         var result = await _sender.Send(command, cancellationToken);
 
         if (!result.IsSuccess) return ToActionResult(result);
-        return result.Value is null ? NotFound() : Ok(ToResponse(result.Value));
+        if (result.Value is null) return NotFound();
+
+        CommunityThreadPost? thread = await LoadThreadPostAsync(
+            result.Value.PostId.Value, null, cancellationToken);
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(new[] { result.Value }, thread, cancellationToken);
+
+        return Ok(ToResponse(result.Value, thread, profiles));
     }
 
     [HttpDelete("comments/{commentId:guid}")]
@@ -142,7 +163,15 @@ public sealed class CommentsController : ApiControllerBase
         command = command with { AuthorId = userId.Value, CommentId = commentId };
         var result = await _sender.Send(command, cancellationToken);
         if (!result.IsSuccess) return ToActionResult(result);
-        return CreatedAtAction(nameof(GetCommentReplies), new { commentId }, ToResponse(result.Value));
+
+        CommunityThreadPost? thread = await LoadThreadPostAsync(null, commentId, cancellationToken);
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(new[] { result.Value }, thread, cancellationToken);
+
+        return CreatedAtAction(
+            nameof(GetCommentReplies),
+            new { commentId },
+            ToResponse(result.Value, thread, profiles));
     }
 
     [HttpGet("comments/{commentId:guid}/replies")]
@@ -159,21 +188,151 @@ public sealed class CommentsController : ApiControllerBase
         }
 
         var result = await _sender.Send(new GetCommentRepliesQuery(commentId, page, pageSize), cancellationToken);
-        return result.IsSuccess
-            ? Ok(result.Value.Select(ToResponse))
-            : ToActionResult(result);
-    }
-    private static CommunityCommentResponse ToResponse(Comment comment) => new(
-        comment.Id.Value, comment.PostId.Value, comment.AuthorId.Value, comment.ContentArabic,
-        comment.ContentEnglish, comment.IsEdited, comment.CreatedOnUtc, comment.UpdatedOnUtc,
-        comment.LikesCount);
+        if (!result.IsSuccess) return ToActionResult(result);
 
-    private static CommunityReplyResponse ToResponse(Reply reply) => new(
-        reply.Id.Value, reply.CommentId.Value, reply.AuthorId.Value, reply.ContentArabic,
-        reply.ContentEnglish, reply.IsEdited, reply.CreatedOnUtc, reply.UpdatedOnUtc, reply.LikesCount);
+        CommunityThreadPost? thread = await LoadThreadPostAsync(null, commentId, cancellationToken);
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(result.Value, thread, cancellationToken);
+
+        return Ok(result.Value.Select(reply => ToResponse(reply, thread, profiles)));
+    }
+
+    /// <summary>
+    /// The post that owns the comment thread. It carries the post's stored
+    /// anonymity flag and author, which decide whether a comment or a reply is
+    /// presented as anonymous.
+    /// </summary>
+    private async Task<CommunityThreadPost?> LoadThreadPostAsync(
+        Guid? postId,
+        Guid? commentId,
+        CancellationToken cancellationToken)
+    {
+        if (postId is Guid knownPostId)
+        {
+            var byPost = await _sender.Send(
+                new GetCommunityThreadPostByPostIdQuery(knownPostId),
+                cancellationToken);
+
+            return byPost.IsSuccess ? byPost.Value : null;
+        }
+
+        if (commentId is Guid knownCommentId)
+        {
+            var byComment = await _sender.Send(
+                new GetCommunityThreadPostByCommentIdQuery(knownCommentId),
+                cancellationToken);
+
+            return byComment.IsSuccess ? byComment.Value : null;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// One batched identity lookup for the authors of the page. The ids of
+    /// anonymous comments and replies are never sent: an anonymous author is
+    /// not looked up and is not projected.
+    /// </summary>
+    private async Task<IReadOnlyDictionary<Guid, CommunityAuthorProfile>> LoadAuthorProfilesAsync(
+        IEnumerable<Comment> comments,
+        CommunityThreadPost? thread,
+        CancellationToken cancellationToken) =>
+        await LoadAuthorProfilesAsync(
+            comments
+                .Where(comment => !IsAnonymous(comment.AuthorId.Value, thread))
+                .Select(comment => comment.AuthorId.Value),
+            cancellationToken);
+
+    private async Task<IReadOnlyDictionary<Guid, CommunityAuthorProfile>> LoadAuthorProfilesAsync(
+        IEnumerable<Reply> replies,
+        CommunityThreadPost? thread,
+        CancellationToken cancellationToken) =>
+        await LoadAuthorProfilesAsync(
+            replies
+                .Where(reply => !IsAnonymous(reply.AuthorId.Value, thread))
+                .Select(reply => reply.AuthorId.Value),
+            cancellationToken);
+
+    private async Task<IReadOnlyDictionary<Guid, CommunityAuthorProfile>> LoadAuthorProfilesAsync(
+        IEnumerable<Guid> authorIds,
+        CancellationToken cancellationToken)
+    {
+        Guid[] ids = authorIds.Distinct().ToArray();
+        if (ids.Length == 0)
+        {
+            return new Dictionary<Guid, CommunityAuthorProfile>();
+        }
+
+        Result<IReadOnlyDictionary<Guid, CommunityAuthorProfile>> result =
+            await _sender.Send(
+                new GetCommunityAuthorProfilesQuery(ids),
+                cancellationToken);
+
+        return result.IsSuccess
+            ? result.Value
+            : new Dictionary<Guid, CommunityAuthorProfile>();
+    }
+
+    /// <summary>
+    /// A comment or a reply is presented as anonymous when it is written by the
+    /// author of an anonymous post inside that post's own thread: the post
+    /// author must never be identified through their own words.
+    /// </summary>
+    private static bool IsAnonymous(Guid authorId, CommunityThreadPost? thread) =>
+        thread is not null &&
+        thread.IsAnonymous &&
+        thread.AuthorId == authorId;
+
+    private static CommunityCommentResponse ToResponse(
+        Comment comment,
+        CommunityThreadPost? thread,
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles)
+    {
+        bool isAnonymous = IsAnonymous(comment.AuthorId.Value, thread);
+        profiles.TryGetValue(comment.AuthorId.Value, out CommunityAuthorProfile? author);
+
+        return new CommunityCommentResponse(
+            comment.Id.Value,
+            comment.PostId.Value,
+            isAnonymous ? null : comment.AuthorId.Value,
+            comment.ContentArabic,
+            comment.ContentEnglish,
+            comment.IsEdited,
+            comment.CreatedOnUtc,
+            comment.UpdatedOnUtc,
+            comment.LikesCount,
+            isAnonymous,
+            isAnonymous ? null : author?.DisplayName,
+            isAnonymous ? null : author?.AvatarUrl);
+    }
+
+    private static CommunityReplyResponse ToResponse(
+        Reply reply,
+        CommunityThreadPost? thread,
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles)
+    {
+        bool isAnonymous = IsAnonymous(reply.AuthorId.Value, thread);
+        profiles.TryGetValue(reply.AuthorId.Value, out CommunityAuthorProfile? author);
+
+        return new CommunityReplyResponse(
+            reply.Id.Value,
+            reply.CommentId.Value,
+            isAnonymous ? null : reply.AuthorId.Value,
+            reply.ContentArabic,
+            reply.ContentEnglish,
+            reply.IsEdited,
+            reply.CreatedOnUtc,
+            reply.UpdatedOnUtc,
+            reply.LikesCount,
+            isAnonymous,
+            isAnonymous ? null : author?.DisplayName,
+            isAnonymous ? null : author?.AvatarUrl);
+    }
 }
 
-public sealed record CommunityCommentResponse(Guid Id, Guid PostId, Guid AuthorId, string ContentArabic,
-    string ContentEnglish, bool IsEdited, DateTime CreatedOnUtc, DateTime? UpdatedOnUtc, int LikesCount);
-public sealed record CommunityReplyResponse(Guid Id, Guid CommentId, Guid AuthorId, string ContentArabic,
-    string ContentEnglish, bool IsEdited, DateTime CreatedOnUtc, DateTime? UpdatedOnUtc, int LikesCount);
+public sealed record CommunityCommentResponse(Guid Id, Guid PostId, Guid? AuthorId, string ContentArabic,
+    string ContentEnglish, bool IsEdited, DateTime CreatedOnUtc, DateTime? UpdatedOnUtc, int LikesCount,
+    bool IsAnonymous = false, string? DisplayName = null, string? AvatarUrl = null);
+public sealed record CommunityReplyResponse(Guid Id, Guid CommentId, Guid? AuthorId, string ContentArabic,
+    string ContentEnglish, bool IsEdited, DateTime CreatedOnUtc, DateTime? UpdatedOnUtc, int LikesCount,
+    bool IsAnonymous = false, string? DisplayName = null, string? AvatarUrl = null);

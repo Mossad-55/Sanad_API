@@ -7,6 +7,7 @@ using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
+using Sanad.Modules.Families.Domain.Reports;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Xunit;
 
@@ -20,6 +21,12 @@ namespace Sanad.UnitTests.Families;
 /// caregiver-incident flag or the free-text reason note. The caregiver-only
 /// boundary must stay exactly as it was: a booking that belongs to another
 /// caregiver is not found.
+/// <para>
+/// The caregiver record additions must come from the real stored rows: the
+/// visit/medical report history of this booking and the family's booking
+/// review. <c>upcomingVisits</c> must stay null — no other or future booking
+/// is mapped as a visit while the "upcoming" semantics are undecided.
+/// </para>
 /// </summary>
 public sealed class CaregiverBookingDetailTests
 {
@@ -152,11 +159,233 @@ public sealed class CaregiverBookingDetailTests
         foreach (string forbidden in new[]
                  {
                      "isCaregiverIncident", "reasonNote", "actorUserId", "policyVersion",
-                     "statusAtCancellation", "ledger", "timeline", "eventHistory", "history"
+                     "statusAtCancellation", "ledger", "timeline", "eventHistory"
                  })
         {
             Assert.DoesNotContain(forbidden, json, StringComparison.OrdinalIgnoreCase);
         }
+
+        // The only history-shaped member is the approved `visitHistory`, which
+        // reads real stored reports; this booking has no report, so it stays
+        // null and no history is fabricated.
+        using JsonDocument document = JsonDocument.Parse(json);
+        string[] historyMembers = document.RootElement
+            .EnumerateObject()
+            .Where(property => property.Name.Contains("History", StringComparison.OrdinalIgnoreCase))
+            .Select(property => property.Name)
+            .ToArray();
+        Assert.Equal(new[] { "VisitHistory" }, historyMembers);
+        Assert.Null(result.Value.VisitHistory);
+    }
+
+    [Fact]
+    public async Task Detail_publishes_the_real_visit_history_and_the_family_review()
+    {
+        var (dbContext, family, elderly) = SeedFamily();
+        DateTime now = DateTime.UtcNow;
+        var caregiverId = CaregiverId.New();
+        UserId caregiverUserId = UserId.New();
+
+        Booking booking = ConfirmedBooking(family, elderly, caregiverId, now);
+        dbContext.Bookings.Add(booking);
+
+        VisitReport visitReport = VisitReport.Create(
+            booking.Id,
+            family.Id,
+            elderly.Id,
+            caregiverId,
+            caregiverUserId,
+            BookingCaregiverType.Medical,
+            "Patient stable",
+            "Walked around the room",
+            "Water taken",
+            VisitReportAssessment.NoImmediateConcern,
+            now.AddHours(1),
+            now.AddHours(2),
+            now.AddHours(3));
+
+        MedicalReport medicalReport = MedicalReport.Create(
+            booking.Id,
+            family.Id,
+            elderly.Id,
+            caregiverId,
+            caregiverUserId,
+            BookingCaregiverType.Medical,
+            120,
+            80,
+            70,
+            36.5m,
+            "Morning reading",
+            now.AddHours(2),
+            VisitReportAssessment.NeedsFollowUp,
+            now.AddHours(3),
+            true,
+            now.AddHours(3),
+            caregiverUserId,
+            "private/medical/photo.jpg");
+
+        BookingReview review = BookingReview.Create(
+            booking.Id,
+            family.OwnerUserId,
+            4,
+            "Kind and punctual",
+            true,
+            now.AddHours(4));
+
+        dbContext.VisitReports.Add(visitReport);
+        dbContext.MedicalReports.Add(medicalReport);
+        dbContext.BookingReviews.Add(review);
+        dbContext.SaveChanges();
+
+        var result = await new GetCaregiverBookingDetailQueryHandler(dbContext)
+            .Handle(new GetCaregiverBookingDetailQuery(caregiverId, booking.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        BookingDetailResponse response = result.Value;
+
+        // The history is the real stored reports of this booking, newest first.
+        Assert.NotNull(response.VisitHistory);
+        Assert.Equal(2, response.VisitHistory!.Count);
+        CaregiverBookingVisitHistoryItem medical = response.VisitHistory[0];
+        Assert.Equal("medical", medical.ReportType);
+        Assert.Equal(medicalReport.Id.Value, medical.ReportId);
+        Assert.Equal(120, medical.Systolic);
+        Assert.Equal(80, medical.Diastolic);
+        Assert.Equal(70, medical.Pulse);
+        Assert.Equal(36.5m, medical.Temperature);
+        Assert.Equal("Morning reading", medical.Notes);
+        Assert.Equal(VisitReportAssessment.NeedsFollowUp, medical.Assessment);
+        Assert.Equal(now.AddHours(2), medical.MeasurementTakenOnUtc);
+        Assert.True(medical.PhotoAvailable);
+        Assert.Null(medical.ObservedCondition);
+        Assert.Null(medical.StartedOnUtc);
+
+        CaregiverBookingVisitHistoryItem visit = response.VisitHistory[1];
+        Assert.Equal("visit", visit.ReportType);
+        Assert.Equal(visitReport.Id.Value, visit.ReportId);
+        Assert.Equal("Patient stable", visit.ObservedCondition);
+        Assert.Equal("Walked around the room", visit.Activities);
+        Assert.Equal(now.AddHours(1), visit.StartedOnUtc);
+        Assert.Equal(now.AddHours(2), visit.CompletedOnUtc);
+        Assert.Null(visit.Systolic);
+        Assert.False(visit.PhotoAvailable);
+
+        // The family's review is the stored review, with its own anonymity flag.
+        Assert.NotNull(response.FamilyReview);
+        Assert.Equal(review.Id.Value, response.FamilyReview!.Id);
+        Assert.Equal(booking.Id.Value, response.FamilyReview.BookingId);
+        Assert.Equal(4, response.FamilyReview.Rating);
+        Assert.Equal("Kind and punctual", response.FamilyReview.Comment);
+        Assert.True(response.FamilyReview.IsAnonymous);
+    }
+
+    [Fact]
+    public async Task Detail_keeps_upcoming_visits_null_and_never_maps_another_booking_as_a_visit()
+    {
+        var (dbContext, family, elderly) = SeedFamily();
+        DateTime now = DateTime.UtcNow;
+        var caregiverId = CaregiverId.New();
+
+        Booking booking = ConfirmedBooking(family, elderly, caregiverId, now);
+
+        // A second, later booking of the same caregiver: it must never be
+        // mapped as an "upcoming visit" of the first one.
+        Booking later = Booking.Create(
+            family.Id,
+            family.OwnerUserId,
+            elderly.Id,
+            caregiverId,
+            BookingCaregiverType.Medical,
+            BookingShiftType.HomeVisit,
+            DateOnly.FromDateTime(now).AddDays(9),
+            new TimeOnly(14, 0),
+            new TimeOnly(16, 0),
+            "123 Nile St, Cairo",
+            null,
+            BookingPriceSnapshot.Calculate(700m, 15m),
+            now.AddHours(48),
+            DateOnly.FromDateTime(now),
+            now);
+
+        dbContext.Bookings.AddRange(booking, later);
+        dbContext.SaveChanges();
+
+        var result = await new GetCaregiverBookingDetailQueryHandler(dbContext)
+            .Handle(new GetCaregiverBookingDetailQuery(caregiverId, booking.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Value.UpcomingVisits);
+
+        string json = JsonSerializer.Serialize(result.Value);
+
+        Assert.DoesNotContain(later.Id.Value.ToString(), json, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(DateOnly.FromDateTime(now).AddDays(9).ToString("yyyy-MM-dd"), json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Detail_leaves_the_record_members_null_when_no_report_or_review_exists()
+    {
+        var (dbContext, family, elderly) = SeedFamily();
+        DateTime now = DateTime.UtcNow;
+        var caregiverId = CaregiverId.New();
+
+        Booking booking = ConfirmedBooking(family, elderly, caregiverId, now);
+        dbContext.Bookings.Add(booking);
+        dbContext.SaveChanges();
+
+        var result = await new GetCaregiverBookingDetailQueryHandler(dbContext)
+            .Handle(new GetCaregiverBookingDetailQuery(caregiverId, booking.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Value.VisitHistory);
+        Assert.Null(result.Value.UpcomingVisits);
+        Assert.Null(result.Value.FamilyReview);
+    }
+
+    [Fact]
+    public async Task Detail_reports_the_stored_price_snapshot_amounts()
+    {
+        var (dbContext, family, elderly) = SeedFamily();
+        DateTime now = DateTime.UtcNow;
+        var caregiverId = CaregiverId.New();
+
+        Booking booking = ConfirmedBooking(family, elderly, caregiverId, now);
+        dbContext.Bookings.Add(booking);
+        dbContext.SaveChanges();
+
+        var result = await new GetCaregiverBookingDetailQueryHandler(dbContext)
+            .Handle(new GetCaregiverBookingDetailQuery(caregiverId, booking.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        BookingPriceSnapshot snapshot = booking.PriceSnapshot;
+        Assert.Equal(snapshot.BaseCaregiverFee, result.Value.BaseCaregiverFee);
+        Assert.Equal(snapshot.PlatformFeePercentage, result.Value.PlatformFeePercentage);
+        Assert.Equal(snapshot.PlatformFeeAmount, result.Value.PlatformFeeAmount);
+        Assert.Equal(snapshot.TotalPayableAmount, result.Value.TotalPayableAmount);
+        Assert.Equal(snapshot.Currency, result.Value.Currency);
+    }
+
+    [Fact]
+    public async Task Detail_never_exposes_the_emergency_contact_to_a_caregiver()
+    {
+        var (dbContext, family, elderly) = SeedFamily();
+        DateTime now = DateTime.UtcNow;
+        var caregiverId = CaregiverId.New();
+
+        elderly.SetEmergencyContact("Nour", "Daughter", "+201001234567");
+        Booking booking = ConfirmedBooking(family, elderly, caregiverId, now);
+        dbContext.Bookings.Add(booking);
+        dbContext.SaveChanges();
+
+        var result = await new GetCaregiverBookingDetailQueryHandler(dbContext)
+            .Handle(new GetCaregiverBookingDetailQuery(caregiverId, booking.Id), CancellationToken.None);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(result.Value.Elderly.EmergencyContact);
+
+        string json = JsonSerializer.Serialize(result.Value);
+        Assert.DoesNotContain("Nour", json, StringComparison.Ordinal);
+        Assert.DoesNotContain("+201001234567", json, StringComparison.Ordinal);
     }
 
     private static FamiliesDbContext CreateDbContext()
@@ -167,7 +396,6 @@ public sealed class CaregiverBookingDetailTests
 
         return new FamiliesDbContext(options);
     }
-
     private static (FamiliesDbContext DbContext, Family Family, Elderly Elderly) SeedFamily()
     {
         var dbContext = CreateDbContext();
