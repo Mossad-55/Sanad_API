@@ -17,7 +17,8 @@ GET /api/v1/platform/status
   "state": 1,
   "maintenanceMessageArabic": null,
   "maintenanceMessageEnglish": null,
-  "availablePaymentMethods": [1, 2]
+  "availablePaymentMethods": [1, 2],
+  "subscriptionCardEnrollmentAvailable": true
 }
 ```
 
@@ -27,9 +28,26 @@ GET /api/v1/platform/status
 | `maintenanceMessageArabic` | string \| null | The published maintenance message, Arabic. `null` when none is published. |
 | `maintenanceMessageEnglish` | string \| null | The published maintenance message, English. `null` when none is published. |
 | `availablePaymentMethods` | array of enum (int) | Methods that are both enabled and configured: `1` Card, `2` Wallet. An empty array means no method is currently available. |
+| `subscriptionCardEnrollmentAvailable` | boolean | Whether Card is usable for a subscription **initial enrollment**. This is the generic Card availability **and** the dedicated Card 3DS enrollment integration. It applies only to plans whose `paymobSubscriptionPlanId` is present; plans without that id use the generic Card rule in `availablePaymentMethods`. |
 
 `availablePaymentMethods` never contains ApplePay: E04 does not support it, so
 it is never advertised and never accepted.
+
+## Subscription Card consumption contract
+
+For a subscription plan:
+
+- If the plan has a null `paymobSubscriptionPlanId`, Card is usable iff
+  `availablePaymentMethods` contains `1` (Card).
+- If the plan has a non-null (positive) `paymobSubscriptionPlanId`, Card is usable iff
+  `availablePaymentMethods` contains `1` (Card) **and**
+  `subscriptionCardEnrollmentAvailable` is `true`.
+- Wallet is usable iff `availablePaymentMethods` contains `2` (Wallet), for
+  every plan.
+
+The server still enforces the same rules on the intent route and returns
+`400 Platform.PaymentMethodUnavailable` when a selected method is unavailable,
+including a missing Card 3DS enrollment integration for an enrollment plan.
 
 ## What the app can and cannot do with it
 

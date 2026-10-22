@@ -120,7 +120,7 @@ public sealed class CreateSubscriptionPaymentIntentCommandHandler
         // is unaffected.
         if (request.Method == SubscriptionPaymentMethod.Card &&
             plan.PaymobSubscriptionPlanId is not null &&
-            !_paymentMethods.CardSubscriptionEnrollmentConfigured)
+            !PaymentAvailability.IsSubscriptionCardEnrollmentConfigured(_paymentMethods))
         {
             return Result<SubscriptionPaymentIntentResponse>.Failure(
                 PlatformControlErrors.PaymentMethodUnavailable);

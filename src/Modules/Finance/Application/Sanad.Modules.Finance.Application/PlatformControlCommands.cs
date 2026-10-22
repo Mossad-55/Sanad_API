@@ -100,7 +100,8 @@ public sealed record PublicPlatformStatusResponse(
     PlatformState State,
     string? MaintenanceMessageArabic,
     string? MaintenanceMessageEnglish,
-    IReadOnlyList<PlatformPaymentMethod> AvailablePaymentMethods);
+    IReadOnlyList<PlatformPaymentMethod> AvailablePaymentMethods,
+    bool SubscriptionCardEnrollmentAvailable);
 
 public sealed record GetPlatformControlQuery : IQuery<PlatformControlResponse?>;
 
@@ -127,6 +128,39 @@ public static class PlatformControlResponses
             snapshot.Values.CardEnabled,
             snapshot.Values.WalletEnabled,
             snapshot.UpdatedOnUtc);
+}
+
+/// <summary>
+/// Shared authoritative evaluator for payment-method availability. Both the
+/// public status (discovery) and the payment-intent gates (enforcement) use
+/// these methods, so a method can never be advertised as available while the
+/// corresponding intent is rejected for the same control/configuration state.
+/// </summary>
+public static class PaymentAvailability
+{
+    public static bool IsCardAvailable(PlatformControlValues values, IPaymentMethodConfiguration methods) =>
+        values.CardEnabled && methods.CardConfigured;
+
+    public static bool IsWalletAvailable(PlatformControlValues values, IPaymentMethodConfiguration methods) =>
+        values.WalletEnabled && methods.WalletConfigured;
+
+    /// <summary>
+    /// Truth for the Card branch that performs an initial subscription
+    /// enrollment through the dedicated 3DS integration when the resolved
+    /// plan carries a provider subscription plan id. This is the generic Card
+    /// truth plus the enrollment integration; it never widens the generic
+    /// Card policy and never narrows it for plans without a provider
+    /// subscription plan id.
+    /// </summary>
+    public static bool IsSubscriptionCardEnrollmentAvailable(PlatformControlValues values, IPaymentMethodConfiguration methods) =>
+        IsCardAvailable(values, methods) && methods.CardSubscriptionEnrollmentConfigured;
+
+    /// <summary>
+    /// Config-level truth used by the plan-dependent enforcement branch after
+    /// the generic Card gate has already passed for the same control snapshot.
+    /// </summary>
+    public static bool IsSubscriptionCardEnrollmentConfigured(IPaymentMethodConfiguration methods) =>
+        methods.CardSubscriptionEnrollmentConfigured;
 }
 
 public sealed class GetPlatformControlQueryHandler(IPlatformControlReader reader)
@@ -179,9 +213,9 @@ public sealed class GetPublicPlatformStatusQueryHandler(
             return Result<PublicPlatformStatusResponse>.Failure(PlatformControlErrors.Unavailable);
 
         var available = new List<PlatformPaymentMethod>(2);
-        if (snapshot.Values.CardEnabled && paymentMethods.CardConfigured)
+        if (PaymentAvailability.IsCardAvailable(snapshot.Values, paymentMethods))
             available.Add(PlatformPaymentMethod.Card);
-        if (snapshot.Values.WalletEnabled && paymentMethods.WalletConfigured)
+        if (PaymentAvailability.IsWalletAvailable(snapshot.Values, paymentMethods))
             available.Add(PlatformPaymentMethod.Wallet);
 
         return Result<PublicPlatformStatusResponse>.Success(
@@ -189,7 +223,8 @@ public sealed class GetPublicPlatformStatusQueryHandler(
                 snapshot.Values.State,
                 snapshot.Values.MaintenanceMessageArabic,
                 snapshot.Values.MaintenanceMessageEnglish,
-                available));
+                available,
+                PaymentAvailability.IsSubscriptionCardEnrollmentAvailable(snapshot.Values, paymentMethods)));
     }
 }
 

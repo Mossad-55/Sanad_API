@@ -105,8 +105,8 @@ public static class PlatformControlGate
 
         bool available = method switch
         {
-            MethodAvailability.Card => values.CardEnabled && methods.CardConfigured,
-            MethodAvailability.Wallet => values.WalletEnabled && methods.WalletConfigured,
+            MethodAvailability.Card => PaymentAvailability.IsCardAvailable(values, methods),
+            MethodAvailability.Wallet => PaymentAvailability.IsWalletAvailable(values, methods),
             _ => false
         };
 

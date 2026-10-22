@@ -12,6 +12,7 @@ using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Payments;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.Modules.Finance.Application;
 using Sanad.Modules.Finance.Domain;
 using Sanad.UnitTests.Finance;
 
@@ -517,6 +518,120 @@ public sealed class SubscriptionPaymentTests
         Assert.Equal(1, paymob.IntentCalls);
         Assert.Null(paymob.LastInput!.SubscriptionPlanId);
         Assert.Single(db.SubscriptionPaymentAttempts);
+    }
+
+    [Fact]
+    public async Task Discovery_and_initial_intent_agree_for_mapped_plan_with_enrollment_enabled()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
+        var paymob = new FakePaymobClient();
+        var controls = FixedPlatformControls.Operational();
+
+        var status = await new GetPublicPlatformStatusQueryHandler(
+            controls, controls).Handle(new GetPublicPlatformStatusQuery(), default);
+        Assert.True(status.IsSuccess);
+        Assert.True(status.Value.SubscriptionCardEnrollmentAvailable);
+        Assert.Contains(PlatformPaymentMethod.Card, status.Value.AvailablePaymentMethods);
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, paymob.IntentCalls);
+        Assert.True(result.Value.RecurringRenewalSupported);
+    }
+
+    [Fact]
+    public async Task Discovery_and_initial_intent_agree_for_mapped_plan_with_enrollment_disabled()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { CardSubscriptionEnrollmentConfigured = false };
+
+        var status = await new GetPublicPlatformStatusQueryHandler(
+            controls, controls).Handle(new GetPublicPlatformStatusQuery(), default);
+        Assert.True(status.IsSuccess);
+        Assert.False(status.Value.SubscriptionCardEnrollmentAvailable);
+        Assert.Contains(PlatformPaymentMethod.Card, status.Value.AvailablePaymentMethods);
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Null(paymob.LastInput);
+    }
+
+    [Fact]
+    public async Task Discovery_and_initial_intent_agree_for_unmapped_plan_with_enrollment_disabled()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { CardSubscriptionEnrollmentConfigured = false };
+
+        var status = await new GetPublicPlatformStatusQueryHandler(
+            controls, controls).Handle(new GetPublicPlatformStatusQuery(), default);
+        Assert.True(status.IsSuccess);
+        Assert.False(status.Value.SubscriptionCardEnrollmentAvailable);
+        Assert.Contains(PlatformPaymentMethod.Card, status.Value.AvailablePaymentMethods);
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Null(paymob.LastInput!.SubscriptionPlanId);
+        Assert.Equal(1, paymob.IntentCalls);
+    }
+
+    [Fact]
+    public async Task Discovery_and_initial_intent_agree_when_generic_card_is_unavailable()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { CardEnabled = false };
+
+        var status = await new GetPublicPlatformStatusQueryHandler(
+            controls, controls).Handle(new GetPublicPlatformStatusQuery(), default);
+        Assert.True(status.IsSuccess);
+        Assert.False(status.Value.SubscriptionCardEnrollmentAvailable);
+        Assert.DoesNotContain(PlatformPaymentMethod.Card, status.Value.AvailablePaymentMethods);
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Card, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Platform.PaymentMethodUnavailable", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+    }
+
+    [Fact]
+    public async Task Discovery_and_initial_intent_agree_wallet_unaffected_by_enrollment_flag()
+    {
+        await using var db = SeedDb(out Family family, out SubscriptionPlanVersion plan, 6755);
+        var paymob = new FakePaymobClient();
+        var controls = new FixedPlatformControls { CardSubscriptionEnrollmentConfigured = false };
+
+        var status = await new GetPublicPlatformStatusQueryHandler(
+            controls, controls).Handle(new GetPublicPlatformStatusQuery(), default);
+        Assert.True(status.IsSuccess);
+        Assert.Contains(PlatformPaymentMethod.Wallet, status.Value.AvailablePaymentMethods);
+
+        var result = await IntentHandler(db, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(
+                family.OwnerUserId, plan.Id, null, SubscriptionPaymentMethod.Wallet, Billing(), DateTime.UtcNow),
+            default);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal(1, paymob.IntentCalls);
     }
 
     [Fact]

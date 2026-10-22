@@ -450,7 +450,7 @@ public sealed class PlatformControlsHostTests : IClassFixture<PortalApiMetadataH
         using JsonDocument body = JsonDocument.Parse(payload);
 
         Assert.Equal(
-            ["availablePaymentMethods", "maintenanceMessageArabic", "maintenanceMessageEnglish", "state"],
+            ["availablePaymentMethods", "maintenanceMessageArabic", "maintenanceMessageEnglish", "state", "subscriptionCardEnrollmentAvailable"],
             body.RootElement.EnumerateObject()
                 .Select(property => property.Name)
                 .OrderBy(name => name, StringComparer.Ordinal)

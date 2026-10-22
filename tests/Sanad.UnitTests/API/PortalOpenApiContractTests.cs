@@ -349,7 +349,7 @@ public sealed class PortalOpenApiContractTests : IClassFixture<PortalApiMetadata
         JsonElement schema = ResolveRef(root, "#/components/schemas/PublicPlatformStatusResponse");
 
         Assert.Equal(
-            ["availablePaymentMethods", "maintenanceMessageArabic", "maintenanceMessageEnglish", "state"],
+            ["availablePaymentMethods", "maintenanceMessageArabic", "maintenanceMessageEnglish", "state", "subscriptionCardEnrollmentAvailable"],
             schema.GetProperty("properties")
                 .EnumerateObject()
                 .Select(property => property.Name)

@@ -522,6 +522,38 @@ public sealed class PlatformControlsTests
             result.Value.AvailablePaymentMethods.ToArray());
     }
 
+    [Theory]
+    [InlineData(true, true, true, true)]
+    [InlineData(true, true, true, false)]
+    [InlineData(true, true, false, true)]
+    [InlineData(true, true, false, false)]
+    [InlineData(true, false, true, true)]
+    [InlineData(false, true, true, true)]
+    [InlineData(false, false, true, true)]
+    [InlineData(false, true, false, true)]
+    public async Task Public_status_subscription_card_enrollment_availability_is_card_and_enrollment_conjunction(
+        bool cardEnabled,
+        bool cardConfigured,
+        bool enrollmentConfigured,
+        bool walletConfigured)
+    {
+        Result<PublicPlatformStatusResponse> result = await new GetPublicPlatformStatusQueryHandler(
+            StubReader.With(Snapshot(cardEnabled: cardEnabled, walletEnabled: true)),
+            new StubConfiguration(cardConfigured, walletConfigured, cardSubscriptionEnrollmentConfigured: enrollmentConfigured)).Handle(
+                new GetPublicPlatformStatusQuery(), default);
+
+        Assert.True(result.IsSuccess);
+        bool expectedCardAvailable = cardEnabled && cardConfigured;
+        bool expectedEnrollmentAvailable = expectedCardAvailable && enrollmentConfigured;
+        Assert.Equal(expectedEnrollmentAvailable, result.Value.SubscriptionCardEnrollmentAvailable);
+        Assert.Equal(
+            expectedCardAvailable,
+            result.Value.AvailablePaymentMethods.Contains(PlatformPaymentMethod.Card));
+        Assert.Equal(
+            walletConfigured,
+            result.Value.AvailablePaymentMethods.Contains(PlatformPaymentMethod.Wallet));
+    }
+
     [Fact]
     public void Payment_methods_are_limited_to_the_implemented_card_and_wallet()
     {
@@ -546,7 +578,7 @@ public sealed class PlatformControlsTests
             .ToArray();
 
         Assert.Equal(
-            ["AvailablePaymentMethods", "MaintenanceMessageArabic", "MaintenanceMessageEnglish", "State"],
+            ["AvailablePaymentMethods", "MaintenanceMessageArabic", "MaintenanceMessageEnglish", "State", "SubscriptionCardEnrollmentAvailable"],
             properties);
         Assert.DoesNotContain(
             properties,
