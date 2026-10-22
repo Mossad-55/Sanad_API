@@ -7,6 +7,7 @@ using Sanad.Modules.Cms.Domain.Splash;
 using Sanad.Modules.Cms.Domain.Wellness;
 using Sanad.Modules.Cms.Domain.SentenceBuilder;
 using Sanad.Modules.Cms.Domain.MedicationLateness;
+using Sanad.Modules.Cms.Domain.Settings;
 using Sanad.Modules.Cms.Domain.Welcome;
 
 namespace Sanad.Modules.Cms.Application.Abstractions.Data;
@@ -41,6 +42,8 @@ public interface ICmsDbContext
     DbSet<FamilyHomeSection> FamilyHomeSections { get; }
 
     DbSet<FamilyHomeSectionHistory> FamilyHomeSectionHistory { get; }
+
+    DbSet<SiteSettings> SiteSettings { get; }
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

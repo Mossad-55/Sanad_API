@@ -93,7 +93,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/landing/sections",
-            "description": "Anonymous. Returns published visible sections ordered by displayOrder, virtual stats key excluded. Empty list is 200 []."
+            "description": "Anonymous. Returns published visible sections ordered by displayOrder, virtual stats key excluded. Every one of the 11 stored types returns the same bilingual envelope (arabicTitle/englishTitle plus optional arabicBody/englishBody), the raw contentJson exactly as stored, imagePath, displayOrder, and testimonials/faqs (resolved live for the testimonials and faq types, null for every other type). Empty list is 200 []."
           }
         },
         {
@@ -102,7 +102,7 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/landing/stats",
-            "description": "Anonymous. Live counters computed per request: families (excluding soft-deleted), Active caregivers by type, Approved facilities."
+            "description": "Anonymous. Live counters computed per request from real rows, never stored or hard-coded: familiesCount (excluding soft-deleted), medicalCaregiversCount and companionCaregiversCount (Active rows by type), approvedFacilitiesCount (Approved facility rows, 0 when there are none) and totalCaregiversCount (the sum). The client may cache these reads behind a 60-second ISR window; there is no revalidation webhook."
           }
         },
         {
@@ -116,6 +116,19 @@
             "body": {"mode": "raw", "raw": "{\n  \"subject\": \"Landing enquiry\",\n  \"message\": \"I would like to know more about your services.\"\n}"},
             "url": "{{baseUrl}}/api/v1/support/contact",
             "description": "Authenticated app JWT. The landing contact-form section configures fields; submission enters the real shared support flow (no separate landing ticket table). Subject 3-150 chars, message 10-2000 chars. Success 200 with ticket receipt."
+          }
+        },
+        {
+          "name": "Submit partner contact (anonymous)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "{{partnerContactIdempotencyKey}}"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"name\": \"Nour Hassan\",\n  \"company\": \"Hassani Care\",\n  \"email\": \"nour@example.com\",\n  \"subject\": \"Partnership\",\n  \"message\": \"We would like to discuss a partnership.\"\n}"},
+            "url": "{{baseUrl}}/api/v1/partner-contact",
+            "description": "Anonymous - no Authorization header. Partner/business contact whose destination is the existing admin support inbox. No account is created and no identity is faked: the submitted name/company/email/subject/message are stored as request data. The Idempotency-Key header is REQUIRED: the same key with the same content returns the same receipt, the same key with different content returns 409 Identity.PartnerContact.IdempotencyConflict, and too many submissions from one caller answer 429 Identity.PartnerContact.RateLimited with a Retry-After header. A validation failure returns 400 (Api.Validation.Failed, or Identity.PartnerContact.Invalid from the domain rules). Success 200 with { contactId, submittedOnUtc }."
           }
         }
       ]
@@ -281,9 +294,23 @@
             "method": "GET",
             "header": [],
             "url": "{{baseUrl}}/api/v1/platform/status",
-            "description": "Anonymous. Returns the sanitized public platform status: state (1 Operational, 2 Maintenance), the published bilingual maintenance message, and the currently available supported payment methods (1 Card, 2 Wallet). ApplePay is never advertised. Fails closed with 503 Platform.ControlStateUnavailable when the platform controls cannot be read."
+            "description": "Anonymous. Returns the sanitized public platform status: state (1 Operational, 2 Maintenance), the published bilingual maintenance message, the currently available supported payment methods (1 Card, 2 Wallet), and subscriptionCardEnrollmentAvailable (whether Card is usable for a subscription initial enrollment). ApplePay is never advertised. Fails closed with 503 Platform.ControlStateUnavailable when the platform controls cannot be read."
           },
           "description": "Read before starting a new booking or payment. Advisory for the UI only: the server enforces the same rules and refuses gated routes with 503 Platform.Maintenance or 400 Platform.PaymentMethodUnavailable."
+        }
+      ]
+    },
+    {
+      "name": "07. Site settings",
+      "item": [
+        {
+          "name": "Get site settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/site-settings",
+            "description": "Anonymous. Returns the published navbar links and the SEO defaults: { navbarLinks, seo }. navbarLinks is the authored list in the authored order (the navbar order) and each link carries { key, arabicLabel, englishLabel, url }. seo is null when no SEO default was authored and each of its members is null when that member was not authored. Before anything is authored the read is honest: 200 with navbarLinks [] and seo null. The read exposes only the published content - no identity, timestamps or authoring metadata."
+          }
         }
       ]
     }
@@ -292,6 +319,7 @@
     {"key": "paymobSubscriptionId", "value": "REPLACE_WITH_PROVIDER_SUBSCRIPTION_ID", "type": "string", "description": "Provider subscription_data.id from an approved callback fixture."},
     {"key": "paymobInitialTransactionId", "value": "REPLACE_WITH_INITIAL_TRANSACTION_ID", "type": "string", "description": "Optional subscription_data.initial_transaction; required for an initial CREATED settlement."},
     {"key": "paymobRequestId", "value": "REPLACE_WITH_PROVIDER_REQUEST_ID", "type": "string", "description": "Required for renewal callbacks and used as the durable idempotency/event identity."},
-    {"key": "paymobSubscriptionHmac", "value": "REPLACE_WITH_BODY_HMAC", "type": "string", "description": "Lowercase or uppercase HMAC-SHA512 for trigger_type + for + subscription_data.id using Paymob__HmacSecret."}
+    {"key": "paymobSubscriptionHmac", "value": "REPLACE_WITH_BODY_HMAC", "type": "string", "description": "Lowercase or uppercase HMAC-SHA512 for trigger_type + for + subscription_data.id using Paymob__HmacSecret."},
+    {"key": "partnerContactIdempotencyKey", "value": "partner-contact-1", "type": "string", "description": "Idempotency-Key of the anonymous partner-contact submission. Reuse the same value to retry the same request; a new value starts a new submission."}
   ]
 }

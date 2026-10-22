@@ -21,6 +21,11 @@
       "description": "Optional support ticket status filter: 1 New, 2 InProgress, 3 Resolved, 4 Closed."
     },
     {
+      "key": "partnerContactId",
+      "value": "",
+      "description": "Partner-contact UUID to inspect. Paste one created by the anonymous POST /api/v1/partner-contact request in the Sanad App Public collection, or set it manually before running the partner-contact detail request."
+    },
+    {
       "key": "subscriptionPlanVersionId",
       "value": "",
       "description": "Paste a published, available-for-new-sales plan version UUID before manually creating a coupon."
@@ -2879,7 +2884,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans?page=1&pageSize=10"
           },
-          "description": "Safe read. Returns all draft, published, and retired-for-new-sales plan versions so administrators can see the complete catalog state."
+          "description": "Safe read. Returns all draft, published, and retired-for-new-sales plan versions so administrators can see the complete catalog state. Each item also carries the optional bilingual copy authored for that version (arabicName, englishName, arabicDescription, englishDescription, and per-benefit arabicLabel/englishLabel), stored with surrounding whitespace trimmed and null when the value was absent or whitespace-only."
         },
         {
           "name": "Get subscription plan (safe read)",
@@ -2893,7 +2898,7 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans/{{subscriptionPlanVersionId}}"
           },
-          "description": "Safe read. Returns one plan version with immutable terms, benefits, publication state, availability, and timestamps; unknown IDs return 404 Subscriptions.Plan.NotFound."
+          "description": "Safe read. Returns one plan version with immutable terms, benefits, publication state, availability, and timestamps; unknown IDs return 404 Subscriptions.Plan.NotFound. The optional bilingual copy authored for that version (arabicName, englishName, arabicDescription, englishDescription, and per-benefit arabicLabel/englishLabel) is stored with surrounding whitespace trimmed and null when the value was absent or whitespace-only."
         },
         {
           "name": "Create subscription plan draft (manual)",
@@ -2911,11 +2916,11 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"key\": \"premium\",\n  \"version\": 2,\n  \"price\": 299.00,\n  \"cycle\": 1,\n  \"currency\": \"EGP\",\n  \"benefits\": [\n    { \"key\": 1, \"isIncluded\": true },\n    { \"key\": 2, \"isIncluded\": true },\n    { \"key\": 3, \"isIncluded\": true },\n    { \"key\": 4, \"isIncluded\": true },\n    { \"key\": 5, \"isIncluded\": true },\n    { \"key\": 6, \"isIncluded\": true },\n    { \"key\": 7, \"isIncluded\": true },\n    { \"key\": 8, \"isIncluded\": false }\n  ],\n  \"memberLimit\": { \"kind\": 1, \"value\": 10 },\n  \"monthlyBookingLimit\": { \"kind\": 1, \"value\": 20 },\n  \"rollover\": 1,\n  \"paymobSubscriptionPlanId\": 6755\n}"
+              "raw": "{\n  \"key\": \"premium\",\n  \"version\": 2,\n  \"price\": 299.00,\n  \"cycle\": 1,\n  \"currency\": \"EGP\",\n  \"benefits\": [\n    { \"key\": 1, \"isIncluded\": true, \"arabicLabel\": \"محادثات\", \"englishLabel\": \"Chatting\" },\n    { \"key\": 2, \"isIncluded\": true, \"arabicLabel\": \"مكتبة\", \"englishLabel\": \"Library\" },\n    { \"key\": 3, \"isIncluded\": true },\n    { \"key\": 4, \"isIncluded\": true },\n    { \"key\": 5, \"isIncluded\": true },\n    { \"key\": 6, \"isIncluded\": true },\n    { \"key\": 7, \"isIncluded\": true },\n    { \"key\": 8, \"isIncluded\": false }\n  ],\n  \"memberLimit\": { \"kind\": 1, \"value\": 10 },\n  \"monthlyBookingLimit\": { \"kind\": 1, \"value\": 20 },\n  \"rollover\": 1,\n  \"paymobSubscriptionPlanId\": 6755,\n  \"arabicName\": \"الباقة المميزة\",\n  \"englishName\": \"Premium plan\",\n  \"arabicDescription\": \"كل ما تتضمنه الباقة المميزة.\",\n  \"englishDescription\": \"Everything the premium plan includes.\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/admin/subscriptions/plans"
           },
-          "description": "Manual example only. Create creates a draft only; publish separately with the publish request. No plan edit endpoint exists, and family subscriptions activate only after a successful payment callback is settled. The request must include all eight benefit keys exactly once with boolean isIncluded. Numeric enums: cycle 1=Monthly/2=Annual; benefit key 1=Chatting, 2=Library, 3=CommunityForum, 4=FamilyActivityTimeline, 5=BasicSearch, 6=AdvancedSearchFilters, 7=MedicalSummaryExportAndSecureSharing, 8=PremiumContent; limit kind 1=Finite (positive value)/2=Unlimited (null value); rollover 1=None/2=NotApplicable. Optional paymobSubscriptionPlanId enables initial Card enrollment when Paymob Card 3DS is configured; it is not a provider subscription ID. Success is 201 with the draft plan-version UUID. Duplicate key/version is 409 Subscriptions.Plan.DuplicateVersion."
+          "description": "Manual example only. Create creates a draft only; publish separately with the publish request. No plan edit endpoint exists, and family subscriptions activate only after a successful payment callback is settled. The request must include all eight benefit keys exactly once with boolean isIncluded. Numeric enums: cycle 1=Monthly/2=Annual; benefit key 1=Chatting, 2=Library, 3=CommunityForum, 4=FamilyActivityTimeline, 5=BasicSearch, 6=AdvancedSearchFilters, 7=MedicalSummaryExportAndSecureSharing, 8=PremiumContent; limit kind 1=Finite (positive value)/2=Unlimited (null value); rollover 1=None/2=NotApplicable. Optional paymobSubscriptionPlanId enables initial Card enrollment when Paymob Card 3DS is configured; it is not a provider subscription ID. Optional bilingual copy is authored per version and stored with surrounding whitespace trimmed (a whitespace-only value is stored as absent/null); it is never generated, translated, or back-filled: arabicName/englishName/arabicDescription/englishDescription on the version, plus arabicLabel/englishLabel per benefit; omitted or null means that copy is absent, and copy never changes price, cycle, currency, limits, rollover, or benefit inclusion. Over-long copy is rejected with 400 (name 200, description 1000, benefit label 200 characters). Success is 201 with the draft plan-version UUID. Duplicate key/version is 409 Subscriptions.Plan.DuplicateVersion."
         },
         {
           "name": "Publish subscription plan (manual)",
@@ -4422,7 +4427,7 @@
               "mode": "formdata"
             },
             "url": "{{baseUrl}}/api/v1/admin/landing/media",
-            "description": "STATE-CHANGING manual multipart example. Set body mode to form-data with file (JPEG/PNG/WebP signature checked, max 5 MB). Success 201 {key}; invalid content or size returns 400. Use the returned key as imagePath on create/update."
+            "description": "STATE-CHANGING manual multipart example. Set body mode to form-data with file (request capped at 5 MB; the persisted file is capped by Storage:Local:MaxBytes, default 2 MiB, so an upload between the two caps returns 400 Storage.File.TooLarge): image/jpeg, image/png and image/webp are accepted after a byte-signature check; image/svg+xml is accepted only after sanitization (script/foreignObject/style/iframe/embed/object and the SMIL elements set/animate/animateTransform/animateMotion/discard are removed with their contents, as are XML comments and processing instructions, on* handler attributes, external href/xlink:href/src references, and any retained attribute carrying a url(...) that is not a same-document url(#...); a DTD/entity payload, a document nested deeper than 256 elements, or anything unparseable is rejected), and only the sanitized bytes are stored. Success 201 {key}; invalid, unsafe or oversize content returns 400. Use the returned key as imagePath on create/update. SVG served from /files carries X-Content-Type-Options: nosniff and a strict Content-Security-Policy."
           }
         }
       ]
@@ -4443,7 +4448,7 @@
     },
     {
       "name": "21. Support inbox (SuperAdmin/SupportAdmin)",
-      "description": "Support ticket inbox. Policy SupportInboxAdmin: a Normal JWT with account_type SuperAdmin or SupportAdmin; ContentAdmin, FinanceAdmin and app accounts receive a bare 403, and a missing/expired/non-normal token receives 401. Status contract: New=1, InProgress=2, Resolved=3, Closed=4 and movement is FORWARD ONLY. A backward move, a same-status no-op, or anything leaving Closed returns 409 Identity.Support.Conflict and writes nothing; a status outside 1-4 returns a bare 400. A reply never changes the status, and a reply to a Closed ticket is 409 with nothing written. The reply is persisted before delivery is attempted, so email/in-app failures are swallowed and the reply stays readable by the owner through GET /api/v1/support/tickets/{id}. Ticket ids are plain UUIDs; set {{supportTicketId}} from a ticket created by POST /api/v1/support/contact (the Sanad Auth collection captures it automatically).",
+      "description": "Support ticket inbox. Policy SupportInboxAdmin: a Normal JWT with account_type SuperAdmin or SupportAdmin; ContentAdmin, FinanceAdmin and app accounts receive a bare 403, and a missing/expired/non-normal token receives 401. Status contract: New=1, InProgress=2, Resolved=3, Closed=4 and movement is FORWARD ONLY. A backward move, a same-status no-op, or anything leaving Closed returns 409 Identity.Support.Conflict and writes nothing; a status outside 1-4 returns a bare 400. A reply never changes the status, and a reply to a Closed ticket is 409 with nothing written. The reply is persisted before delivery is attempted, so email/in-app failures are swallowed and the reply stays readable by the owner through GET /api/v1/support/tickets/{id}. Ticket ids are plain UUIDs; set {{supportTicketId}} from a ticket created by POST /api/v1/support/contact (the Sanad Auth collection captures it automatically). Each list item and the detail also carry the sender's displayName (English full name, Arabic fallback; null when the sender row is missing or anonymized) and accountType (the first-registered AccountType number, 1-9; null when unresolvable); the sender's email and phone number are never returned.",
       "item": [
         {
           "name": "List support tickets",
@@ -4456,7 +4461,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/admin/support-tickets?page=1&pageSize=25",
-            "description": "Safe read. Newest first; page defaults to 1 and pageSize to 25 (clamped 1-100). Optional status filter (1-4) can be appended as &status={{supportTicketStatus}}. Response { items, page, pageSize, totalCount } with items { ticketId, userId, subject, status, createdOnUtc }."
+            "description": "Safe read. Newest first; page defaults to 1 and pageSize to 25 (clamped 1-100). Optional status filter (1-4) can be appended as &status={{supportTicketStatus}}. Response { items, page, pageSize, totalCount } with items { ticketId, userId, displayName, accountType, subject, status, createdOnUtc }. displayName is the sender's English full name with an Arabic fallback and accountType the first-registered AccountType number; both are null when the sender row is missing or anonymized. Each page resolves its senders in one batched Identity lookup, and the sender's email and phone are never returned."
           }
         },
         {
@@ -4470,7 +4475,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/admin/support-tickets/{{supportTicketId}}",
-            "description": "Safe read. Returns { ticketId, userId, subject, message, status, createdOnUtc, notifiedOnUtc, statusChangedByUserId, statusChangedOnUtc, replies[] } with replies oldest first. Unknown id returns 404 Identity.Support.NotFound."
+            "description": "Safe read. Returns { ticketId, userId, displayName, accountType, subject, message, status, createdOnUtc, notifiedOnUtc, statusChangedByUserId, statusChangedOnUtc, replies[] } with replies oldest first. displayName is the sender's English full name with an Arabic fallback and accountType the first-registered AccountType number; both are null when the sender row is missing or anonymized, and the sender's email and phone are never returned. Unknown id returns 404 Identity.Support.NotFound."
           }
         },
         {
@@ -4516,6 +4521,76 @@
             "url": "{{baseUrl}}/api/v1/admin/support-tickets/{{supportTicketId}}/replies",
             "description": "STATE-CHANGING. Success 200 with { replyId, actorUserId, body, createdOnUtc }. The reply is persisted before delivery is attempted, so an email/in-app failure never fails the request or loses the reply. Replying to a Closed ticket returns 409 Identity.Support.Conflict and writes nothing; unknown id 404 Identity.Support.NotFound. Use only an approved disposable ticket."
           }
+        },
+        {
+          "name": "List partner contacts",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/support-tickets/partner-contacts?page=1&pageSize=25",
+            "description": "Safe read of the anonymous partner-contact submissions that land in the support inbox. Newest first; page defaults to 1 and pageSize to 25 (clamped 1-100). Response { items, page, pageSize, totalCount } with items { contactId, name, company, email, subject, createdOnUtc }. These are the submitter's own submitted details (request data - no account exists); company and subject are null when they were not submitted. The anti-spam client key is never returned."
+          }
+        },
+        {
+          "name": "Get partner contact detail",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/support-tickets/partner-contacts/{{partnerContactId}}",
+            "description": "Safe read. Returns { contactId, name, company, email, subject, message, createdOnUtc } with the submitted message body. Unknown id returns 404 Identity.PartnerContact.NotFound. The anti-spam client key is never returned."
+          }
+        }
+      ]
+    },
+    {
+      "name": "22. Site settings (manual authoring)",
+      "description": "Authoring surface for the one site-settings row: the editable bilingual navbar links and the bilingual SEO defaults served by the anonymous public read GET /api/v1/site-settings. Exactly one row exists: its key is fixed, so the first write creates it and later writes update that same row. No draft/publish workflow, no generated or translated content.",
+      "item": [
+        {
+          "name": "Get site settings (safe read)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/site-settings"
+          },
+          "description": "Safe read of the one settings row. 200 returns { navbarLinks, seo, createdOnUtc, updatedOnUtc } where navbarLinks is the authored list in the authored order (the navbar order) and seo is null when no SEO value was authored. 404 Cms.SiteSettings.NotFound before anything is authored."
+        },
+        {
+          "name": "Update site settings (manual mutation)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{accessToken}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"navbarLinks\": [\n    { \"key\": \"library\", \"arabicLabel\": \"المكتبة\", \"englishLabel\": \"Library\", \"url\": \"/library\" },\n    { \"key\": \"about\", \"arabicLabel\": \"من نحن\", \"englishLabel\": \"About\", \"url\": \"https://sanad.example/about\" }\n  ],\n  \"seo\": {\n    \"arabicTitle\": \"سند\",\n    \"englishTitle\": \"Sanad\",\n    \"arabicDescription\": \"وصف\",\n    \"englishDescription\": \"Description\"\n  }\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/site-settings"
+          },
+          "description": "Manual mutation only. The request replaces the whole document: an omitted navbarLinks means no navbar links and an omitted seo means no SEO defaults. Every link needs a key, an Arabic label, an English label and a usable target. The target is a root-relative app route or an absolute http(s) url; javascript:, data:, other schemes and protocol-relative targets are refused. Bounds: 20 links, key 60, labels 120, url 500, SEO title 200, SEO description 500. Success is 200 with the stored document and never a second row. 400 Cms.SiteSettings.Invalid for unusable content and 400 Api.Validation.Failed for an out-of-bounds request shape (nothing is stored either way); 409 Cms.SiteSettings.Conflict when another writer created the row first - read the row and retry."
         }
       ]
     },

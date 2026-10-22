@@ -114,6 +114,95 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Landing.FamilyHomeSection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<int>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
+                    b.Property<bool>("IsVisible")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_visible");
+
+                    b.Property<string>("ItemsJson")
+                        .HasMaxLength(40000)
+                        .HasColumnType("character varying(40000)")
+                        .HasColumnName("items_json");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<DateTime?>("PublishedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("published_on_utc");
+
+                    b.Property<Guid?>("SourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("source_id");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "DisplayOrder");
+
+                    b.ToTable("family_home_sections", "cms");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Landing.FamilyHomeSectionHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("Details")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("details");
+
+                    b.Property<Guid>("SectionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("section_id");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("SectionId", "CreatedOnUtc");
+
+                    b.ToTable("family_home_section_history", "cms");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Cms.Domain.Landing.LandingSection", b =>
                 {
                     b.Property<Guid>("Id")
@@ -538,6 +627,54 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                         .IsUnique();
 
                     b.ToTable("sentence_builder_catalog_revisions", "cms");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Settings.SiteSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .HasColumnType("integer")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ArabicSeoDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("arabic_seo_description");
+
+                    b.Property<string>("ArabicSeoTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("arabic_seo_title");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("EnglishSeoDescription")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("english_seo_description");
+
+                    b.Property<string>("EnglishSeoTitle")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("english_seo_title");
+
+                    b.Property<string>("NavbarLinksJson")
+                        .IsRequired()
+                        .HasMaxLength(20000)
+                        .HasColumnType("character varying(20000)")
+                        .HasColumnName("navbar_links_json");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("site_settings", "cms", t =>
+                        {
+                            t.HasCheckConstraint("ck_site_settings_single_row", "\"id\" = 1");
+                        });
                 });
 
             modelBuilder.Entity("Sanad.Modules.Cms.Domain.Splash.SplashScreen", b =>
@@ -992,95 +1129,6 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                 {
                     b.Navigation("Revisions");
                 });
-            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Landing.FamilyHomeSection", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("DisplayOrder")
-                        .HasColumnType("integer")
-                        .HasColumnName("display_order");
-
-                    b.Property<bool>("IsVisible")
-                        .HasColumnType("boolean")
-                        .HasColumnName("is_visible");
-
-                    b.Property<string>("ItemsJson")
-                        .HasMaxLength(40000)
-                        .HasColumnType("character varying(40000)")
-                        .HasColumnName("items_json");
-
-                    b.Property<int>("Kind")
-                        .HasColumnType("integer")
-                        .HasColumnName("kind");
-
-                    b.Property<DateTime?>("PublishedOnUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("published_on_utc");
-
-                    b.Property<Guid?>("SourceId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("source_id");
-
-                    b.Property<int>("Status")
-                        .HasColumnType("integer")
-                        .HasColumnName("status");
-
-                    b.Property<int>("Version")
-                        .HasColumnType("integer")
-                        .HasColumnName("version")
-                        .IsConcurrencyToken();
-
-                    b.Property<DateTime>("CreatedOnUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_on_utc");
-
-                    b.Property<DateTime>("UpdatedOnUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("updated_on_utc");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Status", "DisplayOrder");
-
-                    b.ToTable("family_home_sections", "cms");
-                });
-
-            modelBuilder.Entity("Sanad.Modules.Cms.Domain.Landing.FamilyHomeSectionHistory", b =>
-                {
-                    b.Property<Guid>("Id")
-                        .HasColumnType("uuid")
-                        .HasColumnName("id");
-
-                    b.Property<int>("Action")
-                        .HasColumnType("integer")
-                        .HasColumnName("action");
-
-                    b.Property<Guid>("ActorUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("actor_user_id");
-
-                    b.Property<DateTime>("CreatedOnUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("created_on_utc");
-
-                    b.Property<string>("Details")
-                        .HasMaxLength(500)
-                        .HasColumnType("character varying(500)")
-                        .HasColumnName("details");
-
-                    b.Property<Guid>("SectionId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("section_id");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("SectionId", "CreatedOnUtc");
-
-                    b.ToTable("family_home_section_history", "cms");
-                });
-
 #pragma warning restore 612, 618
         }
     }
