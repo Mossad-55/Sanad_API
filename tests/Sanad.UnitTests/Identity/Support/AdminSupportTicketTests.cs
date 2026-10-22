@@ -1,3 +1,7 @@
+using System.Reflection;
+using System.Text.Json;
+using MediatR;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.Results;
@@ -5,9 +9,11 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Identity.Application.Abstractions.Messaging;
 using Sanad.Modules.Identity.Application.Support;
+using Sanad.Modules.Identity.Application.Users;
 using Sanad.Modules.Identity.Domain.Authentication.VerificationRequests;
 using Sanad.Modules.Identity.Domain.Support;
 using Sanad.Modules.Identity.Domain.Users;
+using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.UnitTests.Identity.Registration;
 
 namespace Sanad.UnitTests.Identity.Support;
@@ -16,7 +22,11 @@ namespace Sanad.UnitTests.Identity.Support;
 /// F5 admin ticket workflow. Pins the approved numeric status contract, the
 /// forward-only transition matrix (nothing leaves Closed, no reopen, no
 /// no-op), durable replies carrying actor and time, and the rule that a saved
-/// reply stays readable when email and in-app delivery both fail.
+/// reply stays readable when email and in-app delivery both fail. It also pins
+/// the admin inbox sender enrichment — the sender's display name and
+/// first-registered account type, resolved through the existing Identity
+/// display read in one batched lookup per page, null when the sender is
+/// anonymized or missing, and the sender's email and phone are never returned.
 /// </summary>
 public sealed class AdminSupportTicketTests
 {
@@ -361,6 +371,191 @@ public sealed class AdminSupportTicketTests
         Assert.Equal(AdminId.Value, reply.ActorUserId);
     }
 
+    [Fact]
+    public async Task Inbox_publishes_the_sender_display_name_and_account_type_and_never_the_channel_fields()
+    {
+        await using IdentityStore store = await IdentityStore.CreateAsync();
+        IdentityDbContext identity = store.Identity;
+
+        User submitter = IdentityUser(
+            "+201000000201", "submitter@example.test", "سالم المستخدم", "Salem Submitter");
+        submitter.AddAccount(AccountType.Family);
+        identity.Users.Add(submitter);
+
+        SupportTicket ticket = SupportTicket.Create(
+            submitter.Id, "Cannot sign in", "I cannot sign in to my account.", Now.AddHours(-2));
+        identity.SupportTickets.Add(ticket);
+        await identity.SaveChangesAsync();
+
+        var sender = new ForwardingSender(identity);
+        var list = await new GetAdminSupportTicketsQueryHandler(identity, sender)
+            .Handle(new GetAdminSupportTicketsQuery(), default);
+        var detail = await new GetAdminSupportTicketByIdQueryHandler(identity, sender)
+            .Handle(new GetAdminSupportTicketByIdQuery(ticket.Id), default);
+
+        Assert.True(list.IsSuccess);
+        AdminSupportTicketListItem row = Assert.Single(list.Value.Items);
+        Assert.Equal(submitter.Id.Value, row.UserId);
+        // The English full name wins over the Arabic one.
+        Assert.Equal("Salem Submitter", row.DisplayName);
+        Assert.Equal((int)AccountType.Family, row.AccountType);
+
+        Assert.True(detail.IsSuccess);
+        Assert.Equal("Salem Submitter", detail.Value.DisplayName);
+        Assert.Equal((int)AccountType.Family, detail.Value.AccountType);
+
+        // The privacy contract: neither read leaks the sender's email or phone.
+        foreach (string json in new[]
+                 {
+                     JsonSerializer.Serialize(list.Value),
+                     JsonSerializer.Serialize(detail.Value)
+                 })
+        {
+            Assert.DoesNotContain("submitter@example.test", json, StringComparison.Ordinal);
+            Assert.DoesNotContain("+201000000201", json, StringComparison.Ordinal);
+        }
+    }
+
+    [Fact]
+    public async Task Inbox_sender_fields_stay_null_for_an_anonymized_or_missing_sender_without_failing()
+    {
+        await using IdentityStore store = await IdentityStore.CreateAsync();
+        IdentityDbContext identity = store.Identity;
+
+        User anonymized = IdentityUser(
+            "+201000000202", "gone@example.test", "مستخدم قديم", "Gone User");
+        anonymized.AddAccount(AccountType.Family);
+        identity.Users.Add(anonymized);
+
+        SupportTicket anonymizedTicket = SupportTicket.Create(
+            anonymized.Id, "Old request", "An old request.", Now.AddHours(-3));
+        SupportTicket strangerTicket = SupportTicket.Create(
+            UserId.New(), "Unknown sender", "No such user row.", Now.AddHours(-2));
+        identity.SupportTickets.AddRange(anonymizedTicket, strangerTicket);
+        await identity.SaveChangesAsync();
+
+        anonymized.AnonymizeAndDeactivate(Now.AddHours(-1));
+        await identity.SaveChangesAsync();
+
+        var sender = new ForwardingSender(identity);
+        var list = await new GetAdminSupportTicketsQueryHandler(identity, sender)
+            .Handle(new GetAdminSupportTicketsQuery(), default);
+        var anonymizedDetail = await new GetAdminSupportTicketByIdQueryHandler(identity, sender)
+            .Handle(new GetAdminSupportTicketByIdQuery(anonymizedTicket.Id), default);
+        var strangerDetail = await new GetAdminSupportTicketByIdQueryHandler(identity, sender)
+            .Handle(new GetAdminSupportTicketByIdQuery(strangerTicket.Id), default);
+
+        Assert.True(list.IsSuccess);
+        Assert.Equal(2, list.Value.Items.Count);
+        Assert.All(list.Value.Items, item =>
+        {
+            Assert.Null(item.DisplayName);
+            Assert.Null(item.AccountType);
+        });
+
+        // The anonymized row is filtered out by the reused display read, and the
+        // stranger has no row at all: both degrade to null, never an invented
+        // placeholder and never a failure.
+        Assert.True(anonymizedDetail.IsSuccess);
+        Assert.Null(anonymizedDetail.Value.DisplayName);
+        Assert.Null(anonymizedDetail.Value.AccountType);
+
+        Assert.True(strangerDetail.IsSuccess);
+        Assert.Null(strangerDetail.Value.DisplayName);
+        Assert.Null(strangerDetail.Value.AccountType);
+    }
+
+    [Fact]
+    public async Task Inbox_resolves_every_sender_of_a_page_in_one_batched_lookup()
+    {
+        await using IdentityStore store = await IdentityStore.CreateAsync();
+        IdentityDbContext identity = store.Identity;
+
+        List<User> submitters = [];
+        for (int index = 1; index <= 3; index++)
+        {
+            User user = IdentityUser(
+                $"+20100000030{index}",
+                $"sender{index}@example.test",
+                $"مرسل {index}",
+                $"Sender {index}");
+            user.AddAccount(AccountType.Family);
+            submitters.Add(user);
+            identity.SupportTickets.Add(SupportTicket.Create(
+                user.Id, $"Request {index}", "Please help.", Now.AddHours(-index)));
+        }
+
+        identity.Users.AddRange(submitters);
+        await identity.SaveChangesAsync();
+
+        var sender = new ForwardingSender(identity);
+        var list = await new GetAdminSupportTicketsQueryHandler(identity, sender)
+            .Handle(new GetAdminSupportTicketsQuery(), default);
+
+        Assert.True(list.IsSuccess);
+        Assert.Equal(3, list.Value.Items.Count);
+
+        // One lookup for the whole page (never one per row) and it carries every
+        // distinct sender id.
+        GetUserDisplayInfoByIdsQuery lookup = Assert.Single(sender.Requests);
+        Assert.Equal(
+            [.. submitters.Select(user => user.Id.Value).OrderBy(id => id)],
+            [.. lookup.UserIds.Select(id => id.Value).OrderBy(id => id)]);
+    }
+
+    [Fact]
+    public async Task Inbox_detail_resolves_its_single_sender_in_exactly_one_lookup()
+    {
+        await using IdentityStore store = await IdentityStore.CreateAsync();
+        IdentityDbContext identity = store.Identity;
+
+        User submitter = IdentityUser(
+            "+201000000203", "detail@example.test", "سالم المستخدم", "Salem Submitter");
+        submitter.AddAccount(AccountType.Family);
+        identity.Users.Add(submitter);
+
+        SupportTicket ticket = SupportTicket.Create(
+            submitter.Id, "Cannot sign in", "I cannot sign in to my account.", Now.AddHours(-2));
+        identity.SupportTickets.Add(ticket);
+        await identity.SaveChangesAsync();
+
+        var sender = new ForwardingSender(identity);
+        var detail = await new GetAdminSupportTicketByIdQueryHandler(identity, sender)
+            .Handle(new GetAdminSupportTicketByIdQuery(ticket.Id), default);
+
+        Assert.True(detail.IsSuccess);
+        Assert.Equal("Salem Submitter", detail.Value.DisplayName);
+        Assert.Equal((int)AccountType.Family, detail.Value.AccountType);
+
+        // One ticket resolves its one sender in exactly one lookup, and that
+        // lookup carries exactly that sender.
+        GetUserDisplayInfoByIdsQuery lookup = Assert.Single(sender.Requests);
+        Assert.Equal([submitter.Id.Value], lookup.UserIds.Select(id => id.Value).ToArray());
+    }
+
+    [Fact]
+    public void Inbox_dto_publishes_the_sender_facts_as_nullable_and_exposes_no_channel_field()
+    {
+        var nullability = new NullabilityInfoContext();
+
+        foreach (Type type in new[] { typeof(AdminSupportTicketListItem), typeof(AdminSupportTicketDetail) })
+        {
+            Assert.DoesNotContain(
+                type.GetProperties(),
+                property =>
+                    property.Name.Contains("Email", StringComparison.OrdinalIgnoreCase) ||
+                    property.Name.Contains("Phone", StringComparison.OrdinalIgnoreCase));
+
+            PropertyInfo displayName = Assert.IsAssignableFrom<PropertyInfo>(type.GetProperty("DisplayName"));
+            PropertyInfo accountType = Assert.IsAssignableFrom<PropertyInfo>(type.GetProperty("AccountType"));
+
+            Assert.Equal(typeof(string), displayName.PropertyType);
+            Assert.Equal(typeof(int?), accountType.PropertyType);
+            Assert.Equal(NullabilityState.Nullable, nullability.Create(displayName).ReadState);
+            Assert.Equal(NullabilityState.Nullable, nullability.Create(accountType).ReadState);
+        }
+    }
+
     private static IdentityTestDbContext CreateDbContext()
     {
         DbContextOptions<IdentityTestDbContext> options =
@@ -495,5 +690,87 @@ public sealed class AdminSupportTicketTests
                     "Notification delivery is unavailable.");
             }
         }
+    }
+
+    private static User IdentityUser(
+        string phone,
+        string email,
+        string arabicFullName,
+        string englishFullName) =>
+        User.Create(
+            FullName.Create(arabicFullName),
+            FullName.Create(englishFullName),
+            Email.Create(email),
+            PhoneNumber.Create(phone));
+
+    /// <summary>
+    /// A real relational Identity store. The ticket inbox resolves sender
+    /// display facts through the existing Identity display read, which reads the
+    /// <c>Accounts</c> owned collection — so the enrichment is exercised against
+    /// the real mapping instead of a hand-written double.
+    /// </summary>
+    private sealed class IdentityStore : IAsyncDisposable
+    {
+        private readonly SqliteConnection _connection;
+
+        private IdentityStore(
+            SqliteConnection connection,
+            IdentityDbContext identity)
+        {
+            _connection = connection;
+            Identity = identity;
+        }
+
+        public IdentityDbContext Identity { get; }
+
+        public static async Task<IdentityStore> CreateAsync()
+        {
+            var connection = new SqliteConnection("Data Source=:memory:");
+            await connection.OpenAsync();
+
+            var identity = new IdentityDbContext(
+                new DbContextOptionsBuilder<IdentityDbContext>()
+                    .UseSqlite(connection)
+                    .Options);
+            await identity.Database.EnsureCreatedAsync();
+
+            return new IdentityStore(connection, identity);
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            await Identity.DisposeAsync();
+            await _connection.DisposeAsync();
+        }
+    }
+
+    /// <summary>
+    /// Forwards the sender-enrichment lookup to the real
+    /// <see cref="GetUserDisplayInfoByIdsQueryHandler"/> and records every
+    /// request, so a test can pin that the inbox batches one lookup per page.
+    /// </summary>
+    private sealed class ForwardingSender(IdentityDbContext identity) : ISender
+    {
+        internal List<GetUserDisplayInfoByIdsQuery> Requests { get; } = [];
+
+        public async Task<TResponse> Send<TResponse>(
+            IRequest<TResponse> request,
+            CancellationToken cancellationToken = default)
+        {
+            if (request is GetUserDisplayInfoByIdsQuery query)
+            {
+                Requests.Add(query);
+                var result = await new GetUserDisplayInfoByIdsQueryHandler(identity)
+                    .Handle(query, cancellationToken);
+                return (TResponse)(object)result;
+            }
+
+            throw new NotSupportedException();
+        }
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default) where TRequest : IRequest => throw new NotSupportedException();
+        public Task<object?> Send(object request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
     }
 }

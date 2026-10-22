@@ -1,23 +1,29 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
+using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
+using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Domain.Families;
 
 namespace Sanad.Modules.CareHomes.Application.Visits;
 
 /// <summary>
 /// F6 operational read of Care Home visit requests for SuperAdmin/SupportAdmin.
 /// Read-only: no Admin scheduling, approval, rejection, cancellation or override
-/// route exists, and the projection deliberately omits visitor name, visitor
+/// route exists. The projection adds the facility's approved display name and
+/// the requesting family's name, and deliberately omits visitor name, visitor
 /// phone (PII), visitor count, the requesting family user id and the pending
 /// decision deadline.
 /// </summary>
 public sealed record AdminCareHomeVisitListItem(
     Guid VisitId,
     Guid FacilityId,
+    string? FacilityName,
     Guid FamilyId,
+    string? FamilyName,
     Guid? ElderlyId,
     CareHomeVisitKind Kind,
     CareHomeVisitStatus Status,
@@ -38,7 +44,9 @@ public sealed record AdminCareHomeVisitListItem(
 public sealed record AdminCareHomeVisitDetail(
     Guid VisitId,
     Guid FacilityId,
+    string? FacilityName,
     Guid FamilyId,
+    string? FamilyName,
     Guid? ElderlyId,
     CareHomeVisitKind Kind,
     CareHomeVisitStatus Status,
@@ -91,7 +99,9 @@ public static class AdminCareHomeVisitErrors
         new("CareHomes.Admin.InvalidQuery", "The visit query is invalid.");
 }
 
-public sealed class ListAdminCareHomeVisitsQueryHandler(ICareHomesDbContext dbContext)
+public sealed class ListAdminCareHomeVisitsQueryHandler(
+    ICareHomesDbContext dbContext,
+    IFamiliesDbContext familiesDbContext)
     : IQueryHandler<ListAdminCareHomeVisitsQuery, AdminCareHomeVisitPage>
 {
     private const int DefaultPageSize = 25;
@@ -173,11 +183,27 @@ public sealed class ListAdminCareHomeVisitsQueryHandler(ICareHomesDbContext dbCo
             })
             .ToListAsync(cancellationToken);
 
+        // One batched name lookup per side for the whole page (never per row):
+        // the facility's approved display name and the family's name.
+        IReadOnlyDictionary<Guid, string> facilityNames =
+            await AdminCareHomeVisitNames.ResolveFacilityNamesAsync(
+                dbContext,
+                rows.Select(v => v.FacilityId).ToArray(),
+                cancellationToken);
+
+        IReadOnlyDictionary<Guid, string> familyNames =
+            await AdminCareHomeVisitNames.ResolveFamilyNamesAsync(
+                familiesDbContext,
+                rows.Select(v => v.FamilyId).ToArray(),
+                cancellationToken);
+
         List<AdminCareHomeVisitListItem> items = rows
             .Select(v => new AdminCareHomeVisitListItem(
                 v.VisitId,
                 v.FacilityId.Value,
+                AdminCareHomeVisitNames.Lookup(facilityNames, v.FacilityId.Value),
                 v.FamilyId.Value,
+                AdminCareHomeVisitNames.Lookup(familyNames, v.FamilyId.Value),
                 v.ElderlyId?.Value,
                 v.Kind,
                 v.Status,
@@ -197,7 +223,9 @@ public sealed class ListAdminCareHomeVisitsQueryHandler(ICareHomesDbContext dbCo
     }
 }
 
-public sealed class GetAdminCareHomeVisitQueryHandler(ICareHomesDbContext dbContext)
+public sealed class GetAdminCareHomeVisitQueryHandler(
+    ICareHomesDbContext dbContext,
+    IFamiliesDbContext familiesDbContext)
     : IQueryHandler<GetAdminCareHomeVisitQuery, AdminCareHomeVisitDetail>
 {
     public async Task<Result<AdminCareHomeVisitDetail>> Handle(
@@ -213,10 +241,24 @@ public sealed class GetAdminCareHomeVisitQueryHandler(ICareHomesDbContext dbCont
             return CareHomeVisitErrors.NotFound;
         }
 
+        IReadOnlyDictionary<Guid, string> facilityNames =
+            await AdminCareHomeVisitNames.ResolveFacilityNamesAsync(
+                dbContext,
+                [visit.FacilityId],
+                cancellationToken);
+
+        IReadOnlyDictionary<Guid, string> familyNames =
+            await AdminCareHomeVisitNames.ResolveFamilyNamesAsync(
+                familiesDbContext,
+                [visit.FamilyId],
+                cancellationToken);
+
         return new AdminCareHomeVisitDetail(
             visit.Id,
             visit.FacilityId.Value,
+            AdminCareHomeVisitNames.Lookup(facilityNames, visit.FacilityId.Value),
             visit.FamilyId.Value,
+            AdminCareHomeVisitNames.Lookup(familyNames, visit.FamilyId.Value),
             visit.ElderlyId?.Value,
             visit.Kind,
             visit.Status,
@@ -231,5 +273,104 @@ public sealed class GetAdminCareHomeVisitQueryHandler(ICareHomesDbContext dbCont
             visit.CancellationReason,
             visit.CreatedOnUtc,
             visit.UpdatedOnUtc);
+    }
+}
+
+/// <summary>
+/// Batched name enrichment for the admin visit register. A facility name is its
+/// approved revision's display name (English preferred, Arabic fallback — the
+/// same rule <c>ApiChatFacilityLookup</c> applies), and a family name is the
+/// Families aggregate's name. A facility with no approved revision, or a family
+/// row that cannot be resolved, contributes no name (<c>null</c>) rather than an
+/// invented placeholder.
+/// </summary>
+internal static class AdminCareHomeVisitNames
+{
+    internal static async Task<IReadOnlyDictionary<Guid, string>> ResolveFacilityNamesAsync(
+        ICareHomesDbContext dbContext,
+        IReadOnlyCollection<CareHomeId> facilityIds,
+        CancellationToken cancellationToken)
+    {
+        CareHomeId[] distinct = facilityIds.Distinct().ToArray();
+        var names = new Dictionary<Guid, string>();
+
+        if (distinct.Length == 0)
+        {
+            return names;
+        }
+
+        List<CareHomeFacility> facilities = await dbContext.Facilities
+            .AsNoTracking()
+            .Where(facility => distinct.Contains(facility.Id))
+            .Include(facility => facility.Revisions)
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
+
+        foreach (CareHomeFacility facility in facilities)
+        {
+            if (ApprovedName(facility) is { } name)
+            {
+                names[facility.Id.Value] = name;
+            }
+        }
+
+        return names;
+    }
+
+    internal static async Task<IReadOnlyDictionary<Guid, string>> ResolveFamilyNamesAsync(
+        IFamiliesDbContext dbContext,
+        IReadOnlyCollection<FamilyId> familyIds,
+        CancellationToken cancellationToken)
+    {
+        FamilyId[] distinct = familyIds.Distinct().ToArray();
+        var names = new Dictionary<Guid, string>();
+
+        if (distinct.Length == 0)
+        {
+            return names;
+        }
+
+        List<Family> families = await dbContext.Families
+            .AsNoTracking()
+            .Where(family => distinct.Contains(family.Id))
+            .ToListAsync(cancellationToken);
+
+        foreach (Family family in families)
+        {
+            // A deleted family is retained and its stored name is reported
+            // (the Families admin read does the same); only a missing row
+            // leaves the name null.
+            if (!string.IsNullOrWhiteSpace(family.Name))
+            {
+                names[family.Id.Value] = family.Name;
+            }
+        }
+
+        return names;
+    }
+
+    internal static string? Lookup(IReadOnlyDictionary<Guid, string> names, Guid id) =>
+        names.TryGetValue(id, out string? name) ? name : null;
+
+    private static string? ApprovedName(CareHomeFacility facility)
+    {
+        if (facility.ApprovedRevisionId is not Guid approvedRevisionId)
+        {
+            return null;
+        }
+
+        CareHomeProfileRevision? revision = facility.Revisions.FirstOrDefault(
+            item => item.Id == approvedRevisionId && item.ApprovedOnUtc is not null);
+
+        if (revision is null)
+        {
+            return null;
+        }
+
+        string name = string.IsNullOrWhiteSpace(revision.EnglishName)
+            ? revision.ArabicName
+            : revision.EnglishName;
+
+        return string.IsNullOrWhiteSpace(name) ? null : name;
     }
 }

@@ -145,6 +145,43 @@ public sealed class SupportInboxApiTests
                 .OrderBy(name => name, StringComparer.Ordinal));
     }
 
+    [Fact]
+    public void AdminSupportTicketRoutes_DeclareNotFoundOnlyWhereTheTicketCanActuallyBeMissing()
+    {
+        Type controller = typeof(AdminSupportTicketsController);
+
+        MethodInfo list = Method(
+            controller,
+            nameof(AdminSupportTicketsController.ListTickets));
+        MethodInfo detail = Method(
+            controller,
+            nameof(AdminSupportTicketsController.GetTicketById));
+        MethodInfo status = Method(
+            controller,
+            nameof(AdminSupportTicketsController.ChangeStatus));
+        MethodInfo reply = Method(
+            controller,
+            nameof(AdminSupportTicketsController.Reply));
+
+        // F1: the three id-addressed routes fail with SupportTicketErrors.NotFound
+        // and must publish it, with the sibling ProblemDetails body.
+        foreach (MethodInfo action in new[] { detail, status, reply })
+        {
+            ProducesResponseTypeAttribute notFound = Assert.Single(
+                action.GetCustomAttributes<ProducesResponseTypeAttribute>(),
+                attribute =>
+                    attribute.StatusCode == StatusCodes.Status404NotFound);
+
+            Assert.Equal(typeof(ProblemDetails), notFound.Type);
+        }
+
+        // The list has no not-found path, so it must not advertise one.
+        Assert.DoesNotContain(
+            list.GetCustomAttributes<ProducesResponseTypeAttribute>(),
+            attribute =>
+                attribute.StatusCode == StatusCodes.Status404NotFound);
+    }
+
     private static MethodInfo Method(Type controller, string name)
     {
         return controller.GetMethod(name)

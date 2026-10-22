@@ -10,7 +10,8 @@ namespace Sanad.API.Controllers;
 /// <summary>
 /// F6 read-only Care Home visit register for SuperAdmin/SupportAdmin, under the
 /// same policy as the sibling admin Care Home bookings controller. There is no
-/// Admin scheduling, approval, rejection, cancellation or override route, and
+/// Admin scheduling, approval, rejection, cancellation or override route. Rows
+/// carry the facility's approved display name and the requesting family's name;
 /// the projection never returns visitor name/phone (PII), visitor count or the
 /// requesting family user id.
 /// </summary>
@@ -22,7 +23,8 @@ public sealed class AdminCareHomeVisitsController(ISender sender) : ApiControlle
     /// Bounded visit list with facility, status and scheduled-window filters
     /// (inclusive UTC days). Paging is clamped (page at least 1, page size
     /// default 25, maximum 100); an empty facility id, an undefined status or an
-    /// inverted window is the only rejected input.
+    /// inverted window is the only rejected input. Each row carries the
+    /// facility's approved display name and the family's name (both nullable).
     /// </summary>
     [HttpGet]
     [ProducesResponseType(typeof(AdminCareHomeVisitPage), StatusCodes.Status200OK)]
@@ -39,7 +41,7 @@ public sealed class AdminCareHomeVisitsController(ISender sender) : ApiControlle
             new ListAdminCareHomeVisitsQuery(page, pageSize, facilityId, status, from, to),
             cancellationToken));
 
-    /// <summary>Visit detail with the recorded decision/cancellation facts; unknown id is 404.</summary>
+    /// <summary>Visit detail with the recorded decision/cancellation facts plus the nullable facility and family names; unknown id is 404.</summary>
     [HttpGet("{visitId:guid}")]
     [ProducesResponseType(typeof(AdminCareHomeVisitDetail), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]

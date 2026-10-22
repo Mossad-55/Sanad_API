@@ -6,6 +6,8 @@ using Sanad.Modules.CareHomes.Application.Visits;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
+using Sanad.Modules.Families.Domain.Families;
+using Sanad.Modules.Families.Infrastructure.Persistence;
 using Xunit;
 
 namespace Sanad.UnitTests.CareHomes;
@@ -13,11 +15,13 @@ namespace Sanad.UnitTests.CareHomes;
 /// <summary>
 /// F6 minimal operational Care Home visit read. Every case runs against a
 /// relational (SQLite) Care Homes store on purpose: the facility/status/window
-/// filters, the converted-id ordering and the nullable-id projection are the
-/// parts a relational translation can reject. The projection is asserted to
-/// publish only the pinned visit facts — visitor name, visitor phone, visitor
-/// count and the requesting family user id are never returned, and there is no
-/// Admin decision, scheduling or cancellation writer anywhere in this read.
+/// filters, the converted-id ordering, the batched facility/family name
+/// lookups and the nullable-id projection are the parts a relational
+/// translation can reject. The projection is asserted to publish only the
+/// pinned visit facts — the facility's approved display name and the family's
+/// name are included, while visitor name, visitor phone, visitor count and the
+/// requesting family user id are never returned, and there is no Admin
+/// decision, scheduling or cancellation writer anywhere in this read.
 /// </summary>
 public sealed class AdminCareHomeVisitQueryTests
 {
@@ -34,7 +38,7 @@ public sealed class AdminCareHomeVisitQueryTests
         db.Context.Visits.AddRange(oldest, middle, newest);
         await db.Context.SaveChangesAsync();
 
-        var handler = new ListAdminCareHomeVisitsQueryHandler(db.Context);
+        var handler = new ListAdminCareHomeVisitsQueryHandler(db.Context, db.Families);
 
         var all = await handler.Handle(new(), default);
         var clamped = await handler.Handle(new(Page: 0, PageSize: 0), default);
@@ -72,7 +76,7 @@ public sealed class AdminCareHomeVisitQueryTests
         touchingWindow.Approve(UserId.New(), Now.AddMinutes(1));
         await db.Context.SaveChangesAsync();
 
-        var handler = new ListAdminCareHomeVisitsQueryHandler(db.Context);
+        var handler = new ListAdminCareHomeVisitsQueryHandler(db.Context, db.Families);
         var window = await handler.Handle(
             new(From: new DateOnly(2026, 10, 20), To: new DateOnly(2026, 10, 20)), default);
         var facilityPage = await handler.Handle(new(FacilityId: facilityA.Value), default);
@@ -105,7 +109,7 @@ public sealed class AdminCareHomeVisitQueryTests
     public async Task List_rejects_an_empty_facility_an_undefined_status_and_an_inverted_window()
     {
         await using TestCareHomeVisitDb db = await TestCareHomeVisitDb.CreateAsync();
-        var handler = new ListAdminCareHomeVisitsQueryHandler(db.Context);
+        var handler = new ListAdminCareHomeVisitsQueryHandler(db.Context, db.Families);
 
         var emptyFacility = await handler.Handle(new(FacilityId: Guid.Empty), default);
         var undefinedStatus = await handler.Handle(new(Status: (CareHomeVisitStatus)999), default);
@@ -156,7 +160,7 @@ public sealed class AdminCareHomeVisitQueryTests
         db.Context.Visits.Add(rescheduled);
         await db.Context.SaveChangesAsync();
 
-        var handler = new GetAdminCareHomeVisitQueryHandler(db.Context);
+        var handler = new GetAdminCareHomeVisitQueryHandler(db.Context, db.Families);
         var rejectedDetail = await handler.Handle(new(rejected.Id), default);
         var cancelledDetail = await handler.Handle(new(cancelled.Id), default);
         var rescheduledDetail = await handler.Handle(new(rescheduled.Id), default);
@@ -198,8 +202,8 @@ public sealed class AdminCareHomeVisitQueryTests
         db.Context.Visits.Add(visit);
         await db.Context.SaveChangesAsync();
 
-        var detail = await new GetAdminCareHomeVisitQueryHandler(db.Context).Handle(new(visit.Id), default);
-        var list = await new ListAdminCareHomeVisitsQueryHandler(db.Context).Handle(new(), default);
+        var detail = await new GetAdminCareHomeVisitQueryHandler(db.Context, db.Families).Handle(new(visit.Id), default);
+        var list = await new ListAdminCareHomeVisitsQueryHandler(db.Context, db.Families).Handle(new(), default);
 
         Assert.True(detail.IsSuccess);
         string detailJson = JsonSerializer.Serialize(detail.Value);
@@ -225,7 +229,7 @@ public sealed class AdminCareHomeVisitQueryTests
     public async Task Detail_returns_not_found_for_an_unknown_or_empty_visit_id()
     {
         await using TestCareHomeVisitDb db = await TestCareHomeVisitDb.CreateAsync();
-        var handler = new GetAdminCareHomeVisitQueryHandler(db.Context);
+        var handler = new GetAdminCareHomeVisitQueryHandler(db.Context, db.Families);
 
         var unknown = await handler.Handle(new(Guid.NewGuid()), default);
         var empty = await handler.Handle(new(Guid.Empty), default);
@@ -236,10 +240,88 @@ public sealed class AdminCareHomeVisitQueryTests
         Assert.Equal("CareHomes.Visits.NotFound", empty.Error.Code);
     }
 
-    private static CareHomeVisit Visit(CareHomeId facility, DateTime startsAtUtc) =>
+    [Fact]
+    public async Task List_and_detail_publish_the_facility_and_family_names()
+    {
+        await using TestCareHomeVisitDb db = await TestCareHomeVisitDb.CreateAsync();
+        CareHomeId facility = await db.AddApprovedFacilityAsync(
+            arabicName: "دار الأمل", englishName: "Hope House");
+        FamilyId family = await db.AddFamilyAsync("The Nasr Family");
+        CareHomeVisit visit = Visit(
+            facility, new DateTime(2026, 10, 19, 9, 0, 0, DateTimeKind.Utc), family);
+        db.Context.Visits.Add(visit);
+        await db.Context.SaveChangesAsync();
+
+        var list = await new ListAdminCareHomeVisitsQueryHandler(db.Context, db.Families)
+            .Handle(new(), default);
+        var detail = await new GetAdminCareHomeVisitQueryHandler(db.Context, db.Families)
+            .Handle(new(visit.Id), default);
+
+        Assert.True(list.IsSuccess);
+        AdminCareHomeVisitListItem row = Assert.Single(list.Value.Items);
+        // The approved revision's English name wins over its Arabic name.
+        Assert.Equal("Hope House", row.FacilityName);
+        Assert.Equal(facility.Value, row.FacilityId);
+        Assert.Equal("The Nasr Family", row.FamilyName);
+        Assert.Equal(family.Value, row.FamilyId);
+
+        Assert.True(detail.IsSuccess);
+        Assert.Equal("Hope House", detail.Value.FacilityName);
+        Assert.Equal("The Nasr Family", detail.Value.FamilyName);
+    }
+
+    [Fact]
+    public async Task Names_degrade_to_null_without_throwing_when_they_cannot_be_resolved()
+    {
+        await using TestCareHomeVisitDb db = await TestCareHomeVisitDb.CreateAsync();
+        // A stored facility that never had an approved revision and a visit
+        // whose family has no Families row: both names stay null, the read
+        // still succeeds and nothing is invented.
+        CareHomeId facility = await db.AddFacilityAsync();
+        CareHomeVisit visit = Visit(
+            facility, new DateTime(2026, 10, 19, 9, 0, 0, DateTimeKind.Utc));
+        db.Context.Visits.Add(visit);
+        await db.Context.SaveChangesAsync();
+
+        var list = await new ListAdminCareHomeVisitsQueryHandler(db.Context, db.Families)
+            .Handle(new(), default);
+        var detail = await new GetAdminCareHomeVisitQueryHandler(db.Context, db.Families)
+            .Handle(new(visit.Id), default);
+
+        Assert.True(list.IsSuccess);
+        AdminCareHomeVisitListItem row = Assert.Single(list.Value.Items);
+        Assert.Equal(facility.Value, row.FacilityId);
+        Assert.Null(row.FacilityName);
+        Assert.Null(row.FamilyName);
+
+        Assert.True(detail.IsSuccess);
+        Assert.Equal(facility.Value, detail.Value.FacilityId);
+        Assert.Null(detail.Value.FacilityName);
+        Assert.Null(detail.Value.FamilyName);
+
+        // An empty page never queries either name source and still succeeds.
+        // The Families half is pinned hard here: this store has no schema at
+        // all, so any family-name lookup on it fails instead of quietly
+        // returning nothing. The facility half is the very same
+        // `distinct.Length == 0` guard in the sibling resolver, which shares
+        // the visits store and so cannot be swapped the same way.
+        await using var bareFamilies = new FamiliesDbContext(
+            new DbContextOptionsBuilder<FamiliesDbContext>()
+                .UseSqlite("DataSource=:memory:")
+                .Options);
+        var empty = await new ListAdminCareHomeVisitsQueryHandler(db.Context, bareFamilies)
+            .Handle(new(Status: CareHomeVisitStatus.Approved), default);
+        Assert.True(empty.IsSuccess);
+        Assert.Empty(empty.Value.Items);
+    }
+
+    private static CareHomeVisit Visit(
+        CareHomeId facility,
+        DateTime startsAtUtc,
+        FamilyId? family = null) =>
         CareHomeVisit.Request(
             facility,
-            FamilyId.New(),
+            family ?? FamilyId.New(),
             UserId.New(),
             CareHomeVisitKind.Prospective,
             null,
@@ -249,17 +331,50 @@ public sealed class AdminCareHomeVisitQueryTests
             startsAtUtc,
             Now);
 
+    private static CareHomeProfileDraft Draft(string arabicName, string englishName) =>
+        new(
+            arabicName,
+            englishName,
+            "رعاية وإقامة",
+            "Care and recovery",
+            "Contact",
+            "+201000000000",
+            null,
+            "Cairo",
+            "Nasr City",
+            "District 1",
+            "Example address",
+            "الشروط",
+            "Admission conditions",
+            [],
+            []);
+
     private sealed class TestCareHomeVisitDb : IAsyncDisposable
     {
         private readonly SqliteConnection _connection;
+        private readonly SqliteConnection _familiesConnection;
 
-        private TestCareHomeVisitDb(SqliteConnection connection, CareHomesDbContext context)
+        private TestCareHomeVisitDb(
+            SqliteConnection connection,
+            CareHomesDbContext context,
+            SqliteConnection familiesConnection,
+            FamiliesDbContext families)
         {
             _connection = connection;
             Context = context;
+            _familiesConnection = familiesConnection;
+            Families = families;
         }
 
         public CareHomesDbContext Context { get; }
+
+        /// <summary>
+        /// The Families side of the visit read. A real relational Families
+        /// store on its own in-memory database, so the family-name lookup is
+        /// exercised against the same provider the production read uses
+        /// instead of a hand-written double.
+        /// </summary>
+        public FamiliesDbContext Families { get; }
 
         public static async Task<TestCareHomeVisitDb> CreateAsync()
         {
@@ -270,7 +385,16 @@ public sealed class AdminCareHomeVisitQueryTests
                     .UseSqlite(connection)
                     .Options);
             await context.Database.EnsureCreatedAsync();
-            return new TestCareHomeVisitDb(connection, context);
+
+            var familiesConnection = new SqliteConnection("DataSource=:memory:");
+            await familiesConnection.OpenAsync();
+            var families = new FamiliesDbContext(
+                new DbContextOptionsBuilder<FamiliesDbContext>()
+                    .UseSqlite(familiesConnection)
+                    .Options);
+            await families.Database.EnsureCreatedAsync();
+
+            return new TestCareHomeVisitDb(connection, context, familiesConnection, families);
         }
 
         /// <summary>
@@ -285,10 +409,58 @@ public sealed class AdminCareHomeVisitQueryTests
             return facility.Id;
         }
 
+        /// <summary>
+        /// A facility with an Admin-approved revision, so its approved display
+        /// name is resolvable by the visit read.
+        /// </summary>
+        public async Task<CareHomeId> AddApprovedFacilityAsync(
+            string arabicName,
+            string englishName)
+        {
+            UserId owner = UserId.New();
+            UserId admin = UserId.New();
+            CareHomeFacility facility = CareHomeFacility.CreateDraft(owner, Now);
+            facility.SaveDraft(owner, facility.Version, Draft(arabicName, englishName), Now);
+            foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
+            {
+                facility.UploadDocument(
+                    owner, type, $"private/{type}.pdf", "application/pdf", 100, null, Now);
+            }
+
+            facility.Submit(owner, facility.Version, Now);
+            foreach (CareHomeDocument document in facility.Documents.ToArray())
+            {
+                facility.VerifyDocument(admin, facility.Version, document.Id, null, true, Now);
+            }
+
+            facility.Review(
+                admin,
+                facility.Version,
+                CareHomeReviewAction.Approved,
+                null,
+                Now,
+                DateOnly.FromDateTime(Now));
+
+            Context.Facilities.Add(facility);
+            await Context.SaveChangesAsync();
+            return facility.Id;
+        }
+
+        /// <summary>One Families aggregate with the given name.</summary>
+        public async Task<FamilyId> AddFamilyAsync(string name)
+        {
+            Family family = Family.Create(UserId.New(), name);
+            Families.Families.Add(family);
+            await Families.SaveChangesAsync();
+            return family.Id;
+        }
+
         public async ValueTask DisposeAsync()
         {
             await Context.DisposeAsync();
+            await Families.DisposeAsync();
             await _connection.DisposeAsync();
+            await _familiesConnection.DisposeAsync();
         }
     }
 }

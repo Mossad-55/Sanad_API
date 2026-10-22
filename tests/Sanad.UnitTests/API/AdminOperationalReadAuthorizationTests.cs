@@ -253,7 +253,7 @@ public sealed class AdminOperationalReadAuthorizationTests : IClassFixture<Porta
         var page = new AdminCareHomeVisitPage(
             [
                 new AdminCareHomeVisitListItem(
-                    Guid.CreateVersion7(), Guid.CreateVersion7(), Guid.CreateVersion7(), null,
+                    Guid.CreateVersion7(), Guid.CreateVersion7(), null, Guid.CreateVersion7(), null, null,
                     CareHomeVisitKind.Prospective, CareHomeVisitStatus.Pending,
                     new DateTime(2026, 10, 20, 9, 0, 0, DateTimeKind.Utc),
                     new DateTime(2026, 10, 20, 10, 0, 0, DateTimeKind.Utc),
@@ -378,11 +378,14 @@ public sealed class AdminOperationalReadAuthorizationTests : IClassFixture<Porta
         JsonElement item = ResolveRef(root, "#/components/schemas/AdminCareHomeVisitListItem").GetProperty("properties");
         AssertExactProperties(
             item,
-            "visitId", "facilityId", "familyId", "elderlyId", "kind", "status",
+            "visitId", "facilityId", "facilityName", "familyId", "familyName",
+            "elderlyId", "kind", "status",
             "startsAtUtc", "endsAtUtc", "rescheduleOfVisitId",
             "decidedByUserId", "decidedOnUtc", "decisionReason",
             "cancelledByUserId", "cancelledOnUtc", "cancellationReason", "createdOnUtc");
 
+        Assert.True(PermitsNull(item.GetProperty("facilityName")));
+        Assert.True(PermitsNull(item.GetProperty("familyName")));
         Assert.True(PermitsNull(item.GetProperty("elderlyId")));
         Assert.True(PermitsNull(item.GetProperty("decisionReason")));
         Assert.True(PermitsNull(item.GetProperty("cancellationReason")));

@@ -10,6 +10,7 @@ Care-home visits are separate from care-giver home-visit bookings. They are free
 | `GET /api/v1/family/care-home-visits` | `FamilyAccess` | List visits for the caller's active Family |
 | `POST /api/v1/family/care-home-visits` | `FamilyAccess` | Request a visit |
 | `GET /api/v1/family/care-home-visits/{visitId}` | `FamilyAccess` | Read a visit owned by the caller's Family |
+| `GET /api/v1/family/care-home-visits/eligible-residents?facilityId=&startsAt=` | `FamilyAccess` | List residents of the caller's Family who are eligible for a resident visit at the requested facility and date |
 | `POST /api/v1/family/care-home-visits/{visitId}/cancel` | `FamilyAccess` | Cancel before the visit starts |
 | `POST /api/v1/family/care-home-visits/{visitId}/reschedule` | `FamilyAccess` | Ask for a new slot; the facility must approve it |
 
@@ -37,6 +38,10 @@ Create request example:
 ```
 
 For a `Resident` visit, `elderlyId` must belong to the caller's Family and the resident must have an accepted, paid, not-yet-checked-out booking at that facility on the visit date. Prospective visits omit the elderly ID. Visitor count is an exact positive integer, including groups above three.
+
+The eligible-residents read returns the same resident set the create path accepts, in deterministic order by Arabic name, then English name, then elderly id:
+`{ "elderlyId": "...", "arabicName": "...", "englishName": "...", "careHomeBookingId": "..." }`. One booking per resident is returned (the deterministic first match after ordering by Arabic name, English name, elderly id, then booking id); other eligible bookings for the same resident are not returned.
+A missing or malformed `facilityId` or `startsAt` is rejected by ASP.NET model binding as a framework `400`; only an all-zero `facilityId` (`00000000-…`) or a default `startsAt` (`0001-01-01…`) reaches the handler and returns `400 CareHomes.Visits.InvalidRequest`. The caller must belong to an active Family or the route returns `404`. A resident is eligible only when the caller's Family has an accepted, paid, not-yet-checked-out booking at that facility whose `StartDate <=` the Cairo-local date of `startsAt` `< EndDate`. The read filters by the requested facility only and does not re-assert that the facility is approved or publicly eligible; it returns the caller's own residents for that facility and discloses no other family's data. The create path additionally requires an approved, publicly eligible facility and returns `CareHomes.Discovery.NotFound` otherwise.
 
 Availability slots use the `Africa/Cairo` time zone (Windows fallback `Egypt Standard Time`) and return UTC-offset timestamps plus remaining capacity. Slots must fit both the facility's operating hours and its family visiting windows; facility closure dates suppress all slots. Ambiguous or invalid Cairo-local DST times are omitted. Requests need at least 24 hours' notice. Pending requests hold visitor capacity and expire after 24 hours if the facility has not decided.
 
@@ -106,7 +111,7 @@ List query parameters: `facilityId`, `status`, `from`, `to`, `page`, `pageSize`.
 
 The page is ordered newest-first by scheduled start and then visit id, and
 returns `page`, `pageSize`, `totalCount` and `items`. Each item contains
-`visitId`, `facilityId`, `familyId`, nullable `elderlyId`, `kind`
+`visitId`, `facilityId`, nullable `facilityName`, `familyId`, nullable `familyName`, nullable `elderlyId`, `kind`
 (`1` Prospective, `2` Resident), `status` (`1` Pending, `2` Approved,
 `3` Rejected, `4` FamilyCancelled, `5` FacilityCancelled, `6` Expired,
 `7` ReschedulePending, `8` Rescheduled), `startsAtUtc`, `endsAtUtc`, nullable
