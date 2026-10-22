@@ -18,9 +18,15 @@ public sealed record UpdateOwnerCareHomeVisitSettingsCommand(UserId Actor, int E
     IReadOnlyList<CareHomeVisitTimeWindow> OperatingHours,
     IReadOnlyList<CareHomeVisitTimeWindow> VisitingWindows,
     IReadOnlyList<CareHomeVisitClosure> Closures, DateTime UtcNow) : ICommand<CareHomeVisitSettingsResponse>;
+/// <summary>
+/// The family visit create. <paramref name="IdempotencyKey"/> is the
+/// caller-supplied <c>Idempotency-Key</c> header, already normalized by the
+/// controller (trimmed, blank/whitespace treated as absent); null means the
+/// legacy path with no dedupe at all.
+/// </summary>
 public sealed record CreateCareHomeVisitCommand(UserId Actor, FamilyId FamilyId, Guid FacilityId,
     CareHomeVisitKind Kind, Guid? ElderlyId, string VisitorName, string VisitorPhone,
-    int VisitorCount, DateTimeOffset StartsAt, DateTime UtcNow) : ICommand<CareHomeVisitResponse>;
+    int VisitorCount, DateTimeOffset StartsAt, DateTime UtcNow, string? IdempotencyKey = null) : ICommand<CareHomeVisitResponse>;
 public sealed record ListFamilyCareHomeVisitsQuery(FamilyId FamilyId, DateTime UtcNow)
     : IQuery<IReadOnlyList<CareHomeVisitResponse>>;
 
@@ -48,6 +54,13 @@ public static class CareHomeVisitErrors
     public static readonly Error InvalidState = new("CareHomes.Visits.InvalidState", "The visit is not in a state that allows this action.");
     public static readonly Error Conflict = new("CareHomes.Visits.Conflict", "The visit or settings changed; reload and try again.");
     public static readonly Error CapacityConflict = new("CareHomes.Visits.CapacityConflict", "The selected time no longer has enough visitor capacity.");
+
+    /// <summary>
+    /// The same <c>Idempotency-Key</c> was reused with different create
+    /// details; the original visit is returned only for identical content.
+    /// </summary>
+    public static readonly Error IdempotencyConflict = new("CareHomes.Visits.IdempotencyConflict",
+        "A visit was already requested with this idempotency key and different details.");
 }
 
 public sealed class GetCareHomeVisitAvailabilityQueryHandler(ICareHomesDbContext db)
@@ -155,6 +168,31 @@ public sealed class CreateCareHomeVisitCommandHandler(
 {
     public async Task<Result<CareHomeVisitResponse>> Handle(CreateCareHomeVisitCommand r, CancellationToken ct)
     {
+        // Optional idempotency: the controller normalizes the header (trim,
+        // blank/whitespace absent); null keeps today's byte-identical path.
+        string? idempotencyKey = r.IdempotencyKey?.Trim();
+        if (idempotencyKey is { Length: 0 }) idempotencyKey = null;
+        if (idempotencyKey is { Length: > CareHomeVisit.MaximumIdempotencyKeyLength })
+            return Result<CareHomeVisitResponse>.Failure(CareHomeVisitErrors.InvalidRequest);
+
+        // Idempotency try-lookup, before the eligibility pre-checks so a retry
+        // replays the original outcome instead of re-evaluating today's state:
+        // the same key with the same content returns the stored visit, the
+        // same key with any create-input difference is a conflict. The lookup
+        // is scoped by the caller's Family, like the partner-contact
+        // client-key scoping.
+        if (idempotencyKey is not null)
+        {
+            CareHomeVisit? stored = await db.Visits.AsNoTracking().SingleOrDefaultAsync(
+                x => x.FamilyId == r.FamilyId && x.IdempotencyKey == idempotencyKey, ct);
+            if (stored is not null)
+            {
+                return SameContent(stored, r)
+                    ? Result<CareHomeVisitResponse>.Success(stored.ToResponse())
+                    : Result<CareHomeVisitResponse>.Failure(CareHomeVisitErrors.IdempotencyConflict);
+            }
+        }
+
         var facilityId = new CareHomeId(r.FacilityId);
         var facility = await db.Facilities.AsNoTracking().Include(x => x.Revisions).Include(x => x.Documents)
             .SingleOrDefaultAsync(x => x.Id == facilityId && x.Status == CareHomeStatus.Approved, ct);
@@ -179,6 +217,24 @@ public sealed class CreateCareHomeVisitCommandHandler(
         {
             return await guard.ExecuteAsync(facilityId, async () =>
             {
+                // Best-effort fast path: the reservation guard serializes this
+                // facility's create section, but a raced retry's Serializable
+                // snapshot is frozen BEFORE the advisory lock is granted, so it
+                // may miss the committed winner here and fall through to the
+                // unique-index catch outside the guard, which resolves the
+                // replay/409 on the clean connection.
+                if (idempotencyKey is not null)
+                {
+                    CareHomeVisit? raced = await db.Visits.AsNoTracking().SingleOrDefaultAsync(
+                        x => x.FamilyId == r.FamilyId && x.IdempotencyKey == idempotencyKey, ct);
+                    if (raced is not null)
+                    {
+                        return SameContent(raced, r)
+                            ? Result<CareHomeVisitResponse>.Success(raced.ToResponse())
+                            : Result<CareHomeVisitResponse>.Failure(CareHomeVisitErrors.IdempotencyConflict);
+                    }
+                }
+
                 settings = await db.VisitSettings.AsNoTracking().SingleOrDefaultAsync(x => x.FacilityId == facilityId, ct);
                 if (settings is null || !CareHomeVisitScheduleRules.IsAllowedStart(settings, startsAtUtc)
                     || startsAtUtc < r.UtcNow.AddHours(24) || r.VisitorCount > settings.VisitorCapacity)
@@ -192,7 +248,7 @@ public sealed class CreateCareHomeVisitCommandHandler(
                     return Result<CareHomeVisitResponse>.Failure(CareHomeVisitErrors.CapacityConflict);
                 CareHomeVisit visit;
                 try { visit = CareHomeVisit.Request(facilityId, r.FamilyId, r.Actor, r.Kind, r.ElderlyId is Guid id ? new ElderlyId(id) : null,
-                    r.VisitorName, r.VisitorPhone, r.VisitorCount, startsAtUtc, r.UtcNow); }
+                    r.VisitorName, r.VisitorPhone, r.VisitorCount, startsAtUtc, r.UtcNow, idempotencyKey); }
                 catch (DomainException) { return Result<CareHomeVisitResponse>.Failure(CareHomeVisitErrors.InvalidRequest); }
                 db.Visits.Add(visit);
                 await db.SaveChangesAsync(ct);
@@ -203,6 +259,94 @@ public sealed class CreateCareHomeVisitCommandHandler(
         {
             return Result<CareHomeVisitResponse>.Failure(CareHomeVisitErrors.CapacityConflict);
         }
+        catch (DbUpdateException exception) when (idempotencyKey is not null && IsUniqueViolation(exception))
+        {
+            // A raced retry lost the unique (family, idempotency key) index.
+            // The violation is handled here, OUTSIDE the guard: inside
+            // guard.ExecuteAsync the Serializable transaction is aborted after
+            // the failed statement (Npgsql 25P02) and its snapshot was frozen
+            // before the advisory lock was granted, so the winner — committed
+            // by the request that raced us, at the same or at another
+            // facility — can only be read after the guard's await-using rolled
+            // the aborted transaction back. Detach the failed row and re-read
+            // the persisted winner on the clean connection: the same content
+            // returns the winner's visit, different content is the idempotency
+            // conflict. Any other failure — and a race without a visible
+            // winner — propagates.
+            DetachAdded(db);
+
+            CareHomeVisit? winner = await db.Visits.AsNoTracking().SingleOrDefaultAsync(
+                x => x.FamilyId == r.FamilyId && x.IdempotencyKey == idempotencyKey, ct);
+            if (winner is null)
+            {
+                throw;
+            }
+
+            return SameContent(winner, r)
+                ? Result<CareHomeVisitResponse>.Success(winner.ToResponse())
+                : Result<CareHomeVisitResponse>.Failure(CareHomeVisitErrors.IdempotencyConflict);
+        }
+    }
+
+    /// <summary>
+    /// The same normalized comparison the lookups use, so a raced retry and a
+    /// sequential retry answer identically, over the full create input as it
+    /// exists on the command. The attempt timestamps (<see cref="CreateCareHomeVisitCommand.UtcNow"/>,
+    /// then the derived created/updated/decision clocks) are deliberately not
+    /// compared.
+    /// </summary>
+    private static bool SameContent(CareHomeVisit visit, CreateCareHomeVisitCommand r) =>
+        visit.FacilityId.Value == r.FacilityId &&
+        visit.Kind == r.Kind &&
+        visit.ElderlyId?.Value == r.ElderlyId &&
+        visit.VisitorName == (r.VisitorName ?? string.Empty).Trim() &&
+        visit.VisitorPhone == (r.VisitorPhone ?? string.Empty).Trim() &&
+        visit.VisitorCount == r.VisitorCount &&
+        visit.StartsAtUtc == r.StartsAt.UtcDateTime;
+
+    /// <summary>
+    /// Detaches the rows this handler added, so the context can read the
+    /// persisted winner after a failed save.
+    /// </summary>
+    private static void DetachAdded(ICareHomesDbContext db)
+    {
+        if (db is not DbContext context)
+        {
+            return;
+        }
+
+        foreach (var entry in context.ChangeTracker
+                     .Entries<CareHomeVisit>()
+                     .Where(item => item.State == EntityState.Added)
+                     .ToList())
+        {
+            entry.State = EntityState.Detached;
+        }
+    }
+
+    /// <summary>
+    /// Identifies a unique/index violation across providers without masking
+    /// anything else, matching the partner-contact precedent: PostgreSQL
+    /// SQLSTATE 23505 and the SQLite/SQL Server unique messages. Any other
+    /// database failure is never caught here.
+    /// </summary>
+    private static bool IsUniqueViolation(DbUpdateException exception)
+    {
+        for (Exception? current = exception; current is not null; current = current.InnerException)
+        {
+            string message = current.Message ?? string.Empty;
+
+            if (message.Contains("23505", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("UNIQUE constraint failed", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("unique constraint", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("duplicate key", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("Violation of UNIQUE KEY constraint", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }
 

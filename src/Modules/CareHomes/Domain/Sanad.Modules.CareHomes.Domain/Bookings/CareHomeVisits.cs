@@ -125,11 +125,18 @@ public sealed class CareHomeVisitSettings : Entity<Guid>
 
 public sealed class CareHomeVisit : AggregateRoot<Guid>
 {
+    /// <summary>
+    /// The retry-key bound, mirroring the house convention the anonymous
+    /// partner-contact surface already pins (200 characters).
+    /// </summary>
+    public const int MaximumIdempotencyKeyLength = 200;
+
     private CareHomeVisit() { }
 
     private CareHomeVisit(Guid id, CareHomeId facilityId, FamilyId familyId, UserId familyUserId,
         CareHomeVisitKind kind, ElderlyId? elderlyId, string visitorName, string visitorPhone,
-        int visitorCount, DateTime startsAtUtc, DateTime utcNow, Guid? rescheduleOfVisitId)
+        int visitorCount, DateTime startsAtUtc, DateTime utcNow, Guid? rescheduleOfVisitId,
+        string? idempotencyKey = null)
         : base(id)
     {
         FacilityId = facilityId;
@@ -146,6 +153,7 @@ public sealed class CareHomeVisit : AggregateRoot<Guid>
         UpdatedOnUtc = utcNow;
         DecisionExpiresOnUtc = utcNow.AddHours(24);
         RescheduleOfVisitId = rescheduleOfVisitId;
+        IdempotencyKey = idempotencyKey;
         Status = rescheduleOfVisitId.HasValue ? CareHomeVisitStatus.ReschedulePending : CareHomeVisitStatus.Pending;
         Version = 1;
     }
@@ -163,6 +171,13 @@ public sealed class CareHomeVisit : AggregateRoot<Guid>
     public CareHomeVisitStatus Status { get; private set; }
     public Guid? RescheduleOfVisitId { get; private set; }
     public DateTime DecisionExpiresOnUtc { get; private set; }
+
+    /// <summary>
+    /// The caller-supplied retry key of the family create, scoped by the row's
+    /// own <see cref="FamilyId"/>. Null on every legacy row and on reschedule
+    /// rows; never returned by any read.
+    /// </summary>
+    public string? IdempotencyKey { get; private set; }
     public UserId? DecidedByUserId { get; private set; }
     public DateTime? DecidedOnUtc { get; private set; }
     public string? DecisionReason { get; private set; }
@@ -175,9 +190,9 @@ public sealed class CareHomeVisit : AggregateRoot<Guid>
 
     public static CareHomeVisit Request(CareHomeId facilityId, FamilyId familyId, UserId familyUserId,
         CareHomeVisitKind kind, ElderlyId? elderlyId, string visitorName, string visitorPhone,
-        int visitorCount, DateTime startsAtUtc, DateTime utcNow) =>
+        int visitorCount, DateTime startsAtUtc, DateTime utcNow, string? idempotencyKey = null) =>
         Create(facilityId, familyId, familyUserId, kind, elderlyId, visitorName, visitorPhone,
-            visitorCount, startsAtUtc, utcNow, null);
+            visitorCount, startsAtUtc, utcNow, null, idempotencyKey);
 
     public static CareHomeVisit RequestReschedule(CareHomeVisit approvedVisit, DateTime startsAtUtc, DateTime utcNow)
     {
@@ -187,7 +202,7 @@ public sealed class CareHomeVisit : AggregateRoot<Guid>
             throw new DomainException("Choose a different visit time to reschedule.");
         return Create(approvedVisit.FacilityId, approvedVisit.FamilyId, approvedVisit.FamilyUserId,
             approvedVisit.Kind, approvedVisit.ElderlyId, approvedVisit.VisitorName, approvedVisit.VisitorPhone,
-            approvedVisit.VisitorCount, startsAtUtc, utcNow, approvedVisit.Id);
+            approvedVisit.VisitorCount, startsAtUtc, utcNow, approvedVisit.Id, null);
     }
 
     public void Approve(UserId actor, DateTime utcNow)
@@ -260,7 +275,8 @@ public sealed class CareHomeVisit : AggregateRoot<Guid>
 
     private static CareHomeVisit Create(CareHomeId facilityId, FamilyId familyId, UserId familyUserId,
         CareHomeVisitKind kind, ElderlyId? elderlyId, string visitorName, string visitorPhone,
-        int visitorCount, DateTime startsAtUtc, DateTime utcNow, Guid? rescheduleOfVisitId)
+        int visitorCount, DateTime startsAtUtc, DateTime utcNow, Guid? rescheduleOfVisitId,
+        string? idempotencyKey)
     {
         if (facilityId == CareHomeId.Empty || familyId == FamilyId.Empty || familyUserId == UserId.Empty)
             throw new DomainException("Facility, Family, and requester are required.");
@@ -275,7 +291,11 @@ public sealed class CareHomeVisit : AggregateRoot<Guid>
             throw new DomainException("Visit timestamps must be UTC.");
         if (startsAtUtc < utcNow.AddHours(24))
             throw new DomainException("Visits must be requested at least 24 hours in advance.");
+        string? normalizedIdempotencyKey = idempotencyKey?.Trim();
+        if (normalizedIdempotencyKey is { Length: 0 or > MaximumIdempotencyKeyLength })
+            throw new DomainException($"Idempotency key must be between 1 and {MaximumIdempotencyKeyLength} characters.");
         return new CareHomeVisit(Guid.CreateVersion7(), facilityId, familyId, familyUserId, kind,
-            elderlyId, visitorName.Trim(), visitorPhone.Trim(), visitorCount, startsAtUtc, utcNow, rescheduleOfVisitId);
+            elderlyId, visitorName.Trim(), visitorPhone.Trim(), visitorCount, startsAtUtc, utcNow,
+            rescheduleOfVisitId, normalizedIdempotencyKey);
     }
 }

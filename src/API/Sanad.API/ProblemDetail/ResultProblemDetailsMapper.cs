@@ -123,6 +123,10 @@ public static class ResultProblemDetailsMapper
             ["CareHomes.Visits.InvalidState"] = 409,
             ["CareHomes.Visits.Conflict"] = 409,
             ["CareHomes.Visits.CapacityConflict"] = 409,
+
+            // P2 visit-create idempotency: a reused key with different create
+            // content conflicts, like the partner-contact surface.
+            ["CareHomes.Visits.IdempotencyConflict"] = 409,
             ["CareHomes.CheckInDispute.NotFound"] = 404,
             ["CareHomes.CheckInDispute.InvalidState"] = 409,
             ["CareHomes.CheckInDispute.InvalidReason"] = 400,

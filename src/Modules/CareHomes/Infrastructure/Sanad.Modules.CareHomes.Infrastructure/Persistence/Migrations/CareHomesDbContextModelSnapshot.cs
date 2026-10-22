@@ -871,6 +871,11 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("family_user_id");
 
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("idempotency_key");
+
                     b.Property<int>("Kind")
                         .HasColumnType("integer")
                         .HasColumnName("kind");
@@ -913,6 +918,9 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasColumnName("visitor_phone");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("FamilyId", "IdempotencyKey")
+                        .IsUnique();
 
                     b.HasIndex("RescheduleOfVisitId", "Status");
 

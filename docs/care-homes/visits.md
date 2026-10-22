@@ -39,6 +39,19 @@ Create request example:
 
 For a `Resident` visit, `elderlyId` must belong to the caller's Family and the resident must have an accepted, paid, not-yet-checked-out booking at that facility on the visit date. Prospective visits omit the elderly ID. Visitor count is an exact positive integer, including groups above three.
 
+### Optional retry header (`Idempotency-Key`)
+
+`POST /api/v1/family/care-home-visits` accepts an **optional** `Idempotency-Key` header that makes client retries safe:
+
+- **Absent, blank, or whitespace-only header** → the legacy behavior, byte-identical to before the header existed: every legal create makes a new row; no key is stored. Existing clients need no change.
+- **Same key + identical create content** (facility, kind, elderly, visitor name/phone, count, start time; names/phones compared trimmed) → the stored visit is returned with `200` instead of creating a second row. This holds both for sequential retries and for concurrent retries. The response reflects the visit's current persisted state (a replay after approval returns the approved state); the visit id is the replayed original.
+- **Same key + any create-input difference** → `409 CareHomes.Visits.IdempotencyConflict`. Nothing is stored.
+- Keys are **scoped per Family**: the same key sent by another Family is a different scope, not a conflict.
+- Length bound: a trimmed key longer than 200 characters is rejected with `400 CareHomes.Visits.InvalidRequest` (the same ≤200 bound the partner-contact surface pins). The key is stored on the visit row and is never returned by any read.
+- Reschedule, cancel, and decision routes do not accept or use the header.
+
+The dedupe runs inside the per-facility create serialization, so the same-key retry of one facility replays the original create; a raced retry (same or different facility) is resolved by the outside-guard catch on the unique `(family_id, idempotency_key)` store index, which replays (200) or conflicts (409).
+
 The eligible-residents read returns the same resident set the create path accepts, in deterministic order by Arabic name, then English name, then elderly id:
 `{ "elderlyId": "...", "arabicName": "...", "englishName": "...", "careHomeBookingId": "..." }`. One booking per resident is returned (the deterministic first match after ordering by Arabic name, English name, elderly id, then booking id); other eligible bookings for the same resident are not returned.
 A missing or malformed `facilityId` or `startsAt` is rejected by ASP.NET model binding as a framework `400`; only an all-zero `facilityId` (`00000000-…`) or a default `startsAt` (`0001-01-01…`) reaches the handler and returns `400 CareHomes.Visits.InvalidRequest`. The caller must belong to an active Family or the route returns `404`. A resident is eligible only when the caller's Family has an accepted, paid, not-yet-checked-out booking at that facility whose `StartDate <=` the Cairo-local date of `startsAt` `< EndDate`. The read filters by the requested facility only and does not re-assert that the facility is approved or publicly eligible; it returns the caller's own residents for that facility and discloses no other family's data. The create path additionally requires an approved, publicly eligible facility and returns `CareHomes.Discovery.NotFound` otherwise.
@@ -130,6 +143,6 @@ derives no event history or timeline, and mutates nothing.
 
 ## Persistence and verification limits
 
-Migration `20261008154517_AddCareHomeVisits` adds `care_homes.visit_settings` and `care_homes.visits`, with schedule JSONB, capacity/version, lifecycle timestamps/actors, indexes, and facility/self-reschedule foreign keys. It is generated and has not been applied to any database. No destructive reset or deployment is part of this change.
+Migration `20261008154517_AddCareHomeVisits` adds `care_homes.visit_settings` and `care_homes.visits`, with schedule JSONB, capacity/version, lifecycle timestamps/actors, indexes, and facility/self-reschedule foreign keys. Additive migration `20261022121500_AddCareHomeVisitIdempotency` (predecessor: CareHomes head `20261020210910_AddCareHomeRatingModeration`) adds the nullable `care_homes.visits.idempotency_key` column (varchar(200)) and the unique `IX_visits_family_id_idempotency_key` index; legacy rows (null key) and reschedule rows stay outside the uniqueness via NULLS-DISTINCT semantics and read/act unchanged. Both migrations are generated files only — neither has been applied to any database, and no destructive reset or deployment is part of this change.
 
 Postman examples are authored contracts, not evidence of runtime execution. Bruno was not run: no approved disposable API fixture state was prepared for visits. Focused unit tests cover visit lifecycle, Cairo slots, reservation capacity behavior, authorization metadata, and route contracts; database-backed capacity races and HTTP middleware/model binding remain unverified. The Admin operational read routes were authored with focused unit tests and an authored local HTTP adapter; their runtime HTTP proof is pending and is recorded in the F6 worker brief.

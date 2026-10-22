@@ -61,6 +61,13 @@ public sealed class CareHomeVisitConfiguration : IEntityTypeConfiguration<CareHo
         b.Property(x => x.Status).HasConversion<int>().HasColumnName("status").IsRequired();
         b.Property(x => x.RescheduleOfVisitId).HasColumnName("reschedule_of_visit_id");
         b.HasOne<CareHomeVisit>().WithMany().HasForeignKey(x => x.RescheduleOfVisitId).OnDelete(DeleteBehavior.Restrict);
+
+        // Optional family-scoped create idempotency. Null on every legacy and
+        // reschedule row; the provider's NULLS-DISTINCT unique semantics keep
+        // those rows outside the (family, key) uniqueness.
+        b.Property(x => x.IdempotencyKey).HasColumnName("idempotency_key")
+            .HasMaxLength(CareHomeVisit.MaximumIdempotencyKeyLength);
+        b.HasIndex(x => new { x.FamilyId, x.IdempotencyKey }).IsUnique();
         b.Property(x => x.DecisionExpiresOnUtc).HasColumnName("decision_expires_on_utc").IsRequired();
         b.Property(x => x.DecidedByUserId).HasConversion(x => x.HasValue ? x.Value.Value : (Guid?)null,
             x => x.HasValue ? new UserId(x.Value) : (UserId?)null).HasColumnName("decided_by_user_id");

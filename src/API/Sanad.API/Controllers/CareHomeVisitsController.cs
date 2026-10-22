@@ -43,16 +43,28 @@ public sealed class CareHomeVisitsController(ISender sender, IFamiliesDbContext 
 
     [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
     [HttpPost("~/api/v1/family/care-home-visits")]
-    public async Task<IActionResult> FamilyCreate(CareHomeVisitRequest request, CancellationToken ct)
+    [ProducesResponseType(typeof(CareHomeVisitResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> FamilyCreate(CareHomeVisitRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey, CancellationToken ct)
     {
         var (family, actor) = await TryFamily(ct);
         if (family is null) return NotFound();
+
+        // Optional retry header: absent, blank, or whitespace means today's
+        // legacy create with no dedupe. A supplied key is trimmed and bounded
+        // by the same house convention the domain enforces below it.
+        string? retryKey = string.IsNullOrWhiteSpace(idempotencyKey) ? null : idempotencyKey.Trim();
+        if (retryKey is { Length: > CareHomeVisit.MaximumIdempotencyKeyLength })
+            return BadRequestWithCode(CareHomeVisitErrors.InvalidRequest.Code);
+
         if (request.Kind == CareHomeVisitKind.Resident &&
             (request.ElderlyId is not Guid elderlyId || !await families.Elderlies.AsNoTracking()
                 .AnyAsync(x => x.Id == new ElderlyId(elderlyId) && x.FamilyId == family!.Id, ct))) return NotFound();
         if (request.Kind == CareHomeVisitKind.Prospective && request.ElderlyId.HasValue) return BadRequest();
         var cmd = new CreateCareHomeVisitCommand(actor, family!.Id, request.FacilityId, request.Kind,
-            request.ElderlyId, request.VisitorName, request.VisitorPhone, request.VisitorCount, request.StartsAt, clock.UtcNow);
+            request.ElderlyId, request.VisitorName, request.VisitorPhone, request.VisitorCount, request.StartsAt, clock.UtcNow,
+            retryKey);
         return await Send(cmd, ct);
     }
 

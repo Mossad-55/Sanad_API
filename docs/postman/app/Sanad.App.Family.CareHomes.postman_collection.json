@@ -89,6 +89,12 @@
       "value": ""
     },
     {
+      "key": "careHomeVisitIdempotencyKey",
+      "value": "",
+      "type": "string",
+      "description": "Optional Idempotency-Key header for the family visit create; same key + same body replays the stored visit (200), same key + any body difference is 409 CareHomes.Visits.IdempotencyConflict; empty = legacy create."
+    },
+    {
       "key": "careHomeVisitId",
       "value": ""
     }
@@ -679,6 +685,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{careHomeVisitIdempotencyKey}}"
               }
             ],
             "body": {
@@ -686,7 +696,7 @@
               "raw": "{\n  \"facilityId\": \"{{careHomeFacilityId}}\",\n  \"kind\": \"Prospective\",\n  \"elderlyId\": null,\n  \"visitorName\": \"Family contact\",\n  \"visitorPhone\": \"+201000000000\",\n  \"visitorCount\": 2,\n  \"startsAt\": \"{{careHomeVisitStart}}\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/family/care-home-visits",
-            "description": "Creates a pending request for the active Family. For resident visits use kind Resident and a Family-owned elderly ID with an active accepted and paid stay."
+            "description": "Creates a pending request for the active Family. For resident visits use kind Resident and a Family-owned elderly ID with an active accepted and paid stay. The Idempotency-Key header is optional: remove it (or leave it blank) for the legacy behavior; the same key with the same body replays the stored visit (200), the same key with any body difference is 409 CareHomes.Visits.IdempotencyConflict; a trimmed key over 200 characters is 400 CareHomes.Visits.InvalidRequest; keys are scoped per Family."
           }
         },
         {

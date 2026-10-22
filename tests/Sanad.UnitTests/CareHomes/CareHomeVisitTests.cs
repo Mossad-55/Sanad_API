@@ -4,7 +4,9 @@ using System.Reflection;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers;
 using Sanad.API.ProblemDetail;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Application.Visits;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
@@ -295,6 +297,336 @@ public sealed class CareHomeVisitTests
         var method = typeof(CareHomeVisitsController).GetMethod(nameof(CareHomeVisitsController.FamilyEligibleResidents))!;
         Assert.Equal(AuthorizationPolicies.FamilyAccess,
             Assert.Single(method.GetCustomAttributes<AuthorizeAttribute>()).Policy);
+    }
+
+    // ---------------------------------------------------------------------
+    // P2 optional visit-create idempotency (`Idempotency-Key` header).
+    // ---------------------------------------------------------------------
+
+    private static readonly DateTimeOffset VisitStartsAt =
+        new(2026, 10, 12, 8, 0, 0, TimeSpan.Zero);
+
+    [Fact]
+    public async Task Create_is_idempotent_for_the_same_key_and_the_same_content()
+    {
+        (CareHomesDbContext db, CareHomeFacility facility) = await CreateVisitScenarioAsync();
+        var familyId = FamilyId.New();
+        CreateCareHomeVisitCommandHandler handler = CreateVisitHandler(db);
+
+        Result<CareHomeVisitResponse> first = await handler.Handle(
+            CreateVisitCommand(facility, familyId, "key-1"), default);
+        // A sequential retry, including one with untrimmed inputs, replays the
+        // stored visit instead of creating a second row.
+        Result<CareHomeVisitResponse> retry = await handler.Handle(
+            CreateVisitCommand(facility, familyId, "key-1", visitorName: "  Visitor  "), default);
+
+        Assert.True(first.IsSuccess);
+        Assert.True(retry.IsSuccess);
+        Assert.Equal(first.Value!.Id, retry.Value!.Id);
+        Assert.Single(await db.Visits.ToListAsync());
+        Assert.Equal("key-1", (await db.Visits.SingleAsync()).IdempotencyKey);
+    }
+
+    [Fact]
+    public async Task Create_conflicts_when_the_same_key_is_reused_with_different_content()
+    {
+        (CareHomesDbContext db, CareHomeFacility facility) = await CreateVisitScenarioAsync();
+        var familyId = FamilyId.New();
+        CreateCareHomeVisitCommandHandler handler = CreateVisitHandler(db);
+
+        Result<CareHomeVisitResponse> first = await handler.Handle(
+            CreateVisitCommand(facility, familyId, "key-1"), default);
+        Assert.True(first.IsSuccess);
+
+        var differingCases = new (string Case, CreateCareHomeVisitCommand Rival)[]
+        {
+            ("visitor-name", CreateVisitCommand(facility, familyId, "key-1", visitorName: "Other visitor")),
+            ("visitor-count", CreateVisitCommand(facility, familyId, "key-1", visitorCount: 2)),
+            ("starts-at", CreateVisitCommand(facility, familyId, "key-1", startsAt: VisitStartsAt.AddHours(1))),
+            ("kind-and-elderly", new CreateCareHomeVisitCommand(UserId.New(), familyId, facility.Id.Value,
+                CareHomeVisitKind.Resident, ElderlyId.New().Value, "Visitor", "+201000000000", 1, VisitStartsAt, Now, "key-1")),
+        };
+
+        foreach (var (caseName, rival) in differingCases)
+        {
+            Result<CareHomeVisitResponse> conflicting = await handler.Handle(rival, default);
+            Assert.True(conflicting.IsFailure, caseName);
+            Assert.Equal("CareHomes.Visits.IdempotencyConflict", conflicting.Error!.Code);
+            Assert.Equal(409, ResultProblemDetailsMapper.Create(conflicting.Error,
+                new Microsoft.AspNetCore.Http.DefaultHttpContext()).Status);
+        }
+
+        // One row per key: the conflicting retries stored nothing.
+        Assert.Single(await db.Visits.ToListAsync());
+        Assert.Equal(first.Value!.Id, (await db.Visits.SingleAsync()).Id);
+    }
+
+    [Fact]
+    public async Task Create_without_a_key_keeps_the_legacy_duplicate_behavior()
+    {
+        (CareHomesDbContext db, CareHomeFacility facility) = await CreateVisitScenarioAsync();
+        var familyId = FamilyId.New();
+        CreateCareHomeVisitCommandHandler handler = CreateVisitHandler(db);
+
+        Result<CareHomeVisitResponse> first = await handler.Handle(
+            CreateVisitCommand(facility, familyId), default);
+        Result<CareHomeVisitResponse> second = await handler.Handle(
+            CreateVisitCommand(facility, familyId), default);
+
+        // No header: two identical legal creates still create two rows and no
+        // idempotency key is stored — exactly the pre-P2 behavior.
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+        Assert.NotEqual(first.Value!.Id, second.Value!.Id);
+        Assert.All(await db.Visits.ToListAsync(), visit => Assert.Null(visit.IdempotencyKey));
+    }
+
+    [Fact]
+    public async Task Create_treats_a_blank_or_whitespace_key_as_absent()
+    {
+        (CareHomesDbContext db, CareHomeFacility facility) = await CreateVisitScenarioAsync();
+        var familyId = FamilyId.New();
+        CreateCareHomeVisitCommandHandler handler = CreateVisitHandler(db);
+
+        Result<CareHomeVisitResponse> first = await handler.Handle(
+            CreateVisitCommand(facility, familyId, "   "), default);
+        Result<CareHomeVisitResponse> second = await handler.Handle(
+            CreateVisitCommand(facility, familyId, "\t"), default);
+
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+        Assert.NotEqual(first.Value!.Id, second.Value!.Id);
+        Assert.All(await db.Visits.ToListAsync(), visit => Assert.Null(visit.IdempotencyKey));
+    }
+
+    [Fact]
+    public async Task Create_scopes_the_key_per_family()
+    {
+        (CareHomesDbContext db, CareHomeFacility facility) = await CreateVisitScenarioAsync();
+        CreateCareHomeVisitCommandHandler handler = CreateVisitHandler(db);
+
+        Result<CareHomeVisitResponse> first = await handler.Handle(
+            CreateVisitCommand(facility, FamilyId.New(), "shared-key"), default);
+        Result<CareHomeVisitResponse> second = await handler.Handle(
+            CreateVisitCommand(facility, FamilyId.New(), "shared-key"), default);
+
+        // The same key from another Family is a different scope: both creates
+        // succeed and both rows exist.
+        Assert.True(first.IsSuccess);
+        Assert.True(second.IsSuccess);
+        Assert.Equal(2, await db.Visits.CountAsync());
+    }
+
+    [Fact]
+    public async Task Create_rejects_a_key_over_the_pinned_bound_and_accepts_the_boundary()
+    {
+        (CareHomesDbContext db, CareHomeFacility facility) = await CreateVisitScenarioAsync();
+        CreateCareHomeVisitCommandHandler handler = CreateVisitHandler(db);
+
+        Result<CareHomeVisitResponse> over = await handler.Handle(
+            CreateVisitCommand(facility, FamilyId.New(), new string('k', CareHomeVisit.MaximumIdempotencyKeyLength + 1)), default);
+
+        Assert.True(over.IsFailure);
+        Assert.Equal("CareHomes.Visits.InvalidRequest", over.Error!.Code);
+        Assert.Empty(await db.Visits.ToListAsync());
+
+        Result<CareHomeVisitResponse> atBound = await handler.Handle(
+            CreateVisitCommand(facility, FamilyId.New(), new string('k', CareHomeVisit.MaximumIdempotencyKeyLength)), default);
+
+        Assert.True(atBound.IsSuccess);
+        Assert.Single(await db.Visits.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Create_returns_the_persisted_winner_when_a_raced_retry_lost_the_unique_index()
+    {
+        string databaseName = Guid.NewGuid().ToString("N");
+        (CareHomeFacility facility, FamilyId familyId) = await SeedVisitScenarioAsync(databaseName);
+        var familyUserId = UserId.New();
+        var racing = new RacingCareHomesDbContext(
+            databaseName,
+            winnerDb => winnerDb.Visits.Add(CareHomeVisit.Request(
+                facility.Id, familyId, familyUserId, CareHomeVisitKind.Prospective, null,
+                "Visitor", "+201000000000", 1, VisitStartsAt.UtcDateTime, Now, "key-1")));
+
+        Result<CareHomeVisitResponse> result = await CreateVisitHandler(racing).Handle(
+            new CreateCareHomeVisitCommand(familyUserId, familyId, facility.Id.Value, CareHomeVisitKind.Prospective,
+                null, "Visitor", "+201000000000", 1, VisitStartsAt, Now, "key-1"), default);
+
+        // The raced-out request answers with the winner's visit, and the
+        // failed insert left nothing behind: the store holds the winner only.
+        CareHomeVisit winner = await racing.Inner.Visits.SingleAsync();
+        Assert.True(result.IsSuccess);
+        Assert.Equal(winner.Id, result.Value!.Id);
+        Assert.Equal(1, await racing.Inner.Visits.CountAsync());
+    }
+
+    [Fact]
+    public async Task Create_conflicts_when_a_raced_retry_won_with_different_content()
+    {
+        string databaseName = Guid.NewGuid().ToString("N");
+        (CareHomeFacility facility, FamilyId familyId) = await SeedVisitScenarioAsync(databaseName);
+        var racing = new RacingCareHomesDbContext(
+            databaseName,
+            winnerDb => winnerDb.Visits.Add(CareHomeVisit.Request(
+                facility.Id, familyId, UserId.New(), CareHomeVisitKind.Prospective, null,
+                "Visitor", "+201000000000", 2, VisitStartsAt.UtcDateTime, Now, "key-1")));
+
+        Result<CareHomeVisitResponse> result = await CreateVisitHandler(racing).Handle(
+            new CreateCareHomeVisitCommand(UserId.New(), familyId, facility.Id.Value, CareHomeVisitKind.Prospective,
+                null, "Visitor", "+201000000000", 1, VisitStartsAt, Now, "key-1"), default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal("CareHomes.Visits.IdempotencyConflict", result.Error!.Code);
+        Assert.Equal(1, await racing.Inner.Visits.CountAsync());
+    }
+
+    [Fact]
+    public async Task Create_propagates_a_unique_violation_when_no_winner_was_persisted()
+    {
+        string databaseName = Guid.NewGuid().ToString("N");
+        (CareHomeFacility facility, FamilyId familyId) = await SeedVisitScenarioAsync(databaseName);
+        var racing = new RacingCareHomesDbContext(databaseName, persistWinner: null);
+
+        // No winner exists: the failure must not be reported as a success.
+        await Assert.ThrowsAsync<DbUpdateException>(() => CreateVisitHandler(racing).Handle(
+            new CreateCareHomeVisitCommand(UserId.New(), familyId, facility.Id.Value, CareHomeVisitKind.Prospective,
+                null, "Visitor", "+201000000000", 1, VisitStartsAt, Now, "key-1"), default));
+
+        Assert.Empty(racing.Inner.Visits);
+    }
+
+    [Fact]
+    public void Family_create_binds_the_optional_idempotency_header()
+    {
+        System.Reflection.ParameterInfo parameter = typeof(CareHomeVisitsController)
+            .GetMethod(nameof(CareHomeVisitsController.FamilyCreate))!
+            .GetParameters()
+            .Single(item => item.Name == "idempotencyKey");
+
+        FromHeaderAttribute header = parameter.GetCustomAttribute<FromHeaderAttribute>()!;
+        Assert.Equal("Idempotency-Key", header.Name);
+        Assert.Equal(409, ResultProblemDetailsMapper.Create(CareHomeVisitErrors.IdempotencyConflict,
+            new Microsoft.AspNetCore.Http.DefaultHttpContext()).Status);
+    }
+
+    private static async Task<(CareHomesDbContext Db, CareHomeFacility Facility)> CreateVisitScenarioAsync()
+    {
+        var db = new CareHomesDbContext(new DbContextOptionsBuilder<CareHomesDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N")).Options);
+        CareHomeFacility facility = await SeedVisitScenarioAsync(db);
+        return (db, facility);
+    }
+
+    private static async Task<(CareHomeFacility Facility, FamilyId FamilyId)> SeedVisitScenarioAsync(string databaseName)
+    {
+        var db = new CareHomesDbContext(new DbContextOptionsBuilder<CareHomesDbContext>()
+            .UseInMemoryDatabase(databaseName).Options);
+        CareHomeFacility facility = await SeedVisitScenarioAsync(db);
+        return (facility, FamilyId.New());
+    }
+
+    private static async Task<CareHomeFacility> SeedVisitScenarioAsync(CareHomesDbContext db)
+    {
+        CareHomeFacility facility = CreateApprovedFacility(Now, new DateOnly(2026, 10, 20));
+        db.Facilities.Add(facility);
+        var window = new CareHomeVisitTimeWindow(DayOfWeek.Monday, new TimeOnly(8, 0), new TimeOnly(17, 0));
+        db.VisitSettings.Add(CareHomeVisitSettings.Create(facility.Id, 4, [window], [window], [], Now));
+        await db.SaveChangesAsync();
+        return facility;
+    }
+
+    private static CreateCareHomeVisitCommand CreateVisitCommand(
+        CareHomeFacility facility,
+        FamilyId familyId,
+        string? idempotencyKey = null,
+        int visitorCount = 1,
+        string visitorName = "Visitor",
+        DateTimeOffset? startsAt = null) =>
+        new(UserId.New(), familyId, facility.Id.Value, CareHomeVisitKind.Prospective, null,
+            visitorName, "+201000000000", visitorCount, startsAt ?? VisitStartsAt, Now, idempotencyKey);
+
+    private static CreateCareHomeVisitCommandHandler CreateVisitHandler(ICareHomesDbContext db) =>
+        new(db, new InlineVisitGuard());
+
+    /// <summary>
+    /// Simulates the persistence race on the unique (family id, idempotency
+    /// key) index: the first save is rejected by the store, optionally after a
+    /// concurrent request persisted the winning row through its own context
+    /// over the same store. Mirrors the partner-contact race double.
+    /// </summary>
+    private sealed class RacingCareHomesDbContext(
+        string databaseName,
+        Action<CareHomesDbContext>? persistWinner) : ICareHomesDbContext
+    {
+        private readonly CareHomesDbContext _inner = new(new DbContextOptionsBuilder<CareHomesDbContext>()
+            .UseInMemoryDatabase(databaseName).Options);
+        private readonly CareHomesDbContext _winnerScope = new(new DbContextOptionsBuilder<CareHomesDbContext>()
+            .UseInMemoryDatabase(databaseName).Options);
+        private int _saves;
+
+        public CareHomesDbContext Inner => _inner;
+
+        public DbSet<CareHomeFacility> Facilities => _inner.Facilities;
+
+        public DbSet<CareHomeRoomType> RoomTypes => _inner.RoomTypes;
+
+        public DbSet<CareHomeRoomTypeMedia> RoomTypeMedia => _inner.RoomTypeMedia;
+
+        public DbSet<CareHomeRoom> Rooms => _inner.Rooms;
+
+        public DbSet<CareHomeRoomMedia> RoomMedia => _inner.RoomMedia;
+
+        public DbSet<CareHomeBed> Beds => _inner.Beds;
+
+        public DbSet<CareHomeMaintenanceBlock> MaintenanceBlocks => _inner.MaintenanceBlocks;
+
+        public DbSet<CareHomeBooking> Bookings => _inner.Bookings;
+
+        public DbSet<CareHomeInternalBookingNote> InternalBookingNotes => _inner.InternalBookingNotes;
+
+        public DbSet<CareHomeRating> Ratings => _inner.Ratings;
+
+        public DbSet<CareHomeRatingModerationAction> RatingModerationActions => _inner.RatingModerationActions;
+
+        public DbSet<CareHomeRatingFlag> RatingFlags => _inner.RatingFlags;
+
+        public DbSet<CareHomePayout> Payouts => _inner.Payouts;
+
+        public DbSet<CareHomePayoutDebt> PayoutDebts => _inner.PayoutDebts;
+
+        public DbSet<CareHomeBookingAssignmentHistory> BookingAssignmentHistory => _inner.BookingAssignmentHistory;
+
+        public DbSet<CareHomeTransferNotificationOutbox> TransferNotificationOutbox => _inner.TransferNotificationOutbox;
+
+        public DbSet<CareHomeNotificationOutbox> BookingNotificationOutbox => _inner.BookingNotificationOutbox;
+
+        public DbSet<CareHomeCheckInDispute> CheckInDisputes => _inner.CheckInDisputes;
+
+        public DbSet<CareHomeProfileMedia> ProfileMedia => _inner.ProfileMedia;
+
+        public DbSet<CareHomeVisitSettings> VisitSettings => _inner.VisitSettings;
+
+        public DbSet<CareHomeVisit> Visits => _inner.Visits;
+
+        public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        {
+            if (Interlocked.Increment(ref _saves) != 1)
+            {
+                return await _inner.SaveChangesAsync(cancellationToken);
+            }
+
+            if (persistWinner is not null)
+            {
+                persistWinner(_winnerScope);
+                await _winnerScope.SaveChangesAsync(cancellationToken);
+            }
+
+            throw new DbUpdateException(
+                "23505: duplicate key value violates unique constraint " +
+                "\"IX_visits_family_id_idempotency_key\"",
+                new InvalidOperationException("23505 duplicate key"));
+        }
     }
 
     private static CareHomeBooking MakeEligibleBooking(CareHomeId facilityId, FamilyId familyId, ElderlyId elderlyId, DateOnly startDate)
