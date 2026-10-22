@@ -57,6 +57,16 @@ public sealed class CareHomeVisitsController(ISender sender, IFamiliesDbContext 
     }
 
     [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
+    [HttpGet("~/api/v1/family/care-home-visits/eligible-residents")]
+    public async Task<IActionResult> FamilyEligibleResidents(
+        [FromQuery] Guid facilityId, [FromQuery] DateTimeOffset startsAt, CancellationToken ct)
+    {
+        var (family, _) = await TryFamily(ct);
+        if (family is null) return NotFound();
+        return await Send(new GetEligibleCareHomeVisitResidentsQuery(family!.Id, facilityId, startsAt), ct);
+    }
+
+    [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
     [HttpGet("~/api/v1/family/care-home-visits/{visitId:guid}")]
     public async Task<IActionResult> FamilyGet(Guid visitId, CancellationToken ct)
     {

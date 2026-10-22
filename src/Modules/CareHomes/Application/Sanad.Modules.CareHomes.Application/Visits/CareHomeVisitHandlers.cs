@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
@@ -22,6 +23,11 @@ public sealed record CreateCareHomeVisitCommand(UserId Actor, FamilyId FamilyId,
     int VisitorCount, DateTimeOffset StartsAt, DateTime UtcNow) : ICommand<CareHomeVisitResponse>;
 public sealed record ListFamilyCareHomeVisitsQuery(FamilyId FamilyId, DateTime UtcNow)
     : IQuery<IReadOnlyList<CareHomeVisitResponse>>;
+
+public sealed record GetEligibleCareHomeVisitResidentsQuery(FamilyId FamilyId, Guid FacilityId, DateTimeOffset StartsAt)
+    : IQuery<IReadOnlyList<CareHomeEligibleResidentResponse>>;
+
+public sealed record CareHomeEligibleResidentResponse(Guid ElderlyId, string ArabicName, string EnglishName, Guid CareHomeBookingId);
 public sealed record GetFamilyCareHomeVisitQuery(FamilyId FamilyId, Guid VisitId)
     : IQuery<CareHomeVisitResponse>;
 public sealed record CancelFamilyCareHomeVisitCommand(FamilyId FamilyId, Guid VisitId, UserId Actor,
@@ -162,10 +168,8 @@ public sealed class CreateCareHomeVisitCommandHandler(
             return Result<CareHomeVisitResponse>.Failure(CareHomeVisitErrors.InvalidRequest);
         if (r.Kind == CareHomeVisitKind.Resident)
         {
-            if (r.ElderlyId is not Guid elderlyId || !await db.Bookings.AsNoTracking().AnyAsync(x =>
-                    x.FacilityId == facilityId && x.FamilyId == r.FamilyId && x.ElderlyId == new ElderlyId(elderlyId)
-                    && x.Status == CareHomeBookingStatus.Accepted && x.PaymentStatus == CareHomeBookingPaymentStatus.Paid
-                    && x.StartDate <= localDate && x.EndDate > localDate && x.ActualCheckOutOnUtc == null, ct))
+            if (r.ElderlyId is not Guid elderlyId || !await db.Bookings.AsNoTracking().AnyAsync(
+                    CareHomeVisitResidentEligibility.Eligible(facilityId, r.FamilyId, localDate, new ElderlyId(elderlyId)), ct))
                 return Result<CareHomeVisitResponse>.Failure(CareHomeVisitErrors.NotFound);
         }
         else if (r.ElderlyId.HasValue)
@@ -200,6 +204,61 @@ public sealed class CreateCareHomeVisitCommandHandler(
             return Result<CareHomeVisitResponse>.Failure(CareHomeVisitErrors.CapacityConflict);
         }
     }
+}
+
+public sealed class GetEligibleCareHomeVisitResidentsQueryHandler(ICareHomesDbContext db)
+    : IQueryHandler<GetEligibleCareHomeVisitResidentsQuery, IReadOnlyList<CareHomeEligibleResidentResponse>>
+{
+    public async Task<Result<IReadOnlyList<CareHomeEligibleResidentResponse>>> Handle(
+        GetEligibleCareHomeVisitResidentsQuery r, CancellationToken ct)
+    {
+        if (r.FacilityId == Guid.Empty || r.StartsAt == default)
+            return Result<IReadOnlyList<CareHomeEligibleResidentResponse>>.Failure(CareHomeVisitErrors.InvalidRequest);
+
+        var facilityId = new CareHomeId(r.FacilityId);
+        DateOnly localDate = DateOnly.FromDateTime(
+            TimeZoneInfo.ConvertTimeFromUtc(r.StartsAt.UtcDateTime, CareHomeVisitScheduleRules.CairoTimeZone));
+
+        List<CareHomeBooking> bookings = await db.Bookings.AsNoTracking()
+            .Where(CareHomeVisitResidentEligibility.Eligible(facilityId, r.FamilyId, localDate))
+            .OrderBy(x => x.ElderlyArabicName)
+            .ThenBy(x => x.ElderlyEnglishName)
+            .ThenBy(x => x.ElderlyId.Value)
+            .ThenBy(x => x.Id)
+            .ToListAsync(ct);
+
+        // One booking per resident: the deterministic first match after the
+        // ordering above. Other eligible bookings for the same resident are
+        // not returned.
+        var residents = bookings
+            .GroupBy(x => x.ElderlyId.Value)
+            .Select(group => group.First())
+            .Select(x => new CareHomeEligibleResidentResponse(
+                x.ElderlyId.Value,
+                x.ElderlyArabicName,
+                x.ElderlyEnglishName,
+                x.Id))
+            .ToArray();
+
+        return Result<IReadOnlyList<CareHomeEligibleResidentResponse>>.Success(residents);
+    }
+}
+
+public static class CareHomeVisitResidentEligibility
+{
+    public static Expression<Func<CareHomeBooking, bool>> Eligible(
+        CareHomeId facilityId,
+        FamilyId familyId,
+        DateOnly localDate,
+        ElderlyId? elderlyId = null) =>
+        x => x.FacilityId == facilityId
+            && x.FamilyId == familyId
+            && x.Status == CareHomeBookingStatus.Accepted
+            && x.PaymentStatus == CareHomeBookingPaymentStatus.Paid
+            && x.StartDate <= localDate
+            && x.EndDate > localDate
+            && x.ActualCheckOutOnUtc == null
+            && (elderlyId == null || x.ElderlyId == elderlyId);
 }
 
 public sealed class ListFamilyCareHomeVisitsQueryHandler(ICareHomesDbContext db)

@@ -706,6 +706,14 @@
           }
         },
         {
+          "name": "List eligible residents for a care-home visit",
+          "request": {
+            "method": "GET",
+            "url": "{{baseUrl}}/api/v1/family/care-home-visits/eligible-residents?facilityId={{careHomeFacilityId}}&startsAt={{careHomeVisitStart}}",
+            "description": "Returns the caller's residents eligible for a resident visit at the requested facility and UTC-offset startsAt date. Eligibility is the same rule as create: accepted, paid, not-yet-checked-out booking at that facility covering the Cairo-local date. One booking per resident is returned (deterministic first match by Arabic name, English name, elderly id, then booking id). Ordered by Arabic name, English name, then elderly id. A missing or malformed value is a framework 400; an all-zero facilityId or default startsAt returns 400 CareHomes.Visits.InvalidRequest."
+          }
+        },
+        {
           "name": "Request visit reschedule",
           "request": {
             "method": "POST",
