@@ -15,7 +15,7 @@ All successful reads write an immutable payload-free operational access audit be
 
 When both dates are supplied, the range is inclusive, must not be reversed, and must span no more than 31 calendar days (a 31-day interval means `endDate - startDate < 31` because both endpoints are included). List and aggregate apply the optional Elderly/date/answer filters. Timeline requires the Elderly ID and both dates.
 
-Each record exposes only `id`, `elderlyId`, `familyId`, `elderlyArabicName`, `elderlyEnglishName`, `answer`, `localDate`, `answeredAtLocalTime`, `answeredOnUtc`, and `actorUserId`. Timezone, phone/contact, address/location, clinical, medication, and other source-profile fields are intentionally excluded.
+Each record exposes only `id`, `elderlyId`, `familyId`, `elderlyArabicName`, `elderlyEnglishName`, `answer`, `localDate`, `answeredAtLocalTime`, `answeredOnUtc`, and `actorUserId`. `localDate` and `answeredAtLocalTime` are the elderly profile's own local values, derived from that profile's stored IANA time zone; `answeredOnUtc` is the same instant in UTC. Timezone, phone/contact, address/location, clinical, medication, and other source-profile fields are intentionally excluded.
 
 Error outcomes:
 
@@ -27,7 +27,7 @@ Recorded-answer reads do not expose notification delivery, push/provider status,
 
 ## Missed daily wellness check-ins (derived)
 
-`GET /api/v1/admin/elderly/check-ins/missed` derives missing expected daily wellness answers. It uses the same `ElderlyMedicationOperationalRead` policy and the same payload-free audit (`ListMissedCheckIns`). Required `startDate` and `endDate` (inclusive, max 31 days, not reversed); optional `elderlyId`; `page` (default 1), `pageSize` (default 20, max 100). Response: `{ evaluationOnUtc, items, page, pageSize, totalCount }`; items contain only `elderlyId`, `familyId`, `localDate`, `dueOnUtc`. No names, contact, clinical, medication or payment data.
+`GET /api/v1/admin/elderly/check-ins/missed` derives missing expected daily wellness answers. It uses the same `ElderlyMedicationOperationalRead` policy and the same payload-free audit (`ListMissedCheckIns`). Required `startDate` and `endDate` (inclusive, max 31 days, not reversed); optional `elderlyId`; `page` (default 1), `pageSize` (default 20, max 100). Response: `{ evaluationOnUtc, items, page, pageSize, totalCount }`; items contain only `elderlyId`, `familyId`, `localDate`, `dueOnUtc`. `localDate` is the elderly profile's own local calendar date, derived from that profile's stored IANA time zone; `dueOnUtc` is that local day's next-midnight deadline converted to UTC. No names, contact, clinical, medication or payment data.
 
 Error outcomes:
 - `400 Families.AdminCheckIn.InvalidDateRange` for reversed/over-31-day ranges or an end date of `9999-12-31` (its next-midnight deadline is not representable). Missing dates return standard model-validation `400` before audit.

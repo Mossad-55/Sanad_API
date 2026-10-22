@@ -25,6 +25,9 @@ Idempotency-Key: partner-contact-1
 {
   "name": "Nour Hassan",
   "company": "Hassani Care",
+  "phone": "+20 100 123 4567",
+  "companyType": "Care home",
+  "city": "القاهرة",
   "email": "nour@example.com",
   "subject": "Partnership",
   "message": "We would like to discuss a partnership."
@@ -34,11 +37,20 @@ Idempotency-Key: partner-contact-1
 | Field | Type | Rules |
 |---|---|---|
 | `name` | string | Required, 2–200 characters, trimmed. The submitter's own name. |
-| `company` | string or `null` | Optional, ≤ 200 characters, trimmed. Omitted or blank is stored as `null`. |
+| `company` | string or `null` | Optional, ≤ 200 characters, trimmed. Omitted or blank is stored as `null`. This is the company **name** — separate from `companyType`. |
+| `phone` | string or `null` | Optional, ≤ 32 characters. Digits with an optional leading `+` and the common separators (` `, `(`, `)`, `-`, `.`); at least one digit. Omitted or blank is stored as `null`. |
+| `companyType` | string or `null` | Optional **free text**, ≤ 100 characters, trimmed. The API stores the submitted value as sent — there is no enum or allowed-values contract, and the form's select options are frontend-owned. Omitted or blank is stored as `null`. |
+| `city` | string or `null` | Optional free text, ≤ 120 characters, trimmed (Arabic or any script). Omitted or blank is stored as `null`. |
 | `email` | string | Required, a valid address, ≤ 320 characters, trimmed. The submitter's own email. |
 | `subject` | string or `null` | Optional, ≤ 150 characters, trimmed. Omitted or blank is stored as `null`. |
 | `message` | string | Required, 10–2000 characters, trimmed. |
 | `Idempotency-Key` (header) | string | **Required**, ≤ 200 characters. See the anti-spam rules below. |
+
+The three optional fields (`phone`, `companyType`, `city`) are additive: a
+request without them is unchanged and still succeeds. They are part of the
+idempotency content — the same `Idempotency-Key` replayed with a **different**
+`phone`, `companyType` or `city` is the same conflict as any other content
+difference.
 
 ## Success
 

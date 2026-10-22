@@ -129,16 +129,20 @@ GET  /api/v1/admin/support-tickets/partner-contacts/{id}      One submission -> 
 
 - Same policy (`SupportInboxAdmin`), same paging (`page` defaults to `1`,
   `pageSize` defaults to `25`, clamped to `1–100`), newest first.
-- List item: `{ contactId, name, company, email, subject, createdOnUtc }`.
+- List item: `{ contactId, name, company, phone, companyType, city, email,
+  subject, createdOnUtc }`.
 - Detail: the same facts plus `message`.
 - `name` and `email` are the submitter's own submitted details (request data);
-  `company` and `subject` are `null` when they were not submitted.
+  `company`, `phone`, `companyType` and `city` are `null` when they were not
+  submitted.
 - The anti-spam client key (the server-side digest of the caller's address) is
   **never** returned by either route.
 - An unknown id is `404 Identity.PartnerContact.NotFound`.
 
 The rows live in `identity.partner_contacts`, created by the additive Identity
-migration `20261021205122_AddPartnerContacts`.
+migration `20261021205122_AddPartnerContacts`; the optional
+`phone`/`company_type`/`city` columns come from the later additive
+`20261022094500_AddPartnerContactOptionalFields`.
 
 ## Errors
 
@@ -160,9 +164,12 @@ Identity migration `20261020191733_AddSupportTicketWorkflow` — see
 `docs/internal/operations/migrations.md`.
 
 The anonymous partner-contact rows live in `identity.partner_contacts`
-(id, submitted name/company/email/subject/message, idempotency key, the
-server-side client-key digest, UTC instant), created by the additive Identity
-migration `20261021205122_AddPartnerContacts`.
+(id, submitted name/company/phone/company-type/city/email/subject/message,
+idempotency key, the server-side client-key digest, UTC instant), created by
+the additive Identity migration `20261021205122_AddPartnerContacts` and
+extended by the additive `20261022094500_AddPartnerContactOptionalFields`
+(nullable `phone`, `company_type`, `city`; rows created before it read back
+with all three `null`).
 
 ## Postman
 

@@ -72,6 +72,19 @@ interprets it only where a type has a defined meaning:
 "Free-form" means the API stores and returns the JSON string unchanged; it does
 not reshape or validate the inner schema.
 
+**Bilingual nested text.** `contentJson` is a plain JSON **string**, validated
+by length only (≤ 8000 characters) and transported verbatim. Sections carry
+editable text as legacy plain strings over the same envelope
+(`arabicTitle`/`englishTitle`/`arabicBody`/`englishBody`) **and** — where the
+editor chooses, inside `contentJson` — as nested bilingual text objects such
+as `{ "ar": "…", "en": "…" }`. Both forms transport unchanged: a nested
+`{ar,en}` object arrives inside `contentJson` exactly as authored, and the
+client picks the language. The server interprets only `refs` (testimonials/faq
+above); it never resolves, normalizes or translates nested text. A resolved
+nested-text projection does not exist — adding one would be a new product
+decision, out of scope. Any option/choice values inside `contentJson` are
+authored AR/EN strings; nothing is auto-translated.
+
 `testimonials` and `faqs` resolve only for their own section type. A
 `testimonials` section returns its resolved items in `testimonials` (possibly
 `[]` when every ref is dangling or hidden) and an empty `faqs`; a `faq` section
@@ -128,8 +141,13 @@ user:
 POST /api/v1/partner-contact
 ```
 
-Anonymous. Body `{name, company?, email, subject?, message}` plus the required
-`Idempotency-Key` header; at most 5 submissions per hour per caller.
+Anonymous. Body `{name, company?, phone?, companyType?, city?, email,
+subject?, message}` — `phone` (optional, ≤ 32 characters, digits with an
+optional leading `+`, at least one digit, and common separators), `companyType` (optional free
+text, ≤ 100) and `city` (optional free text, ≤ 120) are additive fields with
+the same rules as the existing fields; omitted or blank is stored as `null`.
+Plus the required `Idempotency-Key` header; at most 5 submissions per hour
+per caller.
 Success `200` with the receipt; `400` validation, `409` idempotency conflict,
 `429` rate limited. Full contract: [partner contact](partner-contact.md).
 

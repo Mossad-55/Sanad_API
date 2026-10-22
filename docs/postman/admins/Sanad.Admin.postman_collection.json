@@ -4533,7 +4533,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/admin/support-tickets/partner-contacts?page=1&pageSize=25",
-            "description": "Safe read of the anonymous partner-contact submissions that land in the support inbox. Newest first; page defaults to 1 and pageSize to 25 (clamped 1-100). Response { items, page, pageSize, totalCount } with items { contactId, name, company, email, subject, createdOnUtc }. These are the submitter's own submitted details (request data - no account exists); company and subject are null when they were not submitted. The anti-spam client key is never returned."
+            "description": "Safe read of the anonymous partner-contact submissions that land in the support inbox. Newest first; page defaults to 1 and pageSize to 25 (clamped 1-100). Response { items, page, pageSize, totalCount } with items { contactId, name, company, phone, companyType, city, email, subject, createdOnUtc }. These are the submitter's own submitted details (request data - no account exists); company, phone, companyType, city and subject are null when they were not submitted. The anti-spam client key is never returned."
           }
         },
         {
@@ -4547,7 +4547,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/admin/support-tickets/partner-contacts/{{partnerContactId}}",
-            "description": "Safe read. Returns { contactId, name, company, email, subject, message, createdOnUtc } with the submitted message body. Unknown id returns 404 Identity.PartnerContact.NotFound. The anti-spam client key is never returned."
+            "description": "Safe read. Returns { contactId, name, company, phone, companyType, city, email, subject, message, createdOnUtc } with the submitted message body. The optional phone/companyType/city fields are null for rows submitted before they existed. Unknown id returns 404 Identity.PartnerContact.NotFound. The anti-spam client key is never returned."
           }
         }
       ]
