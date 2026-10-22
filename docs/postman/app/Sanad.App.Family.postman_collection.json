@@ -2192,7 +2192,7 @@
               ],
               "url": "{{baseUrl}}/api/v1/family/bookings?tab=1"
             },
-            "description": "tab: 1 Upcoming, 2 Current, 3 Past."
+            "description": "tab: 1 Upcoming, 2 Current, 3 Past. Each item carries the booking id, caregiver id, the senior's Arabic/English names, the slot, shiftType, status, totalPayableAmount and currency. The reserved caregiver name/avatar fields return null (the booking stores the caregiver aggregate id and the Families module has no caregiver-identity seam) - use GET /api/v1/caregivers/{caregiverId} for the caregiver card."
           },
           {
             "name": "Booking detail",
@@ -2209,7 +2209,8 @@
                 }
               ],
               "url": "{{baseUrl}}/api/v1/family/bookings/{{bookingId}}"
-            }
+            },
+            "description": "Own family only (404 Bookings.NotFound otherwise). The elderly summary carries the senior's stored names, gender, dateOfBirth and healthNotes (all null when the dependent row is gone), hasPhoto (the bytes come from GET /api/v1/family/dependents/{elderlyId}/photo) and emergencyContact ({name, relationship, phoneNumber}, null when none is stored - the family may already read it on GET /api/v1/family/dependents/{dependentId}/emergency-contact). The caregiver-only members visitHistory, upcomingVisits and familyReview are always null on this read."
           },
           {
             "name": "Checkout (create booking) — captures bookingId",
@@ -2347,7 +2348,7 @@
               ],
               "url": "{{baseUrl}}/api/v1/legal/privacy-policy"
             },
-            "description": "SET-12 dedicated legal content — legal pages are NOT splash screens. The audience is derived from the JWT; there is no audience parameter. 200 with the current Published version (bilingual sections, version, publication metadata), 404 Cms.Legal.NotPublished when nothing is published for this audience, 401 unauthenticated."
+            "description": "SET-12 dedicated legal content — legal pages are NOT splash screens. The audience is derived from the token's account_type claims (one per owned account); an optional ?audience= query parameter names the wanted audience when the token owns more than one, and is validated against the owned audiences (400 Cms.Content.InvalidAudience when malformed, 400 Cms.Content.AudienceRequired when omitted with several owned, 403 Cms.Content.UnsupportedAudience when unowned). 200 with the current Published version (bilingual sections, version, publication metadata), 404 Cms.Legal.NotPublished when nothing is published for this audience, 401 unauthenticated."
           },
           {
             "name": "Get Terms & Conditions (signed-in)",
@@ -2361,7 +2362,7 @@
               ],
               "url": "{{baseUrl}}/api/v1/legal/terms"
             },
-            "description": "SET-12. Same audience and status rules as the privacy-policy route; never falls back to another audience or document type."
+            "description": "SET-12. Same audience and status rules as the privacy-policy route (optional ?audience=); never falls back to another audience or document type."
           },
           {
             "name": "Get Help Center (FAQs + support contact)",
@@ -2375,7 +2376,7 @@
               ],
               "url": "{{baseUrl}}/api/v1/help-center"
             },
-            "description": "SET-13 read surface. Returns only active FAQs for the caller audience (ordered by displayOrder) plus the one global support contact card. 200 with faqs [] and supportContact null before any CMS seeding. Read-only: sends no SMS/email; the support ticket POST /api/v1/support/contact is unchanged."
+            "description": "SET-13 read surface. Same optional ?audience= rules as the legal routes. Returns only active FAQs for the caller audience (ordered by displayOrder) plus the one global support contact card. 200 with faqs [] and supportContact null before any CMS seeding. Read-only: sends no SMS/email; the support ticket POST /api/v1/support/contact is unchanged."
           },
           {
             "name": "List device sessions",
@@ -2492,7 +2493,7 @@
               ],
               "url": "{{baseUrl}}/api/v1/family/subscriptions/plans"
             },
-            "description": "Owner only; 200 returns published versions including retired-for-new-sales plans and excludes drafts."
+            "description": "Owner only; 200 returns published versions including retired-for-new-sales plans and excludes drafts. Each item also carries the optional bilingual copy authored for that version — arabicName, englishName, arabicDescription, englishDescription, and per-benefit arabicLabel/englishLabel — stored with surrounding whitespace trimmed (a whitespace-only value is stored as absent/null) and never generated, translated, or back-filled; a version without authored copy keeps null for all of them. The copy is display-only and never changes price, cycle, currency, limits, rollover, or benefit inclusion."
           },
           {
             "name": "Get subscription purchase quote",
@@ -2536,7 +2537,7 @@
               },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/payment-intent"
             },
-            "description": "Owner only; the server reruns the quote and returns a provider client secret, public key, amount/currency, and a sub_ merchant reference. The numeric method enum is 1=Card or 2=Wallet. recurringRenewalSupported is true only for Card when the selected local plan has a positive paymobSubscriptionPlanId and Paymob Card 3DS is configured; Wallet is one-time/manual. Do not run against shared data without an owner-approved payment fixture. Platform availability: a new intent is refused while the platform is in Maintenance (503 Platform.Maintenance), when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable, including a missing Paymob Card 3DS enrollment integration), or when the platform controls cannot be read (503 Platform.ControlStateUnavailable)."
+            "description": "Owner only; the server reruns the quote and returns a provider client secret, public key, amount/currency, and a sub_ merchant reference. The numeric method enum is 1=Card or 2=Wallet. recurringRenewalSupported is true only for Card when the selected local plan has a positive paymobSubscriptionPlanId and Paymob Card 3DS is configured; Wallet is one-time/manual. A non-null paymobSubscriptionPlanId with platform status subscriptionCardEnrollmentAvailable false means Card initial enrollment is unavailable; a null id uses the generic Card rule. Do not run against shared data without an owner-approved payment fixture. Platform availability: a new intent is refused while the platform is in Maintenance (503 Platform.Maintenance), when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable, including a missing Paymob Card 3DS enrollment integration), or when the platform controls cannot be read (503 Platform.ControlStateUnavailable)."
           },
           {
             "name": "Get current subscription snapshot",

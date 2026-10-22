@@ -153,6 +153,48 @@ public sealed class FamilySubscriptionsControllerTests
         Assert.Equal(code, problem.Extensions["code"]);
     }
 
+    [Fact]
+    public async Task Plan_catalog_response_carries_the_version_owned_bilingual_copy()
+    {
+        var catalog = new List<SubscriptionPlanResponse>
+        {
+            new(
+                Guid.NewGuid(),
+                "premium",
+                2,
+                299m,
+                SubscriptionCycle.Monthly,
+                "EGP",
+                new(SubscriptionLimitKind.Finite, 10),
+                new(SubscriptionLimitKind.Finite, 20),
+                SubscriptionRollover.None,
+                true,
+                DateTime.UtcNow,
+                DateTime.UtcNow,
+                [
+                    new(SubscriptionBenefitKey.Chatting, true, "محادثات", "Chatting")
+                ],
+                null,
+                "الباقة المميزة",
+                "Premium plan",
+                "كل ما تتضمنه الباقة.",
+                "Everything the plan includes.")
+        };
+        var controller = CreateController(new CatalogSender(catalog));
+
+        var result = await controller.GetPlans(CancellationToken.None);
+
+        var ok = Assert.IsType<OkObjectResult>(result);
+        var items = Assert.IsAssignableFrom<IReadOnlyList<SubscriptionPlanResponse>>(ok.Value);
+        SubscriptionPlanResponse item = Assert.Single(items);
+        Assert.Equal("الباقة المميزة", item.ArabicName);
+        Assert.Equal("Premium plan", item.EnglishName);
+        Assert.Equal("كل ما تتضمنه الباقة.", item.ArabicDescription);
+        Assert.Equal("Everything the plan includes.", item.EnglishDescription);
+        Assert.Equal("محادثات", Assert.Single(item.Benefits).ArabicLabel);
+        Assert.Equal("Chatting", Assert.Single(item.Benefits).EnglishLabel);
+    }
+
     private static FamilySubscriptionsController CreateController(ISender sender)
     {
         var controller = new FamilySubscriptionsController(sender, new StubFileStorage())
@@ -175,6 +217,24 @@ public sealed class FamilySubscriptionsControllerTests
     {
         public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default) =>
             Task.FromResult((TResponse)(object)Result<SubscriptionPaymentIntentResponse>.Failure(error));
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
+            where TRequest : IRequest => throw new NotSupportedException();
+
+        public Task<object?> Send(object request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class CatalogSender(IReadOnlyList<SubscriptionPlanResponse> catalog) : ISender
+    {
+        public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default) =>
+            Task.FromResult((TResponse)(object)Result<IReadOnlyList<SubscriptionPlanResponse>>.Success(catalog));
 
         public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
             where TRequest : IRequest => throw new NotSupportedException();

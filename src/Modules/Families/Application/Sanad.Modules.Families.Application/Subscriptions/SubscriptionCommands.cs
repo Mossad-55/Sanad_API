@@ -12,7 +12,11 @@ namespace Sanad.Modules.Families.Application.Subscriptions;
 public sealed record CancelSubscriptionRenewalCommand(UserId UserId) : ICommand;
 public sealed record ReenableSubscriptionAutoRenewCommand(UserId UserId) : ICommand;
 
-public sealed record SubscriptionBenefitInput(SubscriptionBenefitKey Key, bool IsIncluded);
+public sealed record SubscriptionBenefitInput(
+    SubscriptionBenefitKey Key,
+    bool IsIncluded,
+    string? ArabicLabel = null,
+    string? EnglishLabel = null);
 public sealed record SubscriptionLimitInput(SubscriptionLimitKind Kind, int? Value);
 public sealed record CreateSubscriptionPlanVersionCommand(
     string Key,
@@ -25,7 +29,14 @@ public sealed record CreateSubscriptionPlanVersionCommand(
     SubscriptionLimitInput MonthlyBookingLimit,
     SubscriptionRollover Rollover,
     UserId ActorUserId,
-    int? PaymobSubscriptionPlanId = null) : ICommand<Guid>;
+    int? PaymobSubscriptionPlanId = null,
+    // Version-owned authored copy. Every value is optional: a version may be
+    // created without any copy, and an existing version without copy keeps
+    // reading an absent value. Nothing is generated or translated.
+    string? ArabicName = null,
+    string? EnglishName = null,
+    string? ArabicDescription = null,
+    string? EnglishDescription = null) : ICommand<Guid>;
 
 public sealed record PublishSubscriptionPlanVersionCommand(Guid PlanVersionId, UserId ActorUserId) : ICommand;
 
@@ -128,13 +139,21 @@ public sealed class CreateSubscriptionPlanVersionCommandHandler
                 request.Price,
                 request.Cycle,
                 request.Currency,
-                request.Benefits.Select(item => SubscriptionBenefit.Create(item.Key, item.IsIncluded)),
+                request.Benefits.Select(item => SubscriptionBenefit.Create(
+                    item.Key,
+                    item.IsIncluded,
+                    item.ArabicLabel,
+                    item.EnglishLabel)),
                 CreateLimit(request.MemberLimit),
                 CreateLimit(request.MonthlyBookingLimit),
                 request.Rollover);
             var version = SubscriptionPlanVersion.Create(
                 plan,
-                paymobSubscriptionPlanId: request.PaymobSubscriptionPlanId);
+                paymobSubscriptionPlanId: request.PaymobSubscriptionPlanId,
+                arabicName: request.ArabicName,
+                englishName: request.EnglishName,
+                arabicDescription: request.ArabicDescription,
+                englishDescription: request.EnglishDescription);
             _dbContext.SubscriptionPlanVersions.Add(version);
             await _dbContext.SaveChangesAsync(cancellationToken);
             return Result<Guid>.Success(version.Id);

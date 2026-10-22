@@ -73,6 +73,13 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
         return File(file.Value.Content, "application/pdf", result.Value.InvoiceNumber + ".pdf");
     }
 
+    /// <summary>
+    /// The published plan catalog for the family owner. Every item carries the
+    /// **version-owned authored copy** (`arabicName`, `englishName`,
+    /// `arabicDescription`, `englishDescription`) and the per-benefit
+    /// `arabicLabel` / `englishLabel`. A copy the admin did not author is
+    /// absent (<c>null</c>) — it is never generated or translated.
+    /// </summary>
     [HttpGet("plans")]
     [ProducesResponseType(typeof(IReadOnlyList<SubscriptionPlanResponse>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status403Forbidden)]

@@ -97,6 +97,134 @@ public sealed class SubscriptionQueryTests
     }
 
     [Fact]
+    public async Task Catalog_returns_the_version_owned_bilingual_copy_and_benefit_labels()
+    {
+        await using var db = CreateContext();
+        UserId owner = UserId.New();
+        db.Families.Add(Family.Create(owner));
+
+        // The copy and the benefit labels are authored through the real
+        // authoring path, then the version is published through the real
+        // publish path, so both reads below serve persisted rows.
+        var created = await new CreateSubscriptionPlanVersionCommandHandler(db).Handle(
+            AuthoringCommand(
+                SubscriptionPlan.Premium,
+                "premium",
+                2,
+                BenefitInputs(
+                    SubscriptionPlan.Premium,
+                    SubscriptionBenefitKey.Chatting,
+                    "محادثات",
+                    "Chatting"),
+                arabicName: "الباقة المميزة",
+                englishName: "Premium plan",
+                arabicDescription: "كل ما تتضمنه الباقة.",
+                englishDescription: "Everything the plan includes."),
+            default);
+        Assert.True(created.IsSuccess);
+        var published = await new PublishSubscriptionPlanVersionCommandHandler(db).Handle(
+            new PublishSubscriptionPlanVersionCommand(created.Value, UserId.New()), default);
+        Assert.True(published.IsSuccess);
+
+        var result = await new GetSubscriptionCatalogQueryHandler(db).Handle(new(owner), default);
+
+        Assert.True(result.IsSuccess);
+        SubscriptionPlanResponse item = Assert.Single(
+            result.Value,
+            plan => plan.Key == SubscriptionPlan.PremiumKey);
+        Assert.Equal("الباقة المميزة", item.ArabicName);
+        Assert.Equal("Premium plan", item.EnglishName);
+        Assert.Equal("كل ما تتضمنه الباقة.", item.ArabicDescription);
+        Assert.Equal("Everything the plan includes.", item.EnglishDescription);
+
+        // The labels of the authored benefit key come back with that key only.
+        Assert.Equal(8, item.Benefits.Count);
+        SubscriptionBenefitResponse chatting = Assert.Single(
+            item.Benefits,
+            benefit => benefit.Key == SubscriptionBenefitKey.Chatting);
+        Assert.Equal("محادثات", chatting.ArabicLabel);
+        Assert.Equal("Chatting", chatting.EnglishLabel);
+        SubscriptionBenefitResponse library = Assert.Single(
+            item.Benefits,
+            benefit => benefit.Key == SubscriptionBenefitKey.Library);
+        Assert.Null(library.ArabicLabel);
+        Assert.Null(library.EnglishLabel);
+
+        // The plan version read keeps its financial terms unchanged.
+        Assert.Equal(SubscriptionPlan.Premium.Price, item.Price);
+        Assert.Equal(SubscriptionPlan.Premium.Cycle, item.Cycle);
+        Assert.Equal(SubscriptionPlan.Premium.Currency, item.Currency);
+        Assert.Equal(SubscriptionPlan.Premium.MemberLimit.Value, item.MemberLimit.Value);
+        Assert.Equal(SubscriptionPlan.Premium.MonthlyBookingLimit.Value, item.MonthlyBookingLimit.Value);
+        Assert.Equal(SubscriptionPlan.Premium.Rollover, item.Rollover);
+
+        // The same authored labels are served by the real admin plan read.
+        var admin = await new GetAdminSubscriptionPlanQueryHandler(db)
+            .Handle(new GetAdminSubscriptionPlanQuery(created.Value), default);
+        Assert.True(admin.IsSuccess);
+        Assert.Equal("الباقة المميزة", admin.Value.ArabicName);
+        Assert.Equal("Premium plan", admin.Value.EnglishName);
+        SubscriptionBenefitResponse adminChatting = Assert.Single(
+            admin.Value.Benefits,
+            benefit => benefit.Key == SubscriptionBenefitKey.Chatting);
+        Assert.Equal("محادثات", adminChatting.ArabicLabel);
+        Assert.Equal("Chatting", adminChatting.EnglishLabel);
+        Assert.Null(Assert.Single(
+            admin.Value.Benefits,
+            benefit => benefit.Key == SubscriptionBenefitKey.Library).ArabicLabel);
+    }
+
+    [Fact]
+    public async Task Catalog_returns_absent_copy_for_a_version_authored_without_it()
+    {
+        await using var db = CreateContext();
+        UserId owner = UserId.New();
+        db.Families.Add(Family.Create(owner));
+        db.SubscriptionPlanVersions.Add(Published(SubscriptionPlan.Free));
+        await db.SaveChangesAsync();
+
+        var result = await new GetSubscriptionCatalogQueryHandler(db).Handle(new(owner), default);
+
+        Assert.True(result.IsSuccess);
+        SubscriptionPlanResponse item = Assert.Single(result.Value);
+        Assert.Null(item.ArabicName);
+        Assert.Null(item.EnglishName);
+        Assert.Null(item.ArabicDescription);
+        Assert.Null(item.EnglishDescription);
+        Assert.All(item.Benefits, benefit =>
+        {
+            Assert.Null(benefit.ArabicLabel);
+            Assert.Null(benefit.EnglishLabel);
+        });
+    }
+
+    [Fact]
+    public async Task Admin_plan_list_and_detail_return_the_same_bilingual_copy()
+    {
+        await using var db = CreateContext();
+        var authored = SubscriptionPlanVersion.Create(
+            SubscriptionPlan.Premium,
+            isPublished: true,
+            publishedOnUtc: DateTime.UtcNow,
+            arabicName: "الباقة المميزة",
+            englishName: "Premium plan");
+        db.SubscriptionPlanVersions.Add(authored);
+        await db.SaveChangesAsync();
+
+        var list = await new GetAdminSubscriptionPlansQueryHandler(db)
+            .Handle(new GetAdminSubscriptionPlansQuery(1, 10), default);
+        var detail = await new GetAdminSubscriptionPlanQueryHandler(db)
+            .Handle(new GetAdminSubscriptionPlanQuery(authored.Id), default);
+
+        Assert.True(list.IsSuccess);
+        Assert.True(detail.IsSuccess);
+        Assert.Equal("الباقة المميزة", Assert.Single(list.Value.Items).ArabicName);
+        Assert.Equal("Premium plan", detail.Value.EnglishName);
+        Assert.Equal(SubscriptionPlan.Premium.Price, detail.Value.Price);
+        Assert.Equal(SubscriptionPlan.Premium.Currency, detail.Value.Currency);
+    }
+
+    [Fact]
     public async Task Admin_plan_list_includes_drafts_published_and_retired_versions()
     {
         await using var db = CreateContext();
@@ -176,6 +304,42 @@ public sealed class SubscriptionQueryTests
 
     private static SubscriptionPlanVersion Published(SubscriptionPlan plan, bool available = true) =>
         SubscriptionPlanVersion.Create(plan, true, available, DateTime.UtcNow, DateTime.UtcNow);
+
+    private static SubscriptionBenefitInput[] BenefitInputs(
+        SubscriptionPlan plan,
+        SubscriptionBenefitKey labelledKey,
+        string? arabicLabel,
+        string? englishLabel) =>
+        plan.Benefits
+            .Select(benefit => benefit.Key == labelledKey
+                ? new SubscriptionBenefitInput(benefit.Key, benefit.IsIncluded, arabicLabel, englishLabel)
+                : new SubscriptionBenefitInput(benefit.Key, benefit.IsIncluded))
+            .ToArray();
+
+    private static CreateSubscriptionPlanVersionCommand AuthoringCommand(
+        SubscriptionPlan plan,
+        string key,
+        int version,
+        IReadOnlyCollection<SubscriptionBenefitInput> benefits,
+        string? arabicName = null,
+        string? englishName = null,
+        string? arabicDescription = null,
+        string? englishDescription = null) =>
+        new(
+            key,
+            version,
+            plan.Price,
+            plan.Cycle,
+            plan.Currency,
+            benefits,
+            new SubscriptionLimitInput(plan.MemberLimit.Kind, plan.MemberLimit.Value),
+            new SubscriptionLimitInput(plan.MonthlyBookingLimit.Kind, plan.MonthlyBookingLimit.Value),
+            plan.Rollover,
+            UserId.New(),
+            ArabicName: arabicName,
+            EnglishName: englishName,
+            ArabicDescription: arabicDescription,
+            EnglishDescription: englishDescription);
 
     private static FamiliesDbContext CreateContext() => new(new DbContextOptionsBuilder<FamiliesDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
 }

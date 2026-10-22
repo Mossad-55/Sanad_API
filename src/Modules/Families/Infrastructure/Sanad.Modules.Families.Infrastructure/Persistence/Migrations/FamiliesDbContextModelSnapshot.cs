@@ -2118,6 +2118,16 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
+                    b.Property<string>("ArabicDescription")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("arabic_description");
+
+                    b.Property<string>("ArabicName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("arabic_name");
+
                     b.Property<DateTime>("CreatedOnUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("created_on_utc");
@@ -2131,6 +2141,16 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.Property<int>("Cycle")
                         .HasColumnType("integer")
                         .HasColumnName("cycle");
+
+                    b.Property<string>("EnglishDescription")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("english_description");
+
+                    b.Property<string>("EnglishName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("english_name");
 
                     b.Property<bool>("IsAvailableForNewSales")
                         .IsConcurrencyToken()
@@ -2813,6 +2833,16 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                             b1.Property<int>("Key")
                                 .HasColumnType("integer")
                                 .HasColumnName("benefit_key");
+
+                            b1.Property<string>("ArabicLabel")
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("arabic_label");
+
+                            b1.Property<string>("EnglishLabel")
+                                .HasMaxLength(200)
+                                .HasColumnType("character varying(200)")
+                                .HasColumnName("english_label");
 
                             b1.Property<bool>("IsIncluded")
                                 .HasColumnType("boolean")

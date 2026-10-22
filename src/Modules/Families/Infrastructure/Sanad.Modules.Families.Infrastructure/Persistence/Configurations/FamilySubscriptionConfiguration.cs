@@ -70,6 +70,11 @@ public sealed class FamilySubscriptionConfiguration : IEntityTypeConfiguration<F
                 benefit.Property<Guid>("FamilySubscriptionId").HasColumnName("family_subscription_id");
                 benefit.Property(x => x.Key).HasColumnName("benefit_key").HasConversion<int>().IsRequired();
                 benefit.Property(x => x.IsIncluded).HasColumnName("is_included").IsRequired();
+                // The authored labels belong to the plan version that owns the
+                // benefit. A subscription snapshot stores the benefit terms
+                // only, so it does not map (or carry) the label columns.
+                benefit.Ignore(x => x.ArabicLabel);
+                benefit.Ignore(x => x.EnglishLabel);
                 benefit.HasKey("FamilySubscriptionId", nameof(SubscriptionBenefit.Key));
             });
         });
@@ -81,6 +86,11 @@ public sealed class FamilySubscriptionConfiguration : IEntityTypeConfiguration<F
             benefit.Property<Guid>("FamilySubscriptionId").HasColumnName("family_subscription_id");
             benefit.Property(x => x.Key).HasColumnName("benefit_key").HasConversion<int>().IsRequired();
             benefit.Property(x => x.IsIncluded).HasColumnName("is_included").IsRequired();
+            // The authored labels belong to the plan version that owns the
+            // benefit. A subscription snapshot stores the benefit terms only,
+            // so it does not map (or carry) the label columns.
+            benefit.Ignore(x => x.ArabicLabel);
+            benefit.Ignore(x => x.EnglishLabel);
             benefit.HasKey("FamilySubscriptionId", nameof(SubscriptionBenefit.Key));
         });
     }

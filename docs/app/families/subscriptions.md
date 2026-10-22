@@ -6,7 +6,28 @@ Family subscription reads require a normal Family JWT and the `FamilyAccess` pol
 
 `GET /api/v1/family/subscriptions/plans` returns every published plan version. Draft versions are excluded. Published versions retired from new sales remain visible, with `isAvailableForNewSales: false`.
 
-Each item includes its key, version, tax-exclusive price, currency, billing cycle, rollover policy, member and monthly-booking limits, publication/creation timestamps, availability, and all benefit keys with their included state. Interpret these numeric JSON enum values as follows: `cycle` is `1` Monthly or `2` Annual; a benefit's `key` is `1` Chatting, `2` Library, `3` CommunityForum, `4` FamilyActivityTimeline, `5` BasicSearch, `6` AdvancedSearchFilters, `7` MedicalSummaryExportAndSecureSharing, or `8` PremiumContent, and `isIncluded` is the boolean state for that benefit. Each limit has `kind` `1` Finite with a positive integer `value`, or `2` Unlimited with `value: null`. `rollover` is `1` None or `2` NotApplicable. The catalog read does not add platform fee or tax to the returned price.
+Each item includes its key, version, tax-exclusive price, currency, billing cycle, rollover policy, member and monthly-booking limits, publication/creation timestamps, availability, and all benefit keys with their included state. It also includes nullable `paymobSubscriptionPlanId`: a positive value enables initial Card enrollment when Paymob Card 3DS is configured; `null` means no initial enrollment and one-time/manual billing. Interpret these numeric JSON enum values as follows: `cycle` is `1` Monthly or `2` Annual; a benefit's `key` is `1` Chatting, `2` Library, `3` CommunityForum, `4` FamilyActivityTimeline, `5` BasicSearch, `6` AdvancedSearchFilters, `7` MedicalSummaryExportAndSecureSharing, or `8` PremiumContent, and `isIncluded` is the boolean state for that benefit. Each limit has `kind` `1` Finite with a positive integer `value`, or `2` Unlimited with `value: null`. `rollover` is `1` None or `2` NotApplicable. The catalog read does not add platform fee or tax to the returned price.
+
+### Bilingual plan copy
+
+Each catalog item also carries the optional bilingual copy authored for **that plan version**: `arabicName`, `englishName`, `arabicDescription`, and `englishDescription`. Each benefit carries the optional `arabicLabel` and `englishLabel` authored for that benefit on that same version. Every one of these fields is nullable and holds the authored value with surrounding whitespace trimmed; a whitespace-only value is stored as absent (`null`). The API never generates, translates, or back-fills copy. A plan version created before the copy existed, or one whose author supplied no copy, keeps `null` for all of these fields; treat `null` as "no authored copy for this version" and fall back to your own product copy for that plan. The copy belongs to the version, so two versions of the same plan key may return different names, descriptions, and benefit labels.
+
+```json
+{
+  "key": "premium",
+  "version": 2,
+  "arabicName": "الباقة المميزة",
+  "englishName": "Premium plan",
+  "arabicDescription": "كل ما تتضمنه الباقة المميزة.",
+  "englishDescription": "Everything the premium plan includes.",
+  "benefits": [
+    { "key": 1, "isIncluded": true, "arabicLabel": "محادثات", "englishLabel": "Chatting" },
+    { "key": 2, "isIncluded": true, "arabicLabel": null, "englishLabel": null }
+  ]
+}
+```
+
+The copy is display-only: it never changes price, cycle, currency, member limit, monthly-booking limit, rollover, or benefit inclusion.
 
 ## Purchase quote
 
@@ -290,6 +311,12 @@ one-time/manual. Provider subscription identity persistence and renewal-event
 settlement are implemented through the callback contract above; wallet renewal
 continues through the explicit manual payment-intent route because wallet
 recurrence is not claimed.
+
+Clients must combine this with the anonymous `GET /api/v1/platform/status`
+response to decide Card usability per plan: see the
+[platform status consumption contract](../public/platform-status.md#subscription-card-consumption-contract).
+A new intent is still refused with `400 Platform.PaymentMethodUnavailable`
+when the selected method is unavailable.
 
 ## Current subscription snapshot
 

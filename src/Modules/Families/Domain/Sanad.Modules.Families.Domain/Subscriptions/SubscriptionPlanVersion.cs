@@ -6,6 +6,9 @@ namespace Sanad.Modules.Families.Domain.Subscriptions;
 
 public sealed class SubscriptionPlanVersion : Entity<Guid>
 {
+    public const int MaximumNameLength = 200;
+    public const int MaximumDescriptionLength = 1000;
+
     private readonly List<SubscriptionBenefit> _benefits = [];
 
     private SubscriptionPlanVersion()
@@ -19,7 +22,11 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
         bool isAvailableForNewSales,
         DateTime createdOnUtc,
         DateTime? publishedOnUtc,
-        int? paymobSubscriptionPlanId)
+        int? paymobSubscriptionPlanId,
+        string? arabicName,
+        string? englishName,
+        string? arabicDescription,
+        string? englishDescription)
         : base(id)
     {
         Key = plan.Key;
@@ -38,6 +45,10 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
         CreatedOnUtc = createdOnUtc;
         PublishedOnUtc = publishedOnUtc;
         PaymobSubscriptionPlanId = paymobSubscriptionPlanId;
+        ArabicName = arabicName;
+        EnglishName = englishName;
+        ArabicDescription = arabicDescription;
+        EnglishDescription = englishDescription;
     }
 
     public string Key { get; private set; } = string.Empty;
@@ -55,6 +66,23 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime? PublishedOnUtc { get; private set; }
     public int? PaymobSubscriptionPlanId { get; private set; }
+
+    /// <summary>
+    /// The admin-authored Arabic name of **this version**. Absent on versions
+    /// created before the copy existed and on versions whose author supplied
+    /// none — it is never generated, translated or back-filled.
+    /// </summary>
+    public string? ArabicName { get; private set; }
+
+    /// <summary>The admin-authored English name of this version (see <see cref="ArabicName"/>).</summary>
+    public string? EnglishName { get; private set; }
+
+    /// <summary>The admin-authored Arabic description of this version (see <see cref="ArabicName"/>).</summary>
+    public string? ArabicDescription { get; private set; }
+
+    /// <summary>The admin-authored English description of this version (see <see cref="ArabicName"/>).</summary>
+    public string? EnglishDescription { get; private set; }
+
     public IReadOnlyCollection<SubscriptionBenefit> Benefits => _benefits.AsReadOnly();
 
     public static SubscriptionPlanVersion Create(
@@ -63,7 +91,11 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
         bool isAvailableForNewSales = true,
         DateTime? createdOnUtc = null,
         DateTime? publishedOnUtc = null,
-        int? paymobSubscriptionPlanId = null)
+        int? paymobSubscriptionPlanId = null,
+        string? arabicName = null,
+        string? englishName = null,
+        string? arabicDescription = null,
+        string? englishDescription = null)
     {
         ArgumentNullException.ThrowIfNull(plan);
 
@@ -83,7 +115,27 @@ public sealed class SubscriptionPlanVersion : Entity<Guid>
             isAvailableForNewSales,
             createdOnUtc ?? DateTime.UtcNow,
             publishedOnUtc,
-            paymobSubscriptionPlanId);
+            paymobSubscriptionPlanId,
+            OptionalCopy(arabicName, MaximumNameLength, "Arabic name"),
+            OptionalCopy(englishName, MaximumNameLength, "English name"),
+            OptionalCopy(arabicDescription, MaximumDescriptionLength, "Arabic description"),
+            OptionalCopy(englishDescription, MaximumDescriptionLength, "English description"));
+    }
+
+    /// <summary>
+    /// Normalizes one authored copy value: trimmed, empty becomes absent
+    /// (null) and an over-long value is rejected. No copy is ever generated.
+    /// </summary>
+    private static string? OptionalCopy(string? value, int maximumLength, string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return null;
+
+        string normalized = value.Trim();
+        if (normalized.Length > maximumLength)
+            throw new DomainException($"{fieldName} must not exceed {maximumLength} characters.");
+
+        return normalized;
     }
 
     public void Publish(DateTime publishedOnUtc)

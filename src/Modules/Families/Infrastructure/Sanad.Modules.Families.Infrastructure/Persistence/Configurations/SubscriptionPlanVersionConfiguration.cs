@@ -29,6 +29,12 @@ public sealed class SubscriptionPlanVersionConfiguration : IEntityTypeConfigurat
         builder.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
         builder.Property(x => x.PublishedOnUtc).HasColumnName("published_on_utc");
         builder.Property(x => x.PaymobSubscriptionPlanId).HasColumnName("paymob_subscription_plan_id");
+        // Version-owned authored copy. Every column is nullable so a version
+        // created before the copy existed keeps reading an absent value.
+        builder.Property(x => x.ArabicName).HasColumnName("arabic_name").HasMaxLength(SubscriptionPlanVersion.MaximumNameLength);
+        builder.Property(x => x.EnglishName).HasColumnName("english_name").HasMaxLength(SubscriptionPlanVersion.MaximumNameLength);
+        builder.Property(x => x.ArabicDescription).HasColumnName("arabic_description").HasMaxLength(SubscriptionPlanVersion.MaximumDescriptionLength);
+        builder.Property(x => x.EnglishDescription).HasColumnName("english_description").HasMaxLength(SubscriptionPlanVersion.MaximumDescriptionLength);
         builder.HasIndex(x => new { x.Key, x.Version }).IsUnique().HasDatabaseName("ux_subscription_plan_versions_key_version");
 
         builder.OwnsMany(x => x.Benefits, benefit =>
@@ -38,6 +44,8 @@ public sealed class SubscriptionPlanVersionConfiguration : IEntityTypeConfigurat
             benefit.Property<Guid>("SubscriptionPlanVersionId").HasColumnName("subscription_plan_version_id");
             benefit.Property(x => x.Key).HasColumnName("benefit_key").HasConversion<int>().IsRequired();
             benefit.Property(x => x.IsIncluded).HasColumnName("is_included").IsRequired();
+            benefit.Property(x => x.ArabicLabel).HasColumnName("arabic_label").HasMaxLength(SubscriptionBenefit.MaximumLabelLength);
+            benefit.Property(x => x.EnglishLabel).HasColumnName("english_label").HasMaxLength(SubscriptionBenefit.MaximumLabelLength);
             benefit.HasKey("SubscriptionPlanVersionId", nameof(SubscriptionBenefit.Key));
         });
     }

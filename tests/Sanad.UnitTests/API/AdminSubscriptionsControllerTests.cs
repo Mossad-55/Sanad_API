@@ -145,6 +145,49 @@ public sealed class AdminSubscriptionsControllerTests
     }
 
     [Fact]
+    public async Task Plan_create_forwards_the_authored_bilingual_copy_and_benefit_labels()
+    {
+        var sender = new CapturingSender(Result<Guid>.Success(Guid.NewGuid()));
+        var controller = CreateController(sender, UserId.New());
+        var request = new CreateSubscriptionPlanRequest(
+            "managed", 1, 299m, SubscriptionCycle.Monthly, "EGP",
+            [
+                new(SubscriptionBenefitKey.Chatting, true, "محادثات", "Chatting"),
+                new(SubscriptionBenefitKey.Library, true, null, null)
+            ],
+            new SubscriptionLimitRequest(SubscriptionLimitKind.Finite, 10),
+            new SubscriptionLimitRequest(SubscriptionLimitKind.Finite, 20),
+            SubscriptionRollover.None,
+            6755,
+            "الباقة المميزة",
+            "Premium plan",
+            "كل ما تتضمنه الباقة.",
+            "Everything the plan includes.");
+
+        var created = await controller.CreatePlan(request, default);
+
+        Assert.Equal(StatusCodes.Status201Created, Assert.IsType<ObjectResult>(created).StatusCode);
+        var command = Assert.IsType<CreateSubscriptionPlanVersionCommand>(sender.LastRequest);
+        Assert.Equal("الباقة المميزة", command.ArabicName);
+        Assert.Equal("Premium plan", command.EnglishName);
+        Assert.Equal("كل ما تتضمنه الباقة.", command.ArabicDescription);
+        Assert.Equal("Everything the plan includes.", command.EnglishDescription);
+        Assert.Equal("محادثات", command.Benefits.Single(b => b.Key == SubscriptionBenefitKey.Chatting).ArabicLabel);
+        Assert.Equal("Chatting", command.Benefits.Single(b => b.Key == SubscriptionBenefitKey.Chatting).EnglishLabel);
+        Assert.Null(command.Benefits.Single(b => b.Key == SubscriptionBenefitKey.Library).ArabicLabel);
+
+        // The financial terms are forwarded unchanged.
+        Assert.Equal(299m, command.Price);
+        Assert.Equal(SubscriptionCycle.Monthly, command.Cycle);
+        Assert.Equal("EGP", command.Currency);
+        Assert.Equal(SubscriptionLimitKind.Finite, command.MemberLimit.Kind);
+        Assert.Equal(10, command.MemberLimit.Value);
+        Assert.Equal(SubscriptionLimitKind.Finite, command.MonthlyBookingLimit.Kind);
+        Assert.Equal(20, command.MonthlyBookingLimit.Value);
+        Assert.Equal(SubscriptionRollover.None, command.Rollover);
+    }
+
+    [Fact]
     public async Task Maps_duplicate_coupon_code_to_409()
     {
         var controller = CreateController(new CapturingSender(

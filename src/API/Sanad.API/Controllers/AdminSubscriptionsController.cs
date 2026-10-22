@@ -65,10 +65,13 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
 
         var result = await _sender.Send(new CreateSubscriptionPlanVersionCommand(
             request.Key, request.Version, request.Price, request.Cycle, request.Currency,
-            request.Benefits.Select(item => new SubscriptionBenefitInput(item.Key, item.IsIncluded)).ToArray(),
+            request.Benefits.Select(item => new SubscriptionBenefitInput(
+                item.Key, item.IsIncluded, item.ArabicLabel, item.EnglishLabel)).ToArray(),
             new SubscriptionLimitInput(request.MemberLimit.Kind, request.MemberLimit.Value),
             new SubscriptionLimitInput(request.MonthlyBookingLimit.Kind, request.MonthlyBookingLimit.Value),
-            request.Rollover, actorUserId, request.PaymobSubscriptionPlanId), cancellationToken);
+            request.Rollover, actorUserId, request.PaymobSubscriptionPlanId,
+            request.ArabicName, request.EnglishName,
+            request.ArabicDescription, request.EnglishDescription), cancellationToken);
 
         if (result.IsFailure) return PlanFailure(result.Error);
         return StatusCode(StatusCodes.Status201Created, result.Value);
@@ -262,9 +265,19 @@ public sealed record CreateSubscriptionPlanRequest(
     SubscriptionLimitRequest MemberLimit,
     SubscriptionLimitRequest MonthlyBookingLimit,
     SubscriptionRollover Rollover,
-    int? PaymobSubscriptionPlanId = null);
+    int? PaymobSubscriptionPlanId = null,
+    // Version-owned authored copy. Optional: a version may be created without
+    // any copy, and no copy is ever generated or translated.
+    string? ArabicName = null,
+    string? EnglishName = null,
+    string? ArabicDescription = null,
+    string? EnglishDescription = null);
 
-public sealed record SubscriptionBenefitRequest(SubscriptionBenefitKey Key, bool IsIncluded);
+public sealed record SubscriptionBenefitRequest(
+    SubscriptionBenefitKey Key,
+    bool IsIncluded,
+    string? ArabicLabel = null,
+    string? EnglishLabel = null);
 public sealed record SubscriptionLimitRequest(SubscriptionLimitKind Kind, int? Value);
 public sealed record CreateSubscriptionCouponRequest(string Code, Guid SubscriptionPlanVersionId, decimal DiscountPercentage, DateTime ExpiresOnUtc);
 public sealed record CreateSubscriptionTaxRuleRequest(decimal RatePercentage, int Version, DateTime EffectiveOnUtc);

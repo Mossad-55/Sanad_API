@@ -22,7 +22,12 @@ public sealed record AdminSubscriptionPlanResponse(
     DateTime CreatedOnUtc,
     DateTime? PublishedOnUtc,
     IReadOnlyList<SubscriptionBenefitResponse> Benefits,
-    int? PaymobSubscriptionPlanId = null);
+    int? PaymobSubscriptionPlanId = null,
+    // Version-owned authored copy (absent when no copy was authored).
+    string? ArabicName = null,
+    string? EnglishName = null,
+    string? ArabicDescription = null,
+    string? EnglishDescription = null);
 
 public sealed record PagedAdminSubscriptionPlans(
     IReadOnlyList<AdminSubscriptionPlanResponse> Items,
@@ -111,8 +116,16 @@ public sealed class GetAdminSubscriptionPlansQueryHandler
         plan.IsAvailableForNewSales,
         plan.CreatedOnUtc,
         plan.PublishedOnUtc,
-        plan.Benefits.Select(benefit => new SubscriptionBenefitResponse(benefit.Key, benefit.IsIncluded)).ToList(),
-        plan.PaymobSubscriptionPlanId);
+        plan.Benefits.Select(benefit => new SubscriptionBenefitResponse(
+            benefit.Key,
+            benefit.IsIncluded,
+            benefit.ArabicLabel,
+            benefit.EnglishLabel)).ToList(),
+        plan.PaymobSubscriptionPlanId,
+        plan.ArabicName,
+        plan.EnglishName,
+        plan.ArabicDescription,
+        plan.EnglishDescription);
 }
 
 public sealed class GetAdminSubscriptionPlanQueryHandler

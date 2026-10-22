@@ -23,7 +23,7 @@ GET /api/v1/admin/subscriptions/plans?page=1&pageSize=10
 GET /api/v1/admin/subscriptions/plans/{planVersionId}
 ```
 
-Plan reads include publication and availability state, immutable terms, benefits, and timestamps. These reads are safe and do not change configuration or family subscriptions.
+Plan reads include publication and availability state, immutable terms, benefits, and timestamps, plus the bilingual copy authored for that version (see below). These reads are safe and do not change configuration or family subscriptions.
 
 Create a draft plan version:
 
@@ -32,6 +32,8 @@ POST /api/v1/admin/subscriptions/plans
 ```
 
 The request supplies `key`, positive `version`, `price`, `cycle`, `currency` (`EGP`), every existing benefit key with its `isIncluded` value, `memberLimit`, `monthlyBookingLimit`, `rollover`, and optional `paymobSubscriptionPlanId`. The `(key, version)` pair is unique. The response is `201` with the new plan-version ID; invalid terms return `400` and a duplicate pair returns `409`.
+
+The request may also carry the optional bilingual copy for this version: `arabicName`, `englishName`, `arabicDescription`, `englishDescription`, and — per benefit — `arabicLabel` and `englishLabel`. The copy is authored text: the API stores the authored value with surrounding whitespace trimmed, and a whitespace-only value is stored as absent (`null`). It is never generated, translated, or back-filled. Omit a field (or send `null`) to leave that copy absent; versions created before the copy existed keep it absent too. Copy is display-only and never changes price, cycle, currency, limits, rollover, or benefit inclusion. Over-long values are rejected with `400`: names at most 200 characters, descriptions at most 1000, benefit labels at most 200.
 
 The JSON enum values are numeric: `cycle` is `1` Monthly or `2` Annual; each benefit `key` is `1` Chatting, `2` Library, `3` CommunityForum, `4` FamilyActivityTimeline, `5` BasicSearch, `6` AdvancedSearchFilters, `7` MedicalSummaryExportAndSecureSharing, or `8` PremiumContent. Include all eight benefit objects exactly once, each with `key` and boolean `isIncluded`. A limit is `{ "kind": 1, "value": <positive integer> }` for Finite or `{ "kind": 2, "value": null }` for Unlimited. `rollover` is `1` None or `2` NotApplicable.
 
@@ -45,8 +47,8 @@ Example valid premium draft request:
   "cycle": 1,
   "currency": "EGP",
   "benefits": [
-    { "key": 1, "isIncluded": true },
-    { "key": 2, "isIncluded": true },
+    { "key": 1, "isIncluded": true, "arabicLabel": "محادثات", "englishLabel": "Chatting" },
+    { "key": 2, "isIncluded": true, "arabicLabel": "مكتبة", "englishLabel": "Library" },
     { "key": 3, "isIncluded": true },
     { "key": 4, "isIncluded": true },
     { "key": 5, "isIncluded": true },
@@ -57,7 +59,11 @@ Example valid premium draft request:
   "memberLimit": { "kind": 1, "value": 10 },
   "monthlyBookingLimit": { "kind": 1, "value": 20 },
   "rollover": 1,
-  "paymobSubscriptionPlanId": 6755
+  "paymobSubscriptionPlanId": 6755,
+  "arabicName": "الباقة المميزة",
+  "englishName": "Premium plan",
+  "arabicDescription": "كل ما تتضمنه الباقة المميزة.",
+  "englishDescription": "Everything the premium plan includes."
 }
 ```
 

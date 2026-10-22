@@ -8,7 +8,11 @@ using Sanad.Modules.Families.Domain.Subscriptions;
 
 namespace Sanad.Modules.Families.Application.Subscriptions;
 
-public sealed record SubscriptionBenefitResponse(SubscriptionBenefitKey Key, bool IsIncluded);
+public sealed record SubscriptionBenefitResponse(
+    SubscriptionBenefitKey Key,
+    bool IsIncluded,
+    string? ArabicLabel = null,
+    string? EnglishLabel = null);
 
 public sealed record SubscriptionLimitResponse(SubscriptionLimitKind Kind, int? Value);
 
@@ -26,7 +30,13 @@ public sealed record SubscriptionPlanResponse(
     DateTime CreatedOnUtc,
     DateTime? PublishedOnUtc,
     IReadOnlyList<SubscriptionBenefitResponse> Benefits,
-    int? PaymobSubscriptionPlanId = null);
+    int? PaymobSubscriptionPlanId = null,
+    // Version-owned authored copy. Absent on versions whose author supplied
+    // none (and on every version created before the copy existed).
+    string? ArabicName = null,
+    string? EnglishName = null,
+    string? ArabicDescription = null,
+    string? EnglishDescription = null);
 
 public sealed record SubscriptionSnapshotResponse(
     Guid Id,
@@ -106,8 +116,16 @@ public sealed class GetSubscriptionCatalogQueryHandler : IQueryHandler<GetSubscr
             plan.IsAvailableForNewSales,
             plan.CreatedOnUtc,
             plan.PublishedOnUtc,
-            plan.Benefits.Select(benefit => new SubscriptionBenefitResponse(benefit.Key, benefit.IsIncluded)).ToList(),
-            plan.PaymobSubscriptionPlanId);
+            plan.Benefits.Select(benefit => new SubscriptionBenefitResponse(
+                benefit.Key,
+                benefit.IsIncluded,
+                benefit.ArabicLabel,
+                benefit.EnglishLabel)).ToList(),
+            plan.PaymobSubscriptionPlanId,
+            plan.ArabicName,
+            plan.EnglishName,
+            plan.ArabicDescription,
+            plan.EnglishDescription);
 }
 
 public sealed class GetSubscriptionCouponsQueryHandler : IQueryHandler<GetSubscriptionCouponsQuery, IReadOnlyList<SubscriptionCouponResponse>>
