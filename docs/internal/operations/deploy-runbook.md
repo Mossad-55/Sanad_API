@@ -22,7 +22,7 @@ without host wiring has no effect. Prefer the host secret store.
 |---|---|---|
 | `ConnectionStrings__IdentityDatabase` | Fallback for all modules | Loopback or private host only; least-privilege user with migration rights at deploy time |
 | `ConnectionStrings__{Cms,Caregivers,Families,Notifications,Community,Finance,CareHomes,Chat}Database` | Per-module override (each falls back to Identity) | Same as above; set explicitly, never rely on dev defaults |
-| `DOTNET_ENVIRONMENT` / `ASPNETCORE_ENVIRONMENT` | Must be `Production` (or Staging) | Never `Development` on a live host — Development disables migration enforcement and enables seed paths |
+| `DOTNET_ENVIRONMENT` / `ASPNETCORE_ENVIRONMENT` | Must be `Production` (or Staging) | Never `Development` on a live host â€” Development disables migration enforcement and enables seed paths |
 | `ASPNETCORE_URLS` | Listen address | Exact authorized host/port; verify the port is free first |
 | `Paymob__SecretKey` / `Paymob__HmacSecret` | Payment provider | Real vault values on prod; blank means no provider calls leave the machine |
 | `Identity__Sms__SmsMisr__Username/Password/Sender` | SMS provider | Real values on prod; blank disables sending |
@@ -52,9 +52,9 @@ Prove ignore-status before every release: `git check-ignore -v .env deploy/publi
    ```
    The verifier proves the remote revision through the safe anonymous
    `GET /api/v1/deployment/info` endpoint (revision match, no DB details
-   exposed), requires actually applied latest migrations for all 9 contexts
+   exposed), requires actually applied latest migrations for all 10 contexts
    to equal the manifest's required identifiers, checks the optional
-   startup-log 9-context evidence when supplied, and keeps the anonymous
+   startup-log 10-context evidence when supplied, and keeps the anonymous
    smoke `GET /api/v1/lookups/services` at HTTP 200. A local-manifest-only
    check or a single lookup response alone is not release evidence.
 3. Add a feature-specific smoke only when the approved phase contract requires behavior that the deployment verifier does not cover. Do not run unrelated feature flows or real provider calls as a generic deployment gate.
@@ -63,4 +63,4 @@ For a changed Identity verification flow, use sanitized anonymous metadata/on-ho
 
 ## 5. Record evidence (no secrets)
 
-Return to the repo: release revision, manifest revision match, per-context migration counts from the startup log, smoke result, date, and target host alias — never connection strings, tokens, or payloads. File it under the active slice handoff. The former generated release task file is superseded and is not release authorization.
+Return to the repo: release revision, manifest revision match, per-context migration counts from the startup log, smoke result, date, and target host alias â€” never connection strings, tokens, or payloads. File it under the active slice handoff. The former generated release task file is superseded and is not release authorization.

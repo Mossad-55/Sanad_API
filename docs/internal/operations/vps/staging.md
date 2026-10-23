@@ -2,7 +2,7 @@
 
 Never publish `Development` to a publicly reachable host. The isolated
 development/testing VPS runs `Staging` with a separately named test
-database (for example `SanadStagingDb` — never the production database
+database (for example `SanadStagingDb` â€” never the production database
 name, never `SanadBrunoTestDb`, which belongs to local disposable runs).
 
 Templates: `sanad-api.service.template` (systemd, single instance),
@@ -26,7 +26,7 @@ tracked templates live in this directory.
    the migrated database remains compatible with, and the explicit rule
    that lossy down-migrations are never run on populated data.
 5. Durable directories created outside the release folder with
-   least-privilege ownership (commands are templates — run on the host):
+   least-privilege ownership (commands are templates â€” run on the host):
    `install -d -o sanad -g sanad -m 700 /var/sanad/keys`
    `install -d -o sanad -g sanad -m 750 /var/sanad/files`
    `install -d -o sanad -g sanad -m 750 /var/sanad/files-private`
@@ -40,7 +40,7 @@ Staging startup (`Staging` = non-Development) performs ALL of the following
 before accepting traffic; each is a real database/host write:
 
 1. **Module migrations (8 contexts, synchronous, ordered):** Identity, Cms,
-   Caregivers, Families, CareHomes, Notifications, Community, Chat —
+   Caregivers, Families, CareHomes, Notifications, Community, Chat â€”
    `Database.Migrate()` per context. Failure in any context aborts startup.
 2. **Finance migrations (automatic outside Development):** applied whenever
    the environment is not Development, regardless of
@@ -51,8 +51,8 @@ before accepting traffic; each is a real database/host write:
    `Identity:AdminSeed:*` / `Identity:FinanceAdminSeed:*` options are
    configured AND no admin of that kind exists yet; otherwise they are
    no-ops. Set once, verify login, then remove or rotate the seed
-   credentials — never reuse them across hosts.
-4. **Fixture seeder — OFF:** `TestUserDataSeeder.SeedAsync` returns
+   credentials â€” never reuse them across hosts.
+4. **Fixture seeder â€” OFF:** `TestUserDataSeeder.SeedAsync` returns
    immediately when the environment is not Development or when
    `App:TestUserSeed:Enabled=false`. Verify `App__TestUserSeed__Enabled=false`
    in the injected environment; `true` outside Development throws at guard
@@ -87,7 +87,7 @@ before accepting traffic; each is a real database/host write:
 4. `systemctl daemon-reload`, then `systemctl restart sanad-api`.
    The service uses Type=simple: process start does not prove API/migration
    readiness. Wait for successful startup evidence and HTTP verification.
-5. Capture the FULL startup log (`journalctl -u sanad-api`) — it is the
+5. Capture the FULL startup log (`journalctl -u sanad-api`) â€” it is the
    9-context migration evidence. Save it with the release record.
 
 The API processes forwarded scheme/address from the template's loopback nginx
@@ -102,8 +102,8 @@ application logs for diagnosis; do not enable full-request logging on this API.
 
 Run `Verify-SanadDeployment.ps1` with the manifest, the authorized base URL,
 the expected pushed SHA, and the captured startup log path (see
-`docs/internal/operations/deploy-runbook.md` §4). Required: remote revision
-match, 9/9 applied-migration match, startup-log 9-context evidence, and the
+`docs/internal/operations/deploy-runbook.md` Â§4). Required: remote revision
+match, 10/10 applied-migration match, startup-log 10-context evidence, and the
 anonymous smoke at HTTP 200.
 
 ## 5. Rollback
@@ -128,5 +128,5 @@ production host/database/backup/secret/device dependencies named in
 `reports/remaining-vps-readiness.md`. CORS stays `AllowAnyOrigin` by
 explicit owner confirmation (intentional configuration for native clients,
 not a gap); device push proof (Firebase/APNs, physical Android + iPhone)
-and the N≥5 paid-pool aggregate equality remain with their documented
+and the Nâ‰¥5 paid-pool aggregate equality remain with their documented
 owners and are not staging-shipping blockers.
