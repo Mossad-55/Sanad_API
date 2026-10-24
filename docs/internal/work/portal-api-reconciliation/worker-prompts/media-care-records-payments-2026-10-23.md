@@ -2,7 +2,28 @@
 
 ## Control record
 
-### Current execution status — locally accepted; external/release evidence remains blocked
+### Current execution status — RELEASED to production (e29bc2c, 2026-10-24)
+
+**Release (2026-10-24): DONE and verified.** The accepted slice was committed as
+`e29bc2c91e38c2ff76f2c1143ed943e416d9b13f` and pushed to `origin/main`
+(`9433c1d..e29bc2c`), packaged (`deploy/sanad-api-e29bc2c.tar.gz`, SHA-256
+`bccf146a93aca756eebfa04c810085a87433773eaff68e1ca3ad4b3729addad6`) and
+deployed to the established target Production `72.62.92.144:8091`
+(`sanad-api.service`, `/root/sanad-api`, `SanadDb`) with a validated backup
+(884-TOC pg_dump) in `/root/sanad-releases/media-care-payments-e29bc2c-20261024/`.
+The rnt_ gate was cleared before cutover: the retained rentals inventory is
+empty (0 rows in all five tables; families/finance payment and refund tables
+also empty), so the D5 503-reconciliation disposition has nothing pending.
+Verifications: startup applied Cms 1 / Families 1 / Community 1 migrations and
+all nine context checks; `Verify-SanadDeployment.ps1` exit 0 (revision match,
+9/9 heads, Production, smoke 200); former Rentals routes 404; new care-record
+routes 401-protected; retained schema and new schema proven on-host; config
+fingerprints unchanged. No provider/refund/OTP calls, no money movement, no DB
+restore. Limitations (consumer screens, genuine R1 content, wallet E2E, FUR
+fixed-name targets) and the not-implemented queued duplicate-charge support
+model are unchanged follow-ups. Full details:
+`reports/media-care-records-payments-release-2026-10-24.md`. The earlier stop
+point below was superseded by the Owner's explicit release order.
 
 Owner approved the implementation scope and selected all worker models. Serialized
 P1 Rentals removal is now **locally accepted**; P1 handback session:
