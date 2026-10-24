@@ -97,6 +97,7 @@ Enabled when `SecretKey` is set. Otherwise `DevelopmentPaymobClient` serves paym
 |---|---|---|
 | `Paymob__BaseUrl` | `https://accept.paymob.com` | API host. Must **not** end in `/api` — the client appends `/v1/intention/` and `/api/acceptance/...` itself. |
 | `Paymob__SecretKey` | | Dashboard secret key (`sk_test_…` / `sk_live_…`, or Egypt format `egy_sk_test_…` / `egy_sk_live_…`); authorises intention and refund calls (`Authorization: Token …`). |
+| `Paymob__ApiKey` | | Dashboard API key. Only used to exchange for a 60-minute merchant auth token (`POST /api/auth/tokens`) that the subscription-management namespace accepts; required for plan-change amount updates. The secret key is rejected there, so without this key a provider subscription amount can never be updated. |
 | `Paymob__PublicKey` | | Dashboard public key (`pk_…`, or Egypt format `egy_pk_test_…` / `egy_pk_live_…`); handed to the mobile SDK together with the intent `clientSecret`. |
 | `Paymob__HmacSecret` | | HMAC-SHA512 secret verifying webhook callbacks; if unset the webhook endpoint answers `503`. |
 | `Paymob__CardIntegrationId` | | Card integration id (Dashboard → Developers → Payment Integrations). |
@@ -107,6 +108,8 @@ Enabled when `SecretKey` is set. Otherwise `DevelopmentPaymobClient` serves paym
 
 - Test-mode secret keys only pair with test-mode integration ids — mixing modes fails with `404 Integration ID/Name does not exist`.
 - Card enrollment requires both a positive local plan `paymobSubscriptionPlanId` and `Paymob__Card3dsIntegrationId`; the provider `subscription_plan_id` is sent only for that Card path. Wallet remains one-time/manual.
+- Provider subscription plans are created and maintained in the Paymob merchant account with `Authorization: Bearer <auth token from Paymob__ApiKey>` against `POST/GET /api/acceptance/subscription-plans` (note the hyphen — `/api/acceptance/subscriptions/plans` does not exist). Each plan carries `frequency` in days (`30` monthly, `360` annual) and `amount_cents` equal to the **tax-inclusive** recurring gross, because the local catalog price is tax-exclusive.
+- The local mapping is applied by creating a new plan version that carries `paymobSubscriptionPlanId`, publishing it, and retiring the previous version from new sales; a published version's mapping is immutable so already-sold terms can never be rewritten.
 - Subscription callbacks require `Paymob__HmacSecret` and a publicly reachable webhook URL. Provider subscription identity persistence uses the shared registry and callback event idempotency uses the durable callback ledger; the additive callback-state, ledger, and identity-registry migrations must be applied before enabling this callback path. Renewal callbacks preserve the existing seven-day grace and original period-end anchor. Wallet renewal remains manual because wallet recurrence is not claimed.
 - See `docs/app/families/bookings.md` for the payment flow and `POST /api/v1/payments/webhooks/paymob` for the callback contract.
 

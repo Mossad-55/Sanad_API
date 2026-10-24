@@ -103,3 +103,77 @@ Required to finish (merchant-account access is the blocker, not code):
 5. Only then run the sandbox end-to-end proof (checkout → 3DS → verified
    callback → persisted provider subscription → renewal → duplicate callback).
    Production recurrence still needs one real charge under separate authority.
+
+## Merchant-account work performed (owner supplied the api_key, 2026-10-25)
+
+The owner supplied the merchant API key, which unblocked the account side. The
+key was used only on the host, was never printed or committed, and no charge or
+webhook was sent.
+
+Account identified: merchant `1224628`, currency EGP, two integrations — both
+**test** (`is_live: false`): `5897206` (VPC, `online` = the configured
+`Paymob__CardIntegrationId`) and `5897245` (UIG, `online_new` = the wallet
+integration). The intention `payment_keys[].integration` confirms `5897206`.
+There is **no MOTO integration** and no separate 3DS integration object.
+
+`GET /api/acceptance/subscription-plans` returned an **empty catalog**: the
+previously mapped `6755`/`6205` never existed on this account, which is why every
+subscription intention returned `404 invalid subscription plan id`. (Note the
+route: `subscription-plans`, hyphen. `/api/acceptance/subscriptions/plans` does
+not exist, and the plans namespace wants `Authorization: Bearer <auth token>`,
+not the secret key.)
+
+Five provider plans were created, one per distinct sold term, `plan_type: rent`,
+`use_transaction_amount: false`, `number_of_deductions: null`, `reminder_days: 2`,
+`retrial_days: 2`, `integration: 5897206`, `webhook_url` = the Sanad webhook.
+`amount_cents` is the **tax-inclusive** recurring gross from the live charge rule
+(platform fee 10% + tax 5%) applied to the tax-exclusive catalog price:
+
+| Provider plan id | Name | frequency | amount_cents | Local plan version(s) |
+|---|---|---|---|---|
+| `12861` | Sanad Gold Monthly 199 | 30 | 22885 (199.00 → 228.85) | `gold` v1 |
+| `12862` | Sanad Premium Monthly 199 | 30 | 22885 | `premium` v7 |
+| `12863` | Sanad Premium Monthly 50 | 30 | 5750 (50.00 → 57.50) | `premium` v5 |
+| `12864` | Sanad Premium Annual 3000 | 360 | 345000 (3000.00 → 3450.00) | `premium` v6 |
+| `12865` | Sanad Premium Annual 2000 | 360 | 230000 (2000.00 → 2300.00) | `premium` v4 |
+
+Validation: a subscription intention with each of the five ids returns **201**
+with a `client_secret` (charge-free; intentions were never confirmed), where
+`6755`/`6205` returned 404. The mapping is therefore genuinely usable.
+
+## Defect found and fixed: subscription-management authentication
+
+`PaymobClient.UpdateSubscriptionAmountAsync` (used by every plan-change amount
+sync) authenticated the `PUT /api/acceptance/subscriptions/{id}` call with the
+**secret key**. Proven against the live gateway: `Bearer <secret key>` → `401
+{"detail":"Authentication credentials were not provided."}`, while `Bearer <auth
+token>` → `404 {"message":"Subscription not found."}` (authenticated, id absent).
+Every plan change for a provider-backed subscription would therefore have
+failed with `Paymob.GatewayError`.
+
+Fixed by adding `Paymob__ApiKey`, exchanging it at `POST /api/auth/tokens` for a
+merchant auth token cached for 55 minutes, and using that bearer for the update.
+No API key → the call fails closed with `Paymob.NotConfigured` and no request is
+sent. Five new tests pin the contract (token used, not the secret key; token
+cached; fail-closed without a key; fail-closed on a rejected exchange; gateway
+error on a refused update).
+
+## Intentionally NOT done, and why
+
+- **Public enrollment flag left off.** The host still holds a test-mode secret
+  key, so switching on `Paymob__Card3dsIntegrationId` would let a family complete
+  a "payment" with test card data and receive a paid subscription for free. Test
+  plans must not be mapped into Production for the same reason.
+- **No live provider plans.** Minting live plans needs live integration ids,
+  which the API cannot create; the test/live toggle and live onboarding are
+  dashboard/support actions.
+- **No Production plan-version changes.** Mapping is applied by authoring a new
+  version, publishing it, and retiring the old one, and no admin credential is
+  available here; it is also pointless until live ids exist.
+
+Go-live sequence that remains: live onboarding (live integration ids + live
+secret/public keys, dashboard) → create the same five plans against the live
+integration → author new plan versions carrying those ids, publish, retire the
+old ones → set `Paymob__Card3dsIntegrationId` and `Paymob__ApiKey`, restart → the
+flag flips by itself → run the sandbox/live smoke, then one real charge under
+separate authority for Production recurrence evidence.

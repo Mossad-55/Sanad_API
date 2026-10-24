@@ -8,6 +8,13 @@ public sealed class PaymobOptions
 
     public string SecretKey { get; set; } = string.Empty;
 
+    /// <summary>
+    /// Merchant API key used only to obtain an auth token for the subscription
+    /// management API (amount updates). That namespace rejects the secret key,
+    /// so it must never be reused for it.
+    /// </summary>
+    public string ApiKey { get; set; } = string.Empty;
+
     public string PublicKey { get; set; } = string.Empty;
 
     public string HmacSecret { get; set; } = string.Empty;

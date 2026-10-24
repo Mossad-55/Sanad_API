@@ -71,6 +71,8 @@ Creating this resource creates a draft only; it does not publish the plan or act
 
 `paymobSubscriptionPlanId` is the local plan's Paymob subscription-plan mapping. A positive value enables the initial Card enrollment path when the Paymob Card 3DS integration is configured; omit it for plans that must use one-time/manual billing. Plan list/detail reads return the nullable field so administrators can verify the effective mapping. This field is not a persisted provider subscription ID.
 
+A published version's mapping is immutable, so **applying or changing a provider mapping is done by authoring a new version, publishing it, and retiring the previous version from new sales** — never by editing a version that families may already hold. Because the provider plan id differs per Paymob environment (test vs live), a new version is also how a mapping is switched when the merchant account moves from test to live integration ids.
+
 Publish a draft exactly once:
 
 ```text

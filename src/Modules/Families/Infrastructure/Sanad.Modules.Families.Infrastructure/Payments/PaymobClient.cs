@@ -28,6 +28,14 @@ public sealed class PaymobClient : IPaymobClient
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly PaymobOptions _options;
 
+    /// <summary>Merchant auth tokens are valid for 60 minutes; renew with a
+    /// margin so a call never races the expiry.</summary>
+    private static readonly TimeSpan AuthTokenLifetime = TimeSpan.FromMinutes(55);
+
+    private readonly SemaphoreSlim _authTokenGate = new(1, 1);
+    private string? _authToken;
+    private DateTimeOffset _authTokenExpiresUtc;
+
     public PaymobClient(
         IHttpClientFactory httpClientFactory,
         IOptions<PaymobOptions> options)
@@ -363,18 +371,73 @@ public sealed class PaymobClient : IPaymobClient
 
     public async Task<Result> UpdateSubscriptionAmountAsync(string providerSubscriptionId, decimal targetRecurringGross, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_options.SecretKey)) return Result.Failure(new Error("Paymob.NotConfigured", "The payment gateway is not configured."));
+        if (string.IsNullOrWhiteSpace(_options.ApiKey)) return Result.Failure(new Error("Paymob.NotConfigured", "The payment gateway is not configured."));
         if (string.IsNullOrWhiteSpace(providerSubscriptionId) || targetRecurringGross < 0m) return Result.Failure(new Error("Paymob.InvalidSubscription", "The provider subscription update is invalid."));
         try
         {
+            // The subscription management namespace authenticates with a merchant
+            // auth token derived from the API key. It rejects the secret key
+            // outright (401 "credentials were not provided"), so using the secret
+            // key here made every plan-change amount sync fail.
+            string? authToken = await GetSubscriptionAuthTokenAsync(cancellationToken);
+            if (authToken is null) return Result.Failure(new Error("Paymob.GatewayError", "Unexpected payment gateway response."));
+
             HttpClient client = _httpClientFactory.CreateClient("Paymob");
             using var request = new HttpRequestMessage(HttpMethod.Put, $"{_options.BaseUrl}/api/acceptance/subscriptions/{Uri.EscapeDataString(providerSubscriptionId.Trim())}");
-            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {_options.SecretKey}");
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {authToken}");
             request.Content = JsonContent.Create(new { amount_cents = ToCents(targetRecurringGross) });
             using HttpResponseMessage response = await client.SendAsync(request, cancellationToken);
             return response.IsSuccessStatusCode ? Result.Success() : Result.Failure(new Error("Paymob.GatewayError", $"Paymob subscription update failed with status {(int)response.StatusCode}."));
         }
         catch (HttpRequestException) { return Result.Failure(new Error("Paymob.GatewayError", "Unexpected payment gateway response.")); }
+    }
+
+    /// <summary>
+    /// Exchanges the merchant API key for the auth token the subscription
+    /// management API accepts, caching it until shortly before expiry. Returns
+    /// null when no key is configured or the exchange fails, so callers fail
+    /// closed instead of sending a request that cannot be authorised.
+    /// </summary>
+    private async Task<string?> GetSubscriptionAuthTokenAsync(CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_options.ApiKey)) return null;
+
+        string? cached = _authToken;
+        if (cached is not null && DateTimeOffset.UtcNow < _authTokenExpiresUtc) return cached;
+
+        await _authTokenGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            cached = _authToken;
+            if (cached is not null && DateTimeOffset.UtcNow < _authTokenExpiresUtc) return cached;
+
+            HttpClient client = _httpClientFactory.CreateClient("Paymob");
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"{_options.BaseUrl}/api/auth/tokens");
+            request.Content = JsonContent.Create(new { api_key = _options.ApiKey });
+            using HttpResponseMessage response = await client.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode) return null;
+
+            string body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+            if (!TryParseJson(body, out JsonElement root)
+                || !root.TryGetProperty("token", out JsonElement token)
+                || token.ValueKind != JsonValueKind.String
+                || string.IsNullOrWhiteSpace(token.GetString()))
+            {
+                return null;
+            }
+
+            _authToken = token.GetString();
+            _authTokenExpiresUtc = DateTimeOffset.UtcNow.Add(AuthTokenLifetime);
+            return _authToken;
+        }
+        catch (Exception exception) when (exception is JsonException or HttpRequestException)
+        {
+            return null;
+        }
+        finally
+        {
+            _authTokenGate.Release();
+        }
     }
 
     /// <summary>
