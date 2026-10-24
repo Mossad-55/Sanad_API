@@ -56,6 +56,34 @@ The eligible-residents read returns the same resident set the create path accept
 `{ "elderlyId": "...", "arabicName": "...", "englishName": "...", "careHomeBookingId": "..." }`. One booking per resident is returned (the deterministic first match after ordering by Arabic name, English name, elderly id, then booking id); other eligible bookings for the same resident are not returned.
 A missing or malformed `facilityId` or `startsAt` is rejected by ASP.NET model binding as a framework `400`; only an all-zero `facilityId` (`00000000-…`) or a default `startsAt` (`0001-01-01…`) reaches the handler and returns `400 CareHomes.Visits.InvalidRequest`. The caller must belong to an active Family or the route returns `404`. A resident is eligible only when the caller's Family has an accepted, paid, not-yet-checked-out booking at that facility whose `StartDate <=` the Cairo-local date of `startsAt` `< EndDate`. The read filters by the requested facility only and does not re-assert that the facility is approved or publicly eligible; it returns the caller's own residents for that facility and discloses no other family's data. The create path additionally requires an approved, publicly eligible facility and returns `CareHomes.Discovery.NotFound` otherwise.
 
+### Response shapes and OpenAPI parity
+
+Every successful family or owner visit read or mutation returns the stored
+visit object: `id`, `facilityId`, `familyId`, `kind` (`1` Prospective, `2`
+Resident), nullable `elderlyId`, `visitorName`, `visitorPhone`,
+`visitorCount`, UTC `startsAt`/`endsAt`, numeric `status`, nullable
+`rescheduleOfVisitId`, `decisionExpiresAt`, nullable decision facts
+(`decidedByUserId`, `decidedAt`, `decisionReason`), nullable cancellation
+facts (`cancelledByUserId`, `cancelledAt`, `cancellationReason`), and
+`createdAt`. All family and owner visit routes publish their typed success
+schemas and failure statuses in `/openapi/v1.json`. Every `4xx` entry
+documents the ProblemDetails schema — the generator's `[ApiController]`
+client-error mapping adds it even to status-only annotations, and OpenAPI
+has a single response object per status. OpenAPI therefore cannot express
+the empty-body variants: at runtime the guards documented here answer some
+family `400`/`404` cases with no body (a caller whose account resolves to no
+active Family gets an empty `404` before the handler runs; a Prospective
+create with an `elderlyId`, or a Resident create whose `elderlyId` is not in
+the Family, answers a bodyless `400`/`404`), handler-scoped failures return
+the coded ProblemDetails form, and the JWT challenge/policy denial answer
+`401`/`403` with empty bodies even though the document shows ProblemDetails.
+Consumers must accept both shapes on these statuses. The documented codes:
+`400 CareHomes.Visits.InvalidRequest`, `404 CareHomes.Visits.NotFound`
+(`CareHomes.Discovery.NotFound` when the public availability or create check
+rejects the facility), and `409 CareHomes.Visits.InvalidState` /
+`CareHomes.Visits.Conflict` / `CareHomes.Visits.CapacityConflict` /
+`CareHomes.Visits.IdempotencyConflict` as ProblemDetails.
+
 Availability slots use the `Africa/Cairo` time zone (Windows fallback `Egypt Standard Time`) and return UTC-offset timestamps plus remaining capacity. Slots must fit both the facility's operating hours and its family visiting windows; facility closure dates suppress all slots. Ambiguous or invalid Cairo-local DST times are omitted. Requests need at least 24 hours' notice. Pending requests hold visitor capacity and expire after 24 hours if the facility has not decided.
 
 ## Facility-owner routes

@@ -2690,11 +2690,29 @@
               ],
               "body": {
                 "mode": "raw",
-                "raw": "{\n  \"paymentAttemptId\": \"0198e2c1-2222-7777-8888-000000000001\",\n  \"idempotencyKey\": \"dup-0198e2c1-2222-7777-8888-000000000001\",\n  \"evidenceReference\": \"Paymob double capture 000123\"\n}"
+              "raw": "{\n  \"paymentAttemptId\": \"0198e2c1-2222-7777-8888-000000000001\",\n  \"idempotencyKey\": \"dup-0198e2c1-2222-7777-8888-000000000001\",\n  \"evidenceReference\": \"Paymob double capture 000123\",\n  \"claimSubmission\": true\n}"
               },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/refunds/duplicate-charge"
             },
-            "description": "Owner only; refunds the FULL captured amount of one succeeded subscription payment attempt (never prorated). Returns 200 with { refundCaseId, awardedMinorUnits, currency, outcome 2 (DuplicateCharge), isReplay }. Errors: 403 Subscriptions.Refund.NotOwner, 404 Subscriptions.Refund.NothingToRefund (missing or not-succeeded attempt), 400 Subscriptions.Refund.MalformedInput for a non-UTC recordedOnUtc or an attempt with no server-side subscription link, 409 Subscriptions.Refund.IdempotencyConflict when the same idempotency key is reused with different content, Subscriptions.Refund.ExceedsCaptured when the full amount no longer fits what that attempt captured (a duplicate charge and a shutdown against the same paid period share one per-capture budget, so neither can refund the same captured money twice and an older period's funds supply no headroom). recordedOnUtc is an optional audit instant (defaults to now). A refund case is derived from the payment attempt, so a retry can never open a second case for one charge. Manual fixture only; do not replay against shared data."
+            "description": "Owner only. The explicit claimSubmission:true flag is required; absent/false returns 400 Subscriptions.Refund.MigratedToClaim and never pays. Successful submission returns 201 with a customer-safe claim view; same-key replay returns 200. The server derives the full verified basis from the succeeded capture and refuses with 409 Subscriptions.Refund.ExceedsCaptured if the remaining capture budget cannot fund the full amount; it never trims or pays on submission. recordedOnUtc is optional and customer-reported only (UTC if supplied); decision/execution/reconciliation times are server-stamped. Errors: 403 Subscriptions.Refund.NotOwner; 404 Subscriptions.Refund.NothingToRefund; 400 Subscriptions.Refund.MalformedInput; 409 Subscriptions.Refund.CaptureAlreadyClaimed, ExceedsCaptured, or IdempotencyConflict. A rejected claim remains history but allows resubmission with a distinct key and new evidence. Manual fixture only; do not replay against shared data."
+          },
+          {
+            "name": "List my duplicate-charge claims",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{ familyToken }}" }],
+              "url": "{{baseUrl}}/api/v1/family/subscriptions/refunds/duplicate-charge"
+            },
+            "description": "Owner only. Returns this family's customer-safe claim views newest first; excludes verified bases, internal notes, evidence references, actor ids, execution attempt ids, provider references and provider error codes. Safe read for a family fixture."
+          },
+          {
+            "name": "Get my duplicate-charge claim",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{ familyToken }}" }],
+              "url": "{{baseUrl}}/api/v1/family/subscriptions/refunds/duplicate-charge/{{duplicateChargeClaimId}}"
+            },
+            "description": "Owner only. Returns the same customer-safe projection as the list. Foreign and unknown claim ids share the probe-safe 404 Subscriptions.Refund.ClaimNotFound."
           },
           {
             "name": "Re-enable subscription auto-renew",
@@ -2928,6 +2946,12 @@
         "value": "",
         "type": "string",
         "description": "Set from payment history for detail or an approved duplicate-charge fixture."
+      },
+      {
+        "key": "duplicateChargeClaimId",
+        "value": "",
+        "type": "string",
+        "description": "Set from duplicate-charge claim submission or list."
       }
     ]
   }

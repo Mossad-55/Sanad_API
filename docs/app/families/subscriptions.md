@@ -371,7 +371,7 @@ not decoration.
 | Outcome | Trigger | Amount |
 | --- | --- | --- |
 | Cancellation (`CancelRenewal`, `1`) | Owner disables auto-renew | Nothing for the current period; access continues to the period end |
-| Duplicate charge (`DuplicateCharge`, `2`) | An erroneous or duplicate charge | The whole captured amount, refunded in full — never prorated |
+| Duplicate charge (`DuplicateCharge`, `2`) | An erroneous or duplicate charge | The whole captured amount, refunded in full — never prorated — after a Support-approved verdict |
 | Service shutdown (`ServiceShutdown`, `3`) | Ahlena service shutdown | The unused portion of the current paid period |
 
 These rules apply to a family premium subscription and to a care-home listing subscription
@@ -395,39 +395,77 @@ recorded outcome and reusing the same key with **different** content returns `40
 Subscriptions.Refund.IdempotencyConflict`. Omitting the key keeps the lifecycle exactly as before
 and records no movement.
 
-### Duplicate charge
+### Duplicate charge (support-approved claim)
 
-`POST /api/v1/family/subscriptions/refunds/duplicate-charge` is Owner-only and refunds the full
-captured amount of one succeeded subscription payment attempt:
+A duplicate or erroneous charge is still refunded **in full** — never prorated — but the direct
+auto-award is retired: the money now moves only after a Support verdict. The same retained address
+submits a claim, and submission requires the explicit opt-in `claimSubmission: true`:
 
 ```json
 {
   "paymentAttemptId": "0198e2c1-2222-7777-8888-000000000001",
   "idempotencyKey": "dup-0198e2c1-2222-7777-8888-000000000001",
-  "evidenceReference": "Paymob double capture 000123"
+  "evidenceReference": "Paymob double capture 000123",
+  "claimSubmission": true
 }
 ```
 
-The response is the recorded outcome:
+Calling the address **without** the opt-in (or with `false`) is fail-closed: it returns
+`400 Subscriptions.Refund.MigratedToClaim` and never pays. Submission derives everything
+server-side — the succeeded capture, and the **full verified basis** from that attempt's settled
+payable (never caller-supplied, never trimmed, refused with `409
+Subscriptions.Refund.ExceedsCaptured` when the capture can no longer fund the full basis) —
+and never moves money: approval is the Finance support decision, and execution is a separate
+SuperAdmin-only step on the admin surface. A new claim is `201`; replaying the same idempotency key
+with the same content returns `200` with the original claim and `isReplay: true`.
+
+At most one **live** (not rejected) claim may stand for a family + capture, enforced by a partial
+unique index. Rejection is terminal for that claim — it stays on record and readable — but it does
+**not** keep the slot: the family may resubmit with a distinct idempotency key and new evidence, and
+both claims remain listed. The old key keeps replaying the original rejected claim. The one-award
+guarantee never relies on this count; the refund case and the capture budget still cap the capture
+at one full-basis payment.
+
+The response is the family claim view:
 
 ```json
 {
+  "claimId": "0198e2c1-4444-7777-8888-000000000004",
   "refundCaseId": "0198e2c1-3333-7777-8888-000000000001",
-  "awardedMinorUnits": 15000,
+  "paymentAttemptId": "0198e2c1-2222-7777-8888-000000000001",
+  "subscriptionId": "0198e2c1-1111-7777-8888-000000000001",
+  "eligibleMinorUnits": 34086,
   "currency": "EGP",
-  "outcome": 2,
+  "claimState": 1,
+  "payoutStatus": "pending",
+  "familyReason": null,
+  "submittedOnUtc": "2026-10-24T08:00:00Z",
+  "decidedOnUtc": null,
   "isReplay": false
 }
 ```
 
-`PaymentAttemptId` must be a succeeded attempt belonging to the caller's family. `recordedOnUtc` is
-an optional audit instant (defaults to now) and must be UTC. Errors are `403
+Families read their own claims on the same surface: `GET
+/api/v1/family/subscriptions/refunds/duplicate-charge` (newest first) and `GET
+/api/v1/family/subscriptions/refunds/duplicate-charge/{claimId}`. A foreign or unknown claim id is
+the same probe-safe `404 Subscriptions.Refund.ClaimNotFound`. The view is deliberately
+customer-safe: coarse `claimState`/`payoutStatus` (`pending`, `rejected`, `approved`,
+`processing`, `failed`, `completed`) and the customer-facing `familyReason` when there is one —
+never the verified basis, internal notes, evidence references, decision or executor ids, execution
+attempt ids, provider refund references or provider error codes.
+
+`paymentAttemptId` must be a succeeded attempt belonging to the caller's family. `recordedOnUtc`
+is an optional **customer-reported** instant (audit only; defaults to the server's now, and must be
+UTC when supplied). The family never supplies support decision, execution or reconciliation times —
+those audit instants are server-authoritative on the admin surface. Errors are `403
 Subscriptions.Refund.NotOwner`, `404 Subscriptions.Refund.NothingToRefund` (a missing or
 not-succeeded attempt), `400 Subscriptions.Refund.MalformedInput` (a non-UTC `recordedOnUtc`, or an
 attempt with no server-side subscription link and therefore no refundable capture to claim against),
-and `409 Subscriptions.Refund.IdempotencyConflict` when the same key is reused with different content.
-`Subscriptions.Refund.ExceedsCaptured` is returned when the full award no longer fits what that
-attempt captured.
+`409 Subscriptions.Refund.CaptureAlreadyClaimed` when a live claim (or an already-paid historical
+award) already consumes that capture — a rejected claim never blocks, resubmit instead —
+`409 Subscriptions.Refund.ExceedsCaptured` when the capture no longer funds
+the full basis, and `409 Subscriptions.Refund.IdempotencyConflict` when the same key is reused with
+different content.
 
 ### Service shutdown
 

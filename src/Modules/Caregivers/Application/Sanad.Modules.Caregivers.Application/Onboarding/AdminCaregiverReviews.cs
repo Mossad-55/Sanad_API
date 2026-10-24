@@ -9,6 +9,13 @@ using Sanad.Modules.Caregivers.Domain.Caregivers;
 
 namespace Sanad.Modules.Caregivers.Application.Onboarding;
 
+/// <summary>
+/// One row of the paged admin caregiver list. <see cref="IdentityPresent"/>
+/// means ONLY that an identity.users row was joined on the configured query
+/// target during this read. It does not by itself distinguish why a join
+/// missed (missing row, wrong user id, or a split/stale target), and a
+/// <c>false</c> value is not authoritative cross-target identity absence.
+/// </summary>
 public sealed record AdminCaregiverListItem(
     Guid CaregiverId,
     Guid UserId,
@@ -18,7 +25,8 @@ public sealed record AdminCaregiverListItem(
     string? ArabicFullName,
     string? EnglishFullName,
     string? PhoneNumber,
-    DateTime UpdatedOnUtc);
+    DateTime UpdatedOnUtc,
+    bool IdentityPresent);
 
 public sealed record PagedCaregiverList(
     int Page,

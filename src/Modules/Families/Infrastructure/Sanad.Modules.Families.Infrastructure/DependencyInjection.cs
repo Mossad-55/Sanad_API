@@ -6,6 +6,7 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Infrastructure.Payments;
 using Sanad.Modules.Families.Infrastructure.Data;
+using Sanad.Modules.Finance.Application;
 
 namespace Sanad.Modules.Families.Infrastructure;
 
@@ -60,6 +61,11 @@ public static class DependencyInjection
         {
             services.AddSingleton<IPaymobClient, PaymobClient>();
         }
+
+        // Finance's duplicate-charge claim execution resolves its provider
+        // charge on the purchase owner's side: same client, same outcome
+        // mapping as every other refund path.
+        services.AddScoped<ISubscriptionRefundGateway, SubscriptionRefundGateway>();
 
         return services;
     }

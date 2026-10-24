@@ -51,6 +51,14 @@ public static class DependencyInjection
         services.AddScoped<IComplaintReviewReader>(sp => sp.GetRequiredService<ComplaintReviewStore>());
         services.AddScoped<SubscriptionRefundRecorder>();
         services.AddScoped<ISubscriptionRefundRecorder>(sp => sp.GetRequiredService<SubscriptionRefundRecorder>());
+        // The duplicate-charge claim workflow (Support approval + execution).
+        // The store's ISubscriptionRefundGateway dependency is deliberately
+        // registered by the purchase owner (Families) — Finance persists and
+        // decides, the provider client lives where the charge transactions
+        // live. Resolution succeeds wherever both modules are composed.
+        services.AddScoped<DuplicateChargeClaimStore>();
+        services.AddScoped<IDuplicateChargeClaimStore>(sp => sp.GetRequiredService<DuplicateChargeClaimStore>());
+        services.AddScoped<IDuplicateChargeClaimReader>(sp => sp.GetRequiredService<DuplicateChargeClaimStore>());
         return services;
     }
 }

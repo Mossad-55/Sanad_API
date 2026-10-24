@@ -267,6 +267,67 @@ public sealed class ReadableNotificationTests
     }
 
     // ---------------------------------------------------------------
+    // Chat seam: Arabic default and ids kept off the copy.
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public async Task Chat_seam_localizes_an_unknown_recipient_to_arabic_and_keeps_ids_off_the_copy()
+    {
+        // The chat producer localizes from the recipient's PERSISTED language.
+        // With no persisted language anywhere (the ArabicDefault gateway), the
+        // documented Arabic default applies — the F8 complement to the English
+        // pin in ChatMessageNotificationTests, which already owns replay
+        // idempotency and the ids-only command shape.
+        await using NotificationsDbContext notifications = new(
+            new DbContextOptionsBuilder<NotificationsDbContext>()
+                .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        Guid recipient = UserId.New().Value;
+        Guid conversationId = Guid.NewGuid();
+        Guid messageId = Guid.NewGuid();
+        var languages = FixedNotificationLanguageGateway.ArabicDefault;
+        var handler = new CreateChatMessageNotificationCommandHandler(notifications, languages);
+
+        var created = await handler.Handle(
+            new CreateChatMessageNotificationCommand(
+                recipient, conversationId, messageId, DateTime.UtcNow),
+            CancellationToken.None);
+
+        Assert.True(created.IsSuccess, created.IsFailure ? created.Error.Code : null);
+
+        Notification row = Assert.Single(await notifications.Notifications.AsNoTracking().ToListAsync());
+
+        // Arabic default copy, distinct from every released English title.
+        NotificationCopy arabic = NotificationTextCatalog.ChatNewMessage(UiLanguage.Arabic);
+        Assert.Equal(arabic.Title, row.Title);
+        Assert.Equal(arabic.Body, row.Body);
+        Assert.NotEqual(
+            NotificationTextCatalog.ChatNewMessage(UiLanguage.English).Title, row.Title);
+
+        // No raw routing id in the human copy — in EITHER string form of
+        // BOTH ids (the structured formats and the compact key form).
+        string copy = row.Title + row.Body;
+        Assert.DoesNotContain(conversationId.ToString("D"), copy, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(conversationId.ToString("N"), copy, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(messageId.ToString("D"), copy, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(messageId.ToString("N"), copy, StringComparison.OrdinalIgnoreCase);
+
+        // Routing-metadata separation: the ids ride ONLY on the structured
+        // destination pair and the idempotency key.
+        Assert.Equal("ChatConversation", row.DestinationEntityKind);
+        Assert.Equal(conversationId, row.DestinationEntityId);
+        Assert.Equal(
+            CreateChatMessageNotificationCommandHandler.BuildIdempotencyKey(messageId, recipient),
+            row.IdempotencyKey);
+        Assert.Contains(messageId.ToString("N"), row.IdempotencyKey, StringComparison.Ordinal);
+
+        // The whole direct-message fan-out is one batched language lookup
+        // carrying exactly the alert's single recipient.
+        Assert.Equal(1, languages.LookupCount);
+        Guid requested = Assert.Single(languages.RequestedIds);
+        Assert.Equal(recipient, requested);
+    }
+
+    // ---------------------------------------------------------------
     // Care-home producers.
     // ---------------------------------------------------------------
 

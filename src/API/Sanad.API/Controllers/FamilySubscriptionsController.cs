@@ -8,6 +8,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Domain.Subscriptions;
+using Sanad.Modules.Finance.Application;
 
 namespace Sanad.API.Controllers;
 
@@ -34,9 +35,18 @@ public sealed record RefundDuplicateSubscriptionChargeRequest(
     Guid PaymentAttemptId,
     string? IdempotencyKey = null,
     string? EvidenceReference = null,
-    // Optional audit instant. When omitted the handler stamps the current UTC
-    // time; when supplied it must be UTC (a non-UTC value is a clean 400).
-    DateTime? RecordedOnUtc = null);
+    // Optional CUSTOMER-REPORTED instant of the reported duplicate observation:
+    // audit-only context the family supplies, never a support decision time.
+    // When omitted the handler stamps the server's current UTC time; when
+    // supplied it must be UTC (a non-UTC value is a clean 400). Decision,
+    // execution and reconciliation instants are server-authoritative on the
+    // admin surface and are never accepted from the family.
+    DateTime? RecordedOnUtc = null,
+    // Support-approval migration opt-in: the explicit switch that moves this
+    // address from the retired direct auto-award onto claim submission. The
+    // flag is fail-closed — an absent or false value is the documented 400
+    // (Subscriptions.Refund.MigratedToClaim), never a silent award.
+    bool ClaimSubmission = false);
 
 [Authorize(Policy = AuthorizationPolicies.FamilyAccess)]
 [Route("api/v1/family/subscriptions")]
@@ -363,13 +373,18 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
 
     /// <summary>
     /// Clause 9: a duplicate or erroneous subscription charge is refunded
-    /// <em>in full</em> (never prorated). The family owner names the charge; the
-    /// full captured amount is recorded through shared Finance under an
-    /// idempotency key so a retry replays the recorded outcome instead of paying
-    /// twice.
+    /// <em>in full</em> (never prorated) — but only after a Support verdict.
+    /// This retained address is the explicit migration path: claim submission
+    /// requires the <c>claimSubmission: true</c> opt-in, and the retired
+    /// direct auto-award refuses everything else fail-closed. Submission never
+    /// pays; the created claim is decided and executed by SuperAdmin/
+    /// SupportAdmin surfaces. Replays (same idempotency key, same shape) return
+    /// 200 with the original claim; a fresh claim is 201.
     /// </summary>
     [HttpPost("refunds/duplicate-charge")]
-    [ProducesResponseType(typeof(SubscriptionRefundResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(FamilyDuplicateChargeClaimView), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(FamilyDuplicateChargeClaimView), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
@@ -378,15 +393,90 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
         CancellationToken cancellationToken)
     {
         if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
-        var result = await _sender.Send(
-            new RefundDuplicateSubscriptionChargeCommand(
+
+        if (!request.ClaimSubmission)
+        {
+            return Problem(
+                StatusCodes.Status400BadRequest,
+                DuplicateChargeClaimSubmissionErrors.MigratedToClaim);
+        }
+
+        Result<FamilyDuplicateChargeClaimView> result = await _sender.Send(
+            new SubmitDuplicateChargeClaimCommand(
                 userId,
                 request.PaymentAttemptId,
                 request.IdempotencyKey,
                 request.EvidenceReference,
                 request.RecordedOnUtc),
             cancellationToken);
-        return ToSubscriptionRefundResult(result);
+        return ToDuplicateChargeClaimResult(result);
+    }
+
+    /// <summary>
+    /// The family's own duplicate-charge claims, newest first. Deliberately
+    /// restricted to the customer-facing projection: coarse claim/payout state
+    /// and the customer-facing reason — never the verified basis, internal
+    /// notes, evidence, actor ids, provider references or attempt ids.
+    /// </summary>
+    [HttpGet("refunds/duplicate-charge")]
+    [ProducesResponseType(typeof(IReadOnlyList<FamilyDuplicateChargeClaimView>), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> ListDuplicateChargeClaims(CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        Result<IReadOnlyList<FamilyDuplicateChargeClaimView>> result = await _sender.Send(
+            new ListMyDuplicateChargeClaimsQuery(userId),
+            cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : ClaimProblem(result.Error);
+    }
+
+    /// <summary>
+    /// One of the family's own claims; a foreign or unknown id is the same
+    /// probe-safe 404.
+    /// </summary>
+    [HttpGet("refunds/duplicate-charge/{claimId:guid}")]
+    [ProducesResponseType(typeof(FamilyDuplicateChargeClaimView), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetDuplicateChargeClaim(
+        Guid claimId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        Result<FamilyDuplicateChargeClaimView> result = await _sender.Send(
+            new GetMyDuplicateChargeClaimQuery(userId, claimId),
+            cancellationToken);
+        return result.IsSuccess ? Ok(result.Value) : ClaimProblem(result.Error);
+    }
+
+    private IActionResult ToDuplicateChargeClaimResult(Result<FamilyDuplicateChargeClaimView> result)
+    {
+        if (result.IsSuccess)
+        {
+            return result.Value.IsReplay
+                ? Ok(result.Value)
+                : CreatedAtAction(nameof(GetDuplicateChargeClaim), new { claimId = result.Value.ClaimId }, result.Value);
+        }
+        return ClaimProblem(result.Error);
+    }
+
+    private IActionResult ClaimProblem(Error error)
+    {
+        int status = error.Code switch
+        {
+            "Subscriptions.Refund.MigratedToClaim" or "Subscriptions.Refund.MalformedInput" =>
+                StatusCodes.Status400BadRequest,
+            "Subscriptions.Refund.NotOwner" => StatusCodes.Status403Forbidden,
+            "Subscriptions.Refund.NothingToRefund" or "Subscriptions.Refund.ClaimNotFound" =>
+                StatusCodes.Status404NotFound,
+            "Subscriptions.Refund.IdempotencyConflict" or
+                "Subscriptions.Refund.CaptureAlreadyClaimed" or
+                "Subscriptions.Refund.ExceedsCaptured" or
+                "Subscriptions.Refund.FinanceRejected" or
+                "Subscriptions.Refund.LegacyRetired" => StatusCodes.Status409Conflict,
+            _ => StatusCodes.Status409Conflict
+        };
+        return Problem(status, error);
     }
 
     private IActionResult ToSubscriptionRefundResult(Result<SubscriptionRefundResponse> result)

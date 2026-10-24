@@ -87,6 +87,54 @@ The plan must be published and available for new sales. Retirement sets `isAvail
 
 Each successful retirement appends an immutable audit record containing the plan version ID, plan key/version snapshot, actor user ID, actor role (`SuperAdmin`), old/new availability, and the UTC retirement timestamp. The plan mutation and audit insert are committed by one save operation.
 
+## Duplicate charge claims
+
+Family duplicate-charge claims (submitted on the retained family address with the explicit
+`claimSubmission: true` opt-in) are decided and executed on the refund-workflow admin surface:
+
+```text
+GET /api/v1/admin/finance/subscription-refunds/duplicate-charge?state=&executionState=&familyId=
+GET /api/v1/admin/finance/subscription-refunds/duplicate-charge/{claimId}
+POST /api/v1/admin/finance/subscription-refunds/duplicate-charge/{claimId}/approve
+POST /api/v1/admin/finance/subscription-refunds/duplicate-charge/{claimId}/reject
+POST /api/v1/admin/finance/subscription-refunds/duplicate-charge/{claimId}/execute
+POST /api/v1/admin/finance/subscription-refunds/duplicate-charge/{claimId}/reconcile
+```
+
+The surface is gated by the refund-workflow policy (SuperAdmin + SupportAdmin). **Approve** and
+**reject** are review decisions and exercise that reviewer role; **execute** and **reconcile** move
+or book actual gateway money and are additionally gated to SuperAdmin only, both by the nested
+policy and inside the application seam. Approve records the verdict, reserves the capture budget for
+the claim's FULL verified basis, and opens the ledger entry in one transaction — the basis is never
+trimmed; when the capture can no longer fund it, the approval is refused with
+`Finance.DuplicateClaim.CaptureBasisUnavailable` and nothing is written. Reject requires a
+customer-facing `familyReason`.
+
+Request bodies carry no decision or reconciliation timestamps: the support decision,
+execution and reconciliation audit instants are stamped server-side from the injected
+`IDateTimeProvider.UtcNow` at action time. The only family-supplied instant in the
+whole workflow remains the submission's optional customer-reported `recordedOnUtc`.
+
+A rejected claim is terminal on itself but does **not** bar the family: an active-claim partial
+unique index (restored R1 rule) allows at most one live claim per family + capture, so after a
+rejection the family resubmits with a distinct idempotency key and new evidence while the rejected
+row stays readable history on the family list. The rejected claim's own idempotency key keeps
+replaying it. The one-award guarantee stays on the refund case and the capture budget, never on
+the claim count.
+
+Execution persists its intent (a new execution attempt id and a staged transfer) **before** the
+provider call, then maps the call to confirmed, refused, or unconfirmed. An unconfirmed outcome
+leaves the claim ambiguous — money may or may not have moved — and blocks every transition except
+its explicit reconciliation. Reconciliation is bound to the execution attempt id it was prepared
+for: recording the refund as **moved** requires the provider's own refund reference; recording it
+as **NOT moved** requires the affirmative, operator-verified provider evidence reference — a
+point-in-time absence of a refund never settles an attempt. There is no begin-review pickup phase
+and no notification fan-out; the state machine is submit → approve/reject → execute → reconcile.
+
+The admin view exposes every internal field (family and attempt ids, idempotency key, evidence
+references, decision actors, verified basis, execution attempt ids, provider references, error
+codes); the family view on the same claim deliberately does not.
+
 ## Coupon configuration
 
 Coupon configuration uses the same `SubscriptionPlanAdmin` policy as plan authoring: a normal JWT

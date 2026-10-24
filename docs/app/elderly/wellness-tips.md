@@ -20,6 +20,10 @@ Each item contains `id`, bilingual `arabicTitle` and `englishTitle`,
 `sections`. Sections are ordered by `displayOrder` and contain bilingual
 `arabicText` and `englishText`.
 
+`category` is the free-text string the CMS author entered — a plain string of
+at most 100 characters with no taxonomy or fixed picklist behind it. Treat it
+as display text, not a stable enum; this surface has no category filter.
+
 This slice has no featured, search, category-filter, save/read, view metrics,
 static fallback, or sample content behavior. Clinical review state and tenant
 scope are not represented by the API and remain **Needs Owner Verification**.

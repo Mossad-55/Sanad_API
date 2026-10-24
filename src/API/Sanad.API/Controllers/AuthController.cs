@@ -264,6 +264,9 @@ public sealed class AuthController :
     [HttpPost("password/reset/request")]
     [ProducesResponseType(
         StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> RequestPasswordReset(
         [FromBody] RequestPasswordResetRequest request,
         CancellationToken cancellationToken)
@@ -282,6 +285,9 @@ public sealed class AuthController :
     [HttpPost("password/reset")]
     [ProducesResponseType(
         StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status401Unauthorized)]
@@ -307,6 +313,9 @@ public sealed class AuthController :
     [HttpPost("password/change")]
     [ProducesResponseType(
         StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status401Unauthorized)]
@@ -341,6 +350,8 @@ public sealed class AuthController :
     [ProducesResponseType(
     typeof(ProblemDetails),
     StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> LogoutCurrentSession(
     CancellationToken cancellationToken)
     {
@@ -389,6 +400,8 @@ public sealed class AuthController :
     [HttpPost("sessions/logout-all")]
     [ProducesResponseType(
         StatusCodes.Status204NoContent)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> LogoutAllSessions(
         CancellationToken cancellationToken)
     {
@@ -427,6 +440,8 @@ public sealed class AuthController :
     [ProducesResponseType(
         typeof(ActiveSessionsResponse),
         StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetActiveSessions(
         CancellationToken cancellationToken)
     {
@@ -455,6 +470,8 @@ public sealed class AuthController :
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> RevokeSession(
         Guid sessionId,
         CancellationToken cancellationToken)
@@ -491,10 +508,26 @@ public sealed class AuthController :
             result);
     }
 
+    /// <summary>
+    /// Streams the caller's stored avatar image. The content type is always
+    /// one of the accepted upload types (jpeg, png, webp); a missing avatar is
+    /// <c>404 Identity.Avatar.NotFound</c>.
+    /// </summary>
     [Authorize(
         Policy =
             AuthorizationPolicies.NormalAccess)]
     [HttpGet("avatar")]
+    [Produces("image/jpeg", "image/png", "image/webp")]
+    [ProducesResponseType(
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status409Conflict)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetAvatar(
         CancellationToken cancellationToken)
     {
@@ -536,6 +569,8 @@ public sealed class AuthController :
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status409Conflict)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpsertAvatar(
         IFormFile? file,
         CancellationToken cancellationToken)
@@ -590,6 +625,8 @@ public sealed class AuthController :
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetIdentityDocument(
         CancellationToken cancellationToken)
     {
@@ -624,6 +661,8 @@ public sealed class AuthController :
     [ProducesResponseType(
         typeof(ProblemDetails),
         StatusCodes.Status409Conflict)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> UpsertIdentityDocument(
         IFormFile? front,
         IFormFile? back,

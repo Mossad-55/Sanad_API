@@ -17,7 +17,7 @@ Query parameters (all optional):
 - `status` — `1` Onboarding, `2` PendingReview, `3` NeedsCorrection, `4` Active, `5` Suspended, `6` Rejected
 - `type` — `1` Medical, `2` Companion
 
-Response (reviewer name/phone are joined read-only from the Identity users table):
+Response (reviewer name/phone are joined read-only from the Identity users table; `identityPresent` reports only whether that join found a row):
 
 ```json
 {
@@ -34,13 +34,43 @@ Response (reviewer name/phone are joined read-only from the Identity users table
       "arabicFullName": "…",
       "englishFullName": "…",
       "phoneNumber": "+20…",
-      "updatedOnUtc": "2026-08-31T10:00:00Z"
+      "updatedOnUtc": "2026-08-31T10:00:00Z",
+      "identityPresent": true
     }
   ]
 }
 ```
 
 A fresh database returns `200` with `totalCount: 0` and an empty `items`. Invalid paging returns `400 Api.Validation.Failed`.
+
+## The `identityPresent` flag (narrow semantics)
+
+Every list item carries **`identityPresent`**. It means exactly one thing: an `identity.users` row **was joined on the configured query target during this read** (the same target the name/phone enrichment comes from). It is a join result, nothing more.
+
+What it deliberately does **not** mean:
+
+- **Not a cause discriminator.** `true` covers every joined row alike — a normal member, an anonymized placeholder row, or an identity behind a deactivated caregiver. The flag alone never tells you *why* enrichment is missing.
+- **Not authoritative identity absence.** `false` says only that no row was joined on the queried target. A wrong `user_id`, a stale/secondary Identity copy, or a split-target deployment can all produce `false` while another target still holds the identity. Do not treat `false` as proof the identity was deleted anywhere.
+- **No deletion or provenance claims.** The flag carries no information about whether, when or by whom an identity was ever deleted; anonymization is not deletion (the row stays with placeholder names — see below).
+
+The row classes a reviewer sees on the list:
+
+| Shape | Names / phone | `identityPresent` |
+|---|---|---|
+| Normal joined row | real names, real phone | `true` |
+| Missing identity (orphaned `user_id`) | `null` / `null` / `null` | `false` |
+| Anonymized identity | `محذوف` / `Deleted` / synthetic `+200…` phone | `true` |
+| Deactivated caregiver (status `7`) | intact names | `true` |
+
+Anonymization (privacy placeholder) writes the placeholder name pair (`محذوف` / `Deleted`), clears the email and replaces the phone with a synthetic `+200` + 9-digit number; the identity row **remains**, so the list keeps rendering it — plainly distinguishable from the `null` missing-identity shape by the values themselves, not by the flag. Deactivation is the caregiver row's own status (`status: 7`, filterable with `?status=7`); the identity enrichment stays intact behind it.
+
+## The Identity admin-detail boundary (`/api/v1/admin/users/{id}`)
+
+The caregiver list is paired with a separate Identity detail route. Its boundaries:
+
+- **Authorization first.** `GET /api/v1/admin/users/{id}` requires the **`SuperAdminOnly`** policy (Normal SuperAdmin). A SupportAdmin who may read the caregiver list receives **`403`** on this Identity detail — the denial is policy-shaped and says nothing about the data.
+- **Target-local 404.** For a SuperAdmin, a referenced user that is absent on the queried target returns `404` with code **`Identity.User.NotFound`**. Read it the same narrow way as `identityPresent: false`: no row found *where you looked*, not authoritative cross-target absence.
+- **Anonymized identity detail.** For an anonymized user the same route returns `200` with the placeholder names, a `null` email, the synthetic `+200…` phone and status `Blocked` — an existing row, never a 404.
 
 ## Caregiver detail
 

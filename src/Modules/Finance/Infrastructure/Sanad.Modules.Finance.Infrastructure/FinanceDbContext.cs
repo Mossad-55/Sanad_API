@@ -18,6 +18,7 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
     public DbSet<ComplaintReview> ComplaintReviews => Set<ComplaintReview>();
     public DbSet<SubscriptionRefundRequest> SubscriptionRefundRequests => Set<SubscriptionRefundRequest>();
     public DbSet<SubscriptionRefundBudget> SubscriptionRefundBudgets => Set<SubscriptionRefundBudget>();
+    public DbSet<DuplicateChargeClaim> DuplicateChargeClaims => Set<DuplicateChargeClaim>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -109,5 +110,6 @@ public sealed class FinanceDbContext(DbContextOptions<FinanceDbContext> options)
         modelBuilder.ApplyConfiguration(new ComplaintReviewConfiguration());
         modelBuilder.ApplyConfiguration(new SubscriptionRefundRequestConfiguration());
         modelBuilder.ApplyConfiguration(new SubscriptionRefundBudgetConfiguration());
+        modelBuilder.ApplyConfiguration(new DuplicateChargeClaimConfiguration());
     }
 }

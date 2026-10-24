@@ -43,8 +43,12 @@ public sealed class SubscriptionRefundCommandsTests
         new(2026, 10, day, hour, 0, 0, DateTimeKind.Utc);
 
     [Fact]
-    public async Task Duplicate_charge_is_refunded_in_full()
+    public async Task Legacy_direct_duplicate_award_is_fail_closed_retired()
     {
+        // Support-approval migration: the once auto-awarding duplicate-charge
+        // handler refuses every request with the stable retired code, records
+        // NO money movement, and keeps its command/derivation intact for the
+        // documented rollback. The same address now submits a claim instead.
         await using FamiliesDbContext db = CreateContext();
         UserId owner = UserId.New();
         Family family = Family.Create(owner);
@@ -65,104 +69,10 @@ public sealed class SubscriptionRefundCommandsTests
 
         var result = await handler.Handle(new(owner, attempt.Id, "dup-key"), default);
 
-        Assert.True(result.IsSuccess);
-        Assert.Equal(SubscriptionMoneyOutcome.DuplicateCharge, result.Value.Outcome);
-        Assert.Equal(34086L, result.Value.AwardedMinorUnits);
-        Assert.Equal(SubscriptionRefundReason.DuplicateCharge, recorder.LastReason);
-        Assert.Equal(34086L, recorder.LastAwarded.MinorUnits);
-        // M4: the award is claimed against the DUPLICATED CAPTURE itself, whose
-        // ceiling is that attempt's own paid amount — never an all-time total.
-        Assert.Equal(subscription.Id, recorder.LastSubscriptionId);
-        Assert.Equal(attempt.Id, recorder.LastPaymentAttemptId);
-        Assert.Equal(34086L, recorder.LastCapturedMinorUnits);
-    }
-
-    [Fact]
-    public async Task A_duplicate_charge_is_not_diluted_by_money_from_another_period()
-    {
-        // An older period captured 500 and the corrected attempt captured 340.86.
-        // A lifetime-seeded ceiling would report 840.86; the capture ceiling must
-        // report only what this attempt paid.
-        await using FamiliesDbContext db = CreateContext();
-        UserId owner = UserId.New();
-        Family family = Family.Create(owner);
-        SubscriptionPlanVersion plan = SubscriptionPlanVersion.Create(SubscriptionPlan.Premium);
-        db.Families.Add(family);
-        db.SubscriptionPlanVersions.Add(plan);
-        FamilySubscription subscription = SeedSubscriptionFor(db, family, plan, Utc(1));
-
-        SubscriptionPaymentAttempt earlier = SubscriptionPaymentAttempt.Create(
-            family.Id, plan, 500m, 0m, 0m, 500m, 14m, 70m, 570m,
-            null, SubscriptionPaymentMethod.Card, Utc(1).AddMonths(-1));
-        earlier.LinkSubscription(subscription.Id);
-        earlier.TryMarkSucceeded("txn-old", Utc(1).AddMonths(-1));
-
-        SubscriptionPaymentAttempt corrected = SubscriptionPaymentAttempt.Create(
-            family.Id, plan, 299m, 0m, 0m, 299m, 14m, 41.86m, 340.86m,
-            null, SubscriptionPaymentMethod.Card, Utc(1));
-        corrected.LinkSubscription(subscription.Id);
-        corrected.TryMarkSucceeded("txn-1", Utc(1));
-
-        db.SubscriptionPaymentAttempts.AddRange(earlier, corrected);
-        await db.SaveChangesAsync();
-
-        var recorder = new FakeRecorder();
-        var handler = new RefundDuplicateSubscriptionChargeCommandHandler(db, recorder);
-
-        var result = await handler.Handle(new(owner, corrected.Id, "dup-key"), default);
-
-        Assert.True(result.IsSuccess);
-        Assert.Equal(corrected.Id, recorder.LastPaymentAttemptId);
-        Assert.Equal(34086L, recorder.LastCapturedMinorUnits);
-    }
-
-    [Fact]
-    public async Task A_non_succeeded_attempt_has_nothing_to_refund()
-    {
-        await using FamiliesDbContext db = CreateContext();
-        UserId owner = UserId.New();
-        Family family = Family.Create(owner);
-        SubscriptionPlanVersion plan = SubscriptionPlanVersion.Create(SubscriptionPlan.Premium);
-        db.Families.Add(family);
-        db.SubscriptionPlanVersions.Add(plan);
-        SubscriptionPaymentAttempt attempt = SubscriptionPaymentAttempt.Create(
-            family.Id, plan, 299m, 0m, 0m, 299m, 14m, 41.86m, 340.86m,
-            null, SubscriptionPaymentMethod.Card, Utc(1));
-        db.SubscriptionPaymentAttempts.Add(attempt);
-        await db.SaveChangesAsync();
-
-        var handler = new RefundDuplicateSubscriptionChargeCommandHandler(db, new FakeRecorder());
-        var result = await handler.Handle(new(owner, attempt.Id), default);
-
         Assert.True(result.IsFailure);
-        Assert.Equal("Subscriptions.Refund.NothingToRefund", result.Error.Code);
-    }
-
-    [Fact]
-    public async Task A_non_owner_cannot_refund_a_duplicate_charge()
-    {
-        await using FamiliesDbContext db = CreateContext();
-        UserId owner = UserId.New();
-        UserId editor = UserId.New();
-        Family family = Family.Create(owner);
-        family.AddMember(FamilyMember.Create(editor, owner, FamilyRelationshipType.Other, FamilyRole.Editor));
-        SubscriptionPlanVersion plan = SubscriptionPlanVersion.Create(SubscriptionPlan.Premium);
-        db.Families.Add(family);
-        db.SubscriptionPlanVersions.Add(plan);
-        FamilySubscription subscription = SeedSubscriptionFor(db, family, plan, Utc(1));
-        SubscriptionPaymentAttempt attempt = SubscriptionPaymentAttempt.Create(
-            family.Id, plan, 299m, 0m, 0m, 299m, 14m, 41.86m, 340.86m,
-            null, SubscriptionPaymentMethod.Card, Utc(1));
-        attempt.LinkSubscription(subscription.Id);
-        attempt.TryMarkSucceeded("txn-1", Utc(1));
-        db.SubscriptionPaymentAttempts.Add(attempt);
-        await db.SaveChangesAsync();
-
-        var handler = new RefundDuplicateSubscriptionChargeCommandHandler(db, new FakeRecorder());
-        var result = await handler.Handle(new(editor, attempt.Id), default);
-
-        Assert.True(result.IsFailure);
-        Assert.Equal("Subscriptions.Refund.NotOwner", result.Error.Code);
+        Assert.Equal("Subscriptions.Refund.LegacyRetired", result.Error.Code);
+        Assert.Null(recorder.LastPaymentAttemptId);
+        Assert.Null(recorder.LastKey);
     }
 
     [Fact]
@@ -409,7 +319,7 @@ public sealed class SubscriptionRefundCommandsTests
     }
 
     [Fact]
-    public async Task A_duplicate_charge_with_a_non_utc_instant_is_malformed_input()
+    public async Task A_duplicate_charge_with_a_non_utc_instant_is_still_fail_closed_retired()
     {
         await using FamiliesDbContext db = CreateContext();
         UserId owner = UserId.New();
@@ -426,21 +336,29 @@ public sealed class SubscriptionRefundCommandsTests
         db.SubscriptionPaymentAttempts.Add(attempt);
         await db.SaveChangesAsync();
 
-        var handler = new RefundDuplicateSubscriptionChargeCommandHandler(db, new FakeRecorder());
+        // The fail-closed legacy gate precedes input validation: even a
+        // malformed (non-UTC) request can never resurrect the retired
+        // auto-award, and the recorder seam is never consulted. Malformed-input
+        // validation itself lives on in the claim-submission handler tests.
+        var recorder = new FakeRecorder();
+        var handler = new RefundDuplicateSubscriptionChargeCommandHandler(db, recorder);
         var result = await handler.Handle(
             new(owner, attempt.Id, "dup-key", RecordedOnUtc: new DateTime(2026, 10, 1, 9, 0, 0, DateTimeKind.Local)),
             default);
 
         Assert.True(result.IsFailure);
-        Assert.Equal("Subscriptions.Refund.MalformedInput", result.Error.Code);
+        Assert.Equal("Subscriptions.Refund.LegacyRetired", result.Error.Code);
+        Assert.Null(recorder.LastPaymentAttemptId);
+        Assert.Null(recorder.LastKey);
     }
 
     [Fact]
-    public async Task A_duplicate_charge_without_a_subscription_link_is_malformed_input()
+    public async Task A_duplicate_charge_without_a_subscription_link_is_still_fail_closed_retired()
     {
-        // M4: the subscription is the audit correlation. An attempt with no
-        // server-side link cannot be attributed to a subscription, so it is
-        // refused rather than refunded anonymously.
+        // M4: the subscription is the audit correlation, and an attempt with no
+        // server-side link can never be refunded anonymously. Under the
+        // support-approval migration the fail-closed legacy gate precedes even
+        // that validation: the retired code is returned and no money moves.
         await using FamiliesDbContext db = CreateContext();
         UserId owner = UserId.New();
         Family family = Family.Create(owner);
@@ -454,11 +372,14 @@ public sealed class SubscriptionRefundCommandsTests
         db.SubscriptionPaymentAttempts.Add(attempt);
         await db.SaveChangesAsync();
 
-        var handler = new RefundDuplicateSubscriptionChargeCommandHandler(db, new FakeRecorder());
+        var recorder = new FakeRecorder();
+        var handler = new RefundDuplicateSubscriptionChargeCommandHandler(db, recorder);
         var result = await handler.Handle(new(owner, attempt.Id, "dup-key"), default);
 
         Assert.True(result.IsFailure);
-        Assert.Equal("Subscriptions.Refund.MalformedInput", result.Error.Code);
+        Assert.Equal("Subscriptions.Refund.LegacyRetired", result.Error.Code);
+        Assert.Null(recorder.LastPaymentAttemptId);
+        Assert.Null(recorder.LastKey);
     }
 
     [Fact]

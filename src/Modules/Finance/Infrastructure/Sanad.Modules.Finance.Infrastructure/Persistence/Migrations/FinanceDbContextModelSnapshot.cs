@@ -112,18 +112,6 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("investigator_user_id");
 
-                    b.Property<DateTime>("ReportedOnUtc")
-                        .HasColumnType("timestamp with time zone")
-                        .HasColumnName("reported_on_utc");
-
-                    b.Property<Guid>("ReportedByUserId")
-                        .HasColumnType("uuid")
-                        .HasColumnName("reported_by_user_id");
-
-                    b.Property<int>("ReportingParty")
-                        .HasColumnType("integer")
-                        .HasColumnName("reporting_party");
-
                     b.Property<Guid>("RefundCaseId")
                         .HasColumnType("uuid")
                         .HasColumnName("refund_case_id");
@@ -135,6 +123,18 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                     b.Property<DateTime?>("RefusedOnUtc")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("refused_on_utc");
+
+                    b.Property<Guid>("ReportedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reported_by_user_id");
+
+                    b.Property<DateTime>("ReportedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reported_on_utc");
+
+                    b.Property<int>("ReportingParty")
+                        .HasColumnType("integer")
+                        .HasColumnName("reporting_party");
 
                     b.Property<int>("State")
                         .IsConcurrencyToken()
@@ -212,6 +212,178 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("credit_balances", "finance", t =>
                         {
                             t.HasCheckConstraint("ck_credit_balances_balance_non_negative", "balance >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.DuplicateChargeClaim", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<long>("AwardMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("award_minor_units");
+
+                    b.Property<DateTime?>("CompletedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("completed_on_utc");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("Currency")
+                        .IsRequired()
+                        .HasMaxLength(3)
+                        .HasColumnType("character varying(3)")
+                        .HasColumnName("currency");
+
+                    b.Property<DateTime>("CustomerReportedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("customer_reported_on_utc");
+
+                    b.Property<Guid?>("DecidedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("decided_by_account_id");
+
+                    b.Property<string>("DecidedByAccountType")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("decided_by_account_type");
+
+                    b.Property<DateTime?>("DecidedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("decided_on_utc");
+
+                    b.Property<string>("DecisionNote")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("decision_note");
+
+                    b.Property<string>("EvidenceReference")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("evidence_reference");
+
+                    b.Property<Guid?>("ExecutedByAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("executed_by_account_id");
+
+                    b.Property<int>("ExecutionAttemptCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("execution_attempt_count");
+
+                    b.Property<Guid?>("ExecutionAttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("execution_attempt_id");
+
+                    b.Property<long?>("ExecutionAwardMinorUnits")
+                        .HasColumnType("bigint")
+                        .HasColumnName("execution_award_minor_units");
+
+                    b.Property<DateTime?>("ExecutionStartedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("execution_started_on_utc");
+
+                    b.Property<int>("ExecutionState")
+                        .HasColumnType("integer")
+                        .HasColumnName("execution_state");
+
+                    b.Property<Guid>("FamilyAccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("family_account_id");
+
+                    b.Property<string>("FamilyReason")
+                        .HasMaxLength(1000)
+                        .HasColumnType("character varying(1000)")
+                        .HasColumnName("family_reason");
+
+                    b.Property<string>("GatewayErrorCode")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("gateway_error_code");
+
+                    b.Property<string>("IdempotencyKey")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("NotMovedProviderEvidenceReference")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("not_moved_provider_evidence_reference");
+
+                    b.Property<Guid>("PaymentAttemptId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("payment_attempt_id");
+
+                    b.Property<string>("ProviderRefundId")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("provider_refund_id");
+
+                    b.Property<Guid>("RefundCaseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("refund_case_id");
+
+                    b.Property<int>("State")
+                        .HasColumnType("integer")
+                        .HasColumnName("state");
+
+                    b.Property<DateTime>("SubmittedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_on_utc");
+
+                    b.Property<Guid>("SubscriptionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("subscription_id");
+
+                    b.Property<DateTime>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.Property<string>("VerifiedBasis")
+                        .HasMaxLength(2000)
+                        .HasColumnType("character varying(2000)")
+                        .HasColumnName("verified_basis");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PaymentAttemptId")
+                        .HasDatabaseName("ix_duplicate_charge_claims_payment_attempt_id");
+
+                    b.HasIndex("RefundCaseId")
+                        .HasDatabaseName("ix_duplicate_charge_claims_refund_case_id");
+
+                    b.HasIndex("State")
+                        .HasDatabaseName("ix_duplicate_charge_claims_state");
+
+                    b.HasIndex("FamilyAccountId", "IdempotencyKey")
+                        .IsUnique()
+                        .HasDatabaseName("ux_duplicate_charge_claims_family_idempotency_key");
+
+                    b.HasIndex("FamilyAccountId", "PaymentAttemptId")
+                        .IsUnique()
+                        .HasDatabaseName("ux_duplicate_charge_claims_family_attempt_active")
+                        .HasFilter("\"state\" <> 2");
+
+                    b.ToTable("duplicate_charge_claims", "finance", t =>
+                        {
+                            t.HasCheckConstraint("ck_duplicate_charge_claims_attempt_count", "execution_attempt_count >= 0");
+
+                            t.HasCheckConstraint("ck_duplicate_charge_claims_award", "award_minor_units > 0");
+
+                            t.HasCheckConstraint("ck_duplicate_charge_claims_execution_state", "execution_state IN (1, 2, 3, 4, 5, 6)");
+
+                            t.HasCheckConstraint("ck_duplicate_charge_claims_state", "state IN (1, 2, 3)");
+
+                            t.HasCheckConstraint("ck_duplicate_charge_claims_version", "version > 0");
                         });
                 });
 
@@ -445,13 +617,13 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("provider_reference");
 
-                    b.Property<long>("Sequence")
-                        .HasColumnType("bigint")
-                        .HasColumnName("entry_sequence");
-
                     b.Property<Guid>("RefundCaseId")
                         .HasColumnType("uuid")
                         .HasColumnName("refund_case_id");
+
+                    b.Property<long>("Sequence")
+                        .HasColumnType("bigint")
+                        .HasColumnName("entry_sequence");
 
                     b.HasKey("Id");
 
@@ -468,6 +640,7 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                     b.ToTable("refund_ledger_entries", "finance", t =>
                         {
                             t.HasCheckConstraint("ck_refund_ledger_entries_amount_precision", "amount = round(amount, 2)");
+
                             t.HasCheckConstraint("ck_refund_ledger_entries_entry_type", "entry_type IN (1, 2, 3, 4, 5, 6, 7, 8)");
                         });
                 });
@@ -607,6 +780,11 @@ namespace Sanad.Modules.Finance.Infrastructure.Persistence.Migrations
                         .HasPrincipalKey("RefundCaseId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Finance.Domain.RefundLedger", b =>
+                {
+                    b.Navigation("Entries");
                 });
 #pragma warning restore 612, 618
         }

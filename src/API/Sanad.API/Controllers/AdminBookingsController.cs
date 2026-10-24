@@ -44,10 +44,11 @@ public sealed class AdminBookingsController : ApiControllerBase
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 10,
         [FromQuery] AdminBookingFinanceFilter finance = AdminBookingFinanceFilter.All,
+        [FromQuery] BookingStatus? status = null,
         CancellationToken cancellationToken = default)
     {
         var result = await _sender.Send(
-            new ListAdminBookingsQuery(page, pageSize, finance),
+            new ListAdminBookingsQuery(page, pageSize, finance, status),
             cancellationToken);
 
         return ToActionResult(result);

@@ -120,6 +120,16 @@ public sealed class RefundDuplicateSubscriptionChargeCommandHandler
     private readonly IFamiliesDbContext _db;
     private readonly ISubscriptionRefundRecorder _refunds;
 
+    /// <summary>
+    /// Support-approval migration guard (Owner-accepted design, fail-closed):
+    /// the direct auto-award duplicate-charge refund is retired; the same
+    /// address now submits a support-approved claim instead. A static readonly
+    /// flag (not a const) keeps the historical award code below intact and
+    /// reachable for audit — flipping it back is the documented rollback, and
+    /// no path in the composition currently sets it.
+    /// </summary>
+    private static readonly bool LegacyDirectAwardEnabled = false;
+
     public RefundDuplicateSubscriptionChargeCommandHandler(
         IFamiliesDbContext db,
         ISubscriptionRefundRecorder refunds)
@@ -132,6 +142,12 @@ public sealed class RefundDuplicateSubscriptionChargeCommandHandler
         RefundDuplicateSubscriptionChargeCommand request,
         CancellationToken cancellationToken)
     {
+        if (!LegacyDirectAwardEnabled)
+            return Result<SubscriptionRefundResponse>.Failure(
+                new Error(
+                    "Subscriptions.Refund.LegacyRetired",
+                    "Direct duplicate-charge refunds are retired. Submit a support-approved duplicate-charge claim instead."));
+
         var family = await FamilyAccess.ResolveFamilyAsync(_db, request.ActorUserId, cancellationToken);
         if (family is null || !FamilyAccess.IsOwner(family, request.ActorUserId))
             return Result<SubscriptionRefundResponse>.Failure(SubscriptionRefundErrors.NotOwner);

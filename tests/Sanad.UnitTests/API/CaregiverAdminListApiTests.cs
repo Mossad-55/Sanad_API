@@ -11,8 +11,10 @@ using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Infrastructure.Persistence;
+using Sanad.Modules.Identity.Application.Abstractions.Data;
 using Sanad.Modules.Identity.Application.Abstractions.Security;
 using Sanad.Modules.Identity.Domain.Users;
+using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.UnitTests.Caregivers;
 
 namespace Sanad.UnitTests.API;
@@ -247,6 +249,226 @@ public sealed class CaregiverAdminListApiTests : IClassFixture<PortalApiMetadata
         }
     }
 
+    // ---------------- W4: caregiver list vs Identity detail ------------------
+    //
+    // Facts for the three causes the Identity detail path can distinguish:
+    // AUTHORIZATION (SupportAdmin is eligible on the caregiver list but
+    // SuperAdminOnly gates Identity detail -> 403), MISSING IDENTITY
+    // (SuperAdmin -> 404 Identity.User.NotFound) and ANONYMIZATION
+    // (SuperAdmin -> 200 with the placeholder name pair). The list projects
+    // `identityPresent`, which means ONLY "an identity.users row was joined on
+    // the configured query target during this read": it alone distinguishes
+    // neither anonymization nor deactivation (both join, so both are true),
+    // and a false value is not authoritative cross-target identity absence
+    // (wrong-id joins, stale copies and split targets remain outside its
+    // meaning — PORTAL-04 runbook). The 404 is likewise target-local: it says
+    // only that no identity.users row was found on the queried target.
+
+    private const string IdentityInMemoryProvider = "Microsoft.EntityFrameworkCore.InMemory";
+
+    [Fact]
+    public async Task AdminIdentityDetail_SupportAdmin_IsForbidden()
+    {
+        // Authorization comes first: the same SupportAdmin that is eligible for
+        // the caregiver list cannot open the Identity detail at all. The denial
+        // is policy-shaped (403), never a data judgement about the target.
+        using HttpClient client = _host.CreatePortalClient();
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", CreateToken(_host, CreateUser(AccountType.SupportAdmin, 11)));
+
+        using HttpResponseMessage response = await client.GetAsync(
+            $"/api/v1/admin/users/{CaregiverIntegrityFixture.OrphanCompanionUserId.ToString("D")}");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task AdminIdentityDetail_SuperAdmin_MissingIdentityUser_IsNotFoundWithCode()
+    {
+        await using IdentityDbContext identity = CreateIsolatedIdentityDbContext();
+
+        // Execution guard: the identity context under test is an isolated
+        // InMemory store — no PostgreSQL connection is possible.
+        Assert.Equal(IdentityInMemoryProvider, identity.Database.ProviderName);
+
+        // No user is seeded: the caregiver list's user_id has no matching
+        // identity row on the queried target, which is today's 404 shape.
+        using var factory = OverrideIdentity(_host, identity);
+        using HttpClient client = CreateClient(factory);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", CreateToken(_host, CreateUser(AccountType.SuperAdmin, 12)));
+
+        using HttpResponseMessage response = await client.GetAsync(
+            $"/api/v1/admin/users/{CaregiverIntegrityFixture.OrphanCompanionUserId.ToString("D")}");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(404, body.RootElement.GetProperty("status").GetInt32());
+        Assert.Equal("Identity.User.NotFound", body.RootElement.GetProperty("code").GetString());
+    }
+
+    [Fact]
+    public async Task AdminIdentityDetail_SuperAdmin_AnonymizedUser_ShowsPlaceholderNames()
+    {
+        await using IdentityDbContext identity = CreateIsolatedIdentityDbContext();
+        Assert.Equal(IdentityInMemoryProvider, identity.Database.ProviderName);
+
+        // Today's anonymization write shape (User.AnonymizeAndDeactivate):
+        // the row stays, the names become the placeholder pair, email is
+        // cleared, the phone becomes a synthetic "+200..." number and the
+        // status becomes Blocked.
+        User anonymized = User.Create(
+            FullName.Create("اسم حقيقي"),
+            FullName.Create("Real Name"),
+            Email.Create("anonymized-user@example.test"),
+            PhoneNumber.Create("+201099999901"));
+        anonymized.AddAccount(AccountType.Family);
+        anonymized.AnonymizeAndDeactivate(
+            "Portal test anonymization",
+            new DateTime(2026, 10, 20, 12, 0, 0, DateTimeKind.Utc));
+        identity.Users.Add(anonymized);
+        await identity.SaveChangesAsync();
+
+        // Read back the persisted id: User.Create generates it, so the detail
+        // request targets the actual stored row.
+        Guid anonymizedUserId = anonymized.Id.Value;
+
+        using var factory = OverrideIdentity(_host, identity);
+        using HttpClient client = CreateClient(factory);
+        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+            "Bearer", CreateToken(_host, CreateUser(AccountType.SuperAdmin, 13)));
+
+        using HttpResponseMessage response =
+            await client.GetAsync($"/api/v1/admin/users/{anonymizedUserId.ToString("D")}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        JsonElement root = body.RootElement;
+        Assert.Equal(anonymizedUserId.ToString("D"), root.GetProperty("id").GetString());
+        Assert.Equal("محذوف", root.GetProperty("arabicName").GetString());
+        Assert.Equal("Deleted", root.GetProperty("englishName").GetString());
+        Assert.Equal(JsonValueKind.Null, root.GetProperty("email").ValueKind);
+        Assert.StartsWith("+200", root.GetProperty("phone").GetString(), StringComparison.Ordinal);
+        Assert.Equal(4, root.GetProperty("status").GetInt32()); // UserStatus.Blocked
+        Assert.Equal(1, root.GetProperty("accountTypes").GetArrayLength());
+        Assert.Equal(1, root.GetProperty("accountTypes")[0].GetInt32()); // AccountType.Family
+        Assert.True(root.GetProperty("isVerified").GetBoolean());
+
+        // Anonymization is deactivation on the Identity side, plainly visible
+        // in the detail — not a missing row and not a 404.
+        Assert.NotEqual(JsonValueKind.Null, root.GetProperty("phone").ValueKind);
+    }
+
+    [Fact]
+    public async Task AdminCaregivers_DeactivatedFilter_ListsRowWithIntactNames()
+    {
+        var seeded = CaregiverIntegrityFixture.CreateSeededWithIntegrityClasses();
+        using (seeded.Connection)
+        {
+            using CaregiversDbContext db = CaregiverIntegrityFixture.CreateDbContext(seeded.Connection);
+            using var factory = OverrideCaregivers(_host, db);
+            using HttpClient client = CreateClient(factory);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                "Bearer", CreateToken(_host, CreateUser(AccountType.SuperAdmin, 14)));
+
+            using HttpResponseMessage response = await client.GetAsync("/api/v1/admin/caregivers?status=7");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            Assert.Equal(1, body.RootElement.GetProperty("totalCount").GetInt32());
+            JsonElement items = body.RootElement.GetProperty("items");
+            JsonElement deactivated = Assert.Single(items.EnumerateArray());
+            Assert.Equal(CaregiverIntegrityFixture.DeactivatedCaregiverId.ToString("D"),
+                deactivated.GetProperty("caregiverId").GetString());
+            Assert.Equal(7, deactivated.GetProperty("status").GetInt32());
+            Assert.Equal("Deactivated User", deactivated.GetProperty("englishFullName").GetString());
+            Assert.Equal("+10000000007", deactivated.GetProperty("phoneNumber").GetString());
+            // The deactivated caregiver's identity row joined, so the wire
+            // flag is true — identityPresent does not mark deactivation.
+            Assert.True(deactivated.GetProperty("identityPresent").GetBoolean());
+        }
+    }
+
+    [Fact]
+    public async Task AdminCaregivers_AnonymizedShapeRow_ShowsPlaceholderNames_NotNulls()
+    {
+        var seeded = CaregiverIntegrityFixture.CreateSeededWithIntegrityClasses();
+        using (seeded.Connection)
+        {
+            using CaregiversDbContext db = CaregiverIntegrityFixture.CreateDbContext(seeded.Connection);
+            using var factory = OverrideCaregivers(_host, db);
+            using HttpClient client = CreateClient(factory);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                "Bearer", CreateToken(_host, CreateUser(AccountType.SuperAdmin, 15)));
+
+            using HttpResponseMessage response = await client.GetAsync(
+                $"/api/v1/admin/caregivers?type=1");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            JsonElement items = body.RootElement.GetProperty("items");
+
+            JsonElement anonymized = FindItem(items, CaregiverIntegrityFixture.AnonymizedCaregiverId.ToString("D"));
+            Assert.Equal("محذوف", anonymized.GetProperty("arabicFullName").GetString());
+            Assert.Equal("Deleted", anonymized.GetProperty("englishFullName").GetString());
+            Assert.Equal(CaregiverIntegrityFixture.AnonymizedPhone, anonymized.GetProperty("phoneNumber").GetString());
+            // The anonymized identity row exists and joined: identityPresent
+            // is true; the flag alone does not reveal anonymization.
+            Assert.True(anonymized.GetProperty("identityPresent").GetBoolean());
+
+            // The same filtered list still contains the missing-identity row
+            // in its distinct null shape — and its identityPresent is false,
+            // the only polarity the flag alone can separate.
+            JsonElement secondOrphan = FindItem(items, seeded.BaseIds.SecondOrphanCaregiver.ToString("D"));
+            Assert.Equal(JsonValueKind.Null, secondOrphan.GetProperty("arabicFullName").ValueKind);
+            Assert.False(secondOrphan.GetProperty("identityPresent").GetBoolean());
+        }
+    }
+
+    [Fact]
+    public async Task AdminCaregivers_IdentityPresent_WirePolarity_IsJoinedRowOnly()
+    {
+        var seeded = CaregiverIntegrityFixture.CreateSeededWithIntegrityClasses();
+        using (seeded.Connection)
+        {
+            using CaregiversDbContext db = CaregiverIntegrityFixture.CreateDbContext(seeded.Connection);
+            using var factory = OverrideCaregivers(_host, db);
+            using HttpClient client = CreateClient(factory);
+            client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(
+                "Bearer", CreateToken(_host, CreateUser(AccountType.SuperAdmin, 16)));
+
+            using HttpResponseMessage response = await client.GetAsync("/api/v1/admin/caregivers?pageSize=100");
+
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+            using JsonDocument body = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+            JsonElement items = body.RootElement.GetProperty("items");
+            Assert.Equal(7, items.GetArrayLength());
+
+            // Wire contract pinned: exactly the two orphan rows report
+            // identityPresent false; every joined row — matched, anonymized-
+            // shape and deactivated — reports true.
+            var falseIds = new List<string>();
+            foreach (JsonElement item in items.EnumerateArray())
+            {
+                if (!item.GetProperty("identityPresent").GetBoolean())
+                {
+                    falseIds.Add(item.GetProperty("caregiverId").GetString()!);
+                }
+            }
+
+            Assert.Equal(2, falseIds.Count);
+            Assert.Contains(seeded.BaseIds.OrphanCompanionCaregiver.ToString("D"), falseIds);
+            Assert.Contains(seeded.BaseIds.SecondOrphanCaregiver.ToString("D"), falseIds);
+
+            JsonElement anonymized = FindItem(items, CaregiverIntegrityFixture.AnonymizedCaregiverId.ToString("D"));
+            Assert.True(anonymized.GetProperty("identityPresent").GetBoolean());
+            JsonElement deactivated = FindItem(items, CaregiverIntegrityFixture.DeactivatedCaregiverId.ToString("D"));
+            Assert.True(deactivated.GetProperty("identityPresent").GetBoolean());
+            JsonElement matched = FindItem(items, seeded.BaseIds.MatchedMedicalCaregiver.ToString("D"));
+            Assert.True(matched.GetProperty("identityPresent").GetBoolean());
+        }
+    }
+
     // Replaces ONLY the Caregivers context registrations with the fixture's
     // SQLite attached-schema instance; every other host registration (InMemory
     // contexts, disabled seeders/migrations/jobs, test JWT options) is kept.
@@ -259,6 +481,25 @@ public sealed class CaregiverAdminListApiTests : IClassFixture<PortalApiMetadata
             services.AddSingleton(db);
             services.AddSingleton<ICaregiversDbContext>(db);
         }));
+
+    // Same isolated replacement pattern for the Identity context: a per-test
+    // InMemory store (unique database name) registered for both the concrete
+    // context and the application seam the Identity handlers consume. No
+    // production connection string is ever opened.
+    private static WebApplicationFactory<Program> OverrideIdentity(
+        PortalApiMetadataHost host, IdentityDbContext db) =>
+        host.WithWebHostBuilder(builder => builder.ConfigureTestServices(services =>
+        {
+            services.RemoveAll<IdentityDbContext>();
+            services.RemoveAll<IIdentityDbContext>();
+            services.AddSingleton(db);
+            services.AddSingleton<IIdentityDbContext>(db);
+        }));
+
+    private static IdentityDbContext CreateIsolatedIdentityDbContext() =>
+        new(new DbContextOptionsBuilder<IdentityDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString("N"))
+            .Options);
 
     private static HttpClient CreateClient(WebApplicationFactory<Program> factory) =>
         factory.CreateClient(new WebApplicationFactoryClientOptions

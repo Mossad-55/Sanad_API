@@ -124,7 +124,8 @@ public sealed class CaregiversDbContext :
                 u.arabic_full_name  AS "ArabicFullName",
                 u.english_full_name AS "EnglishFullName",
                 u.phone_number      AS "PhoneNumber",
-                c.updated_on_utc    AS "UpdatedOnUtc"
+                c.updated_on_utc    AS "UpdatedOnUtc",
+                (u.id IS NOT NULL)  AS "IdentityPresent"
             FROM caregivers.caregivers c
             LEFT JOIN identity.users u
                 ON u.id = c.user_id
@@ -176,7 +177,9 @@ public sealed class CaregiversDbContext :
                         GetNullableString(reader, "EnglishFullName"),
                         GetNullableString(reader, "PhoneNumber"),
                         reader.GetDateTime(
-                            reader.GetOrdinal("UpdatedOnUtc"))));
+                            reader.GetOrdinal("UpdatedOnUtc")),
+                        reader.GetBoolean(
+                            reader.GetOrdinal("IdentityPresent"))));
             }
         }
         finally

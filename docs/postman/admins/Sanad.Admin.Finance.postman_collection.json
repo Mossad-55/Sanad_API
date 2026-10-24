@@ -20,6 +20,16 @@
     {
       "key": "effectiveOnUtc",
       "value": "2026-10-01T00:00:00Z"
+    },
+    {
+      "key": "duplicateChargeClaimId",
+      "value": "",
+      "description": "Set from family claim submission or admin list."
+    },
+    {
+      "key": "duplicateChargeExecutionAttemptId",
+      "value": "",
+      "description": "Set from an ambiguous/executing claim before reconciliation."
     }
   ],
   "item": [
@@ -611,6 +621,82 @@
             "url": "{{baseUrl}}/api/v1/admin/finance/subscription-refunds/service-shutdown"
           },
           "description": "Returns 200 with the recorded outcome { refundCaseId, awardedMinorUnits, currency, outcome 3 (ServiceShutdown), isReplay }. A shutdown at or after the period end may compute exactly zero and the zero award is recorded as computed. 400 Subscriptions.Refund.MalformedInput for a non-UTC shutdownOnUtc; 404 Subscriptions.Refund.SubscriptionNotFound / Subscriptions.Refund.NothingToRefund; 409 Subscriptions.Refund.NotCurrent / Subscriptions.Refund.IdempotencyConflict, Subscriptions.Refund.ExceedsCaptured, Subscriptions.Refund.CaptureNotResolved (the current period's paying attempt could not be resolved; the refund fails closed instead of using a lifetime total). The proration base is the consideration settled for the CURRENT paid period (the subscription's own current-period snapshot), never an all-time sum of renewals and never the plan list price. Cumulative refundability across cases is enforced by Finance's per-capture budget: a duplicate-charge or earlier shutdown award against the same paid period reduces what remains, an older period's funds supply no headroom, and an award that no longer fits is refused rather than trimmed. Replaying the same idempotency key with the same content returns isReplay true; the same key with different content is the conflict. Manual fixture only."
+        }
+      ]
+    },
+    {
+      "name": "Duplicate-charge support claims",
+      "description": "Submission creates a claim only; SupportAdmin/SuperAdmin may review and decide. Only SuperAdmin may execute or reconcile actual provider movement. Audit timestamps are server-stamped. Manual fixture only; never use Production or real refunds.",
+      "item": [
+        {
+          "name": "List duplicate-charge claims",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/finance/subscription-refunds/duplicate-charge?state=1&executionState=1"
+          },
+          "description": "RefundWorkflowAdmin: SuperAdmin or SupportAdmin. Optional filters: state and executionState numeric enums, familyId UUID. Returns admin review/execution fields; do not expose this projection to families."
+        },
+        {
+          "name": "Get duplicate-charge claim",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/finance/subscription-refunds/duplicate-charge/{{duplicateChargeClaimId}}"
+          },
+          "description": "RefundWorkflowAdmin: SuperAdmin or SupportAdmin. Returns 404 Finance.DuplicateClaim.NotFound when absent."
+        },
+        {
+          "name": "Approve duplicate-charge claim",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"verifiedBasis\": \"Provider records confirm a duplicate capture.\",\n  \"decisionNote\": \"Evidence reviewed\",\n  \"familyReason\": \"Your claim was approved.\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/finance/subscription-refunds/duplicate-charge/{{duplicateChargeClaimId}}/approve"
+          },
+          "description": "RefundWorkflowAdmin: SuperAdmin or SupportAdmin. The server stamps decidedOnUtc; never send it in the body. Approval reserves the full verified basis atomically with the refund ledger but does not call the provider. Returns 200; 400 invalid/evidence, 404 missing claim, 409 state/budget/already-awarded conflict."
+        },
+        {
+          "name": "Reject duplicate-charge claim",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"familyReason\": \"The evidence does not verify a duplicate capture.\",\n  \"decisionNote\": \"Provider records checked\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/finance/subscription-refunds/duplicate-charge/{{duplicateChargeClaimId}}/reject"
+          },
+          "description": "RefundWorkflowAdmin: SuperAdmin or SupportAdmin. The server stamps decidedOnUtc; request timestamps are not accepted. Rejection is terminal for this claim, does not move money, and allows a fresh family submission with a distinct key and new evidence."
+        },
+        {
+          "name": "Execute approved duplicate-charge claim",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"expectedExecutionAttemptId\": null\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/finance/subscription-refunds/duplicate-charge/{{duplicateChargeClaimId}}/execute"
+          },
+          "description": "SuperAdminOnly (SupportAdmin receives 403). The E1 attempt intent is committed before the provider call. Ambiguous results block retry until reconciliation; never blindly replay. Returns 200 with execution state. Manual verified fixture only; this route may issue a real refund."
+        },
+        {
+          "name": "Reconcile duplicate-charge claim",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{adminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"refundDidMove\": false,\n  \"evidence\": \"Provider case 9911 confirms no refund was issued.\",\n  \"notMovedProviderEvidenceReference\": \"provider-case-9911\",\n  \"expectedExecutionAttemptId\": \"{{duplicateChargeExecutionAttemptId}}\"\n}" },
+            "url": "{{baseUrl}}/api/v1/admin/finance/subscription-refunds/duplicate-charge/{{duplicateChargeClaimId}}/reconcile"
+          },
+          "description": "SuperAdminOnly. Server stamps reconciledOnUtc. NotMoved requires affirmative provider evidence; absence at one point in time is not sufficient. For a moved outcome set refundDidMove=true and provide verifiedProviderRefundId. Bind the request to the exact execution attempt."
         }
       ]
     },

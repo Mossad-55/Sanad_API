@@ -39,6 +39,69 @@ internal static class CaregiverIntegrityFixture
         Guid SecondOrphanCaregiver,
         Guid MatchedCompanionCaregiver);
 
+    // W4 baseline rows for the two further display classes the admin list can
+    // produce. The anonymized row mirrors the CURRENT anonymization write
+    // shape (User.AnonymizeAndDeactivate): the identity row EXISTS with
+    // placeholder names and a "+200..." synthetic phone — it is NOT the
+    // missing-identity shape. The deactivated row is a caregiver-side
+    // Deactivated (status 7) with an intact, present identity.
+    internal static readonly Guid AnonymizedUserId = Guid.Parse("77777777-7777-7777-7777-777777777777");
+    internal static readonly Guid AnonymizedCaregiverId = Guid.Parse("a7a7a7a7-a7a7-a7a7-a7a7-a7a7a7a7a7a7");
+    internal static readonly Guid DeactivatedUserId = Guid.Parse("88888888-8888-8888-8888-888888888888");
+    internal static readonly Guid DeactivatedCaregiverId = Guid.Parse("b8b8b8b8-b8b8-b8b8-b8b8-b8b8b8b8b8b8");
+
+    internal static readonly DateTime AnonymizedStamp = new(2026, 10, 6, 10, 0, 0, DateTimeKind.Utc);
+    internal static readonly DateTime DeactivatedStamp = new(2026, 9, 30, 9, 0, 0, DateTimeKind.Utc);
+
+    internal static readonly string AnonymizedArabicName = "محذوف";
+    internal static readonly string AnonymizedEnglishName = "Deleted";
+    // Same shape the identity anonymization writes: "+200" + 9 digits, unique,
+    // E164-valid, not an assignable Egyptian number (User.CreateAnonymizedPhoneNumber).
+    internal static readonly string AnonymizedPhone = "+2000123456789";
+
+    internal sealed record IntegrityClassIds(
+        Guid AnonymizedCaregiver,
+        Guid AnonymizedUser,
+        Guid DeactivatedCaregiver,
+        Guid DeactivatedUser);
+
+    /// <summary>
+    /// The core five-row scenario of <see cref="CreateSeeded"/> plus one
+    /// anonymized-shape identity row and one deactivated caregiver row
+    /// (7 caregivers / 5 users). Additive only: every original row, id and
+    /// count is untouched, so the existing tests keep their exact totals.
+    /// </summary>
+    internal static (SqliteConnection Connection, SeededIds BaseIds, IntegrityClassIds Extra)
+    CreateSeededWithIntegrityClasses()
+    {
+        (SqliteConnection connection, SeededIds baseIds) = CreateSeeded();
+
+        // Anonymized-shape identity: row present with placeholder names.
+        InsertCaregiver(connection, AnonymizedCaregiverId, AnonymizedUserId, 1, 4, AnonymizedStamp);
+        InsertUser(connection, AnonymizedUserId, AnonymizedArabicName, AnonymizedEnglishName, AnonymizedPhone);
+        InsertAccount(connection, AnonymizedUserId, 2); // MedicalCaregiver, matches type 1.
+
+        // Deactivated caregiver (status 7) with an intact present identity.
+        InsertCaregiver(connection, DeactivatedCaregiverId, DeactivatedUserId, 1, 7, DeactivatedStamp);
+        InsertUser(connection, DeactivatedUserId, "اسم معطل", "Deactivated User", "+10000000007");
+        InsertAccount(connection, DeactivatedUserId, 2);
+
+        // Readback: the exact rows the extended scenarios will consume.
+        int caregiverRows = ScalarInt(connection, "SELECT COUNT(*) FROM caregivers.caregivers;");
+        int userRows = ScalarInt(connection, "SELECT COUNT(*) FROM identity.users;");
+        if (caregiverRows != 7 || userRows != 5)
+        {
+            throw new InvalidOperationException(
+                $"Extended fixture readback failed: caregivers={caregiverRows}, users={userRows}.");
+        }
+
+        return (connection, baseIds, new IntegrityClassIds(
+            AnonymizedCaregiverId,
+            AnonymizedUserId,
+            DeactivatedCaregiverId,
+            DeactivatedUserId));
+    }
+
     // Opens a kept-open :memory: connection, attaches the two schemas, creates
     // minimal tables, seeds the core rows, and reads them back. The caller owns
     // the connection lifetime: it must stay open while the DbContext runs,

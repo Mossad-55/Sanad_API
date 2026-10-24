@@ -84,6 +84,8 @@ public sealed class SupportController :
     [ProducesResponseType(
         typeof(MySupportTicketsPage),
         StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyTickets(
         [FromQuery] int page = 1,
         [FromQuery] int pageSize = 25,
@@ -109,10 +111,16 @@ public sealed class SupportController :
     [Authorize(
         Policy =
             AuthorizationPolicies.NormalAccess)]
+    /// <summary>One of the caller's own tickets with its replies; a foreign or unknown ticket id is <c>404 Identity.Support.NotFound</c>, never another user's data.</summary>
     [HttpGet("tickets/{id:guid}")]
     [ProducesResponseType(
         typeof(MySupportTicketDetail),
         StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> GetMyTicketById(
         Guid id,
         CancellationToken cancellationToken)

@@ -80,6 +80,19 @@ public sealed class AdminSplashScreensController :
     [HttpPut("{id:guid}")]
     [RequestSizeLimit(2_097_152)]
     [Consumes("multipart/form-data")]
+    [ProducesResponseType(
+        typeof(SplashScreenResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(
+        typeof(ProblemDetails),
+        StatusCodes.Status404NotFound)]
+    [ProducesResponseType(
+        StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(
+        StatusCodes.Status403Forbidden)]
     public async Task<IActionResult> Update(
         Guid id,
         [FromForm] UpdateSplashScreenRequest request,

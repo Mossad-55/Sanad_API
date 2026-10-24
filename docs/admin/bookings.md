@@ -2,7 +2,19 @@
 
 Ops routes under `/api/v1/admin/bookings/...`. Policy **`CaregiversAdmin`**: Normal JWT, `account_type` SuperAdmin or ContentAdmin.
 
-This surface is for **closed** bookings: family/caregiver cancel, caregiver decline, expiry, and Paymob refund outcome. Live upcoming visits are not listed here.
+This surface is for **closed** bookings: family/caregiver cancel, caregiver decline, expiry, and Paymob refund outcome. By default (no `status` filter) live upcoming visits are not listed; an explicit `status` filter can also pull open statuses (paid/awaiting, confirmed, in progress, completed) for discovery.
+
+## Status filter (`status`)
+
+`GET /api/v1/admin/bookings` takes an optional `status` query value (a `BookingStatus` number, e.g. `status=3` for Confirmed):
+
+- **No `status`** — the documented finance behavior above is unchanged (closed bookings only).
+- **`status` + `finance=0 All`** — returns exactly that status, open or closed.
+- **`status` + `finance=1/2/3`** — allowed only when the status belongs to that finance predicate: `1` Cancelled members status 6/7/8, `2` FailedRefund members status 6/7/8/10 (the paid-and-unrefunded condition still applies to rows), `3` Refunded member status 9.
+- **Any other explicit combination** — rejected with `400 Bookings.InvalidStatusFilter` (the intersection is structurally empty; an allowed-but-empty pair still returns an honest empty `200` page, e.g. FailedRefund + an unpaid cancellation).
+- **Undefined numbers** (e.g. `finance=99`, `status=99`) are also rejected with `400 Bookings.InvalidStatusFilter`.
+
+`Bookings.InvalidStatusFilter` is returned with plain validation text naming finance or status.
 
 ## Refund state
 
@@ -43,7 +55,7 @@ Authorization: Bearer {{accessToken}}
 
 Empty database: `200` with `totalCount: 0`.
 
-List item fields: booking/family/caregiver/elderly ids, slot, `status`, amounts, `refundState`, `paidOnUtc`, `cancelledOnUtc`, `refundedOnUtc`, `cancellationReason`.
+List item fields: booking/family/caregiver/elderly ids, slot, `status`, amounts, `refundState`, `paidOnUtc`, `cancelledOnUtc`, `refundedOnUtc`, `cancellationReason`, plus display names: `familyName` and `caregiverArabicFullName` / `caregiverEnglishFullName`. Names are best-effort and nullable: a deleted family renders `null` (never the anonymized "Deleted family" sentinel), and an unknown or anonymized caregiver identity renders `null`s. Ordering is newest first (`cancelledOnUtc` ?? `refundedOnUtc` ?? `updatedOnUtc`, then a unique id tiebreaker so pages are deterministic when timestamps tie). Names resolve in fixed batched reads per page — never per row.
 
 ## Detail
 
@@ -91,6 +103,59 @@ The retry sends the **outstanding award**, never the captured amount. When a rev
 | `Bookings.NoRefundDue` | 409 | Policy recorded that no refund is owed; no Paymob call is made |
 | `Paymob.NotConfigured` | 503 | Gateway keys missing |
 | `Paymob.GatewayError` | 502 | Paymob rejected the refund; booking stays failed — retry again or use the dashboard |
+
+## Record a provider outcome
+
+```http
+POST /api/v1/admin/bookings/{bookingId}/outcome
+Authorization: Bearer {{accessToken}}
+Content-Type: application/json
+
+{ "outcomeReason": 1, "reason": "Provider reported a shift cancellation", "reasonCategory": 1 }
+```
+
+Records a platform-asserted outcome on an **accepted** (`Confirmed`) booking. The refund is decided
+by the booking's sold policy revision and settles through the same executor as the other refund
+paths; the acting admin id is stored on the durable cancellation fact.
+
+Request body:
+
+| Field | Type | Meaning |
+|---|---|---|
+| `outcomeReason` | int | Required, 1–6 (below) |
+| `reason` | string? | Required note, ≤ 500 characters after trim |
+| `reasonCategory` | int? | Required category: `1` Emergency, `2` MedicalIssues, `3` TransportationIssues, `4` AccountDeletion, `5` Other |
+| `providerLatenessMinutes` | int? | Optional context for reason `3`; the forced decision does not re-read it |
+| `customerConsentedToLateness` | bool | Optional context, default `false` |
+| `forceMajeure` | bool | Optional context, default `false` |
+
+Outcome reasons — an admin may assert any of them (the caregiver endpoint is limited to 1–2):
+
+| Value | Reason | Refund |
+|---|---|---|
+| `1` | ProviderCancelled | Full award, settled to Paymob |
+| `2` | ProviderNoShow | Full award, settled to Paymob |
+| `3` | ProviderLateBeyondThreshold | Full award (a forced finding; lateness facts are context, not re-derived) |
+| `4` | RecipientInaccessible | **NoRefundDue** — money retained, no Paymob call |
+| `5` | SafetyCancellation | Full award |
+| `6` | ForceMajeure | Full award |
+
+| Result | HTTP | Meaning |
+|---|---|---|
+| Success | `204` | Recorded; a full award settles and the booking reads `Refunded (9)` |
+| `Bookings.Outcome.InvalidReason` | 400 | `outcomeReason` is not 1–6 |
+| `Bookings.Cancel.ReasonCategoryRequired` / `Bookings.Cancel.ReasonCategoryInvalid` | 400 | Category missing or not 1–5 |
+| `Bookings.Cancel.ReasonRequired` | 400 | `reason` is blank |
+| `Bookings.Domain.InvalidOperation` | 409 | Booking not `Confirmed`, or note longer than 500 characters |
+| `Bookings.NotFound` | 404 | Unknown id |
+| `Bookings.RefundSettlementIncomplete` / `Paymob.NotConfigured` | 503 | Award recorded but the movement could not complete / gateway not configured |
+
+**Known gap (documented as-is).** Two gateway answers are not yet in the shared error mapper: a
+definitive `Paymob.RefundRejected` refusal (the claim is released and nothing ambiguous is marked,
+so a bounded retry stays possible) and `Paymob.RefundOutcomeUnknown` (the booking is marked
+**Pending** and must be reconciled before any further refund). Both currently surface as plain
+`400` through the mapper fallback instead of their coded statuses. A shared-mapper correction is a
+parent-owned decision; until then, drive both states by `refundState`, not by the status code alone.
 
 ## Reconcile an uncertain refund
 
