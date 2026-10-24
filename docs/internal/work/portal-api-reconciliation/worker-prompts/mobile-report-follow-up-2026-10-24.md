@@ -72,6 +72,58 @@ Acceptance: owner/other-viewer and anonymous/non-anonymous coverage on every rea
 surface, consistent create/edit responses, lifecycle/auth alignment, and updated
 OpenAPI, consumer docs and Postman examples. No schema migration is expected.
 
+### 2a. Viewer-specific post capabilities — task result
+
+- Task status: `ready_for_review` (worker-owned). Phase and release states
+  unchanged; Mastermind owns those.
+- Base: `dd4eb19b` on `main` (docs-only commit after released `c1081620`).
+  Parent-owned `Mastermind_Handoff.md` and repo debris untouched.
+- Manifest (actual):
+  - `src/API/Sanad.API/Controllers/CommunityPostsController.cs` — adds boolean
+    `IsOwn`/`CanEdit`/`CanDelete` to `CommunityPostResponse`, one
+    `ResolveCapabilities` rule, and threads the authenticated viewer id through
+    every `ToResponse` call (feed, detail, recommendations, favorites, create,
+    update).
+  - `tests/Sanad.UnitTests/Community/CommunityFeedTests.cs` — four tests: owner
+    vs other viewer on feed + detail (incl. wire names), anonymous author keeps
+    own flags with identity hidden, recommendations + favorites parity,
+    ownership/lifecycle resolver table.
+  - `tests/Sanad.UnitTests/API/CommunityPostManagementApiTests.cs` — three
+    tests: create response on the `PendingReview` post, foreign-viewer read
+    flags, generated OpenAPI schema; the existing update test additionally pins
+    the Published→PendingReview edit response flags. Sender gained
+    `CreatePostCommand`/`GetPostQuery` dispatch for the test context.
+  - `docs/app/community/writes.md` + `docs/app/community/README.md` — the flag
+    table, ownership/anonymity interaction, read-snapshot rule, and the
+    edited-post disappearance from published reads.
+  - `docs/postman/app/Sanad.App.Community.postman_collection.json` — feed,
+    favorites, detail, create, update and recommendations descriptions.
+- Semantics (identical on every surface that returns the DTO): `isOwn` =
+  authenticated caller is the stored author; `canEdit` = own AND
+  `PendingReview`/`Published`; `canDelete` = own AND not `Deleted`; another
+  viewer and an empty viewer id get `false` for all three; anonymity changes no
+  flag; moderation powers stay on the separate Admin routes; flags authorize
+  nothing.
+- Checks run in this session:
+  - `dotnet build Sanad.slnx -c Release -p:TreatWarningsAsErrors=true` — PASS,
+    0 warnings / 0 errors.
+  - `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj -c Release
+    --no-build --filter "FullyQualifiedName~Community"` — PASS, 267/267.
+  - The seven new tests re-run by name — PASS individually.
+  - `dotnet test tests/Sanad.ArchitectureTests/Sanad.ArchitectureTests.csproj
+    -c Release --no-build` — PASS, 1/1.
+  - `git diff --check` — exit 0 (only `core.autocrlf` LF→CRLF notices).
+- NOT RUN: the full ~5,523-test suite (focused filter plus the community/posts
+  namespaces only); no live-host/API smoke beyond the in-process OpenAPI
+  metadata test; no database write, provider call, migration, commit, push or
+  deploy.
+- Deliberately unchanged: mutation handlers, validation and concurrent-state
+  checks; Admin moderation DTOs/routes and the Admin post response shapes; all
+  other response shapes; no schema migration, no new endpoint, no configuration
+  flag.
+- Next action: Mastermind review of the actual diff against this contract;
+  release remains separately unauthorized.
+
 ## 3. Completion notes contract
 
 The accepted request is `POST /api/v1/caregiver/bookings/{bookingId}/complete`
@@ -85,10 +137,116 @@ The mobile app already sends the correct name.
 - Verify the submitted notes persist and are returned through booking readback;
   a success status alone is insufficient because notes are optional.
 
+### 3a. Completion notes contract — task result
+
+- Task status: `ready_for_review` (worker-owned). Phase and release states
+  unchanged; Mastermind owns those.
+- Base: `dd4eb19b` on `main`, same pinned base as section 2a; the parent-owned
+  `Mastermind_Handoff.md`, the community/M1 files and all sibling worker edits
+  were left untouched (verified via `git status`).
+- Manifest (actual):
+  - `docs/postman/app/Sanad.App.Caregiver.postman_collection.json` — the
+    "Complete visit" body now sends `{ "notes": ... }` (same Arabic example
+    text); its description states the optional `notes` request key (body may be
+    omitted/`{}`), 204 success, and the `caregiverNotes` readback.
+  - `docs/app/caregivers/bookings.md` — new "Completion notes: request `notes`,
+    readback `caregiverNotes`" subsection after the status rules: optional
+    request key `notes` (≤ 2000), success `204`, and the text reads back as
+    `caregiverNotes` on both booking-detail projections; one field, two names
+    by contract, no rename/alias, `caregiverNotes` in the request binds nothing.
+  - `docs/app/families/bookings.md` — one clarifying sentence on the booking
+    detail paragraph (the only place the family doc surfaces `caregiverNotes`;
+    it does not show the complete call itself).
+  - `tests/Sanad.UnitTests/Families/CaregiverBookingDetailTests.cs` — two tests:
+    completing via `CaregiverStartBookingCommandHandler` +
+    `CaregiverCompleteBookingCommandHandler` with notes, then asserting the
+    caregiver detail projection and the family booking detail projection both
+    carry the same submitted text; and completing with omitted notes reading
+    back `null` through both projections. Existing in-memory patterns reused.
+  - `tests/Sanad.UnitTests/API/AdminOperationalReadAuthorizationTests.cs` — one
+    OpenAPI assertion on the real served document: the complete route is
+    POST-only, its request schema is `CompleteBookingRequest` with `notes` and
+    no `caregiverNotes`, while `BookingDetailResponse` keeps `caregiverNotes`
+    and publishes no top-level `notes`.
+- No product/source change: controller binding, command, entity
+  (`Booking.CaregiverNotes`) and both read projections are untouched; no
+  response field was renamed, no alias, no schema migration, no new endpoint,
+  no configuration flag.
+- Checks run in this session:
+  - `dotnet build Sanad.slnx -c Release -p:TreatWarningsAsErrors=true` — PASS,
+    0 warnings / 0 errors.
+  - `dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj -c Release
+    --no-build --filter "FullyQualifiedName~BookingDetail|FullyQualifiedName~OpenApi_CompletionNotes"`
+    — PASS, 13/13.
+  - The three new tests re-run by name — PASS 3/3
+    (`Completion_notes_persist_and_read_back_through_both_booking_detail_projections`,
+    `Completion_without_notes_is_allowed_and_reads_back_null_through_both_projections`,
+    `OpenApi_CompletionNotes_BindNotesOnTheRequestAndKeepCaregiverNotesOnTheResponse`).
+  - `git diff --check` — exit 0 (only `core.autocrlf` LF→CRLF notices).
+  - Postman collection re-validated as JSON after the edit — OK.
+- NOT RUN: the full suite (focused booking-detail + new-test filters only, per
+  contract); no live-host/API smoke beyond the in-process OpenAPI metadata
+  host; no database write, provider call, migration, commit, push or deploy.
+- Next action: Mastermind review of the actual diff against this contract
+  (together with section 2a); release remains separately unauthorized.
+
+## Mastermind acceptance (2026-10-24)
+
+Status: **locally accepted; release NOT authorized.** Activation pins the slice
+to released revision `c1081620` (docs commit `dd4eb19b`); the owner-approved
+scope is unchanged.
+
+| Phase | Worker | Result |
+|---|---|---|
+| M1 viewer capabilities | River DeepSeek V4.1 Flash `#high` | accepted |
+| M3 Card enrollment diagnosis | River GLM 5.3 Flash `#high` (read-only) | accepted at evidence level |
+| M2 completion notes | River GLM 5.3 Flash `#high` | accepted |
+
+M1 manifest: `src/API/Sanad.API/Controllers/CommunityPostsController.cs` (single
+`ResolveCapabilities` rule threaded through feed, detail, recommendations,
+favorites, create and update), `tests/Sanad.UnitTests/Community/CommunityFeedTests.cs`,
+`tests/Sanad.UnitTests/API/CommunityPostManagementApiTests.cs`,
+`docs/app/community/README.md`, `docs/app/community/writes.md`,
+`docs/postman/app/Sanad.App.Community.postman_collection.json`.
+
+M2 manifest: `docs/postman/app/Sanad.App.Caregiver.postman_collection.json`,
+`docs/app/caregivers/bookings.md`, `docs/app/families/bookings.md`,
+`tests/Sanad.UnitTests/Families/CaregiverBookingDetailTests.cs`,
+`tests/Sanad.UnitTests/API/AdminOperationalReadAuthorizationTests.cs`.
+
+Mastermind-run gates (whole solution, after every worker finished):
+
+- `dotnet build Sanad.slnx -c Release -p:TreatWarningsAsErrors=true` — 0 warnings / 0 errors.
+- `dotnet test tests/Sanad.UnitTests -c Release --no-build` — **5,533 passed, 26 skipped, 0 failed** (4 m 17 s), i.e. +10 tests over the pre-slice 5,523.
+- `dotnet test tests/Sanad.ArchitectureTests -c Release --no-build` — 1/1 passed.
+- `git diff --check` — exit 0; both touched Postman collections re-validated as JSON.
+- Exact-diff review: one capability rule with no duplicated logic, mutation
+  authorization untouched, Admin DTOs and routes untouched, anonymity path
+  unchanged, completion request stays `notes` while the readback stays
+  `caregiverNotes` (no alias), no migration, no new endpoint, no flags.
+
+## M3 evidence summary and gated decisions
+
+Accepted evidence (worker read-only; production SELECT-only; no writes, no
+provider calls, no secret values): `subscriptionCardEnrollmentAvailable` is
+false because `Paymob__Card3dsIntegrationId` is absent from the live
+environment. The flag is `IsCardAvailable && CardSubscriptionEnrollmentConfigured`
+(`src/Modules/Finance/Application/Sanad.Modules.Finance.Application/PlatformControlCommands.cs:156`,
+`src/API/Sanad.API/DependencyInjection.cs:849-851`), and the Card intent gate
+correctly refuses instead of failing silently. Mastermind spot-checked both code
+points and the live env key list.
+
+Recorded, not acted on: provider plan id `6755` is shared by two monthly plans
+and one annual plan; `gold` and the 2000-EGP annual plan carry no provider
+mapping; the configured webhook URL is `http` with no TLS and
+`Paymob__RedirectionUrl` is absent; no renewal scheduler exists, so recurrence
+depends on Paymob charging the provider subscription and is unproven with zero
+production subscription rows. Acting on any of these needs separate authority
+(merchant account, Production configuration plus restart, plan-version
+decisions).
+
 ## Completion and next action
 
-At activation, save the exact implementation manifest and verification commands
-here. Complete scoped implementation, relevant tests and synchronized consumer
-contracts; record actual results and any provider/environment limitations. Request
-separate release authority after local acceptance. Until the current release is
-verified, this remains the queued approved slice with no Worker dispatched.
+Local implementation, tests and consumer contracts are complete and accepted.
+Release (commit, push, deploy) remains separately unauthorized. The remaining
+M3 remediation items are owner-gated decisions, not implementation work.

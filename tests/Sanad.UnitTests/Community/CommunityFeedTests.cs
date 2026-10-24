@@ -396,6 +396,178 @@ public sealed class CommunityFeedTests
     }
 
     [Fact]
+    public async Task Post_capability_flags_are_true_only_for_the_author_on_feed_and_detail()
+    {
+        await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();
+        var author = UserId.New();
+        var other = UserId.New();
+        await harness.AddIdentityUserAsync(author.Value, "الكاتب", "Author");
+        Guid postId = await harness.AddPublishedPostAsync(author.Value, isAnonymous: false);
+
+        CommunityPostsController ownController = harness.CreatePostsController(author);
+        CommunityPostResponse ownFeed = Assert.Single(
+            harness.ReadItems(await ownController.GetPosts(cancellationToken: default)));
+        Assert.True(ownFeed.IsOwn);
+        Assert.True(ownFeed.CanEdit);
+        Assert.True(ownFeed.CanDelete);
+
+        var ownDetail = Assert.IsType<CommunityPostResponse>(
+            Assert.IsType<OkObjectResult>(await ownController.GetPost(postId, default)).Value);
+        Assert.True(ownDetail.IsOwn);
+        Assert.True(ownDetail.CanEdit);
+        Assert.True(ownDetail.CanDelete);
+
+        // The flags reach the wire under their documented camelCase names.
+        string ownWire = harness.Serialize(ownFeed);
+        Assert.Contains("\"isOwn\":true", ownWire);
+        Assert.Contains("\"canEdit\":true", ownWire);
+        Assert.Contains("\"canDelete\":true", ownWire);
+
+        CommunityPostsController otherController = harness.CreatePostsController(other);
+        CommunityPostResponse otherFeed = Assert.Single(
+            harness.ReadItems(await otherController.GetPosts(cancellationToken: default)));
+        Assert.False(otherFeed.IsOwn);
+        Assert.False(otherFeed.CanEdit);
+        Assert.False(otherFeed.CanDelete);
+        Assert.Contains("\"isOwn\":false", harness.Serialize(otherFeed));
+
+        var otherDetail = Assert.IsType<CommunityPostResponse>(
+            Assert.IsType<OkObjectResult>(await otherController.GetPost(postId, default)).Value);
+        Assert.False(otherDetail.IsOwn);
+        Assert.False(otherDetail.CanEdit);
+        Assert.False(otherDetail.CanDelete);
+    }
+
+    [Fact]
+    public async Task Anonymous_author_keeps_true_capabilities_while_the_identity_stays_hidden()
+    {
+        await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();
+        var author = UserId.New();
+        var other = UserId.New();
+        await harness.AddIdentityUserAsync(author.Value, "المخفي", "Hidden Author");
+
+        Guid postId = await harness.AddPublishedPostAsync(author.Value, isAnonymous: true);
+
+        CommunityPostsController own = harness.CreatePostsController(author);
+        CommunityPostResponse ownResponse = Assert.Single(
+            harness.ReadItems(await own.GetPosts(cancellationToken: default)));
+        Assert.True(ownResponse.IsAnonymous);
+        Assert.True(ownResponse.IsOwn);
+        Assert.True(ownResponse.CanEdit);
+        Assert.True(ownResponse.CanDelete);
+
+        // The capability flags never weaken the anonymity contract.
+        Assert.Null(ownResponse.DisplayName);
+        Assert.Null(ownResponse.AvatarUrl);
+        string ownWire = harness.Serialize(ownResponse);
+        Assert.DoesNotContain("Hidden Author", ownWire, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("المخفي", ownWire, StringComparison.Ordinal);
+        Assert.DoesNotContain(author.Value.ToString(), ownWire, StringComparison.OrdinalIgnoreCase);
+
+        CommunityPostsController stranger = harness.CreatePostsController(other);
+        CommunityPostResponse strangerResponse = Assert.Single(
+            harness.ReadItems(await stranger.GetPosts(cancellationToken: default)));
+        Assert.True(strangerResponse.IsAnonymous);
+        Assert.False(strangerResponse.IsOwn);
+        Assert.False(strangerResponse.CanEdit);
+        Assert.False(strangerResponse.CanDelete);
+
+        // The detail read agrees with the feed.
+        var detail = Assert.IsType<CommunityPostResponse>(
+            Assert.IsType<OkObjectResult>(await own.GetPost(postId, default)).Value);
+        Assert.True(detail.IsOwn);
+        Assert.True(detail.CanEdit);
+        Assert.True(detail.CanDelete);
+        Assert.Null(detail.DisplayName);
+    }
+
+    [Fact]
+    public async Task Recommendations_and_favorites_carry_the_same_viewer_capabilities()
+    {
+        await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();
+        var viewer = UserId.New();
+        var otherAuthor = UserId.New();
+        await harness.AddIdentityUserAsync(viewer.Value, "أنت", "Viewer");
+        await harness.AddIdentityUserAsync(otherAuthor.Value, "آخر", "Other Author");
+
+        Guid ownPost = await harness.AddPublishedPostAsync(viewer.Value, isAnonymous: false);
+        Guid otherPost = await harness.AddPublishedPostAsync(otherAuthor.Value, isAnonymous: false);
+
+        CommunityPostsController controller = harness.CreatePostsController(viewer);
+
+        // Recommendations exclude only posts the viewer already interacted
+        // with, so the viewer's own post is still recommended here.
+        IReadOnlyList<CommunityPostResponse> recommended = harness.ReadItems(
+            await controller.GetRecommendations(pageSize: 10, cancellationToken: default));
+        CommunityPostResponse ownRecommended =
+            Assert.Single(recommended, item => item.Id == ownPost);
+        Assert.True(ownRecommended.IsOwn);
+        Assert.True(ownRecommended.CanEdit);
+        Assert.True(ownRecommended.CanDelete);
+        CommunityPostResponse otherRecommended =
+            Assert.Single(recommended, item => item.Id == otherPost);
+        Assert.False(otherRecommended.IsOwn);
+        Assert.False(otherRecommended.CanEdit);
+        Assert.False(otherRecommended.CanDelete);
+
+        // Favoriting both takes them out of recommendations and into favorites.
+        await harness.AddFavoriteAsync(viewer, ownPost);
+        await harness.AddFavoriteAsync(viewer, otherPost);
+
+        IReadOnlyList<CommunityPostResponse> favorites = harness.ReadItems(
+            await controller.GetFavorites(pageSize: 20, cancellationToken: default));
+        Assert.Equal(2, favorites.Count);
+        CommunityPostResponse ownFavorite = Assert.Single(favorites, item => item.Id == ownPost);
+        Assert.True(ownFavorite.IsOwn);
+        Assert.True(ownFavorite.CanEdit);
+        Assert.True(ownFavorite.CanDelete);
+        CommunityPostResponse otherFavorite =
+            Assert.Single(favorites, item => item.Id == otherPost);
+        Assert.False(otherFavorite.IsOwn);
+        Assert.False(otherFavorite.CanEdit);
+        Assert.False(otherFavorite.CanDelete);
+    }
+
+    [Fact]
+    public void Capability_resolver_follows_ownership_and_lifecycle_transitions()
+    {
+        var author = UserId.New();
+        var other = UserId.New();
+        DateTime now = DateTime.UtcNow;
+
+        Post pending = Post.Create(
+            "أ", "Pending", "a", "a", null, false, author, now);
+        Post published = Post.Create(
+            "ب", "Published", "b", "b", null, false, author, now);
+        published.Publish(UserId.New(), now);
+        Post rejected = Post.Create(
+            "ج", "Rejected", "c", "c", null, false, author, now);
+        rejected.Reject(UserId.New(), CommunityRejectionReasonCodes.Spam, null, now);
+        Post deleted = Post.Create(
+            "د", "Deleted", "d", "d", null, false, author, now);
+        deleted.Delete(author, now);
+
+        // PendingReview and Published are author-editable and -deletable.
+        Assert.Equal((true, true, true), CommunityPostResponse.ResolveCapabilities(pending, author.Value));
+        Assert.Equal((true, true, true), CommunityPostResponse.ResolveCapabilities(published, author.Value));
+
+        // A rejected post is no longer editable but is still deletable.
+        Assert.Equal((true, false, true), CommunityPostResponse.ResolveCapabilities(rejected, author.Value));
+
+        // A deleted post is neither editable nor deletable.
+        Assert.Equal((true, false, false), CommunityPostResponse.ResolveCapabilities(deleted, author.Value));
+
+        // A foreign viewer gets nothing, and anonymity changes no flag.
+        Assert.Equal((false, false, false), CommunityPostResponse.ResolveCapabilities(published, other.Value));
+
+        Post anonymous = Post.Create(
+            "ه", "Anonymous", "e", "e", null, true, author, now);
+        anonymous.Publish(UserId.New(), now);
+        Assert.Equal((true, true, true), CommunityPostResponse.ResolveCapabilities(anonymous, author.Value));
+        Assert.Equal((false, false, false), CommunityPostResponse.ResolveCapabilities(anonymous, other.Value));
+    }
+
+    [Fact]
     public async Task Blocked_author_posts_are_excluded_from_the_feed()
     {
         await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();

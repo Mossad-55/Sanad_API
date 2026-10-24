@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Reflection;
+using System.Text.Json;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
@@ -105,10 +106,62 @@ public sealed class CommunityPostManagementApiTests : IClassFixture<PortalApiMet
         var ok = Assert.IsType<OkObjectResult>(result);
         var response = Assert.IsType<CommunityPostResponse>(ok.Value);
         Assert.Equal("New Title", response.TitleEnglish);
+        // A published post edited by its author returns to PendingReview, and
+        // the response reports the author as still able to edit/delete it.
+        Assert.Equal("PendingReview", response.Status);
+        Assert.True(response.IsOwn);
+        Assert.True(response.CanEdit);
+        Assert.True(response.CanDelete);
 
         Post stored = await db.Posts.SingleAsync();
         Assert.Equal(PostStatus.PendingReview, stored.Status); // moderation preserved
         Assert.Equal("New content", stored.ContentEnglish);
+    }
+
+    [Fact]
+    public async Task Create_response_reports_owner_capabilities_for_the_pending_post()
+    {
+        await using var db = CreateDb();
+        var author = UserId.New();
+
+        CommunityPostsController controller = CreatePostsController(db, author);
+        var result = await controller.CreatePost(
+            new CreatePostCommand
+            {
+                TitleArabic = "عنوان",
+                TitleEnglish = "Title",
+                ContentArabic = "محتوى",
+                ContentEnglish = "Content",
+                AuthorId = author.Value
+            },
+            default);
+
+        var created = Assert.IsType<CreatedAtActionResult>(result);
+        var response = Assert.IsType<CommunityPostResponse>(created.Value);
+        Assert.Equal("PendingReview", response.Status);
+        Assert.True(response.IsOwn);
+        Assert.True(response.CanEdit);
+        Assert.True(response.CanDelete);
+    }
+
+    [Fact]
+    public async Task Foreign_viewer_capability_flags_are_false_on_the_read_surfaces()
+    {
+        await using var db = CreateDb();
+        var author = UserId.New();
+        Post post = CreatePublishedPost(author);
+        db.Posts.Add(post);
+        await db.SaveChangesAsync();
+
+        CommunityPostsController controller = CreatePostsController(db, UserId.New());
+        var detail = Assert.IsType<CommunityPostResponse>(
+            Assert.IsType<OkObjectResult>(await controller.GetPost(post.Id.Value, default)).Value);
+
+        // The flags describe the read snapshot only; they never encode the
+        // Admin moderation powers, which stay on the separate Admin routes.
+        Assert.False(detail.IsOwn);
+        Assert.False(detail.CanEdit);
+        Assert.False(detail.CanDelete);
     }
 
     [Fact]
@@ -400,6 +453,31 @@ public sealed class CommunityPostManagementApiTests : IClassFixture<PortalApiMet
         Assert.Null(sender.LastAdminDeletePostCommand);
     }
 
+    // ------------------------------------------------- openapi contract
+
+    [Fact]
+    public async Task OpenApi_publishes_the_viewer_capability_flags_on_the_post_response()
+    {
+        using HttpClient client = _host.CreatePortalClient();
+        using HttpResponseMessage document = await client.GetAsync("/openapi/v1.json");
+        document.EnsureSuccessStatusCode();
+        using JsonDocument root = JsonDocument.Parse(
+            await document.Content.ReadAsStringAsync());
+
+        JsonElement properties = root.RootElement
+            .GetProperty("components")
+            .GetProperty("schemas")
+            .GetProperty("CommunityPostResponse")
+            .GetProperty("properties");
+
+        foreach (string field in new[] { "isOwn", "canEdit", "canDelete" })
+        {
+            Assert.True(properties.TryGetProperty(field, out JsonElement property),
+                $"CommunityPostResponse is missing {field}.");
+            Assert.Equal("boolean", property.GetProperty("type").GetString());
+        }
+    }
+
     // ------------------------------------------------------------- helpers
 
     private static CommunityPostsController CreatePostsController(
@@ -505,6 +583,8 @@ internal sealed class CommunityPostManagementSender(CommunityDbContext context) 
     {
         object? result = request switch
         {
+            CreatePostCommand command =>
+                new CreatePostCommandHandler(context).Handle(command, cancellationToken),
             UpdatePostCommand command =>
                 new UpdatePostCommandHandler(context).Handle(command, cancellationToken),
             DeletePostCommand command =>
@@ -513,6 +593,8 @@ internal sealed class CommunityPostManagementSender(CommunityDbContext context) 
                 new AdminDeletePostCommandHandler(context).Handle(command, cancellationToken),
             GetCommunityAuthorProfilesQuery query =>
                 new GetCommunityAuthorProfilesQueryHandler(context).Handle(query, cancellationToken),
+            GetPostQuery query =>
+                new GetPostQueryHandler(context).Handle(query, cancellationToken),
             LikePostCommand command =>
                 new LikePostCommandHandler(context).Handle(command, cancellationToken),
             UnlikePostCommand command =>

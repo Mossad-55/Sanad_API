@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
@@ -386,6 +387,75 @@ public sealed class CaregiverBookingDetailTests
         string json = JsonSerializer.Serialize(result.Value);
         Assert.DoesNotContain("Nour", json, StringComparison.Ordinal);
         Assert.DoesNotContain("+201001234567", json, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Completion_notes_persist_and_read_back_through_both_booking_detail_projections()
+    {
+        var (dbContext, family, elderly) = SeedFamily();
+        DateTime now = DateTime.UtcNow;
+        var caregiverId = CaregiverId.New();
+
+        Booking booking = ConfirmedBooking(family, elderly, caregiverId, now);
+        dbContext.Bookings.Add(booking);
+        dbContext.SaveChanges();
+
+        await new CaregiverStartBookingCommandHandler(dbContext).Handle(
+            new CaregiverStartBookingCommand(caregiverId, booking.Id, now.AddMinutes(2)),
+            CancellationToken.None);
+
+        const string notes = "الحالة العامة جيدة، تم إعطاء الدواء في موعده.";
+        Result completed = await new CaregiverCompleteBookingCommandHandler(dbContext).Handle(
+            new CaregiverCompleteBookingCommand(caregiverId, booking.Id, notes, now.AddMinutes(3)),
+            CancellationToken.None);
+
+        Assert.True(completed.IsSuccess);
+
+        var caregiverRead = await new GetCaregiverBookingDetailQueryHandler(dbContext)
+            .Handle(new GetCaregiverBookingDetailQuery(caregiverId, booking.Id), CancellationToken.None);
+        var familyRead = await new GetFamilyBookingDetailQueryHandler(dbContext)
+            .Handle(new GetFamilyBookingDetailQuery(family.OwnerUserId, booking.Id), CancellationToken.None);
+
+        Assert.True(caregiverRead.IsSuccess);
+        Assert.True(familyRead.IsSuccess);
+
+        // The read models — not just the entity — carry the submitted notes.
+        Assert.Equal(BookingStatus.Completed, caregiverRead.Value.Status);
+        Assert.Equal(notes, caregiverRead.Value.CaregiverNotes);
+        Assert.Equal(notes, familyRead.Value.CaregiverNotes);
+    }
+
+    [Fact]
+    public async Task Completion_without_notes_is_allowed_and_reads_back_null_through_both_projections()
+    {
+        var (dbContext, family, elderly) = SeedFamily();
+        DateTime now = DateTime.UtcNow;
+        var caregiverId = CaregiverId.New();
+
+        Booking booking = ConfirmedBooking(family, elderly, caregiverId, now);
+        dbContext.Bookings.Add(booking);
+        dbContext.SaveChanges();
+
+        await new CaregiverStartBookingCommandHandler(dbContext).Handle(
+            new CaregiverStartBookingCommand(caregiverId, booking.Id, now.AddMinutes(2)),
+            CancellationToken.None);
+
+        Result completed = await new CaregiverCompleteBookingCommandHandler(dbContext).Handle(
+            new CaregiverCompleteBookingCommand(caregiverId, booking.Id, null, now.AddMinutes(3)),
+            CancellationToken.None);
+
+        Assert.True(completed.IsSuccess);
+
+        var caregiverRead = await new GetCaregiverBookingDetailQueryHandler(dbContext)
+            .Handle(new GetCaregiverBookingDetailQuery(caregiverId, booking.Id), CancellationToken.None);
+        var familyRead = await new GetFamilyBookingDetailQueryHandler(dbContext)
+            .Handle(new GetFamilyBookingDetailQuery(family.OwnerUserId, booking.Id), CancellationToken.None);
+
+        Assert.True(caregiverRead.IsSuccess);
+        Assert.True(familyRead.IsSuccess);
+        Assert.Equal(BookingStatus.Completed, caregiverRead.Value.Status);
+        Assert.Null(caregiverRead.Value.CaregiverNotes);
+        Assert.Null(familyRead.Value.CaregiverNotes);
     }
 
     private static FamiliesDbContext CreateDbContext()

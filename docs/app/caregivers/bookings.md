@@ -160,6 +160,20 @@ The refund entitlement follows the policy revision the booking was **sold** unde
 
 Successful start, complete, and other command actions return `204 No Content`. Invalid state or timestamp ordering returns `409 Bookings.Domain.InvalidOperation`; an exhausted family subscription booking allowance returns `409 Bookings.AllowanceExceeded` and leaves the booking `InProgress`; an unknown or foreign booking returns `404 Bookings.NotFound`.
 
+### Completion notes: request `notes`, readback `caregiverNotes`
+
+`POST /api/v1/caregiver/bookings/{bookingId}/complete` binds the optional request key
+`notes` (free text ≤ 2000). The body may be omitted entirely or sent as `{}` when
+there is nothing to record; success is `204 No Content` either way. The submitted
+text is stored once on the booking and is read back through **both** booking-detail
+projections — the caregiver's own detail (`GET /api/v1/caregiver/bookings/{bookingId}`)
+and the family booking detail (`GET /api/v1/family/bookings/{bookingId}`) — as the
+response field `caregiverNotes`.
+
+One field, two names by contract: `notes` is the request key only, and
+`caregiverNotes` is the response field only. No rename, alias or mapping change is
+planned; sending `caregiverNotes` in the request body binds nothing.
+
 The visit-report action returns `201` and accepts only `observedCondition`, `activities`, `notes`, and
 `assessment`. It uses server attendance and submission timestamps and rejects a second report for the
 same booking with `409 Reports.Visit.AlreadySubmitted`.

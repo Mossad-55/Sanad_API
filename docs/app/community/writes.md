@@ -95,6 +95,36 @@ post). On the recommendations feed `isLiked`/`isFavorited` are always
 posts are excluded from recommendations by definition. The favorite toggle
 endpoint is unchanged.
 
+## Viewer capabilities (`isOwn`, `canEdit`, `canDelete`)
+
+Every surface that returns a post — the feed, post detail, recommendations,
+favorites and the create/update responses — carries three additive booleans
+describing the **authenticated caller's own** app rights over that post:
+
+| Field | `true` when |
+| --- | --- |
+| `isOwn` | the authenticated caller is the stored author |
+| `canEdit` | `isOwn` **and** the post is `PendingReview` or `Published` |
+| `canDelete` | `isOwn` **and** the post is not `Deleted` |
+
+- A caller who is not the author gets `false` for all three. This includes a
+  moderator reading through the app surface: the flags describe app
+  ownership only and **never encode moderation powers**, which stay on the
+  separate `/api/v1/admin/community` routes.
+- Anonymity changes nothing. An anonymous post's author still sees their own
+  `true` flags while `displayName` and `avatarUrl` stay `null` and no author
+  id is published.
+- The flags are a **read snapshot**. They authorize nothing: `PUT
+  /api/v1/community/posts/{postId}` and `DELETE
+  /api/v1/community/posts/{postId}` keep enforcing ownership, status and
+  concurrent-state checks server-side, and a stale or foreign request still
+  answers the same `404`/`409` it did before.
+- The read surfaces return `Published` posts only. Editing a published post
+  returns it to `PendingReview` for re-moderation, so the edited post
+  **disappears from the feed, detail, recommendations and favorites** until a
+  moderator re-approves it. Deletion removes it from every read the same way.
+  The flags never widen that visibility and expose no unpublished post.
+
 ## Author fields and anonymity
 
 Post, comment and reply responses carry two additive author fields:

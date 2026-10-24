@@ -453,6 +453,44 @@ public sealed class AdminOperationalReadAuthorizationTests : IClassFixture<Porta
         AssertNoPropertyMatching(detail, "ledger", "timeline", "eventHistory", "isCaregiverIncident", "reasonNote");
     }
 
+    [Fact]
+    public void OpenApi_CompletionNotes_BindNotesOnTheRequestAndKeepCaregiverNotesOnTheResponse()
+    {
+        JsonElement root = Document();
+
+        // The complete route exists, is POST-only and its request body binds the
+        // optional `notes` key — never `caregiverNotes`.
+        Assert.Equal<string>(["post"], PathMethods(root, "/api/v1/caregiver/bookings/{bookingId}/complete"));
+        JsonElement complete = GetOperation(root, "/api/v1/caregiver/bookings/{bookingId}/complete", "post");
+        Assert.True(
+            complete.TryGetProperty("requestBody", out JsonElement requestBody),
+            "Missing requestBody on the complete operation.");
+        JsonElement requestSchema = requestBody
+            .GetProperty("content")
+            .GetProperty("application/json")
+            .GetProperty("schema");
+        Assert.True(requestSchema.TryGetProperty("$ref", out JsonElement requestRef), "Expected a $ref request schema.");
+        Assert.EndsWith("CompleteBookingRequest", requestRef.GetString()!, StringComparison.Ordinal);
+
+        JsonElement request = ResolveRef(root, requestRef.GetString()!);
+        JsonElement requestProperties = request.GetProperty("properties");
+        Assert.True(requestProperties.TryGetProperty("notes", out _), "Missing CompleteBookingRequest.notes.");
+        Assert.False(
+            requestProperties.TryGetProperty("caregiverNotes", out _),
+            "CompleteBookingRequest must not bind caregiverNotes.");
+
+        // The readback field stays `caregiverNotes` on the booking-detail
+        // response; no top-level `notes` response field is introduced.
+        JsonElement detailProperties = ResolveRef(root, "#/components/schemas/BookingDetailResponse")
+            .GetProperty("properties");
+        Assert.True(
+            detailProperties.TryGetProperty("caregiverNotes", out _),
+            "Missing BookingDetailResponse.caregiverNotes.");
+        Assert.False(
+            detailProperties.TryGetProperty("notes", out _),
+            "BookingDetailResponse must not publish a top-level notes field.");
+    }
+
     private async Task<AuthorizationPolicy> ResolvePolicyAsync(string name)
     {
         IServiceCollection services = new ServiceCollection();

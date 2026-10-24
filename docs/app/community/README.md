@@ -38,6 +38,17 @@ anonymous too: `authorId`, `displayName` and `avatarUrl` are all `null`. The
 API never substitutes a placeholder name. The full contract is in
 [Posts, interactions, ratings, check-ins, recommendations, uploads and moderation](writes.md).
 
+## Viewer capabilities
+
+Every post response — the feed, post detail, recommendations, favorites and the
+create/update responses — carries `isOwn`, `canEdit` and `canDelete` for the
+authenticated caller: `isOwn` when the caller is the stored author, `canEdit`
+for the caller's own `PendingReview`/`Published` post, and `canDelete` for the
+caller's own non-`Deleted` post. Another viewer gets `false` for all three, and
+anonymity changes no flag. The flags grant nothing — the mutation routes stay
+authoritative — and they never encode Admin moderation powers. See
+[Viewer capabilities](writes.md#viewer-capabilities-isown-canedit-candelete).
+
 ## Blocking an author (one-way, hide-posts-only)
 
 A caller can hide an author's **posts** from their own feeds. The relation is

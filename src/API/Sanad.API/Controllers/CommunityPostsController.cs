@@ -73,7 +73,7 @@ public sealed class CommunityPostsController : ApiControllerBase
                     .Select(item => item.Post.AuthorId.Value),
                 cancellationToken);
 
-        return Ok(result.Value.Select(item => ToResponse(item, profiles)));
+        return Ok(result.Value.Select(item => ToResponse(item, userId.Value, profiles)));
     }
 
     [HttpGet("favorites")]
@@ -101,7 +101,7 @@ public sealed class CommunityPostsController : ApiControllerBase
                     .Select(item => item.Post.AuthorId.Value),
                 cancellationToken);
 
-        return Ok(result.Value.Select(item => ToResponse(item, profiles)));
+        return Ok(result.Value.Select(item => ToResponse(item, userId.Value, profiles)));
     }
 
     [HttpGet("recommendations")]
@@ -129,7 +129,7 @@ public sealed class CommunityPostsController : ApiControllerBase
                     .Select(post => post.AuthorId.Value),
                 cancellationToken);
 
-        return Ok(result.Value.Select(post => ToResponse(post, profiles)));
+        return Ok(result.Value.Select(post => ToResponse(post, userId.Value, profiles)));
     }
 
     [HttpGet("posts/{postId:guid}")]
@@ -157,7 +157,7 @@ public sealed class CommunityPostsController : ApiControllerBase
         IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
             await LoadAuthorProfilesAsync(authorIds, cancellationToken);
 
-        return Ok(ToResponse(result.Value, profiles));
+        return Ok(ToResponse(result.Value, userId.Value, profiles));
     }
 
     [HttpPost("posts")]
@@ -187,7 +187,7 @@ public sealed class CommunityPostsController : ApiControllerBase
         return CreatedAtAction(
             nameof(GetPost),
             new { postId = result.Value.Id.Value },
-            ToResponse(result.Value, profiles));
+            ToResponse(result.Value, userId.Value, profiles));
     }
 
     [HttpPost("posts/{postId:guid}/like")]
@@ -257,7 +257,7 @@ public sealed class CommunityPostsController : ApiControllerBase
         IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
             await LoadAuthorProfilesAsync(authorIds, cancellationToken);
 
-        return Ok(ToResponse(result.Value, profiles));
+        return Ok(ToResponse(result.Value, userId.Value, profiles));
     }
 
     /// <summary>
@@ -458,25 +458,35 @@ public sealed class CommunityPostsController : ApiControllerBase
         return ToActionResult(Result.Failure(error));
     }
 
-    private static CommunityPostResponse ToResponse(PostFeedItem item,
+    private static CommunityPostResponse ToResponse(PostFeedItem item, Guid viewerUserId,
         IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles) =>
-        ToResponse(item.Post, item.IsLiked, item.IsFavorited, item.CurrentUserRating, profiles);
+        ToResponse(item.Post, item.IsLiked, item.IsFavorited, item.CurrentUserRating,
+            viewerUserId, profiles);
 
-    private static CommunityPostResponse ToResponse(Post post,
+    private static CommunityPostResponse ToResponse(Post post, Guid viewerUserId,
         IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles) =>
-        ToResponse(post, false, false, null, profiles);
+        ToResponse(post, false, false, null, viewerUserId, profiles);
 
     private static CommunityPostResponse ToResponse(
         Post post,
         bool isLiked,
         bool isFavorited,
         int? currentUserRating,
+        Guid viewerUserId,
         IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles)
     {
         // An anonymous post carries no author identity at all: no display name,
         // no avatar and no author id (this response never carried one).
         bool anonymous = post.IsAnonymous;
         profiles.TryGetValue(post.AuthorId.Value, out CommunityAuthorProfile? author);
+
+        // The viewer-specific capability snapshot describes this read only: it
+        // derives from the authenticated viewer and the stored author/status,
+        // and never widens what the mutation endpoints already enforce. An
+        // anonymous author still sees their own true flags even though the
+        // author identity above stays hidden exactly as before.
+        (bool isOwn, bool canEdit, bool canDelete) =
+            CommunityPostResponse.ResolveCapabilities(post, viewerUserId);
 
         return new CommunityPostResponse(
             post.Id.Value, post.TitleArabic, post.TitleEnglish, post.ContentArabic,
@@ -485,7 +495,8 @@ public sealed class CommunityPostsController : ApiControllerBase
             post.CategoryId?.Value, post.Category?.ArabicName, post.Category?.EnglishName,
             isLiked, isFavorited, currentUserRating,
             anonymous ? null : author?.DisplayName,
-            anonymous ? null : author?.AvatarUrl);
+            anonymous ? null : author?.AvatarUrl,
+            isOwn, canEdit, canDelete);
     }
 
     /// <summary>
@@ -514,11 +525,44 @@ public sealed class CommunityPostsController : ApiControllerBase
     }
 }
 
+/// <summary>
+/// One Community post as the mobile/consumer surface returns it. The three
+/// trailing capability flags are a **viewer-specific read snapshot**:
+/// <c>IsOwn</c> is true only when the server-authenticated caller is the stored
+/// author, <c>CanEdit</c> additionally requires a <c>PendingReview</c> or
+/// <c>Published</c> post and <c>CanDelete</c> additionally requires a post that
+/// is not <c>Deleted</c>. They grant nothing: the PUT/DELETE routes keep
+/// enforcing ownership, status and concurrent-state checks server-side, and
+/// moderation powers stay on the separate Admin routes.
+/// </summary>
 public sealed record CommunityPostResponse(Guid Id, string TitleArabic, string TitleEnglish,
     string ContentArabic, string ContentEnglish, string? ImageUrl, bool IsAnonymous,
     string Status, int LikesCount, int CommentsCount, int FavoritesCount, DateTime CreatedOnUtc,
     Guid? CategoryId = null, string? CategoryArabicName = null, string? CategoryEnglishName = null,
     bool IsLiked = false, bool IsFavorited = false, int? CurrentUserRating = null,
-    string? DisplayName = null, string? AvatarUrl = null);
+    string? DisplayName = null, string? AvatarUrl = null,
+    bool IsOwn = false, bool CanEdit = false, bool CanDelete = false)
+{
+    /// <summary>
+    /// The locked viewer-capability rule, in one place: ownership is the
+    /// stored author compared against the server-authenticated viewer id;
+    /// edit is allowed on the author's <c>PendingReview</c>/<c>Published</c>
+    /// post; delete on the author's post that is not <c>Deleted</c>. A foreign
+    /// viewer — and an empty/unauthenticated viewer id — gets <c>false</c> for
+    /// all three. Anonymity never changes the flags: an anonymous author sees
+    /// their own capabilities while the author identity stays hidden.
+    /// </summary>
+    public static (bool IsOwn, bool CanEdit, bool CanDelete) ResolveCapabilities(
+        Post post, Guid viewerUserId)
+    {
+        bool isOwn = viewerUserId != Guid.Empty &&
+            post.AuthorId == new UserId(viewerUserId);
+        bool canEdit = isOwn &&
+            post.Status is PostStatus.PendingReview or PostStatus.Published;
+        bool canDelete = isOwn && post.Status != PostStatus.Deleted;
+
+        return (isOwn, canEdit, canDelete);
+    }
+}
 
 public sealed record SubmitCommunityPostReportRequest(string? ReasonCode, string? Note);
