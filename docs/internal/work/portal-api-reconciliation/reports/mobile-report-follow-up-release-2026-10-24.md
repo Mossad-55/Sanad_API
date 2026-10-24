@@ -177,3 +177,28 @@ integration → author new plan versions carrying those ids, publish, retire the
 old ones → set `Paymob__Card3dsIntegrationId` and `Paymob__ApiKey`, restart → the
 flag flips by itself → run the sandbox/live smoke, then one real charge under
 separate authority for Production recurrence evidence.
+
+## Second release: subscription-management auth fix (`03314442`)
+
+Released and verified on 2026-10-25 as
+`03314442b43b4b1b2afbec7031dabe585d7f1c0c` (`997d6056..03314442`, previous live
+`f790ff57`). Gates: strict Release build 0/0, full suite **5,538 passed / 26
+skipped / 0 failed** (5 new tests), architecture 1/1, `git diff --check` clean.
+
+Deployment: backup `/root/sanad-releases/portal-report-03314442-20261024212550/`
+(dump 808,490 bytes / 907 TOC entries validated, app tar 12,499,221 bytes),
+archive SHA-256 `ef3edf0f…df3dc05` verified on target, service `active`,
+NRestarts=0, 9/9 heads, 0 pending migrations.
+
+One deliberate configuration change, confined to `/etc/sanad/sanad.env`:
+`Paymob__ApiKey` was appended (mode `600 root:root`, one non-empty entry; the
+pre-change copy is `sanad.env.before-apikey` in the release directory). The
+unit file and `appsettings.json` fingerprints are unchanged, so the post-check
+diff shows exactly that one file. The running process env contains the key
+(one entry, verified by count without printing it), and the merchant catalog
+still lists the five plans through it.
+
+`subscriptionCardEnrollmentAvailable` **remains false** after the deploy, which
+is the intended state; the new key does not unlock enrollment on a test-mode
+secret key. Temporary credential copies were removed from both the host and the
+build machine; the key now exists only in the service environment file.
