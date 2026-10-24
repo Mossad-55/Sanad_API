@@ -202,3 +202,102 @@ still lists the five plans through it.
 is the intended state; the new key does not unlock enrollment on a test-mode
 secret key. Temporary credential copies were removed from both the host and the
 build machine; the key now exists only in the service environment file.
+
+## Rehearsal environment: enrollment proven end to end (2026-10-25)
+
+The owner clarified this VPS and Paymob account are a **rehearsal**: the real
+go-live uses different credentials, a different server and a different merchant
+account. The goal here is therefore to prove the whole enrollment and callback
+flow so the production run is a repeatable checklist, not to shield this
+deployment from test data. Enablement and the flow below were performed on that
+basis.
+
+### Enablement (rehearsal-only shortcut, documented)
+
+- Six **on-sale** plan versions were mapped to real provider plan ids by direct
+  SQL (`gold` v1→`12861`, `premium` v3→`12866`, v4→`12865`, v5→`12863`,
+  v6→`12864`, v7→`12862`). In production the same change must use the documented
+  admin path (new version → publish → retire the previous), because a published
+  version's mapping is immutable. Direct SQL is acceptable **only** because this
+  database is disposable.
+- `Paymob__Card3dsIntegrationId=5897206` was appended to `/etc/sanad/sanad.env`
+  and the service restarted; `subscriptionCardEnrollmentAvailable` flipped to
+  **true** by itself, with no code change and no forced flag.
+- Trap found while mapping: `premium` v3 (300 EGP monthly) **was on sale** with
+  the nonexistent `6205`, so the sellable catalog was six plans, not five.
+  Provider plan `12866` was created for it.
+
+### Third defect found and fixed: null intention URLs
+
+`payment-intent` returned **502 `Paymob intention request failed with status
+400`** with no upstream detail. Bisecting the client's exact payload against the
+live gateway isolated the cause: the client always serialized
+`redirection_url` (and `notification_url`), sending an explicit `null` when
+unconfigured, and Paymob rejects that field (`400 {"redirection_url": ["This
+field may not be null."]}`). The identical payload with the key omitted returned
+**201**. So every Card enrollment intent failed on any environment without
+`Paymob__RedirectionUrl`, and every booking intent failed without
+`Paymob__WebhookUrl`.
+
+Fixed in `4690b5b2` by adding each URL only when configured, and by surfacing
+field-level provider rejections as `upstream: <field>: <message>` (the
+DRF-style error map previously produced a status-only message). Five tests pin
+omission, retention, and redaction of field-level reasons.
+
+### End-to-end run
+
+Driven through the real API and the real Paymob unified checkout (Chrome via
+Playwright; the headless user agent is blocked by Paymob, a normal UA is not):
+
+| Step | Result |
+|---|---|
+| Token for the existing family owner (`hasnaa21718@gmail.com`) | minted with the configured signing key (seeder is Development-gated and cannot run here) |
+| `POST /quote` on `premium` v5 | `200`, total payable **57.50** (50 base + 5.00 platform fee + 2.50 tax) |
+| `POST /payment-intent` (Card) | `200`, attempt `01a16ffe-5b24-7255-9378-b02fe6df8036`, `clientSecret` + `publicKey`, `recurringRenewalSupported: true` |
+| Unified checkout | renders `Pay EGP 57.50`; test card added, 3DS (MPGS) challenge cleared |
+| Provider result | **Approved**, transaction `560118491` |
+
+Persisted state (verified in `families` schema):
+
+- `subscription_payment_attempts`: status `2` (succeeded), txn `560118491`,
+  `paymob_subscription_id=14748`, settled.
+- `family_subscriptions`: `premium` v5, price 50.00, cycle monthly, `is_current`,
+  auto-renew on, provider subscription `14748`, state `active`, period gross
+  **57.50**, period ends 2026-11-24, next billing 2026-11-25.
+- `subscription_invoices`: `INV-2026-10-000001`, 57.50, period 2026-10-24 →
+  2026-11-24; PDF endpoint returns a valid 1,226-byte `%PDF-1.4`.
+- `paymob_subscription_identities`: `14748` ↔ attempt ↔ family subscription.
+- `paymob_subscription_callbacks`: `request:0464572f-…`, trigger
+  `Subscription Created` (durable idempotency key).
+- 8 benefits granted; `GET /current`, `/payments`, `/invoices` all `200` and
+  consistent.
+
+Provider truth (`GET /api/acceptance/subscriptions/14748`): `plan_id: 12863`,
+`amount_cents: 5750`, `state: active`, `frequency: 30`, `next_billing:
+2026-11-25`, `webhook_url` = the Sanad webhook, `integration: 5897206`.
+
+The shipped auth fix was then exercised **against the real subscription**:
+`PUT /api/acceptance/subscriptions/14748` with the api_key-derived auth token
+returned **200**, where the secret key returns 401. The plan-change amount-sync
+path is therefore proven live, not just in unit tests.
+
+### Release `4690b5b2`
+
+`4690b5b2e46a311bbb64f76c41c81769a34d4832` (`c76a64dc..4690b5b2`). Gates: strict
+Release build 0/0, full suite **5,543 passed / 26 skipped / 0 failed**,
+architecture 1/1. Deploy: backup 808,492 bytes / 907 TOC entries, archive
+`39d2db66…` verified on target, `CONFIG_UNCHANGED` (no env change this time),
+9/9 heads, 0 pending migrations, smoke 200, NRestarts=0.
+
+### Still not proven, and why
+
+- **Recurrence itself.** `14748` is configured for a 30-day cycle with
+  `next_billing 2026-11-25`; the first real renewal cannot be observed until
+  then or without a provider-initiated charge. Renewal handling (anchor
+  preservation, grace, duplicate delivery, conflicting identity) is covered by
+  `SubscriptionProviderCallbackTests` (24 cases) rather than a live charge.
+- **Production go-live**, which uses different credentials, server and merchant
+  account: still needs live integration ids, live secret/public keys, six live
+  plans, new plan versions carrying those ids, `Paymob__Card3dsIntegrationId`,
+  `https` webhook and `RedirectionUrl`, and one real charge under separate
+  authority.
