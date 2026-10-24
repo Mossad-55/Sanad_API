@@ -123,6 +123,18 @@
     {
       "key": "careHomeVisitSettingsVersion",
       "value": "0"
+    },
+    {
+      "key": "careHomeResidentId",
+      "value": ""
+    },
+    {
+      "key": "careHomeRecordId",
+      "value": ""
+    },
+    {
+      "key": "careHomeRecordVersion",
+      "value": "1"
     }
   ],
   "item": [
@@ -1717,6 +1729,36 @@
               }
             }
           ]
+        }
+      ]
+    },
+    {
+      "name": "11. Resident care records",
+      "description": "Facility-owner-only care records for residents with an Accepted booking at this facility. Every read/write rechecks facility ownership and accepted-resident scope. Mutations require an approved disposable fixture.",
+      "item": [
+        {
+          "name": "List accepted resident names",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{careHomeOwnerJwt}}" }], "url": "{{baseUrl}}/api/v1/care-homes/residents/mine?page=1&pageSize=20", "description": "Names only for residents with an Accepted booking at the owner's facility. No medical data is returned." }
+        },
+        {
+          "name": "List care-home-source records for resident",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{careHomeOwnerJwt}}" }], "url": "{{baseUrl}}/api/v1/care-homes/residents/mine/{{careHomeResidentId}}/care-records?page=1&pageSize=20", "description": "CareHome-source records only; resident must have an Accepted booking at the owner's facility." }
+        },
+        {
+          "name": "Create care-home-source record — disposable fixture only",
+          "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{careHomeOwnerJwt}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"hospitalName\": \"Approved test fixture\",\n  \"visitDate\": \"2026-10-20\",\n  \"details\": \"Disposable care-home care-record fixture\"\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/residents/mine/{{careHomeResidentId}}/care-records", "description": "STATE-CHANGING: facility and author are derived server-side. Approved disposable resident fixture only." }
+        },
+        {
+          "name": "Get care-home-source record",
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{careHomeOwnerJwt}}" }], "url": "{{baseUrl}}/api/v1/care-homes/residents/mine/{{careHomeResidentId}}/care-records/{{careHomeRecordId}}" }
+        },
+        {
+          "name": "Update care-home-source record — disposable fixture only",
+          "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{careHomeOwnerJwt}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"hospitalName\": \"Approved test fixture\",\n  \"visitDate\": \"2026-10-20\",\n  \"details\": \"Updated disposable care-home fixture\",\n  \"expectedVersion\": {{careHomeRecordVersion}}\n}" }, "url": "{{baseUrl}}/api/v1/care-homes/residents/mine/{{careHomeResidentId}}/care-records/{{careHomeRecordId}}", "description": "STATE-CHANGING: versioned update; stale version returns 409. Approved disposable fixture only." }
+        },
+        {
+          "name": "Delete care-home-source record — disposable fixture only",
+          "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{careHomeOwnerJwt}}" }], "url": "{{baseUrl}}/api/v1/care-homes/residents/mine/{{careHomeResidentId}}/care-records/{{careHomeRecordId}}?expectedVersion={{careHomeRecordVersion}}", "description": "STATE-CHANGING: versioned delete; stale version returns 409. Approved disposable fixture only." }
         }
       ]
     }

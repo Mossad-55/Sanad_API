@@ -8,6 +8,7 @@ public sealed class LibraryContent : AggregateRoot<LibraryContentId>
     public const int MaximumTitleLength = 200;
     public const int MaximumSummaryLength = 1000;
     public const int MaximumVideoUrlLength = 500;
+    public const int MaximumVideoStorageKeyLength = 500;
     public const int MaximumCoverPathLength = 500;
     public const int MaximumSectionCount = 40;
 
@@ -26,6 +27,7 @@ public sealed class LibraryContent : AggregateRoot<LibraryContentId>
         string arabicSummary,
         string englishSummary,
         string? videoUrl,
+        string? videoStorageKey,
         int? durationSeconds,
         string coverImagePath,
         bool isPremium,
@@ -46,7 +48,7 @@ public sealed class LibraryContent : AggregateRoot<LibraryContentId>
         EnglishSummary = RequiredText(englishSummary, nameof(englishSummary), MaximumSummaryLength);
         CoverImagePath = RequiredText(coverImagePath, nameof(coverImagePath), MaximumCoverPathLength);
         IsPremium = isPremium;
-        ApplyTypeRules(type, videoUrl, durationSeconds, sections);
+        ApplyTypeRules(type, videoUrl, videoStorageKey, durationSeconds, sections);
         Status = LibraryContentStatus.Draft;
         CreatedOnUtc = createdOnUtc;
         UpdatedOnUtc = createdOnUtc;
@@ -60,6 +62,16 @@ public sealed class LibraryContent : AggregateRoot<LibraryContentId>
     public string ArabicSummary { get; private set; } = string.Empty;
     public string EnglishSummary { get; private set; } = string.Empty;
     public string? VideoUrl { get; private set; }
+
+    /// <summary>
+    /// Private storage key of the uploaded video bytes, or <c>null</c> when no
+    /// bytes are attached. Only <see cref="LibraryContentType.Video"/> content can
+    /// carry one. <see cref="VideoUrl"/> stays the legacy administrator metadata
+    /// and is never used as a playback source for consumers.
+    /// </summary>
+    public string? VideoStorageKey { get; private set; }
+
+    public bool HasStoredVideo => !string.IsNullOrWhiteSpace(VideoStorageKey);
     public int? DurationSeconds { get; private set; }
     public string CoverImagePath { get; private set; } = string.Empty;
     public bool IsPremium { get; private set; }
@@ -79,6 +91,7 @@ public sealed class LibraryContent : AggregateRoot<LibraryContentId>
         string arabicSummary,
         string englishSummary,
         string? videoUrl,
+        string? videoStorageKey,
         int? durationSeconds,
         string coverImagePath,
         bool isPremium,
@@ -93,6 +106,7 @@ public sealed class LibraryContent : AggregateRoot<LibraryContentId>
             arabicSummary,
             englishSummary,
             videoUrl,
+            videoStorageKey,
             durationSeconds,
             coverImagePath,
             isPremium,
@@ -121,7 +135,55 @@ public sealed class LibraryContent : AggregateRoot<LibraryContentId>
         EnglishSummary = RequiredText(englishSummary, nameof(englishSummary), MaximumSummaryLength);
         CoverImagePath = RequiredText(coverImagePath, nameof(coverImagePath), MaximumCoverPathLength);
         IsPremium = isPremium;
-        ApplyTypeRules(Type, videoUrl, durationSeconds, sections);
+
+        // A metadata update never detaches already-uploaded bytes: the stored
+        // video reference survives unless the explicit remove operation clears
+        // it. Articles cannot address a video at all, so the reference is dropped
+        // when the effective type is not Video.
+        ApplyTypeRules(
+            Type,
+            videoUrl,
+            Type == LibraryContentType.Video ? VideoStorageKey : null,
+            durationSeconds,
+            sections);
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Attaches (or replaces) the private storage reference of the uploaded video
+    /// bytes. Draft and published content can receive bytes; archived content is
+    /// inert. The legacy <see cref="VideoUrl"/> metadata is untouched, and no
+    /// consumer playback URL is exposed until bytes exist — deleting the stored
+    /// file or this reference removes playback again.
+    /// </summary>
+    public void AttachVideo(string storageKey)
+    {
+        if (Status == LibraryContentStatus.Archived)
+            throw new DomainException("Archived library content cannot be modified.");
+
+        if (Type != LibraryContentType.Video)
+            throw new DomainException("Only video content can have a video file.");
+
+        string normalized = NormalizeVideoStorageKey(storageKey)
+            ?? throw new DomainException("A stored video reference is required.");
+
+        VideoStorageKey = normalized;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Detaches the stored video reference. The physical object is deleted by the
+    /// caller only after this change is persisted. Legacy <see cref="VideoUrl"/>
+    /// metadata is retained.
+    /// </summary>
+    public void RemoveVideo()
+    {
+        if (Status == LibraryContentStatus.Archived)
+            throw new DomainException("Archived library content cannot be modified.");
+        if (Type != LibraryContentType.Video)
+            throw new DomainException("Only video content can have a video file.");
+
+        VideoStorageKey = null;
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
@@ -164,28 +226,32 @@ public sealed class LibraryContent : AggregateRoot<LibraryContentId>
     public void IncrementLikes() => LikesCount = checked(LikesCount + 1);
     public void DecrementLikes() => LikesCount = Math.Max(0, LikesCount - 1);
 
+    /// <summary>
+    /// Applies the type-specific invariants. Video content requires a positive
+    /// duration and no article sections; an external <paramref name="videoUrl"/>
+    /// is optional legacy metadata (validated when supplied) and the stored
+    /// <paramref name="videoStorageKey"/> is optional until bytes are uploaded.
+    /// Requiring an external URL would contradict the approved rule that media is
+    /// created by uploading bytes into application storage.
+    /// </summary>
     private void ApplyTypeRules(
         LibraryContentType type,
         string? videoUrl,
+        string? videoStorageKey,
         int? durationSeconds,
         IReadOnlyList<LibraryContentSectionDraft> sections)
     {
+        string? normalizedKey = NormalizeVideoStorageKey(videoStorageKey);
+
         if (type == LibraryContentType.Video)
         {
-            if (string.IsNullOrWhiteSpace(videoUrl))
-                throw new DomainException("Video content requires a video URL.");
-            string normalizedUrl = videoUrl.Trim();
-            if (normalizedUrl.Length > MaximumVideoUrlLength)
-                throw new DomainException($"Video URL cannot exceed {MaximumVideoUrlLength} characters.");
-            if (!Uri.TryCreate(normalizedUrl, UriKind.Absolute, out Uri? uri) ||
-                (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
-                throw new DomainException("Video URL must be an absolute http(s) URL.");
             if (durationSeconds is null || durationSeconds <= 0)
                 throw new DomainException("Video content requires a positive duration in seconds.");
             if (sections is { Count: > 0 })
                 throw new DomainException("Video content cannot have article sections.");
 
-            VideoUrl = normalizedUrl;
+            VideoUrl = NormalizeVideoUrl(videoUrl);
+            VideoStorageKey = normalizedKey;
             DurationSeconds = durationSeconds;
             ReplaceSections([]);
             return;
@@ -193,14 +259,55 @@ public sealed class LibraryContent : AggregateRoot<LibraryContentId>
 
         if (!string.IsNullOrWhiteSpace(videoUrl))
             throw new DomainException("Article content cannot have a video URL.");
+        if (normalizedKey is not null)
+            throw new DomainException("Article content cannot have a video file.");
         if (durationSeconds is not null)
             throw new DomainException("Article content cannot have a duration.");
         if (sections is null || sections.Count == 0)
             throw new DomainException("Article content requires at least one section.");
 
         VideoUrl = null;
+        VideoStorageKey = null;
         DurationSeconds = null;
         ReplaceSections(sections);
+    }
+
+    private static string? NormalizeVideoUrl(string? videoUrl)
+    {
+        if (string.IsNullOrWhiteSpace(videoUrl))
+            return null;
+
+        string normalized = videoUrl.Trim();
+        if (normalized.Length > MaximumVideoUrlLength)
+            throw new DomainException($"Video URL cannot exceed {MaximumVideoUrlLength} characters.");
+        if (!Uri.TryCreate(normalized, UriKind.Absolute, out Uri? uri) ||
+            (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+            throw new DomainException("Video URL must be an absolute http(s) URL.");
+
+        return normalized;
+    }
+
+    /// <summary>
+    /// The stored reference is always produced by the storage layer, and it must
+    /// keep pointing inside the private storage area: no traversal, no rooted
+    /// path and no scheme separator can be accepted.
+    /// </summary>
+    private static string? NormalizeVideoStorageKey(string? storageKey)
+    {
+        if (string.IsNullOrWhiteSpace(storageKey))
+            return null;
+
+        string normalized = storageKey.Trim();
+        if (normalized.Length > MaximumVideoStorageKeyLength ||
+            normalized.Contains("..", StringComparison.Ordinal) ||
+            normalized.Contains('\\', StringComparison.Ordinal) ||
+            normalized.Contains(':', StringComparison.Ordinal) ||
+            normalized.StartsWith('/'))
+        {
+            throw new DomainException("Stored video reference is invalid.");
+        }
+
+        return normalized;
     }
 
     private void ReplaceSections(IReadOnlyList<LibraryContentSectionDraft> sections)

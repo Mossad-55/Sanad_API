@@ -2,6 +2,8 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.BuildingBlocks.Application.Abstractions;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
+using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Cms.Application.Library;
 using Sanad.Modules.Cms.Domain.Library;
@@ -13,10 +15,12 @@ namespace Sanad.API.Controllers;
 public sealed class LibraryController : ApiControllerBase
 {
     private readonly ISender _sender;
+    private readonly IFileStorage _fileStorage;
 
-    public LibraryController(ISender sender)
+    public LibraryController(ISender sender, IFileStorage fileStorage)
     {
         _sender = sender;
+        _fileStorage = fileStorage;
     }
 
     [HttpGet("categories")]
@@ -85,6 +89,43 @@ public sealed class LibraryController : ApiControllerBase
 
         return ToActionResult(await _sender.Send(
             new GetLibraryContentQuery(id, userId.Value), cancellationToken));
+    }
+
+    /// <summary>
+    /// Streams the uploaded bytes of a published library video. Entitlement and
+    /// publication are re-checked by the query, every failure mode returns the
+    /// same 404, and byte ranges are enabled so the player can seek.
+    /// </summary>
+    [HttpGet("content/{id:guid}/video")]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetContentVideo(
+        Guid id,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new GetLibraryContentVideoQuery(id, userId.Value), cancellationToken);
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        var file = await _fileStorage.OpenReadAsync(result.Value.StorageKey, cancellationToken);
+        if (file.IsFailure)
+        {
+            // A missing or unreadable object is reported exactly like an
+            // unpublished or unentitled request, so the route stays a single
+            // neutral outcome.
+            return ToActionResult(Result.Failure(LibraryErrors.ContentNotPublished));
+        }
+
+        return File(file.Value.Content, file.Value.ContentType, enableRangeProcessing: true);
     }
 
     [HttpGet("recommendations")]

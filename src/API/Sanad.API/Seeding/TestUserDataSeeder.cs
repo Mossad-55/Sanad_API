@@ -129,8 +129,7 @@ public sealed class TestUserDataSeeder
         string? paymobSecretKey =
             _configuration["Paymob:SecretKey"];
 
-        if (!string.IsNullOrWhiteSpace(paymobSecretKey)
-            && paymobSecretKey.StartsWith("sk_live", StringComparison.OrdinalIgnoreCase))
+        if (PaymobSecretKeySafety.IsLive(paymobSecretKey))
         {
             throw new InvalidOperationException(
                 "App:TestUserSeed:Enabled must never be true against a LIVE Paymob key.");
@@ -1328,8 +1327,7 @@ public sealed class TestUserDataSeeder
         string? paymobSecretKey =
             _configuration["Paymob:SecretKey"];
 
-        if (!string.IsNullOrWhiteSpace(paymobSecretKey)
-            && paymobSecretKey.StartsWith("sk_live", StringComparison.OrdinalIgnoreCase))
+        if (PaymobSecretKeySafety.IsLive(paymobSecretKey))
         {
             throw new InvalidOperationException(
                 "App:TestUserSeed:Enabled must never be true against a LIVE Paymob key.");

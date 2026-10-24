@@ -47,6 +47,10 @@ public sealed class LibraryContentConfiguration : IEntityTypeConfiguration<Libra
         builder.Property(x => x.VideoUrl)
             .HasColumnName("video_url")
             .HasMaxLength(LibraryContent.MaximumVideoUrlLength);
+        builder.Property(x => x.VideoStorageKey)
+            .HasColumnName("video_storage_key")
+            .HasMaxLength(LibraryContent.MaximumVideoStorageKeyLength);
+        builder.Ignore(x => x.HasStoredVideo);
         builder.Property(x => x.DurationSeconds).HasColumnName("duration_seconds");
         builder.Property(x => x.CoverImagePath)
             .HasColumnName("cover_image_path")

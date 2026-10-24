@@ -31,7 +31,8 @@
     `Paymob__SecretKey` / `Paymob:SecretKey` presence.
 
 .PARAMETER RepoRoot
-    Optional. Repository root. Defaults to three levels above this script.
+    Optional. Repository root. Defaults to four levels above this script
+    (tools/verification/refunds/scripts).
 
 .PARAMETER Expect
     Optional. 'Double' (default) or 'Real'. The script fails when the resolved
@@ -55,7 +56,7 @@ param(
 $ErrorActionPreference = 'Stop'
 
 if ([string]::IsNullOrWhiteSpace($RepoRoot)) {
-    $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..')).Path
+    $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 }
 
 $failures = New-Object System.Collections.Generic.List[string]

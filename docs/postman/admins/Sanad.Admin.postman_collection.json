@@ -4285,7 +4285,7 @@
                 },
                 {
                   "key": "videoUrl",
-                  "value": "https://youtu.be/abc123",
+                  "value": "https://example.invalid/legacy-metadata-only",
                   "type": "text"
                 },
                 {
@@ -4296,7 +4296,35 @@
               ]
             },
             "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}",
-            "description": "STATE-CHANGING manual multipart Video example targeting a Video draft (videos must not send sectionsJson). Omitting sectionsJson preserves existing sections and omitting file keeps the existing cover; an explicit empty sections array fails for Article. Success 200. Type rules are validated against the persisted content type. Only Draft content can be updated - Published/Archived returns 409 Cms.LibraryContent.InvalidOperation; unknown id 404 Cms.LibraryContent.NotFound; invalid fields return 400 with an errors map and traceId, leaving the old cover and sections unchanged. Do not run without owner-approved disposable CMS fixture data."
+            "description": "STATE-CHANGING manual multipart Video example targeting a Video draft (videos must not send sectionsJson). videoUrl is optional legacy metadata only and is never fetched or played; attach approved video bytes with the dedicated upload request below. Omitting sectionsJson preserves existing sections and omitting file keeps the existing cover; an explicit empty sections array fails for Article. Success 200. Type rules are validated against the persisted content type. Only Draft content can be updated - Published/Archived returns 409 Cms.LibraryContent.InvalidOperation; unknown id 404 Cms.LibraryContent.NotFound; invalid fields return 400 with an errors map and traceId, leaving the old cover and sections unchanged. Do not run without owner-approved disposable CMS fixture data."
+          }
+        },
+        {
+          "name": "Upload or replace library video bytes — disposable fixture only",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": "replace-with-approved-video.mp4" }
+              ]
+            },
+            "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}/video",
+            "description": "STATE-CHANGING: CmsContent (SuperAdmin or ContentAdmin). Uploads actual MP4 bytes to private storage; the row stores only the private key. Only Video content may attach bytes; Published or Draft allowed, Archived rejected. Requires video/mp4 and an MP4 ftyp signature, max 50 MB. Replacing bytes uploads/stores the new reference before deleting the old object. No external URL is fetched. Use an approved disposable Video fixture and approved bytes only."
+          }
+        },
+        {
+          "name": "Remove library video bytes — disposable fixture only",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{accessToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/library/content/{{libraryContentId}}/video",
+            "description": "STATE-CHANGING: detaches the private video reference then deletes the stored object. Published or Draft Video is allowed; Archived content is rejected. Article/unknown content return the documented failure. Repeated removal without bytes is a no-op. Use an approved disposable fixture only."
           }
         },
         {

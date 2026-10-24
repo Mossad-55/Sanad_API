@@ -93,11 +93,11 @@ public static class LibraryContentValidation
 
         if (effectiveType == LibraryContentType.Video)
         {
-            if (string.IsNullOrWhiteSpace(videoUrl))
-            {
-                errors["videoUrl"] = ["A video URL is required for Video content."];
-            }
-            else
+            // The legacy external URL is optional metadata only: playback comes
+            // from uploaded bytes, so a missing URL is no longer a defect. When
+            // one is supplied it must still be a well-formed absolute http(s)
+            // address within the stored column length.
+            if (!string.IsNullOrWhiteSpace(videoUrl))
             {
                 string normalizedUrl = videoUrl.Trim();
                 if (normalizedUrl.Length > LibraryContent.MaximumVideoUrlLength)

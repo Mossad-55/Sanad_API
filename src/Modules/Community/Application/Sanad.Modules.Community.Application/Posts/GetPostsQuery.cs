@@ -178,12 +178,72 @@ public sealed class GetCommunityAuthorProfilesQueryHandler(ICommunityDbContext d
             await dbContext.GetCommunityAuthorNamesAsync(
                 request.UserIds ?? [], cancellationToken);
 
+        // One privacy predicate for every consumer (post, comment and reply
+        // projections): the avatar path is published only for authors whose
+        // avatar the authorized download route would actually serve. Anything
+        // else degrades to an honest null instead of a URL that answers 404.
+        HashSet<Guid> photoVisible =
+            await LoadPhotoVisibleAuthorIdsAsync(
+                dbContext,
+                (request.UserIds ?? []).Distinct().ToArray(),
+                cancellationToken);
+
         var profiles = new Dictionary<Guid, CommunityAuthorProfile>();
         foreach (KeyValuePair<Guid, CommunityAuthorName> entry in names)
         {
-            profiles[entry.Key] = CommunityAuthorProfile.FromAuthorName(entry.Value);
+            CommunityAuthorProfile profile = CommunityAuthorProfile.FromAuthorName(entry.Value);
+            profiles[entry.Key] = photoVisible.Contains(entry.Key)
+                ? profile
+                : profile with { AvatarUrl = null };
         }
 
         return Result<IReadOnlyDictionary<Guid, CommunityAuthorProfile>>.Success(profiles);
+    }
+
+    /// <summary>
+    /// The authors the avatar download route serves:
+    /// <list type="bullet">
+    /// <item>at least one <see cref="PostStatus.Published"/>, non-anonymous
+    /// post (a real, visible Community author), and</item>
+    /// <item>no anonymous post ever (the conservative D7 anonymity rule — any
+    /// anonymous-post history suppresses that author's photo everywhere).</item>
+    /// </list>
+    /// A deleted post stops being published, so an author whose only posts
+    /// were deleted loses the avatar path on the next read — the same answer
+    /// the download route gives. Two bounded set queries for the whole batch,
+    /// never one per author.
+    /// </summary>
+    private static async Task<HashSet<Guid>> LoadPhotoVisibleAuthorIdsAsync(
+        ICommunityDbContext dbContext,
+        Guid[] authorIds,
+        CancellationToken cancellationToken)
+    {
+        if (authorIds.Length == 0)
+        {
+            return [];
+        }
+
+        List<UserId> ids = authorIds.Select(id => new UserId(id)).ToList();
+
+        List<UserId> publishedVisible = await dbContext.Posts
+            .AsNoTracking()
+            .Where(post =>
+                ids.Contains(post.AuthorId) &&
+                post.Status == PostStatus.Published &&
+                !post.IsAnonymous)
+            .Select(post => post.AuthorId)
+            .ToListAsync(cancellationToken);
+
+        List<UserId> everAnonymous = await dbContext.Posts
+            .AsNoTracking()
+            .Where(post => ids.Contains(post.AuthorId) && post.IsAnonymous)
+            .Select(post => post.AuthorId)
+            .ToListAsync(cancellationToken);
+
+        var hidden = everAnonymous.Select(id => id.Value).ToHashSet();
+        return publishedVisible
+            .Where(id => !hidden.Contains(id.Value))
+            .Select(id => id.Value)
+            .ToHashSet();
     }
 }

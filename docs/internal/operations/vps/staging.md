@@ -103,7 +103,7 @@ application logs for diagnosis; do not enable full-request logging on this API.
 Run `Verify-SanadDeployment.ps1` with the manifest, the authorized base URL,
 the expected pushed SHA, and the captured startup log path (see
 `docs/internal/operations/deploy-runbook.md` Â§4). Required: remote revision
-match, 10/10 applied-migration match, startup-log 10-context evidence, and the
+match, 9/9 applied-migration match, startup-log 9-context evidence, and the
 anonymous smoke at HTTP 200.
 
 ## 5. Rollback

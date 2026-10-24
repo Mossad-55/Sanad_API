@@ -16,7 +16,7 @@ App__TestUserSeed__Enabled=true
 ```
 
 - Default is **off** — nothing is seeded unless the flag is set.
-- **Development only:** this fixture must never be enabled on TEST, staging, a VPS, or production. The seeder has an explicit Development-only hard gate and returns without database access in every other environment. As a second seatbelt, it *refuses to run* if `Paymob__SecretKey` starts with `sk_live`.
+- **Development only:** this fixture must never be enabled on TEST, staging, a VPS, or production. The seeder has an explicit Development-only hard gate and returns without database access in every other environment. As a second seatbelt, it *refuses to run* if `Paymob__SecretKey` uses a live prefix (`sk_live…` or `egy_sk_live_…`).
 - Locally (Development), the flag is already set in `appsettings.Development.json`. Do not copy this setting to TEST, staging, a VPS, or production.
 - Password for all seeded password accounts (override with `App__TestUserSeed__Password`):
 

@@ -29,8 +29,8 @@ $requiredMigrations = @{}
 foreach ($context in $manifest.requiredMigrations.PSObject.Properties) {
     $requiredMigrations[$context.Name] = [string]$context.Value
 }
-if ($requiredMigrations.Count -ne 10) {
-    throw "Manifest must list all 10 module contexts; found $($requiredMigrations.Count)."
+if ($requiredMigrations.Count -ne 9) {
+    throw "Manifest must list all 9 module contexts; found $($requiredMigrations.Count)."
 }
 
 Add-Type -AssemblyName System.Net.Http
@@ -100,8 +100,8 @@ if (-not [string]::IsNullOrWhiteSpace($StartupLogPath)) {
         }
     }
     $completedContexts = @($completedContexts | Sort-Object -Unique)
-    if ($completedContexts.Count -lt 10) {
-        throw "Startup log proves migration checks for $($completedContexts.Count) context(s) only ($($completedContexts -join ', ')); 10 contexts are required."
+    if ($completedContexts.Count -lt 9) {
+        throw "Startup log proves migration checks for $($completedContexts.Count) context(s) only ($($completedContexts -join ', ')); 9 contexts are required."
     }
     Write-Output "Startup log migration contexts: $($completedContexts -join ', ')"
 }

@@ -211,24 +211,56 @@ public sealed class AdminSplashScreensController :
         return ToActionResult(result);
     }
 
+    private const long MaximumImageBytes = 2_097_152;
+
     private async Task<Result<StoredFile>> SaveSplashImageAsync(
         IFormFile? file,
         CancellationToken cancellationToken)
     {
-        if (file is null)
+        if (file is null || file.Length <= 0)
         {
             return Result<StoredFile>.Failure(
                 StorageErrors.Empty);
         }
 
-        await using Stream stream =
-            file.OpenReadStream();
+        if (file.Length > MaximumImageBytes)
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.TooLarge);
+        }
 
+        // The declared MIME type is never trusted on its own: the raster
+        // signature is verified against the actual bytes before anything is
+        // written to disk.
+        await using var content = new MemoryStream();
+        await file.CopyToAsync(content, cancellationToken);
+        if (!HasMatchingImageSignature(
+                file.ContentType, content.GetBuffer().AsSpan(0, (int)content.Length)))
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.UnsupportedType);
+        }
+
+        content.Position = 0;
         return await _fileStorage.SaveAsync(
-            stream,
+            content,
             file.ContentType,
             file.Length,
             folder: "splash",
             cancellationToken);
     }
+
+    /// <summary>
+    /// Byte-signature check for the accepted raster types; any other declared
+    /// type — including active content such as SVG — has no allowed signature
+    /// and is rejected.
+    /// </summary>
+    private static bool HasMatchingImageSignature(string contentType, ReadOnlySpan<byte> bytes) =>
+        contentType.ToLowerInvariant() switch
+        {
+            "image/jpeg" => bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF,
+            "image/png" => bytes.Length >= 8 && bytes[..8].SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }),
+            "image/webp" => bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8),
+            _ => false
+        };
 }

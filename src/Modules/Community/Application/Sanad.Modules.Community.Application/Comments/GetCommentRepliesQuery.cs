@@ -13,6 +13,12 @@ public sealed class GetCommentRepliesQueryHandler(ICommunityDbContext dbContext)
         int pageSize = Math.Clamp(request.PageSize, 1, 100);
         Reply[] replies = await dbContext.Replies.AsNoTracking()
             .Where(reply => reply.CommentId == new CommunityCommentId(request.CommentId))
+            // A deleted post hides its whole thread: the replies of a comment
+            // whose parent post was deleted are not listed either.
+            .Where(reply => !dbContext.Comments.Any(comment =>
+                comment.Id == reply.CommentId &&
+                dbContext.Posts.Any(post =>
+                    post.Id == comment.PostId && post.Status == PostStatus.Deleted)))
             .OrderBy(reply => reply.CreatedOnUtc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)

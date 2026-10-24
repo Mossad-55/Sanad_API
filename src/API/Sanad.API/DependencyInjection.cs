@@ -53,8 +53,6 @@ using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.Finance.Infrastructure;
 using Sanad.Modules.Finance.Application;
-using Sanad.Modules.Rentals.Infrastructure;
-using Sanad.Modules.Rentals.Application;
 using Sanad.Modules.Identity.Application.Users.Admin;
 using Microsoft.Extensions.Options;
 using Sanad.Modules.Notifications.Application.Abstractions.Data;
@@ -145,7 +143,6 @@ public static class DependencyInjection
         services.AddCommunityInfrastructure(configuration);
         services.AddChatInfrastructure(configuration);
         services.AddFinanceInfrastructure(configuration);
-        services.AddRentalsInfrastructure(configuration);
         services.AddHostedService<CareHomeLicenseExpiryMonitor>();
         services.AddHostedService<CareHomeBookingExpiryHostedService>();
         services.AddHostedService<CareHomeTransferNotificationProcessor>();
@@ -654,9 +651,6 @@ public static class DependencyInjection
 
             configuration.RegisterServicesFromAssembly(
                 typeof(OpenConversationCommand).Assembly);
-
-            configuration.RegisterServicesFromAssembly(
-                typeof(IRentalsDbContext).Assembly);
         });
         services.AddScoped<Sanad.Modules.Families.Application.Subscriptions.ISubscriptionInvoiceService,
             Sanad.Modules.Families.Application.Subscriptions.SubscriptionInvoiceService>();

@@ -10,8 +10,8 @@ using Sanad.Modules.Families.Domain.Subscriptions;
 
 namespace Sanad.Modules.Families.Application.Subscriptions;
 
-public sealed record SubscriptionInvoiceListItemResponse(Guid Id, string InvoiceNumber, SubscriptionInvoiceKind Kind, decimal Amount, string Currency, DateTime IssuedOnUtc, DateTime PeriodStartsOnUtc, DateTime PeriodEndsOnUtc);
-public sealed record SubscriptionInvoiceResponse(Guid Id, string InvoiceNumber, SubscriptionInvoiceKind Kind, decimal BasePrice, decimal DiscountAmount, decimal TaxAmount, decimal Amount, string Currency, DateTime IssuedOnUtc, DateTime PeriodStartsOnUtc, DateTime PeriodEndsOnUtc, decimal? PlatformFeeRatePercentage = null, decimal? PlatformFeeAmount = null, int? PlatformChargeRuleVersion = null);
+public sealed record SubscriptionInvoiceListItemResponse(Guid Id, string InvoiceNumber, SubscriptionInvoiceKind Kind, decimal Amount, string Currency, DateTime IssuedOnUtc, DateTime PeriodStartsOnUtc, DateTime PeriodEndsOnUtc, Guid? PaymentAttemptId = null);
+public sealed record SubscriptionInvoiceResponse(Guid Id, string InvoiceNumber, SubscriptionInvoiceKind Kind, decimal BasePrice, decimal DiscountAmount, decimal TaxAmount, decimal Amount, string Currency, DateTime IssuedOnUtc, DateTime PeriodStartsOnUtc, DateTime PeriodEndsOnUtc, decimal? PlatformFeeRatePercentage = null, decimal? PlatformFeeAmount = null, int? PlatformChargeRuleVersion = null, Guid? PaymentAttemptId = null);
 public sealed record SubscriptionInvoiceFile(string Key, string ContentType, Stream Content);
 
 public interface ISubscriptionInvoiceService
@@ -63,7 +63,7 @@ public sealed class GetFamilySubscriptionInvoicesQueryHandler : BuildingBlocks.A
     {
         var family = await FamilyAccess.ResolveFamilyAsync(_db, request.UserId, cancellationToken);
         if (family is null || !FamilyAccess.IsOwner(family, request.UserId)) return Result<IReadOnlyList<SubscriptionInvoiceListItemResponse>>.Failure(new Error("Subscriptions.Invoice.NotOwner", "Only the family owner can view subscription invoices."));
-        var rows = await _db.SubscriptionInvoices.AsNoTracking().Where(x => x.OwnerFamilyId == family.Id.Value).OrderByDescending(x => x.IssuedOnUtc).Select(x => new SubscriptionInvoiceListItemResponse(x.Id, x.InvoiceNumber, x.Kind, x.TotalPayable, x.Currency, x.IssuedOnUtc, x.PeriodStartsOnUtc, x.PeriodEndsOnUtc)).ToListAsync(cancellationToken);
+        var rows = await _db.SubscriptionInvoices.AsNoTracking().Where(x => x.OwnerFamilyId == family.Id.Value).OrderByDescending(x => x.IssuedOnUtc).Select(x => new SubscriptionInvoiceListItemResponse(x.Id, x.InvoiceNumber, x.Kind, x.TotalPayable, x.Currency, x.IssuedOnUtc, x.PeriodStartsOnUtc, x.PeriodEndsOnUtc, x.PaymentAttemptId)).ToListAsync(cancellationToken);
         return rows;
     }
 }
@@ -92,7 +92,7 @@ public sealed class GetFamilySubscriptionInvoiceQueryHandler : BuildingBlocks.Ap
         var family = await FamilyAccess.ResolveFamilyAsync(_db, request.UserId, cancellationToken);
         if (family is null || !FamilyAccess.IsOwner(family, request.UserId)) return Result<SubscriptionInvoiceResponse>.Failure(new Error("Subscriptions.Invoice.NotOwner", "Only the family owner can view subscription invoices."));
         var x = await _db.SubscriptionInvoices.AsNoTracking().SingleOrDefaultAsync(i => i.Id == request.InvoiceId && i.OwnerFamilyId == family.Id.Value, cancellationToken);
-        return x is null ? Result<SubscriptionInvoiceResponse>.Failure(new Error("Subscriptions.Invoice.NotFound", "The subscription invoice was not found.")) : new SubscriptionInvoiceResponse(x.Id, x.InvoiceNumber, x.Kind, x.BasePrice, x.DiscountAmount, x.TaxAmount, x.TotalPayable, x.Currency, x.IssuedOnUtc, x.PeriodStartsOnUtc, x.PeriodEndsOnUtc, x.PlatformFeeRatePercentage, x.PlatformFeeAmount, x.PlatformChargeRuleVersion);
+        return x is null ? Result<SubscriptionInvoiceResponse>.Failure(new Error("Subscriptions.Invoice.NotFound", "The subscription invoice was not found.")) : new SubscriptionInvoiceResponse(x.Id, x.InvoiceNumber, x.Kind, x.BasePrice, x.DiscountAmount, x.TaxAmount, x.TotalPayable, x.Currency, x.IssuedOnUtc, x.PeriodStartsOnUtc, x.PeriodEndsOnUtc, x.PlatformFeeRatePercentage, x.PlatformFeeAmount, x.PlatformChargeRuleVersion, x.PaymentAttemptId);
     }
 }
 

@@ -128,6 +128,15 @@
         "url": "{{baseUrl}}/api/v1/admin/community/restrictions/{{restrictionId}}/revoke"
       },
       "description": "Ends a restriction early while retaining its original action and recording moderator, UTC time, and required reason. Unknown id returns 404; already revoked returns 409."
+    },
+    {
+      "name": "Delete any Community post (moderator) — disposable fixture only",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}"
+      },
+      "description": "STATE-CHANGING: CommunityModeration (SuperAdmin or ContentAdmin) may delete any post; success 204 and DeletedBy records the moderator. Repeat/unknown returns 404. This permission is delete-only: there is no Admin edit/impersonation route. Use an approved disposable fixture."
     }
   ]
 }

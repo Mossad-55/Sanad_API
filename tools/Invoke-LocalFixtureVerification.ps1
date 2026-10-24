@@ -199,7 +199,7 @@ function Get-RedactedText {
     $redacted = [regex]::Replace($redacted, '\beyJ[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]{5,}', '<redacted-token>')
     $redacted = [regex]::Replace($redacted, '(?i)\b(password|pwd|username|userid|user\s+id)\s*=\s*[^;"''\s]+', '$1=<redacted>')
     $redacted = [regex]::Replace($redacted, '(?i)\b(?:host|server)\s*=\s*[^;"''\s]+\s*(?:;[^;"''\s]+\s*){2,}', '<redacted-connection-string>')
-    $redacted = [regex]::Replace($redacted, '\b(?:sk_live|sk_test|egy)_[A-Za-z0-9]{8,}', '<redacted-key>')
+    $redacted = [regex]::Replace($redacted, '(?i)\b(?:egy_(?:sk|pk|csk)_(?:live|test)|(?:sk|pk)_(?:live|test)|egy)_[A-Za-z0-9_-]{8,}', '<redacted-key>')
     $redacted = [regex]::Replace($redacted, '(?i)("(?:password|secret|secretkey|signingkey|hmacsecret|serviceaccountjson)"\s*:\s*")[^"]*(")', '$1<redacted>$2')
     return $redacted
 }

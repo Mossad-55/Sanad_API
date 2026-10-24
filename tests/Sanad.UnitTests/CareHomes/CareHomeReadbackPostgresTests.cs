@@ -37,13 +37,13 @@ public sealed class CareHomeReadbackPostgresTests
 
     private const string ExpectedDatabase = "SanadFur04VerifyDb";
 
-    private const string ExpectedCareHomesHead = "20261012143753_AddCareHomeRoomTypeAmenitiesAndMedia";
+    private const string ExpectedCareHomesHead = "20261022213000_AddCareHomeRefundPolicySnapshots";
 
-    private const string ExpectedIdentityHead = "20261016133316_AddVerificationRequestVersion";
+    private const string ExpectedIdentityHead = "20261022094500_AddPartnerContactOptionalFields";
 
-    private const int ExpectedCareHomesMigrationCount = 15;
+    private const int ExpectedCareHomesMigrationCount = 18;
 
-    private const int ExpectedIdentityMigrationCount = 14;
+    private const int ExpectedIdentityMigrationCount = 17;
 
     private static readonly DateTime PgNow = new(2026, 10, 16, 12, 0, 0, DateTimeKind.Utc);
 
@@ -63,7 +63,10 @@ public sealed class CareHomeReadbackPostgresTests
         // Both module contexts share the single public history table; the two
         // committed sets are disjoint timestamped IDs. Committed migration
         // 20261003222617_AddCareHomeBookingsMetadata has an empty Up() and is
-        // not recorded by Migrate(), hence 15 CareHomes rows instead of 16.
+        // not recorded by Migrate(), hence 18 CareHomes rows instead of 19.
+        // The CareHomes refund-policy head (2026-10-22 21:30) sorts after the
+        // Identity partner-contact head (2026-10-22 09:45), so it is the final
+        // history row.
         List<string> heads = await careHomes.Database
             .SqlQueryRaw<string>("SELECT \"MigrationId\" FROM public.\"__EFMigrationsHistory\" ORDER BY \"MigrationId\"")
             .ToListAsync();
@@ -71,7 +74,7 @@ public sealed class CareHomeReadbackPostgresTests
         Assert.Equal(ExpectedCareHomesMigrationCount + ExpectedIdentityMigrationCount, heads.Count);
         Assert.Contains(ExpectedCareHomesHead, heads);
         Assert.Contains(ExpectedIdentityHead, heads);
-        Assert.Equal(ExpectedIdentityHead, heads[^1]);
+        Assert.Equal(ExpectedCareHomesHead, heads[^1]);
     }
 
     [Fur04PostgresFact]

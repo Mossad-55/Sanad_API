@@ -88,6 +88,61 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
     }
 
     /// <summary>
+    /// Owner-only payment history. Items carry <c>amount</c> in EGP major units
+    /// (not piastres), <c>paidOnUtc</c> from the provider settlement instant
+    /// only, and the linked invoice id when one exists. Pending/failed attempts
+    /// appear with a null <c>paidOnUtc</c>. Order is paidOnUtc descending with
+    /// unpaid attempts last, then createdOnUtc and id descending.
+    /// </summary>
+    [HttpGet("payments")]
+    [ProducesResponseType(typeof(SubscriptionPaymentPageResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    public async Task<IActionResult> GetPayments(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] SubscriptionPaymentAttemptStatus? status = null,
+        [FromQuery] SubscriptionPaymentMethod? method = null,
+        [FromQuery] DateTime? paidFromUtc = null,
+        [FromQuery] DateTime? paidToUtc = null,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var result = await _sender.Send(
+            new GetFamilySubscriptionPaymentsQuery(
+                userId, page, pageSize, status, method, paidFromUtc, paidToUtc),
+            cancellationToken);
+        if (result.IsSuccess) return Ok(result.Value);
+        int statusCode = result.Error.Code switch
+        {
+            "Subscriptions.Payment.NotOwner" => StatusCodes.Status403Forbidden,
+            "Subscriptions.Payment.InvalidQuery" => StatusCodes.Status400BadRequest,
+            _ => 0
+        };
+        return statusCode == 0 ? ToActionResult(result) : Problem(statusCode, result.Error);
+    }
+
+    [HttpGet("payments/{paymentAttemptId:guid}")]
+    [ProducesResponseType(typeof(SubscriptionPaymentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> GetPayment(Guid paymentAttemptId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
+        var result = await _sender.Send(
+            new GetFamilySubscriptionPaymentQuery(userId, paymentAttemptId),
+            cancellationToken);
+        if (result.IsSuccess) return Ok(result.Value);
+        int status = result.Error.Code switch
+        {
+            "Subscriptions.Payment.NotOwner" => StatusCodes.Status403Forbidden,
+            "Subscriptions.Payment.NotFound" => StatusCodes.Status404NotFound,
+            _ => 0
+        };
+        return status == 0 ? ToActionResult(result) : Problem(status, result.Error);
+    }
+
+    /// <summary>
     /// The published plan catalog for the family owner. Every item carries the
     /// **version-owned authored copy** (`arabicName`, `englishName`,
     /// `arabicDescription`, `englishDescription`) and the per-benefit

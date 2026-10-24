@@ -24,6 +24,19 @@ public sealed class CreatePostCommentCommandHandler : ICommandHandler<CreatePost
             return Result<Comment>.Failure(CommunityModerationErrors.AuthorRestricted);
         }
 
+        // A deleted post is gone for its author and its readers alike: new
+        // comments cannot continue against it. The privacy not-found shape
+        // reveals nothing about the removed parent.
+        bool parentDeleted = await _dbContext.Posts.AsNoTracking()
+            .AnyAsync(
+                post => post.Id == new CommunityPostId(request.PostId) &&
+                        post.Status == PostStatus.Deleted,
+                cancellationToken);
+        if (parentDeleted)
+        {
+            return Result<Comment>.Failure(CommunityPostLifecycleErrors.PostNotFound);
+        }
+
         var comment = Comment.Create(new CommunityPostId(request.PostId), authorId,
             request.ContentArabic, request.ContentEnglish, DateTime.UtcNow);
 

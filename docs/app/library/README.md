@@ -5,8 +5,9 @@ module under the existing `CmsContent` policy (`SuperAdmin` or
 `ContentAdmin`). All `/api/v1/library` routes require an authenticated
 account; anonymous requests are rejected with `401`. Content is bilingual
 (Arabic + English) and lives in two types: `Article` (ordered sections with
-bullet lists) and `Video` (external YouTube/Vimeo/embed URL plus duration —
-there is no video hosting or transcoding in V1).
+bullet lists) and `Video` (an uploaded MP4 stored by the API plus a duration —
+there is no transcoding in V1, and playback is served by the API itself, not
+by an external host).
 
 - [Postman App library collection](../../postman/app/Sanad.App.Library.postman_collection.json)
 - [Postman Admin collection (Library CMS folder)](../../postman/admins/Sanad.Admin.postman_collection.json)
@@ -66,6 +67,10 @@ are admins):
   — admin paging list (all statuses; `search` matches both titles).
 - `GET /api/v1/admin/library/content/{id}` — admin detail (full sections and
   video fields regardless of status).
+- `POST /api/v1/admin/library/content/{id}/video` — attaches (or replaces) the
+  uploaded MP4 bytes on `Draft` or `Published` content; see below.
+- `DELETE /api/v1/admin/library/content/{id}/video` — detaches the stored bytes
+  and then deletes the object; idempotent `204` when nothing is attached.
 
 Create/update body is `multipart/form-data` (5 MB request cap):
 
@@ -76,7 +81,7 @@ Create/update body is `multipart/form-data` (5 MB request cap):
 | `arabicTitle` / `englishTitle` | string | Required, ≤200, trimmed. |
 | `arabicSummary` / `englishSummary` | string | Required, ≤1000, trimmed. |
 | `isPremium` | bool | Premium gating, see below. |
-| `videoUrl` | string (Video only) | Absolute http(s) URL, ≤500. Articles must not send one. |
+| `videoUrl` | string (Video only) | **Optional legacy metadata.** When supplied it must be an absolute http(s) URL, ≤500; it is stored and shown in the admin detail but is never used for app playback. Articles must not send one. |
 | `durationSeconds` | int (Video only) | Required, > 0. Articles must not send one. |
 | `sectionsJson` | JSON string (Article only) | Array of `{displayOrder, arabicTitle, englishTitle, arabicBullets, englishBullets}`. ≥1 section, `displayOrder` positive and unique, ≤40 sections, ≤30 bullets each, bullet ≤500 chars. Videos must not send sections. |
 | `file` | multipart file (optional on update, required on create) | Cover image; JPEG/PNG/WebP signatures validated server-side, ≤5 MB. Stored under the `library` prefix. |
@@ -92,7 +97,7 @@ Canonical form examples (also in Postman and exercised by controller tests):
 | `arabicSummary` | `ملخص قصير` | `ملخص قصير` |
 | `englishSummary` | `Short summary` | `Short summary` |
 | `isPremium` | `false` | `false` |
-| `videoUrl` | Omit | `https://youtu.be/abc123` |
+| `videoUrl` | Omit | Omit (legacy metadata; the bytes are uploaded separately) |
 | `durationSeconds` | Omit | `300` |
 | `sectionsJson` | See below | Omit |
 | `file` | Choose a valid cover image | Omit to keep the old cover |
@@ -135,6 +140,35 @@ Rejected requests leave no new cover or content row; a failed update keeps the
 old cover and sections, and only a newly uploaded uncommitted cover is cleaned
 up.
 
+### Uploading video bytes
+
+A `Video` row carries no playable bytes until one is uploaded; the create and
+update form does **not** accept a video file. Bytes are attached with a
+dedicated route:
+
+- `POST /api/v1/admin/library/content/{id}/video` — `multipart/form-data` with
+  a single `file` part; returns `200` with the admin content response. Accepted
+  on `Draft` and `Published` content. `Archived` content is
+  `409 Cms.LibraryContent.InvalidOperation`; an `Article` target is
+  `400 Cms.LibraryContent.Invalid` (field `videoStorageKey`); an unknown id is
+  `404 Cms.LibraryContent.NotFound`.
+- Accepted file: MP4 only — declared `video/mp4`, ≤50 MB
+  (`52_428_800` bytes; the multipart request limit adds a small envelope
+  allowance), and the bytes must carry the ISO base-media `ftyp` container
+  marker, so a declared type alone is never trusted.
+- The bytes are stored in **private** storage under the `library-video/`
+  prefix and are never served as public static files. The storage key stays
+  server-side: only the admin detail exposes it as `videoStorageKey`.
+- Uploading over an existing reference replaces it: the superseded object is
+  deleted only after the new reference is persisted, so a failed attach leaves
+  no reference to missing bytes.
+- `DELETE /api/v1/admin/library/content/{id}/video` — detaches the reference
+  first (playback stops immediately) and then deletes the object; `204`. A
+  target without bytes is a successful no-op. Unknown id is `404
+  Cms.LibraryContent.NotFound`, `Article` is `400 Cms.LibraryContent.Invalid`,
+  `Archived` is `409 Cms.LibraryContent.InvalidOperation`. The legacy
+  `videoUrl` metadata is never touched by either route.
+
 ## Public reads
 
 Only `Published` content is visible through `/api/v1/library`. Draft or
@@ -163,6 +197,16 @@ category names, and `durationSeconds` (videos).
 gating below. Unknown or unpublished ids → `404
 Cms.LibraryContent.NotPublished`.
 
+`GET /api/v1/library/content/{id}/video` streams the uploaded bytes of a
+published, entitled video. It is an authenticated route: the caller must send
+`Authorization`, and the API re-checks publication and the premium entitlement
+itself. The response is the stored MP4 with byte-range support
+(`enableRangeProcessing`), so a player can seek; the address never reveals the
+storage key. Every failure — unknown id, not published, not a video, no
+uploaded bytes, unreadable object, or missing entitlement — returns the same
+`404 Cms.LibraryContent.NotPublished`, so the route cannot be used to probe
+entitlement or stored-file state.
+
 ### Field sources and nullability
 
 Every field of the four reads (`/categories`, `/content`, `/content/{id}`,
@@ -176,7 +220,7 @@ invented and nothing is defaulted.
 | `arabicTitle` / `englishTitle` | list + detail | the content row | never |
 | `arabicSummary` / `englishSummary` | list + detail | the content row | never |
 | `coverImagePath` | list + detail | the stored storage key, e.g. `library/<file>.jpg` | never — a content row always has a cover |
-| `videoUrl` | detail only | the stored absolute http(s) URL | articles have no video, and a gated premium video returns `null` |
+| `videoUrl` | detail only | the generated relative playback route `/api/v1/library/content/{id}/video`, and only when the row has uploaded bytes **and** the caller is entitled | articles have no video; a video without uploaded bytes returns `null`, and a gated premium video returns `null` |
 | `durationSeconds` | list + detail | the stored duration | articles have no duration |
 | `sections` | detail only | the stored ordered sections | articles only; a gated premium article returns `[]` |
 | `categoryId` | list + detail | the stored category reference | the content has no category |
@@ -201,14 +245,30 @@ and there is no image endpoint under `/api/v1/library`.
 
 ### The playable sample
 
-A `Video` content is playable from its `videoUrl` — the external URL an
-administrator stored (YouTube, Vimeo or any other absolute http(s) URL) — and
-its real length is `durationSeconds`. There is no video hosting or transcoding
-in V1, no built-in demo sample, and no separate media endpoint: a playable
-sample exists only once an administrator has published a `Video` row with a
-`videoUrl` and a positive `durationSeconds`. An `Article` content has neither
+A `Video` content is playable from uploaded bytes, and its real length is
+`durationSeconds`. There is no transcoding in V1, no built-in demo sample, and
+no arbitrary external fetch: a playable sample exists only once an
+administrator has uploaded the MP4 bytes (`POST …/content/{id}/video`) and
+published the row with a positive `durationSeconds`. An externally linked
+`videoUrl` is legacy admin metadata and is **not** a playback source — an old
+`example.com`-style link never plays, which is the intended locked behavior
+until real bytes are uploaded for that row. An `Article` content has neither
 (`videoUrl` is `null`, `durationSeconds` is `null`) and is read through
 `sections`.
+
+The consumer contract is:
+
+1. `GET /api/v1/library/content/{id}` → `videoUrl` is either `null` (no bytes
+   yet, or the caller is not entitled) or the relative playback path
+   `/api/v1/library/content/{id}/video`.
+2. If it is non-null, `GET` that path **with the same `Authorization`
+   header** and play the returned MP4; byte-range requests are supported natively.
+3. If it is `null`, render the teaser/upgrade state — do not call the playback
+   route and do not try the legacy metadata URL.
+
+A playback `404 Cms.LibraryContent.NotPublished` after a successful detail read
+means the bytes were detached between the two calls (an admin delete, or a
+replacement race); treat it as "video unavailable" rather than a client error.
 
 Two card fields from the app design have **no implemented source** and are
 therefore not returned: the content **author** (content rows carry no author)
@@ -228,6 +288,9 @@ grant access.
   summaries, cover, category, counters, `durationSeconds` and `isPremium` stay
   visible; `videoUrl` is `null` and `sections` is empty. No error status is
   returned — clients render the teaser and prompt for upgrade.
+- The playback route re-checks the same entitlement: an unentitled caller gets
+  `404 Cms.LibraryContent.NotPublished` rather than a `403` or the bytes, so it
+  cannot be used to probe whether premium bytes exist.
 - List items always include the teaser metadata with their `canAccess` flag.
 
 ## Saved, liked, and views
@@ -270,8 +333,9 @@ Items use the same list shape, including `isLiked`/`isSaved`/`isPremium`/
 | `Cms.LibraryCategory.InUse` | 409 | Category referenced by content. |
 | `Cms.Library.InvalidCategory` | 400 | Content `categoryId` unknown. |
 | `Cms.Library.CategoryInactive` | 409 | Content `categoryId` inactive. |
-| `Cms.LibraryContent.NotFound` | 404 | Interaction target unknown/unpublished. |
-| `Cms.LibraryContent.NotPublished` | 404 | Public detail on non-published content. |
-| `Cms.LibraryContent.Invalid` | 400 | Content failed validation; the response carries a fixed detail plus an `errors` map and `traceId`. |
-| `Cms.LibraryContent.InvalidOperation` | 409 | Lifecycle violation (update after publish, restore of a non-archived item, publish of an archived item). |
+| `Cms.LibraryContent.NotFound` | 404 | Interaction target unknown/unpublished; also an unknown id on the admin video attach/delete routes. |
+| `Cms.LibraryContent.NotPublished` | 404 | Public detail on non-published content; also every failure of `GET /api/v1/library/content/{id}/video` (unknown, unpublished, no bytes, unreadable, unentitled). |
+| `Cms.LibraryContent.Invalid` | 400 | Content failed validation; the response carries a fixed detail plus an `errors` map and `traceId`. The admin video routes also use it for an `Article` target (field `videoStorageKey`). |
+| `Cms.LibraryContent.InvalidOperation` | 409 | Lifecycle violation (update after publish, restore of a non-archived item, publish of an archived item, video upload/delete on archived content). |
+| `Storage.File.Empty` / `TooLarge` / `UnsupportedType` | 400 | Admin video upload refused: missing/empty part, over 50 MB, not a declared `video/mp4`, or bytes without the `ftyp` marker. |
 | `Cms.Library.InvalidType` / `InvalidSort` / `InvalidStatus` / `InvalidSections` | 400 | Query/form enum and section-JSON parsing failures. |

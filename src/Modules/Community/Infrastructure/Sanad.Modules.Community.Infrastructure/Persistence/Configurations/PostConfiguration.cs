@@ -30,6 +30,21 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         builder.Property(e => e.ContentEnglish).HasColumnType("text");
         builder.Property(e => e.ImageUrl).HasMaxLength(500);
         builder.Property(e => e.Status).HasConversion<int>();
+        // The lifecycle-state concurrency token (module convention: the
+        // CommunityPostReport Version token). A stale author edit or deletion
+        // that races a concurrent transition fails its save instead of
+        // resurrecting the post or losing the deletion.
+        builder.Property(e => e.Version)
+            .IsConcurrencyToken()
+            .IsRequired();
+        builder.Property(e => e.DeletedBy)
+            .HasConversion(
+                id => id.HasValue ? id.Value.Value : (Guid?)null,
+                value => value.HasValue ? new UserId(value.Value) : (UserId?)null)
+            .IsRequired(false);
+        builder.Property(e => e.DeletedOnUtc)
+            .HasColumnType("timestamp with time zone")
+            .IsRequired(false);
         builder.Property(e => e.CreatedOnUtc)
             .HasColumnType("timestamp with time zone")
             .HasDefaultValueSql("CURRENT_TIMESTAMP");

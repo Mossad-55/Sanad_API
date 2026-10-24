@@ -64,6 +64,9 @@ public sealed class AdminLandingController(ISender sender, IFileStorage fileStor
         if (!LandingTypeParser.TryParseKey(request.Type, out LandingSectionType sectionType))
             return BadRequestWithCode("Cms.Landing.InvalidType");
 
+        if (ValidateLandingImagePath(request.ImagePath, out string? imagePath) is { } imageFailure)
+            return imageFailure;
+
         var result = await sender.Send(new CreateLandingSectionCommand(
             sectionType,
             request.ArabicTitle,
@@ -71,7 +74,7 @@ public sealed class AdminLandingController(ISender sender, IFileStorage fileStor
             request.ArabicBody,
             request.EnglishBody,
             request.ContentJson,
-            request.ImagePath,
+            imagePath,
             request.DisplayOrder,
             request.IsVisible), cancellationToken);
 
@@ -82,20 +85,27 @@ public sealed class AdminLandingController(ISender sender, IFileStorage fileStor
 
     [HttpPut("sections/{id:guid}")]
     [ProducesResponseType(typeof(LandingAdminSectionResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateSection(
         Guid id,
         [FromBody] UpdateLandingSectionRequest request,
-        CancellationToken cancellationToken = default) =>
-        ToActionResult(await sender.Send(new UpdateLandingSectionCommand(
+        CancellationToken cancellationToken = default)
+    {
+        if (ValidateLandingImagePath(request.ImagePath, out string? imagePath) is { } imageFailure)
+            return imageFailure;
+
+        return ToActionResult(await sender.Send(new UpdateLandingSectionCommand(
             id,
             request.ArabicTitle,
             request.EnglishTitle,
             request.ArabicBody,
             request.EnglishBody,
             request.ContentJson,
-            request.ImagePath,
+            imagePath,
             request.DisplayOrder,
             request.IsVisible), cancellationToken));
+    }
 
     [HttpPost("sections/{id:guid}/publish")]
     [ProducesResponseType(typeof(LandingAdminSectionResponse), StatusCodes.Status200OK)]
@@ -204,6 +214,57 @@ public sealed class AdminLandingController(ISender sender, IFileStorage fileStor
                     : StatusCodes.Status400BadRequest;
 
         return ProblemResult(statusCode, result.Error.Code);
+    }
+
+    /// <summary>
+    /// Validates a landing section's <c>imagePath</c> before it is persisted.
+    /// A blank value means "no image" and stays valid; anything else must be a
+    /// public landing asset of this storage root — never a private document, a
+    /// traversal path or a foreign/external reference — and the object must
+    /// actually exist. The same public-prefix rule the media delete route already
+    /// enforces, so a stored pointer is always usable and never someone else's
+    /// file. The validated key is normalized to the canonical stored form.
+    /// </summary>
+    private IActionResult? ValidateLandingImagePath(string? imagePath, out string? normalizedImagePath)
+    {
+        normalizedImagePath = null;
+        if (string.IsNullOrWhiteSpace(imagePath))
+            return null;
+
+        string normalized = imagePath.Trim().Replace('\\', '/').Trim('/').ToLowerInvariant();
+        if (normalized.StartsWith("private/", StringComparison.Ordinal) ||
+            !normalized.StartsWith(LandingMediaFolder + "/", StringComparison.Ordinal) ||
+            normalized.Contains("..", StringComparison.Ordinal))
+        {
+            return BadRequestWithCode(LandingErrors.MediaKeyInvalid.Code);
+        }
+
+        string root = storageOptions.Value.GetEffectiveRootPath();
+        string fullPath;
+        string fullRoot;
+        try
+        {
+            fullRoot = Path.GetFullPath(root);
+            fullPath = Path.GetFullPath(Path.Combine(root, normalized.Replace('/', Path.DirectorySeparatorChar)));
+        }
+        catch
+        {
+            return BadRequestWithCode(LandingErrors.MediaKeyInvalid.Code);
+        }
+
+        string rootWithSeparator = fullRoot.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar)
+            + Path.DirectorySeparatorChar;
+        if (!fullPath.StartsWith(rootWithSeparator, StringComparison.OrdinalIgnoreCase) &&
+            !string.Equals(fullPath, fullRoot, StringComparison.OrdinalIgnoreCase))
+        {
+            return BadRequestWithCode(LandingErrors.MediaKeyInvalid.Code);
+        }
+
+        if (!System.IO.File.Exists(fullPath))
+            return ProblemResult(StatusCodes.Status404NotFound, LandingErrors.MediaNotFound.Code);
+
+        normalizedImagePath = normalized;
+        return null;
     }
 
     private IActionResult ProblemResult(int statusCode, string code)

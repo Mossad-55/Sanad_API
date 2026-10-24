@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Net.Http.Json;
 using System.Text;
 using System.Text.Json;
@@ -52,7 +53,11 @@ public sealed class PaymobClient : IPaymobClient
             _ => null
         };
 
-        if (string.IsNullOrWhiteSpace(integrationId))
+        // Validate the configured integration id BEFORE any provider request.
+        // A malformed/non-numeric value is a configuration problem, not a
+        // provider outcome; it maps to the existing safe method-unavailable
+        // error and the value is never echoed back to the caller.
+        if (!TryParseIntegrationId(integrationId, out long paymobIntegrationId))
         {
             return Result<PaymobPaymentIntent>.Failure(
                 new Error("Paymob.MethodNotAvailable", "The selected payment method is not available."));
@@ -74,7 +79,7 @@ public sealed class PaymobClient : IPaymobClient
             {
                 amount = amountCents,
                 currency = input.Currency,
-                payment_methods = new[] { long.Parse(integrationId) },
+                payment_methods = new[] { paymobIntegrationId },
                 items = new[]
                 {
                     new
@@ -138,7 +143,19 @@ public sealed class PaymobClient : IPaymobClient
                     clientSecret,
                     _options.PublicKey));
         }
-        catch (Exception exception) when (exception is JsonException or HttpRequestException)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // HttpClient timeout (or an equivalent transport cancellation not
+            // initiated by the caller): surface a safe gateway error instead of
+            // letting a 500 escape. A caller-cancelled request is rethrown by
+            // the filter falling through to the runtime.
+            return Result<PaymobPaymentIntent>.Failure(
+                new Error("Paymob.GatewayError", "The payment gateway did not respond in time."));
+        }
+        // A truncated 200 body (valid JSON missing a required field) is an
+        // unexpected upstream shape, not a server fault: KeyNotFoundException
+        // belongs to the same safe outcome as malformed JSON.
+        catch (Exception exception) when (exception is JsonException or HttpRequestException or KeyNotFoundException)
         {
             return Result<PaymobPaymentIntent>.Failure(
                 new Error("Paymob.GatewayError", "Unexpected payment gateway response."));
@@ -171,6 +188,17 @@ public sealed class PaymobClient : IPaymobClient
                 new Error("Paymob.MethodNotAvailable", "The selected payment method is not available."));
         }
 
+        // R5/R6: a non-numeric integration id previously reached long.Parse
+        // inside the HTTP try and surfaced as a generic gateway error. Validate
+        // it here so a configuration fault is reported as the existing safe
+        // method-unavailable outcome, before any provider call, without echoing
+        // the configured value.
+        if (!TryParseIntegrationId(integrationId, out long paymobIntegrationId))
+        {
+            return Result<PaymobPaymentIntent>.Failure(
+                new Error("Paymob.MethodNotAvailable", "The selected payment method is not available."));
+        }
+
         if (string.IsNullOrWhiteSpace(input.MerchantReference))
         {
             return Result<PaymobPaymentIntent>.Failure(
@@ -191,7 +219,7 @@ public sealed class PaymobClient : IPaymobClient
             {
                 ["amount"] = amountCents,
                 ["currency"] = input.Currency,
-                ["payment_methods"] = new[] { long.Parse(integrationId) },
+                ["payment_methods"] = new[] { paymobIntegrationId },
                 ["items"] = new[]
                 {
                     new
@@ -257,7 +285,15 @@ public sealed class PaymobClient : IPaymobClient
                     _options.PublicKey,
                     RecurringRenewalSupported: cardEnrollment));
         }
-        catch (Exception exception) when (exception is JsonException or HttpRequestException or FormatException)
+        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
+        {
+            // A transport timeout is not a provider decline and must not escape
+            // as an unhandled 500. Caller cancellation remains a caller
+            // cancellation and is rethrown.
+            return Result<PaymobPaymentIntent>.Failure(
+                new Error("Paymob.GatewayError", "The payment gateway did not respond in time."));
+        }
+        catch (Exception exception) when (exception is JsonException or HttpRequestException or KeyNotFoundException)
         {
             return Result<PaymobPaymentIntent>.Failure(
                 new Error("Paymob.GatewayError", "Unexpected payment gateway response."));
@@ -530,6 +566,29 @@ public sealed class PaymobClient : IPaymobClient
         }
 
         return builder.ToString().Trim();
+    }
+
+    /// <summary>
+    /// Parses a configured Paymob integration id as a positive invariant
+    /// integer. Paymob's intention payload accepts numeric integration ids
+    /// only; the configured text is never embedded in an error message, so a
+    /// malformed value cannot leak through diagnostics.
+    /// </summary>
+    private static bool TryParseIntegrationId(string? configuredValue, out long integrationId)
+    {
+        integrationId = 0;
+
+        if (string.IsNullOrWhiteSpace(configuredValue))
+        {
+            return false;
+        }
+
+        return long.TryParse(
+                configuredValue.Trim(),
+                NumberStyles.None,
+                CultureInfo.InvariantCulture,
+                out integrationId)
+            && integrationId > 0;
     }
 
     private static long ToCents(decimal amount)

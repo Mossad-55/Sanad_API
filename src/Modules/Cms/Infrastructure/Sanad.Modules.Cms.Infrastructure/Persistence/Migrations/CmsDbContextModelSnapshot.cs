@@ -467,6 +467,11 @@ namespace Sanad.Modules.Cms.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_on_utc");
 
+                    b.Property<string>("VideoStorageKey")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("video_storage_key");
+
                     b.Property<string>("VideoUrl")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")

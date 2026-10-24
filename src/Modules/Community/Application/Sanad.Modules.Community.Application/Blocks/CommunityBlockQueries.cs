@@ -64,16 +64,24 @@ public sealed class GetBlockedCommunityAuthorsQueryHandler(ICommunityDbContext d
                 blocks.Select(block => block.BlockedAuthorUserId.Value).ToArray(),
                 cancellationToken);
 
-        // Same server-side anonymity rule as the shared author-photo route:
-        // an author with at least one anonymous Community item is never
-        // identity-disclosed on this surface either — both the display name
-        // and the avatar path are withheld for them, whatever the viewer's
-        // relation to the author. All post states are scanned, conservatively.
-        // The Contains stays on the strongly-typed id so the value converter
-        // drives the translation on every provider.
+        // Match the shared photo-download route exactly: a photo is available
+        // only to an author with a published, non-anonymous post and no
+        // anonymous-post history. Display names are withheld for anonymous
+        // history; avatar paths also stay null when the photo route would 404.
         UserId[] blockedAuthorIds = blocks
             .Select(block => block.BlockedAuthorUserId)
             .ToArray();
+        List<UserId> photoEligibleAuthorsList = await dbContext.Posts
+            .AsNoTracking()
+            .Where(post => blockedAuthorIds.Contains(post.AuthorId) &&
+                           post.Status == PostStatus.Published && !post.IsAnonymous)
+            .Select(post => post.AuthorId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        HashSet<Guid> photoEligibleAuthors = photoEligibleAuthorsList
+            .Select(authorId => authorId.Value)
+            .ToHashSet();
+
         List<UserId> anonymousAuthorsList = await dbContext.Posts
             .AsNoTracking()
             .Where(post => blockedAuthorIds.Contains(post.AuthorId) && post.IsAnonymous)
@@ -99,6 +107,7 @@ public sealed class GetBlockedCommunityAuthorsQueryHandler(ICommunityDbContext d
                     anonymousAuthors.Contains(block.BlockedAuthorUserId.Value)
                         ? null
                         : profile.DisplayName,
+                    !photoEligibleAuthors.Contains(block.BlockedAuthorUserId.Value) ||
                     anonymousAuthors.Contains(block.BlockedAuthorUserId.Value)
                         ? null
                         : profile.AvatarUrl,

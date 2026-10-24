@@ -567,6 +567,127 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.ToTable("BookingReviews", "families");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.CareRecords.CareRecord", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("AuthorCaregiverId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_caregiver_id");
+
+                    b.Property<Guid?>("AuthorFacilityId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_facility_id");
+
+                    b.Property<Guid?>("AuthorFamilyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_family_id");
+
+                    b.Property<Guid>("AuthorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("author_user_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasMaxLength(4000)
+                        .HasColumnType("character varying(4000)")
+                        .HasColumnName("details");
+
+                    b.Property<Guid>("ElderlyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("elderly_id");
+
+                    b.Property<string>("HospitalName")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("hospital_name");
+
+                    b.Property<int>("Source")
+                        .HasColumnType("integer")
+                        .HasColumnName("source");
+
+                    b.Property<DateTime?>("UpdatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_on_utc");
+
+                    b.Property<int>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.Property<DateOnly>("VisitDate")
+                        .HasColumnType("date")
+                        .HasColumnName("visit_date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AuthorFacilityId");
+
+                    b.HasIndex("ElderlyId");
+
+                    b.HasIndex("ElderlyId", "Source");
+
+                    b.HasIndex("VisitDate");
+
+                    b.ToTable("care_records", "families");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.CareRecords.CareRecordAudit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Action")
+                        .HasColumnType("integer")
+                        .HasColumnName("action");
+
+                    b.Property<Guid>("ActorUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_user_id");
+
+                    b.Property<string>("CorrelationId")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<Guid>("ElderlyId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("elderly_id");
+
+                    b.Property<DateTime>("OccurredOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("occurred_on_utc");
+
+                    b.Property<Guid?>("RecordId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("record_id");
+
+                    b.Property<int?>("Source")
+                        .HasColumnType("integer")
+                        .HasColumnName("source");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ActorUserId", "OccurredOnUtc");
+
+                    b.HasIndex("ElderlyId", "OccurredOnUtc");
+
+                    b.HasIndex("OccurredOnUtc");
+
+                    b.HasIndex("RecordId");
+
+                    b.ToTable("care_record_audits", "families");
+                });
+
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Elderlies.CaregiverMedicalAccessAudit", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2597,6 +2718,15 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.HasOne("Sanad.Modules.Families.Domain.Bookings.Booking", null)
                         .WithMany()
                         .HasForeignKey("BookingId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.CareRecords.CareRecord", b =>
+                {
+                    b.HasOne("Sanad.Modules.Families.Domain.Elderlies.Elderly", null)
+                        .WithMany()
+                        .HasForeignKey("ElderlyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

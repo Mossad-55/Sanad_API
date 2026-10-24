@@ -394,8 +394,8 @@ function Get-F2VisibleConversations {
     [CmdletBinding()]
     param([hashtable]$Definition, [string]$RequesterRole)
 
-    $visible = @($Definition.conversations | Where-Object { @($_.participantRoles) -contains $RequesterRole })
-    $visible = @($visible | Sort-Object -Property lastActivityOffsetHours)
+    $visible = @($Definition['conversations'] | Where-Object { @($_['participantRoles']) -contains $RequesterRole })
+    $visible = @($visible | Sort-Object { [int]$_['lastActivityOffsetHours'] })
     return $visible
 }
 

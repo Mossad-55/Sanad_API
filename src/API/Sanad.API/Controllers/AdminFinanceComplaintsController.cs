@@ -215,6 +215,10 @@ public sealed class AdminFinanceComplaintsController(ISender sender) : ApiContro
             "Finance.Complaint.Conflict" => StatusCodes.Status409Conflict,
             "Finance.Complaint.SuperAdminRequired" => StatusCodes.Status403Forbidden,
             "Finance.Complaint.AmountInvalid" => StatusCodes.Status400BadRequest,
+            // The award is a valid amount but violates the configured policy
+            // ceiling, so it is a conflict with current policy — not malformed
+            // input. This matches the shared mapper and the documented 409.
+            "Finance.Complaint.AwardExceedsCap" => StatusCodes.Status409Conflict,
             _ => StatusCodes.Status400BadRequest
         };
 

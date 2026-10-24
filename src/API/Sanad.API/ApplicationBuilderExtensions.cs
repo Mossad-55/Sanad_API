@@ -13,7 +13,6 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Identity.Infrastructure.Persistence.Seeding;
 using Sanad.Modules.Notifications.Infrastructure.Persistence;
-using Sanad.Modules.Rentals.Infrastructure;
 using Sanad.Modules.Community.Infrastructure.Persistence;
 using Sanad.Modules.Finance.Infrastructure;
 
@@ -79,7 +78,6 @@ public static class ApplicationBuilderExtensions
             ApplyMigrations<NotificationsDbContext>(app);
             ApplyMigrations<CommunityDbContext>(app);
             ApplyMigrations<ChatDbContext>(app);
-            ApplyMigrations<RentalsDbContext>(app);
             if (StartupMigrationPolicy.ShouldApplyFinanceMigrations(
                     app.Configuration,
                     app.Environment))

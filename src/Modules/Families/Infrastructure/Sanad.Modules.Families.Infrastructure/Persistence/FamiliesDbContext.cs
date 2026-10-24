@@ -3,6 +3,7 @@ using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Activities;
 using Sanad.Modules.Families.Domain.Assessments;
 using Sanad.Modules.Families.Domain.Bookings;
+using Sanad.Modules.Families.Domain.CareRecords;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Elderlies.CheckIns;
 using Sanad.Modules.Families.Domain.Families;
@@ -61,6 +62,8 @@ public sealed class FamiliesDbContext :
     public DbSet<BookingReview> BookingReviews => Set<BookingReview>();
     public DbSet<MedicalAccessGrant> MedicalAccessGrants => Set<MedicalAccessGrant>();
     public DbSet<CaregiverMedicalAccessAudit> CaregiverMedicalAccessAudits => Set<CaregiverMedicalAccessAudit>();
+    public DbSet<CareRecord> CareRecords => Set<CareRecord>();
+    public DbSet<CareRecordAudit> CareRecordAudits => Set<CareRecordAudit>();
 
     public void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
         PaymobSubscriptionIdentities.Add(identity);
@@ -92,6 +95,7 @@ public sealed class FamiliesDbContext :
         ThrowIfPaymobSubscriptionIdentityMutated();
         ThrowIfAdminMedicationAccessAuditMutated();
         ThrowIfCaregiverMedicalAccessAuditMutated();
+        ThrowIfCareRecordAuditMutated();
         ThrowIfHelpRequestHistoryMutated();
         ThrowIfSosHistoryMutated();
 
@@ -118,6 +122,7 @@ public sealed class FamiliesDbContext :
         ThrowIfPaymobSubscriptionIdentityMutated();
         ThrowIfAdminMedicationAccessAuditMutated();
         ThrowIfCaregiverMedicalAccessAuditMutated();
+        ThrowIfCareRecordAuditMutated();
         ThrowIfHelpRequestHistoryMutated();
         ThrowIfSosHistoryMutated();
 
@@ -164,6 +169,20 @@ public sealed class FamiliesDbContext :
         {
             if (entry.State is EntityState.Modified or EntityState.Deleted)
                 throw new InvalidOperationException("Caregiver medical access audits are append-only.");
+        }
+    }
+
+    /// <summary>
+    /// W1 care records: the audit trail is append-only and payload-free, so a
+    /// tracked <see cref="CareRecordAudit"/> row can only ever be added — never
+    /// edited or removed, even by mistake.
+    /// </summary>
+    private void ThrowIfCareRecordAuditMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<CareRecordAudit>())
+        {
+            if (entry.State is EntityState.Modified or EntityState.Deleted)
+                throw new InvalidOperationException("Care-record audits are append-only, payload-free history.");
         }
     }
     private void ThrowIfHelpRequestHistoryMutated()

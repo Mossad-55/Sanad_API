@@ -10,7 +10,6 @@ using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Payments;
 using Sanad.Modules.CareHomes.Application.Bookings;
-using Sanad.Modules.Rentals.Application;
 
 namespace Sanad.API.Controllers;
 
@@ -156,25 +155,25 @@ public sealed class PaymobWebhookController : ControllerBase
             return Ok();
         }
 
+        // The Rentals feature was removed from the runtime. A verified legacy
+        // rental callback therefore has no handler: it must not be settled, it
+        // must not fall through to the family booking or subscription handlers,
+        // and it must not be acknowledged as a completed payment. It is
+        // returned as an explicit, non-2xx "requires reconciliation" response so
+        // the event stays visible to the provider and to operations while the
+        // outstanding rental payment/event inventory and its recovery are
+        // authorized (Owner decision D5); the retained Rentals schema keeps the
+        // historical rows for that reconciliation, and no provider call is made
+        // here. The HMAC check above still governs this branch.
         if (merchantReference.StartsWith("rnt_", StringComparison.Ordinal))
         {
-            var rentalsResult = await _sender.Send(
-                new ConfirmRentalPaymentCommand(merchantReference, transactionId, amountCents, success, pending, DateTime.UtcNow),
-                cancellationToken);
-
-            if (!rentalsResult.IsSuccess)
-            {
-                if (rentalsResult.Error.Code is "Paymob.AmountMismatch")
-                    return BadRequest();
-
-                // Unknown order after a valid HMAC: acknowledge so Paymob stops retrying.
-                if (rentalsResult.Error.Code is "Rentals.Payment.NotFound")
-                    return Ok();
-
-                return StatusCode(StatusCodes.Status500InternalServerError);
-            }
-
-            return Ok();
+            return Problem(
+                title: "Legacy rental payment callback requires reconciliation",
+                detail:
+                    "The Rentals feature was removed, so this verified callback was "
+                    + "not applied to any payment or booking state. It requires "
+                    + "manual reconciliation against the retained rental records.",
+                statusCode: StatusCodes.Status503ServiceUnavailable);
         }
 
         var command = new ConfirmBookingPaymentCommand(

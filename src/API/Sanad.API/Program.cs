@@ -14,7 +14,6 @@ using Sanad.Modules.Finance.Infrastructure;
 using Sanad.Modules.Identity.Infrastructure;
 using Sanad.Modules.Identity.Infrastructure.Persistence;
 using Sanad.Modules.Notifications.Infrastructure.Persistence;
-using Sanad.Modules.Rentals.Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,7 +28,7 @@ if (Hc034FamilyFixtureProvisioner.IsRequested(args))
     return;
 }
 
-// L1 read-only pre-write report: verifies the effective target of all ten
+// L1 read-only pre-write report: verifies the effective target of all nine
 // module contexts, pending migration counts, fixture record counts, storage
 // root and non-live integrations, then prints a credential-free JSON report.
 // Usage-gate failures throw with safe messages (non-zero exit); a failed
@@ -69,8 +68,7 @@ if (args.Contains("--verify-local-fixture-target", StringComparer.Ordinal))
                 new LocalFixtureModuleContext("CareHomes", verificationServices.GetRequiredService<CareHomesDbContext>()),
                 new LocalFixtureModuleContext("Finance", verificationServices.GetRequiredService<FinanceDbContext>()),
                 new LocalFixtureModuleContext("Community", verificationServices.GetRequiredService<CommunityDbContext>()),
-                new LocalFixtureModuleContext("Chat", verificationServices.GetRequiredService<ChatDbContext>()),
-                new LocalFixtureModuleContext("Rentals", verificationServices.GetRequiredService<RentalsDbContext>())
+                new LocalFixtureModuleContext("Chat", verificationServices.GetRequiredService<ChatDbContext>())
             ],
             verificationServices.GetRequiredService<IdentityDbContext>());
 
@@ -86,7 +84,7 @@ if (args.Contains("--verify-local-fixture-target", StringComparer.Ordinal))
 
 // L1 Owner-authorized persistent-local schema step: validates the approved
 // target through the same guard chain as the fixture seed (usage gate -> pin ->
-// runtime target check), then applies the pending migrations of the ten module
+// runtime target check), then applies the pending migrations of the nine module
 // contexts without starting Kestrel or any background service. It fails closed
 // and applies nothing at all unless every module still targets the approved
 // local SanadDb and its exact pending migration ids match the expected set
@@ -155,8 +153,7 @@ if (args.Contains("--apply-local-fixtures-migrations", StringComparer.Ordinal))
                     new LocalFixtureModuleContext("CareHomes", migrationServices.GetRequiredService<CareHomesDbContext>()),
                     new LocalFixtureModuleContext("Finance", migrationServices.GetRequiredService<FinanceDbContext>()),
                     new LocalFixtureModuleContext("Community", migrationServices.GetRequiredService<CommunityDbContext>()),
-                    new LocalFixtureModuleContext("Chat", migrationServices.GetRequiredService<ChatDbContext>()),
-                    new LocalFixtureModuleContext("Rentals", migrationServices.GetRequiredService<RentalsDbContext>())
+                    new LocalFixtureModuleContext("Chat", migrationServices.GetRequiredService<ChatDbContext>())
                 ],
                 expectedPendingIds);
     }

@@ -664,25 +664,75 @@ public sealed class CaregiverController :
             cancellationToken));
     }
 
+    // 5 MB, the documented certificate limit and the private-storage ceiling.
+    private const long MaximumCertificateBytes =
+        5_242_880;
+
+    /// <summary>
+    /// Stores a certificate scan in private storage after verifying the declared
+    /// content type is one of the documented types (PDF/JPEG/PNG/WebP) AND that
+    /// the actual bytes carry the matching signature. The declared type alone is
+    /// never trusted, so a mislabelled payload is refused with no storage write.
+    /// </summary>
     private async Task<Result<StoredFile>>
         SavePrivateCertificateAsync(
             IFormFile? file,
             CancellationToken cancellationToken)
     {
-        if (file is null)
+        if (file is null || file.Length <= 0)
         {
             return Result<StoredFile>.Failure(
                 StorageErrors.Empty);
         }
 
-        await using Stream stream =
-            file.OpenReadStream();
+        if (file.Length > MaximumCertificateBytes)
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.TooLarge);
+        }
+
+        string contentType =
+            file.ContentType?.Trim().ToLowerInvariant() ??
+            string.Empty;
+
+        await using var content =
+            new MemoryStream();
+
+        await file.CopyToAsync(
+            content,
+            cancellationToken);
+
+        if (!HasMatchingCertificateSignature(
+                contentType,
+                content.GetBuffer().AsSpan(0, (int)content.Length)))
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.UnsupportedType);
+        }
+
+        content.Position = 0;
 
         return await _fileStorage.SavePrivateAsync(
-            stream,
-            file.ContentType,
+            content,
+            contentType,
             file.Length,
             folder: CertificateStorage.Folder,
             cancellationToken);
     }
+
+    /// <summary>
+    /// Byte-signature check for the accepted certificate types; any other
+    /// declared type has no allowed signature and is rejected.
+    /// </summary>
+    private static bool HasMatchingCertificateSignature(
+        string contentType,
+        ReadOnlySpan<byte> bytes) =>
+        contentType switch
+        {
+            "application/pdf" => bytes.Length >= 5 && bytes[..5].SequenceEqual("%PDF-"u8),
+            "image/jpeg" => bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF,
+            "image/png" => bytes.Length >= 8 && bytes[..8].SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }),
+            "image/webp" => bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8),
+            _ => false
+        };
 }

@@ -42,6 +42,19 @@ public sealed class CreatePostCommandHandler : ICommandHandler<CreatePostCommand
             categoryId = category.Id;
         }
 
+        // A new post may reference only an uploaded Community image asset the
+        // author is allowed to reference — never an arbitrary external URL or
+        // another user's private asset.
+        if (await CommunityImageReferenceValidator.ValidateAsync(
+                _dbContext,
+                currentImageUrl: null,
+                request.ImageUrl,
+                request.AuthorId,
+                cancellationToken) is { IsFailure: true } imageResult)
+        {
+            return Result<Post>.Failure(imageResult.Error);
+        }
+
         var post = Post.Create(
             request.TitleArabic,
             request.TitleEnglish,

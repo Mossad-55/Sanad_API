@@ -3,6 +3,7 @@ using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Domain.Activities;
 using Sanad.Modules.Families.Domain.Assessments;
 using Sanad.Modules.Families.Domain.Bookings;
+using Sanad.Modules.Families.Domain.CareRecords;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Elderlies.CheckIns;
 using Sanad.Modules.Families.Domain.Families;
@@ -28,6 +29,8 @@ internal abstract class FamiliesDbContextAdapter(IFamiliesDbContext inner)
     public DbSet<Booking> Bookings => Inner.Bookings;
     public DbSet<BookingCancellationFact> BookingCancellationFacts => Inner.BookingCancellationFacts;
     public DbSet<BookingReview> BookingReviews => Inner.BookingReviews;
+    public DbSet<CareRecord> CareRecords => Inner.CareRecords;
+    public DbSet<CareRecordAudit> CareRecordAudits => Inner.CareRecordAudits;
     public DbSet<MedicalAccessGrant> MedicalAccessGrants => Inner.MedicalAccessGrants;
     public DbSet<CaregiverMedicalAccessAudit> CaregiverMedicalAccessAudits => Inner.CaregiverMedicalAccessAudits;
     public DbSet<AssessmentQuestion> AssessmentQuestions => Inner.AssessmentQuestions;

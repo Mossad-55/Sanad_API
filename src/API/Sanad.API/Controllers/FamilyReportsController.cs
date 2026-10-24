@@ -66,7 +66,7 @@ public sealed class FamilyReportsController : ApiControllerBase
         if (result.IsFailure) return ToFamilyReportActionResult(result.Error);
         var file = await _fileStorage.OpenReadAsync(result.Value.Key, cancellationToken);
         if (file.IsFailure) return NotFound();
-        return File(file.Value.Content, file.Value.ContentType);
+        return File(file.Value.Content, file.Value.ContentType, enableRangeProcessing: true);
     }
 
     private IActionResult ToVisitReportActionResult(Error error)

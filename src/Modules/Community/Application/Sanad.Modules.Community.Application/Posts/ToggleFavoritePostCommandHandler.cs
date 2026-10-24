@@ -26,6 +26,15 @@ public sealed class ToggleFavoritePostCommandHandler : ICommandHandler<ToggleFav
             return false;
         }
 
+        // Favorites stop after deletion (testing contract, locked
+        // 2026-10-23): neither starting nor un-favoriting continues against
+        // a deleted (or any non-published) parent; the retained favorite row
+        // stays as deletion left it.
+        if (post.Status != PostStatus.Published)
+        {
+            return Result<bool>.Failure(CommunityPostLifecycleErrors.PostNotFound);
+        }
+
         var interaction = await _dbContext.Interactions.SingleOrDefaultAsync(
             i => i.TargetType == CommunityInteractionTarget.Post && i.TargetId == request.PostId &&
                  i.UserId == new UserId(request.UserId) && i.Kind == CommunityInteractionKind.Favorite,

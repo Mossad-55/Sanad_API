@@ -27,6 +27,23 @@ namespace Sanad.UnitTests.Seeding;
 /// </summary>
 public sealed class TestUserDataSeederMinimalScopeTests
 {
+    [Theory]
+    [InlineData("sk_live-test-marker")]
+    [InlineData("egy_sk_live_test-marker")]
+    public async Task MinimalScope_RejectsLivePaymobKeyBeforeSeeding(string liveSecretKey)
+    {
+        await using Fixture fixture = await Fixture.CreateAsync(
+            scope: "Minimal",
+            elderlyPassword: null,
+            paymobSecretKey: liveSecretKey);
+
+        InvalidOperationException exception = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => fixture.Seeder.SeedAsync());
+
+        Assert.Contains("LIVE Paymob key", exception.Message);
+        Assert.Empty(await fixture.Identity.Users.ToListAsync());
+    }
+
     [Fact]
     public async Task MinimalScope_SeedsExactlyTheTwoDeterministicIdentities()
     {
@@ -151,7 +168,8 @@ public sealed class TestUserDataSeederMinimalScopeTests
         public static async Task<Fixture> CreateAsync(
             string scope,
             bool enabled = true,
-            string? elderlyPassword = "Elderly-Test-1234!")
+            string? elderlyPassword = "Elderly-Test-1234!",
+            string? paymobSecretKey = null)
         {
             string database = Guid.NewGuid().ToString("N");
             IdentityDbContext identity = new(
@@ -180,6 +198,11 @@ public sealed class TestUserDataSeederMinimalScopeTests
             if (elderlyPassword is not null)
             {
                 values[$"{TestUserSeedOptions.SectionName}:ElderlyPassword"] = elderlyPassword;
+            }
+
+            if (paymobSecretKey is not null)
+            {
+                values["Paymob:SecretKey"] = paymobSecretKey;
             }
 
             IConfiguration configuration = new ConfigurationBuilder()

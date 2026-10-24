@@ -2494,7 +2494,7 @@
       },
       {
         "name": "13. Subscriptions (owner quote/payment/plan-change/read/lifecycle)",
-        "description": "Owner-only subscription catalog, server-calculated purchase and plan-change quotes, initial/upgrade and renewal Card/Wallet payment intents, current snapshot, pending-downgrade lifecycle, renewal lifecycle, invoice list/detail/PDF, and seven-day grace settlement. Allowance settlement remains separate.",
+        "description": "Owner-only subscription catalog, server-calculated purchase and plan-change quotes, initial/upgrade and renewal Card/Wallet payment intents, current snapshot, pending-downgrade lifecycle, renewal lifecycle, invoice/payment-attempt history and invoice PDF. Payment history reports EGP major-unit amounts and settlement-only paidOnUtc. On service shutdown after a paid plan change, only the unused share of new money is refundable; the credited source-period share is not refunded a second time, and a zero-cost plan change refunds zero. Allowance settlement remains separate.",
         "item": [
           {
             "name": "List published subscription plans",
@@ -2744,7 +2744,7 @@
               ],
               "url": "{{baseUrl}}/api/v1/family/subscriptions/invoices"
             },
-            "description": "Owner only; lists immutable invoices created by successful initial purchases and renewals."
+            "description": "Owner only; lists immutable invoices created by successful initial purchases and renewals. Each invoice includes nullable paymentAttemptId, linking to the exact attempt (null only for legacy/unlinked invoices)."
           },
           {
             "name": "Get subscription invoice",
@@ -2758,7 +2758,7 @@
               ],
               "url": "{{baseUrl}}/api/v1/family/subscriptions/invoices/{{subscriptionInvoiceId}}"
             },
-            "description": "Owner only; returns invoice metadata and family-isolated 404 behavior."
+            "description": "Owner only; returns invoice metadata, nullable paymentAttemptId, and family-isolated 404 behavior."
           },
           {
             "name": "Download subscription invoice PDF",
@@ -2773,6 +2773,24 @@
               "url": "{{baseUrl}}/api/v1/family/subscriptions/invoices/{{subscriptionInvoiceId}}/pdf"
             },
             "description": "Owner only; downloads the fixed branded private PDF as INV-YYYY-MM-######.pdf."
+          },
+          {
+            "name": "List subscription payments",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{ familyToken }}" }],
+              "url": "{{baseUrl}}/api/v1/family/subscriptions/payments?page=1&pageSize=20"
+            },
+            "description": "Owner only. Lists this family's payment attempts; optional status, method, paidFromUtc and paidToUtc filters. amount is EGP MAJOR units (340.86 = 34,086 piastres), paidOnUtc is the provider settlement instant only and is null for pending/failed attempts, and invoiceId is nullable (e.g. plan-change capture). Order is newest settlement first, unpaid attempts last, then createdOnUtc/id descending. Default pageSize 20, maximum 100; invalid paging/enums/non-UTC or reversed dates return 400 Subscriptions.Payment.InvalidQuery; non-owner returns 403 Subscriptions.Payment.NotOwner. Read-only; safe for approved local fixtures."
+          },
+          {
+            "name": "Get subscription payment",
+            "request": {
+              "method": "GET",
+              "header": [{ "key": "Authorization", "value": "Bearer {{ familyToken }}" }],
+              "url": "{{baseUrl}}/api/v1/family/subscriptions/payments/{{subscriptionPaymentAttemptId}}"
+            },
+            "description": "Owner only. Returns the same item shape as the payment list. Missing, empty, or another family's attempt id returns the same 404 Subscriptions.Payment.NotFound; non-owner returns 403 Subscriptions.Payment.NotOwner."
           }
         ]
       },
@@ -2902,6 +2920,14 @@
           ],
           "description": "Safe read. Published, visible family home sections for the caller's own or member family, ordered by displayOrder then creation. Sections are typed: { id, kind (banners|quick-links|featured-services), displayOrder, items[] }. Quick links and banner actions carry targetType services|service plus targetServiceId; featured entries carry serviceId with the live catalog serviceNameArabic/serviceNameEnglish/serviceIconKey and serviceCaregiverType (1 medical, 2 companion). Returns [] when nothing is published - omit the CMS sections and keep normal app navigation, with no invented fallback cards. Requires FamilyAccess; a missing subject claim is 401 and an unresolvable or deleted family is 404 Families.Family.NotFound. A referenced service that became inactive is omitted with its item only, and a published section whose stored content cannot be read fails the read with 400 Cms.FamilyHome.Incomplete instead of returning an empty section."
         }
+      }
+    ],
+    "variable": [
+      {
+        "key": "subscriptionPaymentAttemptId",
+        "value": "",
+        "type": "string",
+        "description": "Set from payment history for detail or an approved duplicate-charge fixture."
       }
     ]
   }

@@ -442,7 +442,7 @@ public sealed class CaregiverBookingsController : ApiControllerBase
         if (result.IsFailure) return ToMedicalReportActionResult(result.Error);
         var file = await _fileStorage.OpenReadAsync(result.Value.Key, cancellationToken);
         if (file.IsFailure) return NotFound();
-        return File(file.Value.Content, file.Value.ContentType);
+        return File(file.Value.Content, file.Value.ContentType, enableRangeProcessing: true);
     }
 
     private IActionResult ToMedicalReportActionResult(Error error)

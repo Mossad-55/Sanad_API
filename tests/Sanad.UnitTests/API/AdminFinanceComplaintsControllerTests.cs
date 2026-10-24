@@ -1,8 +1,15 @@
+using System.IdentityModel.Tokens.Jwt;
 using System.Reflection;
+using System.Security.Claims;
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers;
+using Sanad.BuildingBlocks.Application.Results;
+using Sanad.Modules.Finance.Application;
+using Sanad.Modules.Finance.Domain;
 
 namespace Sanad.UnitTests.API;
 
@@ -125,5 +132,77 @@ public sealed class AdminFinanceComplaintsControllerTests
             typeof(CancelSubscriptionRenewalRequest).GetProperties()
                 .Where(property => property.Name != "EqualityContract")
                 .Select(property => property.Name).ToArray());
+    }
+
+    // ------------------ W4 complaint award cap ------------------
+
+    [Fact]
+    public async Task Award_above_the_cap_maps_to_the_documented_409_conflict()
+    {
+        var controller = CreateController(
+            new FailingComplaintSender(
+                new Error(
+                    "Finance.Complaint.AwardExceedsCap",
+                    "The award exceeds the configured complaint award cap.")));
+
+        var result = await controller.Approve(
+            Guid.NewGuid(),
+            new ApproveComplaintReviewRequest(DateTime.UtcNow, 50_001),
+            CancellationToken.None);
+
+        var objectResult = Assert.IsType<ObjectResult>(result);
+        Assert.Equal(StatusCodes.Status409Conflict, objectResult.StatusCode);
+        var problem = Assert.IsType<ProblemDetails>(objectResult.Value);
+        Assert.Equal("Conflict", problem.Title);
+        Assert.Equal("Finance.Complaint.AwardExceedsCap", problem.Extensions["code"]);
+    }
+
+    [Fact]
+    public async Task Amount_invalid_stays_a_400_bad_request()
+    {
+        // The cap is a policy conflict (409); a malformed amount is still input
+        // validation (400), so the two outcomes stay distinguishable.
+        var controller = CreateController(
+            new FailingComplaintSender(
+                new Error("Finance.Complaint.AmountInvalid", "The award amount is invalid.")));
+
+        var result = await controller.Approve(
+            Guid.NewGuid(),
+            new ApproveComplaintReviewRequest(DateTime.UtcNow, -1),
+            CancellationToken.None);
+
+        Assert.Equal(StatusCodes.Status400BadRequest, Assert.IsType<ObjectResult>(result).StatusCode);
+    }
+
+    private static AdminFinanceComplaintsController CreateController(ISender sender) =>
+        new(sender)
+        {
+            ControllerContext = new ControllerContext
+            {
+                HttpContext = new DefaultHttpContext
+                {
+                    User = new ClaimsPrincipal(new ClaimsIdentity(
+                        [new Claim(JwtRegisteredClaimNames.Sub, Guid.NewGuid().ToString())],
+                        authenticationType: "test"))
+                }
+            }
+        };
+
+    private sealed class FailingComplaintSender(Error error) : ISender
+    {
+        public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default) =>
+            Task.FromResult((TResponse)(object)Result<ComplaintReviewSnapshot>.Failure(error));
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
+            where TRequest : IRequest => throw new NotSupportedException();
+
+        public Task<object?> Send(object request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
     }
 }

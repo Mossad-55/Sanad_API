@@ -84,7 +84,7 @@ public sealed class CareHomeProfileMediaController(ISender sender, CareHomesDbCo
     {
         var result = await storage.OpenReadAsync(key, ct);
         if (result.IsFailure) return NotFound();
-        return File(result.Value.Content, result.Value.ContentType, enableRangeProcessing: false);
+        return File(result.Value.Content, result.Value.ContentType, enableRangeProcessing: true);
     }
 
     private async Task<bool> OwnsRevisionAsync(UserId actor, Guid revisionId, CancellationToken ct)

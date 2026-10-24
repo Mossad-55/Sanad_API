@@ -574,26 +574,77 @@ public sealed class FamilyController :
             cancellationToken));
     }
 
+    // 5 MB, the documented per-photo limit and the private-storage ceiling.
+    private const long MaximumPrivatePhotoBytes =
+        5_242_880;
+
+    /// <summary>
+    /// Stores a dependent photo in private storage after verifying that the
+    /// declared MIME type is an accepted image AND that the actual bytes carry
+    /// the matching signature. The declared type alone is never trusted, so a
+    /// mislabelled payload (for example an executable or an active document
+    /// announced as a JPEG) is refused with no storage write.
+    /// </summary>
     private async Task<Result<StoredFile>> SavePrivatePhotoAsync(
         IFormFile? photo,
         CancellationToken cancellationToken)
     {
-        if (photo is null)
+        if (photo is null || photo.Length <= 0)
         {
             return Result<StoredFile>.Failure(
                 StorageErrors.Empty);
         }
 
-        await using Stream stream =
-            photo.OpenReadStream();
+        if (photo.Length > MaximumPrivatePhotoBytes)
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.TooLarge);
+        }
+
+        string contentType =
+            photo.ContentType?.Trim().ToLowerInvariant() ??
+            string.Empty;
+
+        await using var content =
+            new MemoryStream();
+
+        await photo.CopyToAsync(
+            content,
+            cancellationToken);
+
+        if (!HasMatchingPhotoSignature(
+                contentType,
+                content.GetBuffer().AsSpan(0, (int)content.Length)))
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.UnsupportedType);
+        }
+
+        content.Position = 0;
 
         return await _fileStorage.SavePrivateAsync(
-            stream,
-            photo.ContentType,
+            content,
+            contentType,
             photo.Length,
             folder: DependentPhotoStorage.Folder,
             cancellationToken);
     }
+
+    /// <summary>
+    /// Byte-signature check for the accepted photo types; any other declared
+    /// type — including active content such as SVG — has no allowed signature
+    /// and is rejected.
+    /// </summary>
+    private static bool HasMatchingPhotoSignature(
+        string contentType,
+        ReadOnlySpan<byte> bytes) =>
+        contentType switch
+        {
+            "image/jpeg" => bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF,
+            "image/png" => bytes.Length >= 8 && bytes[..8].SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }),
+            "image/webp" => bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8),
+            _ => false
+        };
 
     // --------------------------- Invitations ---------------------------
 

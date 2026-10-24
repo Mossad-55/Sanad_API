@@ -219,6 +219,21 @@
           "event": [{ "listen": "test", "script": { "type": "text/javascript", "exec": ["pm.test('SOS cancel contract outcome', function () { pm.expect([200, 401, 403, 404, 409]).to.include(pm.response.code); });"] } }]
         }
       ]
+    },
+    {
+      "name": "06. Care records (self read-only)",
+      "description": "Read-only combined timeline for the authenticated Elderly user. Identity is resolved from the token; there is no dependent ID or write route.",
+      "item": [
+        {
+          "name": "List my care records",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{elderlyJwt}}" }],
+            "url": "{{baseUrl}}/api/v1/elderly/care-records?page=1&pageSize=20",
+            "description": "Optional source=Family|CareHome|Caregiver, visitDateFrom/To and search filters. Search is over hospital fields, never medical details."
+          }
+        }
+      ]
     }
   ],
   "variable": [

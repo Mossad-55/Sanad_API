@@ -93,7 +93,7 @@ public static class TestUserSeedTargetGuard
     private const int AllowedPort = 5432;
 
     // Every module falls back to IdentityDatabase when its own connection
-    // string is absent, so both modes validate all ten module contexts
+    // string is absent, so both modes validate all nine module contexts
     // instead of inferring targets from names.
     private static readonly string[] ModuleConnectionNames =
     [
@@ -105,8 +105,7 @@ public static class TestUserSeedTargetGuard
         "CareHomesDatabase",
         "FinanceDatabase",
         "CommunityDatabase",
-        "ChatDatabase",
-        "RentalsDatabase"
+        "ChatDatabase"
     ];
 
     /// <summary>
@@ -226,7 +225,7 @@ public static class TestUserSeedTargetGuard
     /// <summary>
     /// Usage gate for the read-only verification and one-shot seed commands:
     /// the fixture seed must be explicitly enabled in Development with the
-    /// persistent-local target mode, and the configuration-level ten-module
+    /// persistent-local target mode, and the configuration-level nine-module
     /// target assertion must pass before any database connection is opened.
     /// </summary>
     public static void RequirePersistentLocalFixtureConfiguration(
@@ -317,7 +316,7 @@ public static class TestUserSeedTargetGuard
         }
 
         string? paymobSecretKey = configuration["Paymob:SecretKey"];
-        bool paymobLiveKey = paymobSecretKey?.StartsWith("sk_live", StringComparison.OrdinalIgnoreCase) == true;
+        bool paymobLiveKey = PaymobSecretKeySafety.IsLive(paymobSecretKey);
         if (paymobLiveKey)
         {
             failedChecks.Add("integrations.paymob-live-key");
@@ -888,9 +887,7 @@ public static class TestUserSeedTargetGuard
                 "App:TestUserSeed may only be enabled in Development.");
         }
 
-        if (configuration["Paymob:SecretKey"]?.StartsWith(
-                "sk_live",
-                StringComparison.OrdinalIgnoreCase) == true)
+        if (PaymobSecretKeySafety.IsLive(configuration["Paymob:SecretKey"]))
         {
             throw new InvalidOperationException(
                 "App:TestUserSeed must never be enabled with a LIVE Paymob key.");

@@ -45,11 +45,16 @@ internal static class LibraryContentFieldDetail
             case "Library content type is invalid.":
                 return "type";
 
-            case "Video content requires a video URL.":
             case "Video URL cannot exceed 500 characters.":
             case "Video URL must be an absolute http(s) URL.":
             case "Article content cannot have a video URL.":
                 return "videoUrl";
+
+            case "A stored video reference is required.":
+            case "Stored video reference is invalid.":
+            case "Article content cannot have a video file.":
+            case "Only video content can have a video file.":
+                return "videoStorageKey";
 
             case "Video content requires a positive duration in seconds.":
             case "Article content cannot have a duration.":

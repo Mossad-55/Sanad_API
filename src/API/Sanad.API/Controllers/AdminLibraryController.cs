@@ -242,6 +242,117 @@ public sealed class AdminLibraryController(ISender sender, IFileStorage fileStor
     public async Task<IActionResult> RestoreContent(Guid id, CancellationToken cancellationToken = default) =>
         ToActionResult(await sender.Send(new RestoreLibraryContentCommand(id), cancellationToken));
 
+    /// <summary>
+    /// Stores the uploaded MP4 in private storage and attaches its reference to
+    /// the library content. Draft and published content can receive bytes;
+    /// archived content is rejected with the lifecycle conflict. The bytes are
+    /// saved first, so the reference is only persisted once the object exists.
+    /// Replacing an existing object deletes the superseded file after the new
+    /// reference is persisted; a failed attach leaves no orphan behind.
+    /// </summary>
+    [HttpPost("content/{id:guid}/video")]
+    [RequestSizeLimit(VideoMaximumBytes + RequestOverheadBytes)]
+    [Consumes("multipart/form-data")]
+    [ProducesResponseType(typeof(LibraryAdminContentResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UploadVideo(
+        Guid id,
+        IFormFile? file,
+        CancellationToken cancellationToken = default)
+    {
+        Result<LibraryAdminContentResponse> existing =
+            await sender.Send(new GetLibraryAdminContentQuery(id), cancellationToken);
+        if (existing.IsFailure)
+            return ToActionResult(existing);
+
+        var upload = await SaveVideoAsync(file, cancellationToken);
+        if (upload.IsFailure)
+            return ToActionResult(upload);
+
+        string newKey = upload.Value.Key;
+        Result<LibraryAdminContentResponse> result = await sender.Send(
+            new AttachLibraryContentVideoCommand(id, newKey), cancellationToken);
+        if (result.IsFailure)
+        {
+            await fileStorage.DeleteAsync(newKey, cancellationToken);
+            return ToActionResult(result);
+        }
+
+        // The superseded object is only removed once the new reference is
+        // persisted, so a delete failure can leave an unreferenced file but
+        // never content that points at missing bytes.
+        string? superseded = existing.Value.VideoStorageKey;
+        if (!string.IsNullOrWhiteSpace(superseded) &&
+            !string.Equals(superseded, newKey, StringComparison.Ordinal))
+        {
+            await fileStorage.DeleteAsync(superseded, cancellationToken);
+        }
+
+        return Ok(result.Value);
+    }
+
+    /// <summary>
+    /// Detaches the stored video reference and then deletes the physical object.
+    /// The reference is removed first, so playback stops immediately even if the
+    /// file cleanup fails. Content without bytes is a no-op; a non-video target is
+    /// rejected (400) and archived content is a conflict (409).
+    /// </summary>
+    [HttpDelete("content/{id:guid}/video")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeleteVideo(Guid id, CancellationToken cancellationToken = default)
+    {
+        Result<LibraryAdminContentResponse> existing =
+            await sender.Send(new GetLibraryAdminContentQuery(id), cancellationToken);
+        if (existing.IsFailure)
+            return ToActionResult(existing);
+
+        Result<LibraryAdminContentResponse> result =
+            await sender.Send(new RemoveLibraryContentVideoCommand(id), cancellationToken);
+        if (result.IsFailure)
+            return ToActionResult(result);
+
+        string? storedKey = existing.Value.VideoStorageKey;
+        if (!string.IsNullOrWhiteSpace(storedKey))
+        {
+            await fileStorage.DeleteAsync(storedKey, cancellationToken);
+        }
+
+        return NoContent();
+    }
+
+    // 50 MB of video, matching the established video ceiling, plus a small
+    // multipart-envelope allowance so a file exactly at the limit still binds.
+    private const long VideoMaximumBytes = 52_428_800;
+    private const long RequestOverheadBytes = 102_400;
+    private const string VideoContentType = "video/mp4";
+    private const string VideoFolder = "library-video";
+
+    private async Task<Result<StoredFile>> SaveVideoAsync(IFormFile? file, CancellationToken cancellationToken)
+    {
+        if (file is null || file.Length <= 0)
+            return Result<StoredFile>.Failure(StorageErrors.Empty);
+        if (file.Length > VideoMaximumBytes)
+            return Result<StoredFile>.Failure(StorageErrors.TooLarge);
+        if (!string.Equals(file.ContentType?.Trim(), VideoContentType, StringComparison.OrdinalIgnoreCase))
+            return Result<StoredFile>.Failure(StorageErrors.UnsupportedType);
+
+        // The declared MIME type alone is never trusted: the container marker is
+        // verified against the actual bytes before anything reaches disk.
+        await using var stream = new MemoryStream();
+        await file.CopyToAsync(stream, cancellationToken);
+        if (!HasMatchingVideoSignature(stream.GetBuffer().AsSpan(0, (int)stream.Length)))
+            return Result<StoredFile>.Failure(StorageErrors.UnsupportedType);
+
+        stream.Position = 0;
+        return await fileStorage.SavePrivateAsync(
+            stream, VideoContentType, file.Length, VideoFolder, VideoMaximumBytes, cancellationToken);
+    }
+
     private async Task<Result<StoredFile>> SaveCoverAsync(IFormFile? file, CancellationToken cancellationToken)
     {
         if (file is null || file.Length <= 0)
@@ -266,6 +377,13 @@ public sealed class AdminLibraryController(ISender sender, IFileStorage fileStor
             "image/webp" => bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8),
             _ => false
         };
+
+    /// <summary>
+    /// ISO base media container marker of an MP4 (<c>ftyp</c> at offset 4),
+    /// matching the established chat-video check.
+    /// </summary>
+    private static bool HasMatchingVideoSignature(ReadOnlySpan<byte> bytes) =>
+        bytes.Length >= 12 && bytes[4..8].SequenceEqual("ftyp"u8);
 
     private const string ContentInvalidDetail = "One or more library content fields are invalid.";
 

@@ -55,7 +55,6 @@ public sealed class PortalApiMetadataHost : WebApplicationFactory<Program>
             ["ConnectionStrings:CareHomesDatabase"] = DummyConnectionString,
             ["ConnectionStrings:CaregiversDatabase"] = DummyConnectionString,
             ["ConnectionStrings:CommunityDatabase"] = DummyConnectionString,
-            ["ConnectionStrings:RentalsDatabase"] = DummyConnectionString,
             ["Identity:Jwt:Issuer"] = TestIssuer,
             ["Identity:Jwt:Audience"] = TestAudience,
             ["Identity:Jwt:SigningKey"] = TestSigningKey,
@@ -107,7 +106,6 @@ public sealed class PortalApiMetadataHost : WebApplicationFactory<Program>
             UseInMemory<Sanad.Modules.Community.Infrastructure.Persistence.CommunityDbContext>(services, "portal-community");
             UseInMemory<Sanad.Modules.Chat.Infrastructure.Persistence.ChatDbContext>(services, "portal-chat");
             UseInMemory<Sanad.Modules.Finance.Infrastructure.FinanceDbContext>(services, "portal-finance");
-            UseInMemory<Sanad.Modules.Rentals.Infrastructure.RentalsDbContext>(services, "portal-rentals");
 
             services.AddDataProtection().UseEphemeralDataProtectionProvider();
 

@@ -694,44 +694,49 @@ public sealed class AuthController :
     private async Task<Result<StoredFile>>
         SavePrivateAvatarImageAsync(
             IFormFile? file,
-            CancellationToken cancellationToken)
-    {
-        if (file is null)
-        {
-            return Result<StoredFile>.Failure(
-                StorageErrors.Empty);
-        }
-
-        string? contentType =
-            NormalizeIdentityImageContentType(
-                file.ContentType);
-
-        if (contentType is null)
-        {
-            return Result<StoredFile>.Failure(
-                StorageErrors.UnsupportedType);
-        }
-
-        await using Stream stream =
-            file.OpenReadStream();
-
-        return await _fileStorage.SavePrivateAsync(
-            stream,
-            contentType,
-            file.Length,
-            folder: AvatarStorage.Folder,
+            CancellationToken cancellationToken) =>
+        await SaveVerifiedPrivateImageAsync(
+            file,
+            AvatarStorage.Folder,
             cancellationToken);
-    }
 
     private async Task<Result<StoredFile>>
         SavePrivateIdentityImageAsync(
             IFormFile? file,
+            CancellationToken cancellationToken) =>
+        await SaveVerifiedPrivateImageAsync(
+            file,
+            IdentityDocumentStorage.Folder,
+            cancellationToken);
+
+    // 5 MB, the documented per-image limit and the private-storage ceiling.
+    private const long MaximumPrivateImageBytes =
+        5_242_880;
+
+    /// <summary>
+    /// Stores an avatar/identity image in private storage after verifying that
+    /// the declared MIME type is an accepted image (normalized so
+    /// <c>image/jpg</c> is stored as <c>image/jpeg</c>) AND that the actual
+    /// bytes carry the matching signature. The declared type alone is never
+    /// trusted, so a mislabelled payload (for example a PDF announced as a
+    /// JPEG) is refused with no storage write.
+    /// </summary>
+    private async Task<Result<StoredFile>>
+        SaveVerifiedPrivateImageAsync(
+            IFormFile? file,
+            string folder,
             CancellationToken cancellationToken)
     {
-        if (file is null)
+        if (file is null || file.Length <= 0)
         {
             return Result<StoredFile>.Failure(
                 StorageErrors.Empty);
+        }
+
+        if (file.Length > MaximumPrivateImageBytes)
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.TooLarge);
         }
 
         string? contentType =
@@ -744,16 +749,45 @@ public sealed class AuthController :
                 StorageErrors.UnsupportedType);
         }
 
-        await using Stream stream =
-            file.OpenReadStream();
+        await using var content =
+            new MemoryStream();
+
+        await file.CopyToAsync(
+            content,
+            cancellationToken);
+
+        if (!HasMatchingImageSignature(
+                contentType,
+                content.GetBuffer().AsSpan(0, (int)content.Length)))
+        {
+            return Result<StoredFile>.Failure(
+                StorageErrors.UnsupportedType);
+        }
+
+        content.Position = 0;
 
         return await _fileStorage.SavePrivateAsync(
-            stream,
+            content,
             contentType,
             file.Length,
-            folder: IdentityDocumentStorage.Folder,
+            folder,
             cancellationToken);
     }
+
+    /// <summary>
+    /// Byte-signature check for the accepted image types; any other declared
+    /// type has no allowed signature and is rejected.
+    /// </summary>
+    private static bool HasMatchingImageSignature(
+        string contentType,
+        ReadOnlySpan<byte> bytes) =>
+        contentType switch
+        {
+            "image/jpeg" => bytes.Length >= 3 && bytes[0] == 0xFF && bytes[1] == 0xD8 && bytes[2] == 0xFF,
+            "image/png" => bytes.Length >= 8 && bytes[..8].SequenceEqual(new byte[] { 0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A }),
+            "image/webp" => bytes.Length >= 12 && bytes[..4].SequenceEqual("RIFF"u8) && bytes[8..12].SequenceEqual("WEBP"u8),
+            _ => false
+        };
 
     private static string? NormalizeIdentityImageContentType(
         string? contentType)

@@ -16,6 +16,16 @@ public sealed class UnlikePostCommandHandler(ICommunityDbContext dbContext)
             return false;
         }
 
+        // Undo semantics (testing contract, locked 2026-10-23): reactions
+        // stop after deletion, and the deletion contract retains interaction
+        // rows (no cleanup exists), so an unlike against a non-published
+        // parent is rejected with the same privacy not-found and mutates
+        // nothing — the retained like row stays exactly as deletion left it.
+        if (post.Status != PostStatus.Published)
+        {
+            return Result<bool>.Failure(CommunityPostLifecycleErrors.PostNotFound);
+        }
+
         var interaction = await dbContext.Interactions.SingleOrDefaultAsync(
             i => i.TargetType == CommunityInteractionTarget.Post &&
                  i.TargetId == request.PostId && i.UserId == new UserId(request.UserId) &&

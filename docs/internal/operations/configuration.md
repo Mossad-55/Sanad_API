@@ -96,8 +96,8 @@ Enabled when `SecretKey` is set. Otherwise `DevelopmentPaymobClient` serves paym
 | Variable | Default | Purpose |
 |---|---|---|
 | `Paymob__BaseUrl` | `https://accept.paymob.com` | API host. Must **not** end in `/api` — the client appends `/v1/intention/` and `/api/acceptance/...` itself. |
-| `Paymob__SecretKey` | | Dashboard secret key (`sk_test_…` / `sk_live_…`); authorises intention and refund calls (`Authorization: Token …`). |
-| `Paymob__PublicKey` | | Dashboard public key (`pk_…`); handed to the mobile SDK together with the intent `clientSecret`. |
+| `Paymob__SecretKey` | | Dashboard secret key (`sk_test_…` / `sk_live_…`, or Egypt format `egy_sk_test_…` / `egy_sk_live_…`); authorises intention and refund calls (`Authorization: Token …`). |
+| `Paymob__PublicKey` | | Dashboard public key (`pk_…`, or Egypt format `egy_pk_test_…` / `egy_pk_live_…`); handed to the mobile SDK together with the intent `clientSecret`. |
 | `Paymob__HmacSecret` | | HMAC-SHA512 secret verifying webhook callbacks; if unset the webhook endpoint answers `503`. |
 | `Paymob__CardIntegrationId` | | Card integration id (Dashboard → Developers → Payment Integrations). |
 | `Paymob__Card3dsIntegrationId` | | Card 3DS integration id used for initial enrollment when the selected local plan has `paymobSubscriptionPlanId`. |

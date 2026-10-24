@@ -39,6 +39,17 @@ public static class ComplaintReviewErrors
     public static readonly Error AmountInvalid =
         new("Finance.Complaint.AmountInvalid", "The reviewed complaint award amount is invalid.");
 
+    /// <summary>
+    /// Provisional award cap (Owner-ordered default EGP 500.00, configuration
+    /// <c>Finance:ComplaintReviews:MaxAwardMinorUnits</c>): a single reviewed
+    /// award above the configured cap is refused as a policy conflict — the
+    /// verdict is not recorded and no ledger entry is appended.
+    /// </summary>
+    public static readonly Error AwardExceedsCap =
+        new(
+            "Finance.Complaint.AwardExceedsCap",
+            "The reviewed complaint award exceeds the configured maximum award amount.");
+
     public static readonly Error Conflict =
         new("Finance.Complaint.Conflict", "The complaint review was changed concurrently; retry.");
 
@@ -251,7 +262,9 @@ public sealed class BeginComplaintReviewInvestigationCommandHandler(IComplaintRe
             cancellationToken);
 }
 
-public sealed class ApproveComplaintReviewCommandHandler(IComplaintReviewStore store)
+public sealed class ApproveComplaintReviewCommandHandler(
+    IComplaintReviewStore store,
+    Microsoft.Extensions.Options.IOptions<ComplaintAwardOptions> awardOptions)
     : ICommandHandler<ApproveComplaintReviewCommand, ComplaintReviewSnapshot>
 {
     public async Task<Result<ComplaintReviewSnapshot>> Handle(
@@ -266,6 +279,17 @@ public sealed class ApproveComplaintReviewCommandHandler(IComplaintReviewStore s
 
         if (request.AwardMinorUnits < 0)
             return Result<ComplaintReviewSnapshot>.Failure(ComplaintReviewErrors.AmountInvalid);
+
+        // Provisional single-award cap (Owner-ordered default EGP 500.00,
+        // 2026-10-23; configuration Finance:ComplaintReviews:MaxAwardMinorUnits,
+        // explicit 0 disables; negative or malformed configuration is rejected
+        // at startup). Refused before any verdict or ledger append: the reviewed
+        // state machine and RefundLedger are untouched.
+        if (awardOptions.Value.MaxAwardMinorUnits is long cap &&
+            request.AwardMinorUnits > cap)
+        {
+            return Result<ComplaintReviewSnapshot>.Failure(ComplaintReviewErrors.AwardExceedsCap);
+        }
 
         return await store.ApproveAsync(
             request.ComplaintReviewId,

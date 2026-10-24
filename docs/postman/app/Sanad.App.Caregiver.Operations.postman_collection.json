@@ -12,7 +12,10 @@
     { "key": "caregiverId", "value": "" },
     { "key": "requestId", "value": "" },
     { "key": "taskId", "value": "" },
-    { "key": "payoutId", "value": "" }
+    { "key": "payoutId", "value": "" },
+    { "key": "dependentId", "value": "" },
+    { "key": "careRecordId", "value": "" },
+    { "key": "careRecordVersion", "value": "1" }
   ],
   "item": [
     { "name": "01. Family availability read", "item": [
@@ -42,6 +45,14 @@
       { "name": "List payouts", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/payouts?status=&page=1&pageSize=20" }, "description": "CaregiverAccess and self-only. status accepts Paid or Failed (any other value → 400); page ≥ 1, pageSize clamped 1–100, newest-recorded first. amount = gross (net always equals gross); bankNameArabic/bankNameEnglish resolved from the snapshotted bankCode (null when unknown); transferredOnUtc set only on Paid rows." },
       { "name": "Get payout detail", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/payouts/{{payoutId}}" }, "description": "CaregiverAccess and self-only. Same fields as the list item plus bookingItems (always one element: bookingId, caregiverAmount = gross, currency). Another caregiver's id → 404 Caregivers.Payouts.NotFound (no existence leak)." },
       { "name": "Get payment policy", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/payment-policy" }, "description": "CaregiverAccess. Admin-authored descriptionArabic/descriptionEnglish of the effective payout policy (null before descriptions existed or when no policy exists). requiresVerifiedBankAccount is always true; minimumPayoutAmount and expectedProcessingDays are honest nulls — no such rules exist." }
+    ] },
+    { "name": "07. Care records (booking-authorized dependents)", "item": [
+      { "name": "List eligible care-record recipients", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/care-records/recipients?page=1&pageSize=20&search=" }, "description": "Names only; own Confirmed/InProgress or completed-within-30-days bookings. Permission is rechecked on every subsequent call." },
+      { "name": "List own-source care records for a dependent", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/care-records?dependentId={{dependentId}}&page=1&pageSize=20" }, "description": "Medical and companion caregivers; own-source only, for a dependent linked by the caregiver's own eligible booking." },
+      { "name": "Get caregiver care record", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/care-records/{{careRecordId}}" } },
+      { "name": "Create caregiver-source care record", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"dependentId\": \"{{dependentId}}\",\n  \"hospitalName\": \"Approved test fixture\",\n  \"visitDate\": \"2026-10-20\",\n  \"details\": \"Disposable caregiver care-record fixture\"\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/care-records" }, "description": "The dependentId is a selector only; booking scope is revalidated at write. Mutation: approved disposable fixture only." },
+      { "name": "Update caregiver-source care record", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"hospitalName\": \"Approved test fixture\",\n  \"visitDate\": \"2026-10-20\",\n  \"details\": \"Updated disposable caregiver care-record fixture\",\n  \"expectedVersion\": {{careRecordVersion}}\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/care-records/{{careRecordId}}" }, "description": "Versioned update; stale expectedVersion returns 409. Approved disposable fixture only." },
+      { "name": "Delete caregiver-source care record", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/care-records/{{careRecordId}}?expectedVersion={{careRecordVersion}}" }, "description": "Caregiver own-source only; success 204. Mutation: approved disposable fixture only." }
     ] }
   ]
 }

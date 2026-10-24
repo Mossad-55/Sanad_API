@@ -31,7 +31,7 @@ actually applied migrations, and the anonymous smoke contract with:
 The verifier checks the remote revision through the safe anonymous
 `GET /api/v1/deployment/info` endpoint (revision match against the
 manifest, required vs. actually applied latest migration identifiers for
-all 10 contexts, no DB details exposed), optionally validates the
+all 9 contexts, no DB details exposed), optionally validates the
 captured startup log's 9-context migration evidence, and calls the
 existing anonymous `GET /api/v1/lookups/services` endpoint for HTTP 200.
 A local-manifest-only check or a single lookup response alone is not

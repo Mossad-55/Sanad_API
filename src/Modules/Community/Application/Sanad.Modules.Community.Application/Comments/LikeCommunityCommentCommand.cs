@@ -14,6 +14,19 @@ public sealed class LikeCommunityCommentCommandHandler(ICommunityDbContext dbCon
             cancellationToken);
         if (comment is null || request.UserId == Guid.Empty) return false;
 
+        // Comment reactions stop with the parent lifecycle (testing contract,
+        // locked 2026-10-23): the comment's parent post is resolved and the
+        // mutation only proceeds while it is still published. Against a
+        // deleted parent a toggle answers the same wire not-found as a
+        // missing comment and nothing is persisted — the retained interaction
+        // row keeps its deletion-time state.
+        var parentPost = await dbContext.Posts.AsNoTracking()
+            .SingleOrDefaultAsync(post => post.Id == comment.PostId, cancellationToken);
+        if (parentPost is null || parentPost.Status != PostStatus.Published)
+        {
+            return false;
+        }
+
         var userId = new Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId(request.UserId);
         var interaction = await dbContext.Interactions.SingleOrDefaultAsync(
             item => item.TargetType == CommunityInteractionTarget.Comment &&

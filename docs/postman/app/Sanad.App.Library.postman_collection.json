@@ -68,7 +68,7 @@
 						],
 						"url": "{{baseUrl}}/api/v1/library/content/{{libraryContentId}}"
 					},
-					"description": "Published detail with sections (Article) or videoUrl+durationSeconds (Video). videoUrl is the administrator-stored absolute http(s) URL and durationSeconds is its real length - there is no video hosting and no built-in demo sample, so a playable sample exists only for a published Video row. Premium content without the PremiumContent benefit returns metadata only: videoUrl=null, sections=[], canAccess=false (200, not an error) while the teaser keeps durationSeconds and the cover. Unknown/draft/archived → 404 Cms.LibraryContent.NotPublished."
+					"description": "Published detail with sections (Article) or durationSeconds (Video). videoUrl is a generated authenticated playback route only when approved video bytes were uploaded; external videoUrl values are metadata and are never fetched or played. Premium content without the PremiumContent benefit returns metadata only: videoUrl=null, sections=[], canAccess=false (200, not an error) while the teaser keeps durationSeconds and cover. Unknown/draft/archived → 404 Cms.LibraryContent.NotPublished."
 				}
 			]
 		},
@@ -167,6 +167,22 @@
 						"url": "{{baseUrl}}/api/v1/library/content/{{libraryContentId}}/view"
 					},
 					"description": "204; increments viewCount on every call — the client calls it once per actual open; the server does not deduplicate. Only Published content (else 404 Cms.LibraryContent.NotFound)."
+				}
+			]
+		},
+		{
+			"name": "05. Video playback",
+			"item": [
+				{
+					"name": "Play uploaded library video",
+					"request": {
+						"method": "GET",
+						"header": [
+							{ "key": "Authorization", "value": "Bearer {{accessToken}}" }
+						],
+						"url": "{{baseUrl}}/api/v1/library/content/{{libraryContentId}}/video"
+					},
+					"description": "Streams privately stored MP4 bytes for Published video content. Premium playback requires the PremiumContent entitlement. Supports HTTP byte ranges. Unknown, unpublished, archived, article, missing/unreadable bytes, or premium without entitlement returns the same 404 Cms.LibraryContent.NotPublished. The response never exposes the private storage key and never proxies an external videoUrl. Use only a published content item with approved uploaded bytes."
 				}
 			]
 		}

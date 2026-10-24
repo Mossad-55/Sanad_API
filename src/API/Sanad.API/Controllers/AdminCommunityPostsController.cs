@@ -102,6 +102,34 @@ public sealed class AdminCommunityPostsController(ISender sender) : ApiControlle
         return result.IsSuccess ? NoContent() : ToError(result.Error);
     }
 
+    /// <summary>
+    /// FUR post management (Owner addition, locked 2026-10-23): Community
+    /// moderation deletes ANY post, with the deleting moderator recorded in
+    /// the post's deletion audit. This is deliberately the only post write
+    /// added on this controller — the CommunityModeration permission grants
+    /// deletion, not editing or re-attribution: no Admin edit or impersonation
+    /// route exists and the app author-ownership rules are unchanged.
+    /// <para>
+    /// Statuses reuse the shared mapper: unknown or already-deleted post →
+    /// 404; a stale concurrent transition against the post's lifecycle
+    /// token → 409. Success is 204.
+    /// </para>
+    /// </summary>
+    [HttpDelete("{postId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> Delete(
+        Guid postId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId moderatorId)) return Unauthorized();
+        var result = await sender.Send(
+            new AdminDeletePostCommand(postId, moderatorId),
+            cancellationToken);
+        return result.IsSuccess ? NoContent() : ToError(result.Error);
+    }
+
     [HttpPost("/api/v1/admin/community/reports/{reportId:guid}/resolve")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

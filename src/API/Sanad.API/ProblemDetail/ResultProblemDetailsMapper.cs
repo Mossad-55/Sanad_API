@@ -270,6 +270,13 @@ public static class ResultProblemDetailsMapper
             ["Families.Medication.NotFound"] = 404,
             ["Families.Medication.InvalidDateRange"] = 400,
 
+            ["Families.CareRecords.AccessDenied"] = 403,
+            ["Families.CareRecords.DependentNotFound"] = 404,
+            ["Families.CareRecords.NotFound"] = 404,
+            ["Families.CareRecords.Invalid"] = 400,
+            ["Families.CareRecords.InvalidQuery"] = 400,
+            ["Families.CareRecords.ConcurrencyConflict"] = 409,
+
             ["Families.Family.AcknowledgementRequired"] = 400,
             ["Families.Family.ActiveBookingExists"] = 409,
             ["Families.Family.UnsettledPaymentExists"] = 409,
@@ -429,47 +436,6 @@ public static class ResultProblemDetailsMapper
             , ["Community.InvalidCategory"] = 400
             , ["Community.Category.Invalid"] = 400
 
-            // W3-F4 rentals (clause 8): catalog administration and browsing, the
-            // booking lifecycle, the Paymob intent surface and the refund
-            // destinations. Not-found codes are 404, invalid requests 400,
-            // lifecycle-state refusals 409, and Unknown outcomes 500.
-            , ["Rentals.Catalog.NotFound"] = 404
-            , ["Rentals.Catalog.Invalid"] = 400
-            , ["Rentals.Catalog.Unknown"] = 500
-            , ["Rentals.Booking.FamilyNotFound"] = 404
-            , ["Rentals.Booking.NotFound"] = 404
-            , ["Rentals.Booking.EquipmentNotFound"] = 404
-            , ["Rentals.Booking.Invalid"] = 400
-            , ["Rentals.Booking.InvalidOperation"] = 409
-            , ["Rentals.Booking.Conflict"] = 409
-            , ["Rentals.Booking.Unknown"] = 500
-            , ["Rentals.Payment.NotFound"] = 404
-            , ["Rentals.Payment.InvalidOperation"] = 409
-            , ["Rentals.Refund.DestinationUnavailable"] = 400
-            , ["Rentals.Refund.NoPaymentReference"] = 409
-            , ["Rentals.Refund.OutcomePendingReconciliation"] = 409
-            , ["Rentals.Refund.AttemptFailedRetryable"] = 409
-            , ["Rentals.Refund.IdempotencyKeyTooLong"] = 400
-            , ["Rentals.Refund.InvalidAmount"] = 400
-            , ["Rentals.Refund.AlreadyRecorded"] = 409
-            , ["Rentals.Operations.BookingNotFound"] = 404
-            , ["Rentals.Operations.DeductionNotFound"] = 404
-            , ["Rentals.Operations.Invalid"] = 400
-            , ["Rentals.Operations.InvalidOperation"] = 409
-            , ["Rentals.Operations.Conflict"] = 409
-            , ["Rentals.Operations.Unknown"] = 500
-
-            // W3-F4 Finance refund seam (the rental refund recorder): the same
-            // status semantics as the other refund families — a replayed
-            // conflicting case is a 409, an invalid movement a 400.
-            , ["Finance.RentalRefund.CaseRequired"] = 400
-            , ["Finance.RentalRefund.AwardInvalid"] = 400
-            , ["Finance.RentalRefund.Invalid"] = 400
-            , ["Finance.RentalRefund.ReconciliationRequired"] = 409
-            , ["Finance.RentalRefund.IdempotencyConflict"] = 409
-            , ["Finance.RentalRefund.Conflict"] = 409
-            , ["Finance.RentalRefund.Unknown"] = 500
-
             // W3-F3 subscription refunds: a missing case/family/subscription or
             // capture is a malformed request, an award above that capture's
             // remaining funds is a ledger conflict, and a reused idempotency
@@ -490,6 +456,7 @@ public static class ResultProblemDetailsMapper
             , ["Finance.Complaint.FamilyRequired"] = 400
             , ["Finance.Complaint.CaseRequired"] = 400
             , ["Finance.Complaint.AmountInvalid"] = 400
+            , ["Finance.Complaint.AwardExceedsCap"] = 409
             , ["Finance.Complaint.NotFound"] = 404
             , ["Finance.Complaint.Invalid"] = 409
             , ["Finance.Complaint.SuperAdminRequired"] = 403

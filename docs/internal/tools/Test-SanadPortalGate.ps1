@@ -48,7 +48,7 @@ foreach ($key in $integrationKeys) {
 }
 
 $dummyConnection = 'Host=127.0.0.1;Port=1;Database=sanad_portal_gate_dummy;Username=test;Password=test;Timeout=1;Command Timeout=1'
-$moduleNames = @('Identity', 'Cms', 'Caregivers', 'Families', 'CareHomes', 'Notifications', 'Community', 'Chat', 'Finance', 'Rentals')
+$moduleNames = @('Identity', 'Cms', 'Caregivers', 'Families', 'CareHomes', 'Notifications', 'Community', 'Chat', 'Finance')
 foreach ($moduleName in $moduleNames) {
     $gateStart.Environment["ConnectionStrings__${moduleName}Database"] = $dummyConnection
 }
@@ -73,7 +73,7 @@ foreach ($moduleName in $moduleNames) {
         throw "Unsafe module target in child environment: $moduleName"
     }
 }
-Write-Output "Portal $Suite gate: integration targets absent; all ten module targets isolated; migrations/seeders disabled (child only)."
+Write-Output "Portal $Suite gate: integration targets absent; all nine module targets isolated; migrations/seeders disabled (child only)."
 $gateProcess = [System.Diagnostics.Process]::Start($gateStart)
 if ($null -eq $gateProcess) { throw 'Unable to start the isolated test process.' }
 try {

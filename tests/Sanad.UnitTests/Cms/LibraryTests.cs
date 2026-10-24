@@ -509,7 +509,6 @@ public sealed class LibraryTests
         LibraryContent premium = await CreatePublished(db, "Video", "Premium video", isPremium: true);
         LibraryContent free = await CreatePublished(db, "Article", "Free article");
         Guid premiumId = premium.Id.Value;
-        string videoUrl = premium.VideoUrl!;
         Guid freeId = free.Id.Value;
 
         var handler = new GetLibraryContentQueryHandler(db, families);
@@ -526,7 +525,10 @@ public sealed class LibraryTests
             new GetLibraryContentQuery(premiumId, subscriber.Value), CancellationToken.None);
         Assert.True(entitled.IsSuccess);
         Assert.True(entitled.Value.CanAccess);
-        Assert.Equal(videoUrl, entitled.Value.VideoUrl);
+        // Locked decision D6: entitlement alone no longer exposes a playback
+        // address. The stored external URL is admin metadata only, so the field
+        // stays null until approved bytes are uploaded to storage.
+        Assert.Null(entitled.Value.VideoUrl);
 
         var freeDetail = await handler.Handle(
             new GetLibraryContentQuery(freeId, UserId.New().Value), CancellationToken.None);
@@ -653,7 +655,9 @@ public sealed class LibraryTests
         var detail = await new GetLibraryContentQueryHandler(db, families)
             .Handle(new GetLibraryContentQuery(videoId, Guid.NewGuid()), CancellationToken.None);
         Assert.True(detail.IsSuccess);
-        Assert.Equal("https://youtu.be/abc123", detail.Value.VideoUrl);
+        // The seeded external URL is metadata only (see D6); playback address is
+        // emitted only when stored bytes exist.
+        Assert.Null(detail.Value.VideoUrl);
         Assert.Equal(300, detail.Value.DurationSeconds);
         Assert.Equal("library/cover.png", detail.Value.CoverImagePath);
         Assert.Empty(detail.Value.Sections);

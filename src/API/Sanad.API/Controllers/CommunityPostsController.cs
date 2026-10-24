@@ -207,6 +207,87 @@ public sealed class CommunityPostsController : ApiControllerBase
         return result.IsSuccess ? Ok() : ToActionResult(result);
     }
 
+    /// <summary>
+    /// FUR post management (Owner addition, locked 2026-10-23): the
+    /// authenticated author edits THEIR OWN post. The acting author id comes
+    /// from the authentication claim only — a request body can never supply
+    /// or change it, so app ownership cannot be bypassed by a forged id —
+    /// and the stored author identity stays immutable. Editing preserves
+    /// moderation: published content re-enters the pending-review queue
+    /// instead of bypassing the approval requirement.
+    /// <para>
+    /// The handler reuses the shared error codes, so the wire statuses stay
+    /// in the one shared mapper: unknown/foreign/deleted post → 404
+    /// (privacy not-found), a rejected/archived post or a stale concurrent
+    /// write → 409, an unauthorized image reference → 400. Success is 200
+    /// with the freshly persisted post. The image reference, when present,
+    /// must be an authorized Community upload (own upload or already
+    /// published); external URLs and another user's private asset are
+    /// rejected.
+    /// </para>
+    /// </summary>
+    [HttpPut("posts/{postId:guid}")]
+    [ProducesResponseType(
+        typeof(CommunityPostResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> UpdatePost(
+        Guid postId,
+        [FromBody] UpdatePostCommand command,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        // The route id and the claim own these two fields; the body can never
+        // override them.
+        command = command with { PostId = postId, ActingAuthorId = userId.Value };
+
+        var result = await _sender.Send(command, cancellationToken);
+        if (!result.IsSuccess) return ToActionResult(result);
+
+        Guid[] authorIds = result.Value.IsAnonymous
+            ? Array.Empty<Guid>()
+            : new[] { result.Value.AuthorId.Value };
+
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
+            await LoadAuthorProfilesAsync(authorIds, cancellationToken);
+
+        return Ok(ToResponse(result.Value, profiles));
+    }
+
+    /// <summary>
+    /// FUR post management: the authenticated author deletes THEIR OWN post.
+    /// The acting author id is the claim value only. Deletion is a retained
+    /// transition (status Deleted with DeletedBy/DeletedOnUtc audit) — the
+    /// children and the referenced media stay stored, no cascading removal.
+    /// The post disappears from every public read at once; a repeat delete
+    /// and a foreign author's delete answer the same 404.
+    /// </summary>
+    [HttpDelete("posts/{postId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    public async Task<IActionResult> DeletePost(
+        Guid postId,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new DeletePostCommand(postId, userId.Value),
+            cancellationToken);
+
+        return result.IsSuccess ? NoContent() : ToActionResult(result);
+    }
+
     [HttpDelete("posts/{postId:guid}/like")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> UnlikePost(

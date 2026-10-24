@@ -101,6 +101,15 @@ try {
     $redactedKey = Get-RedactedText 'gateway key sk_live_abcdefghijklmno'
     Assert-Check ($redactedKey -notmatch 'abcdefghijklmno') 'Live-looking provider key is redacted'
 
+    $redactedEgyptKey = Get-RedactedText 'gateway key egy_sk_test_abcdefghijklmno'
+    Assert-Check ($redactedEgyptKey -notmatch 'abcdefghijklmno') 'New-format Paymob test key is redacted'
+
+    $redactedEgyptPublicKey = Get-RedactedText 'public key egy_pk_test_abcdefghijklmno'
+    Assert-Check ($redactedEgyptPublicKey -notmatch 'abcdefghijklmno') 'New-format Paymob public key is redacted'
+
+    $redactedEgyptClientSecret = Get-RedactedText 'client secret egy_csk_test_abcdefghijklmno'
+    Assert-Check ($redactedEgyptClientSecret -notmatch 'abcdefghijklmno') 'New-format Paymob client secret is redacted'
+
     $redactedBearer = Get-RedactedText 'Authorization: Bearer eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxIn0.abcdefghijklmn'
     Assert-Check ($redactedBearer -notmatch 'eyJhbGciOiJIUzI1NiJ9') 'Bearer token is redacted'
 
@@ -316,7 +325,7 @@ try {
     Assert-Check ($f2Definition.facilityStatusDraft -eq 1 -and $f2Definition.roomTypeSharedMode -eq 1) 'The fixture facility is a draft and the room type is a shared allocation'
     Assert-Check ((ConvertTo-F2Utf8Hex -Value '') -eq '' -and (ConvertTo-F2Utf8Hex -Value $null) -eq '') 'The UTF-8 hex helper handles empty and null values'
     Assert-Check ((ConvertTo-F2Utf8Hex -Value 'A') -eq '41') 'The UTF-8 hex helper encodes ASCII'
-    Assert-Check ((ConvertTo-F2Utf8Hex -Value 'غ') -eq 'd8ba') 'The UTF-8 hex helper encodes Arabic as UTF-8 bytes'
+    Assert-Check ((ConvertTo-F2Utf8Hex -Value ([string][char]0x063A)) -eq 'd8ba') 'The UTF-8 hex helper encodes Arabic as UTF-8 bytes'
     Assert-Check (Test-F2SameInstant -Left '2026-10-21T10:00:00.1234567Z' -Right '2026-10-21T10:00:00.123Z') 'Instant comparison tolerates differing sub-second precision'
     Assert-Check (-not (Test-F2SameInstant -Left '2026-10-21T10:00:00Z' -Right '2026-10-21T10:00:05Z')) 'Instant comparison rejects a different instant'
     Assert-Check (-not (Test-F2SameInstant -Left $null -Right '2026-10-21T10:00:00Z')) 'Instant comparison rejects a missing value'

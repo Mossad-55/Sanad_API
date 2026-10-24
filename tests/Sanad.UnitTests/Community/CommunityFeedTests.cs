@@ -315,6 +315,32 @@ public sealed class CommunityFeedTests
     }
 
     [Fact]
+    public async Task Post_feed_response_serializes_the_saved_avatar_as_download_url_not_private_key()
+    {
+        await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();
+        var author = UserId.New();
+        const string privateAvatarKey = "private/avatars/post-author.jpg";
+        await harness.AddIdentityUserAsync(
+            author.Value,
+            "كاتب تجريبي",
+            "Test Author",
+            avatarKey: privateAvatarKey);
+        Guid postId = await harness.AddPublishedPostAsync(author.Value, isAnonymous: false);
+
+        CommunityPostsController controller = harness.CreatePostsController(UserId.New());
+        CommunityPostResponse response = Assert.Single(
+            harness.ReadItems(await controller.GetPosts(cancellationToken: default)),
+            item => item.Id == postId);
+
+        string expectedAvatarUrl = $"/api/v1/community/authors/{author.Value}/photo";
+        Assert.Equal(expectedAvatarUrl, response.AvatarUrl);
+
+        using JsonDocument body = JsonDocument.Parse(harness.Serialize(response));
+        Assert.Equal(expectedAvatarUrl, body.RootElement.GetProperty("avatarUrl").GetString());
+        Assert.DoesNotContain(privateAvatarKey, body.RootElement.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Post_feed_resolves_the_author_names_with_one_batched_lookup_per_page()
     {
         await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();
@@ -589,7 +615,7 @@ public sealed class CommunityFeedTests
     }
 
     [Fact]
-    public async Task Blocked_author_with_avatar_publishes_the_authorized_photo_path()
+    public async Task Blocked_author_with_avatar_and_no_community_history_publishes_no_photo_path()
     {
         await using var harness = await CommunityAuthorProjectionHarness.CreateAsync();
         var viewer = UserId.New();
@@ -606,9 +632,12 @@ public sealed class CommunityFeedTests
         BlockedCommunityAuthorResponse item = Assert.Single(result.Value);
         Assert.Equal(blocked.Value, item.AuthorId);
         Assert.Equal("Blocked Author", item.DisplayName);
-        // The wire value is the authorized download route, mirroring the feed
-        // projection — the stored Identity key is consumed server-side only.
-        Assert.Equal($"/api/v1/community/authors/{blocked.Value}/photo", item.AvatarUrl);
+
+        // The photo route answers 404 for an author with no published,
+        // non-anonymous Community post. Since the shared privacy alignment,
+        // the projection never advertises a URL the route would deny: the
+        // honest value here is null, never a stale 404 path.
+        Assert.Null(item.AvatarUrl);
     }
 
     [Fact]
@@ -645,6 +674,12 @@ public sealed class CommunityFeedTests
             blocked.Value, "محظور", "Blocked Author", avatarKey: "private/avatars/blocked.jpg");
         await harness.AddIdentityUserAsync(
             other.Value, "آخر", "Other Author", avatarKey: "private/avatars/other.jpg");
+
+        // Both authors also own visible published content, so their avatar is
+        // actually servable by the download route and the projection may
+        // publish the authorized path.
+        await harness.AddPublishedPostAsync(blocked.Value, isAnonymous: false);
+        await harness.AddPublishedPostAsync(other.Value, isAnonymous: false);
 
         await harness.BlockAuthorAsync(viewer, blocked);
         await harness.BlockAuthorAsync(viewer, other);

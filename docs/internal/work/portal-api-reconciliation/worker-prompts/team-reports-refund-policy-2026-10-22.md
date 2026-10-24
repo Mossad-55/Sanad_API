@@ -1,5 +1,12 @@
 # Consolidated team reports + refund policy — execution brief
 
+> HISTORICAL: this wave was released; the control record and dispatch instructions
+> below are retained as historical evidence, not current work orders. Start at
+> [the current brief](media-care-records-payments-2026-10-23.md). Its Owner-ordered
+> Rentals removal supersedes this document's rental-inclusion scope. See the
+> [release receipt](../reports/refund-policy-w1-w4-release-2026-10-23.md) for the
+> recorded deployment outcome; do not resume stale W3 tasks from this header.
+
 ## Control record
 
 - Date: 2026-10-22. Baseline: `4a066b341487c72dc3c56089e42b756eb470a763`, main.

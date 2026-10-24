@@ -128,6 +128,107 @@ public sealed class FamilySubscriptionsControllerTests
         AssertPlatformStatus(result, expectedStatus, code);
     }
 
+    // ------------------ W4 payment history ------------------
+
+    [Fact]
+    public void Payment_history_routes_declare_the_documented_contract()
+    {
+        MethodInfo list = typeof(FamilySubscriptionsController)
+            .GetMethod(nameof(FamilySubscriptionsController.GetPayments))!;
+        MethodInfo detail = typeof(FamilySubscriptionsController)
+            .GetMethod(nameof(FamilySubscriptionsController.GetPayment))!;
+
+        Assert.Equal("payments", Assert.Single(list.GetCustomAttributes<HttpGetAttribute>()).Template);
+        Assert.Equal(
+            "payments/{paymentAttemptId:guid}",
+            Assert.Single(detail.GetCustomAttributes<HttpGetAttribute>()).Template);
+
+        var listResponses = list.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .ToDictionary(attribute => attribute.StatusCode);
+        Assert.Equal(typeof(SubscriptionPaymentPageResponse), listResponses[StatusCodes.Status200OK].Type);
+        Assert.Contains(StatusCodes.Status400BadRequest, listResponses.Keys);
+        Assert.Contains(StatusCodes.Status403Forbidden, listResponses.Keys);
+
+        var detailResponses = detail.GetCustomAttributes<ProducesResponseTypeAttribute>()
+            .ToDictionary(attribute => attribute.StatusCode);
+        Assert.Equal(typeof(SubscriptionPaymentResponse), detailResponses[StatusCodes.Status200OK].Type);
+        Assert.Contains(StatusCodes.Status403Forbidden, detailResponses.Keys);
+        Assert.Contains(StatusCodes.Status404NotFound, detailResponses.Keys);
+    }
+
+    [Theory]
+    [InlineData("Subscriptions.Payment.NotOwner", StatusCodes.Status403Forbidden)]
+    [InlineData("Subscriptions.Payment.InvalidQuery", StatusCodes.Status400BadRequest)]
+    public async Task Payment_history_maps_owner_and_validation_failures(
+        string code,
+        int expectedStatus)
+    {
+        var controller = CreateController(
+            new StubSender<SubscriptionPaymentPageResponse>(
+                Result<SubscriptionPaymentPageResponse>.Failure(new Error(code, "rejected"))));
+
+        var result = await controller.GetPayments(
+            page: 1,
+            pageSize: 20,
+            status: null,
+            method: null,
+            paidFromUtc: null,
+            paidToUtc: null,
+            CancellationToken.None);
+
+        Assert.Equal(expectedStatus, Assert.IsType<ObjectResult>(result).StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Subscriptions.Payment.NotOwner", StatusCodes.Status403Forbidden)]
+    [InlineData("Subscriptions.Payment.NotFound", StatusCodes.Status404NotFound)]
+    public async Task Payment_detail_maps_owner_and_not_found_failures(
+        string code,
+        int expectedStatus)
+    {
+        var controller = CreateController(
+            new StubSender<SubscriptionPaymentResponse>(
+                Result<SubscriptionPaymentResponse>.Failure(new Error(code, "rejected"))));
+
+        var result = await controller.GetPayment(Guid.NewGuid(), CancellationToken.None);
+
+        Assert.Equal(expectedStatus, Assert.IsType<ObjectResult>(result).StatusCode);
+    }
+
+    [Fact]
+    public async Task Payment_history_and_detail_return_the_success_envelopes()
+    {
+        DateTime settledOnUtc = DateTime.UtcNow;
+        var payment = new SubscriptionPaymentResponse(
+            Guid.NewGuid(),
+            340.86m,
+            "EGP",
+            SubscriptionPaymentAttemptStatus.Succeeded,
+            settledOnUtc,
+            Guid.NewGuid(),
+            SubscriptionPaymentMethod.Wallet,
+            settledOnUtc.AddMinutes(-5),
+            "premium",
+            1,
+            IsRenewal: false,
+            IsPlanChange: false);
+        var page = new SubscriptionPaymentPageResponse([payment], 1, 20, 1, 1);
+
+        var list = await CreateController(
+                new StubSender<SubscriptionPaymentPageResponse>(
+                    Result<SubscriptionPaymentPageResponse>.Success(page)))
+            .GetPayments(1, 20, null, null, null, null, CancellationToken.None);
+        var detail = await CreateController(
+                new StubSender<SubscriptionPaymentResponse>(
+                    Result<SubscriptionPaymentResponse>.Success(payment)))
+            .GetPayment(payment.PaymentAttemptId, CancellationToken.None);
+
+        var listOk = Assert.IsType<OkObjectResult>(list);
+        Assert.Same(page, listOk.Value);
+        var detailOk = Assert.IsType<OkObjectResult>(detail);
+        Assert.Same(payment, detailOk.Value);
+    }
+
     private static PaymobBillingData Billing() =>
         new("Fixture", "Family", "family@test.local", "+201000000000");
 
@@ -243,6 +344,24 @@ public sealed class FamilySubscriptionsControllerTests
             throw new NotSupportedException();
 
         public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+    }
+
+    private sealed class StubSender<TResponse>(Result<TResponse> result) : ISender
+    {
+        public Task<T> Send<T>(IRequest<T> request, CancellationToken cancellationToken = default) =>
+            Task.FromResult((T)(object)result);
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default)
+            where TRequest : IRequest => throw new NotSupportedException();
+
+        public Task<object?> Send(object request, CancellationToken cancellationToken = default) =>
+            throw new NotSupportedException();
+
+        public IAsyncEnumerable<TResponse1> CreateStream<TResponse1>(IStreamRequest<TResponse1> request, CancellationToken cancellationToken = default) =>
             throw new NotSupportedException();
 
         public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default) =>

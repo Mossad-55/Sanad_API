@@ -17,7 +17,13 @@ namespace Sanad.UnitTests.Families.Subscriptions;
 /// <para>
 /// M5: the shutdown proration base is the consideration settled for the CURRENT
 /// paid period (the subscription's own <c>CurrentPeriodGross</c> snapshot), never
-/// an all-time sum of captures and never the plan's list price.
+/// an all-time sum of captures and never the plan's list price. F3 exception:
+/// a paid plan-change capture is measured by its incremental <c>TotalPayable</c>
+/// (new money only), because the target gross in <c>CurrentPeriodGross</c>
+/// includes the prorated credit that the SOURCE capture's budget already covers.
+/// Counting it here too would make the same credit refundable twice across the
+/// two capture budgets. The cost is a deliberate under-refund of the credited
+/// share on the shutdown path, never a double refund.
 /// </para>
 /// <para>
 /// M4: the refund ceiling is the CAPTURE. The duplicate charge names the attempt
@@ -288,7 +294,7 @@ public sealed class SubscriptionRefundCommandsTests
     }
 
     [Fact]
-    public async Task Shutdown_base_uses_the_plan_change_target_gross_without_double_counting()
+    public async Task Shutdown_base_uses_only_the_plan_change_incremental_charge_to_avoid_refunding_credit_twice()
     {
         await using FamiliesDbContext db = CreateContext();
         UserId owner = UserId.New();
@@ -314,7 +320,9 @@ public sealed class SubscriptionRefundCommandsTests
 
         // Paid upgrade mid-period: 100.00 of the old period stays unused and is
         // credited, the target period gross is 400.00, so only 300.00 is charged
-        // incrementally. The subscription records the TARGET gross, not the sum.
+        // incrementally. The subscription records the TARGET gross, not the sum,
+        // but the plan-change CAPTURE may claim only the 300.00 of new money: the
+        // 100.00 credit is already covered by the initial capture's budget (F3).
         SubscriptionPaymentAttempt upgrade = SubscriptionPaymentAttempt.CreatePlanChange(
             subscription, plan,
             targetRemainingGross: 400m,
@@ -336,14 +344,17 @@ public sealed class SubscriptionRefundCommandsTests
         var result = await handler.Handle(new(subscription.Id, UserId.New(), midpoint), default);
 
         Assert.True(result.IsSuccess);
-        // Current-period consideration is the target 400.00, so the unused half is
-        // 200.00. Summing the two charges (342 + 300 = 642) would have refunded
-        // 321.00 and double-counted the credited time.
-        Assert.Equal(20_000L, result.Value.AwardedMinorUnits);
-        // The plan-change capture owns its own ceiling: the target gross, not the
-        // incremental charge and not the initial capture.
+        // F3: the plan-change capture's consideration is the incremental 300.00,
+        // not the 400.00 target gross, because the 100.00 credit is already
+        // refundable against the initial capture. The unused half is therefore
+        // 150.00. Using the target gross would refund 200.00 here and let the same
+        // 100.00 credit be refunded once per budget; summing the charges
+        // (342 + 300 = 642) would refund 321.00 and count even more.
+        Assert.Equal(15_000L, result.Value.AwardedMinorUnits);
+        // The plan-change capture owns the new-money ceiling: 300.00, not the
+        // target gross and not the initial capture.
         Assert.Equal(upgrade.Id, recorder.LastPaymentAttemptId);
-        Assert.Equal(40_000L, recorder.LastCapturedMinorUnits);
+        Assert.Equal(30_000L, recorder.LastCapturedMinorUnits);
     }
 
     [Fact]

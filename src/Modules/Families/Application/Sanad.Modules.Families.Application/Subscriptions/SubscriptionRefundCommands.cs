@@ -233,16 +233,29 @@ public sealed class RefundDuplicateSubscriptionChargeCommandHandler
 /// period — <c>FamilySubscription.CurrentPeriodGross</c>, the snapshot the
 /// subscription itself writes when it establishes a period
 /// (<see cref="FamilySubscription.SetCurrentPeriodChargeSnapshot"/> on the
-/// initial capture and on every renewal, and
-/// <see cref="FamilySubscription.ApplyPaidPlanChange"/> with the target
-/// period's gross). It is therefore not an all-time sum of renewals, and a paid
-/// plan change is not treated as additive: the domain already folded the
-/// prorated credit into that snapshot. The plan's list <c>Price</c> is never used
-/// as a fallback, so discounts on the settled charge are honoured.
+/// initial capture and on every renewal). It is therefore not an all-time sum
+/// of renewals, and the plan's list <c>Price</c> is never used as a fallback, so
+/// discounts on the settled charge are honoured.
+/// </para>
+/// <para>
+/// F3 (Owner decision D9): a paid plan change is the one case where the period
+/// snapshot is <em>not</em> the capture's consideration. The domain writes
+/// <c>CurrentPeriodGross</c> as the target period's gross
+/// (<see cref="FamilySubscription.ApplyPaidPlanChange"/>), but that gross
+/// includes the prorated credit carried over from the source period, and the
+/// source capture's budget already covers that credit. Using the target gross as
+/// this capture's ceiling would let the credit be refunded twice — once against
+/// the source capture and once against the plan-change capture. The plan-change
+/// capture is therefore measured by its incremental <c>TotalPayable</c> (the new
+/// money actually charged) only; the credited value remains refundable only
+/// against the source capture. The consequence is deliberate: a shutdown award
+/// for a plan-change period prorates only the unused share of new money, so the
+/// credited share can be under-refunded on this path. Refusing to over-refund is
+/// the locked invariant; the credit is not invented as new money.
 /// </para>
 /// <para>
 /// M4 + M5: the award is drawn against the <em>capture</em> that paid for this
-/// period — the succeeded settlement that established it, with that period's
+/// period — the succeeded settlement that established it, with that capture's
 /// settled consideration as the ceiling. Finance owns the cumulative claim and
 /// enforces, atomically, that a duplicate-charge award and a shutdown award for
 /// the same capture can never exceed what that capture paid, in either order and
@@ -354,12 +367,16 @@ public sealed class RefundSubscriptionServiceShutdownCommandHandler
     /// plan change overwrites it with the target period's gross).
     /// </para>
     /// <para>
-    /// The amount is <see cref="FamilySubscription.CurrentPeriodGross"/> when the
-    /// snapshot exists, otherwise the attempt's own plan-change-aware
-    /// consideration (<c>BasePrice</c> for a paid plan change, <c>TotalPayable</c>
-    /// otherwise). The plan's list <c>Price</c> is never used, so discounts on the
-    /// settled charge survive, and a plan change is never added on top of the
-    /// period it was credited against.
+    /// F3: for a paid plan change the amount is the attempt's incremental
+    /// <c>TotalPayable</c> (new money only), never
+    /// <see cref="FamilySubscription.CurrentPeriodGross"/>. The target gross in
+    /// that snapshot includes the prorated credit carried from the source
+    /// period, and the source capture's budget already covers that credit; using
+    /// the target gross here would make the same credit refundable twice across
+    /// the two capture budgets. For every other capture the amount is
+    /// <see cref="FamilySubscription.CurrentPeriodGross"/> when the snapshot
+    /// exists, otherwise the attempt's own <c>TotalPayable</c>. The plan's list
+    /// <c>Price</c> is never used, so discounts on the settled charge survive.
     /// </para>
     /// <para>
     /// Returns <see langword="null"/> when no succeeded settlement falls inside the
@@ -388,9 +405,18 @@ public sealed class RefundSubscriptionServiceShutdownCommandHandler
         if (attempt is null)
             return null;
 
-        long consideration = subscription.CurrentPeriodGross is { } settledGross
-            ? ToMinorUnits(settledGross)
-            : ToMinorUnits(attempt.IsPlanChange ? attempt.BasePrice : attempt.TotalPayable);
+        // F3 (Owner decision D9): a plan-change capture may claim only the new
+        // money it charged. CurrentPeriodGross on the subscription is the target
+        // period's gross, which includes the prorated credit already covered by
+        // the source capture's budget; using it here would let that one credit be
+        // refunded once per budget. For all other captures the period snapshot
+        // remains the settled consideration (falling back to the attempt's own
+        // payable when no snapshot exists).
+        long consideration = attempt.IsPlanChange
+            ? ToMinorUnits(attempt.TotalPayable)
+            : subscription.CurrentPeriodGross is { } settledGross
+                ? ToMinorUnits(settledGross)
+                : ToMinorUnits(attempt.TotalPayable);
 
         return (attempt.Id, consideration);
     }

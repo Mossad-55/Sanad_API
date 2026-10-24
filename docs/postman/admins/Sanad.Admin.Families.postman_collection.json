@@ -137,6 +137,37 @@
           }
         }
       ]
+    },
+    {
+      "name": "Care records — payload-bearing operational read",
+      "description": "READ-ONLY, SuperAdmin and SupportAdmin only (OperationalReadAdmin). Every list/detail call is audited without filter or medical payload. No create/update/delete, impersonation, or author attribution route exists.",
+      "item": [
+        {
+          "name": "List care records — authorized local data only",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/care-records?page=1&pageSize=20",
+            "description": "Optional source, dependentId, visitDateFrom/To and hospital-name search filters. Response contains care-record content and each access is payload-free audited; use only the authorized local environment."
+          }
+        },
+        {
+          "name": "Get care record detail — audited read",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/care-records/{{careRecordId}}",
+            "description": "READ-ONLY; detail access is audited without recording medical payload."
+          }
+        }
+      ]
     }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7296" },
+    { "key": "accessToken", "value": "" },
+    { "key": "familyId", "value": "" },
+    { "key": "deletedFamilyId", "value": "" },
+    { "key": "careRecordId", "value": "" }
   ]
 }

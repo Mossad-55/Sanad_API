@@ -87,6 +87,6 @@ public sealed class CareHomeRoomMediaController(CareHomesDbContext db, IFileStor
     {
         var result = await storage.OpenReadAsync(key, ct);
         if (result.IsFailure) return NotFound();
-        return File(result.Value.Content, result.Value.ContentType, enableRangeProcessing: false);
+        return File(result.Value.Content, result.Value.ContentType, enableRangeProcessing: true);
     }
 }

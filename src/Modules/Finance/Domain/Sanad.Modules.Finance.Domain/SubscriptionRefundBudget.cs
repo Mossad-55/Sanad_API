@@ -144,16 +144,15 @@ public sealed class SubscriptionRefundBudget : Entity<Guid>
     /// an award would under-refund a full duplicate charge and misreport the
     /// outcome, so the seam refuses instead.
     /// <para>
-    /// <paramref name="capturedMinorUnits"/> re-states the capture's captured
-    /// amount. Capacity only ever grows, and it is <em>justified</em> here: one
-    /// capture can legitimately be read through two money bases — the attempt's
-    /// incremental <c>TotalPayable</c> (duplicate charge) and the paid period's
-    /// consideration (shutdown, which for a paid plan change is the target gross
-    /// <c>BasePrice</c>, the incremental charge plus the credited portion). Taking
-    /// the larger keeps the ceiling at the period's true consideration and stops a
-    /// stale or incremental reader from shrinking a ceiling another case already
-    /// relied on. It can never exceed the capture, because both bases describe the
-    /// same settled payment.
+    /// <paramref name="capturedMinorUnits"/> re-states the refundable basis for
+    /// this capture, in piastres. Capacity only ever grows so that a concurrent or
+    /// replayed reader cannot shrink a ceiling another accepted case already used.
+    /// The caller must supply only money attributable to this same payment attempt:
+    /// for a paid plan-change capture, the basis is its incremental
+    /// <c>TotalPayable</c> (new money) only. The prorated credit is funded by the
+    /// source capture and must not be added to this capture's ceiling. Other
+    /// capture-specific bases remain the purchase owner's responsibility; this
+    /// shared budget deliberately does not infer how a capture was formed.
     /// </para>
     /// <para>
     /// The transition is all-or-nothing: a refused claim mutates nothing, so a

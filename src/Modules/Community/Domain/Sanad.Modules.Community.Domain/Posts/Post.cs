@@ -54,6 +54,24 @@ public sealed class Post : AggregateRoot<CommunityPostId>
     public int CommentsCount { get; private set; }
     public int FavoritesCount { get; private set; }
     public UserId AuthorId { get; private set; }
+
+    /// <summary>
+    /// Optimistic-concurrency token for the post's lifecycle state (the same
+    /// convention <see cref="CommunityPostReport.Version"/> uses): an
+    /// author edit that races a concurrent deletion — or a moderation
+    /// transition from another context — fails with a stale-write conflict
+    /// instead of resurrecting the post or losing the deletion.
+    /// </summary>
+    public long Version { get; private set; }
+
+    /// <summary>Deletion audit: the authenticated actor that deleted the post
+    /// (the author on the app route, a CommunityModeration moderator on the
+    /// Admin route).</summary>
+    public UserId? DeletedBy { get; private set; }
+
+    /// <summary>Deletion audit: when the post was deleted (UTC).</summary>
+    public DateTime? DeletedOnUtc { get; private set; }
+
     public CommunityCategoryId? CategoryId { get; private set; }
     public CommunityCategory? Category { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
@@ -98,6 +116,7 @@ public sealed class Post : AggregateRoot<CommunityPostId>
         PublishedBy = moderatorId.Value.ToString();
         PublishedOnUtc = publishedOnUtc;
         UpdatedOnUtc = publishedOnUtc;
+        Version = checked(Version + 1);
     }
 
     public void Reject(
@@ -125,6 +144,75 @@ public sealed class Post : AggregateRoot<CommunityPostId>
         RejectionNote = normalizedNote;
         RejectedOnUtc = rejectedOnUtc;
         UpdatedOnUtc = rejectedOnUtc;
+        Version = checked(Version + 1);
+    }
+
+    /// <summary>
+    /// The authenticated author edits their own post. The author identity is
+    /// immutable — only the content fields, the image reference, the category
+    /// and the anonymity choice can change.
+    /// <para>
+    /// Editing never bypasses the existing approval requirement: a post that
+    /// is already <see cref="PostStatus.Published"/> returns to
+    /// <see cref="PostStatus.PendingReview"/> with its publication metadata
+    /// cleared, so a moderator re-approves the new content. A rejected or
+    /// archived post is no longer editable.
+    /// </para>
+    /// </summary>
+    public void Update(
+        string titleArabic,
+        string titleEnglish,
+        string contentArabic,
+        string contentEnglish,
+        string? imageUrl,
+        bool isAnonymous,
+        CommunityCategoryId? categoryId,
+        DateTime updatedOnUtc)
+    {
+        if (updatedOnUtc.Kind != DateTimeKind.Utc)
+            throw new DomainException("Community post timestamps must be UTC.");
+        if (Status is not (PostStatus.PendingReview or PostStatus.Published))
+            throw new DomainException("Only a pending-review or published post can be edited by its author.");
+
+        TitleArabic = RequiredText(titleArabic, nameof(titleArabic), 200);
+        TitleEnglish = RequiredText(titleEnglish, nameof(titleEnglish), 200);
+        ContentArabic = RequiredText(contentArabic, nameof(contentArabic));
+        ContentEnglish = RequiredText(contentEnglish, nameof(contentEnglish));
+        ImageUrl = OptionalText(imageUrl, nameof(imageUrl), 500);
+        IsAnonymous = isAnonymous;
+        CategoryId = categoryId;
+
+        if (Status == PostStatus.Published)
+        {
+            Status = PostStatus.PendingReview;
+            PublishedBy = null;
+            PublishedOnUtc = null;
+        }
+
+        UpdatedOnUtc = updatedOnUtc;
+        Version = checked(Version + 1);
+    }
+
+    /// <summary>
+    /// Deletes the post with a retained audit trail: the row, its comments,
+    /// replies and the referenced media stay in the database — deletion is the
+    /// <see cref="PostStatus.Deleted"/> transition, never a cascading hard
+    /// delete of children, media or unrelated data.
+    /// </summary>
+    public void Delete(UserId deletedBy, DateTime deletedOnUtc)
+    {
+        if (deletedBy == UserId.Empty)
+            throw new DomainException("A deleting actor is required.");
+        if (deletedOnUtc.Kind != DateTimeKind.Utc)
+            throw new DomainException("Deletion timestamps must be UTC.");
+        if (Status == PostStatus.Deleted)
+            throw new DomainException("The post is already deleted.");
+
+        Status = PostStatus.Deleted;
+        DeletedBy = deletedBy;
+        DeletedOnUtc = deletedOnUtc;
+        UpdatedOnUtc = deletedOnUtc;
+        Version = checked(Version + 1);
     }
 
     private static string RequiredText(string? value, string name, int? maximumLength = null)
@@ -159,7 +247,13 @@ public enum PostStatus
     PendingReview = 1,
     Published = 2,
     Rejected = 3,
-    Archived = 4
+    Archived = 4,
+
+    /// <summary>Deleted by its author (app route) or by a Community-moderation
+    /// administrator (Admin route). Deleted posts are hidden from every
+    /// public read and reject new child interactions, while the row itself
+    /// retains the moderation/audit trail.</summary>
+    Deleted = 5
 }
 
 /// <summary>

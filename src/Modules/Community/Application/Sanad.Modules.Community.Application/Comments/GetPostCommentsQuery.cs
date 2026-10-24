@@ -26,12 +26,18 @@ public sealed class GetPostCommentsQueryHandler
 
     public async Task<Result<CommentPage>> Handle(GetPostCommentsQuery request, CancellationToken cancellationToken)
     {
+        // A deleted post's thread is gone with it: comments are neither
+        // counted nor listed once the parent post is deleted.
+        var deleted = _dbContext.Posts
+            .Where(p => p.Status == PostStatus.Deleted);
         var totalCount = await _dbContext.Comments
             .Where(c => c.PostId == new CommunityPostId(request.PostId))
+            .Where(c => !deleted.Any(p => p.Id == c.PostId))
             .CountAsync(cancellationToken);
 
         var comments = await _dbContext.Comments
             .Where(c => c.PostId == new CommunityPostId(request.PostId))
+            .Where(c => !deleted.Any(p => p.Id == c.PostId))
             .OrderByDescending(c => c.CreatedOnUtc)
             .Skip((request.Page - 1) * request.PageSize)
             .Take(request.PageSize)

@@ -62,6 +62,7 @@ public sealed record LibraryAdminContentResponse(
     string ArabicSummary,
     string EnglishSummary,
     string? VideoUrl,
+    string? VideoStorageKey,
     int? DurationSeconds,
     string CoverImagePath,
     Guid? CategoryId,
@@ -80,6 +81,22 @@ public sealed record LibraryAdminPageResponse(
     int Page,
     int PageSize,
     int TotalCount);
+
+/// <summary>
+/// The single authorized app playback address of an uploaded library video.
+/// The stored bytes are private, so the consumer never receives the storage key;
+/// it follows this route, which re-checks publication, the caller's identity and
+/// the premium entitlement before streaming the file (mirrors the Community
+/// upload-URL precedent).
+/// </summary>
+public static class LibraryVideoUrls
+{
+    private const string Prefix = "/api/v1/library/content/";
+    private const string Suffix = "/video";
+
+    public static string For(Guid contentId) =>
+        Prefix + contentId + Suffix;
+}
 
 internal static class LibraryContentMappings
 {
@@ -128,7 +145,14 @@ internal static class LibraryContentMappings
                 .Select(section => section.ToSectionResponse())
                 .ToList()
             : [];
-        string? videoUrl = canAccess ? content.VideoUrl : null;
+
+        // Locked decision D6: an externally linked video URL is never a playback
+        // source any more. The public field now carries the generated relative
+        // address of the stored bytes, and stays null while no approved bytes
+        // exist or while the caller is not entitled.
+        string? videoUrl = canAccess && content.HasStoredVideo
+            ? LibraryVideoUrls.For(content.Id.Value)
+            : null;
 
         return new LibraryContentDetailResponse(
             content.Id.Value,
@@ -164,6 +188,7 @@ internal static class LibraryContentMappings
             content.ArabicSummary,
             content.EnglishSummary,
             content.VideoUrl,
+            content.VideoStorageKey,
             content.DurationSeconds,
             content.CoverImagePath,
             content.CategoryId?.Value,

@@ -296,6 +296,68 @@ public sealed class LocalDiskFileStorageTests : IDisposable
     }
 
     [Fact]
+    public async Task SavePrivate_MP4_ShouldRemainReadableFromANewStorageInstance()
+    {
+        // Synthetic MP4 header (ftyp box). Durability is proven by reopening the
+        // bytes through a second storage instance built over the same root: no
+        // in-memory state and no shared stream survives between the two.
+        byte[] payload =
+        [
+            0x00, 0x00, 0x00, 0x20, 0x66, 0x74, 0x79, 0x70,
+            0x69, 0x73, 0x6F, 0x6D, 0x00, 0x00, 0x02, 0x00,
+            0x69, 0x73, 0x6F, 0x6D, 0x69, 0x73, 0x6F, 0x32,
+            0x61, 0x76, 0x63, 0x31, 0x6D, 0x70, 0x34, 0x31
+        ];
+
+        using MemoryStream content = new(payload);
+
+        Result<StoredFile> saved =
+            await _storage.SavePrivateAsync(
+                content,
+                "video/mp4",
+                payload.Length,
+                "library-video",
+                CancellationToken.None);
+
+        Assert.True(saved.IsSuccess);
+        Assert.StartsWith("private/library-video/", saved.Value.Key);
+        Assert.EndsWith(".mp4", saved.Value.Key);
+
+        string storedPath =
+            Path.Combine(
+                _rootPath + "-private",
+                saved.Value.Key.Replace('/', Path.DirectorySeparatorChar));
+
+        Assert.True(File.Exists(storedPath));
+        Assert.False(File.Exists(
+            Path.Combine(
+                _rootPath,
+                saved.Value.Key.Replace('/', Path.DirectorySeparatorChar))));
+
+        var reopened =
+            new LocalDiskFileStorage(
+                Options.Create(
+                    new LocalStorageOptions
+                    {
+                        RootPath = _rootPath
+                    }));
+
+        Result<PrivateFileContent> read =
+            await reopened.OpenReadAsync(
+                saved.Value.Key,
+                CancellationToken.None);
+
+        Assert.True(read.IsSuccess);
+        Assert.Equal("video/mp4", read.Value.ContentType);
+
+        await using Stream stream = read.Value.Content;
+        using MemoryStream buffer = new();
+        await stream.CopyToAsync(buffer);
+
+        Assert.Equal(payload, buffer.ToArray());
+    }
+
+    [Fact]
     public async Task SavePrivate_ShouldRejectUnsupportedContentType()
     {
         byte[] payload = [0x1];
@@ -459,6 +521,15 @@ public sealed class LocalDiskFileStorageTests : IDisposable
         {
             Directory.Delete(
                 _rootPath,
+                true);
+        }
+
+        string privateRootPath = _rootPath + "-private";
+
+        if (Directory.Exists(privateRootPath))
+        {
+            Directory.Delete(
+                privateRootPath,
                 true);
         }
     }

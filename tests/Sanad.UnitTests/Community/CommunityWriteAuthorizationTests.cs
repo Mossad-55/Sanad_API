@@ -70,9 +70,15 @@ public sealed class CommunityWriteAuthorizationTests
         Assert.Equal("Original", (await db.Comments.AsNoTracking().SingleAsync()).ContentEnglish);
     }
 
-    private static Post CreatePost() => Post.Create(
-        "Title Arabic", "Title", "Content Arabic", "Content", null, false,
-        UserId.New(), DateTime.UtcNow);
+    private static Post CreatePost()
+    {
+        UserId author = UserId.New();
+        Post post = Post.Create(
+            "Title Arabic", "Title", "Content Arabic", "Content", null, false,
+            author, DateTime.UtcNow);
+        post.Publish(UserId.New(), DateTime.UtcNow);
+        return post;
+    }
 
     private static CommunityDbContext CreateDb() => new(new DbContextOptionsBuilder<CommunityDbContext>()
         .UseInMemoryDatabase(Guid.NewGuid().ToString())

@@ -15,6 +15,18 @@ public sealed class CreateReplyCommandHandler(ICommunityDbContext dbContext)
             return Result<Reply>.Failure(CommunityModerationErrors.AuthorRestricted);
         }
 
+        // Replies cannot continue against a comment whose parent post was
+        // deleted: the thread is gone with the post.
+        bool parentDeleted = await dbContext.Comments.AsNoTracking()
+            .AnyAsync(
+                comment => comment.Id == new CommunityCommentId(request.CommentId) &&
+                           comment.Post.Status == PostStatus.Deleted,
+                cancellationToken);
+        if (parentDeleted)
+        {
+            return Result<Reply>.Failure(CommunityPostLifecycleErrors.PostNotFound);
+        }
+
         var commentExists = await dbContext.Comments.AnyAsync(
             comment => comment.Id == new CommunityCommentId(request.CommentId), cancellationToken);
         if (!commentExists || request.AuthorId == Guid.Empty ||

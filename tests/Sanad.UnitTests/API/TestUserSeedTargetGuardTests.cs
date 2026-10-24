@@ -79,15 +79,17 @@ public sealed class TestUserSeedTargetGuardTests
         Assert.Contains("localhost:5432/SanadBrunoTestDb", exception.Message);
     }
 
-    [Fact]
-    public void EnabledSeed_WithLivePaymobKey_IsRejectedBeforeDatabaseAccess()
+    [Theory]
+    [InlineData("sk_live-test-marker")]
+    [InlineData("egy_sk_live_test-marker")]
+    public void EnabledSeed_WithLivePaymobKey_IsRejectedBeforeDatabaseAccess(string liveSecretKey)
     {
         IConfiguration configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["App:TestUserSeed:Enabled"] = "true",
                 ["ConnectionStrings:IdentityDatabase"] = "Host=localhost;Port=5432;Database=SanadBrunoTestDb;Username=test;Password=test",
-                ["Paymob:SecretKey"] = "sk_live-test-marker"
+                ["Paymob:SecretKey"] = liveSecretKey
             })
             .Build();
 

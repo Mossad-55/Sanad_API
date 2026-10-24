@@ -5,7 +5,7 @@ namespace Sanad.API.Controllers;
 
 /// <summary>
 /// Safe remote release evidence: package revision plus required vs.
-/// actually applied migration identifiers for all ten module contexts.
+/// actually applied migration identifiers for all nine active module contexts.
 /// Anonymous by design (revision and migration IDs are not secrets);
 /// carries no connection strings, tokens, or payloads.
 /// </summary>

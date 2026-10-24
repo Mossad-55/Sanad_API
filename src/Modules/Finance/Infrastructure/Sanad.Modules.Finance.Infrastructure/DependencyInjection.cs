@@ -19,6 +19,16 @@ public static class DependencyInjection
             out bool configuredApplyOnStartup) && configuredApplyOnStartup;
         services.AddSingleton<IOptions<FinanceMigrationOptions>>(
             Options.Create(new FinanceMigrationOptions { ApplyOnStartup = applyOnStartup }));
+        // W3-F3 complaint award cap (Owner-ordered provisional default EGP
+        // 500.00, 2026-10-23). Configuration:
+        // Finance:ComplaintReviews:MaxAwardMinorUnits — absent selects the
+        // default, an explicit 0 disables the cap, and a negative or malformed
+        // value fails startup via ParseConfiguredValue instead of silently
+        // restoring the default (or disabling the cap).
+        services.AddSingleton<IOptions<ComplaintAwardOptions>>(
+            Options.Create(ComplaintAwardOptions.FromConfiguredValue(
+                ComplaintAwardOptions.ParseConfiguredValue(
+                    configuration["Finance:ComplaintReviews:MaxAwardMinorUnits"]))));
         services.AddScoped<IFinanceDbContext>(sp => sp.GetRequiredService<FinanceDbContext>());
         services.AddScoped<PlatformChargeRuleReader>();
         services.AddScoped<IPlatformChargeRuleReader>(sp => sp.GetRequiredService<PlatformChargeRuleReader>());
@@ -41,12 +51,6 @@ public static class DependencyInjection
         services.AddScoped<IComplaintReviewReader>(sp => sp.GetRequiredService<ComplaintReviewStore>());
         services.AddScoped<SubscriptionRefundRecorder>();
         services.AddScoped<ISubscriptionRefundRecorder>(sp => sp.GetRequiredService<SubscriptionRefundRecorder>());
-        // W3-F4 additive seam (declared to Mastermind): the rental refund
-        // recorder. Same shape as the subscription recorder above — consumers
-        // reference Finance.Application only; the implementation is built here,
-        // in the single Finance module registration (W3 design pin item 2).
-        services.AddScoped<RentalRefundRecorder>();
-        services.AddScoped<IRentalRefundRecorder>(sp => sp.GetRequiredService<RentalRefundRecorder>());
         return services;
     }
 }

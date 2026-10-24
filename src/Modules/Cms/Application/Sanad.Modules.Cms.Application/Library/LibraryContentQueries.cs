@@ -100,6 +100,44 @@ public sealed class GetLibraryContentQueryHandler(ICmsDbContext db, IFamiliesDbC
     }
 }
 
+public sealed record LibraryVideoFileResponse(string StorageKey);
+
+/// <summary>
+/// Resolves the stored private bytes of a published library video for the
+/// authorized app caller. Publication, identity and the premium entitlement are
+/// re-checked here rather than inherited from the detail response, and every
+/// failure — unknown, unpublished, not a video, no uploaded bytes, not entitled —
+/// returns the same <c>Cms.LibraryContent.NotPublished</c> so the route cannot be
+/// used to probe entitlement or stored-file state.
+/// </summary>
+public sealed record GetLibraryContentVideoQuery(Guid Id, Guid ViewerUserId)
+    : IQuery<LibraryVideoFileResponse>;
+
+public sealed class GetLibraryContentVideoQueryHandler(ICmsDbContext db, IFamiliesDbContext familiesDb)
+    : IQueryHandler<GetLibraryContentVideoQuery, LibraryVideoFileResponse>
+{
+    public async Task<Result<LibraryVideoFileResponse>> Handle(
+        GetLibraryContentVideoQuery request, CancellationToken cancellationToken)
+    {
+        LibraryContent? content = await db.LibraryContents
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                item => item.Id == new LibraryContentId(request.Id) &&
+                    item.Status == LibraryContentStatus.Published &&
+                    item.Type == LibraryContentType.Video,
+                cancellationToken);
+        if (content is null || !content.HasStoredVideo)
+            return LibraryErrors.ContentNotPublished;
+
+        bool hasPremium = await LibraryPremiumAccess.HasPremiumContentAccessAsync(
+            familiesDb, new UserId(request.ViewerUserId), cancellationToken);
+        if (content.IsPremium && !hasPremium)
+            return LibraryErrors.ContentNotPublished;
+
+        return new LibraryVideoFileResponse(content.VideoStorageKey!);
+    }
+}
+
 public sealed record GetLibraryRecommendationsQuery(
     Guid? ContentId = null,
     Guid? CategoryId = null,

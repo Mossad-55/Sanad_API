@@ -355,6 +355,12 @@ namespace Sanad.Modules.Community.Infrastructure.Persistence.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasDefaultValueSql("CURRENT_TIMESTAMP");
 
+                    b.Property<Guid?>("DeletedBy")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime?>("DeletedOnUtc")
+                        .HasColumnType("timestamp with time zone");
+
                     b.Property<int>("FavoritesCount")
                         .HasColumnType("integer");
 
@@ -403,6 +409,10 @@ namespace Sanad.Modules.Community.Infrastructure.Persistence.Migrations
 
                     b.Property<DateTime?>("UpdatedOnUtc")
                         .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("Version")
+                        .IsConcurrencyToken()
+                        .HasColumnType("bigint");
 
                     b.HasKey("Id");
 

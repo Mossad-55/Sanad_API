@@ -26,6 +26,15 @@ public sealed class LikePostCommandHandler : ICommandHandler<LikePostCommand, bo
             return false;
         }
 
+        // Reactions stop after deletion (testing contract, locked 2026-10-23):
+        // a like only ever starts or continues against a still-published
+        // parent. A deleted post answers the same privacy not-found as a
+        // missing one and nothing is persisted.
+        if (post.Status != PostStatus.Published)
+        {
+            return Result<bool>.Failure(CommunityPostLifecycleErrors.PostNotFound);
+        }
+
         var alreadyLiked = await _dbContext.Interactions.AnyAsync(
             i => i.TargetType == CommunityInteractionTarget.Post &&
                  i.TargetId == request.PostId && i.UserId == new UserId(request.UserId) &&

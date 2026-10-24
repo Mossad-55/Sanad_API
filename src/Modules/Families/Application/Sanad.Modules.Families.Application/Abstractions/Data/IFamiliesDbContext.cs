@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Families.Domain.Activities;
 using Sanad.Modules.Families.Domain.Assessments;
 using Sanad.Modules.Families.Domain.Bookings;
+using Sanad.Modules.Families.Domain.CareRecords;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Elderlies.CheckIns;
 using Sanad.Modules.Families.Domain.Families;
@@ -50,6 +51,12 @@ public interface IFamiliesDbContext
     DbSet<BookingReview> BookingReviews { get; }
     DbSet<MedicalAccessGrant> MedicalAccessGrants { get; }
     DbSet<CaregiverMedicalAccessAudit> CaregiverMedicalAccessAudits { get; }
+
+    /// <summary>Three-source care records (W1 care-records slice).</summary>
+    DbSet<CareRecord> CareRecords { get; }
+
+    /// <summary>Append-only, payload-free care-record audit trail.</summary>
+    DbSet<CareRecordAudit> CareRecordAudits { get; }
 
     /// <summary>
     /// Queues the provider identity claim in the same unit of work as the callback mutation.

@@ -1,5 +1,7 @@
 using Sanad.Modules.Community.Application.Abstractions.Data;
+using Sanad.Modules.Community.Application.Posts;
 using Sanad.Modules.Community.Domain.Comments;
+using Sanad.Modules.Community.Domain.Posts;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 
@@ -21,6 +23,10 @@ public sealed class GetCommentsQueryHandler : IQueryHandler<GetCommentsQuery, Co
         Comment[] comments = await _dbContext.Comments
             .AsNoTracking()
             .Where(c => c.PostId == new CommunityPostId(request.PostId))
+            // A deleted post's children are hidden with it: the detail read
+            // answers 404, so the thread must not keep serving content.
+            .Where(c => !_dbContext.Posts
+                .Any(p => p.Id == c.PostId && p.Status == PostStatus.Deleted))
             .OrderByDescending(c => c.CreatedOnUtc)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)

@@ -1,5 +1,9 @@
 # Worker workflow — team reports and refund policy
 
+> HISTORICAL WORKFLOW — do not dispatch from this file. The current
+> [execution brief](media-care-records-payments-2026-10-23.md) owns task sequencing,
+> file ownership and start authority. This older workflow remains evidence only.
+
 Use with the [active execution brief](team-reports-refund-policy-2026-10-22.md). This file contains reusable dispatch instructions, not a second task ledger.
 
 ## Start gate

@@ -57,6 +57,10 @@ public sealed class CreateLibraryContentCommandHandler(ICmsDbContext db)
                 request.ArabicSummary,
                 request.EnglishSummary,
                 request.VideoUrl,
+                // Creation never carries bytes: an approved upload is attached
+                // through the dedicated video endpoint, which stores the file
+                // before the reference is persisted.
+                videoStorageKey: null,
                 request.DurationSeconds,
                 request.CoverImagePath,
                 request.IsPremium,
@@ -244,6 +248,89 @@ public sealed class RestoreLibraryContentCommandHandler(ICmsDbContext db)
         catch (DomainException)
         {
             return LibraryErrors.ContentInvalidOperation;
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return content.ToAdminResponse();
+    }
+}
+
+/// <summary>
+/// Attaches (or replaces) the private storage reference of an uploaded video.
+/// The bytes are already persisted when this runs; a failure here leaves the
+/// caller responsible for deleting the fresh object. Archived content is the
+/// pinned lifecycle violation <c>Cms.LibraryContent.InvalidOperation</c> (409);
+/// a non-video target or an unsafe reference is
+/// <c>Cms.LibraryContent.Invalid</c> (400) with the <c>videoStorageKey</c> field.
+/// </summary>
+public sealed record AttachLibraryContentVideoCommand(Guid Id, string StorageKey)
+    : ICommand<LibraryAdminContentResponse>;
+
+public sealed class AttachLibraryContentVideoCommandHandler(ICmsDbContext db)
+    : ICommandHandler<AttachLibraryContentVideoCommand, LibraryAdminContentResponse>
+{
+    public async Task<Result<LibraryAdminContentResponse>> Handle(
+        AttachLibraryContentVideoCommand request, CancellationToken cancellationToken)
+    {
+        LibraryContent? content = await db.LibraryContents
+            .SingleOrDefaultAsync(
+                item => item.Id == new LibraryContentId(request.Id), cancellationToken);
+        if (content is null)
+            return LibraryErrors.ContentNotFound;
+        if (content.Status == LibraryContentStatus.Archived)
+            return LibraryErrors.ContentInvalidOperation;
+
+        try
+        {
+            content.AttachVideo(request.StorageKey);
+        }
+        catch (DomainException exception)
+        {
+            return LibraryErrors.ContentInvalidWith(
+                LibraryContentFieldDetail.FromDomainException(
+                    exception.Message, content.Type, null));
+        }
+
+        await db.SaveChangesAsync(cancellationToken);
+
+        return content.ToAdminResponse();
+    }
+}
+
+/// <summary>
+/// Detaches the stored video reference. The change is persisted before the
+/// caller deletes the physical object, so a storage failure can only leave an
+/// unreferenced file — never a reference to bytes that are already gone.
+/// Archived content is 409; a non-video target is 400 with the
+/// <c>videoStorageKey</c> field. Content without bytes is a no-op (200).
+/// </summary>
+public sealed record RemoveLibraryContentVideoCommand(Guid Id)
+    : ICommand<LibraryAdminContentResponse>;
+
+public sealed class RemoveLibraryContentVideoCommandHandler(ICmsDbContext db)
+    : ICommandHandler<RemoveLibraryContentVideoCommand, LibraryAdminContentResponse>
+{
+    public async Task<Result<LibraryAdminContentResponse>> Handle(
+        RemoveLibraryContentVideoCommand request, CancellationToken cancellationToken)
+    {
+        LibraryContent? content = await db.LibraryContents
+            .SingleOrDefaultAsync(
+                item => item.Id == new LibraryContentId(request.Id), cancellationToken);
+        if (content is null)
+            return LibraryErrors.ContentNotFound;
+        if (content.Status == LibraryContentStatus.Archived)
+            return LibraryErrors.ContentInvalidOperation;
+
+        try
+        {
+            content.RemoveVideo();
+        }
+        catch (DomainException exception)
+        {
+            return LibraryErrors.ContentInvalidWith(
+                LibraryContentFieldDetail.FromDomainException(
+                    exception.Message, content.Type, null));
         }
 
         await db.SaveChangesAsync(cancellationToken);
