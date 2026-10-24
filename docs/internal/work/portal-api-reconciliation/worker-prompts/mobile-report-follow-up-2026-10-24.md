@@ -245,8 +245,46 @@ production subscription rows. Acting on any of these needs separate authority
 (merchant account, Production configuration plus restart, plan-version
 decisions).
 
+### Owner-approved live probes (after release)
+
+The owner then authorized committing to the slice and M3 remediation. Read-only
+probes were run on the live host with the configured credentials — no secret
+printed, no charge, no merchant write, no config change:
+
+| Probe | Result |
+|---|---|
+| Key shape | `egy_sk_test_…` — the Production host holds a **test-mode** key |
+| Plain Card intention (integration from `Paymob__CardIntegrationId`) | **201**, `client_secret` returned, `payment_keys[].integration = 5897206` |
+| Intention with `subscription_plan_id = 6755` | **404** `invalid subscription plan id` |
+| Intention with `subscription_plan_id = 6205` | **404** `invalid subscription plan id` |
+| Intention with `subscription_plan_id = 999999` (control) | **404** `invalid subscription plan id` |
+| Subscription/plan admin surfaces with the host secret key | **401** with both `Token` and `Bearer` auth |
+
+Interpretation: the Card integration itself is valid, but **no mapped provider
+subscription plan exists for the account the host uses** — the mapping is
+fiction. `Paymob__Card3dsIntegrationId` therefore stayed unset: flipping it
+would advertise enrollment that fails at Paymob. Failing closed is the correct
+behaviour, and forcing the flag is forbidden by this contract.
+
+Remediation is blocked on **merchant-account access** (dashboard, or an
+`api_key` the subscription API accepts), not on code:
+
+1. Create one provider subscription plan per sold term in the merchant account
+   and capture its id.
+2. Repoint the local plan mappings through new immutable plan versions — never
+   rewrite sold terms or historical subscriptions.
+3. Set `Paymob__Card3dsIntegrationId` and restart; the public flag should flip
+   on its own.
+4. Decide test-vs-live Production keys and `https` webhook + `RedirectionUrl`
+   (needs a domain and certificate).
+5. Then run the sandbox end-to-end proof (checkout → 3DS → verified callback →
+   persisted provider subscription → renewal → duplicate callback). Production
+   recurrence still needs one real charge under separate authority.
+
 ## Completion and next action
 
-Local implementation, tests and consumer contracts are complete and accepted.
-Release (commit, push, deploy) remains separately unauthorized. The remaining
-M3 remediation items are owner-gated decisions, not implementation work.
+Released as `f790ff57` on 2026-10-24 and verified on Production (see
+[the release receipt](../reports/mobile-report-follow-up-release-2026-10-24.md)).
+Implementation, tests and consumer contracts are complete and accepted. The
+remaining M3 items are owner-gated merchant-account and infrastructure
+decisions, not pending implementation work.
