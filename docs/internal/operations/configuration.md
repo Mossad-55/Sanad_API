@@ -106,6 +106,8 @@ Enabled when `SecretKey` is set. Otherwise `DevelopmentPaymobClient` serves paym
 | `Paymob__WebhookUrl` | | Public webhook URL; sent as the intention `notification_url` and must also be registered on each integration's *transaction processed callback* in the dashboard. |
 | `Paymob__RedirectionUrl` | | Optional browser/SDK redirection URL sent as the intention `redirection_url`. |
 
+- Paymob rejects an explicit `null` for `notification_url`/`redirection_url` with `400 {"redirection_url": ["This field may not be null."]}`, so an unconfigured URL is **omitted** from the intention body rather than sent as null. A field-level rejection is reported as `upstream: <field>: <message>` so the offending field is visible without reading provider dashboards.
+
 - Test-mode secret keys only pair with test-mode integration ids — mixing modes fails with `404 Integration ID/Name does not exist`.
 - Card enrollment requires both a positive local plan `paymobSubscriptionPlanId` and `Paymob__Card3dsIntegrationId`; the provider `subscription_plan_id` is sent only for that Card path. Wallet remains one-time/manual.
 - Provider subscription plans are created and maintained in the Paymob merchant account with `Authorization: Bearer <auth token from Paymob__ApiKey>` against `POST/GET /api/acceptance/subscription-plans` (note the hyphen — `/api/acceptance/subscriptions/plans` does not exist). Each plan carries `frequency` in days (`30` monthly, `360` annual) and `amount_cents` equal to the **tax-inclusive** recurring gross, because the local catalog price is tax-exclusive.

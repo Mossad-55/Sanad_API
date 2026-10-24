@@ -20,6 +20,22 @@ public sealed class PaymobClient : IPaymobClient
     /// the order they are preferred when more than one is present.</summary>
     private static readonly string[] ReasonFieldNames = ["detail", "message", "status"];
 
+    /// <summary>Request fields whose first validation message is surfaced when
+    /// Paymob answers with a DRF-style field-error map on a 400.</summary>
+    private static readonly string[] FieldErrorNames =
+    [
+        "amount",
+        "currency",
+        "payment_methods",
+        "items",
+        "billing_data",
+        "special_reference",
+        "notification_url",
+        "redirection_url",
+        "subscription_plan_id",
+        "merchant_order_id"
+    ];
+
     /// <summary>Field names whose value must never be echoed back — anything that
     /// can carry a credential rather than a rejection reason.</summary>
     private static readonly string[] SensitiveFieldNames =
@@ -83,12 +99,12 @@ public sealed class PaymobClient : IPaymobClient
                 ? input.BookingId.Value.ToString()
                 : input.MerchantReference;
 
-            var payload = new
+            var payload = new Dictionary<string, object?>
             {
-                amount = amountCents,
-                currency = input.Currency,
-                payment_methods = new[] { paymobIntegrationId },
-                items = new[]
+                ["amount"] = amountCents,
+                ["currency"] = input.Currency,
+                ["payment_methods"] = new[] { paymobIntegrationId },
+                ["items"] = new[]
                 {
                     new
                     {
@@ -98,7 +114,7 @@ public sealed class PaymobClient : IPaymobClient
                         quantity = 1
                     }
                 },
-                billing_data = new
+                ["billing_data"] = new
                 {
                     first_name = input.Billing.FirstName,
                     last_name = input.Billing.LastName,
@@ -113,12 +129,14 @@ public sealed class PaymobClient : IPaymobClient
                     country = "EG",
                     postal_code = "NA"
                 },
-                special_reference = specialReference,
-                expiration = 3600,
-                notification_url = string.IsNullOrWhiteSpace(_options.WebhookUrl)
-                    ? null
-                    : _options.WebhookUrl
+                ["special_reference"] = specialReference,
+                ["expiration"] = 3600
             };
+
+            // A null URL is not "unset" to Paymob: it answers 400
+            // {"notification_url": ["This field may not be null."]}. Omit the
+            // key entirely when unconfigured instead of sending null.
+            AddUrlIfConfigured(payload, "notification_url", _options.WebhookUrl);
 
             using HttpRequestMessage request = new(HttpMethod.Post, $"{_options.BaseUrl}/v1/intention/");
             request.Headers.TryAddWithoutValidation("Authorization", $"Token {_options.SecretKey}");
@@ -254,14 +272,13 @@ public sealed class PaymobClient : IPaymobClient
                     postal_code = "NA"
                 },
                 ["special_reference"] = input.MerchantReference,
-                ["expiration"] = 3600,
-                ["notification_url"] = string.IsNullOrWhiteSpace(_options.WebhookUrl)
-                    ? null
-                    : _options.WebhookUrl,
-                ["redirection_url"] = string.IsNullOrWhiteSpace(_options.RedirectionUrl)
-                    ? null
-                    : _options.RedirectionUrl
+                ["expiration"] = 3600
             };
+
+            // A null URL is rejected outright ("This field may not be null."),
+            // so unconfigured URLs are omitted rather than sent as null.
+            AddUrlIfConfigured(payload, "notification_url", _options.WebhookUrl);
+            AddUrlIfConfigured(payload, "redirection_url", _options.RedirectionUrl);
 
             if (cardEnrollment)
                 payload["subscription_plan_id"] = input.SubscriptionPlanId!.Value;
@@ -450,6 +467,23 @@ public sealed class PaymobClient : IPaymobClient
     /// billing-identifying value contributes nothing and the caller keeps its
     /// status-only description.
     /// </summary>
+    /// <summary>
+    /// Adds an optional URL field only when it is actually configured. Paymob
+    /// validates these fields with "This field may not be null." and rejects the
+    /// whole intention, so sending an explicit null breaks every intent on an
+    /// environment that has not set the URL.
+    /// </summary>
+    private static void AddUrlIfConfigured(
+        Dictionary<string, object?> payload,
+        string fieldName,
+        string? value)
+    {
+        if (!string.IsNullOrWhiteSpace(value))
+        {
+            payload[fieldName] = value;
+        }
+    }
+
     private static string DescribeUpstreamReason(string? body)
     {
         if (string.IsNullOrWhiteSpace(body))
@@ -483,6 +517,35 @@ public sealed class PaymobClient : IPaymobClient
             if (sanitized.Length > 0)
             {
                 return sanitized;
+            }
+        }
+
+        // Paymob answers field-level validation failures with a DRF-style map
+        // instead of detail/message, e.g. {"redirection_url": ["This field may
+        // not be null."]}. Status-only errors hid that entirely, so surface the
+        // field name plus its first message — but only for request fields we
+        // send, and only through the same sanitizer, since a message may still
+        // quote provider-side values.
+        foreach (string fieldName in FieldErrorNames)
+        {
+            if (!root.TryGetProperty(fieldName, out JsonElement element))
+            {
+                continue;
+            }
+
+            string? first = element.ValueKind switch
+            {
+                JsonValueKind.String => element.GetString(),
+                JsonValueKind.Array when element.GetArrayLength() > 0
+                    && element[0].ValueKind == JsonValueKind.String => element[0].GetString(),
+                _ => null
+            };
+
+            string sanitized = SanitizeReason(first);
+
+            if (sanitized.Length > 0)
+            {
+                return $"{fieldName}: {sanitized}";
             }
         }
 
