@@ -118,6 +118,8 @@ public static class ResultProblemDetailsMapper
             ["CareHomes.Bookings.AssignmentConflict"] = 409,
             ["CareHomes.Bookings.InvalidTransferDate"] = 400,
             ["CareHomes.Bookings.TransferConflict"] = 409,
+            ["CareHomes.Bookings.IdempotencyKeyInvalid"] = 400,
+            ["CareHomes.Bookings.IdempotencyConflict"] = 409,
 
             // S5 care-home refund policy: unreadable persisted policy state fails closed as a
             // conflict, while reconciliation errors distinguish malformed requests from attempts
@@ -277,6 +279,12 @@ public static class ResultProblemDetailsMapper
             ["Families.CareRecords.InvalidQuery"] = 400,
             ["Families.CareRecords.ConcurrencyConflict"] = 409,
 
+            // M4 retry-safe creates: a malformed Idempotency-Key is a request
+            // error that writes nothing, and reusing a key with a different
+            // request is a conflict.
+            ["Families.CareRecords.IdempotencyKeyInvalid"] = 400,
+            ["Families.CareRecords.IdempotencyConflict"] = 409,
+
             ["Families.Family.AcknowledgementRequired"] = 400,
             ["Families.Family.ActiveBookingExists"] = 409,
             ["Families.Family.UnsettledPaymentExists"] = 409,
@@ -314,6 +322,9 @@ public static class ResultProblemDetailsMapper
             ["Bookings.UnauthorizedRole"] = 403,
             ["Bookings.ElderlyNotFound"] = 404,
             ["Bookings.ScheduleConflict"] = 409,
+            ["Bookings.AvailabilityConflict"] = 409,
+            ["Bookings.IdempotencyKeyInvalid"] = 400,
+            ["Bookings.IdempotencyConflict"] = 409,
             ["Bookings.NotFound"] = 404,
             ["Bookings.BookingNotInFamily"] = 404,
             ["Bookings.Domain.InvalidOperation"] = 409,
@@ -345,6 +356,7 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Discovery.CaregiverNotFound"] = 404,
             ["Caregivers.Discovery.QuoteNotAvailable"] = 409,
             ["Caregivers.Photo.NotFound"] = 404,
+            ["Caregivers.Availability.InvalidQuery"] = 400,
 
             ["Paymob.NotConfigured"] = 503,
             ["Paymob.MethodNotAvailable"] = 409,

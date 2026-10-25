@@ -6,6 +6,8 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using Sanad.Modules.Families.Application.Abstractions.Bookings;
+using Sanad.Modules.Families.Infrastructure.Bookings;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Infrastructure.Payments;
@@ -49,6 +51,9 @@ public static class DependencyInjection
 
         services.AddScoped<IBookingCancellationFactRecorder,
             BookingCancellationFactRecorder>();
+
+        services.AddScoped<ICaregiverBookingCheckoutGuard,
+            CaregiverBookingReservationGuard>();
 
         services.AddHttpClient();
 

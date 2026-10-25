@@ -1176,6 +1176,68 @@ internal sealed class CommunityAuthorProjectionHarness : IAsyncDisposable
         return postId;
     }
 
+    public async Task<Guid> AddPendingPostAsync(Guid authorId, DateTime? createdOnUtc = null)
+    {
+        DateTime stamp = createdOnUtc ?? DateTime.UtcNow;
+        Post post = Post.Create(
+            "عنوان", "Title", "محتوى", "Content", null, false,
+            new UserId(authorId), stamp);
+        _inner.Posts.Add(post);
+        await _inner.SaveChangesAsync();
+        return post.Id.Value;
+    }
+
+    public async Task<Guid> AddDeletedPostAsync(Guid authorId, DateTime? createdOnUtc = null)
+    {
+        DateTime stamp = createdOnUtc ?? DateTime.UtcNow;
+        Post post = Post.Create(
+            "عنوان", "Title", "محتوى", "Content", null, false,
+            new UserId(authorId), stamp);
+        post.Publish(new UserId(authorId), stamp);
+        post.Delete(new UserId(authorId), stamp);
+        _inner.Posts.Add(post);
+        await _inner.SaveChangesAsync();
+        return post.Id.Value;
+    }
+
+    public Task<int> StoredViewCountAsync(Guid postId) =>
+        _inner.Posts
+            .Where(post => post.Id == new CommunityPostId(postId))
+            .Select(post => post.ViewsCount)
+            .SingleAsync();
+
+    public Task<int> ViewerRowCountAsync(Guid postId) =>
+        _inner.PostViews.CountAsync(view => view.PostId == new CommunityPostId(postId));
+
+    public async Task AddCommentLikeAsync(Guid commentId, UserId viewer)
+    {
+        _inner.Interactions.Add(CommunityInteraction.Create(
+            CommunityInteractionTarget.Comment,
+            commentId,
+            viewer,
+            CommunityInteractionKind.Like,
+            DateTime.UtcNow));
+        await _inner.SaveChangesAsync();
+    }
+
+    public async Task AddReplyLikeAsync(Guid replyId, UserId viewer)
+    {
+        // No public reply-like route exists; this stores the data-only
+        // interaction the read projection is required to reflect honestly.
+        _inner.Interactions.Add(CommunityInteraction.Create(
+            CommunityInteractionTarget.Comment,
+            replyId,
+            viewer,
+            CommunityInteractionKind.Like,
+            DateTime.UtcNow));
+        await _inner.SaveChangesAsync();
+    }
+
+    public Task<Result<CommunityPostViewResult?>> RecordViewAsync(Guid postId, UserId viewer) =>
+        new RecordPostViewCommandHandler(Context).Handle(
+            new RecordPostViewCommand(postId, viewer.Value),
+            CancellationToken.None);
+
     public async Task<Guid> AddCommentAsync(Guid postId, Guid authorId)
     {
         Comment comment = Comment.Create(
@@ -1287,6 +1349,8 @@ internal sealed class CountingCommunityDbContext(CommunityDbContext inner) : ICo
 
     public DbSet<Post> Posts => inner.Posts;
 
+    public DbSet<PostView> PostViews => inner.PostViews;
+
     public DbSet<Comment> Comments => inner.Comments;
 
     public DbSet<Reply> Replies => inner.Replies;
@@ -1355,6 +1419,8 @@ internal sealed class CommunityAuthorProjectionSender(ICommunityDbContext contex
                 new GetCommentsQueryHandler(context).Handle(query, cancellationToken),
             GetCommentRepliesQuery query =>
                 new GetCommentRepliesQueryHandler(context).Handle(query, cancellationToken),
+            GetCommunityCommentViewerStateQuery query =>
+                new GetCommunityCommentViewerStateQueryHandler(context).Handle(query, cancellationToken),
             GetCommunityAuthorProfilesQuery query =>
                 new GetCommunityAuthorProfilesQueryHandler(context).Handle(query, cancellationToken),
             GetCommunityThreadPostByPostIdQuery query =>

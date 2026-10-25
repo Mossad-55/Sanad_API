@@ -8,6 +8,7 @@ using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Elderlies.CheckIns;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Domain.HelpRequests;
+using Sanad.Modules.Families.Domain.Idempotency;
 using Sanad.Modules.Families.Domain.Invitations;
 using Sanad.Modules.Families.Domain.Medications;
 using Sanad.Modules.Families.Domain.Notes;
@@ -56,6 +57,10 @@ internal abstract class FamiliesDbContextAdapter(IFamiliesDbContext inner)
     public DbSet<ElderlyHelpRequestHistory> ElderlyHelpRequestHistories => Inner.ElderlyHelpRequestHistories;
     public DbSet<ElderlySos> ElderlySos => Inner.ElderlySos;
     public DbSet<ElderlySosHistory> ElderlySosHistories => Inner.ElderlySosHistories;
+    public DbSet<IdempotencyRequest> IdempotencyRequests => Inner.IdempotencyRequests;
+
+    public void DetachAdded<TEntity>() where TEntity : class =>
+        Inner.DetachAdded<TEntity>();
 
     public void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
         Inner.ReservePaymobSubscriptionIdentity(identity);

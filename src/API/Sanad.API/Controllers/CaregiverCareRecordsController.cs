@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Sanad.API.Authorization;
+using Sanad.BuildingBlocks.Application.Idempotency;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.CareRecords;
@@ -158,6 +159,25 @@ public sealed class CaregiverCareRecordsController : ApiControllerBase
             return Unauthorized();
         }
 
+        if (!TryGetIdempotencyKey(
+                "Families.CareRecords.IdempotencyKeyInvalid",
+                out IdempotencyKey? key,
+                out IActionResult? keyFailure))
+        {
+            return keyFailure!;
+        }
+
+        IdempotencyRequest? idempotency = key is null
+            ? null
+            : new IdempotencyRequest(
+                key,
+                IdempotencyFingerprint.Compute(
+                    IdempotencyOperations.CaregiverCareRecordCreate,
+                    ("dependentId", IdempotencyFingerprint.Id(request.DependentId)),
+                    ("hospitalName", IdempotencyFingerprint.Text(request.HospitalName)),
+                    ("visitDate", IdempotencyFingerprint.Date(request.VisitDate)),
+                    ("details", IdempotencyFingerprint.Text(request.Details))));
+
         var result = await _sender.Send(new CreateCaregiverCareRecordCommand(
             caregiver.Id,
             userId,
@@ -165,11 +185,10 @@ public sealed class CaregiverCareRecordsController : ApiControllerBase
             request.HospitalName,
             request.VisitDate,
             request.Details,
-            HttpContext.TraceIdentifier), cancellationToken);
+            HttpContext.TraceIdentifier,
+            idempotency), cancellationToken);
 
-        if (result.IsFailure) return ToActionResult(result);
-
-        return StatusCode(StatusCodes.Status201Created, result.Value);
+        return IdempotentCreated(result);
     }
 
     [HttpPut("{recordId:guid}")]

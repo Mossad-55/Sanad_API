@@ -2,6 +2,7 @@ using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
+using Sanad.BuildingBlocks.Application.Idempotency;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.CareRecords;
 using Sanad.Modules.Families.Domain.CareRecords;
@@ -99,17 +100,35 @@ public sealed class FamilyCareRecordsController : ApiControllerBase
     {
         if (!TryGetAuthenticatedUserId(out UserId userId)) return Unauthorized();
 
+        if (!TryGetIdempotencyKey(
+                "Families.CareRecords.IdempotencyKeyInvalid",
+                out IdempotencyKey? key,
+                out IActionResult? keyFailure))
+        {
+            return keyFailure!;
+        }
+
+        IdempotencyRequest? idempotency = key is null
+            ? null
+            : new IdempotencyRequest(
+                key,
+                IdempotencyFingerprint.Compute(
+                    IdempotencyOperations.FamilyCareRecordCreate,
+                    ("dependentId", IdempotencyFingerprint.Id(dependentId)),
+                    ("hospitalName", IdempotencyFingerprint.Text(request.HospitalName)),
+                    ("visitDate", IdempotencyFingerprint.Date(request.VisitDate)),
+                    ("details", IdempotencyFingerprint.Text(request.Details))));
+
         var result = await _sender.Send(new CreateFamilyCareRecordCommand(
             userId,
             new ElderlyId(dependentId),
             request.HospitalName,
             request.VisitDate,
             request.Details,
-            HttpContext.TraceIdentifier), cancellationToken);
+            HttpContext.TraceIdentifier,
+            idempotency), cancellationToken);
 
-        if (result.IsFailure) return ToActionResult(result);
-
-        return StatusCode(StatusCodes.Status201Created, result.Value);
+        return IdempotentCreated(result);
     }
 
     [HttpPut("{recordId:guid}")]

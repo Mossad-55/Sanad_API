@@ -89,7 +89,7 @@ PendingPayment â”€â”€payâ”€â”€â–¶ PendingCaregiverApprov
 | `caregiverId` | UUID | Must be an **Active** caregiver; type and price are resolved server-side. |
 | `shiftType` | enum (int) | `1` HomeVisit, `2` EightHourShift, `3` TwelveHourShift, `4` TwentyFourHourShift, `5` Hourly. Medical products only for Medical caregivers; `Hourly` only for Companion. |
 | `bookingDate` | `YYYY-MM-DD` | Cannot be in the past. |
-| `startTime` / `endTime` | `HH:mm` | Must not overlap an existing pending/active booking of that caregiver. |
+| `startTime` / `endTime` | `HH:mm` | Must not overlap an existing pending/active booking of that caregiver (`409 Bookings.ScheduleConflict`) and must be contained in the caregiver's declared availability for the date and shift type (`409 Bookings.AvailabilityConflict`). Must not be in the past. |
 | `serviceAddress` | string â‰¤ 500 | Where the care takes place. |
 | `specialInstructions` | string? â‰¤ 1000 | Optional family notes shown on the caregiver's request card. |
 | `bookingAreaId` + `bookingServiceId` | UUID? | Optional immutable pricing attribution (Chat Plus): both together or neither. When supplied, both must be nonempty GUIDs naming active catalogue entries selected by the booked caregiver, else `400` through the owning booking vocabulary. Omission preserves legacy checkout and contributes no pricing sample; retained after catalogue/profile changes, never backfilled. See `docs/app/chat/pricing-insights.md`. |
@@ -115,6 +115,31 @@ booking and no hold. Reads, cancellation, refunds and the booking lifecycle stay
 available. The app can read the current state and the available payment methods
 from the public status route â€” see
 [platform business status](../public/platform-status.md).
+
+**Retry safety (`Idempotency-Key`).** The header is optional. Without it the
+request behaves exactly as before. With it, the trimmed value must be 1â€“128
+printable ASCII characters, otherwise `400 Bookings.IdempotencyKeyInvalid`.
+Records are scoped to the authenticated actor, the operation and the key, and
+the key row commits in the same transaction as the booking, so a rejected
+attempt never stores a key. The fingerprint covers the request body and the
+route identifiers (`elderlyId`, `caregiverId`, and the optional attribution
+ids); server-derived values such as price, acceptance deadline and status are
+excluded. The same key with the same fingerprint replays the stored `200`
+status and body byte-for-byte with no second booking. The same key with a
+different fingerprint is `409 Bookings.IdempotencyConflict`. Concurrent
+duplicates execute exactly once through the unique
+`(actor_id, operation, idempotency_key)` index; the loser replays the winner.
+Rows are retained for 7 days; no purge worker runs in this slice.
+
+**Date-specific availability.** Checkout requires exact containment of
+`[startTime, endTime)` in one interval of the caregiver's declared availability
+for `bookingDate` and `shiftType`, after subtracting active booking overlaps. A
+slot outside it is `409 Bookings.AvailabilityConflict`; an overlapping booking
+is still `409 Bookings.ScheduleConflict` and keeps precedence. The advisory read
+is `GET /api/v1/caregivers/{caregiverId}/availability/day?date=YYYY-MM-DD&shiftType=`
+and returns `timeZoneId` (`Africa/Cairo`) plus UTC `intervals`. It is advisory,
+not a reservation, and does not add a hold or expiry rule. The existing weekly
+schedule read is unchanged.
 
 ### 2. Tab list
 
@@ -278,7 +303,10 @@ Finance complaint/review case correlation for an ambiguous attempt is deferred t
 | `Bookings.FamilyNotFound` | 404 | Caller belongs to no family. |
 | `Bookings.UnauthorizedRole` | 403 | Viewer attempted checkout. |
 | `Bookings.ElderlyNotFound` | 404 | Dependent not in the caller's family. |
-| `Bookings.ScheduleConflict` | 409 | Caregiver already has a pending/active booking overlapping the slot. |
+| `Bookings.ScheduleConflict` | 409 | Caregiver already has a pending/active booking overlapping the slot, or the serialized checkout could not confirm the slot. |
+| `Bookings.AvailabilityConflict` | 409 | The requested slot is outside the caregiver's declared date-specific availability for that `shiftType`. |
+| `Bookings.IdempotencyKeyInvalid` | 400 | The optional `Idempotency-Key` is not 1â€“128 printable ASCII characters after trimming. |
+| `Bookings.IdempotencyConflict` | 409 | The same `Idempotency-Key` was already used with a different request. |
 | `Bookings.NotFound` | 404 | Booking id unknown (or not in the caller's family, on intent). |
 | `Bookings.BookingNotInFamily` | 404 | Booking belongs to another family (on cancel). |
 | `Bookings.Domain.InvalidOperation` | 409 | Lifecycle rule violated (wrong-status transition, cancel after completion, past-deadline accept, intent on a paid booking). |

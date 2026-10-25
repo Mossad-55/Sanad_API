@@ -13,6 +13,7 @@ using Sanad.Modules.Families.Domain.Notes;
 using Sanad.Modules.Families.Domain.Reports;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Domain.HelpRequests;
+using Sanad.Modules.Families.Domain.Idempotency;
 using Sanad.Modules.Families.Domain.Sos;
 
 namespace Sanad.Modules.Families.Infrastructure.Persistence;
@@ -64,9 +65,21 @@ public sealed class FamiliesDbContext :
     public DbSet<CaregiverMedicalAccessAudit> CaregiverMedicalAccessAudits => Set<CaregiverMedicalAccessAudit>();
     public DbSet<CareRecord> CareRecords => Set<CareRecord>();
     public DbSet<CareRecordAudit> CareRecordAudits => Set<CareRecordAudit>();
+    public DbSet<IdempotencyRequest> IdempotencyRequests => Set<IdempotencyRequest>();
 
     public void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
         PaymobSubscriptionIdentities.Add(identity);
+
+    public void DetachAdded<TEntity>() where TEntity : class
+    {
+        foreach (var entry in ChangeTracker
+            .Entries<TEntity>()
+            .Where(entry => entry.State == EntityState.Added)
+            .ToArray())
+        {
+            entry.State = EntityState.Detached;
+        }
+    }
 
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)

@@ -14,6 +14,7 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Finance.Domain;
 using Xunit;
 using Sanad.UnitTests.Finance;
+using Sanad.UnitTests.Support;
 
 namespace Sanad.UnitTests.Families;
 
@@ -116,7 +117,10 @@ public sealed class BookingPaymentWebhookTests
             dbContext,
             new FakePricing(BookingCaregiverType.Medical, 500m),
             new FixedPlatformChargeRules(15m, 0m),
-            FixedPlatformControls.Operational());
+            FixedPlatformControls.Operational(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
         var checkoutResult = await checkout.Handle(
             new CreateBookingCheckoutCommand(

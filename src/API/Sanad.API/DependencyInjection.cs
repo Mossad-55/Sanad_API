@@ -18,6 +18,9 @@ using Sanad.Modules.Caregivers.Infrastructure;
 using Sanad.Modules.Families.Infrastructure;
 using Sanad.BuildingBlocks.Infrastructure.Storage;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
+using Sanad.BuildingBlocks.Application.Idempotency;
+using Sanad.API.Idempotency;
+using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Caregivers.Application.Lookups;
 using Sanad.Modules.Caregivers.Application.Discovery;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
@@ -701,6 +704,12 @@ public static class DependencyInjection
             ICaregiverBookingPricing, CaregiverBookingPricingGateway>();
         services.AddScoped<
             ICaregiverCatalogLookup, CaregiverCatalogLookup>();
+        services.AddScoped<
+            ICaregiverAvailabilityRules, CaregiverAvailabilityRulesGateway>();
+        services.AddScoped<
+            ICaregiverBusyBookingLookup, ApiCaregiverBusyBookingLookup>();
+        services.AddSingleton<
+            IIdempotentResponseSnapshotter, MvcIdempotentResponseSnapshotter>();
 
         // Chat outbound ports (interfaces live in Chat Application,
         // implementations here — same gateway pattern as FamilyIdentityGateway).

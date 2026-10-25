@@ -17,6 +17,7 @@ using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.UnitTests.Families;
 using Sanad.UnitTests.Finance;
+using Sanad.UnitTests.Support;
 
 namespace Sanad.UnitTests.ChatPlus;
 
@@ -378,7 +379,10 @@ public sealed class ChatPlusPricingTests
             families,
             new FakeCheckoutPricing(),
             new FixedPlatformChargeRules(15m, 0m),
-            FixedPlatformControls.Operational());
+            FixedPlatformControls.Operational(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
         var attributed = await handler.Handle(
             new CreateBookingCheckoutCommand(

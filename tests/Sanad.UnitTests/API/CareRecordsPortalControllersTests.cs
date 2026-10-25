@@ -10,6 +10,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers;
+using Sanad.BuildingBlocks.Application.Idempotency;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
 using Sanad.Modules.Families.Application.CareRecords;
@@ -435,7 +436,7 @@ public sealed class CareRecordsPortalControllersTests : IClassFixture<PortalApiM
         {
             object result = request switch
             {
-                CreateFamilyCareRecordCommand => Result<CareRecordResponse>.Failure(error),
+                CreateFamilyCareRecordCommand => Result<IdempotentOutcome<CareRecordResponse>>.Failure(error),
                 _ => throw new NotSupportedException()
             };
             return Task.FromResult((TResponse)result);

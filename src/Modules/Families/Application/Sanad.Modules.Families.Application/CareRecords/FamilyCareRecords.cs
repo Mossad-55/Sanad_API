@@ -2,13 +2,16 @@ using FluentValidation;
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.CQRS;
+using Sanad.BuildingBlocks.Application.Idempotency;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
+using Sanad.BuildingBlocks.Infrastructure.Persistence;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Families;
 using Sanad.Modules.Families.Domain.CareRecords;
 using Sanad.Modules.Families.Domain.Families;
+using IdempotencyRecord = Sanad.Modules.Families.Domain.Idempotency.IdempotencyRequest;
 
 namespace Sanad.Modules.Families.Application.CareRecords;
 
@@ -141,7 +144,9 @@ public sealed record CreateFamilyCareRecordCommand(
     string HospitalName,
     DateOnly VisitDate,
     string Details,
-    string CorrelationId) : ICommand<CareRecordResponse>;
+    string CorrelationId,
+    IdempotencyRequest? Idempotency = null)
+    : ICommand<IdempotentOutcome<CareRecordResponse>>;
 
 public sealed class CreateFamilyCareRecordCommandValidator : AbstractValidator<CreateFamilyCareRecordCommand>
 {
@@ -158,20 +163,27 @@ public sealed class CreateFamilyCareRecordCommandValidator : AbstractValidator<C
 }
 
 public sealed class CreateFamilyCareRecordCommandHandler
-    : ICommandHandler<CreateFamilyCareRecordCommand, CareRecordResponse>
+    : ICommandHandler<CreateFamilyCareRecordCommand, IdempotentOutcome<CareRecordResponse>>
 {
+    private static readonly Error IdempotencyConflict = new(
+        "Families.CareRecords.IdempotencyConflict",
+        "This Idempotency-Key was already used with a different request.");
+
     private readonly IFamiliesDbContext _dbContext;
     private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly IIdempotentResponseSnapshotter _snapshotter;
 
     public CreateFamilyCareRecordCommandHandler(
         IFamiliesDbContext dbContext,
-        IDateTimeProvider dateTimeProvider)
+        IDateTimeProvider dateTimeProvider,
+        IIdempotentResponseSnapshotter snapshotter)
     {
         _dbContext = dbContext;
         _dateTimeProvider = dateTimeProvider;
+        _snapshotter = snapshotter;
     }
 
-    public async Task<Result<CareRecordResponse>> Handle(
+    public async Task<Result<IdempotentOutcome<CareRecordResponse>>> Handle(
         CreateFamilyCareRecordCommand request,
         CancellationToken cancellationToken)
     {
@@ -179,14 +191,29 @@ public sealed class CreateFamilyCareRecordCommandHandler
 
         if (family is null || !FamilyAccess.CanManage(family, request.UserId))
         {
-            return CareRecordErrors.AccessDenied;
+            return Result<IdempotentOutcome<CareRecordResponse>>.Failure(
+                CareRecordErrors.AccessDenied);
         }
 
         if (!await _dbContext.Elderlies.AnyAsync(
                 e => e.Id == request.DependentId && e.FamilyId == family.Id,
                 cancellationToken))
         {
-            return CareRecordErrors.DependentNotFound;
+            return Result<IdempotentOutcome<CareRecordResponse>>.Failure(
+                CareRecordErrors.DependentNotFound);
+        }
+
+        if (request.Idempotency is not null)
+        {
+            IdempotencyRecord? stored = await FindStoredAsync(
+                request.UserId,
+                request.Idempotency.Key.Value,
+                cancellationToken);
+
+            if (stored is not null)
+            {
+                return Replay(stored, request.Idempotency);
+            }
         }
 
         try
@@ -202,6 +229,8 @@ public sealed class CreateFamilyCareRecordCommandHandler
                 request.Details,
                 utcNow);
 
+            var response = record.ToResponse();
+
             _dbContext.CareRecords.Add(record);
             _dbContext.CareRecordAudits.Add(CareRecordAudit.RecordAuthored(
                 record.Id,
@@ -212,15 +241,76 @@ public sealed class CreateFamilyCareRecordCommandHandler
                 request.CorrelationId,
                 utcNow));
 
+            if (request.Idempotency is not null)
+            {
+                _dbContext.IdempotencyRequests.Add(
+                    IdempotencyRecord.Create(
+                        request.UserId,
+                        IdempotencyOperations.FamilyCareRecordCreate,
+                        request.Idempotency.Key.Value,
+                        request.Idempotency.Fingerprint,
+                        record.Id,
+                        201,
+                        _snapshotter.Snapshot(response),
+                        utcNow));
+            }
+
             await _dbContext.SaveChangesAsync(cancellationToken);
 
-            return record.ToResponse();
+            return Result<IdempotentOutcome<CareRecordResponse>>.Success(
+                IdempotentOutcome<CareRecordResponse>.Fresh(response, 201));
+        }
+        catch (DbUpdateException exception) when (
+            request.Idempotency is not null &&
+            PostgresErrors.IsUniqueViolation(
+                exception,
+                IdempotencyRecord.UniqueIndexName))
+        {
+            _dbContext.DetachAdded<CareRecord>();
+            _dbContext.DetachAdded<CareRecordAudit>();
+            _dbContext.DetachAdded<IdempotencyRecord>();
+
+            IdempotencyRecord? winner = await FindStoredAsync(
+                request.UserId,
+                request.Idempotency.Key.Value,
+                cancellationToken);
+
+            if (winner is null)
+            {
+                throw;
+            }
+
+            return Replay(winner, request.Idempotency);
         }
         catch (DomainException)
         {
-            return CareRecordErrors.Invalid;
+            return Result<IdempotentOutcome<CareRecordResponse>>.Failure(
+                CareRecordErrors.Invalid);
         }
     }
+
+    private async Task<IdempotencyRecord?> FindStoredAsync(
+        UserId actor,
+        string key,
+        CancellationToken cancellationToken) =>
+        await _dbContext.IdempotencyRequests
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                row => row.ActorId == actor &&
+                    row.Operation == IdempotencyOperations.FamilyCareRecordCreate &&
+                    row.Key == key,
+                cancellationToken);
+
+    private static Result<IdempotentOutcome<CareRecordResponse>> Replay(
+        IdempotencyRecord stored,
+        IdempotencyRequest idempotency) =>
+        stored.Fingerprint == idempotency.Fingerprint
+            ? Result<IdempotentOutcome<CareRecordResponse>>.Success(
+                IdempotentOutcome<CareRecordResponse>.Replay(
+                    stored.ResponseStatus,
+                    stored.ResponseBody))
+            : Result<IdempotentOutcome<CareRecordResponse>>.Failure(
+                IdempotencyConflict);
 }
 
 // ======================= Family update (own source) =======================

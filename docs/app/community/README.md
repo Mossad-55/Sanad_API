@@ -15,8 +15,8 @@ noted.
 ## Authors and anonymity
 
 Every post, comment and reply carries `displayName` (the author's English full
-name, Arabic as fallback, `null` when the identity row is missing) and
-`avatarUrl`. `avatarUrl` is the author's avatar **download path**
+name, Arabic as fallback, `null` when the identity row is missing), `avatarUrl`
+and `authorId`. `avatarUrl` is the author's avatar **download path**
 (`/api/v1/community/authors/{authorId}/photo`) when the author has a stored
 avatar, and `null` otherwise; it never carries the stored private storage key.
 
@@ -32,10 +32,13 @@ stored `is_anonymous` flag of the author's posts — the request never carries (
 cannot weaken) an anonymity hint.
 
 `isAnonymous` is unchanged on posts and is now also on comments and replies.
-An anonymous post carries no author identity at all, and a comment or reply
-written by the author of an anonymous post inside that post's own thread is
-anonymous too: `authorId`, `displayName` and `avatarUrl` are all `null`. The
-API never substitutes a placeholder name. The full contract is in
+An anonymous post carries no author identity at all — `authorId`,
+`displayName` and `avatarUrl` are all `null`, for every caller, including the
+post's own author and administrators — and a comment or reply written by the
+author of an anonymous post inside that post's own thread is anonymous too:
+`authorId`, `displayName` and `avatarUrl` are all `null`. The API never
+substitutes a placeholder name, and `authorId` here is the stored id, not a
+name. The full contract is in
 [Posts, interactions, ratings, check-ins, recommendations, uploads and moderation](writes.md).
 
 ## Viewer capabilities
@@ -48,6 +51,25 @@ caller's own non-`Deleted` post. Another viewer gets `false` for all three, and
 anonymity changes no flag. The flags grant nothing — the mutation routes stay
 authoritative — and they never encode Admin moderation powers. See
 [Viewer capabilities](writes.md#viewer-capabilities-isown-canedit-candelete).
+
+Every post also carries `viewsCount`, the stored lifetime view counter. Record a
+view with
+
+```text
+POST /api/v1/community/posts/{postId}/view   → 200 { "postId": "…", "viewsCount": 3 }
+```
+
+The route uses the post-detail read rule (`401` unauthenticated; `404` for an
+unknown, non-published or blocked-author post). The author never increments the
+counter, and every other viewer counts at most once per post for its lifetime; a
+repeat call returns the current count. The counter is monotonic and never
+negative. See [Post views](writes.md#post-views).
+
+Comments and replies carry `isOwn`, `canEdit`, `canDelete` and `isLiked` for the
+caller, mirroring the real handlers: a comment can be edited by its author and
+deleted only while it has no replies, and replies always report
+`canEdit`/`canDelete` as `false` because the API exposes no reply mutation route.
+See [Comment and reply viewer state](writes.md#comment-and-reply-viewer-state).
 
 ## Blocking an author (one-way, hide-posts-only)
 

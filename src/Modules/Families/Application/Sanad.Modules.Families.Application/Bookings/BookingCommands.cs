@@ -1,16 +1,20 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
+using Sanad.BuildingBlocks.Application.Idempotency;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Domain.ValueObjects;
+using Sanad.BuildingBlocks.Infrastructure.Persistence;
+using Sanad.Modules.Families.Application.Abstractions.Bookings;
 using Sanad.Modules.Families.Application.Abstractions.Caregivers;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Finance.Application;
+using IdempotencyRecord = Sanad.Modules.Families.Domain.Idempotency.IdempotencyRequest;
 
 namespace Sanad.Modules.Families.Application.Bookings;
 
@@ -53,16 +57,34 @@ public sealed record CreateBookingCheckoutCommand(
     DateOnly CurrentDate,
     DateTime UtcNow,
     Guid? BookingAreaId = null,
-    Guid? BookingServiceId = null) : ICommand<BookingCheckoutResponse>;
+    Guid? BookingServiceId = null,
+    IdempotencyRequest? Idempotency = null)
+    : ICommand<IdempotentOutcome<BookingCheckoutResponse>>;
 
-public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<CreateBookingCheckoutCommand, BookingCheckoutResponse>
+public sealed class CreateBookingCheckoutCommandHandler
+    : ICommandHandler<CreateBookingCheckoutCommand, IdempotentOutcome<BookingCheckoutResponse>>
 {
     private const int AcceptanceWindowHours = 24;
+
+    private static readonly Error ScheduleConflict = new(
+        "Bookings.ScheduleConflict",
+        "Caregiver is already booked for this time slot.");
+
+    private static readonly Error AvailabilityConflict = new(
+        "Bookings.AvailabilityConflict",
+        "The requested time is outside the caregiver's declared availability.");
+
+    private static readonly Error IdempotencyConflict = new(
+        "Bookings.IdempotencyConflict",
+        "This Idempotency-Key was already used with a different request.");
 
     private readonly IFamiliesDbContext _dbContext;
     private readonly ICaregiverBookingPricing _caregiverBookingPricing;
     private readonly IPlatformChargeRuleReader _chargeRules;
     private readonly IPlatformControlReader _controls;
+    private readonly IIdempotentResponseSnapshotter _snapshotter;
+    private readonly ICaregiverAvailabilityRules _availabilityRules;
+    private readonly ICaregiverBookingCheckoutGuard _checkoutGuard;
     private readonly ICaregiverCatalogLookup? _catalogLookup;
 
     public CreateBookingCheckoutCommandHandler(
@@ -70,31 +92,42 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
         ICaregiverBookingPricing caregiverBookingPricing,
         IPlatformChargeRuleReader chargeRules,
         IPlatformControlReader controls,
+        IIdempotentResponseSnapshotter snapshotter,
+        ICaregiverAvailabilityRules availabilityRules,
+        ICaregiverBookingCheckoutGuard checkoutGuard,
         ICaregiverCatalogLookup? catalogLookup = null)
     {
         _dbContext = dbContext;
         _caregiverBookingPricing = caregiverBookingPricing;
         _chargeRules = chargeRules;
         _controls = controls;
+        _snapshotter = snapshotter;
+        _availabilityRules = availabilityRules;
+        _checkoutGuard = checkoutGuard;
         _catalogLookup = catalogLookup;
     }
 
-    public async Task<Result<BookingCheckoutResponse>> Handle(
+    public async Task<Result<IdempotentOutcome<BookingCheckoutResponse>>> Handle(
         CreateBookingCheckoutCommand request,
         CancellationToken cancellationToken)
     {
         try
         {
+            IdempotencyRequest? idempotency = request.Idempotency;
+
             // E04: a new caregiver booking checkout is gated before any
             // validation, slot reservation or persistence, so a rejection
-            // cannot create a booking or any partial payment state.
+            // cannot create a booking or any partial payment state. With an
+            // Idempotency-Key the gate answer is held until after the lookup,
+            // so a confirmed replay answers its original result instead of a
+            // maintenance 503 (a replay is historical, not a new offer).
             Error? platformError = await PlatformControlGate.CheckNewCheckoutAsync(
                 _controls,
                 cancellationToken);
 
-            if (platformError is not null)
+            if (platformError is not null && idempotency is null)
             {
-                return Result<BookingCheckoutResponse>.Failure(platformError);
+                return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(platformError);
             }
 
             // 1. Resolve Family & Verify Member Role
@@ -104,14 +137,14 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
 
             if (family is null)
             {
-                return Result<BookingCheckoutResponse>.Failure(
+                return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
                     new Error("Bookings.FamilyNotFound", "Family account not found for current user."));
             }
 
             FamilyRole? role = family.GetRole(request.UserId);
             if (role is not (FamilyRole.Owner or FamilyRole.Editor))
             {
-                return Result<BookingCheckoutResponse>.Failure(
+                return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
                     new Error("Bookings.UnauthorizedRole", "Viewers are not permitted to create bookings."));
             }
 
@@ -121,26 +154,28 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
 
             if (!elderlyExists)
             {
-                return Result<BookingCheckoutResponse>.Failure(
+                return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
                     new Error("Bookings.ElderlyNotFound", "Elderly dependent does not belong to this family."));
             }
 
-            // 3. Verify Caregiver has no conflicting booking (pending bookings reserve the slot too)
-            bool hasConflict = await _dbContext.Bookings.AnyAsync(
-                b => b.CaregiverId == request.CaregiverId &&
-                     b.BookingDate == request.BookingDate &&
-                     (b.Status == BookingStatus.PendingPayment ||
-                      b.Status == BookingStatus.PendingCaregiverApproval ||
-                      b.Status == BookingStatus.Confirmed ||
-                      b.Status == BookingStatus.InProgress) &&
-                     request.StartTime < b.EndTime &&
-                     request.EndTime > b.StartTime,
-                cancellationToken);
-
-            if (hasConflict)
+            // Authorization is re-checked before any replay: only the
+            // authenticated actor's own operation+key can be replayed.
+            if (idempotency is not null)
             {
-                return Result<BookingCheckoutResponse>.Failure(
-                    new Error("Bookings.ScheduleConflict", "Caregiver is already booked for this time slot."));
+                IdempotencyRecord? stored = await FindStoredAsync(
+                    request.UserId,
+                    idempotency.Key.Value,
+                    cancellationToken);
+
+                if (stored is not null)
+                {
+                    return Replay(stored, idempotency);
+                }
+
+                if (platformError is not null)
+                {
+                    return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(platformError);
+                }
             }
 
             // 3b. Pricing attribution (Chat Plus): both booked dimensions
@@ -150,7 +185,7 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
             // vocabulary's 400, never a silent unattributed booking.
             if (request.BookingAreaId.HasValue != request.BookingServiceId.HasValue)
             {
-                return Result<BookingCheckoutResponse>.Failure(
+                return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
                     new Error("Bookings.AttributionInvalid", "Booked area and service must be supplied together."));
             }
 
@@ -161,7 +196,7 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
 
                 if (areaId == Guid.Empty || serviceId == Guid.Empty)
                 {
-                    return Result<BookingCheckoutResponse>.Failure(
+                    return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
                         new Error("Bookings.AttributionInvalid", "Booked area and service cannot be empty."));
                 }
 
@@ -170,7 +205,7 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
                 // caregiver, so an attributed checkout cannot be accepted.
                 if (_catalogLookup is null)
                 {
-                    return Result<BookingCheckoutResponse>.Failure(
+                    return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
                         new Error("Bookings.AttributionInvalid", "Booked area and service cannot be verified."));
                 }
 
@@ -182,7 +217,7 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
 
                 if (!selected)
                 {
-                    return Result<BookingCheckoutResponse>.Failure(
+                    return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
                         new Error("Bookings.AttributionInvalid", "Booked area and service must be active and selected by the caregiver."));
                 }
             }
@@ -197,7 +232,7 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
 
             if (!price.IsSuccess)
             {
-                return Result<BookingCheckoutResponse>.Failure(price.Error);
+                return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(price.Error);
             }
 
             // 5. Acceptance window = min(now + 24h, booking start)
@@ -210,45 +245,161 @@ public sealed class CreateBookingCheckoutCommandHandler : ICommandHandler<Create
             // 6. Immutable price snapshot (family pays base + platform fee)
             var charge = await _chargeRules.GetEffectiveAsync(request.UtcNow, cancellationToken);
             if (charge is null)
-                return Result<BookingCheckoutResponse>.Failure(new Error("Bookings.ChargesNotConfigured", "Shared platform fee and tax configuration is not available."));
+                return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(new Error("Bookings.ChargesNotConfigured", "Shared platform fee and tax configuration is not available."));
             BookingPriceSnapshot priceSnapshot = BookingPriceSnapshot.Calculate(price.Value.BaseFee, charge.PlatformFeeRatePercentage, charge.TaxRatePercentage, charge.Version);
 
-            // 7. Create Booking Aggregate
-            Booking booking = Booking.Create(
-                family.Id,
-                request.UserId,
-                request.ElderlyId,
+            // 7. The slot check and the insert are serialized per caregiver
+            // and date. The existing overlap predicate is unchanged and stays
+            // inside the guard; availability is the additive gate.
+            return await _checkoutGuard.ExecuteAsync(
                 request.CaregiverId,
-                price.Value.CaregiverType,
-                request.ShiftType,
                 request.BookingDate,
-                request.StartTime,
-                request.EndTime,
-                request.ServiceAddress,
-                request.SpecialInstructions,
-                priceSnapshot,
-                acceptanceDeadline,
-                request.CurrentDate,
-                request.UtcNow,
-                request.BookingAreaId,
-                request.BookingServiceId);
+                async () =>
+                {
+                    // Existing conflict rule (pending bookings reserve the slot too)
+                    bool hasConflict = await _dbContext.Bookings.AnyAsync(
+                        b => b.CaregiverId == request.CaregiverId &&
+                             b.BookingDate == request.BookingDate &&
+                             (b.Status == BookingStatus.PendingPayment ||
+                              b.Status == BookingStatus.PendingCaregiverApproval ||
+                              b.Status == BookingStatus.Confirmed ||
+                              b.Status == BookingStatus.InProgress) &&
+                             request.StartTime < b.EndTime &&
+                             request.EndTime > b.StartTime,
+                        cancellationToken);
 
-            _dbContext.Bookings.Add(booking);
-            await _dbContext.SaveChangesAsync(cancellationToken);
+                    if (hasConflict)
+                    {
+                        return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
+                            ScheduleConflict);
+                    }
 
-            return Result<BookingCheckoutResponse>.Success(
-                new BookingCheckoutResponse(
-                    booking.Id.Value,
-                    booking.Status,
-                    priceSnapshot.TotalPayableAmount,
-                    priceSnapshot.Currency));
+                    bool isAvailable = await _availabilityRules.IsAvailableAsync(
+                        request.CaregiverId,
+                        request.BookingDate,
+                        request.ShiftType,
+                        request.StartTime,
+                        request.EndTime,
+                        cancellationToken);
+
+                    if (!isAvailable)
+                    {
+                        return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
+                            AvailabilityConflict);
+                    }
+
+                    // 8. Create Booking Aggregate
+                    Booking booking = Booking.Create(
+                        family.Id,
+                        request.UserId,
+                        request.ElderlyId,
+                        request.CaregiverId,
+                        price.Value.CaregiverType,
+                        request.ShiftType,
+                        request.BookingDate,
+                        request.StartTime,
+                        request.EndTime,
+                        request.ServiceAddress,
+                        request.SpecialInstructions,
+                        priceSnapshot,
+                        acceptanceDeadline,
+                        request.CurrentDate,
+                        request.UtcNow,
+                        request.BookingAreaId,
+                        request.BookingServiceId);
+
+                    var response = new BookingCheckoutResponse(
+                        booking.Id.Value,
+                        booking.Status,
+                        priceSnapshot.TotalPayableAmount,
+                        priceSnapshot.Currency);
+
+                    _dbContext.Bookings.Add(booking);
+
+                    if (idempotency is not null)
+                    {
+                        // The row commits atomically with the booking: a
+                        // rejected attempt never stores a key.
+                        _dbContext.IdempotencyRequests.Add(
+                            IdempotencyRecord.Create(
+                                request.UserId,
+                                IdempotencyOperations.FamilyBookingCheckout,
+                                idempotency.Key.Value,
+                                idempotency.Fingerprint,
+                                booking.Id.Value,
+                                200,
+                                _snapshotter.Snapshot(response),
+                                request.UtcNow));
+                    }
+
+                    await _dbContext.SaveChangesAsync(cancellationToken);
+
+                    return Result<IdempotentOutcome<BookingCheckoutResponse>>.Success(
+                        IdempotentOutcome<BookingCheckoutResponse>.Fresh(
+                            response,
+                            200));
+                },
+                cancellationToken);
+        }
+        catch (CaregiverBookingScheduleConflictException)
+        {
+            // The serializable transaction could not be serialized: the slot
+            // outcome is unknown, never proof that the slot is unavailable.
+            return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
+                ScheduleConflict);
+        }
+        catch (DbUpdateException exception) when (
+            request.Idempotency is not null &&
+            PostgresErrors.IsUniqueViolation(
+                exception,
+                IdempotencyRecord.UniqueIndexName))
+        {
+            // A concurrent duplicate won the unique (actor, operation, key)
+            // index. Detach the losing rows and replay the winner.
+            _dbContext.DetachAdded<Booking>();
+            _dbContext.DetachAdded<IdempotencyRecord>();
+
+            IdempotencyRecord? winner = await FindStoredAsync(
+                request.UserId,
+                request.Idempotency.Key.Value,
+                cancellationToken);
+
+            if (winner is null)
+            {
+                throw;
+            }
+
+            return Replay(winner, request.Idempotency);
         }
         catch (DomainException exception)
         {
-            return Result<BookingCheckoutResponse>.Failure(
+            return Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
                 new Error("Bookings.Domain.InvalidOperation", exception.Message));
         }
     }
+
+    private async Task<IdempotencyRecord?> FindStoredAsync(
+        UserId actor,
+        string key,
+        CancellationToken cancellationToken) =>
+        await _dbContext.IdempotencyRequests
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                row => row.ActorId == actor &&
+                    row.Operation == IdempotencyOperations.FamilyBookingCheckout &&
+                    row.Key == key,
+                cancellationToken);
+
+    private static Result<IdempotentOutcome<BookingCheckoutResponse>> Replay(
+        IdempotencyRecord stored,
+        IdempotencyRequest idempotency) =>
+        stored.Fingerprint == idempotency.Fingerprint
+            ? Result<IdempotentOutcome<BookingCheckoutResponse>>.Success(
+                IdempotentOutcome<BookingCheckoutResponse>.Replay(
+                    stored.ResponseStatus,
+                    stored.ResponseBody))
+            : Result<IdempotentOutcome<BookingCheckoutResponse>>.Failure(
+                IdempotencyConflict);
 }
 
 // --------------------------- Cancel Command ------------------------------

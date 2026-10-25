@@ -10,6 +10,7 @@ using Sanad.Modules.Families.Domain.CareRecords;
 using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
+using Sanad.UnitTests.Support;
 
 namespace Sanad.UnitTests.Families;
 
@@ -233,22 +234,22 @@ public sealed class CareRecordHandlerTests
             viewer, family.OwnerUserId, FamilyRelationshipType.Other, FamilyRole.Viewer));
         db.SaveChanges();
 
-        var create = await new CreateFamilyCareRecordCommandHandler(db, new FixedClock()).Handle(
+        var create = await new CreateFamilyCareRecordCommandHandler(db, new FixedClock(), new StubIdempotentResponseSnapshotter()).Handle(
             new CreateFamilyCareRecordCommand(
                 family.OwnerUserId, elderly.Id, "Local Hospital",
                 new(2026, 10, 10), "checkup", "corr-1"),
             CancellationToken.None);
 
         Assert.True(create.IsSuccess);
-        Assert.Equal(CareRecordSource.Family, create.Value.Source);
-        Assert.Equal(1, create.Value.Version);
+        Assert.Equal(CareRecordSource.Family, create.Value.Value.Source);
+        Assert.Equal(1, create.Value.Value.Version);
 
         var audit = await db.CareRecordAudits.SingleAsync();
         Assert.Equal(CareRecordAuditAction.Created, audit.Action);
-        Assert.Equal(create.Value.Id, audit.RecordId);
+        Assert.Equal(create.Value.Value.Id, audit.RecordId);
         Assert.Equal(CareRecordSource.Family, audit.Source);
 
-        var denied = await new CreateFamilyCareRecordCommandHandler(db, new FixedClock()).Handle(
+        var denied = await new CreateFamilyCareRecordCommandHandler(db, new FixedClock(), new StubIdempotentResponseSnapshotter()).Handle(
             new CreateFamilyCareRecordCommand(
                 viewer, elderly.Id, "Viewer Hospital",
                 new(2026, 10, 11), "x", "corr-2"),
@@ -263,7 +264,7 @@ public sealed class CareRecordHandlerTests
     {
         var (db, family, elderly) = SeedFamily();
 
-        var result = await new CreateFamilyCareRecordCommandHandler(db, new FixedClock()).Handle(
+        var result = await new CreateFamilyCareRecordCommandHandler(db, new FixedClock(), new StubIdempotentResponseSnapshotter()).Handle(
             new CreateFamilyCareRecordCommand(
                 family.OwnerUserId, elderly.Id, "Hospital",
                 new(2026, 10, 10), new string('ط', 4001), "corr"),
@@ -384,15 +385,15 @@ public sealed class CareRecordHandlerTests
         var caregiverId = ConfirmedBooking(db, family, elderly, UtcNow);
         var caregiverUserId = UserId.New();
 
-        var result = await new CreateCaregiverCareRecordCommandHandler(db, new FixedClock()).Handle(
+        var result = await new CreateCaregiverCareRecordCommandHandler(db, new FixedClock(), new StubIdempotentResponseSnapshotter()).Handle(
             new CreateCaregiverCareRecordCommand(
                 caregiverId, caregiverUserId, elderly.Id, "Field Hospital",
                 new(2026, 10, 20), "dressing changed", "corr"),
             CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(CareRecordSource.Caregiver, result.Value.Source);
-        Assert.Equal(elderly.Id.Value, result.Value.DependentId);
+        Assert.Equal(CareRecordSource.Caregiver, result.Value.Value.Source);
+        Assert.Equal(elderly.Id.Value, result.Value.Value.DependentId);
     }
 
     [Fact]
@@ -404,7 +405,7 @@ public sealed class CareRecordHandlerTests
         booking.StartVisit(UtcNow.AddHours(2)); // after ConfirmedOnUtc (= now + 1m)
         db.SaveChanges();
 
-        var result = await new CreateCaregiverCareRecordCommandHandler(db, new FixedClock()).Handle(
+        var result = await new CreateCaregiverCareRecordCommandHandler(db, new FixedClock(), new StubIdempotentResponseSnapshotter()).Handle(
             new CreateCaregiverCareRecordCommand(
                 caregiverId, UserId.New(), elderly.Id, "Field Hospital",
                 new(2026, 10, 20), "dressing changed", "corr"),
@@ -428,7 +429,7 @@ public sealed class CareRecordHandlerTests
         booking.CompleteVisit("done", cutoffUtc);
         db.SaveChanges();
 
-        var atBoundary = await new CreateCaregiverCareRecordCommandHandler(db, new FixedClock()).Handle(
+        var atBoundary = await new CreateCaregiverCareRecordCommandHandler(db, new FixedClock(), new StubIdempotentResponseSnapshotter()).Handle(
             new CreateCaregiverCareRecordCommand(
                 caregiverId, UserId.New(), elderly.Id, "Field Hospital",
                 new(2026, 10, 20), "note", "corr"),
@@ -443,7 +444,7 @@ public sealed class CareRecordHandlerTests
         booking2.CompleteVisit("done", cutoffUtc.AddSeconds(-1));
         db2.SaveChanges();
 
-        var pastBoundary = await new CreateCaregiverCareRecordCommandHandler(db2, new FixedClock()).Handle(
+        var pastBoundary = await new CreateCaregiverCareRecordCommandHandler(db2, new FixedClock(), new StubIdempotentResponseSnapshotter()).Handle(
             new CreateCaregiverCareRecordCommand(
                 caregiverId2, UserId.New(), elderly2.Id, "Field Hospital",
                 new(2026, 10, 20), "note", "corr"),
@@ -456,7 +457,7 @@ public sealed class CareRecordHandlerTests
     {
         var (db, _, _) = SeedFamily();
 
-        var result = await new CreateCaregiverCareRecordCommandHandler(db, new FixedClock()).Handle(
+        var result = await new CreateCaregiverCareRecordCommandHandler(db, new FixedClock(), new StubIdempotentResponseSnapshotter()).Handle(
             new CreateCaregiverCareRecordCommand(
                 CaregiverId.New(), UserId.New(), ElderlyId.New(), "Field Hospital",
                 new(2026, 10, 20), "note", "corr"),
@@ -483,7 +484,7 @@ public sealed class CareRecordHandlerTests
         db.Bookings.Single().CancelByFamily("plans changed", UtcNow.AddMinutes(5));
         db.SaveChanges();
 
-        var create = await new CreateCaregiverCareRecordCommandHandler(db, new FixedClock()).Handle(
+        var create = await new CreateCaregiverCareRecordCommandHandler(db, new FixedClock(), new StubIdempotentResponseSnapshotter()).Handle(
             new CreateCaregiverCareRecordCommand(
                 caregiverId, UserId.New(), elderly.Id, "Field Hospital",
                 new(2026, 10, 20), "note", "corr"),

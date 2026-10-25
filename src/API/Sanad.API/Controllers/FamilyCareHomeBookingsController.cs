@@ -5,6 +5,7 @@ using MediatR;
 using Sanad.API.Authorization;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.BuildingBlocks.Application.Abstractions;
+using Sanad.BuildingBlocks.Application.Idempotency;
 using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
@@ -29,9 +30,34 @@ public sealed class FamilyCareHomeBookingsController(ISender sender, IFamiliesDb
     { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); return ToActionResult(await sender.Send(new GetFamilyCareHomeBookingQuery(actor, family.Id, bookingId, clock.UtcNow), ct)); }
 
     [HttpPost("checkout")]
+    [ProducesResponseType(typeof(CareHomeBookingResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> Checkout(CareHomeCheckoutRequest request, CancellationToken ct)
-    { if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized(); var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct); if (family is null) return NotFound(); var resolution = await intake.ResolveAsync(new ElderlyIntakeRequest(actor, family.Id, new ElderlyId(request.ElderlyId), DateOnly.FromDateTime(clock.UtcNow), request.CareNeedsNotes, request.ResponsibleContactName, request.ResponsibleContactPhone, request.ResponsibleContactRelationship), ct); if (resolution.IsFailure) return ToActionResult(resolution); return ToActionResult(await sender.Send(new CheckoutCareHomeBookingCommand(actor, family.Id, resolution.Value, request.FacilityId, request.RoomTypeId, request.RequestedStartDate, clock.UtcNow), ct)); }
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actor)) return Unauthorized();
+        if (!TryGetIdempotencyKey("CareHomes.Bookings.IdempotencyKeyInvalid", out IdempotencyKey? key, out IActionResult? keyFailure)) return keyFailure!;
+        var family = await families.Families.AsNoTracking().SingleOrDefaultAsync(x => x.OwnerUserId == actor || x.Members.Any(m => m.Id == actor), ct);
+        if (family is null) return NotFound();
+        var resolution = await intake.ResolveAsync(new ElderlyIntakeRequest(actor, family.Id, new ElderlyId(request.ElderlyId), DateOnly.FromDateTime(clock.UtcNow), request.CareNeedsNotes, request.ResponsibleContactName, request.ResponsibleContactPhone, request.ResponsibleContactRelationship), ct);
+        if (resolution.IsFailure) return ToActionResult(resolution);
+        // The fingerprint covers only caller-supplied request values: the
+        // server-derived intake snapshot (resolved above) and the clock are
+        // deliberately excluded, so a genuine retry fingerprints identically.
+        IdempotencyRequest? idempotency = key is null ? null : new IdempotencyRequest(key, IdempotencyFingerprint.Compute(
+            IdempotencyOperations.FamilyCareHomeBookingCheckout,
+            ("elderlyId", IdempotencyFingerprint.Id(request.ElderlyId)),
+            ("facilityId", IdempotencyFingerprint.Id(request.FacilityId)),
+            ("roomTypeId", IdempotencyFingerprint.Id(request.RoomTypeId)),
+            ("requestedStartDate", IdempotencyFingerprint.Date(request.RequestedStartDate)),
+            ("careNeedsNotes", IdempotencyFingerprint.Text(request.CareNeedsNotes)),
+            ("responsibleContactName", IdempotencyFingerprint.Text(request.ResponsibleContactName)),
+            ("responsibleContactPhone", IdempotencyFingerprint.Text(request.ResponsibleContactPhone)),
+            ("responsibleContactRelationship", IdempotencyFingerprint.Text(request.ResponsibleContactRelationship))));
+        var result = await sender.Send(new CheckoutCareHomeBookingCommand(actor, family.Id, resolution.Value, request.FacilityId, request.RoomTypeId, request.RequestedStartDate, clock.UtcNow, idempotency), ct);
+        return IdempotentOk(result);
+    }
 
     [HttpPost("{bookingId:guid}/payments/intent")]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]

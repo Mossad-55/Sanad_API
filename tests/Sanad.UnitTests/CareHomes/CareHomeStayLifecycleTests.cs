@@ -5,6 +5,7 @@ using Sanad.Modules.CareHomes.Application.Bookings;
 using Sanad.Modules.CareHomes.Application.Inventory;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
+using Sanad.Modules.CareHomes.Domain.Idempotency;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.CareHomes.Infrastructure.Bookings;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
@@ -843,6 +844,9 @@ public sealed class CareHomeStayLifecycleTests
         public DbSet<CareHomeProfileMedia> ProfileMedia => inner.ProfileMedia;
         public DbSet<CareHomeVisitSettings> VisitSettings => inner.VisitSettings;
         public DbSet<CareHomeVisit> Visits => inner.Visits;
+        public DbSet<IdempotencyRequest> IdempotencyRequests => inner.IdempotencyRequests;
+
+        public void DetachAdded<TEntity>() where TEntity : class => inner.DetachAdded<TEntity>();
 
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {
@@ -881,6 +885,9 @@ public sealed class CareHomeStayLifecycleTests
         public DbSet<CareHomeProfileMedia> ProfileMedia => inner.ProfileMedia;
         public DbSet<CareHomeVisitSettings> VisitSettings => inner.VisitSettings;
         public DbSet<CareHomeVisit> Visits => inner.Visits;
+        public DbSet<IdempotencyRequest> IdempotencyRequests => inner.IdempotencyRequests;
+
+        public void DetachAdded<TEntity>() where TEntity : class => inner.DetachAdded<TEntity>();
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

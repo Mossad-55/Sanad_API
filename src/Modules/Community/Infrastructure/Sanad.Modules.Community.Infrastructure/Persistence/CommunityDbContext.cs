@@ -25,6 +25,7 @@ public class CommunityDbContext : DbContext, ICommunityDbContext
     }
 
     public DbSet<Post> Posts { get; set; } = null!;
+    public DbSet<PostView> PostViews { get; set; } = null!;
     public DbSet<Comment> Comments { get; set; } = null!;
     public DbSet<Reply> Replies { get; set; } = null!;
     public DbSet<CheckIn> CheckIns { get; set; } = null!;

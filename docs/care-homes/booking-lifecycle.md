@@ -58,6 +58,24 @@ happens before the capacity read, the reservation, and any booking write, so a
 rejected checkout leaves no booking and no hold. Local room/bed maintenance
 blocks are unrelated to this control and are still applied as documented above.
 
+**Retry safety (`Idempotency-Key`).** The header is optional; without it the
+request behaves exactly as before. With it, the trimmed value must be 1–128
+printable ASCII characters, otherwise `400
+CareHomes.Bookings.IdempotencyKeyInvalid`. Records are scoped to the
+authenticated actor, the operation and the key, and the key row commits in the
+same transaction as the booking and its hold. The fingerprint covers the
+request body and the route identifiers (`facilityId`, `roomTypeId`,
+`elderlyId`, `startDate`); server-derived values (price, hold, status,
+arrival window) are excluded. The same key with the same fingerprint replays
+the stored `200` status and body byte-for-byte with no second booking and no
+second 15-minute hold. The same key with a different fingerprint is `409
+CareHomes.Bookings.IdempotencyConflict`. Concurrent duplicates execute exactly
+once through the unique `(actor_id, operation, idempotency_key)` index; the
+loser replays the winner. Because the replay lookup runs inside the
+facility/room-type reservation guard, a confirmed replay answers its original
+result even while the platform is in Maintenance; a new request is still
+refused. Rows are retained for 7 days; no purge worker runs in this slice.
+
 Payment-intent JSON follows the existing Family payment shape:
 
 ```json

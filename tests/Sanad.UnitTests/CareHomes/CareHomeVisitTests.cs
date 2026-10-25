@@ -10,6 +10,7 @@ using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Application.Visits;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
+using Sanad.Modules.CareHomes.Domain.Idempotency;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Families.Domain.Families;
@@ -608,6 +609,10 @@ public sealed class CareHomeVisitTests
         public DbSet<CareHomeVisitSettings> VisitSettings => _inner.VisitSettings;
 
         public DbSet<CareHomeVisit> Visits => _inner.Visits;
+
+        public DbSet<IdempotencyRequest> IdempotencyRequests => _inner.IdempotencyRequests;
+
+        public void DetachAdded<TEntity>() where TEntity : class => _inner.DetachAdded<TEntity>();
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

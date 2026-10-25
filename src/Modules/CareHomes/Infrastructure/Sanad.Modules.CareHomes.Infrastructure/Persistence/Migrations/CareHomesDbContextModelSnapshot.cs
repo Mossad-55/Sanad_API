@@ -1645,6 +1645,63 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                     b.ToTable("room_type_media", "care_homes");
                 });
 
+            modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Idempotency.IdempotencyRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("fingerprint");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("operation");
+
+                    b.Property<Guid?>("ResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resource_id");
+
+                    b.Property<string>("ResponseBody")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("response_body");
+
+                    b.Property<int>("ResponseStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedOnUtc")
+                        .HasDatabaseName("IX_idempotency_requests_created_on_utc");
+
+                    b.HasIndex("ActorId", "Operation", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("IX_idempotency_requests_actor_id_operation_idempotency_key");
+
+                    b.ToTable("idempotency_requests", "care_homes");
+                });
+
             modelBuilder.Entity("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeBooking", b =>
                 {
                     b.HasOne("Sanad.Modules.CareHomes.Domain.Bookings.CareHomeBooking", null)

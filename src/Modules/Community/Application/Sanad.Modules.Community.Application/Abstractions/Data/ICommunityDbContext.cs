@@ -15,6 +15,7 @@ namespace Sanad.Modules.Community.Application.Abstractions.Data;
 public interface ICommunityDbContext
 {
     DbSet<Post> Posts { get; }
+    DbSet<PostView> PostViews { get; }
     DbSet<Comment> Comments { get; }
     DbSet<Reply> Replies { get; }
     DbSet<CheckIn> CheckIns { get; }

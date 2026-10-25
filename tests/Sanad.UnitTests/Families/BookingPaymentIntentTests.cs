@@ -13,6 +13,7 @@ using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Finance.Application;
 using Sanad.Modules.Finance.Domain;
 using Sanad.UnitTests.Finance;
+using Sanad.UnitTests.Support;
 using Xunit;
 
 namespace Sanad.UnitTests.Families;
@@ -104,7 +105,10 @@ public sealed class BookingPaymentIntentTests
             new FixedPlatformChargeRules(15m, 0m),
             // E04: the control record is supplied explicitly; the seeded
             // production state is Operational with both methods enabled.
-            controls ?? FixedPlatformControls.Operational());
+            controls ?? FixedPlatformControls.Operational(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
         var checkoutResult = await checkout.Handle(
             new CreateBookingCheckoutCommand(
@@ -125,7 +129,7 @@ public sealed class BookingPaymentIntentTests
 
         Booking booking = dbContext.Bookings.Single();
 
-        return (checkoutResult.Value, booking);
+        return (checkoutResult.Value.Value, booking);
     }
 
     private static CreateBookingPaymentIntentCommandHandler IntentHandler(
@@ -323,7 +327,10 @@ public sealed class BookingPaymentIntentTests
             dbContext,
             new FakePricing(BookingCaregiverType.Medical, 500m),
             new FixedPlatformChargeRules(15m, 0m),
-            FixedPlatformControls.Maintenance());
+            FixedPlatformControls.Maintenance(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
         var result = await checkout.Handle(
             CheckoutCommand(family, elderly),
@@ -349,7 +356,10 @@ public sealed class BookingPaymentIntentTests
             dbContext,
             new FakePricing(BookingCaregiverType.Medical, 500m),
             new FixedPlatformChargeRules(15m, 0m),
-            controls);
+            controls,
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
         var result = await checkout.Handle(
             CheckoutCommand(family, elderly),

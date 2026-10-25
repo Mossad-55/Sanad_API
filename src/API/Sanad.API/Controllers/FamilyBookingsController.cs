@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.BuildingBlocks.Application.Abstractions;
+using Sanad.BuildingBlocks.Application.Idempotency;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
@@ -111,6 +112,8 @@ public sealed class FamilyBookingsController : ApiControllerBase
     [ProducesResponseType(
         typeof(BookingCheckoutResponse),
         StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> CreateCheckout(
         [FromBody] CreateBookingCheckoutRequest request,
@@ -120,6 +123,31 @@ public sealed class FamilyBookingsController : ApiControllerBase
         {
             return Unauthorized();
         }
+
+        if (!TryGetIdempotencyKey(
+                "Bookings.IdempotencyKeyInvalid",
+                out IdempotencyKey? key,
+                out IActionResult? keyFailure))
+        {
+            return keyFailure!;
+        }
+
+        IdempotencyRequest? idempotency = key is null
+            ? null
+            : new IdempotencyRequest(
+                key,
+                IdempotencyFingerprint.Compute(
+                    IdempotencyOperations.FamilyBookingCheckout,
+                    ("elderlyId", IdempotencyFingerprint.Id(request.ElderlyId)),
+                    ("caregiverId", IdempotencyFingerprint.Id(request.CaregiverId)),
+                    ("shiftType", IdempotencyFingerprint.Enum(request.ShiftType)),
+                    ("bookingDate", IdempotencyFingerprint.Date(request.BookingDate)),
+                    ("startTime", IdempotencyFingerprint.Time(request.StartTime)),
+                    ("endTime", IdempotencyFingerprint.Time(request.EndTime)),
+                    ("serviceAddress", IdempotencyFingerprint.Text(request.ServiceAddress)),
+                    ("specialInstructions", IdempotencyFingerprint.Text(request.SpecialInstructions)),
+                    ("bookingAreaId", IdempotencyFingerprint.Id(request.BookingAreaId)),
+                    ("bookingServiceId", IdempotencyFingerprint.Id(request.BookingServiceId))));
 
         DateTime utcNow = _dateTimeProvider.UtcNow;
         DateOnly currentDate = DateOnly.FromDateTime(utcNow);
@@ -137,10 +165,11 @@ public sealed class FamilyBookingsController : ApiControllerBase
             currentDate,
             utcNow,
             request.BookingAreaId,
-            request.BookingServiceId);
+            request.BookingServiceId,
+            idempotency);
 
         var result = await _sender.Send(command, cancellationToken);
-        return ToActionResult(result);
+        return IdempotentOk(result);
     }
 
     [HttpPost("{bookingId:guid}/cancel")]

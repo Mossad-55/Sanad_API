@@ -99,3 +99,59 @@ Note: editing the professional profile, replacing a mandatory certificate file, 
 ```
 
 Schedule availability (`hasAvailability`) is part of the submit readiness checklist.
+
+## Date-specific availability (family read)
+
+Additive family-facing read; the weekly routes and their DTOs above are
+unchanged. The family app uses it to show a caregiver's real offer for one day.
+
+```http
+GET /api/v1/caregivers/{caregiverId}/availability/day?date=2026-06-08&shiftType=EightHourShift
+Authorization: Bearer {{familyToken}}
+```
+
+Policy `FamilyAccess`. `shiftType` accepts `HomeVisit`, `EightHourShift`,
+`TwelveHourShift`, `TwentyFourHourShift` or `Hourly` (enum name, case-insensitive).
+
+```json
+{
+  "caregiverId": "0198e2c2-2222-7777-8888-000000000002",
+  "date": "2026-06-08",
+  "timeZoneId": "Africa/Cairo",
+  "shiftType": 2,
+  "intervals": [
+    { "startsAt": "2026-06-08T05:00:00+00:00", "endsAt": "2026-06-08T13:00:00+00:00" }
+  ]
+}
+```
+
+- `timeZoneId` is the documented display zone `Africa/Cairo`; the caregiver's
+  stored weekly windows are read in that zone. `startsAt`/`endsAt` are UTC
+  instants (`+00:00`); stored UTC timestamps are never relabeled.
+- Mapping: `HomeVisit` → medical home-visit windows; `EightHourShift` → 8-hour
+  medical shifts or companion `EightHourDay`; `TwelveHourShift` → 12-hour
+  medical shifts or companion `Overnight` (20:00→08:00); `TwentyFourHourShift` →
+  `TwentyFourHourLiveIn`; `Hourly` → companion `Hourly`. A day cannot mix a
+  shift with home-visit windows.
+- Active booking overlaps (`PendingPayment`, `PendingCaregiverApproval`,
+  `Confirmed`, `InProgress`) are removed with the same predicate checkout uses:
+  `start < busy.endTime && end > busy.startTime` over the raw stored day times.
+  Fixed-duration shifts are offered whole or dropped entirely; `Hourly` and
+  `HomeVisit` windows subtract only the overlapping portion.
+- **Cross-midnight gap:** because that predicate compares raw day times, a busy
+  booking inside a window that crosses midnight is not detected. The read
+  mirrors the existing checkout behaviour rather than silently diverging; the
+  gap is not fixed in this slice.
+- DST: an interval whose boundary falls in a spring-forward gap is omitted; an
+  ambiguous fall-back boundary resolves deterministically to the standard offset.
+- An inactive caregiver or one whose availability is manually `Unavailable`
+  answers `200` with `intervals: []`. No date-specific leave entity exists.
+- The response is advisory, not a reservation. Caregiver bookings carry an
+  acceptance deadline, not an availability hold, and no hold/expiry rule is
+  invented here.
+- Errors: `400 Caregivers.Availability.InvalidQuery` (missing/invalid `date` or
+  `shiftType`), `404 Caregivers.NotFound`, `401` unauthenticated, `403` outside
+  `FamilyAccess`.
+- Checkout reuses this rule set inside its serialized reservation check. A slot
+  outside the returned intervals is `409 Bookings.AvailabilityConflict`; an
+  overlapping booking stays `409 Bookings.ScheduleConflict`.

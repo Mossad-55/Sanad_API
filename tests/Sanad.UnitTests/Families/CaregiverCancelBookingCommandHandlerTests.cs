@@ -5,6 +5,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers;
+using Sanad.BuildingBlocks.Application.Idempotency;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Exceptions;
@@ -27,6 +28,7 @@ using Sanad.Modules.Families.Infrastructure.Data;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Xunit;
 using Sanad.UnitTests.Finance;
+using Sanad.UnitTests.Support;
 
 namespace Sanad.UnitTests.Families;
 
@@ -1018,11 +1020,14 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
             dbContext,
             new FixedPricing(CaregiverBaseFee),
             new FixedPlatformChargeRules(15m, 0m),
-            FixedPlatformControls.Operational());
+            FixedPlatformControls.Operational(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
         TimeOnly startTime = TimeOnly.FromDateTime(scheduledStartUtc);
 
-        Result<BookingCheckoutResponse> result = await handler.Handle(
+        Result<IdempotentOutcome<BookingCheckoutResponse>> result = await handler.Handle(
             new CreateBookingCheckoutCommand(
                 family.OwnerUserId,
                 elderly.Id,
@@ -1039,7 +1044,7 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
 
         Assert.True(result.IsSuccess);
 
-        var bookingId = new BookingId(result.Value.BookingId);
+        var bookingId = new BookingId(result.Value.Value.BookingId);
 
         return await PersistedBookingAsync(dbContext, bookingId);
     }

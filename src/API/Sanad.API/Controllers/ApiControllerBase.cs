@@ -1,6 +1,7 @@
 using System.IdentityModel.Tokens.Jwt;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.ProblemDetail;
+using Sanad.BuildingBlocks.Application.Idempotency;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
@@ -17,6 +18,10 @@ public abstract class ApiControllerBase :
 {
     protected const string DeviceSessionHeaderName =
         "X-Device-Session-Id";
+
+    /// <summary>The optional retry-safety header on the four approved creates.</summary>
+    protected const string IdempotencyKeyHeaderName =
+        "Idempotency-Key";
 
     protected IActionResult ToActionResult(
         Result result)
@@ -379,5 +384,84 @@ public abstract class ApiControllerBase :
             HttpContext.TraceIdentifier;
 
         return BadRequest(problemDetails);
+    }
+
+    /// <summary>
+    /// Reads and normalizes the optional <c>Idempotency-Key</c> header exactly
+    /// once. An absent (or whitespace-only) header leaves
+    /// <paramref name="key"/> null and keeps today's behavior byte-identical;
+    /// a malformed key returns false with a coded 400 and writes nothing. A
+    /// repeated header is refused rather than silently joining values.
+    /// </summary>
+    protected bool TryGetIdempotencyKey(
+        string invalidCode,
+        out IdempotencyKey? key,
+        out IActionResult? failure)
+    {
+        key = null;
+        failure = null;
+
+        if (!Request.Headers.TryGetValue(
+                IdempotencyKeyHeaderName,
+                out Microsoft.Extensions.Primitives.StringValues values))
+        {
+            return true;
+        }
+
+        if (values.Count > 1)
+        {
+            failure = BadRequestWithCode(invalidCode);
+            return false;
+        }
+
+        if (!IdempotencyKey.TryParse(values.ToString(), out key, out _))
+        {
+            failure = BadRequestWithCode(invalidCode);
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Maps an idempotent create result: a fresh outcome keeps the route's
+    /// normal success shape (200 or 201), while a confirmed replay returns the
+    /// stored status and the stored byte-exact JSON body.
+    /// </summary>
+    protected IActionResult IdempotentOk<T>(
+        Result<IdempotentOutcome<T>> result) =>
+        ToIdempotentActionResult(result, StatusCodes.Status200OK);
+
+    /// <summary>
+    /// Maps an idempotent create result whose fresh success is a 201.
+    /// </summary>
+    protected IActionResult IdempotentCreated<T>(
+        Result<IdempotentOutcome<T>> result) =>
+        ToIdempotentActionResult(result, StatusCodes.Status201Created);
+
+    private IActionResult ToIdempotentActionResult<T>(
+        Result<IdempotentOutcome<T>> result,
+        int freshStatusCode)
+    {
+        if (result.IsFailure)
+        {
+            // Explicitly the non-generic overload: the generic one would
+            // serialize the failure container as a success payload.
+            return ToActionResult((Result)result);
+        }
+
+        IdempotentOutcome<T> outcome = result.Value;
+
+        if (!outcome.IsReplay)
+        {
+            return StatusCode(freshStatusCode, outcome.Value);
+        }
+
+        return new ContentResult
+        {
+            Content = outcome.ReplayBody,
+            ContentType = "application/json; charset=utf-8",
+            StatusCode = outcome.StatusCode
+        };
     }
 }

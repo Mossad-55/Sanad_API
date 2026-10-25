@@ -12,6 +12,7 @@ using Sanad.Modules.Families.Domain.Notes;
 using Sanad.Modules.Families.Domain.Reports;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Domain.HelpRequests;
+using Sanad.Modules.Families.Domain.Idempotency;
 using Sanad.Modules.Families.Domain.Sos;
 
 namespace Sanad.Modules.Families.Application.Abstractions.Data;
@@ -59,12 +60,26 @@ public interface IFamiliesDbContext
     DbSet<CareRecordAudit> CareRecordAudits { get; }
 
     /// <summary>
+    /// Accepted idempotent create attempts. The unique
+    /// <c>(actor_id, operation, idempotency_key)</c> index makes concurrent
+    /// duplicates execute exactly once.
+    /// </summary>
+    DbSet<IdempotencyRequest> IdempotencyRequests { get; }
+
+    /// <summary>
     /// Queues the provider identity claim in the same unit of work as the callback mutation.
     /// The shared unique registry is the authoritative race boundary; the claim is not accepted
     /// until the subsequent SaveChangesAsync transaction succeeds.
     /// </summary>
     void ReservePaymobSubscriptionIdentity(PaymobSubscriptionIdentity identity) =>
         PaymobSubscriptionIdentities.Add(identity);
+
+    /// <summary>
+    /// Detaches every pending <see cref="EntityState.Added"/> entity of
+    /// <typeparamref name="TEntity"/>. Used by the idempotency race path: the
+    /// loser's rows never reached the database and must not be retried.
+    /// </summary>
+    void DetachAdded<TEntity>() where TEntity : class;
 
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);

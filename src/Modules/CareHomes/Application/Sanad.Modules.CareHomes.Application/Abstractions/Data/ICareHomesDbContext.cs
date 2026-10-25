@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Domain.Bookings;
+using Sanad.Modules.CareHomes.Domain.Idempotency;
 
 namespace Sanad.Modules.CareHomes.Application.Abstractions.Data;
 
@@ -27,6 +28,19 @@ public interface ICareHomesDbContext
     DbSet<CareHomeProfileMedia> ProfileMedia { get; }
     DbSet<CareHomeVisitSettings> VisitSettings { get; }
     DbSet<CareHomeVisit> Visits { get; }
+
+    /// <summary>
+    /// Accepted idempotent create attempts. The unique
+    /// <c>(actor_id, operation, idempotency_key)</c> index makes concurrent
+    /// duplicates execute exactly once.
+    /// </summary>
+    DbSet<IdempotencyRequest> IdempotencyRequests { get; }
+
+    /// <summary>
+    /// Detaches every pending <see cref="EntityState.Added"/> entity of
+    /// <typeparamref name="TEntity"/> after the loser of an idempotency race.
+    /// </summary>
+    void DetachAdded<TEntity>() where TEntity : class;
 
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

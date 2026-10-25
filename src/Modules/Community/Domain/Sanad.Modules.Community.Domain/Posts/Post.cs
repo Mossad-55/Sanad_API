@@ -53,6 +53,14 @@ public sealed class Post : AggregateRoot<CommunityPostId>
     public int LikesCount { get; private set; }
     public int CommentsCount { get; private set; }
     public int FavoritesCount { get; private set; }
+
+    /// <summary>
+    /// Lifetime view counter: incremented once per distinct non-author viewer
+    /// (<see cref="PostView"/>) and never decremented, so it can never go
+    /// negative.
+    /// </summary>
+    public int ViewsCount { get; private set; }
+
     public UserId AuthorId { get; private set; }
 
     /// <summary>
@@ -102,6 +110,12 @@ public sealed class Post : AggregateRoot<CommunityPostId>
     public void DecrementComments() => CommentsCount = Math.Max(0, CommentsCount - 1);
     public void IncrementFavorites() => FavoritesCount = checked(FavoritesCount + 1);
     public void DecrementFavorites() => FavoritesCount = Math.Max(0, FavoritesCount - 1);
+
+    /// <summary>
+    /// Counts one distinct viewer. There is deliberately no decrement: a view
+    /// is a lifetime fact, so the stored counter is monotonic and non-negative.
+    /// </summary>
+    public void IncrementViews() => ViewsCount = checked(ViewsCount + 1);
 
     public void Publish(UserId moderatorId, DateTime publishedOnUtc)
     {

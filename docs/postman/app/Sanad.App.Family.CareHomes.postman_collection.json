@@ -95,6 +95,12 @@
       "description": "Optional Idempotency-Key header for the family visit create; same key + same body replays the stored visit (200), same key + any body difference is 409 CareHomes.Visits.IdempotencyConflict; empty = legacy create."
     },
     {
+      "key": "careHomeCheckoutIdempotencyKey",
+      "value": "",
+      "type": "string",
+      "description": "Optional Idempotency-Key header for the care-home booking checkout; reuse the same value to retry the same request, empty = legacy create."
+    },
+    {
       "key": "careHomeVisitId",
       "value": ""
     }
@@ -312,6 +318,10 @@
               {
                 "key": "Content-Type",
                 "value": "application/json"
+              },
+              {
+                "key": "Idempotency-Key",
+                "value": "{{careHomeCheckoutIdempotencyKey}}"
               }
             ],
             "auth": {
@@ -329,7 +339,7 @@
               "raw": "{\n  \"elderlyId\": \"{{careHomeElderlyId}}\",\n  \"facilityId\": \"{{careHomeFacilityId}}\",\n  \"roomTypeId\": \"{{careHomeRoomTypeId}}\",\n  \"requestedStartDate\": \"{{careHomeStartDate}}\",\n  \"careNeedsNotes\": \"Authored booking example\",\n  \"responsibleContactName\": \"Fixture contact\",\n  \"responsibleContactPhone\": \"+201000000000\",\n  \"responsibleContactRelationship\": \"Daughter\"\n}"
             },
             "url": "{{baseUrl}}/api/v1/family/care-home-bookings/checkout",
-            "description": "Creates one calendar month with a 15-minute unpaid hold. Start date must be at least 24 hours from checkout in Cairo time. Success is 200; validation/arrival/capacity/configuration errors are mapped by the API. Platform availability: a new checkout is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the platform controls cannot be read (503 Platform.ControlStateUnavailable); no booking and no hold are created."
+            "description": "Creates one calendar month with a 15-minute unpaid hold. Start date must be at least 24 hours from checkout in Cairo time. Success is 200; validation/arrival/capacity/configuration errors are mapped by the API. The Idempotency-Key header is optional: leave careHomeCheckoutIdempotencyKey empty for the legacy behavior; the same trimmed key (1–128 printable ASCII, else 400 CareHomes.Bookings.IdempotencyKeyInvalid) with the same request replays the stored 200 body with no second booking or hold, and the same key with a different request is 409 CareHomes.Bookings.IdempotencyConflict. Replayed snapshots are retained for 7 days; cleanup is operational, not automatic. Platform availability: a new checkout is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the platform controls cannot be read (503 Platform.ControlStateUnavailable); no booking and no hold are created."
           },
           "event": [
             {

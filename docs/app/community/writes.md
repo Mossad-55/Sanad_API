@@ -95,6 +95,11 @@ post). On the recommendations feed `isLiked`/`isFavorited` are always
 posts are excluded from recommendations by definition. The favorite toggle
 endpoint is unchanged.
 
+Every post item on every surface also carries `viewsCount` — the stored
+lifetime view counter — and `authorId` (the stored author id for a named post,
+always `null` for an anonymous post). See
+[Post views](#post-views) and [Author fields and anonymity](#author-fields-and-anonymity).
+
 ## Viewer capabilities (`isOwn`, `canEdit`, `canDelete`)
 
 Every surface that returns a post — the feed, post detail, recommendations,
@@ -125,12 +130,39 @@ describing the **authenticated caller's own** app rights over that post:
   moderator re-approves it. Deletion removes it from every read the same way.
   The flags never widen that visibility and expose no unpublished post.
 
+## Post views
+
+Every post surface — the feed, post detail, recommendations, favorites and the
+create/update responses — carries `viewsCount`, the stored lifetime view
+counter. It is an `integer`, the same type as `likesCount`, `commentsCount` and
+`favoritesCount`.
+
+```text
+POST /api/v1/community/posts/{postId}/view   → 200 { "postId": "…", "viewsCount": 3 }
+```
+
+- The route uses the **same authorization and visibility rules as the post
+  detail read**: an unauthenticated call is `401`, and an unknown or
+  non-published (pending/rejected/archived/deleted) post — including a post by
+  an author the caller blocked — answers the same privacy `404`.
+- The post's own **author never increments** the counter. A repeated call, a
+  call by the author, and a call by an already-counted viewer all return the
+  current count without incrementing.
+- Every other viewer counts **at most once per post for the post's lifetime**.
+  The post+viewer record is unique and is written in the same unit of work as
+  the counter increment, so one never exists without the other.
+- Anonymous posts accumulate views exactly like named ones and never expose
+  their authors; the viewer record stores only the viewer id and the UTC time.
+- The counter is monotonic (increment only, no decrement), so it can never go
+  negative.
+
 ## Author fields and anonymity
 
-Post, comment and reply responses carry two additive author fields:
+Post, comment and reply responses carry three additive author fields:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
+| `authorId` | uuid or `null` | The **stored** author id. On a post it is `null` exactly when the post is anonymous, for every caller — including the author and administrators — so an anonymous post can never be de-anonymized from its own payload. On a comment or reply it is `null` exactly when that item is anonymous. It is the ownership handle and never a display name. |
 | `displayName` | string or `null` | The author's English full name, with the Arabic full name as fallback. `null` when the identity row is missing or when both names are blank — never a placeholder such as "Anonymous". |
 | `avatarUrl` | string or `null` | The author's avatar **download path** — `/api/v1/community/authors/{authorId}/photo` — when the identity row carries a stored avatar, `null` otherwise. It is a path the API resolves, never the stored Identity private storage key. An anonymous author resolves to `null` (the route would answer `404` for them). Fetch the bytes with `GET /api/v1/community/authors/{authorId}/photo` (see [Authors and anonymity](README.md#authors-and-anonymity)). |
 
@@ -143,7 +175,11 @@ looked up at all.
 
 - `isAnonymous` on a post is the stored flag and is unchanged.
 - An **anonymous post carries no author identity at all**: `displayName` and
-  `avatarUrl` are `null`, and the post response has no author id field.
+  `avatarUrl` are `null` and `authorId` is `null`, for **every** caller —
+  including the post's own author and administrators. The stored author id is
+  compared server-side only (for ownership, view exclusion and moderation); it
+  is never serialized. `isOwn`/`canEdit`/`canDelete` still work because they
+  are computed from the server-authenticated caller, not from the payload.
 - Comments and replies now carry `isAnonymous` too. Community stores
   anonymity on the post only, so a comment or a reply is anonymous exactly
   when it is written by the author of an anonymous post **inside that post's
@@ -152,9 +188,12 @@ looked up at all.
   `authorId: null`, `displayName: null`, `avatarUrl: null` and
   `isAnonymous: true`. Every other comment or reply is not anonymous and
   carries its author id and display name.
-- `authorId` on comments and replies is now **nullable**; it is `null` exactly
-  when `isAnonymous` is `true`. It remains the ownership handle, and the
+- `authorId` on comments and replies is nullable; it is `null` exactly when
+  `isAnonymous` is `true`. It remains the ownership handle, and the
   edit/delete endpoints keep enforcing ownership server-side.
+- Capability flags never leak identity: an anonymous item shows `isOwn: true`
+  only to its real author, and every other caller sees `isOwn`,
+  `canEdit` and `canDelete` as `false` — with `authorId: null` in both cases.
 
 Render anonymity as **null identity** — no name and no avatar. The API never
 substitutes a placeholder name for an anonymous author.
@@ -251,6 +290,39 @@ Comment and reply responses carry the author display fields and the anonymity
 rules described in
 [Author fields and anonymity](#author-fields-and-anonymity): `displayName`,
 `avatarUrl`, `isAnonymous`, and a nullable `authorId`.
+
+## Comment and reply viewer state
+
+Comments (`GET /api/v1/community/posts/{postId}/comments` and the create
+response) and replies (`GET /api/v1/community/comments/{commentId}/replies` and
+the create response) carry four additive per-caller booleans:
+
+| Field | Comment | Reply |
+| --- | --- | --- |
+| `isOwn` | `true` only for the stored comment author | `true` only for the stored reply author |
+| `canEdit` | `true` when `isOwn` (the update route's only ownership gate) | always `false` |
+| `canDelete` | `true` when `isOwn` **and** the comment has no replies | always `false` |
+| `isLiked` | `true` when the caller has a stored like on this comment | `true` when the caller has a stored like on this reply id |
+
+- The flags mirror the **real mutation handlers**, not a wider guess. A comment
+  with at least one reply cannot be deleted through `DELETE
+  /api/v1/community/comments/{commentId}` (the handler answers `409` because of
+  its `CommentHasReplies` guard), so `canDelete` is `false` there even for its
+  author. `canEdit` matches the update route: ownership is the gate and the
+  submitted body is validated on the write, not on this read.
+- The API exposes **no reply edit or delete route**, so replies always report
+  `canEdit: false` and `canDelete: false` — a `true` there could only precede a
+  `404`/`405`. `isOwn` and `isLiked` are still reported honestly for a
+  consistent shape.
+- Anonymous comments and replies disclose **no identity**: `authorId`,
+  `displayName` and `avatarUrl` are all `null` for every caller except that the
+  real author sees their own `isOwn`/capability flags as `true`. No other
+  caller can tell an anonymous author from any other non-owner.
+- Unlike post capabilities, these flags encode **no moderation power**: there is
+  no administrator comment edit/delete route, so none is advertised. Comment
+  moderation stays on the separate `/api/v1/admin/community` routes.
+- The read is batched: one bounded set of like lookups plus one reply-existence
+  query per page, never one query per row.
 
 ## Blocking an author (one-way, hide-posts-only)
 

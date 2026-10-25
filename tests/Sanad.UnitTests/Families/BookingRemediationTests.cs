@@ -12,6 +12,7 @@ using Sanad.Modules.Families.Domain.Elderlies;
 using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.UnitTests.Finance;
+using Sanad.UnitTests.Support;
 using Xunit;
 
 namespace Sanad.UnitTests.Families;
@@ -175,14 +176,17 @@ public sealed class BookingRemediationTests
             dbContext,
             new FakePricing(BookingCaregiverType.Medical, 2500m),
             new FixedPlatformChargeRules(15m, 0m),
-            FixedPlatformControls.Operational());
+            FixedPlatformControls.Operational(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
         var result = await handler.Handle(
             CheckoutCommand(family, elderly, DateTime.UtcNow),
             CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(2875m, result.Value.TotalPayableAmount);
+        Assert.Equal(2875m, result.Value.Value.TotalPayableAmount);
 
         var booking = await dbContext.Bookings.SingleAsync();
         Assert.Equal(BookingCaregiverType.Medical, booking.CaregiverType);
@@ -199,7 +203,10 @@ public sealed class BookingRemediationTests
             dbContext,
             new FakePricing(BookingCaregiverType.Companion, -1m),
             new FixedPlatformChargeRules(15m, 0m),
-            FixedPlatformControls.Operational());
+            FixedPlatformControls.Operational(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
         var result = await handler.Handle(
             CheckoutCommand(family, elderly, DateTime.UtcNow),
@@ -223,7 +230,10 @@ public sealed class BookingRemediationTests
             dbContext,
             new FakePricing(BookingCaregiverType.Medical, 500m),
             new FixedPlatformChargeRules(15m, 0m),
-            FixedPlatformControls.Operational());
+            FixedPlatformControls.Operational(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
         var checkoutResult = await checkout.Handle(
             CheckoutCommand(family, elderly, DateTime.UtcNow),
@@ -238,7 +248,7 @@ public sealed class BookingRemediationTests
 
         var result = await handler.Handle(
             new CancelBookingCommand(
-                new BookingId(checkoutResult.Value.BookingId),
+                new BookingId(checkoutResult.Value.Value.BookingId),
                 attackerFamily.OwnerUserId, // member of a DIFFERENT family
                 "Emergency",
                 null,
@@ -257,7 +267,10 @@ public sealed class BookingRemediationTests
             dbContext,
             new FakePricing(BookingCaregiverType.Medical, 500m),
             new FixedPlatformChargeRules(15m, 0m),
-            FixedPlatformControls.Operational());
+            FixedPlatformControls.Operational(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
         var command = CheckoutCommand(family, elderly, DateTime.UtcNow);
 
         var first = await checkout.Handle(command, CancellationToken.None);

@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using Sanad.BuildingBlocks.Application.Idempotency;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
@@ -14,6 +15,7 @@ using Sanad.Modules.Families.Domain.Families;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Xunit;
 using Sanad.UnitTests.Finance;
+using Sanad.UnitTests.Support;
 
 namespace Sanad.UnitTests.Families;
 
@@ -148,9 +150,12 @@ public sealed class FamilyRoleMatrixLockTests
             db,
             new FakePricing(BookingCaregiverType.Medical, 500m),
             new FixedPlatformChargeRules(15m, 0m),
-            FixedPlatformControls.Operational());
+            FixedPlatformControls.Operational(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
-        Result<BookingCheckoutResponse> result =
+        Result<IdempotentOutcome<BookingCheckoutResponse>> result =
             await handler.Handle(
                 CreateBookingCommand(viewer, elderly.Id),
                 CancellationToken.None);
@@ -178,15 +183,18 @@ public sealed class FamilyRoleMatrixLockTests
             db,
             new FakePricing(BookingCaregiverType.Medical, 500m),
             new FixedPlatformChargeRules(15m, 0m),
-            FixedPlatformControls.Operational());
+            FixedPlatformControls.Operational(),
+            new StubIdempotentResponseSnapshotter(),
+            new StubCaregiverAvailabilityRules(),
+            new PassThroughCaregiverBookingCheckoutGuard());
 
-        Result<BookingCheckoutResponse> result =
+        Result<IdempotentOutcome<BookingCheckoutResponse>> result =
             await handler.Handle(
                 CreateBookingCommand(editor, elderly.Id),
                 CancellationToken.None);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(BookingStatus.PendingPayment, result.Value.Status);
+        Assert.Equal(BookingStatus.PendingPayment, result.Value.Value.Status);
     }
 
     // --------------------- Change role / remove lock --------------------

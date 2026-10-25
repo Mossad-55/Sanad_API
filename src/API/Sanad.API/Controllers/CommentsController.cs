@@ -41,11 +41,13 @@ public sealed class CommentsController : ApiControllerBase
         CommunityThreadPost? thread = await LoadThreadPostAsync(postId, null, cancellationToken);
         IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
             await LoadAuthorProfilesAsync(new[] { result.Value }, thread, cancellationToken);
+        CommunityCommentViewerState state = await LoadCommentViewerStateAsync(
+            new[] { result.Value }, Array.Empty<Reply>(), userId.Value, cancellationToken);
 
         return CreatedAtAction(
             nameof(GetPostComments),
             new { postId },
-            ToResponse(result.Value, thread, profiles));
+            ToResponse(result.Value, thread, profiles, state, userId.Value));
     }
 
     [HttpGet("posts/{postId:guid}/comments")]
@@ -58,7 +60,7 @@ public sealed class CommentsController : ApiControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        if (!TryGetAuthenticatedUserId(out _))
+        if (!TryGetAuthenticatedUserId(out UserId userId))
         {
             return Unauthorized();
         }
@@ -70,8 +72,11 @@ public sealed class CommentsController : ApiControllerBase
         CommunityThreadPost? thread = await LoadThreadPostAsync(postId, null, cancellationToken);
         IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
             await LoadAuthorProfilesAsync(result.Value, thread, cancellationToken);
+        CommunityCommentViewerState state = await LoadCommentViewerStateAsync(
+            result.Value, Array.Empty<Reply>(), userId.Value, cancellationToken);
 
-        return Ok(result.Value.Select(comment => ToResponse(comment, thread, profiles)));
+        return Ok(result.Value.Select(
+            comment => ToResponse(comment, thread, profiles, state, userId.Value)));
     }
 
     [HttpPut("comments/{commentId:guid}")]
@@ -99,8 +104,10 @@ public sealed class CommentsController : ApiControllerBase
             result.Value.PostId.Value, null, cancellationToken);
         IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
             await LoadAuthorProfilesAsync(new[] { result.Value }, thread, cancellationToken);
+        CommunityCommentViewerState state = await LoadCommentViewerStateAsync(
+            new[] { result.Value }, Array.Empty<Reply>(), userId.Value, cancellationToken);
 
-        return Ok(ToResponse(result.Value, thread, profiles));
+        return Ok(ToResponse(result.Value, thread, profiles, state, userId.Value));
     }
 
     [HttpDelete("comments/{commentId:guid}")]
@@ -167,11 +174,13 @@ public sealed class CommentsController : ApiControllerBase
         CommunityThreadPost? thread = await LoadThreadPostAsync(null, commentId, cancellationToken);
         IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
             await LoadAuthorProfilesAsync(new[] { result.Value }, thread, cancellationToken);
+        CommunityCommentViewerState state = await LoadCommentViewerStateAsync(
+            Array.Empty<Comment>(), new[] { result.Value }, userId.Value, cancellationToken);
 
         return CreatedAtAction(
             nameof(GetCommentReplies),
             new { commentId },
-            ToResponse(result.Value, thread, profiles));
+            ToResponse(result.Value, thread, profiles, state, userId.Value));
     }
 
     [HttpGet("comments/{commentId:guid}/replies")]
@@ -182,7 +191,7 @@ public sealed class CommentsController : ApiControllerBase
         [FromQuery] int pageSize = 20,
         CancellationToken cancellationToken = default)
     {
-        if (!TryGetAuthenticatedUserId(out _))
+        if (!TryGetAuthenticatedUserId(out UserId userId))
         {
             return Unauthorized();
         }
@@ -193,8 +202,11 @@ public sealed class CommentsController : ApiControllerBase
         CommunityThreadPost? thread = await LoadThreadPostAsync(null, commentId, cancellationToken);
         IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles =
             await LoadAuthorProfilesAsync(result.Value, thread, cancellationToken);
+        CommunityCommentViewerState state = await LoadCommentViewerStateAsync(
+            Array.Empty<Comment>(), result.Value, userId.Value, cancellationToken);
 
-        return Ok(result.Value.Select(reply => ToResponse(reply, thread, profiles)));
+        return Ok(result.Value.Select(
+            reply => ToResponse(reply, thread, profiles, state, userId.Value)));
     }
 
     /// <summary>
@@ -274,6 +286,28 @@ public sealed class CommentsController : ApiControllerBase
     }
 
     /// <summary>
+    /// The batched persisted viewer state of this page: the caller's likes and
+    /// the comments that already have replies. One bounded query set per page,
+    /// never one per row. A failed lookup degrades to empty flags (all false /
+    /// not liked) rather than inventing a capability.
+    /// </summary>
+    private async Task<CommunityCommentViewerState> LoadCommentViewerStateAsync(
+        IReadOnlyCollection<Comment> comments,
+        IReadOnlyCollection<Reply> replies,
+        Guid viewerUserId,
+        CancellationToken cancellationToken)
+    {
+        Result<CommunityCommentViewerState> result = await _sender.Send(
+            new GetCommunityCommentViewerStateQuery(
+                comments.Select(comment => comment.Id.Value).ToArray(),
+                replies.Select(reply => reply.Id.Value).ToArray(),
+                viewerUserId),
+            cancellationToken);
+
+        return result.IsSuccess ? result.Value : CommunityCommentViewerState.Empty;
+    }
+
+    /// <summary>
     /// A comment or a reply is presented as anonymous when it is written by the
     /// author of an anonymous post inside that post's own thread: the post
     /// author must never be identified through their own words.
@@ -283,13 +317,31 @@ public sealed class CommentsController : ApiControllerBase
         thread.IsAnonymous &&
         thread.AuthorId == authorId;
 
+    /// <summary>
+    /// The comment capability snapshot mirrors the REAL mutation handlers:
+    /// <list type="bullet">
+    /// <item><c>isOwn</c> — the caller is the stored comment author. On an
+    /// anonymous comment only that author sees <c>true</c>; every other caller
+    /// sees <c>false</c>, and no identity is added.</item>
+    /// <item><c>canEdit</c> — exactly the update rule (ownership; the content
+    /// validation depends on the submitted body, not on this read).</item>
+    /// <item><c>canDelete</c> — exactly the delete rule (ownership AND no
+    /// replies, because the delete handler answers <c>CommentHasReplies</c>).</item>
+    /// <item><c>isLiked</c> — the caller's persisted comment like.</item>
+    /// </list>
+    /// No moderator/admin comment power exists in the API, so none is encoded.
+    /// </summary>
     private static CommunityCommentResponse ToResponse(
         Comment comment,
         CommunityThreadPost? thread,
-        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles)
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles,
+        CommunityCommentViewerState state,
+        Guid viewerUserId)
     {
         bool isAnonymous = IsAnonymous(comment.AuthorId.Value, thread);
         profiles.TryGetValue(comment.AuthorId.Value, out CommunityAuthorProfile? author);
+        var viewer = new UserId(viewerUserId);
+        bool isOwn = viewerUserId != Guid.Empty && comment.AuthorId == viewer;
 
         return new CommunityCommentResponse(
             comment.Id.Value,
@@ -303,16 +355,31 @@ public sealed class CommentsController : ApiControllerBase
             comment.LikesCount,
             isAnonymous,
             isAnonymous ? null : author?.DisplayName,
-            isAnonymous ? null : author?.AvatarUrl);
+            isAnonymous ? null : author?.AvatarUrl,
+            isOwn,
+            isOwn,
+            isOwn && !state.CommentIdsWithReplies.Contains(comment.Id.Value),
+            state.LikedCommentIds.Contains(comment.Id.Value));
     }
 
+    /// <summary>
+    /// Replies carry the same four flags for a consistent shape, but the API
+    /// exposes no reply edit/delete route, so <c>canEdit</c> and
+    /// <c>canDelete</c> are always <c>false</c> — never a capability the
+    /// caller cannot exercise. <c>isLiked</c> is the caller's persisted like on
+    /// the reply id.
+    /// </summary>
     private static CommunityReplyResponse ToResponse(
         Reply reply,
         CommunityThreadPost? thread,
-        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles)
+        IReadOnlyDictionary<Guid, CommunityAuthorProfile> profiles,
+        CommunityCommentViewerState state,
+        Guid viewerUserId)
     {
         bool isAnonymous = IsAnonymous(reply.AuthorId.Value, thread);
         profiles.TryGetValue(reply.AuthorId.Value, out CommunityAuthorProfile? author);
+        var viewer = new UserId(viewerUserId);
+        bool isOwn = viewerUserId != Guid.Empty && reply.AuthorId == viewer;
 
         return new CommunityReplyResponse(
             reply.Id.Value,
@@ -326,13 +393,19 @@ public sealed class CommentsController : ApiControllerBase
             reply.LikesCount,
             isAnonymous,
             isAnonymous ? null : author?.DisplayName,
-            isAnonymous ? null : author?.AvatarUrl);
+            isAnonymous ? null : author?.AvatarUrl,
+            isOwn,
+            false,
+            false,
+            state.LikedReplyIds.Contains(reply.Id.Value));
     }
 }
 
 public sealed record CommunityCommentResponse(Guid Id, Guid PostId, Guid? AuthorId, string ContentArabic,
     string ContentEnglish, bool IsEdited, DateTime CreatedOnUtc, DateTime? UpdatedOnUtc, int LikesCount,
-    bool IsAnonymous = false, string? DisplayName = null, string? AvatarUrl = null);
+    bool IsAnonymous = false, string? DisplayName = null, string? AvatarUrl = null,
+    bool IsOwn = false, bool CanEdit = false, bool CanDelete = false, bool IsLiked = false);
 public sealed record CommunityReplyResponse(Guid Id, Guid CommentId, Guid? AuthorId, string ContentArabic,
     string ContentEnglish, bool IsEdited, DateTime CreatedOnUtc, DateTime? UpdatedOnUtc, int LikesCount,
-    bool IsAnonymous = false, string? DisplayName = null, string? AvatarUrl = null);
+    bool IsAnonymous = false, string? DisplayName = null, string? AvatarUrl = null,
+    bool IsOwn = false, bool CanEdit = false, bool CanDelete = false, bool IsLiked = false);

@@ -414,11 +414,38 @@ namespace Sanad.Modules.Community.Infrastructure.Persistence.Migrations
                         .IsConcurrencyToken()
                         .HasColumnType("bigint");
 
+                    b.Property<int>("ViewsCount")
+                        .HasColumnType("integer");
+
                     b.HasKey("Id");
 
                     b.HasIndex("CategoryId");
 
                     b.ToTable("Posts", "community");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Community.Domain.Posts.PostView", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTime>("ViewedOnUtc")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasDefaultValueSql("CURRENT_TIMESTAMP");
+
+                    b.Property<Guid>("ViewerUserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("PostId", "ViewerUserId")
+                        .IsUnique();
+
+                    b.ToTable("PostViews", "community");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Community.Domain.Ratings.Rating", b =>
@@ -527,6 +554,15 @@ namespace Sanad.Modules.Community.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("Category");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Community.Domain.Posts.PostView", b =>
+                {
+                    b.HasOne("Sanad.Modules.Community.Domain.Posts.Post", null)
+                        .WithMany()
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Sanad.Modules.Community.Domain.Ratings.Rating", b =>

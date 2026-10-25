@@ -439,6 +439,8 @@ public sealed class AdminCommunityRestrictionQueryTests
 
         public DbSet<Post> Posts => inner.Posts;
 
+        public DbSet<PostView> PostViews => inner.PostViews;
+
         public DbSet<Comment> Comments => inner.Comments;
 
         public DbSet<Reply> Replies => inner.Replies;

@@ -632,9 +632,9 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("ElderlyId");
 
-                    b.HasIndex("ElderlyId", "Source");
-
                     b.HasIndex("VisitDate");
+
+                    b.HasIndex("ElderlyId", "Source");
 
                     b.ToTable("care_records", "families");
                 });
@@ -677,13 +677,13 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ActorUserId", "OccurredOnUtc");
-
-                    b.HasIndex("ElderlyId", "OccurredOnUtc");
-
                     b.HasIndex("OccurredOnUtc");
 
                     b.HasIndex("RecordId");
+
+                    b.HasIndex("ActorUserId", "OccurredOnUtc");
+
+                    b.HasIndex("ElderlyId", "OccurredOnUtc");
 
                     b.ToTable("care_record_audits", "families");
                 });
@@ -1124,6 +1124,63 @@ namespace Sanad.Modules.Families.Infrastructure.Persistence.Migrations
                     b.HasIndex("HelpRequestId", "OccurredOnUtc");
 
                     b.ToTable("elderly_help_request_history", "families");
+                });
+
+            modelBuilder.Entity("Sanad.Modules.Families.Domain.Idempotency.IdempotencyRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("ActorId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("actor_id");
+
+                    b.Property<DateTime>("CreatedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_on_utc");
+
+                    b.Property<string>("Fingerprint")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("char(64)")
+                        .HasColumnName("fingerprint");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("idempotency_key");
+
+                    b.Property<string>("Operation")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("character varying(64)")
+                        .HasColumnName("operation");
+
+                    b.Property<Guid?>("ResourceId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("resource_id");
+
+                    b.Property<string>("ResponseBody")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("response_body");
+
+                    b.Property<int>("ResponseStatus")
+                        .HasColumnType("integer")
+                        .HasColumnName("response_status");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("CreatedOnUtc")
+                        .HasDatabaseName("IX_idempotency_requests_created_on_utc");
+
+                    b.HasIndex("ActorId", "Operation", "Key")
+                        .IsUnique()
+                        .HasDatabaseName("IX_idempotency_requests_actor_id_operation_idempotency_key");
+
+                    b.ToTable("idempotency_requests", "families");
                 });
 
             modelBuilder.Entity("Sanad.Modules.Families.Domain.Invitations.FamilyInvitation", b =>

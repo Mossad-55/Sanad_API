@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.CareHomes.Domain.Bookings;
+using Sanad.Modules.CareHomes.Domain.Idempotency;
 
 namespace Sanad.Modules.CareHomes.Infrastructure.Persistence;
 
@@ -31,6 +32,18 @@ public sealed class CareHomesDbContext(DbContextOptions<CareHomesDbContext> opti
     public DbSet<CareHomeProfileMedia> ProfileMedia => Set<CareHomeProfileMedia>();
     public DbSet<CareHomeVisitSettings> VisitSettings => Set<CareHomeVisitSettings>();
     public DbSet<CareHomeVisit> Visits => Set<CareHomeVisit>();
+    public DbSet<IdempotencyRequest> IdempotencyRequests => Set<IdempotencyRequest>();
+
+    public void DetachAdded<TEntity>() where TEntity : class
+    {
+        foreach (var entry in ChangeTracker
+            .Entries<TEntity>()
+            .Where(entry => entry.State == EntityState.Added)
+            .ToArray())
+        {
+            entry.State = EntityState.Detached;
+        }
+    }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

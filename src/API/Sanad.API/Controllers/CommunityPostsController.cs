@@ -190,6 +190,41 @@ public sealed class CommunityPostsController : ApiControllerBase
             ToResponse(result.Value, userId.Value, profiles));
     }
 
+    /// <summary>
+    /// Records one view of a published post for the authenticated caller and
+    /// returns the current stored counter. The visibility/authorization rule
+    /// is the post-detail read rule: an unknown, non-published
+    /// (pending/rejected/archived/deleted) or blocked-author post answers the
+    /// same privacy <c>404</c>. The post's own author never increments the
+    /// counter and every other viewer counts at most once per post for the
+    /// post's lifetime; a repeat call returns the current count without a
+    /// second increment. Anonymous posts accumulate views without exposing
+    /// their authors.
+    /// </summary>
+    [HttpPost("posts/{postId:guid}/view")]
+    [ProducesResponseType(
+        typeof(CommunityPostViewResponse),
+        StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> RecordView(
+        Guid postId,
+        CancellationToken cancellationToken = default)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result = await _sender.Send(
+            new RecordPostViewCommand(postId, userId.Value),
+            cancellationToken);
+
+        if (!result.IsSuccess) return ToActionResult(result);
+        if (result.Value is null) return NotFound();
+
+        return Ok(new CommunityPostViewResponse(result.Value.PostId, result.Value.ViewsCount));
+    }
+
     [HttpPost("posts/{postId:guid}/like")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     public async Task<IActionResult> LikePost(
@@ -491,11 +526,13 @@ public sealed class CommunityPostsController : ApiControllerBase
         return new CommunityPostResponse(
             post.Id.Value, post.TitleArabic, post.TitleEnglish, post.ContentArabic,
             post.ContentEnglish, post.ImageUrl, post.IsAnonymous, post.Status.ToString(),
-            post.LikesCount, post.CommentsCount, post.FavoritesCount, post.CreatedOnUtc,
+            post.LikesCount, post.CommentsCount, post.FavoritesCount, post.ViewsCount,
+            post.CreatedOnUtc,
             post.CategoryId?.Value, post.Category?.ArabicName, post.Category?.EnglishName,
             isLiked, isFavorited, currentUserRating,
             anonymous ? null : author?.DisplayName,
             anonymous ? null : author?.AvatarUrl,
+            anonymous ? null : post.AuthorId.Value,
             isOwn, canEdit, canDelete);
     }
 
@@ -534,13 +571,20 @@ public sealed class CommunityPostsController : ApiControllerBase
 /// is not <c>Deleted</c>. They grant nothing: the PUT/DELETE routes keep
 /// enforcing ownership, status and concurrent-state checks server-side, and
 /// moderation powers stay on the separate Admin routes.
+/// <para>
+/// <c>ViewsCount</c> is the stored lifetime view counter (one increment per
+/// distinct non-author viewer). <c>AuthorId</c> is the stored author id for a
+/// non-anonymous post and is **always <c>null</c>** for an anonymous post — for
+/// every caller, including the author and administrators.
+/// </para>
 /// </summary>
 public sealed record CommunityPostResponse(Guid Id, string TitleArabic, string TitleEnglish,
     string ContentArabic, string ContentEnglish, string? ImageUrl, bool IsAnonymous,
-    string Status, int LikesCount, int CommentsCount, int FavoritesCount, DateTime CreatedOnUtc,
+    string Status, int LikesCount, int CommentsCount, int FavoritesCount, int ViewsCount,
+    DateTime CreatedOnUtc,
     Guid? CategoryId = null, string? CategoryArabicName = null, string? CategoryEnglishName = null,
     bool IsLiked = false, bool IsFavorited = false, int? CurrentUserRating = null,
-    string? DisplayName = null, string? AvatarUrl = null,
+    string? DisplayName = null, string? AvatarUrl = null, Guid? AuthorId = null,
     bool IsOwn = false, bool CanEdit = false, bool CanDelete = false)
 {
     /// <summary>
@@ -566,3 +610,10 @@ public sealed record CommunityPostResponse(Guid Id, string TitleArabic, string T
 }
 
 public sealed record SubmitCommunityPostReportRequest(string? ReasonCode, string? Note);
+
+/// <summary>
+/// The result of <c>POST /api/v1/community/posts/{postId}/view</c>: the post id
+/// and the current stored lifetime <c>viewsCount</c>. A repeat call returns the
+/// same count it would have returned without a second increment.
+/// </summary>
+public sealed record CommunityPostViewResponse(Guid PostId, int ViewsCount);

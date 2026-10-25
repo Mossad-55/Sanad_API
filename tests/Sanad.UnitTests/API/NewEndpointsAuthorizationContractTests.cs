@@ -10,6 +10,7 @@ public sealed class NewEndpointsAuthorizationContractTests
 {
     [Theory]
     [InlineData(typeof(CaregiverAvailabilityController), "GetAvailability", "api/v1/caregivers", "{caregiverId:guid}/availability")]
+    [InlineData(typeof(CaregiverAvailabilityController), "GetDayAvailability", "api/v1/caregivers", "{caregiverId:guid}/availability/day")]
     [InlineData(typeof(CaregiverEarningsController), "GetEarningsSummary", "api/v1/caregivers", "{caregiverId:guid}/earnings/summary")]
     [InlineData(typeof(CaregiverEarningsController), "GetEarningsTransactions", "api/v1/caregivers", "{caregiverId:guid}/earnings/transactions")]
     [InlineData(typeof(CaregiverMedicationTasksController), "GetMedicationTasks", "api/v1/caregivers", "{caregiverId:guid}/medication-tasks")]
@@ -21,6 +22,7 @@ public sealed class NewEndpointsAuthorizationContractTests
     [InlineData(typeof(CommunityPostsController), "GetPosts", "api/v1/community", "posts")]
     [InlineData(typeof(CommunityPostsController), "GetRecommendations", "api/v1/community", "recommendations")]
     [InlineData(typeof(CommunityPostsController), "CreatePost", "api/v1/community", "posts")]
+    [InlineData(typeof(CommunityPostsController), "RecordView", "api/v1/community", "posts/{postId:guid}/view")]
     [InlineData(typeof(CommentsController), "CreateComment", "api/v1/community", "posts/{postId:guid}/comments")]
     [InlineData(typeof(CommentsController), "UpdateComment", "api/v1/community", "comments/{commentId:guid}")]
     [InlineData(typeof(DependentMedicalAccessGrantsController), "CreateMedicalAccessGrant", "api/v1/family/dependents", "{dependentId:guid}/medical-access-grants")]

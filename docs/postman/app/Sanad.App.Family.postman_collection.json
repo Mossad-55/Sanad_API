@@ -2238,6 +2238,10 @@
                 {
                   "key": "Authorization",
                   "value": "Bearer {{ familyToken }}"
+                },
+                {
+                  "key": "Idempotency-Key",
+                  "value": "{{bookingCheckoutIdempotencyKey}}"
                 }
               ],
               "url": "{{baseUrl}}/api/v1/family/bookings/checkout",
@@ -2246,7 +2250,7 @@
                 "raw": "{\n  \"elderlyId\": \"{{dependentId}}\",\n  \"caregiverId\": \"{{caregiverId}}\",\n  \"shiftType\": 1,\n  \"bookingDate\": \"2026-06-08\",\n  \"startTime\": \"10:00\",\n  \"endTime\": \"12:00\",\n  \"serviceAddress\": \"14 شارع الكورنيش، الإسكندرية\",\n  \"specialInstructions\": \"المريض يعاني من ضغط الدم\"\n}"
               }
             },
-            "description": "No price/caregiver-type fields — pricing is server-side (base + 15% platform fee). Platform availability: a new checkout is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the platform controls cannot be read (503 Platform.ControlStateUnavailable); no booking and no slot hold are created.",
+            "description": "No price/caregiver-type fields — pricing is server-side (base + 15% platform fee). The Idempotency-Key header is optional: leave bookingCheckoutIdempotencyKey empty for the legacy behavior; the same trimmed key (1–128 printable ASCII, else 400 Bookings.IdempotencyKeyInvalid) with the same request replays the stored 200 body without a second booking, and the same key with a different request is 409 Bookings.IdempotencyConflict. Platform availability: a new checkout is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the platform controls cannot be read (503 Platform.ControlStateUnavailable); no booking and no slot hold are created. Requests outside the caregiver's declared date-specific availability are 409 Bookings.AvailabilityConflict; an overlapping booking remains 409 Bookings.ScheduleConflict. Replayed snapshots are retained for 7 days; cleanup is operational, not automatic.",
             "event": [
               {
                 "listen": "test",
@@ -2952,6 +2956,12 @@
         "value": "",
         "type": "string",
         "description": "Set from duplicate-charge claim submission or list."
+      },
+      {
+        "key": "bookingCheckoutIdempotencyKey",
+        "value": "",
+        "type": "string",
+        "description": "Optional Idempotency-Key for the family booking checkout; reuse the same value to retry the same request, empty = legacy create."
       }
     ]
   }

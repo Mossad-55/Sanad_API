@@ -8,6 +8,7 @@ using Sanad.Modules.CareHomes.Application.Inventory;
 using Sanad.Modules.CareHomes.Application.FamilyIntake;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.CareHomes.Domain.Facilities;
+using Sanad.Modules.CareHomes.Domain.Idempotency;
 using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.CareHomes.Infrastructure.Bookings;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
@@ -15,6 +16,7 @@ using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Finance.Application;
 using Sanad.Modules.Finance.Domain;
 using Sanad.UnitTests.Families;
+using Sanad.UnitTests.Support;
 
 namespace Sanad.UnitTests.CareHomes;
 
@@ -56,14 +58,15 @@ public sealed class CareHomeBookingLifecycleTests
                 new EmptyCareHomeOccupancyProvider(),
                 new InlineReservationGuard(),
                 FixedPlatformControls.Operational(),
+                new StubIdempotentResponseSnapshotter(),
                 new CareHomeBookingTiming(TimeSpan.FromSeconds(30), TimeSpan.FromMinutes(1), TimeSpan.FromSeconds(5)))
             .Handle(new CheckoutCareHomeBookingCommand(
                 UserId.New(), FamilyId.New(), Intake(), facility.Id.Value, type.Id,
                 new DateOnly(2026, 10, 5), Now), default);
 
         Assert.True(result.IsSuccess);
-        Assert.Equal(Now.AddSeconds(30), result.Value.HoldUntilUtc);
-        Assert.Equal(Now.AddHours(24), result.Value.EarliestArrivalUtc);
+        Assert.Equal(Now.AddSeconds(30), result.Value.Value.HoldUntilUtc);
+        Assert.Equal(Now.AddHours(24), result.Value.Value.EarliestArrivalUtc);
     }
 
     [Fact]
@@ -954,7 +957,7 @@ public sealed class CareHomeBookingLifecycleTests
         PublishRoomMedia(db, type);
         await db.SaveChangesAsync();
 
-        var result = await new CheckoutHandler(db, new NoCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard(), FixedPlatformControls.Operational())
+        var result = await new CheckoutHandler(db, new NoCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard(), FixedPlatformControls.Operational(), new StubIdempotentResponseSnapshotter())
             .Handle(new CheckoutCareHomeBookingCommand(
                 UserId.New(), FamilyId.New(), new ElderlyIntakeResolution(
                     FamilyId.New(), ElderlyId.New(), UserId.New(), "Ø¹Ø±Ø¨ÙŠ", "Elderly", 75,
@@ -981,7 +984,7 @@ public sealed class CareHomeBookingLifecycleTests
         PublishRoomMedia(db, type);
         await db.SaveChangesAsync();
 
-        var result = await new CheckoutHandler(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new ConflictReservationGuard(), FixedPlatformControls.Operational())
+        var result = await new CheckoutHandler(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new ConflictReservationGuard(), FixedPlatformControls.Operational(), new StubIdempotentResponseSnapshotter())
             .Handle(new CheckoutCareHomeBookingCommand(
                 UserId.New(), FamilyId.New(), Intake(), facility.Id.Value, type.Id, new DateOnly(2026, 10, 5), Now), default);
 
@@ -1015,7 +1018,7 @@ public sealed class CareHomeBookingLifecycleTests
     }
 
     private static CheckoutHandler CreateCheckoutHandler(CareHomesDbContext db, FixedPlatformControls? controls = null) =>
-        new(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard(), controls ?? FixedPlatformControls.Operational());
+        new(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard(), controls ?? FixedPlatformControls.Operational(), new StubIdempotentResponseSnapshotter());
 
     private static PaymobBillingData Billing() => new("Fixture", "Family", "family@test.local", "+201000000000");
 
@@ -1146,6 +1149,9 @@ public sealed class CareHomeBookingLifecycleTests
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeProfileMedia> ProfileMedia => inner.ProfileMedia;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeVisitSettings> VisitSettings => inner.VisitSettings;
         public Microsoft.EntityFrameworkCore.DbSet<CareHomeVisit> Visits => inner.Visits;
+        public Microsoft.EntityFrameworkCore.DbSet<IdempotencyRequest> IdempotencyRequests => inner.IdempotencyRequests;
+
+        public void DetachAdded<TEntity>() where TEntity : class => inner.DetachAdded<TEntity>();
 
         public async Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
         {

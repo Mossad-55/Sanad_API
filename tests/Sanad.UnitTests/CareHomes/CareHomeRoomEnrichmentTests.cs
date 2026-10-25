@@ -14,6 +14,7 @@ using Sanad.Modules.CareHomes.Infrastructure.Persistence;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Finance.Application;
 using Sanad.UnitTests.Families;
+using Sanad.UnitTests.Support;
 
 namespace Sanad.UnitTests.CareHomes;
 
@@ -513,7 +514,7 @@ public sealed class CareHomeRoomEnrichmentTests
         db.Rooms.Add(room);
         db.Beds.Add(CareHomeBed.Create(facility.Id, room.Id, "A", Now));
         await db.SaveChangesAsync();
-        CheckoutHandler Checkout() => new(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard(), FixedPlatformControls.Operational());
+        CheckoutHandler Checkout() => new(db, new EffectiveCharges(), new EmptyCareHomeOccupancyProvider(), new InlineReservationGuard(), FixedPlatformControls.Operational(), new StubIdempotentResponseSnapshotter());
 
         // State 1: no photos at all.
         var withoutMedia = await Checkout().Handle(CheckoutCommand(facility.Id, type.Id), default);
