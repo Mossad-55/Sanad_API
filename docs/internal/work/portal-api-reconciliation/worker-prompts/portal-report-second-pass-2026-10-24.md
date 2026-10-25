@@ -4,7 +4,7 @@
 
 - Source: Owner-supplied backend report dated 2026-10-24, including second-pass items 1–13.
 - Owner approved the proposed decisions after read-only rehearsal verification.
-- Phase: `accepted`. Release: `authorized` by the Owner's final-review-then-full-release instruction (2026-10-25). Final correction review accepted; release verification remains pending.
+- Phase: `completed`. Release: `verified` (deployed and checked on the authorized rehearsal VPS, 2026-10-25). Receipt: [portal-second-pass-release-2026-10-25.md](../reports/portal-second-pass-release-2026-10-25.md). Earlier S1–S4 checkpoints below are historical evidence, including pre-correction gate counts.
 - Pinned repository revision: `30e664f343cbf4b0a842d967e8439324ae124317`.
 - Verified rehearsal runtime: `4690b5b2e46a311bbb64f76c41c81769a34d4832`.
 - Preserve the existing modified private handoff and all pre-existing untracked audit/build artifacts. They are not phase deliverables.
@@ -1414,3 +1414,28 @@ Requested: authorization to commit, push and deploy **S1–S4** as one release.
   ids match the plan manifest, provision G1–G4 with `--seam-deployed`, run the
   authenticated readback, and write the release receipt. The demo corpus (D1–D4)
   follows that, starting with its dry run on a throwaway nonce database.
+
+## Release verification (2026-10-25) — replaces the pending release state
+
+Deployed and verified revision `beb315fe89dfa2f0a5367b57c694674ecb4352d4`
+(`4690b5b2..beb315fe`) on the authorized rehearsal VPS `72.62.92.144`, service
+`sanad-api`, `/root/sanad-api`, environment `Production`, public
+`http://72.62.92.144:8091`. Publisher `Publish-SanadApi.ps1 -Configuration Release`
+(direct API project) produced 0 warnings/0 errors; the package carried the Release
+Chat assemblies and no env/development/keys/certs. Archive
+`c2973388…68e0d8` verified on the target; validated database backup 824,488 bytes
+(892 TOC entries) and app backup retained; 9/9 migration heads, 0 pending, no
+migration applied; `CONFIG_UNCHANGED`; service active, `NRestarts=0`; verifier
+exit 0 with all nine startup context checks, anonymous smoke 200. Authenticated
+readback: care-home owner residents default/pagination/search/literal `%` all 200
+(the reported 500 is gone), Approved dashboard/revenue 200, Draft owner
+dashboard/revenue 200, SupportAdmin/SuperAdmin subscription list+detail 200 and
+app-ratings 200 (plans 403 for Support), Family 200 and admin ratings 403, anonymous
+401; every fixture session logged out. The fixture refund seam is absent/disabled
+and was not configured. G1–G4 provisioning and the demo corpus remain deferred;
+no migration, reset, deletion, clock change, provider request or money movement
+occurred in this stage. Receipt:
+[portal-second-pass-release-2026-10-25.md](../reports/portal-second-pass-release-2026-10-25.md).
+The S4 gate counts above (5,592 / 36 provisioner) pre-date the final corrections and
+are historical; the final gates (5,596 / 37) were not re-run during this release
+stage, which relied on the publisher's independent strict Release build.
