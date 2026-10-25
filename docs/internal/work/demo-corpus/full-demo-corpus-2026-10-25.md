@@ -444,25 +444,33 @@ Contract investigation: `ses_e8bfdb7aeffeGmASgAWQMSc1p4`. Accepted defaults:
 
 ### Release (2026-10-25)
 
-- **Release state: `verified`** for revision `456858d8ee9115fb5ecf067a6f3216a499603e4e`
-  (`5377bbc9..456858d8`), live at `http://72.62.92.144:8091` on service `sanad-api`,
-  runtime `Production`. Publisher 0/0; archive SHA-256
-  `01d3851b9cd0994478b5f25f7e181e50a0a6d56d8e74517c903ea0323e7b9e1f`; validated
-  `SanadDb` dump (825,228 bytes, 892-entry TOC) and app-directory backup; config
-  fingerprints unchanged; service active/running with `NRestarts=0`; the three new
-  migrations applied at startup (`Families 20261025175627`, `CareHomes 20261025175720`,
-  `Community 20261025170718`), 9/9 heads, 0 pending; verifier exit 0; refund seam
-  absent/disabled. Role readbacks passed (post views/`authorId`, comment viewer state,
-  day availability, support authorization) and the idempotent-create sequence returned
-  201/201 with one stored record and a 409 conflict on a changed payload.
+- **Release state: `verified`** for final revision
+  `8913df42aadc519c8deee4de1a16ee56fabf2e67` (`456858d8..8913df42`, 2 files, no
+  migration change), live at `http://72.62.92.144:8091` on service `sanad-api`, runtime
+  `Production`. Feature revision `456858d8` (`5377bbc9..456858d8`) was deployed first;
+  the fix redeploy used the same procedure. Pass two: publisher 0/0, archive SHA-256
+  `914aedcb4924e7bc8ec30288acb1016d86047821370f4181081f561eb3d2c3f2`, validated
+  `SanadDb` dump (833,385 bytes, 907-entry TOC) and app-directory backup, config
+  fingerprints unchanged, service active/running with `NRestarts=0`, **0 migrations
+  applied** and required heads unchanged (9/9, 0 pending), verifier exit 0, refund seam
+  absent/disabled.
+- The `456858d8` pass-1 role readbacks passed (post views/`authorId`, comment viewer
+  state, day availability, support authorization); its one recorded FAIL — replay body
+  not byte-identical to the fresh 201 (445 vs 473 bytes, `\uXXXX` escaping) — is
+  **fixed and verified on `8913df42`**: Arabic hospital name + `<b>ملاحظة</b>` details,
+  fresh and replay both **201, 440 bytes, `byte_equal=true`**, raw UTF-8 with no `\u`
+  escapes, one stored row, and **409** `Families.CareRecords.IdempotencyConflict` on a
+  changed payload. Community view/comments, day availability and support 403 were
+  re-checked after the redeploy with no regression.
 - Receipt: [mobile-report-release-2026-10-25.md](../portal-api-reconciliation/reports/mobile-report-release-2026-10-25.md).
-  One recorded deviation: the replay body is JSON-equivalent but not byte-identical to
-  the fresh 201 (UTF-8 vs `\uXXXX` escaping, 445 vs 473 bytes). Semantic contract holds;
-  the strict byte-identity check is flagged for Mastermind disposition.
 - Synthetic release smoke writes (documented in the receipt, additive): one post view on
-  `01a15588-3d20-78ee-a67b-7aa522aea4dc` and three `SANAD RELEASE CHECK Hospital`
-  family care records (plus matching idempotency rows) for dependent
-  `01a17319-d059-7b7b-b92d-94e7ec18d0a4`. D1–D4 must reuse/skip them, never delete them.
+  `01a15588-3d20-78ee-a67b-7aa522aea4dc`; three `SANAD RELEASE CHECK Hospital` family
+  care records `01a17478-d5d9-7e75-9931-31daca20e923`,
+  `01a17479-2742-7a64-81b1-e5fb89c81f73`, `01a1747a-7eeb-71d6-a121-588e617edd23`; and
+  the byte-identity check record `01a17485-010a-7fc4-81fd-cfeb09d31cfb`
+  (`مستشفى سند التجريبي`, details `SANAD DEMO — <b>ملاحظة</b> للمراجعة`), all for
+  dependent `01a17319-d059-7b7b-b92d-94e7ec18d0a4` with matching idempotency rows.
+  D1-D4 must reuse/skip them, never delete them.
 - D3 non-money groups can run on this revision; money-state groups remain blocked until
   the non-Production refund seam is settled and verified, which this release did not
   change.
