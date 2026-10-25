@@ -59,6 +59,18 @@ public sealed class ResultProblemDetailsMapperTests
         "Bookings.NoRefundDue",
         StatusCodes.Status409Conflict,
         "The request conflicts with the current state.")]
+    // Portal second pass B1: the two shared-mapper refund answers. A definitive
+    // provider refusal is a gateway-level failure (502); an unconfirmable
+    // outcome is an operator-reconcilable conflict (409). Status alone grants
+    // no retry — the booking's ledger/state fences stay authoritative.
+    [InlineData(
+        "Paymob.RefundRejected",
+        StatusCodes.Status502BadGateway,
+        "The request could not be completed.")]
+    [InlineData(
+        "Paymob.RefundOutcomeUnknown",
+        StatusCodes.Status409Conflict,
+        "The request conflicts with the current state.")]
     [InlineData(
         "Cms.ElderlyWelcome.NotFound",
         StatusCodes.Status404NotFound,

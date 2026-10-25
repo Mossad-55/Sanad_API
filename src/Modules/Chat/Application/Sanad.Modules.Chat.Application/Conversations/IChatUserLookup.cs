@@ -12,13 +12,22 @@ namespace Sanad.Modules.Chat.Application.Conversations;
 /// first-registered account and exists for DISPLAY only: eligibility uses
 /// <c>CurrentAccountTypes</c> (every account on the current user row),
 /// never this display integer.
+/// <para>
+/// Bilingual names (portal second pass C1): <c>DisplayNameArabic</c> and
+/// <c>DisplayNameEnglish</c> carry the stored full names in each language
+/// exactly as registered, or null when that language is absent. They are
+/// additive display data only — <c>DisplayName</c> keeps its existing
+/// resolution (English preferred, Arabic fallback) and drives nothing.
+/// </para>
 /// </summary>
 public sealed record UserProfile(
     UserId UserId,
     string DisplayName,
     string? AvatarUrl,
     int? AccountType,
-    IReadOnlyList<int>? CurrentAccountTypes = null)
+    IReadOnlyList<int>? CurrentAccountTypes = null,
+    string? DisplayNameArabic = null,
+    string? DisplayNameEnglish = null)
 {
     /// <summary>Every current account type; falls back to the display
     /// integer when the lookup did not resolve the full set.</summary>

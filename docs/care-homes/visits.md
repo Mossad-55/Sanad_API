@@ -20,7 +20,10 @@ exact `visitorCount`, and a UTC-offset `startsAt`. A resident visit requires an
 elderly ID belonging to the active Family and an eligible accepted, paid stay
 at that facility on the visit date. Reschedule accepts
 `{ "startsAt": "2026-11-12T08:00:00Z" }`. Family and owner cancellation accept
-`{ "reason": "Schedule changed" }`; the reason may be null. Each family read
+`{ "reason": "Schedule changed" }`; the reason may be null. Reason length
+limits (port-round-2 clarification): a decision or cancellation reason is
+capped at **1000** characters after trimming — an over-long one is rejected
+with `409 CareHomes.Visits.InvalidState`. Each family read
 and mutation is scoped to the caller's active Family.
 
 Create request example:
@@ -98,7 +101,7 @@ All routes require `CareHomeOwnerAccess` and are scoped to the owner's facility:
 | `POST /api/v1/care-homes/visits/mine/{visitId}/decision` | Approve or reject a pending request; rejection requires a reason |
 | `POST /api/v1/care-homes/visits/mine/{visitId}/cancel` | Cancel before the visit starts |
 
-Settings requests contain `visitorCapacity`, arrays of `{ "day": 1, "startTime": "09:00", "endTime": "17:00" }` for `operatingHours` and `visitingWindows` (`day` is the numeric `DayOfWeek`, 1 = Monday; string names are rejected with 400), and closure entries `{ "date": "2026-11-10", "reason": "Holiday" }`. A stale settings version conflicts with 409 `CareHomes.Visits.Conflict`. Settings that would make an already-reserved future appointment invalid or exceed capacity are rejected. Failed writes leave settings and version unchanged. Owner settings reads return 200 with `version` 0 and capacity 0 before the first save.
+Settings requests contain `visitorCapacity`, arrays of `{ "day": 1, "startTime": "09:00", "endTime": "17:00" }` for `operatingHours` and `visitingWindows` (`day` is the numeric `DayOfWeek`, 1 = Monday; string names are rejected with 400), and closure entries `{ "date": "2026-11-10", "reason": "Holiday" }` (an over-long closure reason — the supplied value is measured **before** any trimming, at more than **500** characters — or a missing closure date makes the request invalid: the first save (no stored settings yet) answers 400 `CareHomes.Visits.InvalidRequest`, while a failed `Update` of existing settings answers 409 `CareHomes.Visits.Conflict`, the same mapped code a stale `expectedVersion` yields; trimming to ≤500 happens only afterwards when valid closures are normalized). A stale settings version conflicts with 409 `CareHomes.Visits.Conflict`. Settings that would make an already-reserved future appointment invalid or exceed capacity are rejected. Failed writes leave settings and version unchanged. Owner settings reads return 200 with `version` 0 and capacity 0 before the first save.
 
 The complete settings request also contains `expectedVersion`; for example:
 
@@ -115,7 +118,9 @@ The complete settings request also contains `expectedVersion`; for example:
 Verified PORTAL-05 on an isolated HTTP host with real handlers: Draft and Approved facilities read and save settings; cross-owner settings stay isolated; capacity below 1 returns 400 `CareHomes.Visits.InvalidRequest`.
 
 The owner decision request is `{ "approve": true, "reason": null }` to approve;
-rejection sets `approve` to false and supplies a nonblank reason. The Postman
+rejection sets `approve` to false and supplies a nonblank reason capped at
+**1000** characters after trimming (an over-long rejection reason returns
+`409 CareHomes.Visits.InvalidState`). The Postman
 Family and Owner visit folders contain authored examples for these routes;
 examples do not claim runtime execution.
 

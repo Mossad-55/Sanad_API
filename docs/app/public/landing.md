@@ -72,6 +72,16 @@ interprets it only where a type has a defined meaning:
 "Free-form" means the API stores and returns the JSON string unchanged; it does
 not reshape or validate the inner schema.
 
+**Public image access.** `imagePath` is a raw storage key (at most 500
+characters), not a URL. The static file middleware serves every storage file
+publicly at `/files/<imagePath>` — anonymous, matching the `AllowAnonymous`
+landing routes — so a client composes the display URL from the key as
+`{baseUrl}/files/{imagePath}`. Only `/files/private/*` is guarded away with a
+`404`; there is no per-file authorization on public storage keys, so nothing
+private should ever be stored under one. Each section returns at most one
+`imagePath`; resolved testimonial/FAQ refs are ordered by their stored ref
+order and hidden or dangling refs are silently dropped (never an error).
+
 **Bilingual nested text.** `contentJson` is a plain JSON **string**, validated
 by length only (≤ 8000 characters) and transported verbatim. Sections carry
 editable text as legacy plain strings over the same envelope

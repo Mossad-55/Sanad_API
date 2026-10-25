@@ -84,6 +84,7 @@ public sealed class AdminBookingsController : ApiControllerBase
 
     [HttpPost("{bookingId:guid}/refund")]
     [ProducesResponseType(typeof(BookingDetailResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> RefundBooking(
         Guid bookingId,
         CancellationToken cancellationToken)
@@ -108,6 +109,7 @@ public sealed class AdminBookingsController : ApiControllerBase
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
     [ProducesResponseType(StatusCodes.Status503ServiceUnavailable)]
     public async Task<IActionResult> RecordOutcome(
         Guid bookingId,

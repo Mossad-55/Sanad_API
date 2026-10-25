@@ -23,7 +23,8 @@ This page specifies Lane A of the frozen contract in `docs/chat/plan.md`:
 endpoints 1 (list), 2 (open-or-get), 5 (attachment upload), 6 (attachment
 serve), 7 (read mark), 9 (block/unblock/list), and 10 (hide) — with the Opus
 deltas applied (exactly-one open target with backend booking resolution,
-participant `accountType` + facility display, `createdOnUtc` on message
+participant `accountType` + facility display + additive
+`displayNameArabic`/`displayNameEnglish`, `createdOnUtc` on message
 timestamps, attachment serve by attachment id, read mark over `POST`).
 Messages, unread counts, and reports (endpoints 3–4, 8, 11) plus the
 `/api/v1/admin/chat` support routes (12–15) are specified in `messages.md` /
@@ -76,6 +77,8 @@ GET /api/v1/chat/conversations?page=1&pageSize=20
       "participant": {
         "userId": "00000000-0000-0000-0000-000000000002",
         "displayName": "Salma Nasr",
+        "displayNameArabic": "سلمى نصر",
+        "displayNameEnglish": "Salma Nasr",
         "avatarUrl": null,
         "accountType": 1
       },
@@ -110,6 +113,18 @@ fallback) and `avatarUrl` is its approved cover image, while `userId` stays
 the owner's id so messaging and blocking keep working. `lastMessage` and
 `unreadCount` are computed by the Messages module (see [messages.md](messages.md));
 hidden conversations contribute no badge.
+
+Additively (round-2 C1), `participant` also carries `displayNameArabic` and
+`displayNameEnglish`: the stored names in each language exactly as resolved for
+that participant — the Identity profile's registered full names for a person,
+the approved revision's stored names for a care-home owner. Each field is the
+value stored in that language or `null` when the store has none (there is no
+server-side synthetic fallback, and an unknown profile yields `null` for
+both). `displayName` is unchanged by these fields: clients render
+`displayName` and use the bilingual fields when present, falling back to
+`displayName` when either is `null`. Participant visibility, hiding,
+authorization, ordering, `lastMessage` and `unreadCount` are untouched, and no
+other surface (`open-or-get`, messages, sync, presence) gained fields.
 
 ### Open-or-get — `POST /api/v1/chat/conversations`
 

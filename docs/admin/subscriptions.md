@@ -1,6 +1,6 @@
 # Admin subscriptions
 
-Subscription plan authoring, publication, retirement, and administrative reads are available only to a Super Admin with a normal JWT. Administrative reads expose both the configured plan catalog and the family subscription records created from immutable plan snapshots.
+Subscription plan authoring, publication, and retirement are available only to a Super Admin with a normal JWT. The family subscription **list/detail reads** (for refund investigation) additionally accept Support Admin: both routes carry the shared read-only operational policy (`OperationalReadAdmin`), which is Super Admin + Support Admin on a normal token — Content Admin, Finance Admin, and every app audience remain denied. All plan and coupon/tax mutations stay SuperAdmin-only (`SubscriptionPlanAdmin`). Administrative reads expose both the configured plan catalog and the family subscription records created from immutable plan snapshots.
 
 ## Administrative reads
 
@@ -185,6 +185,9 @@ platform-fee and tax configuration now lives in the Finance surface documented i
 [`docs/admin/finance-platform-charges.md`](finance-platform-charges.md). The routes below
 remain a compatibility adapter and retain the existing SuperAdmin-only
 `SubscriptionPlanAdmin` policy; SupportAdmin and ContentAdmin remain denied.
+The same policy boundary applies per action across the surface: only the
+family-subscription list/detail reads above open to SupportAdmin — plan
+authoring, publication, retirement, coupons and tax routes never do.
 
 ```text
 POST /api/v1/admin/subscriptions/tax-rules

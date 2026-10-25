@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AssemblyName>Sanad.PortalProvisioner</AssemblyName>
+    <RootNamespace>Sanad.PortalProvisioner</RootNamespace>
+    <!--
+      Bounded provisioning tool for the rehearsal portal-report fixture (phase
+      S3a). Intentionally ABSENT from Sanad.slnx: like its sibling
+      Sanad.PortalFixtureHost, it is a controlled tooling artifact, not part of
+      the shipped solution.
+
+      Invariants (enforced by ProvisionerTargetGuard + the group gate):
+        - data-only: it writes fixture-owned rows and never, through any path,
+          requests a provider movement (the duplicate-claim store is wired to a
+          REFUSING gateway stub; no provider seam is referenced at all);
+        - fail-closed target identity: explicit expect flags for host, port,
+          database, revision correlation and every module migration head must
+          match before any write; Production is refused outright;
+        - plan mode builds the complete write manifest with zero connections;
+        - no deletion, no reset, no cleanup: load-or-create by marker only.
+    -->
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\API\Sanad.API\Sanad.API.csproj" />
+  </ItemGroup>
+</Project>

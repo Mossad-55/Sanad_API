@@ -107,6 +107,13 @@ public sealed class GetConversationsQueryHandler
             // facility — name and cover resolve over the owner's user id.
             // Users without a facility keep their personal profile.
             string displayName = profile?.DisplayName ?? string.Empty;
+            // Bilingual names (C1): the stored raw names travel alongside the
+            // resolved display name. A facility owner presents the facility's
+            // approved-revision names; a personal participant presents the
+            // Identity profile's names. Null stays null when a language is
+            // absent — the client falls back to displayName.
+            string? displayNameArabic = profile?.DisplayNameArabic;
+            string? displayNameEnglish = profile?.DisplayNameEnglish;
             // Avatar parity (Owner lock #34): the participant's avatar storage
             // key is never wired. No authorized cross-user avatar route exists,
             // so personal participants present without an image; a care-home
@@ -120,6 +127,8 @@ public sealed class GetConversationsQueryHandler
                     out FacilityPresentation? facility))
             {
                 displayName = facility.DisplayName;
+                displayNameArabic = facility.DisplayNameArabic;
+                displayNameEnglish = facility.DisplayNameEnglish;
                 avatarUrl = facility.CoverImageUrl;
             }
 
@@ -133,7 +142,9 @@ public sealed class GetConversationsQueryHandler
                     otherParticipant.Value,
                     displayName,
                     avatarUrl,
-                    profile?.AccountType),
+                    profile?.AccountType,
+                    displayNameArabic,
+                    displayNameEnglish),
                 // LoadAsync gives every conversation it was handed an entry,
                 // so both reads are safe indexers.
                 facts.LastMessages[conversation.Id],

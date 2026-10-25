@@ -805,6 +805,61 @@ public sealed class ConversationTests
         Assert.Equal(8, facility.Participant.AccountType);
     }
 
+    [Fact]
+    public async Task GetConversations_ParticipantCarriesAdditiveBilingualNames_WithExistingDisplayUnchanged()
+    {
+        await using ChatDbContext db = CreateDb();
+        UserId requester = UserId.New();
+        UserId friend = UserId.New();
+        UserId englishOnly = UserId.New();
+        UserId owner = UserId.New();
+        Conversation withFriend = CreateDirect(requester, friend, UtcStamp);
+        Conversation withEnglishOnly = CreateDirect(requester, englishOnly, UtcStamp);
+        Conversation withOwner = CreateDirect(requester, owner, UtcStamp);
+        db.Conversations.AddRange(withFriend, withEnglishOnly, withOwner);
+        await db.SaveChangesAsync();
+
+        var lookup = new FakeChatUserLookup();
+        // Both stored names: displayName keeps its English-preferred
+        // resolution; the bilingual fields carry each stored name.
+        lookup.Add(friend, "Salma Nasr", accountType: 1,
+            displayNameArabic: "سلمى نصر", displayNameEnglish: "Salma Nasr");
+        // Blank English registration: displayName keeps its Arabic fallback;
+        // the English bilingual field stays null (no synthetic fallback).
+        lookup.Add(englishOnly, "أحمد حسن", accountType: 1,
+            displayNameArabic: "أحمد حسن", displayNameEnglish: null);
+        var facilities = new FakeChatFacilityLookup();
+        // A care-home owner presents the facility's approved-revision names in
+        // the bilingual fields — never the owner's personal names.
+        lookup.Add(owner, "Owner Name", "owner-avatar", accountType: 8,
+            displayNameArabic: "مالك شخصي", displayNameEnglish: "Personal Owner");
+        facilities.Set(owner, new FacilityPresentation(
+            "Sunrise Care Home", "/cover/1",
+            DisplayNameArabic: "دار الشروق", DisplayNameEnglish: "Sunrise Care Home"));
+        var handler = new GetConversationsQueryHandler(db, lookup, facilities);
+
+        PagedResult<ConversationListItemResponse> page = (await handler.Handle(
+            new GetConversationsQuery(requester), default)).Value;
+
+        ConversationListItemResponse both = page.Items.Single(
+            item => item.Id == withFriend.Id.Value);
+        Assert.Equal("Salma Nasr", both.Participant.DisplayName);
+        Assert.Equal("سلمى نصر", both.Participant.DisplayNameArabic);
+        Assert.Equal("Salma Nasr", both.Participant.DisplayNameEnglish);
+
+        ConversationListItemResponse arabicOnly = page.Items.Single(
+            item => item.Id == withEnglishOnly.Id.Value);
+        Assert.Equal("أحمد حسن", arabicOnly.Participant.DisplayName);
+        Assert.Equal("أحمد حسن", arabicOnly.Participant.DisplayNameArabic);
+        Assert.Null(arabicOnly.Participant.DisplayNameEnglish);
+
+        ConversationListItemResponse facility = page.Items.Single(
+            item => item.Id == withOwner.Id.Value);
+        Assert.Equal("Sunrise Care Home", facility.Participant.DisplayName);
+        Assert.Equal("دار الشروق", facility.Participant.DisplayNameArabic);
+        Assert.Equal("Sunrise Care Home", facility.Participant.DisplayNameEnglish);
+    }
+
     // ------------------------------------------------------------------
     // Endpoint 1 / 2 / 10 — controller contract and JWT dispatch.
     // ------------------------------------------------------------------
@@ -986,9 +1041,13 @@ public sealed class ConversationTests
             UserId userId,
             string displayName,
             string? avatarUrl = null,
-            int? accountType = null) =>
+            int? accountType = null,
+            string? displayNameArabic = null,
+            string? displayNameEnglish = null) =>
             _profiles[userId] = new UserProfile(
-                userId, displayName, avatarUrl, accountType);
+                userId, displayName, avatarUrl, accountType,
+                DisplayNameArabic: displayNameArabic,
+                DisplayNameEnglish: displayNameEnglish);
 
         public Task<UserProfile?> GetProfileAsync(
             UserId userId,

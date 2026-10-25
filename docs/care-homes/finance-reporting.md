@@ -39,6 +39,8 @@ Bookings paid before this feature has a stored payment timestamp remain in unfil
 
 Dashboard `cairoDate` is the current Cairo-local date. `occupiedResources` counts in-use or held capacity, including unassigned room-type holds. `totalResources` counts physical room resources for private/suite inventory and bed resources for shared inventory; `occupancyPercentage` is zero when capacity is zero. `pendingPaymentCount` counts unexpired checkout holds, and `awaitingDecisionCount` counts paid bookings in the active facility-decision window. `periodRevenue` has the same totals shape as revenue.
 
+**Draft facilities are read like any other.** The owner dashboard and revenue reads resolve the authenticated owner's facility regardless of its review status, so a `Draft` facility is not rejected and never reports fabricated zeros — zero/empty values appear only when no activity exists for the selected period, while recorded payments, refunds, and inventory are reported with their real totals exactly as for an `Approved` facility. Both behaviors are pinned relationally in `CareHomeFinancePostgresTests` (empty-Draft zero totals and Draft-with-activity real data).
+
 CSV is UTF-8 with BOM, has a header row, uses invariant two-decimal money values, and contains the same period transaction rows and scope as the JSON report. Text cells are quoted, embedded quotes are doubled, and formula-leading user references are neutralized. Exports do not contain medical snapshots or Family contact information.
 
 ## Owner settlement view

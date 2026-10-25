@@ -84,35 +84,57 @@ public sealed class CareHomeCareRecordsController : ApiControllerBase
         // facility. Names come from the Families module; the resident set
         // comes from the facility's own bookings. Note paged/search over the
         // families query with an id set that stays inside the facility.
-        List<Guid> residentIds = await _careHomesDb.Bookings
+        //
+        // SQL translation (PostgreSQL regression, see
+        // CareHomeResidentsPostgresTests): the id set must be a list of the
+        // strong `ElderlyId` values compared against the mapped `e.Id`
+        // property. The previous `residentIds.Contains(e.Id.Value)` form and
+        // every `.Value`-peeling member access on a value-converted property
+        // (name search and ordering) are rejected by the Npgsql translator,
+        // which is what made this read 500. Mapped-property equivalents —
+        // `ids.Contains(e.Id)`, `EF.Functions.ILike` on the converted name
+        // columns, and ordering by the mapped properties — do translate.
+        List<ElderlyId> residentIds = await _careHomesDb.Bookings
             .AsNoTracking()
             .Where(b => b.FacilityId == facility.Id && b.Status == CareHomeBookingStatus.Accepted)
-            .Select(b => b.ElderlyId.Value)
+            .Select(b => b.ElderlyId)
             .Distinct()
             .ToListAsync(cancellationToken);
 
         var elderlies = _familiesDb.Elderlies
             .AsNoTracking()
-            .Where(e => residentIds.Contains(e.Id.Value));
+            .Where(e => residentIds.Contains(e.Id));
 
         if (!string.IsNullOrWhiteSpace(search))
         {
-            string needle = search.Trim().ToLowerInvariant();
+            // Trim first: " ahmad " must behave exactly like "ahmad",
+            // preserving the locked Trim().Contains semantics (Normalize
+            // above already validated the trimmed length).
+            string trimmed = search.Trim();
 
-            if (needle.Length > CareRecordPageSettings.MaxSearchLength)
-            {
-                return BadRequestWithCode(CareRecordErrors.InvalidQuery.Code);
-            }
+            // ILIKE is case-insensitive, replacing the previous
+            // ToLower().Contains intent. LIKE/ILIKE metacharacters in the
+            // caller's text are escaped — never stripped and never honored
+            // as wildcards — so "%", "_" and "\" match themselves literally,
+            // and a metacharacter-only needle matches only names that
+            // actually contain those characters. The 3-arg ILike overload
+            // passes the explicit escape character "\": its mapped-column
+            // translation is pinned by the PostgreSQL regression facts.
+            string needle = trimmed
+                .Replace("\\", "\\\\")
+                .Replace("%", "\\%")
+                .Replace("_", "\\_");
 
+            string pattern = $"%{needle}%";
             elderlies = elderlies.Where(e =>
-                e.ArabicFullName.Value.ToLower().Contains(needle) ||
-                e.EnglishFullName.Value.ToLower().Contains(needle));
+                EF.Functions.ILike(e.ArabicFullName, pattern, "\\") ||
+                EF.Functions.ILike(e.EnglishFullName, pattern, "\\"));
         }
 
         int totalCount = await elderlies.CountAsync(cancellationToken);
 
         List<CareHomeResidentResponse> items = (await elderlies
-                .OrderBy(e => e.ArabicFullName.Value)
+                .OrderBy(e => e.ArabicFullName)
                 .ThenBy(e => e.Id)
                 .Skip((pageQuery.Page - 1) * pageQuery.PageSize)
                 .Take(pageQuery.PageSize)

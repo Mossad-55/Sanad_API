@@ -151,7 +151,26 @@ public sealed class CareHomeBookingControllerTests
         Assert.Equal("api/v1/admin/care-homes/bookings/{bookingId:guid}/refund", Assert.Single(controller.GetCustomAttributes<RouteAttribute>()).Template);
         Assert.Equal("retry", controller.GetMethod(nameof(AdminCareHomeRefundsController.Retry))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
         Assert.Equal("record-completed", controller.GetMethod(nameof(AdminCareHomeRefundsController.RecordCompleted))!.GetCustomAttribute<HttpPostAttribute>()!.Template);
+
+        // Response contract pins (round-2 reconciliation): the retry really
+        // can surface the mapper's 502 (Paymob.RefundRejected), while
+        // record-completed never calls Paymob — so it must keep its actual
+        // mapped set and must NOT advertise a 502 it can never answer.
+        var retry = controller.GetMethod(nameof(AdminCareHomeRefundsController.Retry))!;
+        Assert.Equal(
+            new[] { StatusCodes.Status200OK, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict, StatusCodes.Status502BadGateway },
+            StatusCodesOf(retry));
+        var recordCompleted = controller.GetMethod(nameof(AdminCareHomeRefundsController.RecordCompleted))!;
+        Assert.Equal(
+            new[] { StatusCodes.Status200OK, StatusCodes.Status400BadRequest, StatusCodes.Status404NotFound, StatusCodes.Status409Conflict },
+            StatusCodesOf(recordCompleted));
     }
+
+    private static int[] StatusCodesOf(MethodInfo action) =>
+        action.GetCustomAttributes<ProducesResponseTypeAttribute>(false)
+            .Select(attribute => attribute.StatusCode)
+            .OrderBy(code => code)
+            .ToArray();
 
     [Fact]
     public void Webhook_controller_is_anonymous_and_keeps_paymob_route_stable()

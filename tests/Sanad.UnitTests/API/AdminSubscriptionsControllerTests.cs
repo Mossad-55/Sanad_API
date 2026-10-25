@@ -19,9 +19,61 @@ public sealed class AdminSubscriptionsControllerTests
     [Fact]
     public void Requires_the_super_admin_subscription_policy()
     {
-        var authorization = Assert.Single(typeof(AdminSubscriptionsController)
-            .GetCustomAttributes(typeof(AuthorizeAttribute), true).Cast<AuthorizeAttribute>());
-        Assert.Equal(AuthorizationPolicies.SubscriptionPlanAdmin, authorization.Policy);
+        // Portal second pass B2: authorization moved from the controller level to
+        // each action. Only the family-subscription read actions open to the
+        // operational read policy (SuperAdmin + SupportAdmin, for refund
+        // investigation); every plan/coupon/tax action stays SuperAdmin-only so
+        // plan authoring, publication, retirement and money-adjacent permissions
+        // are not widened.
+        var methods = typeof(AdminSubscriptionsController).GetMethods()
+            .Where(m => m.IsPublic && m.GetCustomAttribute<AuthorizeAttribute>() is not null)
+            .ToArray();
+
+        Assert.Equal(
+            new[]
+            {
+                nameof(AdminSubscriptionsController.GetFamilySubscription),
+                nameof(AdminSubscriptionsController.ListFamilySubscriptions),
+            },
+            methods
+                .Where(m => m.GetCustomAttributes<AuthorizeAttribute>()
+                    .Any(a => a.Policy == AuthorizationPolicies.OperationalReadAdmin))
+                .Select(m => m.Name)
+                .OrderBy(name => name, StringComparer.Ordinal)
+                .ToArray());
+
+        var planAdminActions = new[]
+        {
+            nameof(AdminSubscriptionsController.ListPlans),
+            nameof(AdminSubscriptionsController.GetPlan),
+            nameof(AdminSubscriptionsController.CreatePlan),
+            nameof(AdminSubscriptionsController.PublishPlan),
+            nameof(AdminSubscriptionsController.RetirePlan),
+            nameof(AdminSubscriptionsController.CreateCoupon),
+            nameof(AdminSubscriptionsController.ListCoupons),
+            nameof(AdminSubscriptionsController.GetCoupon),
+            nameof(AdminSubscriptionsController.DeleteCoupon),
+            nameof(AdminSubscriptionsController.CreateTaxRule),
+            nameof(AdminSubscriptionsController.GetCurrentTaxRule),
+            nameof(AdminSubscriptionsController.GetTaxRuleHistory),
+        };
+        Assert.All(methods, m => Assert.All(
+            m.GetCustomAttributes<AuthorizeAttribute>(),
+            a => Assert.Equal(
+                planAdminActions.Contains(m.Name)
+                    ? AuthorizationPolicies.SubscriptionPlanAdmin
+                    : AuthorizationPolicies.OperationalReadAdmin,
+                a.Policy)));
+        Assert.Equal(
+            planAdminActions.Append(nameof(AdminSubscriptionsController.ListFamilySubscriptions))
+                .Append(nameof(AdminSubscriptionsController.GetFamilySubscription))
+                .OrderBy(name => name, StringComparer.Ordinal),
+            methods.Select(m => m.Name).OrderBy(name => name, StringComparer.Ordinal));
+
+        // No controller-level policy remains: leaving one would re-close the
+        // SupportAdmin read or leak it onto plan-authoring actions.
+        Assert.Empty(typeof(AdminSubscriptionsController)
+            .GetCustomAttributes<AuthorizeAttribute>(inherit: false));
     }
 
     [Fact]

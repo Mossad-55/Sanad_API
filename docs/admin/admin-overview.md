@@ -34,6 +34,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Family register (families, members, dependents) | `docs/admin/families.md` |
 | Ratings visibility and moderation (caregiver and Care Home) | `docs/admin/ratings-moderation.md` |
 | Subscription plans, publication/retirement, and coupon configuration | `docs/admin/subscriptions.md` |
+| App rating investigation (admin read over stored app ratings) | `docs/admin/feedback-app-ratings.md` |
 | Elderly medication operational reads (prescriptions, dose logs, adherence) | `docs/admin/elderly-medications.md` |
 | Medication lateness CMS and operational evaluation | `docs/admin/elderly-medications.md` |
 | Elderly help-request operations and history | `docs/admin/elderly-help-requests.md` |

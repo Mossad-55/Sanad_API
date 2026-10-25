@@ -103,6 +103,8 @@ The retry sends the **outstanding award**, never the captured amount. When a rev
 | `Bookings.NoRefundDue` | 409 | Policy recorded that no refund is owed; no Paymob call is made |
 | `Paymob.NotConfigured` | 503 | Gateway keys missing |
 | `Paymob.GatewayError` | 502 | Paymob rejected the refund; booking stays failed — retry again or use the dashboard |
+| `Paymob.RefundRejected` | 502 | The gateway definitively refused the movement; no money moved and nothing ambiguous is marked, so the booking stays **Failed** and a bounded retry stays possible |
+| `Paymob.RefundOutcomeUnknown` | 409 | The outcome could not be confirmed; the booking is marked **Pending** and must be reconciled before any further refund |
 
 ## Record a provider outcome
 
@@ -149,13 +151,13 @@ Outcome reasons — an admin may assert any of them (the caregiver endpoint is l
 | `Bookings.Domain.InvalidOperation` | 409 | Booking not `Confirmed`, or note longer than 500 characters |
 | `Bookings.NotFound` | 404 | Unknown id |
 | `Bookings.RefundSettlementIncomplete` / `Paymob.NotConfigured` | 503 | Award recorded but the movement could not complete / gateway not configured |
+| `Paymob.RefundRejected` | 502 | The gateway definitively refused the settlement; the claim is released and nothing ambiguous is marked, so a bounded retry stays possible and the booking stays **Failed** |
+| `Paymob.RefundOutcomeUnknown` | 409 | The movement's outcome could not be confirmed; the booking is marked **Pending** and must be reconciled before any further refund |
 
-**Known gap (documented as-is).** Two gateway answers are not yet in the shared error mapper: a
-definitive `Paymob.RefundRejected` refusal (the claim is released and nothing ambiguous is marked,
-so a bounded retry stays possible) and `Paymob.RefundOutcomeUnknown` (the booking is marked
-**Pending** and must be reconciled before any further refund). Both currently surface as plain
-`400` through the mapper fallback instead of their coded statuses. A shared-mapper correction is a
-parent-owned decision; until then, drive both states by `refundState`, not by the status code alone.
+These two gateway answers are mapped centrally (502 for a definitive refusal that proved no money
+moved, 409 for an unconfirmable outcome). Neither status code by itself grants retry permission:
+drive both states by `refundState` — a **Failed** booking may be retried through the ledger fences,
+a **Pending** one must first be settled with the reconcile command below.
 
 ## Reconcile an uncertain refund
 

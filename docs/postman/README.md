@@ -9,11 +9,13 @@ only through the guarded Bruno flow on disposable targets.
 ## Layout by audience
 
 - `Sanad.Auth.postman_collection.json` — login, OTP, sessions, password flows.
+- `Sanad.ElderlyWelcome.postman_collection.json` — the Elderly Welcome contract.
 - `app/` — family, caregiver, elderly, and public app surfaces:
   `Sanad.App.{Chat, Community, Caregiver, Caregiver.Operations, Elderly,
   Family, Family.Operations, Family.CareHomes, Library, Public}`.
-- `admins/` — admin surfaces: `Sanad.Admin.{CareHomes, Chat, Community,
-  Families, Finance, Ratings}` plus the general `Sanad.Admin` collection (incl. the Library CMS folder).
+- `admins/` — admin surfaces: `Sanad.Admin.{CareHomes, CaregiverNotes, Chat,
+  Community, Families, Finance, Ratings, Feedback}` plus the general
+  `Sanad.Admin` collection (incl. the Library CMS folder).
 - `care-homes/` — the original Care Homes slice collections (`Sanad.CareHomes{,
   .Owner, .Finance}`) plus its [README](care-homes/README.md).
 

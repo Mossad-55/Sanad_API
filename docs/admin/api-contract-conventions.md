@@ -55,3 +55,56 @@ DTO directly, never a `Result<T>` envelope.
 `Id` (`arabicName`, `englishName`, `isActive`); the route ID is authoritative.
 A legacy body that still carries an `Id` is accepted and that value is
 ignored.
+
+## Rejection shapes: field-array validation vs coded domain errors
+
+Admin consumers must distinguish the two rejection shapes the API returns.
+Neither shape is being changed; this section only documents the existing
+behavior.
+
+**1. Framework validation failures — field-array `errors`, no domain `code`.**
+Malformed or unbindable input (for example an unknown numeric enum in a query
+parameter, or a malformed JSON body) is rejected by the framework before any
+handler or domain code runs. The body is the standard validation
+problem-details shape: the field map is the error list, and there is **no
+`code` extension**. Illustrative example (field names and counts vary per
+route):
+
+```json
+{
+  "type": "https://tools.ietf.org/html/rfc9110#section-15.5.1",
+  "title": "One or more validation errors occurred.",
+  "status": 400,
+  "errors": { "status": ["The value 'banana' is not valid."] }
+}
+```
+
+A smaller but related 400 shape comes from the shared FluentValidation handler
+(`ValidationExceptionHandler`): it carries a stable `code` of
+`Api.Validation.Failed` plus the same field-array `errors` map and a
+`traceId`. Both validation variants key on the `errors` field map; only the
+FluentValidation variant adds `code`.
+
+**2. Domain failures — stable `code`, produced by the shared mapper.** When a
+handler returns a domain error, `ResultProblemDetailsMapper` maps its stable
+code to an HTTP status and returns `application/problem+json` with `code` and
+`traceId` extensions; the detail is a safe generic sentence, never the
+internal message. Field-level detail appears under `errors` only when the
+domain error carries it. Illustrative example:
+
+```json
+{
+  "type": "https://httpstatuses.com/409",
+  "title": "Conflict",
+  "status": 409,
+  "detail": "The request conflicts with the current state.",
+  "instance": "/api/v1/admin/bookings/0198e2c2-4444-7777-8888-000000000001/outcome",
+  "code": "Paymob.RefundOutcomeUnknown",
+  "traceId": "0HN7GK0VQ:00000001"
+}
+```
+
+Do not branch client handling on the HTTP status alone for refund-critical
+codes (`Paymob.RefundRejected` → 502, `Paymob.RefundOutcomeUnknown` → 409):
+key on `code` and the resource's own state fields, because status never grants
+retry permission.

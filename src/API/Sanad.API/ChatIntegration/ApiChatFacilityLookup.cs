@@ -13,7 +13,8 @@ namespace Sanad.API.ChatIntegration;
 /// ApiChatUserLookup applies to person names) plus the approved cover image
 /// URL. Null when the user owns no facility, the facility has no approved
 /// revision, or no cover was uploaded — the caller then keeps the owner's
-/// personal profile as the participant display.
+/// personal profile as the participant display. The bilingual fields carry
+/// both approved-revision names as stored (C1); a blank one stays null.
 /// </summary>
 public sealed class ApiChatFacilityLookup : IChatFacilityLookup
 {
@@ -79,7 +80,13 @@ public sealed class ApiChatFacilityLookup : IChatFacilityLookup
             ? $"/api/v1/care-homes/discovery/{facility.Id.Value:D}/media/{mediaId:D}"
             : null;
 
-        return new FacilityPresentation(displayName, coverUrl);
+        // Bilingual names (C1): the approved revision's stored names; a blank
+        // stored name stays null so the client falls back to displayName.
+        return new FacilityPresentation(
+            displayName,
+            coverUrl,
+            NullIfBlank(revision.ArabicName),
+            NullIfBlank(revision.EnglishName));
     }
 
     /// <summary>
@@ -138,7 +145,11 @@ public sealed class ApiChatFacilityLookup : IChatFacilityLookup
                 continue;
             }
 
-            presentations[facility.OwnerUserId] = new FacilityPresentation(displayName, null);
+            presentations[facility.OwnerUserId] = new FacilityPresentation(
+                displayName,
+                null,
+                NullIfBlank(revision.ArabicName),
+                NullIfBlank(revision.EnglishName));
             revisionIds.Add(revision.Id);
         }
 
@@ -189,4 +200,8 @@ public sealed class ApiChatFacilityLookup : IChatFacilityLookup
 
         return presentations;
     }
+
+    /// <summary>An absent or blank stored name is null, never an empty string.</summary>
+    private static string? NullIfBlank(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 }

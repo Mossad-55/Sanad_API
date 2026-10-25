@@ -18,9 +18,11 @@ namespace Sanad.UnitTests.API;
 /// drift without a failing test. The policy is the existing caregivers-admin policy (unchanged);
 /// the one visible change is the optional <c>status</c> query binding on the list action.
 /// <para>
-/// The outcome outcomes listed here document today's mapper behavior: <c>Paymob.RefundRejected</c>
-/// and <c>Paymob.RefundOutcomeUnknown</c> are not in the shared mapper, so they fall to its 400
-/// fallback — the mapping correction is a parent-owned shared-file decision.
+/// The mapped outcomes listed here document the corrected mapper behavior (portal second
+/// pass B1): <c>Paymob.RefundRejected</c> produces a 502 Bad Gateway and
+/// <c>Paymob.RefundOutcomeUnknown</c> a 409 Conflict. Both keep their stable error code on
+/// the wire, and status alone grants no retry permission: the booking's ledger/state fences
+/// stay authoritative.
 /// </para>
 /// <para>Executed in the combined focused W1–W4 suite.</para>
 /// </summary>
@@ -110,7 +112,13 @@ public sealed class AdminBookingsControllerTests
         ProducingFor(
             nameof(AdminBookingsController.RefundBooking),
             HttpVerb.Post,
-            expected: [(StatusCodes.Status200OK, typeof(BookingDetailResponse))],
+            // 502 added with the B1 mapping: Paymob.RefundRejected surfaces as
+            // Bad Gateway on the retry too.
+            expected:
+            [
+                (StatusCodes.Status200OK, typeof(BookingDetailResponse)),
+                (StatusCodes.Status502BadGateway, null),
+            ],
             routeTemplate: "{bookingId:guid}/refund");
     }
 
@@ -120,12 +128,16 @@ public sealed class AdminBookingsControllerTests
         ProducingFor(
             nameof(AdminBookingsController.RecordOutcome),
             HttpVerb.Post,
+            // 502 added with the B1 mapping: Paymob.RefundRejected (definitive
+            // provider refusal) surfaces as Bad Gateway; the unknown outcome
+            // keeps the existing 409.
             expected:
             [
                 (StatusCodes.Status204NoContent, null),
                 (StatusCodes.Status400BadRequest, null),
                 (StatusCodes.Status404NotFound, null),
                 (StatusCodes.Status409Conflict, null),
+                (StatusCodes.Status502BadGateway, null),
                 (StatusCodes.Status503ServiceUnavailable, null),
             ],
             routeTemplate: "{bookingId:guid}/outcome");

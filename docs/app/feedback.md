@@ -31,8 +31,13 @@ standard validation/problem-details contract. Feedback is stored in the
 - **Authenticated only — no anonymous option.** The route requires an app JWT;
   a caller without a valid token receives `401`. Anonymous ratings are not
   accepted or stored.
-- **Not public.** No read route exposes ratings, and nothing here is returned to
-  any client.
-- **No admin surface today.** There is no admin list or detail route for
-  ratings; the stored rows are telemetry and are only readable directly from
-  storage. An admin surface would be a new product decision.
+- **Not public.** No app-facing route exposes ratings, and nothing here is
+  returned to the submitting client; admins read stored ratings only through
+  the separate admin surface below.
+- **Read by Admin only, for rating investigation.** There is no public or
+  owner-facing read route. A paginated admin read exists at
+  `GET /api/v1/admin/feedback/app-ratings` for Super Admin and Support Admin
+  (normal JWT); it returns the stored columns only (id, internal user id,
+  rating, comment, device info, app version, creation time) — no name, phone,
+  or contact data is joined in. See
+  [`docs/admin/feedback-app-ratings.md`](../admin/feedback-app-ratings.md).

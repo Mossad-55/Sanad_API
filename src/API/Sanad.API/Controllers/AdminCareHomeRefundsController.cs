@@ -18,6 +18,9 @@ public sealed class AdminCareHomeRefundsController(ISender sender, IDateTimeProv
     [ProducesResponseType(typeof(CareHomeBookingResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
     [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    // 502 with the B1 mapper: a definitive provider refusal the retry
+    // surfaces directly (Paymob.RefundRejected → 502, stable code kept).
+    [ProducesResponseType(StatusCodes.Status502BadGateway)]
     public async Task<IActionResult> Retry(Guid bookingId, CancellationToken ct) =>
         TryGetAuthenticatedUserId(out UserId actor)
             ? ToActionResult(await sender.Send(new RetryCareHomeRefundCommand(actor, bookingId, clock.UtcNow), ct))

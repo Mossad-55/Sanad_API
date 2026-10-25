@@ -21,7 +21,7 @@ Single map of this `docs/` tree. Start here; do not re-derive it per task.
 
 - [Dated frontend reports and handoffs](frontend-handoffs/README.md) — separate Admin/App audiences, phase/date/topic, corrections and links to implementation/deployment evidence. Execution status stays in each internal slice plan.
 - Feature guides: [app/](app/) (family/caregiver/elderly views) and [admin/](admin/) (admin views).
-- Postman: [postman/](postman/) — 20 collections, every controller route mapped (see mapping check below). `local-fixtures.bru` is generated and never committed.
+- Postman: [postman/](postman/) — 24 collections, every controller route mapped (see mapping check below). `local-fixtures.bru` is generated and never committed.
 - OpenAPI is runtime-generated (`/openapi/v1.json`); no committed spec by design. Controllers carry `ProducesResponseType` annotations.
 
 ## Verification tooling (living source of truth)

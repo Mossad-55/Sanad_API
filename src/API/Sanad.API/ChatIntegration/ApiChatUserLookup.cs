@@ -82,7 +82,11 @@ public sealed class ApiChatUserLookup : IChatUserLookup
             // keeping the key here invites a future re-leak seam.
             null,
             profile.AccountType,
-            currentTypes);
+            currentTypes,
+            // Bilingual names (C1): the stored names as registered; an empty
+            // stored name stays null so the client falls back to displayName.
+            NullIfBlank(profile.ArabicFullName),
+            NullIfBlank(profile.EnglishFullName));
     }
 
     /// <summary>
@@ -144,11 +148,19 @@ public sealed class ApiChatUserLookup : IChatUserLookup
                 // crosses the module boundary.
                 null,
                 profile.AccountType,
-                types);
+                types,
+                // Bilingual names (C1): stored names as registered; an empty
+                // stored name stays null.
+                NullIfBlank(profile.ArabicFullName),
+                NullIfBlank(profile.EnglishFullName));
         }
 
         return profiles;
     }
+
+    /// <summary>An absent or blank stored name is null, never an empty string.</summary>
+    private static string? NullIfBlank(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
     private async Task<IReadOnlyDictionary<UserId, IReadOnlyList<int>?>> GetCurrentAccountTypesAsync(
         IReadOnlyCollection<UserId> userIds,

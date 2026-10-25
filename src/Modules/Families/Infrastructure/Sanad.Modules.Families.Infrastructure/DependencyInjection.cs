@@ -1,6 +1,10 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Sanad.Modules.Families.Application.Abstractions.Data;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Families.Application.Abstractions.Payments;
@@ -53,14 +57,43 @@ public static class DependencyInjection
 
         string? paymobSecretKey = configuration.GetSection(PaymobOptions.SectionName)["SecretKey"];
 
+        // ------------------------------------------------------------------
+        // Fixture-only refund-outcome seam.
+        //
+        // The real client (Development or production PaymobClient) is
+        // registered under the key "paymob-inner"; the sole non-keyed
+        // IPaymobClient is the seam decorator, so EVERY refund caller — care
+        // -home refund/retry/expiry, Families booking refunds, and
+        // SubscriptionRefundGateway — goes through one interception point
+        // while non-refund operations delegate untouched. Default OFF: with
+        // an absent/empty FixtureRefundSeam section the decorator is a pure
+        // pass-through with zero behaviour change. ValidateOnStart refuses
+        // Enabled=true in Production or a malformed outcome map.
+        // ------------------------------------------------------------------
+        services.AddOptions<FixtureRefundSeamOptions>()
+            .Bind(configuration.GetSection(FixtureRefundSeamOptions.SectionName))
+            .ValidateOnStart();
+
+        services.TryAddEnumerable(
+            ServiceDescriptor.Singleton
+                <IValidateOptions<FixtureRefundSeamOptions>,
+                 FixtureRefundSeamOptionsValidator>());
+
         if (string.IsNullOrWhiteSpace(paymobSecretKey))
         {
-            services.AddSingleton<IPaymobClient, DevelopmentPaymobClient>();
+            services.AddKeyedSingleton<IPaymobClient, DevelopmentPaymobClient>("paymob-inner");
         }
         else
         {
-            services.AddSingleton<IPaymobClient, PaymobClient>();
+            services.AddKeyedSingleton<IPaymobClient, PaymobClient>("paymob-inner");
         }
+
+        services.AddSingleton<IPaymobClient>(serviceProvider =>
+            new FixtureRefundSeamPaymobClient(
+                serviceProvider.GetRequiredKeyedService<IPaymobClient>("paymob-inner"),
+                serviceProvider.GetRequiredService<IOptionsMonitor<FixtureRefundSeamOptions>>(),
+                serviceProvider.GetRequiredService<ILoggerFactory>()
+                    .CreateLogger<FixtureRefundSeamPaymobClient>()));
 
         // Finance's duplicate-charge claim execution resolves its provider
         // charge on the purchase owner's side: same client, same outcome

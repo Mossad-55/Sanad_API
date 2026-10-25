@@ -7,10 +7,19 @@ namespace Sanad.Modules.Chat.Application.Conversations;
 /// Implemented in Sanad.API over the CareHomes store; the Chat Application
 /// only declares the seam so it never takes a cross-module project
 /// reference.
+/// <para>
+/// Bilingual names (portal second pass C1): <c>DisplayNameArabic</c> and
+/// <c>DisplayNameEnglish</c> are the approved revision's stored names in
+/// each language, or null when that language is blank. They are additive
+/// display data only — <c>DisplayName</c> keeps its existing resolution
+/// (English preferred, Arabic fallback) and drives nothing.
+/// </para>
 /// </summary>
 public sealed record FacilityPresentation(
     string DisplayName,
-    string? CoverImageUrl);
+    string? CoverImageUrl,
+    string? DisplayNameArabic = null,
+    string? DisplayNameEnglish = null);
 
 public interface IChatFacilityLookup
 {

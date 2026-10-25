@@ -9,7 +9,6 @@ using Sanad.Modules.Families.Domain.Subscriptions;
 
 namespace Sanad.API.Controllers;
 
-[Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
 [Route("api/v1/admin/subscriptions")]
 public sealed class AdminSubscriptionsController : ApiControllerBase
 {
@@ -17,7 +16,15 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
 
     public AdminSubscriptionsController(ISender sender) => _sender = sender;
 
+    // The controller-level SuperAdmin-only plan policy was lowered to
+    // per-action attributes (portal second pass B2): family-subscription
+    // list/detail are the two refund-investigation reads and are opened to
+    // SuperAdmin + SupportAdmin through the read-only OperationalReadAdmin
+    // policy. Every plan/coupon/tax action keeps the unchanged SuperAdmin-only
+    // SubscriptionPlanAdmin policy — plan authoring, publication, retirement
+    // and money execution are not widened.
     [HttpGet]
+    [Authorize(Policy = AuthorizationPolicies.OperationalReadAdmin)]
     [ProducesResponseType(typeof(PagedAdminFamilySubscriptions), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListFamilySubscriptions(
         [FromQuery] int page = 1,
@@ -26,6 +33,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
         => Ok((await _sender.Send(new GetAdminFamilySubscriptionsQuery(page, pageSize), cancellationToken)).Value);
 
     [HttpGet("{subscriptionId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.OperationalReadAdmin)]
     [ProducesResponseType(typeof(AdminFamilySubscriptionResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetFamilySubscription(
@@ -37,6 +45,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
     }
 
     [HttpGet("plans")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(typeof(PagedAdminSubscriptionPlans), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListPlans(
         [FromQuery] int page = 1,
@@ -45,6 +54,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
         => Ok((await _sender.Send(new GetAdminSubscriptionPlansQuery(page, pageSize), cancellationToken)).Value);
 
     [HttpGet("plans/{planVersionId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(typeof(AdminSubscriptionPlanResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetPlan(
@@ -56,6 +66,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
     }
 
     [HttpPost("plans")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -78,6 +89,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
     }
 
     [HttpPost("plans/{planVersionId:guid}/publish")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -90,6 +102,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
     }
 
     [HttpPost("plans/{planVersionId:guid}/retire")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -117,6 +130,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
     }
 
     [HttpPost("coupons")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -130,11 +144,13 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
     }
 
     [HttpGet("coupons")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(typeof(IReadOnlyList<SubscriptionCouponResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> ListCoupons(CancellationToken cancellationToken)
         => Ok((await _sender.Send(new GetSubscriptionCouponsQuery(), cancellationToken)).Value);
 
     [HttpGet("coupons/{couponId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(typeof(SubscriptionCouponResponse), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCoupon(Guid couponId, CancellationToken cancellationToken)
@@ -144,6 +160,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
     }
 
     [HttpDelete("coupons/{couponId:guid}")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> DeleteCoupon(Guid couponId, CancellationToken cancellationToken)
@@ -154,6 +171,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
     }
 
     [HttpPost("tax-rules")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(typeof(Guid), StatusCodes.Status201Created)]
     [ProducesResponseType(StatusCodes.Status400BadRequest)]
     [ProducesResponseType(StatusCodes.Status409Conflict)]
@@ -173,6 +191,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
     }
 
     [HttpGet("tax-rules/current")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(typeof(SubscriptionTaxRuleResponse), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetCurrentTaxRule(CancellationToken cancellationToken)
     {
@@ -181,6 +200,7 @@ public sealed class AdminSubscriptionsController : ApiControllerBase
     }
 
     [HttpGet("tax-rules/history")]
+    [Authorize(Policy = AuthorizationPolicies.SubscriptionPlanAdmin)]
     [ProducesResponseType(typeof(IReadOnlyList<SubscriptionTaxRuleResponse>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetTaxRuleHistory(CancellationToken cancellationToken)
     {

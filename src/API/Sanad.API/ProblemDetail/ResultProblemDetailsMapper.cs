@@ -350,6 +350,16 @@ public static class ResultProblemDetailsMapper
             ["Paymob.MethodNotAvailable"] = 409,
             ["Paymob.GatewayError"] = 502,
 
+            // Portal second pass B1: the two gateway refund answers the shared
+            // mapper previously fell through to 400. A definitive provider
+            // refusal is a gateway-level failure (502) that proved no money
+            // moved, and an unconfirmable outcome is an operator-reconcilable
+            // state (409). The stable codes stay on the wire, status alone
+            // grants no retry: the booking's ledger/state fences (claim,
+            // ambiguity marker, refundState) remain authoritative.
+            ["Paymob.RefundRejected"] = 502,
+            ["Paymob.RefundOutcomeUnknown"] = 409,
+
             // E04 platform controls: maintenance blocks new checkout/payment
             // starts (503), a disabled/unconfigured method is a client error
             // (400), a stale control update conflicts (409), and an unreadable

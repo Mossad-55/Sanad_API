@@ -45,6 +45,10 @@
       "value": ""
     },
     {
+      "key": "careHomeResidentSearch",
+      "value": ""
+    },
+    {
       "key": "careHomeRatingId",
       "value": ""
     },
@@ -1738,7 +1742,7 @@
       "item": [
         {
           "name": "List accepted resident names",
-          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{careHomeOwnerJwt}}" }], "url": "{{baseUrl}}/api/v1/care-homes/residents/mine?page=1&pageSize=20", "description": "Names only for residents with an Accepted booking at the owner's facility. No medical data is returned." }
+          "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{careHomeOwnerJwt}}" }], "url": "{{baseUrl}}/api/v1/care-homes/residents/mine?search={{careHomeResidentSearch}}&page=1&pageSize=20", "description": "Names only for residents with an Accepted booking at the owner's facility. No medical data is returned. Optional search= is trimmed and then matched against the Arabic or English mapped names case-insensitively as literal text: '%' , '_' and backslash are escaped, so they match themselves (a search of '%' returns only a name that literally contains a percent sign — it is never a wildcard and never ignored). A trimmed search longer than 100 characters or a page/pageSize outside 1-100 returns 400 Families.CareRecords.InvalidQuery. Ordering is mapped-name then id, stable for pagination." }
         },
         {
           "name": "List care-home-source records for resident",

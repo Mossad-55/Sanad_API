@@ -9,6 +9,7 @@ using Sanad.Modules.CareHomes.Application.Facilities;
 using Sanad.Modules.Cms.Application.MedicationLateness;
 using Sanad.Modules.Finance.Application;
 using Sanad.Modules.Families.Application.Subscriptions;
+using Sanad.Modules.Identity.Application.Feedback;
 
 namespace Sanad.UnitTests.API;
 
@@ -44,6 +45,7 @@ public sealed class AdminResponseSchemaContractTests
         AssertResponse<IReadOnlyList<SubscriptionTaxRuleResponse>>(typeof(AdminSubscriptionsController), "GetTaxRuleHistory", 200);
         AssertResponse<CareHomeProfileMediaResponse>(typeof(CareHomeProfileMediaController), "Upload", 200);
         AssertResponse<FileStreamResult>(typeof(CareHomeProfileMediaController), "ReadOwner", 200);
+        AssertResponse<PagedAdminAppRatings>(typeof(AdminFeedbackAppRatingsController), "ListAppRatings", 200);
     }
 
     [Fact]

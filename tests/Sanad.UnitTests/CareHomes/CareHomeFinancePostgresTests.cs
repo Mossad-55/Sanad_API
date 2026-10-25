@@ -601,6 +601,83 @@ public sealed class CareHomeFinancePostgresTests
     }
 
     [Fur03PostgresFact]
+    public async Task Owner_Dashboard_DraftFacilityWithActivity_ReturnsRealData()
+    {
+        // Portal second pass A2: the owner dashboard must allow a Draft
+        // facility and retain its real activity (revenue and resource counts),
+        // not report zero/empty values. Draft-with-no-activity coverage stays
+        // in Owner_Dashboard_EmptyDraftFacility_ReturnsZeroTotals.
+        string connectionString = GetValidatedConnectionString();
+
+        List<CareHomeId> facilityIdsToDelete = [];
+        List<Guid> bookingIdsToDelete = [];
+
+        try
+        {
+            await using var setupDb = CreateDbContext(connectionString);
+
+            UserId owner = UserId.New();
+            CareHomeFacility facility = CareHomeFacility.CreateDraft(owner, FixedUtcNow);
+            setupDb.Facilities.Add(facility);
+            await setupDb.SaveChangesAsync();
+
+            facilityIdsToDelete.Add(facility.Id);
+            Assert.Equal(CareHomeStatus.Draft,
+                (await setupDb.Facilities.SingleAsync(x => x.Id == facility.Id)).Status);
+
+            CareHomeRoomType sharedType = CareHomeRoomType.Create(
+                facility.Id, "مشترك D", "Shared D", 1000m, CareHomeAllocationMode.Shared, FixedUtcNow);
+            CareHomeRoom room = CareHomeRoom.Create(facility.Id, sharedType.Id, "RD1", FixedUtcNow);
+            CareHomeBed bed = CareHomeBed.Create(facility.Id, room.Id, "D1", FixedUtcNow);
+            setupDb.RoomTypes.Add(sharedType);
+            setupDb.Rooms.Add(room);
+            setupDb.Beds.Add(bed);
+
+            Guid roomTypeId = sharedType.Id;
+            CareHomeBooking booking = CreatePaidBooking(facility.Id, roomTypeId, 91, FixedUtcNow);
+            setupDb.Bookings.Add(booking);
+            await setupDb.SaveChangesAsync();
+
+            bookingIdsToDelete.Add(booking.Id);
+
+            // Readback prerequisites before the scenario: exactly one accepted,
+            // paid booking carries the facility's activity.
+            Assert.Equal(1, await setupDb.Bookings.CountAsync(
+                x => x.FacilityId == facility.Id && x.Status == CareHomeBookingStatus.Accepted));
+
+            await using var readDb = CreateDbContext(connectionString);
+            var occupancy = new FixedOccupancyProvider(
+            [
+                new(bed.Id, CareHomeResourceKind.Bed, FixedToday, FixedToday.AddDays(1))
+            ]);
+            var dashboard = await new GetOwnerCareHomeDashboardHandler(readDb, occupancy)
+                .Handle(new(owner, null, null, FixedUtcNow), default);
+
+            Assert.True(dashboard.IsSuccess);
+            Assert.Equal(1, dashboard.Value.TotalResources);
+            Assert.Equal(1, dashboard.Value.OccupiedResources);
+            Assert.Equal(100m, dashboard.Value.OccupancyPercentage);
+            Assert.Equal(1150m, dashboard.Value.PeriodRevenue.GrossCollected);
+            Assert.Equal(1150m, dashboard.Value.PeriodRevenue.NetCollected);
+            Assert.Equal(1, dashboard.Value.PeriodRevenue.PaymentCount);
+        }
+        finally
+        {
+            await using var cleanupDb = CreateDbContext(connectionString);
+            if (bookingIdsToDelete.Count > 0)
+            {
+                await cleanupDb.Bookings.Where(x => bookingIdsToDelete.Contains(x.Id))
+                    .ExecuteDeleteAsync();
+            }
+            if (facilityIdsToDelete.Count > 0)
+            {
+                await cleanupDb.Facilities.Where(x => facilityIdsToDelete.Contains(x.Id))
+                    .ExecuteDeleteAsync();
+            }
+        }
+    }
+
+    [Fur03PostgresFact]
     public async Task Revenue_DateRange_FiltersByCairoLocalInclusiveDates()
     {
         string connectionString = GetValidatedConnectionString();

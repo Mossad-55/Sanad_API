@@ -49,9 +49,14 @@ public sealed class FamiliesInfrastructureDependencyInjectionTests
                     ValidateScopes = true
                 });
 
-        Assert.IsType<DevelopmentPaymobClient>(
+        // The non-keyed client is the seam decorator (pass-through while
+        // disabled); the keyed inner client is the Development client.
+        Assert.IsType<FixtureRefundSeamPaymobClient>(
             serviceProvider.GetRequiredService<
                 IPaymobClient>());
+        Assert.IsType<DevelopmentPaymobClient>(
+            serviceProvider.GetRequiredKeyedService<
+                IPaymobClient>("paymob-inner"));
     }
 
     [Fact]
@@ -81,9 +86,14 @@ public sealed class FamiliesInfrastructureDependencyInjectionTests
                     ValidateScopes = true
                 });
 
-        Assert.IsType<PaymobClient>(
+        // The non-keyed client is the seam decorator (pass-through while
+        // disabled); the keyed inner client is the REAL provider client.
+        Assert.IsType<FixtureRefundSeamPaymobClient>(
             serviceProvider.GetRequiredService<
                 IPaymobClient>());
+        Assert.IsType<PaymobClient>(
+            serviceProvider.GetRequiredKeyedService<
+                IPaymobClient>("paymob-inner"));
     }
 
     private static IConfiguration CreateConfiguration(

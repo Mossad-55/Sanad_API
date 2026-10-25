@@ -7,12 +7,24 @@ namespace Sanad.Modules.Chat.Application.Conversations;
 /// <c>AccountType</c> integer (Opus delta; null only when the Identity user
 /// row is gone). For care-home owners <c>displayName</c>/<c>avatarUrl</c>
 /// resolve to the facility's name and cover over the owner's user id.
+/// <para>
+/// Bilingual names (portal second pass C1): <c>displayNameArabic</c> and
+/// <c>displayNameEnglish</c> are additive and carry the counterpart's stored
+/// name in each language (the facility's approved-revision names for a
+/// care-home owner), or null when that language is absent from the store —
+/// they never replace or alter <c>displayName</c>, which keeps its existing
+/// English-preferred/Arabic-fallback resolution and unanswered-profile
+/// empty-string behavior. A client falls back to <c>displayName</c> when one
+/// of the two is null.
+/// </para>
 /// </summary>
 public sealed record ParticipantResponse(
     Guid UserId,
     string DisplayName,
     string? AvatarUrl,
-    int? AccountType);
+    int? AccountType,
+    string? DisplayNameArabic = null,
+    string? DisplayNameEnglish = null);
 
 public sealed record LastMessageResponse(
     Guid Id,

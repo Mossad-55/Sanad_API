@@ -374,8 +374,9 @@ not decoration.
 | Duplicate charge (`DuplicateCharge`, `2`) | An erroneous or duplicate charge | The whole captured amount, refunded in full — never prorated — after a Support-approved verdict |
 | Service shutdown (`ServiceShutdown`, `3`) | Ahlena service shutdown | The unused portion of the current paid period |
 
-These rules apply to a family premium subscription and to a care-home listing subscription
-alike; the two scopes carry the same clause-9 money rules.
+These rules apply to a family premium subscription only. This API has no
+care-home listing subscription and no listing billing flows, so none of the
+routes or outcomes below apply to a care home.
 
 ### Cancel-renewal
 
