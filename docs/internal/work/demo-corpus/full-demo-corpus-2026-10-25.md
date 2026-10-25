@@ -441,3 +441,28 @@ Contract investigation: `ses_e8bfdb7aeffeGmASgAWQMSc1p4`. Accepted defaults:
   `ScheduleConflict`.
 - The existing cross-midnight gap in the overlap predicate is mirrored exactly
   and documented, not silently fixed in this slice.
+
+### Release (2026-10-25)
+
+- **Release state: `verified`** for revision `456858d8ee9115fb5ecf067a6f3216a499603e4e`
+  (`5377bbc9..456858d8`), live at `http://72.62.92.144:8091` on service `sanad-api`,
+  runtime `Production`. Publisher 0/0; archive SHA-256
+  `01d3851b9cd0994478b5f25f7e181e50a0a6d56d8e74517c903ea0323e7b9e1f`; validated
+  `SanadDb` dump (825,228 bytes, 892-entry TOC) and app-directory backup; config
+  fingerprints unchanged; service active/running with `NRestarts=0`; the three new
+  migrations applied at startup (`Families 20261025175627`, `CareHomes 20261025175720`,
+  `Community 20261025170718`), 9/9 heads, 0 pending; verifier exit 0; refund seam
+  absent/disabled. Role readbacks passed (post views/`authorId`, comment viewer state,
+  day availability, support authorization) and the idempotent-create sequence returned
+  201/201 with one stored record and a 409 conflict on a changed payload.
+- Receipt: [mobile-report-release-2026-10-25.md](../portal-api-reconciliation/reports/mobile-report-release-2026-10-25.md).
+  One recorded deviation: the replay body is JSON-equivalent but not byte-identical to
+  the fresh 201 (UTF-8 vs `\uXXXX` escaping, 445 vs 473 bytes). Semantic contract holds;
+  the strict byte-identity check is flagged for Mastermind disposition.
+- Synthetic release smoke writes (documented in the receipt, additive): one post view on
+  `01a15588-3d20-78ee-a67b-7aa522aea4dc` and three `SANAD RELEASE CHECK Hospital`
+  family care records (plus matching idempotency rows) for dependent
+  `01a17319-d059-7b7b-b92d-94e7ec18d0a4`. D1–D4 must reuse/skip them, never delete them.
+- D3 non-money groups can run on this revision; money-state groups remain blocked until
+  the non-Production refund seam is settled and verified, which this release did not
+  change.
