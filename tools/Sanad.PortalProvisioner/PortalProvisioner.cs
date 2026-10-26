@@ -2763,3 +2763,44 @@ public sealed class ScriptedUnknownRefundGateway(string chargeTransactionId) : I
                 "the scripted-unknown seam gateway was constructed without a charge transaction id")
             : value;
 }
+
+/// <summary>
+/// The demo duplicate-claim "Failed" group's IN-PROCESS execution gateway: it
+/// returns the exact definitive-refusal shape the real client produces
+/// (<c>Paymob.RefundRejected</c>), so
+/// <see cref="DuplicateChargeClaimStore.ExecuteAsync"/> records the claim's
+/// execution as Failed WITHOUT any provider call.
+/// <para>
+/// This stub exists because <see cref="RefusingRefundGateway"/> cannot produce
+/// that persisted outcome: its <c>PrepareAsync</c> throws, and
+/// <c>PrepareAsync</c> is called OUTSIDE <c>ExecuteAsync</c>'s outcome-mapping
+/// try/catch, so it can never be classified into a Failed claim. The deployed
+/// app keeps its real gateway, whose provider call for this charge transaction
+/// id is intercepted by the FixtureRefundSeam allowlist.
+/// </para>
+/// </summary>
+public sealed class ScriptedRejectingRefundGateway(string chargeTransactionId) : ISubscriptionRefundGateway
+{
+    public Task<SubscriptionRefundGatewayPreparation> PrepareAsync(
+        Guid paymentAttemptId,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(
+            SubscriptionRefundGatewayPreparation.WithChargeTransaction(
+                ScriptedRejectingRefundGateway.CheckCharge(chargeTransactionId)));
+
+    public Task<SubscriptionRefundGatewayResult> RefundAsync(
+        string preparedChargeTransactionId,
+        string currency,
+        long awardMinorUnits,
+        CancellationToken cancellationToken) =>
+        Task.FromResult(new SubscriptionRefundGatewayResult(
+            SubscriptionRefundGatewayOutcome.Rejected,
+            null,
+            "Paymob.RefundRejected"));
+
+    private static string CheckCharge(string value) =>
+        string.IsNullOrWhiteSpace(value)
+            ? throw new InvalidOperationException(
+                "the scripted-rejecting gateway was constructed without a charge transaction id")
+            : value;
+}

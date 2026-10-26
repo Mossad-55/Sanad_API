@@ -99,11 +99,109 @@ else if (!DateTime.TryParse(instantRaw, CultureInfo.InvariantCulture, DateTimeSt
     return 2;
 }
 
+// Fail-closed CLI group gate (parse time, before any plan, connection or
+// write) — see ProvisionerCliGroups for the incident it closes.
+IReadOnlyList<string> cliGroupRefusals = ProvisionerCliGroups.Refusals(
+    groupArgs,
+    provisioning: mode == "provision");
+if (cliGroupRefusals.Count > 0)
+{
+    Console.Error.WriteLine("provisioner refused (group list):");
+    foreach (string refusal in cliGroupRefusals)
+    {
+        Console.Error.WriteLine($"  - {refusal}");
+    }
+
+    return 3;
+}
+
 Directory.CreateDirectory(workRoot);
 string manifestPath = Path.Combine(workRoot, $"portal-provision-plan-{Clean(runTag)}.json");
 
 try
 {
+    // A demo set and an S3a fixture set never mix in one invocation: the two
+    // namespaces, their guards and their assertions are deliberately separate.
+    bool anyDemoGroup = groupArgs.Any(DemoCorpusGroups.IsDemoGroup);
+    bool anyFixtureGroup = groupArgs.Any(group => !DemoCorpusGroups.IsDemoGroup(group));
+    string? planTargetKind = GetOption("--target-kind");
+    bool demoPlanMode = anyDemoGroup
+        || string.Equals(planTargetKind, PortalProvisionExpectations.DemoNonceTargetKind, StringComparison.Ordinal)
+        || string.Equals(planTargetKind, PortalProvisionExpectations.LocalDemoTargetKind, StringComparison.Ordinal);
+
+    if (anyDemoGroup && anyFixtureGroup)
+    {
+        Console.Error.WriteLine(
+            "provisioner refused: a demo-corpus group and an S3a report-fixture group were requested together; "
+                + "the two corpora are provisioned in separate invocations.");
+        return 3;
+    }
+
+    // A demo target kind writes the demo corpus only: an S3a report-fixture
+    // group requested under --target-kind demo-nonce/local-demo is an invalid
+    // CLI shape refused here, before any plan, connection or write (the local
+    // override can therefore never imply the fixture corpus either).
+    if (planTargetKind is PortalProvisionExpectations.DemoNonceTargetKind
+        or PortalProvisionExpectations.LocalDemoTargetKind
+        && anyFixtureGroup)
+    {
+        Console.Error.WriteLine(
+            $"provisioner refused: --target-kind {planTargetKind} writes the demo corpus only; an S3a "
+                + "report-fixture group was requested. The two corpora are provisioned in separate invocations.");
+        return 3;
+    }
+
+    // The local override is meaningful only for --target-kind local-demo.
+    // Declaring it under any other kind (or none) is refused before any write,
+    // so it can never silently attach itself to a rehearsal or nonce run.
+    if (args.Contains("--allow-local-sanad-db")
+        && !string.Equals(
+            planTargetKind, PortalProvisionExpectations.LocalDemoTargetKind, StringComparison.Ordinal))
+    {
+        Console.Error.WriteLine(
+            "provisioner refused: --allow-local-sanad-db is the single recorded local override and is accepted "
+                + "only with --target-kind local-demo (got "
+                + (planTargetKind is null ? "<missing>" : $"'{planTargetKind}'") + ").");
+        return 3;
+    }
+
+    if (mode == "plan" && demoPlanMode)
+    {
+        string storageRoot = GetOption("--storage-root") ?? "<not provided: required for a demo plan>";
+        DemoCorpusPlanReport demoPlan = DemoCorpusPlan.Build(
+            runTag,
+            instant,
+            revision ?? "<not provided in plan mode>",
+            planTargetKind ?? "<plan mode: no target asserted>",
+            storageRoot,
+            groupArgs.Length == 0 ? DemoCorpusGroups.DataOnly : groupArgs,
+            seamDeployed: args.Contains("--seam-deployed"),
+            localSanadDbOverride: args.Contains("--allow-local-sanad-db"));
+
+        if (args.Contains("--allow-local-sanad-db"))
+        {
+            Console.Error.WriteLine(
+                "WARNING: --allow-local-sanad-db is the single recorded override for the LOCAL SanadDb. "
+                    + "This run is additive only: no reset, no deletion, singletons reused and never overwritten.");
+        }
+
+        string demoPlanJson = JsonSerializer.Serialize(
+            new
+            {
+                mode = "plan",
+                corpus = "demo",
+                plan = demoPlan,
+                media = DemoCorpusPlan.DescribeMedia()
+            },
+            DemoCorpusPlan.JsonOptions);
+
+        string demoManifestPath = Path.Combine(workRoot, $"demo-corpus-plan-{Clean(runTag)}.json");
+        File.WriteAllText(demoManifestPath, demoPlanJson);
+        Console.WriteLine(demoPlanJson);
+        Console.Error.WriteLine($"demo plan written (zero database access): {demoManifestPath}");
+        return demoPlan.RefusedGroups.Count == 0 ? 0 : 3;
+    }
+
     if (mode == "plan")
     {
         PortalProvisionPlanReport plan = PortalProvisionPlan.Build(
@@ -127,6 +225,7 @@ try
     // PostgreSQL port is not reachable from the workstation). Without it the
     // loopback/protected-name refusal stays absolute.
     bool tunnelDeclared = args.Contains("--tunnel-declared");
+    bool allowLocalSanadDb = args.Contains("--allow-local-sanad-db");
     PortalProvisionExpectations expectations = ProvisionerTargetGuard.Parse(
         GetOption("--expect-host"),
         GetOption("--expect-port"),
@@ -135,7 +234,9 @@ try
         GetOption("--target-kind"),
         tunnelDeclared,
         GetValues("--expect-migration-heads"),
-        out IReadOnlyList<string> parseRefusals);
+        out IReadOnlyList<string> parseRefusals,
+        allowLocalSanadDb,
+        runTag);
 
     if (parseRefusals.Count > 0)
     {
@@ -240,16 +341,49 @@ try
 
         await using (ServiceProvider provider = services.BuildServiceProvider())
         {
-            PortalProvisionReport report = await PortalProvisioner.ProvisionAsync(
-                provider,
-                new PortalProvisionOptions(
-                    RunTag: runTag,
-                    Groups: groupArgs,
-                    InstantUtc: instant,
-                    SyntheticPassword: fixturePassword,
-                    WorkRoot: workRoot,
-                    SeamDeployed: args.Contains("--seam-deployed")),
-                CancellationToken.None);
+            bool demoProvision = anyDemoGroup || expectations.IsDemoTarget;
+            PortalProvisionReport report;
+            if (demoProvision)
+            {
+                string storageRoot = GetOption("--storage-root") ?? string.Empty;
+                string mediaDirectory = GetOption("--media-dir") ?? string.Empty;
+                if (string.IsNullOrWhiteSpace(storageRoot) || string.IsNullOrWhiteSpace(mediaDirectory))
+                {
+                    Console.Error.WriteLine(
+                        "provisioner refused: a demo run needs --storage-root (the target's upload root) and "
+                            + "--media-dir (the generated demo JPEG/MP4) so every media reference is produced by the "
+                            + "real storage implementation before it is stored.");
+                    return 3;
+                }
+
+                report = await DemoCorpusProvisioner.ProvisionAsync(
+                    provider,
+                    new DemoCorpusOptions(
+                        RunTag: runTag,
+                        Groups: groupArgs.Length == 0 ? DemoCorpusGroups.DataOnly : groupArgs,
+                        InstantUtc: instant,
+                        SyntheticPassword: fixturePassword,
+                        WorkRoot: workRoot,
+                        StorageRoot: storageRoot,
+                        MediaDirectory: mediaDirectory,
+                        TargetKind: expectations.TargetKind,
+                        SeamDeployed: args.Contains("--seam-deployed"),
+                        LocalSanadDbOverride: expectations.AllowLocalSanadDb),
+                    CancellationToken.None);
+            }
+            else
+            {
+                report = await PortalProvisioner.ProvisionAsync(
+                    provider,
+                    new PortalProvisionOptions(
+                        RunTag: runTag,
+                        Groups: groupArgs,
+                        InstantUtc: instant,
+                        SyntheticPassword: fixturePassword,
+                        WorkRoot: workRoot,
+                        SeamDeployed: args.Contains("--seam-deployed")),
+                    CancellationToken.None);
+            }
 
             Console.WriteLine(JsonSerializer.Serialize(
                 new
@@ -338,7 +472,14 @@ static void PrintUsage()
                                           showing EXACTLY the ids this plan prints — if they do not match, do not provision.
 
         verify/provision only:
-          --target-kind rehearsal         The ONLY accepted target kind ('production' is refused).
+          --target-kind <kind>            One of: rehearsal (the S3a fixture path), demo-nonce (D1 disposable
+                                          local dry run, generated name SanadDemoNonce_<digits>), local-demo
+                                          (D2, the single recorded override for the LOCAL SanadDb).
+                                          'production' is refused outright.
+          --allow-local-sanad-db          REQUIRED for --target-kind local-demo, refused for every other kind.
+                                          Accepts exactly one shape: the exact local database 'SanadDb',
+                                          a loopback --expect-host, --run-tag demo1, no --tunnel-declared,
+                                          and only demo-corpus groups (additive only; never report fixtures).
           --expect-host <host>            Required. Refuses on mismatch.
           --expect-port <port>            Required. Refuses on mismatch.
           --expect-database <name>        Required. Loopback SanadDb/SanadIntegrationDb refused without a tunnel declaration.

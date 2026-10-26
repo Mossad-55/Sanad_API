@@ -8,11 +8,111 @@
   generated `SANAD DEMO` media (one image + one video, reused everywhere), legal
   pages seeded as clearly marked demo text, implementation **after** the current
   portal second-pass release is deployed and verified.
-- Status: `approved` / `in_progress` (2026-10-25). The Owner approved the combined
-  mobile-report scope and directed worker dispatch. This file is the single active
-  brief: it owns the mobile contract (M1–M5), the corpus (D1–D4), task state and
-  acceptance. It is not release authorization — the mobile changes need a separate
-  explicit release approval after acceptance.
+- Cleanup execution (2026-10-26): the Owner approved the exact-list cleanup and it
+  was executed and verified the same day - 29 of the 34 inventoried mis-invocation
+  rows deleted, 6 rehearsal and 9 local orphan demo files deleted, 5 rows held for
+  an Owner expansion decision (see "Cleanup execution" below and in the D4
+  receipt). Nothing committed, pushed or deployed.
+- Status: `approved` / `in_progress` (2026-10-25). D1–D4 provisional handback by a
+  stopped worker failed review; the Owner redirected the remaining correction phase
+  to the single continuing worker (2026-10-26):
+
+  **Correction phase (2026-10-26, second round) — work complete, handed back
+  `ready_for_review`, then ACCEPTED and CLOSED by the Owner/Mastermind on
+  2026-10-26 (Owner verbatim to the final review report: "Accept it please";
+  a status record only - it does not authorize commit, push, deploy,
+  environment restoration or any new cleanup).** Base `9d92b820`,
+  live API revision `8913df42` unchanged, nothing committed. The first-round
+  handback was rejected; this round repairs the six findings and, critically,
+  replaces the round's own false incident story with the evidence-corrected one
+  (per-finding evidence in
+  [d4-receipt-2026-10-26.md](d4-receipt-2026-10-26.md), "Correction phase"):
+  1. Corrupted Arabic: source literals fixed; the identical guarded-UPDATE repair
+     (`repair-arabic.sql`, MD5 `dfc33a71…`, 24,669 B both sides) applied to both
+     targets — rehearsal 92 rows repaired, every residual 0; full-corpus scans on
+     both targets **0 hits** before and after all replays; wire bytes real UTF-8
+     (0x3F count 0). Row-level byte-identity of pre-existing rows remains
+     **UNPROVEN** (never hash-sampled) — only additive-only semantics are claimed.
+  2. Image route/likes: new posts write the authorized route URL
+     `/api/v1/community/uploads/images/{id}/file`; raw-key `ImageUrl` rows **0**
+     on both targets; image route 200 `image/jpeg` at **57,178 B** (the demo
+     image) on BOTH targets — the earlier "rehearsal 866,519 B" was a
+     misidentified pre-existing 2026-10-19 upload; `isLiked` true/false reads
+     match `community."Interactions"`; comment like toggle proven both states,
+     zero net DB change.
+  3. Seam evidence upgraded: the deployed allowlist
+     (`/root/sanad-api/appsettings.Staging.json`, `ASPNETCORE_ENVIRONMENT=Staging`)
+     and the identical local `appsettings.Development.json` block (local-only
+     config, no secrets) were verified against the **persisted armed ids on both
+     targets** (payment transactions, the two care-home numeric bookings, four
+     claim captures, and the linked duplicate-charge claims with their recorded
+     gateway outcomes).
+     **Review-round-two HIGH finding, repaired:** the previous "local keeps its
+     pre-change colon-form caregiver seam id (terminal; the slug allowlist
+     entry is a no-op locally)" claim was WRONG — `AdminBookingCommands`
+     selects the first SUCCEEDED transaction and sends its stored id for the
+     refund retry (payment success is eligibility, not refund terminality),
+     the local seam-failed-refund slot was retryable, and its succeeded
+     transaction still carried the legacy colon id the seam does not
+     intercept (a retry would have passed through to the real gateway).
+     Owner-authorized keyed repair applied on the local target (one PK-pinned,
+     guard-locked `families.payment_transactions` UPDATE to the exact
+     configured slug ids; `UPDATE 1`; unrelated rows preserved);
+     post-repair read-only evaluation proves the effective retry id equals
+     the allowlist entry on BOTH targets; the retry endpoint was never
+     called; a fail-closed `SeamArmedIdMismatch` guard wired into the
+     caregiver seam drive path now refuses any reused armed slot whose
+     persisted ids mismatch the config (regression fact included).
+     `systemctl is-active sanad-api` = active (read-only; the service was never
+     stopped). "Local API processes" in earlier notes meant local test processes.
+  4. Media hardening (Owner-instructed refuse semantics): `DemoCorpusMedia` now
+     fingerprint-scopes `produced-keys.json` to one target+source set, re-validates
+     recorded keys through the real storage implementation (repopulating length
+     metadata), mirrors the writer's exact disk layout (full key under the
+     `-private` sibling), and **REFUSES the run** on a broken recorded key instead
+     of writing an unreferenced replacement (the previous fallback behavior was
+     removed per the Owner's instruction). Byte trace sha256-proven on the
+     rehearsal for all three demo files; the persisted video key ends `.mp4`
+     (correcting the receipt's `….jpg` typo); playback in a player is NOT
+     verified — stored+locked only.
+  5. Rehearsal mis-invocation root cause CORRECTED (the previous
+     "bash `$GROUPS` → `--groups 0`" story is false and retracted): the persisted
+     report shows the invocation reached the provisioner with an **EMPTY group
+     list**; the group gate only judges listed groups, so the portal-fixture
+     (W5) path ran its base fixture with zero groups requested. Exact measured
+     footprint: **27 `01a17593-*` rows** + **7 instant-stamped in-app
+     notifications** (complete PK lists retained in
+     `/root/demo-repair/misinvocation-inventory-2026-10-26.txt`), none deleted;
+     **7 outbox rows were marked Sent (00:19:26-32 Z)** and at least one
+     recipient is a real pre-existing non-demo address (`admin@gmail.com`);
+     receipt OWNER-CONFIRMED (2026-10-26, Owner verbatim: "I've recieved all
+     the emails actually"; distinct from the system observation "7 rows
+     marked Sent"), no recipient contacted, and a read-only re-check
+     confirms no accidental outbox row remains undispatched; 4 fixture
+     marked Sent"), no recipient contacted, and a read-only
+     document rows carry dangling keys (no file on disk). "Provider contact"
+     refrains in this slice mean Paymob only. Fix shipped (uncommitted): a
+     parse-time CLI gate (`ProvisionerCliGroups.cs` + `Program.cs`) — provision
+     with an empty/missing `--groups` is refused (exit 3), unknown ids (incl. a
+     bare `0`) refused, verify-without-`--groups` stays valid. Cleanup of the
+     accidental rows/files needs the Owner's explicit decision.
+  6. Tests/build: provisioner facts **64/64** (new regressions: reuse length
+     metadata, missing/empty/altered/wrong-typed recorded files refuse with no
+     replacement written, other-target sidecars ignored, traversal keys refused,
+     CLI group-gate shapes, and the seam-armed-id mismatch refusal for a reused
+     legacy caregiver slot), Release build 0/0.
+  7. Docs corrected: D4 receipt rewritten with the evidence-corrected incident
+     (counts: D3-final stored snapshot 8638 → post-incident+correction 8682,
+     ∄), the brief (this block), and the handoff.
+  Current changed files (all uncommitted): Mastermind_Handoff.md,
+  full-demo-corpus brief, d4-receipt, Program.cs,
+  ProvisionerCliGroups.cs (new), DemoCorpusMedia.cs (hardened),
+  DemoCorpusGroups.cs + DemoCorpusProvisioner.cs (seam-armed-id guard) + the
+  other DemoCorpus*.cs sources,
+  DemoCorpusFacts.cs (64/64), `appsettings.Development.json`
+  (local 7-id seam block). D4 was accepted and closed by the Owner/Mastermind
+  on 2026-10-26 (status record only).
+
 - Pinned revision at dispatch: `5377bbc9` (portal second-pass release verified;
   runtime `beb315fe`).
 - Owner authorization (2026-10-25, after M1–M3 acceptance): full release and
@@ -22,7 +122,8 @@
   `--allow-local-sanad-db` override for the local `SanadDb` (additive only, no
   reset, singleton rows reused and never overwritten). It does **not** authorize
   changing the rehearsal runtime environment/configuration or enabling the
-  refund seam, so money-state groups still stop at that owner decision.
+  refund seam, so money-state groups stopped at that owner decision — which the
+  Owner then answered separately on 2026-10-26 (see Open items #3 and D3).
 - Depends on: the fixture refund-outcome seam being enabled on each target before
   any money-state group is written, plus the Owner's local-`SanadDb` override
   approval before D2.
@@ -51,6 +152,15 @@
   with no real identities.
 - Generated media only (no third-party stock): one JPEG with a visible
   `SANAD DEMO` mark and one short demo MP4, reused across every media field.
+  Owner decision (2026-10-25): seeded media must follow the same workflow as a
+  user upload — the bytes are written through the API's own storage
+  implementation into the target's upload root, and the database stores the
+  returned key. No invented paths, no blobs in the database, no new route, and
+  no file placed behind the storage layer. Public image fields use the public
+  writer and resolve at `/files/<key>`; the MP4 is `video/mp4`, which only the
+  private writer accepts, so it is referenced only by private/video-capable
+  fields and resolved through the authorized media route. A seeded reference
+  whose file is missing or unopenable fails the run.
   Video frames cannot carry burned-in text without an encoder on this machine;
   the demo marking is carried by filename, title, description and the DEMO poster
   image. Installing `ffmpeg` would allow burned-in text if the Owner asks.
@@ -125,7 +235,9 @@ Total: roughly 250–350 records plus media, excluding messages and ledger lines
 - Each role can log in and see its own demo data; admin reads show the seeded
   states with the documented filters.
 - The single image and video resolve anonymously through `/files/...` with the
-  right content types, and every reference points at them.
+  right content types, and every reference points at them. *(Superseded for the
+  video by the pinned private-writer-only decision: public image via `/files/...`,
+  MP4 via the authorized media route — see D4.)*
 - No provider call occurs during provisioning or readback; money-state rows exist
   only where the seam is enabled.
 - Legal pages visibly carry `DEMO — not legal text`.
@@ -135,7 +247,16 @@ Total: roughly 250–350 records plus media, excluding messages and ledger lines
 
 1. Owner confirmation to install `ffmpeg` if burned-in video text is required;
    otherwise the documented demo labelling stands.
-2. Final approval of the local `SanadDb` override before D2 writes.
+2. ~~Final approval of the local `SanadDb` override before D2 writes.~~ **Approved
+   2026-10-26 ("migrate + seed") and executed — see D2.**
+3. ~~**D3 seam decision (open):** ...~~ **Answered 2026-10-26: "Enable non-Prod
+   seam, seed all 22 (Recommended)."** Executed — the disposable rehearsal now runs
+   `Staging` with the seam enabled and verified, all 22 groups seeded. The seam
+   **stays** enabled while seam-armed rows exist (reaping + restoring `Production`
+   is a future authorized operator action). The `FixtureRefundSeam` allowlist is
+   configuration, and .NET configuration splits keys on `:`, so the demo
+   seam-facing ids were made **colon-free** (see the D1 correction note and the D3
+   result).
 
 ## Combined mobile report — approved contract
 
@@ -215,10 +336,126 @@ domain's stored zone semantics decide the authoritative answer.
 | M3 | `completed` | Accepted: `isOwn`/`canEdit`/`canDelete`/`isLiked` on comments, replies and create/update responses; `canEdit` = the update handler's ownership gate, `canDelete` = ownership + no replies (the delete handler's `CommentHasReplies`), replies expose no edit/delete capability, likes and reply-existence batched per page. |
 | M4 | `completed` | Accepted 2026-10-25 after diff review: optional header on exactly the four creates, one-key parse with coded 400, canonical fingerprint (route ids in, server-derived values out), per-context `idempotency_requests` with actor+operation+key uniqueness, stored byte-exact replay, 409 on mismatch, loser detach/replay, care-home lookup inside its serializable guard. Gate-vs-replay ordering accepted as implemented (confirmed replay keeps its original answer; maintenance still blocks a new checkout). Mastermind fixed one corrupted comment block and one stale test double; strict build 0/0, full suite 5688/0/27 skipped, migration tests green. |
 | M5 | `completed` | Accepted: additive `availability/day` with `Africa/Cairo` and UTC intervals, one shared rule object for read and checkout, busy windows through the API port using the exact checkout predicate, fixed-shift drop vs hourly subtraction, DST gap omission/standard-offset resolution, serializable + advisory-lock checkout guard, `Bookings.AvailabilityConflict` distinct from `ScheduleConflict`. Cross-midnight predicate gap mirrored and documented; no hold/expiry invented. |
-| D1 | `pending` | Provisioner corpus groups + media generator + demo markers; local dry run on a throwaway nonce database covering the new M1–M5 states (named/anonymous posts, deduplicated views, own/other/liked comments, open/booked/unavailable slots, retry replay/conflict). Gate: code review, strict build, no target writes. |
-| D2 | `pending` | Local `SanadDb`: identity proof, pre-run counts, plan review, provision, rerun, readback. Needs the Owner's local-override approval recorded here first. |
-| D3 | `pending` | Rehearsal `SanadDb` via SSH tunnel: identity + cluster check, verify, plan, provision, rerun, authenticated readback per role. Money-state groups need the non-Production seam settled and verified. |
-| D4 | `pending` | Receipt: counts, media URLs, working per-role logins, demo markers, state-coverage matrix per report item. |
+| D1 | `done` | All 22 corpus groups + media generator + demo markers implemented; **D1 dry run green on the throwaway nonce database** (see below): plan 22 planned / 0 refused / 7-entry seam allowlist; provision exit 0 all 22 groups; replay exit 0 with **zero** row delta (135 → 763 → 763). Gate: code review, strict build 0/0, 51/51 provisioner tests, no real target written. |
+| D2 | `done` | **Local `SanadDb` seeded (Owner approved "migrate + seed").** Three pending migrations applied (care_homes, community, families) to reach the demo heads; plan exit 0 (22/0, override warning printed); provision run 1 exit 0 all 22 groups; replay exit 0 with **zero** row delta (886 → 1494 → 1494, no table decreased). 29 demo identities, markers, media and legal marker confirmed. Evidence: [d2-local-sanaddb-result-2026-10-26.md](d2-local-sanaddb-result-2026-10-26.md). |
+| D3 | `done` | **Rehearsal `SanadDb` seeded.** Owner answered the seam decision ("Enable non-Prod seam, seed all 22"); the disposable rehearsal was flipped to a non-Production environment, the seam enabled with the 7 exact colon-free ids and verified from the startup state line, then all 22 groups were seeded. verify/plan green; provision exit 0 all 22; replay exit 0 with **zero** row delta (8028 → 8711 → 8711, 75 tables changed, none decreased). Authenticated readback: 11 roles log in and see demo data, `suspended.family` 403. Full evidence: [d3-rehearsal-result-2026-10-26.md](d3-rehearsal-result-2026-10-26.md). |
+| D4 | `ACCEPTED` (Owner/Mastermind, 2026-10-26) | Receipt: [d4-receipt-2026-10-26.md](d4-receipt-2026-10-26.md) — counts, media URLs/content types, working per-role logins, demo markers, and the per-report-item (M1–M5) state-coverage matrix, with the acceptance checklist and the carried notes. Acceptance is a status record only (no commit/push/deploy/restore/new-cleanup authorized). |
+
+### D1 dry-run result (2026-10-25)
+
+Green on the throwaway nonce database: plan 22 planned / 0 refused with the
+7-entry seam allowlist; provision exit 0 with all 22 groups; replay exit 0 with
+**zero** row delta (135 → 763 → 763, 82 tables gained rows on run 1). Media bytes
+were written by the real `LocalDiskFileStorage` into the target upload root.
+No real target was written; the nonce database was dropped. Full evidence,
+defect list and limitations: [d1-dry-run-result-2026-10-25.md](d1-dry-run-result-2026-10-25.md).
+
+> **D1 correction (D3, 2026-10-26).** The D1 allowlist was printed by *group label*,
+> not by raw id, so it did not surface that the money-state provider ids contained
+> `:`. The `FixtureRefundSeam` allowlist **is** configuration, and the .NET binder
+> splits configuration keys on `:`, so those entries were silently dropped on the
+> deployed app (proven: 3 keys bound as `Count=1`; the `{Key,Value}` array form
+> bound as `Count=0`). Fix: make the demo seam-facing ids **colon-free** (mirroring
+> the S3a `spf-…` shape) while keeping the durable markers unchanged; the already
+> seeded legacy capture id is still accepted on reuse so the local target stays
+> idempotent. After the fix: strict build 0/0, 51/51 provisioner tests, local replay
+> still zero-delta, and the deployed state line reports all 7 ids (D3 gate).
+
+### D2 local `SanadDb` result (2026-10-26)
+
+Green on the real local `SanadDb` under the single approved `--allow-local-sanad-db`
+override. The three pending module migrations were applied first (care_homes,
+community, families) so the demo heads matched, then the additive seed: plan exit 0
+(22 planned / 0 refused, override warning printed), provision run 1 exit 0 with all
+22 groups, replay exit 0 with **zero** row delta (886 → 1494 → 1494) and no table
+decreased. 29 demo identities (25 with `demo1.` email + 4 phone-only
+elderly/dependents), 6 demo posts (1 anonymous), 4 post views, 6 landing sections,
+2 published legal docs (`DEMO - not legal text`), 27 chat messages, 12 visits;
+media landed through the real `LocalDiskFileStorage` into
+`src/API/Sanad.API/bin/Release/net10.0/sanad-files`. Additive only — no reset, no
+deletion. Full evidence: [d2-local-sanaddb-result-2026-10-26.md](d2-local-sanaddb-result-2026-10-26.md).
+
+### D3 rehearsal `SanadDb` result (2026-10-26)
+
+Green on the rehearsal VPS under the Owner's answered seam decision. The disposable
+rehearsal was flipped from `Production` to `Staging` (backup kept), the refund seam
+enabled with the plan's 7 exact colon-free ids, and the startup state line verified
+`enabled=True, allowlist entries=7` (prior processes logged `enabled=False`). Then:
+verify exit 0 (identity + 9/9 heads), plan 22 planned / 0 refused, provision run 1
+exit 0 all 22 groups, replay exit 0 with **zero** row delta (8028 → 8711 → 8711, 75
+tables changed, none decreased, +29 identities). Media written through the real
+`LocalDiskFileStorage` into `/var/sanad/files` (+ `-private`); the public image
+resolves anonymously at `/files/…` and all 52 corpus keys resolve. Authenticated
+readback: 11 roles log in and see their demo data, `suspended.family` 403. The
+rehearsal **stays** `Staging` with the seam enabled while seam-armed rows exist.
+Full evidence: [d3-rehearsal-result-2026-10-26.md](d3-rehearsal-result-2026-10-26.md).
+
+### D4 receipt (2026-10-26)
+
+Both targets seeded and receipted: local `SanadDb` (886 → 1494 → 1494) and rehearsal
+`SanadDb` (8028 → 8711 → 8711), replay delta **+0** on both, no table decreased.
+Counts, media URLs/content types, the working per-role login table, the demo
+markers, and the per-report-item (M1–M5) state-coverage matrix are in
+[d4-receipt-2026-10-26.md](d4-receipt-2026-10-26.md). Acceptance checklist met
+(with the pinned correction that the video is private-writer-only, not `/files/`).
+Nothing committed, pushed or deployed.
+
+**Slice CLOSED:** D1–D4 were ACCEPTED by the Owner/Mastermind on 2026-10-26
+(Owner verbatim to the parent's final review report: "Accept it please"). This
+brief remains the authoritative scope/history document for the slice; the
+private Mastermind handoff records the closure and the remaining
+separately-authorized optional actions (commit/push of the uncommitted slice
+work, the future rehearsal Production restore, and the regenerated corpus
+notifications kept as intended corpus content). Acceptance is a status record
+only - it does NOT authorize commit, push, deploy, environment restoration or
+any new cleanup.
+### Cleanup execution (2026-10-26, Owner-approved)
+
+The Owner approved the exact-list cleanup ("I approve") and it was executed and
+verified the same day. Rows: 22 actual incident rows + 7 in-app notifications
+(approved at the time; later shown to be CORPUS-keyed - see below) + outbox 7,
+documents 4, beds/rooms/room_types/review_history/profile_revisions/
+facilities/elderly 1 each, 2 users + 2 user_accounts, in one explicit-PK
+transaction with rollback-guard assertions. The 5 remaining incident rows were
+initially HELD because deleting the fixture caregiver cascades into 7
+unapproved availability rows the correction run attached to it; the Owner then
+approved the exact 12-row block (verbatim "Approved") and it was executed the
+same day with guarded, rollback-protected transaction deletes, full-column
+archives and exact pre/post 177-table count snapshots - the delta was exactly
+the 12 rows over 10 tables and nothing else (a first dispatch attempt died
+instantly on a provider quota error; target state was verified untouched
+before re-execution). Files: all 6 rehearsal orphan
+media files and all 9 local orphan demo media files deleted after fresh
+0-reference rechecks (18 columns on the rehearsal, 19 locally, including
+CommunityImages, community.Posts.ImageUrl and chat.Attachments), sha256 gates
+and private archives; the 2 non-demo landing images untouched; the rehearsal
+produced-keys.json realigned to corpus-referenced, DB-referenced artifacts with
+byte-identical fixture content; no produced-keys.json exists locally.
+Verification: incident rows 0, the demo family/caregiver/media preserved
+(5 corpus facilities, 19 library contents, seam rehearsal booking), service
+active at revision 8913df42 with the 7-id seam intact, live-operator drift on
+the rehearsal documented and reconciled - including 7 in-app notifications
+that the cleanup's own deletion RE-CREATED via the notification writer
+`CareHomeReviewNotificationProcessor` (a `BackgroundService` polling every
+20 s that materializes care-home submission/review source rows with the
+SOURCE EVENT's timestamp and de-duplicates only by idempotency key; the 7
+re-created rows carry keys identical to the deleted rows' keys, so they are
+re-materializations, not a demo generator and not operator content; deleting
+them again while the corpus source rows persist will repeat the cycle), one
+real care-home approval at 02:38:24, and an attribution correction: the
+first-pass 7 in-app deletions were corpus-keyed (a historical mistaken
+deletion of intended corpus notifications - the processor re-created them from
+surviving source rows and they are preserved), while the ACTUAL 7 incident
+in-app notifications, after being left orphaned for a separate decision, were
+deleted on the Owner's explicit final approval ("Yes I apprrove") by exact
+GUID with the corpus notifications untouched. The outbox 65-vs-64 gap was
+resolved: the 65th row is the 02:38:24 operator approval email, created
+seconds after the 02:38 post-scan. Cumulative: all 34 original accidental
+rows + the 7 approved availability dependents = 41 unintended rows removed;
+nothing remains pending on this cleanup. Absence re-verified after multiple
+processor poll cycles. Nothing committed, pushed or deployed. Full evidence,
+counts and recovery paths: the D4 receipt, "Cleanup execution" (including
+"Final-7 incident notification cleanup").
 
 ### M1–M3 worker handback (2026-10-25)
 
@@ -407,10 +644,11 @@ documented in code, tests and docs rather than fixed here.
 3. D1 dry run on a disposable database; then D2 local and D3 rehearsal seeding
    under their own approvals; D4 receipt.
 
-The rehearsal service still runs with the Production environment setting.
-Money-state fixtures remain blocked until the non-Production seam configuration
-is settled; this plan does not authorize changing that setting or bypassing the
-guard. A nonce dry run can proceed independently after phase approval.
+D1–D4 are complete. The rehearsal service now runs `Staging` with the refund seam
+enabled — the Owner's answered D3 decision — and stays that way while seam-armed
+fixture rows exist; restoring `Production` is a future authorized operator action
+after those rows are reaped. No provider call was made and no release authorization
+is implied.
 
 ### M4–M5 pinned implementation decisions (Mastermind, 2026-10-25)
 
@@ -471,6 +709,7 @@ Contract investigation: `ses_e8bfdb7aeffeGmASgAWQMSc1p4`. Accepted defaults:
   (`مستشفى سند التجريبي`, details `SANAD DEMO — <b>ملاحظة</b> للمراجعة`), all for
   dependent `01a17319-d059-7b7b-b92d-94e7ec18d0a4` with matching idempotency rows.
   D1-D4 must reuse/skip them, never delete them.
-- D3 non-money groups can run on this revision; money-state groups remain blocked until
-  the non-Production refund seam is settled and verified, which this release did not
-  change.
+- D3 ran on this revision. The Owner settled the non-Production seam decision on
+  2026-10-26; the seam was enabled with the 7 exact ids and verified from the startup
+  state line (see D3), after which all 22 groups — money-state included — were seeded
+  additively. The release itself did not change the seam.
