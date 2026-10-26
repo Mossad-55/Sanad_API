@@ -79,6 +79,31 @@ required fields is a valid request.
   window over that caller's own submissions). The next one is
   `429 Identity.PartnerContact.RateLimited` with a `Retry-After` header saying
   when to try again. The refused request is not stored.
+
+### Retries
+
+The key exists so a retry after an uncertain outcome is safe. The valid
+pattern, matching the implemented semantics exactly:
+
+- **Retry with the same `Idempotency-Key` and the exact same content.** The
+  same key replayed with identical (trimmed/normalized) content returns the
+  stored receipt — same `contactId`, same `submittedOnUtc`, no second row and
+  no duplicate inbox entry — whether the replay comes seconds later or races
+  the original. A replay is checked **before** the rate limit, so retrying
+  never consumes the 5-per-hour budget and never returns `429`.
+- **A genuinely new submission gets a new key.** Different content under the
+  old key is the `409` conflict, not a new submission.
+- **Never re-key the same unchanged submission to get past a failure or a
+  `409`.** A second submission row and a second inbox entry are the direct
+  result; if the first attempt's outcome is unknown, the same key is the way
+  to find it out.
+- **If the outcome was a clear `4xx/429`, fix the request (or wait for
+  `Retry-After`) rather than retrying blindly.** A `429` retry under the same
+  key after the window opens is safe but still counts as a new submission if
+  no row was stored.
+- The key itself is caller-chosen and persisted with the row: keep it until
+  the outcome is known (client-side), because a new key cannot be resolved to
+  an existing submission afterwards.
 - There is **no CAPTCHA** and no other verification step.
 
 The caller scope is derived by the server from the request's remote address

@@ -11,8 +11,9 @@ namespace Sanad.UnitTests.API;
 
 /// <summary>
 /// Contract tests for the two dedicated Admin name+id lookups: the authorization
-/// policy of each route (SuperAdmin+SupportAdmin through existing operational
-/// policies, no new grant and no FinanceAdmin), the exact route templates, and
+/// policy of each route (caregiver: the dedicated SuperAdmin+FinanceAdmin
+/// <c>CaregiverLookupAdmin</c> policy; elderly: the existing
+/// SuperAdmin+SupportAdmin operational policy), the exact route templates, and
 /// the published payload shape. The payload checks are the privacy lock: a
 /// lookup response may only ever expose the id and the two bilingual names, and
 /// no contact, address, medical or note field may appear on either item type.
@@ -35,18 +36,31 @@ public sealed class AdminNameIdLookupContractTests
     }
 
     [Fact]
-    public void Caregiver_lookup_uses_the_existing_caregiver_review_policy()
+    public void Caregiver_lookup_uses_the_dedicated_caregiver_lookup_policy()
     {
         AuthorizeAttribute authorize = Assert.Single(
             typeof(AdminCaregiverLookupController)
                 .GetCustomAttributes<AuthorizeAttribute>());
 
-        Assert.Equal(AuthorizationPolicies.CaregiverReviewAdmin, authorize.Policy);
+        Assert.Equal(AuthorizationPolicies.CaregiverLookupAdmin, authorize.Policy);
         Assert.Equal(
             "api/v1/admin/caregivers",
             typeof(AdminCaregiverLookupController)
                 .GetCustomAttribute<RouteAttribute>()!.Template);
         Assert.Equal("lookup", GetHttpGetTemplate<AdminCaregiverLookupController>("Lookup"));
+    }
+
+    [Fact]
+    public void Caregiver_review_surfaces_keep_the_shared_caregiver_review_policy()
+    {
+        // The lookup policy change must not leak onto the caregiver review and
+        // ratings surfaces: they stay on the shared SuperAdmin+SupportAdmin
+        // CaregiverReviewAdmin policy.
+        Assert.All(
+            [typeof(AdminCaregiversController), typeof(AdminCaregiverRatingsController)],
+            controllerType => Assert.Equal(
+                AuthorizationPolicies.CaregiverReviewAdmin,
+                Assert.Single(controllerType.GetCustomAttributes<AuthorizeAttribute>()).Policy));
     }
 
     [Fact]

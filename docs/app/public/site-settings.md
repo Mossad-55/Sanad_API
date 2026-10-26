@@ -9,7 +9,7 @@ serves what an administrator authored.
 ## Get site settings
 
 **Route:** `GET /api/v1/site-settings`
-**Success:** `200**
+**Success:** `200`
 
 ```http
 GET /api/v1/site-settings

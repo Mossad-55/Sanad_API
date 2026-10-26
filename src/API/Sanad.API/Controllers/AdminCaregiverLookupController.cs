@@ -8,16 +8,19 @@ using Sanad.Modules.Caregivers.Application.Lookups;
 namespace Sanad.API.Controllers;
 
 /// <summary>
-/// Dedicated caregiver name+id lookup for SuperAdmin/SupportAdmin
-/// (<see cref="AuthorizationPolicies.CaregiverReviewAdmin"/>, the policy the
-/// caregiver review surface already uses). It closes the gap where the admin
-/// caregiver list was the only name search and it also publishes
-/// <c>phoneNumber</c>: this route returns names and the caregiver id only, so
-/// phone lookup stays exactly where it is today (the SuperAdmin-only admin user
-/// list) and no new contact permission is granted. FinanceAdmin stays denied by
-/// the policy.
+/// Dedicated caregiver name+id lookup for SuperAdmin/FinanceAdmin
+/// (<see cref="AuthorizationPolicies.CaregiverLookupAdmin"/>, a lookup-only
+/// policy implementing the agreed screen-to-role matrix). It closes the gap
+/// where the admin caregiver list was the only name search and it publishes
+/// names and the caregiver id only, so phone lookup stays exactly where it is
+/// today (the SuperAdmin-only admin user list) and no new contact permission
+/// is granted. SupportAdmin is explicitly removed from this lookup (prior
+/// access through the shared review policy); the caregiver review and ratings
+/// surfaces keep the shared <see cref="AuthorizationPolicies.CaregiverReviewAdmin"/>
+/// policy unchanged. FinanceAdmin had no prior lookup access and gains it
+/// here only; ContentAdmin and every app audience are denied.
 /// </summary>
-[Authorize(Policy = AuthorizationPolicies.CaregiverReviewAdmin)]
+[Authorize(Policy = AuthorizationPolicies.CaregiverLookupAdmin)]
 [Route("api/v1/admin/caregivers")]
 public sealed class AdminCaregiverLookupController(ISender sender) : ApiControllerBase
 {

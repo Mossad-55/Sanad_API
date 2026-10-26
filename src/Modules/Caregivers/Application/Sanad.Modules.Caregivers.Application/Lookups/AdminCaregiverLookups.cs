@@ -18,9 +18,9 @@ public sealed record AdminCaregiverLookupItem(
     string EnglishFullName);
 
 /// <summary>
-/// Bounded caregiver name+id lookup for SuperAdmin/SupportAdmin
-/// (<c>CaregiverReviewAdmin</c>, the policy the caregiver review surface
-/// already uses). <c>Search</c> is an optional case-insensitive substring of
+/// Bounded caregiver name+id lookup for SuperAdmin/FinanceAdmin
+/// (<c>CaregiverLookupAdmin</c>, a lookup-only policy). <c>Search</c> is an
+/// optional case-insensitive substring of
 /// the Arabic or English full name; a blank search returns the whole register
 /// page and a search that matches nothing returns an empty page, never an
 /// error. Only the name columns are searchable — phone and email are not, so

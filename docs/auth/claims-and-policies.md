@@ -91,7 +91,11 @@ Requires an authenticated user with `access_type` = `Normal` and `account_type` 
 
 ## Policy `CaregiverReviewAdmin`
 
-Requires an authenticated user with `access_type` = `Normal` and `account_type` = `SuperAdmin` or `SupportAdmin`. Applied to caregiver review routes (`/api/v1/admin/caregivers/...`): paged list, detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, and certificate file download. ContentAdmin remains limited to CMS and caregiver lookup responsibilities and receives `403` for these operational review routes.
+Requires an authenticated user with `access_type` = `Normal` and `account_type` = `SuperAdmin` or `SupportAdmin`. Applied to caregiver review routes (`/api/v1/admin/caregivers/...`): paged list, detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, and certificate file download. ContentAdmin remains limited to CMS and receives `403` for these operational review routes. The name+ID lookup on the same route prefix has its own dedicated `CaregiverLookupAdmin` policy (below) — SupportAdmin keeps review access, not lookup access.
+
+## Policy `CaregiverLookupAdmin`
+
+Requires an authenticated user with `access_type` = `Normal` and `account_type` = `SuperAdmin` or `FinanceAdmin`. Applied to the caregiver name+ID lookup only (`GET /api/v1/admin/caregivers/lookup`). SupportAdmin's prior access through the shared review policy is explicitly removed; ContentAdmin and every app audience receive `403`; the caregiver review and ratings surfaces on the shared `CaregiverReviewAdmin` policy are unchanged. The route returns caregiver ids and the two bilingual name columns only — no phone, email or contact data is searchable or returned.
 
 ## Policy `PayoutOperationalAdmin`
 

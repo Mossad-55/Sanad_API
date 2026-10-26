@@ -419,6 +419,69 @@ public sealed class ReadableNotificationTests
         });
     }
 
+    /// <summary>
+    /// End-to-end pin for the care-home ONBOARDING producer (the companion to
+    /// the released license-monitor test above): each owner reads the
+    /// OnboardingStatus copy in their own persisted account language, the
+    /// default owner reads Arabic, and the facility id never appears in the
+    /// human text — it rides only on the structured destination pair. The
+    /// historical inbox rows that still carry an id predate this producer and
+    /// are deliberately not rewritten; this proves what the CURRENT producer
+    /// writes rather than what an old row contains.
+    /// </summary>
+    [Fact]
+    public async Task Onboarding_status_localizes_to_each_owner_language_and_keeps_the_facility_id_off_the_copy()
+    {
+        await using TestHost host = await TestHost.CreateAsync();
+        User arabicOwner = AddUser(host.Identity, "arabic-owner@example.test", UiLanguage.Arabic);
+        User englishOwner = AddUser(host.Identity, "english-owner@example.test", UiLanguage.English);
+        await host.Identity.SaveChangesAsync();
+
+        DateOnly today = DateOnly.FromDateTime(Now);
+        CareHomeFacility arabicFacility = CreateApprovedFacility(Now, today.AddYears(1), arabicOwner.Id);
+        CareHomeFacility englishFacility = CreateApprovedFacility(Now, today.AddYears(1), englishOwner.Id);
+        host.CareHomes.Add(arabicFacility);
+        host.CareHomes.Add(englishFacility);
+        await host.CareHomes.SaveChangesAsync();
+
+        await host.RunReviewScanAsync();
+
+        List<Notification> alerts = await host.Notifications.Notifications.AsNoTracking()
+            .Where(x => x.Type == "OnboardingStatus")
+            .ToListAsync();
+
+        // Two facilities, each writing one submission alert and one approved
+        // review alert to its own owner.
+        Assert.Equal(4, alerts.Count);
+
+        (string TitleAr, string TitleEn, string BodyAr, string BodyEn) copy =
+            CareHomeReviewNotificationProcessor.Copy(nameof(CareHomeReviewAction.Approved));
+
+        Notification arabicApproved = Assert.Single(alerts,
+            x => x.RecipientUserId == arabicOwner.Id.Value && x.Title == copy.TitleAr);
+        Notification englishApproved = Assert.Single(alerts,
+            x => x.RecipientUserId == englishOwner.Id.Value && x.Title == copy.TitleEn);
+
+        Assert.Equal(copy.BodyAr, arabicApproved.Body);
+        Assert.Equal(copy.BodyEn, englishApproved.Body);
+        Assert.NotEqual(copy.TitleAr, englishApproved.Title);
+        Assert.NotEqual(copy.TitleEn, arabicApproved.Title);
+
+        // The facility is the structured destination, and every row keeps the
+        // routing fields as ids while the human copy stays id-free.
+        Assert.Equal(arabicFacility.Id.Value, arabicApproved.DestinationEntityId);
+        Assert.Equal(englishFacility.Id.Value, englishApproved.DestinationEntityId);
+        Assert.All(alerts, alert =>
+        {
+            Assert.Equal("CareHomes", alert.Category);
+            Assert.Equal("CareHome", alert.DestinationEntityKind);
+            string human = alert.Title + alert.Body;
+            AssertNoIdentifier(human);
+            Assert.DoesNotContain(arabicFacility.Id.Value.ToString(), human, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain(englishFacility.Id.Value.ToString(), human, StringComparison.OrdinalIgnoreCase);
+        });
+    }
+
     // ---------------------------------------------------------------
     // Harness.
     // ---------------------------------------------------------------
@@ -493,9 +556,10 @@ public sealed class ReadableNotificationTests
     /// the scan date, built through the same domain flow the released license
     /// monitor test uses.
     /// </summary>
-    private static CareHomeFacility CreateApprovedFacility(DateTime now, DateOnly licenseExpiry)
+    private static CareHomeFacility CreateApprovedFacility(DateTime now, DateOnly licenseExpiry,
+        UserId? ownerUserId = null)
     {
-        UserId owner = UserId.New();
+        UserId owner = ownerUserId ?? UserId.New();
         UserId admin = UserId.New();
         CareHomeFacility facility = CareHomeFacility.CreateDraft(owner, now);
         facility.SaveDraft(owner, facility.Version, Sanad.UnitTests.CareHomes.CareHomeFacilityTests.Draft(), now);
@@ -579,6 +643,20 @@ public sealed class ReadableNotificationTests
             MethodInfo method = typeof(CareHomeLicenseExpiryMonitor)
                 .GetMethod("RunOnceAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
             await (Task)method.Invoke(monitor, [date, CancellationToken.None])!;
+        }
+
+        /// <summary>
+        /// Drives one pass of the care-home review producer through its private
+        /// batch method, the same way the released license monitor is driven.
+        /// </summary>
+        public async Task RunReviewScanAsync()
+        {
+            CareHomeReviewNotificationProcessor processor = new(
+                services.GetRequiredService<IServiceScopeFactory>(),
+                NullLogger<CareHomeReviewNotificationProcessor>.Instance);
+            MethodInfo method = typeof(CareHomeReviewNotificationProcessor)
+                .GetMethod("ProcessBatchAsync", BindingFlags.Instance | BindingFlags.NonPublic)!;
+            await (Task)method.Invoke(processor, [CancellationToken.None])!;
         }
 
         public async ValueTask DisposeAsync()

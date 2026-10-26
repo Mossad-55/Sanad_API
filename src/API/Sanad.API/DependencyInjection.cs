@@ -419,6 +419,28 @@ public static class DependencyInjection
                         AccountType.SupportAdmin.ToString());
                 });
 
+            // Dedicated caregiver name+id lookup only: SuperAdmin + FinanceAdmin
+            // on a Normal token, the supervisor/finance screen-to-role matrix.
+            // The shared CaregiverReviewAdmin keeps SuperAdmin + SupportAdmin
+            // for the caregiver review/ratings surfaces; SupportAdmin is
+            // explicitly removed from the lookup only, and ContentAdmin and
+            // every app audience are denied. No contact data is granted.
+            options.AddPolicy(
+                AuthorizationPolicies.CaregiverLookupAdmin,
+                policy =>
+                {
+                    policy.RequireAuthenticatedUser();
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccessType,
+                        AuthAccessType.Normal.ToString());
+
+                    policy.RequireClaim(
+                        AuthClaimNames.AccountType,
+                        AccountType.SuperAdmin.ToString(),
+                        AccountType.FinanceAdmin.ToString());
+                });
+
             options.AddPolicy(
                 AuthorizationPolicies.CareHomesOperationalAdmin,
                 policy =>

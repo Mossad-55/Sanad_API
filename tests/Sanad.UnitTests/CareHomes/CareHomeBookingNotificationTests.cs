@@ -52,6 +52,48 @@ public sealed class CareHomeBookingNotificationTests
         Assert.DoesNotContain("private care notes", notices[0].Body, StringComparison.OrdinalIgnoreCase);
     }
 
+    /// <summary>
+    /// F8 complement to the Arabic-default owner case above: an owner whose
+    /// persisted account language is English reads the English decision copy,
+    /// and neither language repeats the booking id inside the human text — the
+    /// booking rides only on the structured destination pair.
+    /// </summary>
+    [Fact]
+    public async Task Owner_decision_event_reads_english_for_an_english_owner_and_keeps_the_booking_id_off_the_copy()
+    {
+        await using var host = await TestHost.CreateAsync();
+        User owner = AddUser(host.Identity, AccountType.CareHomeOwner, "owner-en@example.test", UiLanguage.English);
+        User family = AddUser(host.Identity, AccountType.Family, "family@example.test");
+        CareHomeBooking booking = AddBooking(host.CareHomes, owner, family);
+        DateTime eventNow = EventNow;
+        var row = CareHomeNotificationOutbox.Create("owner-decision-en", CareHomeNotificationEvent.OwnerDecisionNeeded,
+            booking.Id, null, eventNow);
+        host.CareHomes.BookingNotificationOutbox.Add(row);
+        await host.Identity.SaveChangesAsync();
+        await host.CareHomes.SaveChangesAsync();
+
+        await host.ProcessAsync();
+
+        var notices = await host.Notifications.Notifications.AsNoTracking().ToListAsync();
+        var notice = Assert.Single(notices);
+        Assert.Equal(owner.Id.Value, notice.RecipientUserId);
+
+        (string Type, string TitleEn, string TitleAr, string BodyEn, string BodyAr) copy =
+            CareHomeBookingNotificationProcessor.Copy(CareHomeNotificationEvent.OwnerDecisionNeeded);
+        Assert.Equal(copy.Type, notice.Type);
+        Assert.Equal(copy.TitleEn, notice.Title);
+        Assert.Equal(copy.BodyEn, notice.Body);
+        Assert.NotEqual(copy.TitleAr, notice.Title);
+
+        // No raw booking id in either string form, in either field. The id is
+        // kept on the routing metadata only.
+        string human = notice.Title + notice.Body;
+        Assert.DoesNotContain(booking.Id.ToString("D"), human, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain(booking.Id.ToString("N"), human, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal("CareHomeBooking", notice.DestinationEntityKind);
+        Assert.Equal(booking.Id, notice.DestinationEntityId);
+    }
+
     [Fact]
     public async Task Refund_failure_alerts_only_active_operational_admins()
     {
@@ -128,7 +170,8 @@ public sealed class CareHomeBookingNotificationTests
         return booking;
     }
 
-    private static User AddUser(IdentityDbContext db, AccountType accountType, string? email)
+    private static User AddUser(IdentityDbContext db, AccountType accountType, string? email,
+        UiLanguage language = UiLanguage.Arabic)
     {
         User user = User.Create(FullName.Create("Test"), FullName.Create("User"),
             email is null ? null : Email.Create(email), PhoneNumber.Create("+201" + Random.Shared.NextInt64(100000000, 999999999)), null);
@@ -137,6 +180,7 @@ public sealed class CareHomeBookingNotificationTests
         user.VerifyPhone(Now);
         user.SetInitialPasswordHash("test-password-hash", Now);
         user.Activate(Now);
+        user.ChangeUiLanguage(language, Now);
         db.Users.Add(user);
         return user;
     }

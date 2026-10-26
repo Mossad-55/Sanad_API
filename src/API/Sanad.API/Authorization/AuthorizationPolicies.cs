@@ -26,6 +26,18 @@ public static class AuthorizationPolicies
     public const string CaregiverReviewAdmin =
         "CaregiverReviewAdmin";
 
+    /// <summary>
+    /// Dedicated caregiver name+id lookup only
+    /// (<c>GET /api/v1/admin/caregivers/lookup</c>): authenticated SuperAdmin or
+    /// FinanceAdmin on a Normal token. Deliberately NOT the shared
+    /// <see cref="CaregiverReviewAdmin"/>: the caregiver review/ratings
+    /// surfaces keep SuperAdmin + SupportAdmin, SupportAdmin is explicitly
+    /// removed from this lookup, and ContentAdmin and every app audience are
+    /// denied. The policy grants names and caregiver ids only — no contact
+    /// data is added.
+    /// </summary>
+    public const string CaregiverLookupAdmin = "CaregiverLookupAdmin";
+
     public const string CareHomesOperationalAdmin =
         "CareHomesOperationalAdmin";
 

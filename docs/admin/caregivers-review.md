@@ -1,6 +1,6 @@
 # Admin caregiver review
 
-Admin review routes live under `/api/v1/admin/caregivers/...` and require the **`CaregiverReviewAdmin`** policy: authenticated, `access_type` = `Normal`, `account_type` = `SuperAdmin` or `SupportAdmin`. `ContentAdmin` receives `403` on these operational review routes (ContentAdmin stays limited to CMS plus caregiver lookups).
+Admin review routes live under `/api/v1/admin/caregivers/...` and require the **`CaregiverReviewAdmin`** policy: authenticated, `access_type` = `Normal`, `account_type` = `SuperAdmin` or `SupportAdmin`. `ContentAdmin` receives `403` on these operational review routes (ContentAdmin stays limited to CMS). The one exception on this route prefix is the name+ID lookup below, which has its own dedicated policy (`SuperAdmin`/`FinanceAdmin`).
 
 Certificate file download lives here too — it is the **only** way to read a certificate scan (private storage, never served under `/files`).
 
@@ -230,15 +230,19 @@ GET /api/v1/admin/caregivers/lookup?search=Ahmed&page=1&pageSize=20
 Authorization: Bearer {{accessToken}}
 ```
 
-Access is the same `CaregiverReviewAdmin` policy as the rest of this guide
-(`SuperAdmin`/`SupportAdmin`, `Normal` access only); `ContentAdmin` and
-`FinanceAdmin` receive `403`.
+Access is the dedicated **`CaregiverLookupAdmin`** policy — lookup-only and
+deliberately **not** the shared review policy this guide describes
+(`SuperAdmin`/`FinanceAdmin`, `Normal` access only). `SupportAdmin`'s prior
+lookup access is **removed**: the review and ratings surfaces keep the shared
+`CaregiverReviewAdmin` policy unchanged, so this change affects the lookup
+route only. `ContentAdmin` and every app audience receive `403`; an anonymous
+or restricted-verification caller is `401`.
 
 | Query | Default | Meaning |
 |---|---|---|
 | `page` | `1` | Page number; clamped to at least `1` |
 | `pageSize` | `20` | Default `20` when `0` or absent; capped at `100` and floored at `1` |
-| `search` | `–` | Case-insensitive substring of the Arabic or English full name. Blank and unmatched searches both return a page |
+| `search` | `–` | Case-insensitive substring of the Arabic or English full name. Blank and unmatched searches both return a page; no maximum length is imposed |
 
 ```json
 {

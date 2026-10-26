@@ -139,6 +139,13 @@ Authenticated (app JWT). Body `{subject (3–150 chars), message (10–2000
 chars)}`. Success `200` with the ticket receipt; validation `400`,
 unauthenticated `401`. See the request in the Postman “04. Landing” folder.
 
+**Which form endpoint to use.** `/api/v1/support/contact` here is the
+authenticated ticket surface for signed-in app users only — a public landing
+page form must not call it. The public, anonymous form endpoint is
+`POST /api/v1/partner-contact` (below) with its required `Idempotency-Key`
+header; a public form receiving `401` from `/support/contact` is calling the
+authenticated surface, not a backend defect.
+
 ### Anonymous partner contact
 
 A visitor **without an account** (a partner enquiry, or any anonymous
