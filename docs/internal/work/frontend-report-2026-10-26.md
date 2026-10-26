@@ -54,6 +54,20 @@ and the focused contract group re-run green on the fresh binary
 - GLM `#high` tranche (FAQ 500, eligible-residents / EF translation, money
   matrix, exact-9 fixture run): `ready_for_review`; the combined-gate re-run is
   the open local check.
+- **Read-only evidence folds (2026-10-26, shipped with this release):**
+  `docs/internal/work/frontend-evidence-public-2026-10-26.md` — item 4
+  corrected: the DEMO placeholder is the body of `/api/v1/public/legal/1|2`
+  (200), NOT `/` (404 on both paths); invalid document types 400
+  `Cms.Content.InvalidDocumentType`; authenticated legal routes 401; the
+  frontend 404 is a path/segment mismatch to be confirmed with an exact-route
+  reproduction; legal owner + real content stay external.
+  `docs/internal/work/frontend-evidence-recon-2026-10-26.md` — item 11:
+  6 conversations DB-wide / 4 demo / 27 messages; empty-list causes are
+  concrete persisted state (thread `01a17542-4062-…` hidden for
+  `demo1.family.owner`; family.owner2 blocked caregiver.3 2026-10-24; no
+  threads for any `r2.*` account); item 13: the Owner-accepted no-delete
+  decision maps to exactly 6 orphan caregiver ids (dangling `user_id`, no
+  `identity.users` row, created 2026-09-02…09-15), untouched.
 
 Owner also approved demo fixtures for the existing demo family on the
 rehearsal (contract: 1 SOS + mandatory history, 1 help + mandatory history,
