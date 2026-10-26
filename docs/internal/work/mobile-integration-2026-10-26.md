@@ -1,9 +1,7 @@
 # Mobile integration review — closing items (ACTIVE BRIEF)
 
-Phase state: `in_progress`. Release state: `authorized` (Owner directive
-2026-10-26: "lock in the contract right away, spawn workers and get everything
-done" — read as authorization to implement, gate and release after a green
-integrated gate; the Owner may veto at any handback).
+Phase state: `completed`. Release state: `verified` (2026-10-26, Owner-authorized
+release; correction follow-up Owner-authorized same day — see "Release record").
 
 Base: remote `main` HEAD `b22d9fa0`; deployed rehearsal revision `e664592e`
 (`Staging`, seam preserved). No migrations are expected unless a task proves one
@@ -61,9 +59,9 @@ Worker sets `in_progress`/`blocked`/`ready_for_review`; only Mastermind sets
 
 | Task | Owner | Depends | Acceptance | Status |
 |---|---|---|---|---|
-| M1 — family sent-invitations endpoint | River GLM 5.3 `#high` | — | New authenticated outgoing-invitations endpoint returns exactly the 7 fields; existing cancel works on returned ids; focused API/handler tests; docs + Postman | ready_for_review |
-| M2 — Premium plan benefits + plan-change policy | River DeepSeek V4.1 `#high` | — | (a) approved benefits confirmed with source evidence; if `Library`/`PremiumContent` are approved, correct plan + subscription source so `canAccess` is true, catalog-only fix rejected; (b) plan change during an active paid period returns documented `409`, creates no payment, auto-renew off does not lift it; duplicate-purchase and early-renewal blocks confirmed; concurrency/2-device tests | ready_for_review |
-| M3 — CareHome-source care records documentation | River GLM 5.3 `#high` | — | Confirm and document the CareHome dashboard create contract (Request/Response) and its appearance in both read routes; docs + Postman only if already implemented; report if not implemented | ready_for_review |
+| M1 — family sent-invitations endpoint | River GLM 5.3 `#high` | — | New authenticated outgoing-invitations endpoint returns exactly the 7 fields; existing cancel works on returned ids; focused API/handler tests; docs + Postman | completed |
+| M2 — Premium plan benefits + plan-change policy | River DeepSeek V4.1 `#high` | — | (a) approved benefits confirmed with source evidence; if `Library`/`PremiumContent` are approved, correct plan + subscription source so `canAccess` is true, catalog-only fix rejected; (b) plan change during an active paid period returns documented `409`, creates no payment, auto-renew off does not lift it; duplicate-purchase and early-renewal blocks confirmed; concurrency/2-device tests | completed (live persisted-data drift found post-release and corrected under Owner authorization — see M2 correction below) |
+| M3 — CareHome-source care records documentation | River GLM 5.3 `#high` | — | Confirm and document the CareHome dashboard create contract (Request/Response) and its appearance in both read routes; docs + Postman only if already implemented; report if not implemented | completed |
 
 ## Bounded scope and owned files
 
@@ -144,7 +142,9 @@ storage) and verifies, then records the receipt here.
 
 ## Current result
 
-- M1: ready_for_review — new `GET /api/v1/family/invitations/sent`
+Release record (2026-10-26, Owner-authorized) — see the end of this section.
+
+- M1: completed — new `GET /api/v1/family/invitations/sent`
   (authenticated, FamilyAccess, family-scoped via `FamilyAccess.ResolveFamilyAsync`)
   returns all statuses of the caller's family's sent invitations, each with
   exactly `id`, `invitedEmail`, `role`, `relationshipType`, `status`,
@@ -166,7 +166,7 @@ storage) and verifies, then records the receipt here.
   (4 pre-existing + 3 new); Postman JSON parses (ConvertFrom-Json);
   `git diff --check` exit 0. NOT RUN: full sln gate (parent runs it),
   live-endpoint readback (no runtime started).
-- M2: ready_for_review — (a) approved benefit set confirmed from source, no
+- M2: completed (source verdict unchanged; live correction executed — below) —(a) approved benefit set confirmed from source, no
   source change needed. `SubscriptionPlan.cs:112-127` defines Free (keys
   1,2,3,5), Premium (1–7) and PremiumPlus (all 8) via `CreatePackage`
   unavailable-list semantics (:129-145); `Library` (key 2) is granted by every
@@ -224,7 +224,7 @@ storage) and verifies, then records the receipt here.
   plan withholds key 2) and no existing subscription row grants a benefit its
   plan withholds; the read-then-write pending guard shares the existing renewal
   TOCTOU pattern.
-- M3: ready_for_review — CareHome create confirmed in source (no
+- M3: completed — CareHome create confirmed in source (no
   reimplementation). Route
   `POST /api/v1/care-homes/residents/mine/{residentId}/care-records`,
   `CareHomeCareRecordsController.Create` (CareHomeCareRecordsController.cs:190,
@@ -241,3 +241,93 @@ storage) and verifies, then records the receipt here.
   Validated: 3 collections parse as UTF-8 JSON; `git diff --check` exit 0;
   doc links resolve. Limitations: doc-only — examples are authored, not run;
   care-home create has no Idempotency-Key layer (by source), noted in docs.
+
+## M2 correction - live persisted-data drift (2026-10-26, Owner-authorized)
+
+A read-only live check on the rehearsal `SanadDb` proved the M2 verdict "no
+data correction required" wrong for **persisted rows** (the source code is
+correct - the frontend report reproduced from drifted persisted rows):
+
+- `families.subscription_plan_versions` `plan_key='premium'`:
+  `Library` (benefit_key 2) was `is_included=false` on versions
+  v1, v2, v3, v5, v6, v7 (v4 true) - source grants key 2 on every plan;
+  `PremiumContent` (benefit_key 8) was `true` on v3 - source grants key 8 to
+  PremiumPlus only, so premium must be false.
+- `families.family_subscription_benefits` for the 14 premium-subscription
+  snapshots (incl. the demo family on premium v1): key 2 = false on all 14
+  (drift copied from the plan versions); key 8 already false everywhere.
+
+**Correction EXECUTED 2026-10-26T18:36Z (read-only pre-check first; one
+transaction; guarded idempotent UPDATEs with opposite-value guards so a rerun
+matches nothing; no insert/delete, no other benefit keys, `gold` untouched):**
+
+| Guarded UPDATE (plan_key='premium' scope) | Run 1 rows |
+|---|---|
+| `subscription_plan_version_benefits`: key 2 `false -> true` | 6 |
+| `subscription_plan_version_benefits`: key 8 `true -> false` | 1 (v3) |
+| `family_subscription_benefits`: key 2 `false -> true` | 14 |
+| `family_subscription_benefits`: key 8 `true -> false` | 0 (already correct) |
+
+Idempotency proof: an identical second run affected **0 rows** on every
+statement. Post-check: all 7 premium versions now `key2=true, key8=false`; 0
+drift rows remain on both tables; every premium version and every premium
+subscription still carries exactly its 8 benefit rows (no row added or
+removed); `gold` untouched (open observation: `gold` has no source-defined
+package; its single version carries key 2 and key 8 both `true` - needs its
+own Owner decision if ever aligned). No migration ran; no provider/financial
+call involved.
+
+## Release record (2026-10-26, Owner-authorized)
+
+- Pushed commit `47329bf5e9bc22a0ba8d01a8b7d145830dbb924e` (18 files, +1353/-31)
+  to `origin/main` (`b22d9fa0..47329bf5`), staged-diff secret scan clean (1181
+  added lines scanned, 0 findings). Package published at the same revision
+  (manifest revision == pushed SHA; 110 files; no `.env`,
+  `appsettings.Development.json`, keys/certs or `*.local.json`).
+- Integrated gate on the frozen tree: strict Release build 0 warnings / 0
+  errors (first run failed on stale `testhost` file locks left by worker test
+  runs - a process-level issue, not a source defect; re-run green); focused
+  tests **326 passed / 0 failed / 3 skipped** across
+  `~FamilyInvitation|~Families.Subscriptions|~Cms.Library|~API.FamilySubscriptionsController|~RequestLengthBoundOpenApiContractTests`;
+  the stale-log concern `VisitSettingsClosureReason_PublishesTheExactRawValueMaxLength500`
+  confirmed present and GREEN on the fresh binary (class 14/14; the
+  `[property: StringLength(500)]` annotation at `CareHomeVisitsController.cs:33`);
+  full `Sanad.UnitTests` suite **5752 passed / 0 failed / 27 skipped**;
+  architecture 1/1; provisioner 75/75; `git diff --check` exit 0; 4 touched
+  Postman collections parse as strict UTF-8 JSON; all changed markdown
+  links/anchors resolve.
+- Deploy to the rehearsal (72.62.92.144, unit `sanad-api`, `Staging`, DB
+  loopback `SanadDb`): package zip sha256 `9b4be825...97b875b` verified on
+  target before extraction; binary backup `/root/sanad-api-backup-pre-47329bf5`
+  (111 files) taken before stop; service stopped, application files replaced
+  (host `appsettings.json` + `appsettings.Staging.json` preserved by
+  exclusion), restarted. Config fingerprints byte-identical before/after:
+  `/etc/sanad/sanad.env` `fad7e7fc...`,
+  `/root/sanad-api/appsettings.Staging.json` `fd96e26d...`, host
+  `appsettings.json` `200332b4...`, unit `c018192e...`. Startup log: **9/9
+  contexts, each `0 pending migration(s) / 0 migration(s) applied`** (no
+  migrations this phase), `NRestarts=0`, listening `http://127.0.0.1:5001`.
+- Verification: `Verify-SanadDeployment.ps1` **exit 0** over the public base -
+  revision match (`47329bf5...`), required/applied 9/9 match, smoke
+  `GET /api/v1/lookups/services` HTTP 200. Public `http://72.62.92.144:8091`
+  reachable (`/api/v1/deployment/info`: `Staging`, DB reachable). New route
+  `GET /api/v1/family/invitations/sent` exists: anonymous **401 (not 404)**;
+  public OpenAPI `/openapi/v1.json` (571 paths) contains the new path with a
+  `get` operation.
+- Provisioner tool refreshed at `/root/sanad-demo-provisioner` at the same
+  revision: new DLL sha256
+  `60efa2080c087f7e4cb41ce0957c1a30e053cb2d1191e8c65f4473bade2dcc02` (sources
+  unchanged this phase; the byte difference vs the prior `756bddf3...` is a
+  non-deterministic rebuild, not a source change), host `appsettings.json`
+  preserved, `--help` smoke only - **no provisioning run**.
+- Limitations / unverified: (1) no authenticated readback of the sent-list
+  endpoint was performed - exposure is proven by the anonymous 401 plus green
+  handler/controller tests, not a live authenticated response; (2) the
+  plan-change 409 paths and the premium `canAccess` flip are unit-proven at
+  `47329bf5` but not live-proven over HTTP (no payment flow executed, per
+  constraint); (3) the DB correction is proven on the rehearsal target only -
+  any other environment seeded through the same path needs its own authorized
+  correction; (4) `gold` package alignment remains an open observation; (5)
+  consumer-doc examples (care-record Request/Response) remain authored, not
+  run. Full send-ready answers for the app team:
+  [mobile-response-2026-10-26.md](mobile-response-2026-10-26.md).
