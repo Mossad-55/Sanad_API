@@ -2,6 +2,7 @@ using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Discovery;
+using Sanad.Modules.Caregivers.Application.Lookups;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
@@ -46,6 +47,17 @@ public interface ICaregiversDbContext
     Task<int> CountAdminCaregiversAsync(
         int? status,
         int? type,
+        CancellationToken cancellationToken = default);
+
+    // Admin caregiver name+id lookup. Names live in identity.users, so this is
+    // a raw parameterized SQL read like the admin list above. The Identity
+    // join is INNER on purpose: a caregiver row without a linked Identity user
+    // cannot satisfy a name lookup and is excluded rather than deleted. Only
+    // the two name columns are searched and projected — never phone or email.
+    Task<(IReadOnlyList<AdminCaregiverLookupItem> Items, int TotalCount)> GetAdminCaregiverLookupAsync(
+        string? search,
+        int page,
+        int pageSize,
         CancellationToken cancellationToken = default);
 
     // Dynamic Search Method querying caregivers and joining identity.users

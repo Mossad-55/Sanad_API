@@ -48,6 +48,20 @@ with the created `CareRecordResponse`.
 }
 ```
 
+### Reading `source`
+
+`source` is the numeric wire value of the record's origin — `1` = Family,
+`2` = CareHome, `3` = Caregiver. It is always server-derived: a create body
+never sets it. `sourceNameAr`/`sourceNameEn` are the bilingual display names
+for that value, for presentation only and never authorization keys.
+
+The timeline read above (`GET /api/v1/family/dependents/{dependentId}/care-records`)
+accepts an optional `source` filter in either form: the enum name (`Family`,
+`CareHome`, `Caregiver`, case-insensitive) or its number (`1`, `2`, `3`).
+Omitting it returns all three sources combined. Any other value — or bad paging
+or reversed date filters — is `400 Families.CareRecords.InvalidQuery` before the
+read runs. The elderly and admin care-record reads apply the same filter rule.
+
 ## Retry safety (`Idempotency-Key`)
 
 The header is optional on both creates. Without it, the request behaves exactly
@@ -75,6 +89,7 @@ as before.
 | Code | HTTP | When |
 |---|---|---|
 | `Families.CareRecords.Invalid` | 400 | A field is empty, too long, or otherwise invalid. |
+| `Families.CareRecords.InvalidQuery` | 400 | Bad paging, an unknown `source` filter value, or reversed date filters. |
 | `Families.CareRecords.IdempotencyKeyInvalid` | 400 | The supplied `Idempotency-Key` is not 1–128 printable ASCII characters after trimming. |
 | `Families.CareRecords.DependentNotFound` | 404 | The dependent does not exist or is outside the caller's scope. |
 | `Families.CareRecords.AccessDenied` | 403 | The caller may not write this dependent's records. |

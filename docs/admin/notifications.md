@@ -107,6 +107,111 @@ the English subject, body, and idempotency key it already carried, so previously
 sent mail and existing outbox rows are unchanged. A support-reply notification
 keeps the administrator-authored body byte for byte and localizes only its title.
 
+## Self-service notification preferences (Admin and facility-owner accounts)
+
+Preference management is a separate, self-service surface from the read-only
+inspection routes above. Both routes require only `NormalAccess`, which is
+satisfied by any authenticated account whose token carries the
+`AccessType = Normal` claim — the policy checks no `AccountType`. `SuperAdmin`,
+`SupportAdmin`, `ContentAdmin`, `FinanceAdmin`, and `CareHomeOwner` therefore
+reach it exactly as a Family, caregiver, or elderly account does. Each caller
+reads and writes **only their own** user row; there is no admin
+"manage another user's preferences" route, and no bulk or per-facility variant.
+Self-service edits can change push eligibility and, for the wellness categories,
+whether an in-app row is created at all, so callers that also read the
+inspection routes above should expect them to be unrelated surfaces.
+
+| Route | Request | Result |
+|---|---|---|
+| `GET /api/v1/account/notification-preferences` | none | `200` with the caller's ten booleans |
+| `PUT /api/v1/account/notification-preferences` | Full-replacement body carrying the same ten fields | `200` with the stored ten booleans |
+
+`PUT` is a full replacement: its **eight required fields** are always written,
+and its **two nullable fields** carry preserve/compatibility semantics instead —
+an omitted `helpRequestAlerts` keeps its stored value, and an omitted
+`chatMessages` follows the chat compatibility rule below. `401` is returned when
+no valid Normal JWT is supplied, `404` when the caller's user row is missing,
+and `409` when the account is blocked.
+
+### Settable fields and where they take effect
+
+All ten booleans are settable by every account type; the request shape does not
+vary by role. What differs is whether a given role can *receive* a push-keyed
+notification that consults the field. The mapping is the push fan-out policy;
+fields with no mapping are stored but never consulted.
+
+| Field | Push key | Admin / facility-owner relevance (current source) |
+|---|---|---|
+| `systemNotifications` | `SystemNotifications` | Facility review events (`CareHomes`/`OnboardingStatus`) reach the facility owner and, on submission and correction events, every active `SuperAdmin`/`SupportAdmin`. |
+| `bookingUpdates` | `BookingUpdates` | Care-home booking events (`CareHomes` with `Booking*` types) reach the facility owner, the affected Family user, or, for refund-failed and dispute-opened events, active `SuperAdmin`/`SupportAdmin`. |
+| `helpRequestAlerts` | `HelpRequestAlerts` | SOS and help-request alerts also target active `SupportAdmin` users, alongside eligible Family members and the assigned caregiver. |
+| `medicationReminders` | `MedicationReminders` | Medication-late alerts also target active `SupportAdmin` users. |
+| `checkInAlerts` | `CheckInAlerts` | Negative check-in alerts target eligible Family members only; no admin or facility-owner recipient. |
+| `chatMessages` | `ChatMessages` | Any chat participant, including an admin or facility-owner account, when that account is in the conversation. |
+| `communityNotifications` | `CommunityNotifications` | Mapping exists for own-post published/rejected, but no producer emits that category today. |
+| `familyActivityAlerts` | — | No push mapping; stored only. |
+| `newOrders` | — | No push mapping; stored only. |
+| `messagesFromFamilies` | `ChatMessages` (legacy, see below) | Legacy chat field; retained for existing consumers. |
+
+Support-reply (`Support`/`SupportReply`) and admin account-status/password
+notices (`Identity`/`AdminUser*`) have no push mapping, so they are in-app only
+regardless of any preference.
+
+For SOS, help-request, and medication alerts, the Family and caregiver
+recipients are filtered by preference *inside the recipient lookup*, so an
+ineligible Family or caregiver is removed **before** the notification row is
+created; the `SupportAdmin` recipients are added without that filter and are
+gated only immediately before push delivery.
+
+### Defaults, unused fields, and the chat compatibility rule
+
+A new account's preferences all default to enabled. `helpRequestAlerts`
+defaults to enabled for rows that predate the field.
+
+`familyActivityAlerts` and `newOrders` are settable and persisted but have **no
+push mapping and no other consumer** — clearing either has no effect. Treat them
+as reserved/legacy, not as live switches.
+
+`messagesFromFamilies` is a legacy field: `chatMessages` is the canonical
+chat-push preference. For rows that predate `chatMessages`, the stored
+`messagesFromFamilies` value was adopted as the initial `chatMessages` value.
+On update, an explicit `chatMessages` wins; if it is omitted and
+`messagesFromFamilies` changes from its stored value, the new
+`messagesFromFamilies` value is mirrored to `chatMessages`; otherwise the stored
+`chatMessages` is preserved, so omission alone never resets a chat opt-out.
+Legacy `messagesFromFamilies` notification rows are mapped to the `ChatMessages`
+key so their opt-outs keep working. New integrations should use `chatMessages`.
+
+### What a disabled preference does
+
+A disabled preference does **not** behave the same for every producer, so do not
+read it as a universal "push off, inbox unaffected" switch.
+
+- **Suppression at selection (wellness categories).** For check-in alerts,
+  help requests, SOS, and medication-late alerts, the Family and caregiver
+  recipients are selected by preference inside the recipient lookup
+  (`GetActiveUsersWithCheckInAlertsQuery.cs:20-22,29,33`), so an ineligible
+  Family or caregiver never becomes a recipient — **no in-app row is created for
+  them at all** and their preference also suppresses the push. The
+  `SupportAdmin` recipients of these categories are added without the
+  preference filter and are gated only before push delivery.
+- **Suppression at delivery only (care-home owner/admin and chat).** Facility
+  review and booking events select the owner and active `SuperAdmin`/
+  `SupportAdmin` recipients without consulting preferences, and the email-outbox
+  row is written unconditionally — so the in-app row and the email are produced
+  regardless of the preference, and only the push is suppressed. Chat rows are
+  likewise created for the conversation participant regardless of the preference,
+  which is re-checked immediately before each chat push send.
+
+In both cases preferences never *initiate* push, email, or SMS. Push outbox rows
+are created only for recipients that have a registered device; a row is then
+either suppressed at delivery (preference disabled, or no device at send time)
+or sent.
+
+**Needs Owner Verification:** the exact set of roles the future Admin portal and
+facility-owner portal surfaces will expose these fields to. This guide records
+only what the current endpoints and fan-out policy permit.
+
 ## OpenAPI contract
 
 All four views publish their actual success schemas (`200` page envelopes

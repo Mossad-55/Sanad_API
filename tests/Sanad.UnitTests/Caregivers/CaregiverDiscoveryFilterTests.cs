@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Caregivers.Application.Discovery;
+using Sanad.Modules.Caregivers.Application.Lookups;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
@@ -109,6 +110,10 @@ public sealed class CaregiverDiscoveryFilterTests
         public Task<int> CountAdminCaregiversAsync(
             int? status, int? type, CancellationToken cancellationToken = default) =>
             _inner.CountAdminCaregiversAsync(status, type, cancellationToken);
+
+        public Task<(IReadOnlyList<AdminCaregiverLookupItem> Items, int TotalCount)> GetAdminCaregiverLookupAsync(
+            string? search, int page, int pageSize, CancellationToken cancellationToken = default) =>
+            _inner.GetAdminCaregiverLookupAsync(search, page, pageSize, cancellationToken);
 
         public Task<CaregiverUserHeader?> GetCaregiverUserHeaderAsync(
             Sanad.BuildingBlocks.Domain.Primitives.Ids.UserId userId,

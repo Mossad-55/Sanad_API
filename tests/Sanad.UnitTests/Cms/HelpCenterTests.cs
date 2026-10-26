@@ -520,6 +520,113 @@ public sealed class HelpCenterTests
         Assert.Equal(3, stored.DisplayOrder);
     }
 
+    [Fact]
+    public async Task AdminList_TiedAudienceAndDisplayOrder_OrdersDeterministicallyById()
+    {
+        await using CmsDbContext dbContext = CreateDbContext();
+
+        // Two active family rows share their display order — the exact
+        // live state that crashed the admin list before HelpFaqId became
+        // comparable (the tie-breaker compared the id and the struct was
+        // not IComparable).
+        HelpFaqId first = SeedFaq(
+            dbContext,
+            LegalAudience.Family,
+            "سؤال عائلي أ",
+            "Family question one",
+            displayOrder: 2,
+            isActive: true);
+        HelpFaqId second = SeedFaq(
+            dbContext,
+            LegalAudience.Family,
+            "سؤال عائلي ب",
+            "Family question two",
+            displayOrder: 2,
+            isActive: true);
+        SeedFaq(
+            dbContext,
+            LegalAudience.Family,
+            "سؤال عائلي ج",
+            "Family question three",
+            displayOrder: 1,
+            isActive: true);
+        SeedFaq(
+            dbContext,
+            LegalAudience.MedicalCaregiver,
+            "سؤال مقدم رعاية",
+            "Caregiver question",
+            displayOrder: 0,
+            isActive: true);
+        await dbContext.SaveChangesAsync();
+
+        HelpFaqId expectedFirst =
+            first.Value.CompareTo(second.Value) < 0 ? first : second;
+        HelpFaqId expectedSecond =
+            expectedFirst == first ? second : first;
+
+        var unfiltered = await new ListHelpFaqsQueryHandler(dbContext)
+            .Handle(
+                new ListHelpFaqsQuery(null, null),
+                CancellationToken.None);
+
+        // Unfiltered: the whole set, ordered by audience, then display
+        // order, then id — deterministic, never the 500 compare failure.
+        Assert.True(unfiltered.IsSuccess);
+        Assert.Equal(4, unfiltered.Value.Count);
+        Assert.Equal(1, unfiltered.Value[0].DisplayOrder);
+        Assert.Equal(2, unfiltered.Value[1].DisplayOrder);
+        Assert.Equal(2, unfiltered.Value[2].DisplayOrder);
+        Assert.Equal(expectedFirst, unfiltered.Value[1].Id);
+        Assert.Equal(expectedSecond, unfiltered.Value[2].Id);
+
+        var familyOnly = await new ListHelpFaqsQueryHandler(dbContext)
+            .Handle(
+                new ListHelpFaqsQuery(LegalAudience.Family, true),
+                CancellationToken.None);
+
+        Assert.True(familyOnly.IsSuccess);
+        Assert.Equal(3, familyOnly.Value.Count);
+        Assert.Equal(expectedFirst, familyOnly.Value[1].Id);
+        Assert.Equal(expectedSecond, familyOnly.Value[2].Id);
+    }
+
+    [Fact]
+    public async Task AppRead_TiedDisplayOrder_OrdersDeterministicallyById()
+    {
+        await using CmsDbContext dbContext = CreateDbContext();
+
+        HelpFaqId first = SeedFaq(
+            dbContext,
+            LegalAudience.Family,
+            "سؤال عائلي أ",
+            "Family question one",
+            displayOrder: 5,
+            isActive: true);
+        HelpFaqId second = SeedFaq(
+            dbContext,
+            LegalAudience.Family,
+            "سؤال عائلي ب",
+            "Family question two",
+            displayOrder: 5,
+            isActive: true);
+        await dbContext.SaveChangesAsync();
+
+        // The app read shares the same ordering code; tied display orders
+        // must resolve on the id deterministically instead of throwing.
+        var appRead = await new GetHelpCenterQueryHandler(dbContext)
+            .Handle(
+                new GetHelpCenterQuery(LegalAudience.Family),
+                CancellationToken.None);
+
+        Assert.True(appRead.IsSuccess);
+        Assert.Equal(2, appRead.Value.Faqs.Count);
+        HelpFaqId expectedFirst =
+            first.Value.CompareTo(second.Value) < 0 ? first : second;
+        Assert.Equal(
+            expectedFirst,
+            appRead.Value.Faqs[0].Id);
+    }
+
     private static CreateHelpFaqCommand ValidCreateCommand(
         LegalAudience audience) =>
         new(

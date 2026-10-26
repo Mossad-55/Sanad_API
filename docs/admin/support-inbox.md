@@ -98,6 +98,16 @@ POST /api/v1/admin/support-tickets/{id}/replies
 body: { "body": "We are looking into this." }     -> 200 SupportTicketReplyDto
 ```
 
+- `body` is required and accepts **1–2000 characters measured on the trimmed
+  text** — the existing `SupportTicketReply.Create` rule: the stored reply is
+  the trimmed value. There is deliberately **no `maxLength` on the request
+  schema**: the cap applies to consumed text, not the raw JSON value, and a
+  whitespace-padded body whose trimmed length fits is accepted (its stored
+  reply is the trimmed form). A blank (whitespace-only) body or a body whose
+  trimmed length exceeds 2000 reaches the domain guard and fails as it always
+  has — the API publishes no raw schema cap for it (trimmed-oversize input
+  ends in an error response, not a validation 400). Accepted values and read
+  backs are unchanged (no extra trimming beyond the domain's existing trim).
 - The reply is persisted **before** any notification is attempted, and the
   response returns it: `{ replyId, actorUserId, body, createdOnUtc }`.
 - Replying to a `Closed` ticket is refused with

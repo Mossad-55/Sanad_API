@@ -4,6 +4,7 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Caregivers.Application.Abstractions.Security;
 using Sanad.Modules.Caregivers.Application.Discovery;
+using Sanad.Modules.Caregivers.Application.Lookups;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Application.PayoutAccounts;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
@@ -426,6 +427,11 @@ public sealed class PayoutAccountReviewHandlerTests
             int? status, int? type,
             CancellationToken cancellationToken = default) =>
             inner.CountAdminCaregiversAsync(status, type, cancellationToken);
+
+        public Task<(IReadOnlyList<AdminCaregiverLookupItem> Items, int TotalCount)> GetAdminCaregiverLookupAsync(
+            string? search, int page, int pageSize,
+            CancellationToken cancellationToken = default) =>
+            inner.GetAdminCaregiverLookupAsync(search, page, pageSize, cancellationToken);
 
         public Task<(IReadOnlyList<CaregiverSearchCardResponse> Items, int TotalCount)> SearchActiveCaregiversAsync(
             string? search, int? type, int? gender, Guid? governorateId, Guid? cityId, Guid? areaId, Guid? specializationId,

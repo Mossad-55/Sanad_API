@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
 using Sanad.Modules.Caregivers.Application.Discovery;
+using Sanad.Modules.Caregivers.Application.Lookups;
 using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 using Sanad.Modules.Caregivers.Domain.Caregivers.Lookups;
@@ -188,6 +189,112 @@ public sealed class CaregiversDbContext :
         }
 
         return items;
+    }
+
+    public async Task<(IReadOnlyList<AdminCaregiverLookupItem> Items, int TotalCount)> GetAdminCaregiverLookupAsync(
+        string? search,
+        int page,
+        int pageSize,
+        CancellationToken cancellationToken = default)
+    {
+        // Same name-matching convention as the public discovery search
+        // (lower(...) LIKE lower('%' || @search || '%')) and the same
+        // LIMIT/OFFSET paging and Guid tie-breaker as the admin caregiver list.
+        // Only the caregiver id and the two Identity names are selected: phone,
+        // email, bank, payout and medical columns are never touched. The two
+        // name columns are NOT NULL (identity.users configuration), so the
+        // non-nullable reader calls are safe for every joined row.
+        //
+        // Caller text is escaped and matched with an explicit ESCAPE character
+        // so "%", "_" and "\" match themselves literally. The parameter is
+        // still bound as a parameter (never concatenated into the SQL text), so
+        // escaping changes matching semantics only, not injection safety.
+        string? pattern = AdminCaregiverLookupQuery.ToLikePattern(search);
+
+        const string baseSql =
+            """
+            FROM caregivers.caregivers c
+            INNER JOIN identity.users u ON u.id = c.user_id
+            WHERE (@search IS NULL OR lower(u.arabic_full_name) LIKE lower(@search) ESCAPE '\' OR lower(u.english_full_name) LIKE lower(@search) ESCAPE '\')
+            """;
+
+        string countSql = $"SELECT COUNT(*) {baseSql}";
+        string selectSql =
+            $"""
+            SELECT
+                c.id                AS "CaregiverId",
+                u.arabic_full_name  AS "ArabicFullName",
+                u.english_full_name AS "EnglishFullName"
+            {baseSql}
+            ORDER BY lower(u.arabic_full_name), lower(u.english_full_name), c.id
+            LIMIT @take OFFSET @skip
+            """;
+
+        List<AdminCaregiverLookupItem> items = [];
+        int totalCount = 0;
+
+        // Saturated in long arithmetic: a very large page yields the last
+        // pageable offset rather than a negative OFFSET.
+        int skip = (int)Math.Min((long)(page - 1) * pageSize, int.MaxValue);
+
+        await Database.OpenConnectionAsync(cancellationToken);
+
+        try
+        {
+            using (DbCommand countCommand =
+                Database.GetDbConnection().CreateCommand())
+            {
+                countCommand.CommandText = countSql;
+                countCommand.Parameters.Add(
+                    CreateParameter(
+                        countCommand,
+                        "search",
+                        (object?)pattern ?? DBNull.Value,
+                        DbType.String));
+
+                object? countResult =
+                    await countCommand.ExecuteScalarAsync(cancellationToken);
+                totalCount = Convert.ToInt32(countResult);
+            }
+
+            using (DbCommand selectCommand =
+                Database.GetDbConnection().CreateCommand())
+            {
+                selectCommand.CommandText = selectSql;
+                selectCommand.Parameters.Add(
+                    CreateParameter(
+                        selectCommand,
+                        "search",
+                        (object?)pattern ?? DBNull.Value,
+                        DbType.String));
+                selectCommand.Parameters.Add(
+                    CreateParameter(selectCommand, "take", pageSize, DbType.Int32));
+                selectCommand.Parameters.Add(
+                    CreateParameter(
+                        selectCommand,
+                        "skip",
+                        skip,
+                        DbType.Int32));
+
+                await using DbDataReader reader =
+                    await selectCommand.ExecuteReaderAsync(cancellationToken);
+
+                while (await reader.ReadAsync(cancellationToken))
+                {
+                    items.Add(
+                        new AdminCaregiverLookupItem(
+                            reader.GetGuid(reader.GetOrdinal("CaregiverId")),
+                            reader.GetString(reader.GetOrdinal("ArabicFullName")),
+                            reader.GetString(reader.GetOrdinal("EnglishFullName"))));
+                }
+            }
+        }
+        finally
+        {
+            await Database.CloseConnectionAsync();
+        }
+
+        return (items, totalCount);
     }
 
     public async Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(

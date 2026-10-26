@@ -8,16 +8,29 @@ using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Visits;
 using Sanad.Modules.CareHomes.Domain.Bookings;
 using Sanad.Modules.Families.Application.Abstractions.Data;
+using System.ComponentModel.DataAnnotations;
 
 namespace Sanad.API.Controllers;
 
 public sealed record CareHomeVisitRequest(Guid FacilityId, CareHomeVisitKind Kind, Guid? ElderlyId,
     string VisitorName, string VisitorPhone, int VisitorCount, DateTimeOffset StartsAt);
 public sealed record CareHomeVisitRescheduleRequest(DateTimeOffset StartsAt);
+// Schema policy: only RAW-JSON-measured domain caps are published as
+// request-schema annotations. The visit decision reason (consume path:
+// `CareHomeVisit.Reject`, approve ignores the reason) and the cancellation
+// reason (`CareHomeVisit.Cancel`) are capped at 1000 on the TRIMMED text and
+// the support reply body at 1–2000 on the TRIMMED text, so a raw
+// `[StringLength]` would falsely reject previously accepted whitespace-padded
+// and approve-ignored values — those caps stay documented, not annotated.
+// The closure reason is measured on the raw value before trimming
+// (`CareHomeVisitSettings.Validate`), so its annotation is exact. Record
+// positional attributes require the `property:` target modifier to reach the
+// generated property schema (and MVC validation); without it the attribute
+// silently stays on the constructor parameter and no maxLength is emitted.
 public sealed record CareHomeVisitDecisionRequest(bool Approve, string? Reason);
 public sealed record CareHomeVisitCancellationRequest(string? Reason);
 public sealed record CareHomeVisitWindowRequest(DayOfWeek Day, TimeOnly StartTime, TimeOnly EndTime);
-public sealed record CareHomeVisitClosureRequest(DateOnly Date, string? Reason);
+public sealed record CareHomeVisitClosureRequest(DateOnly Date, [property: StringLength(500)] string? Reason);
 public sealed record CareHomeVisitSettingsRequest(int ExpectedVersion, int VisitorCapacity,
     IReadOnlyList<CareHomeVisitWindowRequest> OperatingHours,
     IReadOnlyList<CareHomeVisitWindowRequest> VisitingWindows,

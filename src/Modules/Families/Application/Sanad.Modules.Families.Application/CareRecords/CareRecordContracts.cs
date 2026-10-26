@@ -7,11 +7,11 @@ namespace Sanad.Modules.Families.Application.CareRecords;
 // ============================== Wire contracts ==============================
 
 /// <summary>
-/// One timeline item. `source` is the wire string (Family | CareHome |
-/// Caregiver) — the API never serializes the numeric enum. `version` is the
+/// One timeline item. `source` is the enum's numeric wire value (1 Family,
+/// 2 CareHome, 3 Caregiver) — the serializer emits the number, not the name.
+/// `sourceNameAr`/`sourceNameEn` carry the bilingual display names and are
+/// display/localization only, never authorization keys. `version` is the
 /// optimistic-concurrency token an editor echoes back as expectedVersion.
-/// `sourceNameAr`/`sourceNameEn` are display/localization only and are never
-/// authorization keys.
 /// </summary>
 public sealed record CareRecordResponse(
     Guid Id,

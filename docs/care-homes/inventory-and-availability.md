@@ -31,7 +31,14 @@ Room types use `POST /mine/room-types` and `PUT /mine/room-types/{id}`:
 ```
 
 `allocationMode` is `1` Shared, `2` Private, or `3` Suite. The monthly price
-is in EGP. Archive or restore a room type with
+is in EGP. Field bounds: names require 1–200 characters; the optional
+`arabicDescription`/`englishDescription` fields are trimmed only — there is
+**no request or domain length rule**, so the OpenAPI request schema publishes
+no `maxLength` for them. The database column (`care_homes.room_types.
+arabic_description`/`english_description`, varchar(4000)) is the only backstop:
+a value over 4000 characters is accepted by validation and fails at
+persistence instead of returning request-validation 400. Archive or restore a
+room type with
 `POST /mine/room-types/{id}/archive?expectedVersion=1&restore=false`.
 
 Room type updates also set the bilingual marketing amenities. `amenities`
@@ -165,7 +172,12 @@ Create a maintenance block with `POST /mine/maintenance`:
 
 `target` is `1` for a room or `2` for a bed. Dates are Egypt-local calendar
 dates with a start-inclusive, end-exclusive range. The end date must be after
-the start date. A block is rejected when it overlaps an active hold or stay,
+the start date. The optional `reason` is trimmed to null when blank but has
+**no request or domain length rule** (no `maxLength` in the request schema);
+the `care_homes.maintenance_blocks.reason` column (varchar(1000)) is the only
+backstop, so a value over 1000 characters fails at persistence rather than at
+request validation. The same applies to the amend route's `reason`. A block is
+rejected when it overlaps an active hold or stay,
 or an existing block on the same room/bed relationship. A room block also
 conflicts with a block on one of its beds, and vice versa.
 

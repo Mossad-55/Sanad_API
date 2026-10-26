@@ -23,7 +23,15 @@ at that facility on the visit date. Reschedule accepts
 `{ "reason": "Schedule changed" }`; the reason may be null. Reason length
 limits (port-round-2 clarification): a decision or cancellation reason is
 capped at **1000** characters after trimming — an over-long one is rejected
-with `409 CareHomes.Visits.InvalidState`. Each family read
+with `409 CareHomes.Visits.InvalidState`. These two caps are deliberately NOT
+published as OpenAPI `maxLength`: the domain measures the **trimmed (consumed)
+text**, so a raw `maxLength` would wrongly reject accepted whitespace-padded
+values, and the approve path ignores the decision reason entirely. The
+visit-settings closure `reason` is the one exception: it is measured on the
+raw value **before** trimming, so its request schema publishes the exact
+`maxLength: 500` and an over-long closure reason is refused with a 400
+request-validation error before the handler runs; the domain rejects raw >500
+exactly the same way. Each family read
 and mutation is scoped to the caller's active Family.
 
 Create request example:
@@ -101,7 +109,7 @@ All routes require `CareHomeOwnerAccess` and are scoped to the owner's facility:
 | `POST /api/v1/care-homes/visits/mine/{visitId}/decision` | Approve or reject a pending request; rejection requires a reason |
 | `POST /api/v1/care-homes/visits/mine/{visitId}/cancel` | Cancel before the visit starts |
 
-Settings requests contain `visitorCapacity`, arrays of `{ "day": 1, "startTime": "09:00", "endTime": "17:00" }` for `operatingHours` and `visitingWindows` (`day` is the numeric `DayOfWeek`, 1 = Monday; string names are rejected with 400), and closure entries `{ "date": "2026-11-10", "reason": "Holiday" }` (an over-long closure reason — the supplied value is measured **before** any trimming, at more than **500** characters — or a missing closure date makes the request invalid: the first save (no stored settings yet) answers 400 `CareHomes.Visits.InvalidRequest`, while a failed `Update` of existing settings answers 409 `CareHomes.Visits.Conflict`, the same mapped code a stale `expectedVersion` yields; trimming to ≤500 happens only afterwards when valid closures are normalized). A stale settings version conflicts with 409 `CareHomes.Visits.Conflict`. Settings that would make an already-reserved future appointment invalid or exceed capacity are rejected. Failed writes leave settings and version unchanged. Owner settings reads return 200 with `version` 0 and capacity 0 before the first save.
+Settings requests contain `visitorCapacity`, arrays of `{ "day": 1, "startTime": "09:00", "endTime": "17:00" }` for `operatingHours` and `visitingWindows` (`day` is the numeric `DayOfWeek`, 1 = Monday; string names are rejected with 400), and closure entries `{ "date": "2026-11-10", "reason": "Holiday" }` (an over-long closure reason — the supplied value is measured **before** any trimming, at more than **500** characters — or a missing closure date makes the request invalid: the first save (no stored settings yet) answers 400 `CareHomes.Visits.InvalidRequest`, while a failed `Update` of existing settings answers 409 `CareHomes.Visits.Conflict`, the same mapped code a stale `expectedVersion` yields; trimming to ≤500 happens only afterwards when valid closures are normalized). The closure `reason` cap is measured on the raw value before trim and is published exactly as `maxLength: 500` on the request schema, so an over-long closure reason (raw >500) is refused with a plain 400 request-validation error before any state check — the domain rejects the identical set of values, so no previously accepted request changes outcome. A stale settings version still conflicts with 409 `CareHomes.Visits.Conflict`. Settings that would make an already-reserved future appointment invalid or exceed capacity are rejected. Failed writes leave settings and version unchanged. Owner settings reads return 200 with `version` 0 and capacity 0 before the first save.
 
 The complete settings request also contains `expectedVersion`; for example:
 

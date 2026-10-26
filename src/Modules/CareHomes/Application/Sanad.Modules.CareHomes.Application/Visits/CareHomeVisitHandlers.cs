@@ -353,6 +353,26 @@ public sealed class CreateCareHomeVisitCommandHandler(
 public sealed class GetEligibleCareHomeVisitResidentsQueryHandler(ICareHomesDbContext db)
     : IQueryHandler<GetEligibleCareHomeVisitResidentsQuery, IReadOnlyList<CareHomeEligibleResidentResponse>>
 {
+    /// <summary>
+    /// The exact production read composition (filter and ordering) for the
+    /// eligible-residents surface, extracted so the Npgsql translation
+    /// regression compiles the same query shape the handler runs. Ordering
+    /// must stay EF-translatable: typed-id ordering keys are ordered as the
+    /// mapped column; unwrapping with <c>.Value</c> inside ORDER BY is not
+    /// translatable and 500s the read (2026-10-26 rehearsal evidence).
+    /// </summary>
+    internal static IQueryable<CareHomeBooking> EligibleResidentRows(
+        ICareHomesDbContext db,
+        CareHomeId facilityId,
+        FamilyId familyId,
+        DateOnly localDate) =>
+        db.Bookings.AsNoTracking()
+            .Where(CareHomeVisitResidentEligibility.Eligible(facilityId, familyId, localDate))
+            .OrderBy(x => x.ElderlyArabicName)
+            .ThenBy(x => x.ElderlyEnglishName)
+            .ThenBy(x => x.ElderlyId)
+            .ThenBy(x => x.Id);
+
     public async Task<Result<IReadOnlyList<CareHomeEligibleResidentResponse>>> Handle(
         GetEligibleCareHomeVisitResidentsQuery r, CancellationToken ct)
     {
@@ -363,13 +383,8 @@ public sealed class GetEligibleCareHomeVisitResidentsQueryHandler(ICareHomesDbCo
         DateOnly localDate = DateOnly.FromDateTime(
             TimeZoneInfo.ConvertTimeFromUtc(r.StartsAt.UtcDateTime, CareHomeVisitScheduleRules.CairoTimeZone));
 
-        List<CareHomeBooking> bookings = await db.Bookings.AsNoTracking()
-            .Where(CareHomeVisitResidentEligibility.Eligible(facilityId, r.FamilyId, localDate))
-            .OrderBy(x => x.ElderlyArabicName)
-            .ThenBy(x => x.ElderlyEnglishName)
-            .ThenBy(x => x.ElderlyId.Value)
-            .ThenBy(x => x.Id)
-            .ToListAsync(ct);
+        List<CareHomeBooking> bookings = await EligibleResidentRows(
+            db, facilityId, r.FamilyId, localDate).ToListAsync(ct);
 
         // One booking per resident: the deterministic first match after the
         // ordering above. Other eligible bookings for the same resident are

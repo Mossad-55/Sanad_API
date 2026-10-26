@@ -218,3 +218,61 @@ There is no `PUT`, `PATCH` or `DELETE` route for a note: a stored note's text ca
 - `401` — missing, expired or non-`Normal` token; `403` — authenticated without SuperAdmin/SupportAdmin.
 
 Both codes are mapped locally by the caregiver review controller rather than through the shared problem-details mapper, so a missing caregiver is a real `404`. Responses keep the usual `code` and `traceId` extensions for client keying. A Postman collection with authored examples is at `docs/postman/admins/Sanad.Admin.CaregiverNotes.postman_collection.json`.
+
+## Caregiver name+ID lookup
+
+Resolve a caregiver name to the caregiver id the review routes expect, without
+reading the review list (which also publishes `phoneNumber`) and without any
+contact permission being widened.
+
+```http
+GET /api/v1/admin/caregivers/lookup?search=Ahmed&page=1&pageSize=20
+Authorization: Bearer {{accessToken}}
+```
+
+Access is the same `CaregiverReviewAdmin` policy as the rest of this guide
+(`SuperAdmin`/`SupportAdmin`, `Normal` access only); `ContentAdmin` and
+`FinanceAdmin` receive `403`.
+
+| Query | Default | Meaning |
+|---|---|---|
+| `page` | `1` | Page number; clamped to at least `1` |
+| `pageSize` | `20` | Default `20` when `0` or absent; capped at `100` and floored at `1` |
+| `search` | `–` | Case-insensitive substring of the Arabic or English full name. Blank and unmatched searches both return a page |
+
+```json
+{
+  "items": [
+    {
+      "id": "guid",
+      "arabicFullName": "أحمد محمود",
+      "englishFullName": "Ahmed Mahmoud"
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "totalCount": 1,
+  "totalPages": 1
+}
+```
+
+- `id` is the caregiver aggregate id (`caregivers.caregivers.id`) — the id every
+  route in this guide takes — and **not** the Identity user id.
+- Each item carries only `id`, `arabicFullName` and `englishFullName`. Phone and
+  email are not searchable and not returned: phone lookup stays on the
+  `SuperAdmin`-only admin user list, and this route adds no new contact
+  permission. Bank, payout and medical columns are never selected.
+- Caregivers whose Identity user row is missing (legacy rows) are excluded from
+  the lookup because a name lookup cannot name them. The rows are **not**
+  deleted and the existing list's `identityPresent` flag still reports them.
+- Ordering is deterministic and server-side (Arabic name, English name, then
+  caregiver id); filtering, counting and paging stay in SQL. Invalid paging is
+  clamped and an unmatched search is an empty page, so the route has no `400`
+  case (a page number far past the last page is an empty page too, never an
+  error).
+- `search` is matched **literally**: `%`, `_` and `\` in the caller's text match
+  those characters, they are never treated as wildcards.
+- Runnable requests (authored examples, not execution evidence):
+  `docs/postman/admins/Sanad.Admin.CaregiverNotes.postman_collection.json`
+  (`Caregiver name+ID lookup`).
+

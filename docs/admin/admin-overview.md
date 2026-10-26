@@ -32,6 +32,7 @@ First Super Admin is **seeded** (`Identity__AdminSeed__*`). There is no public a
 | Care-needs assessment quiz | `docs/admin/care-assessments.md` |
 | Bookings (cancellations & refunds) | `docs/admin/bookings.md` |
 | Family register (families, members, dependents) | `docs/admin/families.md` |
+| Dependent & caregiver name+ID lookup (`/api/v1/admin/elderly/lookup`, `/api/v1/admin/caregivers/lookup`) | `docs/admin/families.md`, `docs/admin/caregivers-review.md` |
 | Ratings visibility and moderation (caregiver and Care Home) | `docs/admin/ratings-moderation.md` |
 | Subscription plans, publication/retirement, and coupon configuration | `docs/admin/subscriptions.md` |
 | App rating investigation (admin read over stored app ratings) | `docs/admin/feedback-app-ratings.md` |

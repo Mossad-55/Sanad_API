@@ -30,6 +30,93 @@ public sealed record ListCaregiverRecipientsQuery(
     int Page = CareRecordPageSettings.DefaultPage,
     int PageSize = CareRecordPageSettings.DefaultPageSize) : IQuery<CareRecordsPage<CareRecordRecipientResponse>>;
 
+/// <summary>
+/// The exact query shape of the caregiver recipient picker, kept as a named
+/// builder so the provider-level translation facts can pin the SQL that ships
+/// (ILIKE + ESCAPE, the deterministic mapped-property ordering, the paged
+/// SKIP/TAKE and the booking-window EXISTS) without opening a connection.
+/// </summary>
+/// <remarks>
+/// SQL translation (PostgreSQL, same defect family as the resident read
+/// pinned by <c>CareHomeResidentsPostgresTests</c>): the names are value
+/// objects persisted through EF value converters, so the search must use the
+/// mapped properties with the 3-argument <c>EF.Functions.ILike</c> overload
+/// and the ordering must be by the mapped properties. The previous
+/// <c>.Value.ToLower().Contains(...)</c> search and
+/// <c>.OrderBy(e =&gt; e.ArabicFullName.Value)</c> shapes unwrap members of
+/// the converted type and are rejected by the Npgsql translator, which is
+/// what made every picker search 500.
+/// </remarks>
+public static class CaregiverRecipientPickerQuery
+{
+    /// <summary>The ILIKE escape character; the pattern is the escaped needle.</summary>
+    public const string LikeEscapeCharacter = "\\";
+
+    /// <summary>
+    /// Escapes LIKE/ILIKE metacharacters in caller text so they match
+    /// themselves literally instead of acting as wildcards: "\\", "%" and "_"
+    /// are never stripped and never honored. The input is the already
+    /// normalized (trimmed, lowercased) search, so no further trimming here.
+    /// </summary>
+    public static string ToLikePattern(string normalizedSearch) =>
+        $"%{normalizedSearch
+            .Replace("\\", "\\\\")
+            .Replace("%", "\\%")
+            .Replace("_", "\\_")}%";
+
+    /// <summary>
+    /// The locked authorized-recipient scope: the caregiver's own booking
+    /// window — Confirmed/InProgress plus the 30-day completion grace —
+    /// evaluated fresh on every picker call, with the name search applied on
+    /// the mapped name columns.
+    /// </summary>
+    public static IQueryable<Elderly> AuthorizedRecipients(
+        IFamiliesDbContext dbContext,
+        CaregiverId caregiverId,
+        DateTime graceCutoffUtc,
+        string? normalizedSearch)
+    {
+        IQueryable<Elderly> dependents = dbContext.Elderlies
+            .AsNoTracking()
+            .Where(e => dbContext.Bookings.Any(
+                b => b.CaregiverId == caregiverId
+                    && b.ElderlyId == e.Id
+                    && (b.Status == BookingStatus.Confirmed
+                        || b.Status == BookingStatus.InProgress
+                        || (b.Status == BookingStatus.Completed
+                            && b.CompletedOnUtc != null
+                            && b.CompletedOnUtc.Value >= graceCutoffUtc))));
+
+        if (string.IsNullOrEmpty(normalizedSearch))
+        {
+            return dependents;
+        }
+
+        string pattern = ToLikePattern(normalizedSearch);
+
+        return dependents.Where(e =>
+            EF.Functions.ILike(e.ArabicFullName, pattern, LikeEscapeCharacter) ||
+            EF.Functions.ILike(e.EnglishFullName, pattern, LikeEscapeCharacter));
+    }
+
+    /// <summary>
+    /// One SQL-side page: mapped Arabic-name ordering with the id tie-breaker
+    /// for a total order, over the authorized-recipient scope.
+    /// </summary>
+    public static IQueryable<Elderly> Page(
+        IFamiliesDbContext dbContext,
+        CaregiverId caregiverId,
+        DateTime graceCutoffUtc,
+        string? normalizedSearch,
+        int page,
+        int pageSize) =>
+        AuthorizedRecipients(dbContext, caregiverId, graceCutoffUtc, normalizedSearch)
+            .OrderBy(e => e.ArabicFullName)
+            .ThenBy(e => e.Id)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize);
+}
+
 public sealed class ListCaregiverRecipientsQueryHandler
     : IQueryHandler<ListCaregiverRecipientsQuery, CareRecordsPage<CareRecordRecipientResponse>>
 {
@@ -59,32 +146,19 @@ public sealed class ListCaregiverRecipientsQueryHandler
         DateTime graceCutoffUtc = _dateTimeProvider.UtcNow
             .AddDays(-CaregiverCareRecordAccess.CompletionGraceDays);
 
-        IQueryable<Elderly> dependents = _dbContext.Elderlies
-            .AsNoTracking()
-            .Where(e => _dbContext.Bookings.Any(
-                b => b.CaregiverId == request.CaregiverId
-                    && b.ElderlyId == e.Id
-                    && (b.Status == BookingStatus.Confirmed
-                        || b.Status == BookingStatus.InProgress
-                        || (b.Status == BookingStatus.Completed
-                            && b.CompletedOnUtc != null
-                            && b.CompletedOnUtc.Value >= graceCutoffUtc))));
-
-        if (!string.IsNullOrEmpty(pageQuery.NormalizedSearch))
-        {
-            string needle = pageQuery.NormalizedSearch;
-            dependents = dependents.Where(e =>
-                e.ArabicFullName.Value.ToLower().Contains(needle) ||
-                e.EnglishFullName.Value.ToLower().Contains(needle));
-        }
+        IQueryable<Elderly> dependents = CaregiverRecipientPickerQuery.AuthorizedRecipients(
+            _dbContext, request.CaregiverId, graceCutoffUtc, pageQuery.NormalizedSearch);
 
         int totalCount = await dependents.CountAsync(cancellationToken);
 
-        List<CareRecordRecipientResponse> items = (await dependents
-                .OrderBy(e => e.ArabicFullName.Value)
-                .ThenBy(e => e.Id)
-                .Skip((pageQuery.Page - 1) * pageQuery.PageSize)
-                .Take(pageQuery.PageSize)
+        List<CareRecordRecipientResponse> items = (await CaregiverRecipientPickerQuery
+                .Page(
+                    _dbContext,
+                    request.CaregiverId,
+                    graceCutoffUtc,
+                    pageQuery.NormalizedSearch,
+                    pageQuery.Page,
+                    pageQuery.PageSize)
                 .ToListAsync(cancellationToken))
             .Select(e => new CareRecordRecipientResponse(
                 e.Id.Value,

@@ -112,7 +112,17 @@ public static class DemoCorpusPlan
                 DemoCorpusIdentity.OwnershipMarker(tag, role)))
             .ToList();
 
+        // The planned list is the approved 22-group dependency order followed by
+        // the opt-in groups in their declared order, so the print is
+        // deterministic for a given requested set. A run that requests none of
+        // the opt-in groups (every default run: --groups defaults to the
+        // data-only 22) is byte-identical to before; a run that NAMES an opt-in
+        // group now shows it here — the plan reads the requested set, so a group
+        // the provision path will write may never be silently omitted from the
+        // write manifest the reviewer approves.
         var plannedGroups = DemoCorpusGroups.ExecutionOrder
+            .Concat(DemoCorpusGroups.OptIn)
+            .Distinct(StringComparer.Ordinal)
             .Where(group => planned.Contains(group, StringComparer.Ordinal))
             .Select(group => new DemoCorpusPlannedGroup(
                 group,

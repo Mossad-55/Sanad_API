@@ -60,6 +60,19 @@ public static class DemoCorpusGroups
     // --- notifications -----------------------------------------------------
     public const string Notifications = "notifications";
 
+    // --- elderly operations (opt-in; NOT part of the 22-group default) -----
+    /// <summary>
+    /// The opt-in elderly-operations group: the ONE existing demo elderly's own
+    /// operational records — an open SOS, a pending help request, two answered
+    /// daily check-ins and one completed medication course with two terminal
+    /// dose logs. It is deliberately kept OUT of <see cref="All"/>,
+    /// <see cref="ExecutionOrder"/> and <see cref="DataOnly"/>: the approved
+    /// 22-group default, its plan, its counts and its tests stay unchanged, and
+    /// these rows are written only when the operator names this group explicitly
+    /// on <c>--groups</c>.
+    /// </summary>
+    public const string ElderlyOps = "elderly-ops";
+
     /// <summary>
     /// The 22 approved inventory groups in the order the brief lists them.
     /// </summary>
@@ -105,6 +118,19 @@ public static class DemoCorpusGroups
     /// <summary>Groups with no provider-armed row: provisionable without the seam.</summary>
     public static readonly IReadOnlyList<string> DataOnly =
         [.. All.Where(group => !SeamGated.Contains(group, StringComparer.Ordinal))];
+
+    /// <summary>
+    /// Demo groups provisionable ONLY when the operator names them explicitly.
+    /// They are real, additive demo groups — <see cref="IsDemoGroup"/> accepts
+    /// them, the parse-time CLI gate resolves them, the plan lists them in
+    /// <c>PlannedGroups</c> (after the 22-group dependency order, in this
+    /// declaration order) when they are requested, and the provisioner writes
+    /// them — but they never join <see cref="All"/>, so the approved 22-group
+    /// default, its counts lines and its plan are not expanded by them. They are
+    /// absent from <see cref="ExecutionOrder"/> as well, which stays the 22-group
+    /// dependency order.
+    /// </summary>
+    public static readonly IReadOnlyList<string> OptIn = [ElderlyOps];
 
     /// <summary>
     /// Dependency execution order. It intentionally differs from the inventory
@@ -175,7 +201,9 @@ public static class DemoCorpusGroups
             [CmsLanding] = "6 sections (+ virtual stats)",
             [CmsLegal] = "2",
             [CmsSupport] = "1 contact / 3 messages",
-            [Notifications] = "12 notifications (+ email outbox)"
+            [Notifications] = "12 notifications (+ email outbox)",
+            [ElderlyOps] = "9 rows: 1 SOS + 1 SOS history / 1 help request + 1 help-request history / "
+                + "2 check-ins / 1 medication / 2 terminal dose logs"
         };
 
     /// <summary>One line per group, printed by plan mode.</summary>
@@ -203,7 +231,9 @@ public static class DemoCorpusGroups
             [CmsLanding] = "ordered landing sections with image refs, testimonial refs and FAQ refs (stats is virtual and never stored)",
             [CmsLegal] = "privacy policy and terms, published for the Public audience, carrying the demo marker in title and body",
             [CmsSupport] = "the support contact singleton plus three partner-contact messages",
-            [Notifications] = "every notification type, read and unread, both languages, plus email outbox rows"
+            [Notifications] = "every notification type, read and unread, both languages, plus email outbox rows",
+            [ElderlyOps] = "one existing demo elderly's opt-in operations: an open SOS, a pending help request, two "
+                + "answered daily check-ins and one completed medication course whose two dose logs are terminal"
         };
 
     /// <summary>
@@ -215,8 +245,13 @@ public static class DemoCorpusGroups
         PortalProvisionGroups.DataOnlyGroups.Contains(group, StringComparer.Ordinal)
         || PortalProvisionGroups.SeamGroups.Contains(group, StringComparer.Ordinal);
 
-    /// <summary>True when the requested group id is one of the 22 approved demo groups.</summary>
-    public static bool IsDemoGroup(string group) => All.Contains(group, StringComparer.Ordinal);
+    /// <summary>
+    /// True when the requested group id is one of the 22 approved demo groups or
+    /// one of the explicitly-requested opt-in demo groups.
+    /// </summary>
+    public static bool IsDemoGroup(string group) =>
+        All.Contains(group, StringComparer.Ordinal)
+        || OptIn.Contains(group, StringComparer.Ordinal);
 }
 
 /// <summary>
@@ -444,4 +479,119 @@ public static class DemoCorpusIdentity
         BitConverter.TryWriteBytes(bytes[8..], low);
         return new Guid(bytes);
     }
+}
+
+/// <summary>
+/// The fixed, replay-stable shape of the opt-in
+/// <see cref="DemoCorpusGroups.ElderlyOps"/> group. The provisioner and the
+/// focused facts both read THESE values, so the approved fixture is described
+/// once instead of twice.
+/// <para>
+/// Every date is an absolute, already-past fixture date rather than an offset
+/// from the run instant: a replay — even one carrying a later <c>--instant</c>
+/// — therefore re-reads the same rows instead of materializing a second set of
+/// check-ins or dose logs on shifted dates. The provisioner additionally
+/// refuses (fail closed) when the run's declared instant precedes these dates,
+/// so a fixture date can never be seeded into the future.
+/// </para>
+/// <para>
+/// Nothing here is provider-armed and nothing here is live state: the SOS and
+/// the help request are open/pending rows, the two check-ins are answers for
+/// past days, and the medication's finite course ended in the past with the
+/// medication left <c>Completed</c>, which is exactly what excludes it from the
+/// medication-lateness read path.
+/// </para>
+/// </summary>
+public static class ElderlyOpsFixture
+{
+    /// <summary>Idempotency slot of the one SOS row.</summary>
+    public const string SosSlot = "sos";
+
+    /// <summary>Idempotency slot of the one help request row.</summary>
+    public const string HelpRequestSlot = "help-request";
+
+    /// <summary>The marker-bearing name slot of the one medication row.</summary>
+    public const string MedicationSlot = "medication";
+
+    /// <summary>The SOS's mandatory <c>Created</c> history row (never expanded).</summary>
+    public const int SosHistoryRows = 1;
+
+    /// <summary>The help request's mandatory <c>Created</c> history row (never expanded).</summary>
+    public const int HelpRequestHistoryRows = 1;
+
+    /// <summary>First check-in: answered yes on <see cref="FirstCheckInLocalDate"/>.</summary>
+    public static readonly DateOnly FirstCheckInLocalDate = new(2026, 10, 20);
+
+    public static readonly TimeOnly FirstCheckInLocalTime = new(9, 30);
+    public const bool FirstCheckInAnswer = true;
+
+    /// <summary>Second check-in: a distinct local date, answered no.</summary>
+    public static readonly DateOnly SecondCheckInLocalDate = new(2026, 10, 19);
+
+    public static readonly TimeOnly SecondCheckInLocalTime = new(10, 0);
+    public const bool SecondCheckInAnswer = false;
+
+    /// <summary>Finite medication course, entirely in the past.</summary>
+    public static readonly DateOnly MedicationStartDate = new(2026, 9, 6);
+    public static readonly DateOnly MedicationEndDate = new(2026, 9, 26);
+
+    /// <summary>The two terminal dose logs, inside the course on distinct days.</summary>
+    public static readonly DateOnly TakenDoseDate = new(2026, 9, 11);
+    public static readonly DateOnly SkippedDoseDate = new(2026, 9, 12);
+    public static readonly TimeOnly MedicationDoseTime = new(8, 0);
+
+    /// <summary>The medication's display values; the name additionally carries the group marker.</summary>
+    public const string MedicationArabicLabel = "مسكن تجريبي";
+    public const string MedicationDosage = "1 tablet";
+    public const string MedicationDoseUnit = "tablet";
+    public const int MedicationDoseQuantity = 1;
+
+    /// <summary>
+    /// The sentence-builder vocabulary the help request stores. It mirrors
+    /// <c>TestUserDataSeeder.EnsureHelpRequestCatalogAsync</c> — the
+    /// application's own catalog fixture (<c>self</c>/<c>need</c>/<c>water</c>/
+    /// <c>now</c>) — and the labels are stored ON the help-request row itself
+    /// (the read path projects the stored labels, it does not join the catalog),
+    /// so the row stays readable whether or not the CMS catalog is seeded on the
+    /// target.
+    /// </summary>
+    public const string HelpRequestActorKey = "self";
+    public const string HelpRequestActorArabicLabel = "أنا";
+    public const string HelpRequestActorEnglishLabel = "I";
+    public const string HelpRequestActionKey = "need";
+    public const string HelpRequestActionArabicLabel = "أحتاج";
+    public const string HelpRequestActionEnglishLabel = "need";
+    public const string HelpRequestNeedKey = "water";
+    public const string HelpRequestNeedArabicLabel = "ماء";
+    public const string HelpRequestNeedEnglishLabel = "water";
+    public const string HelpRequestQualifierKey = "now";
+    public const string HelpRequestQualifierArabicLabel = "الآن";
+    public const string HelpRequestQualifierEnglishLabel = "now";
+
+    /// <summary>
+    /// The deterministic idempotency key of the one SOS row (unique per elderly
+    /// under <c>ux</c>-style <c>(elderly_identity_user_id, idempotency_key)</c>).
+    /// </summary>
+    public static string SosKey(string runTag) =>
+        DemoCorpusIdentity.RecordKey(runTag, DemoCorpusGroups.ElderlyOps, SosSlot);
+
+    /// <summary>The deterministic idempotency key of the one help request row.</summary>
+    public static string HelpRequestKey(string runTag) =>
+        DemoCorpusIdentity.RecordKey(runTag, DemoCorpusGroups.ElderlyOps, HelpRequestSlot);
+
+    /// <summary>
+    /// The medication's deterministic, marker-bearing name. The
+    /// <c>families.medications</c> table has no marker column, so this name IS
+    /// the ownership key a re-run reads back before writing: it carries the run
+    /// tag AND the group marker, and a name that does not match is refused
+    /// rather than adopted.
+    /// </summary>
+    public static string MedicationName(string runTag) =>
+        $"SANAD DEMO {MedicationArabicLabel} [{DemoCorpusIdentity.GroupMarker(runTag, DemoCorpusGroups.ElderlyOps)}]";
+
+    /// <summary>The medication's marker-bearing free-text instructions.</summary>
+    public static string MedicationInstructions(string runTag) =>
+        $"SANAD DEMO demo-corpus medication instructions "
+            + $"[{DemoCorpusIdentity.GroupMarker(runTag, DemoCorpusGroups.ElderlyOps)}]: one tablet after breakfast; "
+            + "demo data only, not medical advice.";
 }

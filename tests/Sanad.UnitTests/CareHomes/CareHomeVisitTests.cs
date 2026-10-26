@@ -643,6 +643,101 @@ public sealed class CareHomeVisitTests
         return booking;
     }
 
+    /// <summary>
+    /// Reason-cap acceptance facts for the frontend-report OpenAPI task: the
+    /// decision/cancellation reason caps are measured on the TRIMMED text
+    /// (whitespace-padded values above the raw cap are accepted), the approve
+    /// path ignores the decision reason entirely, and the closure reason alone
+    /// is measured RAW before trimming (hence the published maxLength: 500).
+    /// </summary>
+    [Fact]
+    public async Task Owner_decision_approve_with_over_long_reason_is_accepted_ignored()
+    {
+        (CareHomesDbContext db, CareHomeFacility facility) = await CreateVisitScenarioAsync();
+        var familyId = FamilyId.New();
+        CreateCareHomeVisitCommandHandler create = CreateVisitHandler(db);
+        Assert.True((await create.Handle(CreateVisitCommand(facility, familyId), default)).IsSuccess);
+        Guid visitId = db.Visits.Single().Id;
+
+        var result = await new DecideOwnerCareHomeVisitCommandHandler(db, new InlineVisitGuard()).Handle(
+            new(facility.OwnerUserId, visitId, true, new string('x', 5000), Now.AddMinutes(5)),
+            default);
+
+        Assert.True(result.IsSuccess, result.Error?.Code);
+        Assert.Equal(CareHomeVisitStatus.Approved, db.Visits.Single().Status);
+    }
+
+    [Fact]
+    public async Task Owner_decision_reject_accepts_whitespace_padded_reason_up_to_the_trimmed_cap()
+    {
+        (CareHomesDbContext db, CareHomeFacility facility) = await CreateVisitScenarioAsync();
+        var familyId = FamilyId.New();
+        Assert.True((await CreateVisitHandler(db).Handle(CreateVisitCommand(facility, familyId), default)).IsSuccess);
+        Guid visitId = db.Visits.Single().Id;
+
+        // Raw 1005 characters, trimmed 995: accepted under the existing domain
+        // cap of 1000 on the trimmed text and stored trimmed.
+        string padded = new string('x', 995) + new string(' ', 10);
+        var result = await new DecideOwnerCareHomeVisitCommandHandler(db, new InlineVisitGuard()).Handle(
+            new(facility.OwnerUserId, visitId, false, padded, Now.AddMinutes(5)),
+            default);
+
+        Assert.True(result.IsSuccess, result.Error?.Code);
+        CareHomeVisit stored = db.Visits.Single();
+        Assert.Equal(995, stored.DecisionReason!.Length);
+    }
+
+    [Fact]
+    public async Task Owner_decision_reject_still_refuses_a_reason_over_the_trimmed_cap()
+    {
+        (CareHomesDbContext db, CareHomeFacility facility) = await CreateVisitScenarioAsync();
+        var familyId = FamilyId.New();
+        Assert.True((await CreateVisitHandler(db).Handle(CreateVisitCommand(facility, familyId), default)).IsSuccess);
+        Guid visitId = db.Visits.Single().Id;
+
+        var result = await new DecideOwnerCareHomeVisitCommandHandler(db, new InlineVisitGuard()).Handle(
+            new(facility.OwnerUserId, visitId, false, new string('x', 1001), Now.AddMinutes(5)),
+            default);
+
+        Assert.True(result.IsFailure);
+        Assert.Equal(CareHomeVisitErrors.InvalidState.Code, result.Error.Code);
+    }
+
+    [Fact]
+    public async Task Family_cancel_accepts_whitespace_padded_reason_up_to_the_trimmed_cap()
+    {
+        (CareHomesDbContext db, CareHomeFacility facility) = await CreateVisitScenarioAsync();
+        var familyId = FamilyId.New();
+        Assert.True((await CreateVisitHandler(db).Handle(CreateVisitCommand(facility, familyId), default)).IsSuccess);
+        Guid visitId = db.Visits.Single().Id;
+
+        string padded = new string('x', 995) + new string(' ', 10);
+        var result = await new CancelFamilyCareHomeVisitCommandHandler(db, new InlineVisitGuard()).Handle(
+            new(familyId, visitId, UserId.New(), padded, Now.AddMinutes(5)),
+            default);
+
+        Assert.True(result.IsSuccess, result.Error?.Code);
+        Assert.Equal(995, db.Visits.Single().CancellationReason!.Length);
+    }
+
+    [Fact]
+    public void Settings_closure_reason_is_measured_on_the_raw_value_before_trimming()
+    {
+        var window = new CareHomeVisitTimeWindow(DayOfWeek.Monday, new TimeOnly(8, 0), new TimeOnly(17, 0));
+        CareHomeId facilityId = CareHomeId.New();
+        DateOnly date = new(2026, 10, 12);
+
+        // Raw exactly 500 (including trailing whitespace) is accepted...
+        CareHomeVisitSettings.Create(facilityId, 4, [window], [window],
+            [new CareHomeVisitClosure(date, new string('x', 495) + new string(' ', 5))], Now);
+
+        // ...and raw 501 is refused before any trimming — the exact contract
+        // the retained maxLength: 500 schema annotation states.
+        Assert.Throws<Sanad.BuildingBlocks.Domain.Exceptions.DomainException>(() =>
+            CareHomeVisitSettings.Create(facilityId, 4, [window], [window],
+                [new CareHomeVisitClosure(date, new string('x', 496) + new string(' ', 5))], Now));
+    }
+
     private sealed class InlineVisitGuard : ICareHomeVisitReservationGuard
     {
         public Task<T> ExecuteAsync<T>(CareHomeId facilityId, Func<Task<T>> action, CancellationToken cancellationToken) => action();

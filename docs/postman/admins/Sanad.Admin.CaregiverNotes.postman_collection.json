@@ -279,6 +279,27 @@
           }
         }
       ]
+    },
+    {
+      "name": "Caregiver name+ID lookup",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/caregivers/lookup?search=&page=1&pageSize=20",
+        "description": "CaregiverReviewAdmin, the same policy as the review routes above (SuperAdmin or SupportAdmin, access_type Normal; ContentAdmin and FinanceAdmin are 403). Resolves a caregiver name to the caregiver aggregate id the review routes take - not the Identity user id. search is an optional case-insensitive substring of the Arabic or English full name; the caller's text is matched literally (% and _ are not wildcards) and a blank or unmatched search is never an error. Paging is clamped and echoed back: page is at least 1, pageSize defaults to 20 and is capped at 100. Items are ordered by Arabic name, then English name, then caregiver id. Each item carries id, arabicFullName and englishFullName and nothing else - phone and email are neither searchable nor returned here, so phone lookup stays on the SuperAdmin-only admin user list, and bank, payout and medical columns are never selected. Caregivers without a linked Identity user row are not returned; their rows are kept and still report identityPresent on the review list. The envelope is items, page, pageSize, totalCount, totalPages."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('caregiver lookup contract', () => pm.expect([200, 401, 403]).to.include(pm.response.code));",
+              "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('page'); pm.expect(body).to.have.property('pageSize'); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('totalPages'); pm.expect(body.items).to.be.an('array'); pm.expect(body.pageSize).to.be.at.most(100); if (body.items.length > 0) { pm.expect(body.items[0]).to.have.property('id'); pm.expect(body.items[0]).to.have.property('arabicFullName'); pm.expect(body.items[0]).to.have.property('englishFullName'); pm.expect(JSON.stringify(body), 'phoneNumber must never be published').not.to.include('phoneNumber'); } }"
+            ]
+          }
+        }
+      ]
     }
   ]
 }

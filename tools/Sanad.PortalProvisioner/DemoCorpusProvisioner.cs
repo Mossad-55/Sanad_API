@@ -41,7 +41,11 @@ using Sanad.Modules.Families.Application.Bookings;
 using Sanad.Modules.Families.Application.Subscriptions;
 using Sanad.Modules.Families.Domain.Bookings;
 using Sanad.Modules.Families.Domain.Elderlies;
+using Sanad.Modules.Families.Domain.Elderlies.CheckIns;
 using Sanad.Modules.Families.Domain.Families;
+using Sanad.Modules.Families.Domain.HelpRequests;
+using Sanad.Modules.Families.Domain.Medications;
+using Sanad.Modules.Families.Domain.Sos;
 using Sanad.Modules.Families.Domain.Subscriptions;
 using Sanad.Modules.Families.Infrastructure.Persistence;
 using Sanad.Modules.Finance.Application;
@@ -198,6 +202,7 @@ public static class DemoCorpusProvisioner
                         DemoCorpusGroups.FinanceClaims => await FinanceClaimsAsync(),
                         DemoCorpusGroups.FinanceComplaints => await FinanceComplaintsAsync(),
                         DemoCorpusGroups.Notifications => await NotificationsAsync(),
+                        DemoCorpusGroups.ElderlyOps => await ElderlyOpsAsync(),
                         _ => new PortalProvisionGroupResult(
                             group,
                             Provisioned: false,
@@ -2179,6 +2184,365 @@ public static class DemoCorpusProvisioner
                 Provisioned: true,
                 Detail: "12 notifications for demo accounts only (read and unread, both languages) plus 3 email outbox rows",
                 Records: records);
+        }
+
+        // ------------------------------------------------------------------
+        // elderly-ops (opt-in: never provisioned by the 22-group default)
+        // ------------------------------------------------------------------
+
+        /// <summary>
+        /// The opt-in elderly-operations group: the one existing demo elderly's
+        /// own SOS, help request, two daily check-ins and one completed
+        /// medication course with two terminal dose logs — nine rows in total,
+        /// and not one notification, outbox, device-session or account row.
+        /// <para>
+        /// The base identities are READ, never created: this group refuses by
+        /// name when the demo family owner, the demo family or the demo elderly
+        /// is absent, so an opt-in run against a target without the demo corpus
+        /// can never invent unrelated base rows. Every row it writes is keyed on
+        /// a deterministic identity (an idempotency key, a unique natural key, or
+        /// the marker-bearing medication name), so a replay re-reads what the
+        /// first run wrote and adds nothing.
+        /// </para>
+        /// <para>
+        /// Nothing here is armed: the SOS stays open, the help request pending,
+        /// the check-in days are fixed past days, and the medication's finite
+        /// course ended in the past with the row left <c>Completed</c>. No
+        /// domain-event consumer is involved either — the provisioner's contexts
+        /// carry no <c>SaveChanges</c> interceptor, the medication's events are
+        /// additionally <c>Ignore</c>-d by its own configuration, and the
+        /// check-in alert fan-out lives in the command handler, which this direct
+        /// insert path never runs.
+        /// </para>
+        /// </summary>
+        private async Task<PortalProvisionGroupResult> ElderlyOpsAsync()
+        {
+            const string group = DemoCorpusGroups.ElderlyOps;
+            var records = new List<PortalProvisionRecord>();
+
+            (User owner, Family family, Sanad.Modules.Families.Domain.Elderlies.Elderly elderly) =
+                await ResolveDemoElderlyAsync();
+
+            // --- 1 SOS + its mandatory Created history row -------------------
+            string sosKey = ElderlyOpsFixture.SosKey(_runTag);
+            ElderlySos? sos = await _families.ElderlySos
+                .Include(item => item.History)
+                .FirstOrDefaultAsync(
+                    item => item.ElderlyIdentityUserId == elderly.IdentityUserId
+                        && item.IdempotencyKey == sosKey,
+                    cancellationToken);
+
+            if (sos is null)
+            {
+                sos = ElderlySos.Create(
+                    elderly.IdentityUserId,
+                    family.Id.Value,
+                    sosKey,
+                    consent: false,
+                    latitude: null,
+                    longitude: null);
+                _families.ElderlySos.Add(sos);
+                await _families.SaveChangesAsync(cancellationToken);
+            }
+
+            int sosHistory = sos.History.Count(entry => entry.Action == ElderlySosHistoryAction.Created);
+            Require(
+                sosHistory == ElderlyOpsFixture.SosHistoryRows,
+                $"the demo SOS '{sosKey}' carries {sosHistory} Created history row(s), not the fixture's "
+                    + $"{ElderlyOpsFixture.SosHistoryRows}; refusing to extend it into a richer story.");
+            records.Add(new PortalProvisionRecord(
+                "ElderlySos",
+                sos.Id.ToString(),
+                $"{sos.Status} with no location (consent not granted), {sosHistory} history row"));
+
+            // The mandatory history row is counted as its own row: the approved
+            // budget is nine stored rows, so the manifest enumerates all nine
+            // instead of leaving the two ancillary rows implicit.
+            ElderlySosHistory sosCreated = sos.History.Single(
+                entry => entry.Action == ElderlySosHistoryAction.Created);
+            records.Add(new PortalProvisionRecord(
+                "ElderlySosHistory",
+                sosCreated.Id.ToString(),
+                "Created (mandatory append-only history row; no acknowledgement, resolution or cancellation row)"));
+
+            // --- 1 help request + its mandatory Created history row ----------
+            string helpKey = ElderlyOpsFixture.HelpRequestKey(_runTag);
+            ElderlyHelpRequest? help = await _families.ElderlyHelpRequests
+                .Include(item => item.History)
+                .FirstOrDefaultAsync(
+                    item => item.ElderlyIdentityUserId == elderly.IdentityUserId
+                        && item.IdempotencyKey == helpKey,
+                    cancellationToken);
+
+            if (help is null)
+            {
+                help = ElderlyHelpRequest.Create(
+                    elderly.IdentityUserId,
+                    family.Id.Value,
+                    ElderlyOpsFixture.HelpRequestActorKey,
+                    ElderlyOpsFixture.HelpRequestActorArabicLabel,
+                    ElderlyOpsFixture.HelpRequestActorEnglishLabel,
+                    ElderlyOpsFixture.HelpRequestActionKey,
+                    ElderlyOpsFixture.HelpRequestActionArabicLabel,
+                    ElderlyOpsFixture.HelpRequestActionEnglishLabel,
+                    ElderlyOpsFixture.HelpRequestNeedKey,
+                    ElderlyOpsFixture.HelpRequestNeedArabicLabel,
+                    ElderlyOpsFixture.HelpRequestNeedEnglishLabel,
+                    ElderlyOpsFixture.HelpRequestQualifierKey,
+                    ElderlyOpsFixture.HelpRequestQualifierArabicLabel,
+                    ElderlyOpsFixture.HelpRequestQualifierEnglishLabel,
+                    customText: null,
+                    helpKey);
+                _families.ElderlyHelpRequests.Add(help);
+                await _families.SaveChangesAsync(cancellationToken);
+            }
+
+            int helpHistory = help.History.Count(entry => entry.Action == ElderlyHelpRequestHistoryAction.Created);
+            Require(
+                helpHistory == ElderlyOpsFixture.HelpRequestHistoryRows,
+                $"the demo help request '{helpKey}' carries {helpHistory} Created history row(s), not the fixture's "
+                    + $"{ElderlyOpsFixture.HelpRequestHistoryRows}; refusing to extend it.");
+            records.Add(new PortalProvisionRecord(
+                "ElderlyHelpRequest",
+                help.Id.ToString(),
+                $"{help.Status} ({help.ActorKey}/{help.ActionKey}/{help.NeedKey}), {helpHistory} history row"));
+
+            ElderlyHelpRequestHistory helpCreated = help.History.Single(
+                entry => entry.Action == ElderlyHelpRequestHistoryAction.Created);
+            records.Add(new PortalProvisionRecord(
+                "ElderlyHelpRequestHistory",
+                helpCreated.Id.ToString(),
+                "Created (mandatory append-only history row; no transition row)"));
+
+            // --- 2 daily check-ins on two distinct fixed past days -----------
+            (DateOnly LocalDate, TimeOnly LocalTime, bool Answer)[] checkIns =
+            [
+                (ElderlyOpsFixture.FirstCheckInLocalDate, ElderlyOpsFixture.FirstCheckInLocalTime,
+                    ElderlyOpsFixture.FirstCheckInAnswer),
+                (ElderlyOpsFixture.SecondCheckInLocalDate, ElderlyOpsFixture.SecondCheckInLocalTime,
+                    ElderlyOpsFixture.SecondCheckInAnswer)
+            ];
+
+            TimeZoneInfo zone = TimeZoneInfo.FindSystemTimeZoneById(
+                ElderlyTimeZone.Normalize(elderly.TimeZoneId));
+            DateOnly localToday = DateOnly.FromDateTime(TimeZoneInfo.ConvertTimeFromUtc(_now, zone));
+
+            foreach ((DateOnly localDate, TimeOnly localTime, bool answer) in checkIns)
+            {
+                Require(
+                    localDate <= localToday,
+                    $"the fixture check-in day {localDate:yyyy-MM-dd} is not in the past for the run's declared "
+                        + $"instant ({localToday:yyyy-MM-dd} in {elderly.TimeZoneId}); refusing to seed a check-in "
+                        + "that would read as live state.");
+                Require(
+                    checkIns.Count(item => item.LocalDate == localDate) == 1,
+                    $"the fixture check-ins repeat the day {localDate:yyyy-MM-dd}; the (elderly_id, local_date) "
+                        + "unique index allows one answer per day.");
+
+                ElderlyCheckIn? checkIn = await _families.ElderlyCheckIns.FirstOrDefaultAsync(
+                    item => item.ElderlyId == elderly.Id && item.LocalDate == localDate,
+                    cancellationToken);
+
+                if (checkIn is null)
+                {
+                    // The real submission stamps the answer at the instant it was
+                    // given, in the elderly profile's own zone; the fixture
+                    // reconstructs exactly that relationship from its fixed local
+                    // wall-clock time, so the stored UTC instant and the local
+                    // date it belongs to always agree.
+                    DateTime answeredOnUtc = TimeZoneInfo.ConvertTimeToUtc(
+                        new DateTime(localDate, localTime), zone);
+                    checkIn = ElderlyCheckIn.Create(
+                        elderly.Id, localDate, answer, localTime, answeredOnUtc, elderly.IdentityUserId);
+                    _families.ElderlyCheckIns.Add(checkIn);
+                    await _families.SaveChangesAsync(cancellationToken);
+                }
+
+                Require(
+                    checkIn.Answer == answer,
+                    $"the stored demo check-in for {localDate:yyyy-MM-dd} answers '{checkIn.Answer}' where the "
+                        + $"fixture answers '{answer}'; refusing to rewrite a stored answer.");
+                records.Add(new PortalProvisionRecord(
+                    $"ElderlyCheckIn:{localDate:yyyy-MM-dd}",
+                    checkIn.Id.ToString(),
+                    answer ? "Answered yes" : "Answered no"));
+            }
+
+            // --- 1 medication: a finite past course, inserted Completed ------
+            string medicationName = ElderlyOpsFixture.MedicationName(_runTag);
+            List<Medication> storedMedications = await _families.Medications
+                .Where(item => item.ElderlyId == elderly.Id && item.Name == medicationName)
+                .ToListAsync(cancellationToken);
+            Require(
+                storedMedications.Count <= 1,
+                $"{storedMedications.Count} medications on this target carry the demo name '{medicationName}'; the "
+                    + "table has no marker column, so the name is the ownership key and it must be unambiguous.");
+
+            Medication? medication = storedMedications.SingleOrDefault();
+            if (medication is null)
+            {
+                medication = Medication.Create(
+                    elderly.Id,
+                    owner.Id,
+                    medicationName,
+                    ElderlyOpsFixture.MedicationDosage,
+                    ElderlyOpsFixture.MedicationDoseUnit,
+                    ElderlyOpsFixture.MedicationDoseQuantity,
+                    [ElderlyOpsFixture.MedicationDoseTime],
+                    ElderlyOpsFixture.MedicationStartDate,
+                    ElderlyOpsFixture.MedicationEndDate,
+                    ElderlyOpsFixture.MedicationInstructions(_runTag));
+
+                // The course is over before the row is ever inserted: the INSERT
+                // carries Completed, so no Active medication state is persisted.
+                medication.Complete();
+                _families.Medications.Add(medication);
+                await _families.SaveChangesAsync(cancellationToken);
+            }
+
+            Require(
+                medication.Status == MedicationStatus.Completed
+                    && medication.StartDate == ElderlyOpsFixture.MedicationStartDate
+                    && medication.EndDate == ElderlyOpsFixture.MedicationEndDate
+                    && medication.DoseTimes.SequenceEqual(new[] { ElderlyOpsFixture.MedicationDoseTime }),
+                $"the stored demo medication '{medicationName}' carries {medication.Status} "
+                    + $"{medication.StartDate:yyyy-MM-dd}..{medication.EndDate:yyyy-MM-dd} with "
+                    + $"{medication.DoseTimes.Count} dose time(s), not this fixture's Completed finite past course; "
+                    + "refusing to reuse it.");
+            records.Add(new PortalProvisionRecord(
+                "Medication",
+                medication.Id.ToString(),
+                $"{medication.Status} {medication.StartDate:yyyy-MM-dd}..{medication.EndDate:yyyy-MM-dd} "
+                    + $"({medication.DoseTimes.Count} daily dose time)"));
+
+            // --- 2 terminal dose logs (taken, skipped) ----------------------
+            (DateOnly ScheduledDate, bool Taken)[] doses =
+            [
+                (ElderlyOpsFixture.TakenDoseDate, true),
+                (ElderlyOpsFixture.SkippedDoseDate, false)
+            ];
+
+            foreach ((DateOnly scheduledDate, bool taken) in doses)
+            {
+                Require(
+                    scheduledDate >= medication.StartDate && scheduledDate <= medication.EndDate,
+                    $"the fixture dose day {scheduledDate:yyyy-MM-dd} falls outside the stored course "
+                        + $"{medication.StartDate:yyyy-MM-dd}..{medication.EndDate:yyyy-MM-dd}.");
+                Require(
+                    doses.Count(item => item.ScheduledDate == scheduledDate) == 1,
+                    $"the fixture dose logs repeat the day {scheduledDate:yyyy-MM-dd}; the (medication_id, "
+                        + "scheduled_date, scheduled_time) unique index allows one row per slot.");
+
+                MedicationDoseLog? doseLog = await _families.MedicationDoseLogs.FirstOrDefaultAsync(
+                    item => item.MedicationId == medication.Id
+                        && item.ScheduledDate == scheduledDate
+                        && item.ScheduledTime == ElderlyOpsFixture.MedicationDoseTime,
+                    cancellationToken);
+
+                if (doseLog is null)
+                {
+                    DateTime recordedAtUtc =
+                        AsUtc(scheduledDate.ToDateTime(ElderlyOpsFixture.MedicationDoseTime));
+                    doseLog = MedicationDoseLog.CreateScheduled(
+                        medication.Id, elderly.Id, scheduledDate, ElderlyOpsFixture.MedicationDoseTime);
+                    if (taken)
+                    {
+                        doseLog.MarkAsTaken(owner.Id, recordedAtUtc);
+                    }
+                    else
+                    {
+                        doseLog.MarkAsSkipped(
+                            owner.Id,
+                            recordedAtUtc,
+                            "SANAD DEMO demo-corpus dose: recorded as skipped in the fixture.");
+                    }
+
+                    _families.MedicationDoseLogs.Add(doseLog);
+                    await _families.SaveChangesAsync(cancellationToken);
+                }
+
+                Require(
+                    doseLog.Status == (taken ? DoseStatus.Taken : DoseStatus.Skipped),
+                    $"the stored demo dose log for {scheduledDate:yyyy-MM-dd} is '{doseLog.Status}', not the "
+                        + $"fixture's terminal '{(taken ? DoseStatus.Taken : DoseStatus.Skipped)}'; refusing to "
+                        + "rewrite a terminal dose.");
+                records.Add(new PortalProvisionRecord(
+                    $"MedicationDoseLog:{scheduledDate:yyyy-MM-dd}",
+                    doseLog.Id.ToString(),
+                    doseLog.Status.ToString()));
+            }
+
+            return new PortalProvisionGroupResult(
+                group,
+                Provisioned: true,
+                Detail: "1 SOS (+1 Created history row), 1 help request (+1 Created history row), 2 daily check-ins on "
+                    + "fixed past days, 1 completed medication course and 2 terminal dose logs for the one existing "
+                    + "demo elderly; no notification, outbox, device-session or account row was written",
+                Records: records);
+        }
+
+        /// <summary>
+        /// Resolve the demo family's one elderly, READ-ONLY. Nothing is created
+        /// and nothing is repaired here: 'elderly-ops' is additive to an
+        /// already-provisioned demo corpus, so a target without the demo owner,
+        /// the demo family or the demo elderly is refused by name instead of
+        /// having base identities invented under it.
+        /// </summary>
+        private async Task<(User Owner, Family Family, Sanad.Modules.Families.Domain.Elderlies.Elderly Elderly)>
+            ResolveDemoElderlyAsync()
+        {
+            const string ownerRole = "family.owner";
+            string ownerMarker = DemoCorpusIdentity.OwnershipMarker(_runTag, ownerRole);
+            string ownerEmail = DemoCorpusIdentity.Email(_runTag, ownerRole);
+
+            User? owner = await _identity.Users.FirstOrDefaultAsync(
+                user => user.Email == Email.Create(ownerEmail), cancellationToken);
+            Require(
+                owner is not null,
+                $"the demo family owner '{ownerEmail}' does not exist on this target; 'elderly-ops' is an opt-in, "
+                    + "additive group that never creates the demo corpus it attaches to, so it refuses rather than "
+                    + "provisioning unrelated base rows. Provision 'identity-accounts' and 'families-people' first.");
+            RequireOwnership(owner!, ownerMarker, AccountType.Family, ownerEmail);
+
+            Family? family = await _families.Families.FirstOrDefaultAsync(
+                item => item.OwnerUserId == owner!.Id && item.DeletedOnUtc == null, cancellationToken);
+            Require(
+                family is not null,
+                $"the demo family owner '{ownerEmail}' owns no live family on this target; refusing to create one.");
+            Require(
+                family!.Name.Contains(_marker, StringComparison.Ordinal),
+                $"the family owned by '{ownerEmail}' does not carry this run's demo marker '{_marker}'; refusing to "
+                    + "attach elderly operations to a family this run does not own.");
+
+            PhoneNumber phone = PhoneNumber.Create(DemoCorpusIdentity.Phone(_runTag, "elderly.1"));
+            User? elderlyIdentity = await _identity.Users.FirstOrDefaultAsync(
+                user => user.PhoneNumber == phone, cancellationToken);
+            Require(
+                elderlyIdentity is not null,
+                "the demo elderly identity (role 'elderly.1') does not exist on this target; refusing to create it "
+                    + "here, because this opt-in group only ever attaches rows to an existing demo elderly.");
+            RequireOwnership(
+                elderlyIdentity!,
+                DemoCorpusIdentity.OwnershipMarker(_runTag, "elderly.1"),
+                AccountType.Elderly,
+                "the demo elderly identity");
+
+            List<Sanad.Modules.Families.Domain.Elderlies.Elderly> matches = await _families.Elderlies
+                .Where(item => item.FamilyId == family!.Id && item.IdentityUserId == elderlyIdentity!.Id)
+                .ToListAsync(cancellationToken);
+            Require(
+                matches.Count == 1,
+                $"expected exactly one demo elderly under the demo family of '{ownerEmail}', found {matches.Count}; "
+                    + "refusing to guess which dependent the opt-in fixture belongs to.");
+
+            Sanad.Modules.Families.Domain.Elderlies.Elderly elderly = matches[0];
+            string dependentMarker = DemoCorpusIdentity.OwnershipMarker(_runTag, "dependent");
+            Require(
+                elderly.EnglishFullName.Value.Contains(dependentMarker, StringComparison.Ordinal),
+                $"the elderly '{elderly.Id}' does not carry this run's dependent marker '{dependentMarker}'; "
+                    + "refusing to attach rows to a dependent this run does not own.");
+
+            return (owner!, family!, elderly);
         }
 
         // ------------------------------------------------------------------

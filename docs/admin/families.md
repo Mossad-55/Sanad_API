@@ -101,6 +101,69 @@ returns, for a family or any of its members/dependents:
 - subscription, search-enrichment, booking or payment data;
 - any impersonation token or write affordance.
 
+## Dependent (elderly) name+ID lookup
+
+Resolve a dependent name to the single dependent id an operator needs to paste
+into the care-record, check-in, SOS, help-request or medication reads. This is a
+separate route from the family register on purpose: it does not widen the
+family-detail payload and it never returns a contact or medical value.
+
+```http
+GET /api/v1/admin/elderly/lookup?search=منصور&page=1&pageSize=20
+Authorization: Bearer {{accessToken}}
+```
+
+| Query | Default | Meaning |
+|---|---|---|
+| `page` | `1` | Page number; clamped to at least `1` |
+| `pageSize` | `20` | Default `20` when `0` or absent; capped at `100` and floored at `1` |
+| `search` | `–` | Case-insensitive substring of the Arabic or English full name. Blank (`?search=`) and unmatched searches both return a page |
+
+Access is the same `OperationalReadAdmin` policy used by the register
+(`SuperAdmin`/`SupportAdmin`, `Normal` access only). `ContentAdmin` and
+`FinanceAdmin` are denied (`403`); an anonymous or restricted-verification
+caller is `401`.
+
+Response:
+
+```json
+{
+  "items": [
+    {
+      "id": "guid",
+      "arabicFullName": "الجد منصور",
+      "englishFullName": "Mansour Grandfather"
+    }
+  ],
+  "page": 1,
+  "pageSize": 20,
+  "totalCount": 1,
+  "totalPages": 1
+}
+```
+
+- `id` is the dependent id (`families.elderlies.id`). It is **the same value** as
+  the care-record `dependentId` and the elderly id of check-ins, SOS, help
+  requests and medications — one identifier, not two.
+- Each item carries only `id`, `arabicFullName` and `englishFullName`. Phone
+  numbers, emails, addresses, emergency contacts, health notes and medical
+  profile data are never searched and never returned.
+- Ordering is deterministic and server-side: Arabic name, then English name,
+  then the id as the tie-breaker. The page is selected in SQL; the register is
+  never materialized to filter it.
+- Dependents of a family with `deletedOnUtc` are excluded from the lookup, the
+  same way the elderly operational reads exclude them. The dependent row and its
+  name are **not** deleted.
+- A blank search returns the whole live register page. Like the family list,
+  this route has no `400` case: invalid paging is clamped and an unmatched
+  search is an empty page with `totalCount: 0` (a page number far past the last
+  page is an empty page too, never an error).
+- `search` is matched **literally**: `%`, `_` and `\` in the caller's text match
+  those characters, they are never treated as wildcards.
+- Runnable requests (authored examples, not execution evidence):
+  `docs/postman/admins/Sanad.Admin.Families.postman_collection.json`
+  (`Dependent (elderly) name+ID lookup`).
+
 ## Errors
 
 | Code | HTTP | When |
