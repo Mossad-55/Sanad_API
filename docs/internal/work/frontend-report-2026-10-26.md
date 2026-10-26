@@ -1,9 +1,41 @@
 # Frontend report follow-up — backend tranche (2026-10-26)
 
-Status: `gates_complete` — release executing 2026-10-26 under the Owner's
-release order. Owner **authorizes development and release** for this slice
-(2026-10-26: "complete independent tasks, then commit/push/deploy via a
-separate release worker after review"). The rehearsal revision before this
+Status: `released_and_verified` (2026-10-26). Owner **authorized development
+and release** for this slice (2026-10-26: "complete independent tasks, then
+commit/push/deploy via a separate release worker after review").
+
+**Release record (2026-10-26, Owner-authorized):** release commit
+`567a786467a26a42edb1392f63575bb1cdf3ee1d` (44 files, strict Release build
+0/0, full unit suite 5,737 passed / 27 skipped / 0 failed after the focused
+`RequestLengthBoundOpenApiContractTests` rerun 14/14 on the fresh binary,
+provisioner 75/75, architecture 1/1, staged-diff secret scan clean) + docs
+fold commit `e664592e6508a71a70c63e9c23fc0ea4ed14872d` (items 4/11/13
+evidence: `frontend-evidence-public-2026-10-26.md`,
+`frontend-evidence-recon-2026-10-26.md`). Pushed `origin/main`
+`7b77aad1..e664592e`; deployed to the rehearsal VPS `srv1604711`
+(72.62.92.144, unit `sanad-api`, loopback :5001, `Staging`, DB `SanadDb`);
+live revision `2bccdb3e` → `e664592e`; migration set unchanged — all nine
+contexts "0 pending / 0 migration(s) applied" in the captured startup log;
+`Verify-SanadDeployment.ps1` exit 0 (manifest/remote revision match, 9/9
+required=applied, 9 startup contexts, smoke
+`GET /api/v1/lookups/services` 200 over the public path
+`http://72.62.92.144:8091` — «8091» reachable, no CORS/host change, port 5001
+loopback-only as before); config fingerprints (`appsettings.json`,
+`appsettings.Staging.json` incl. the 7-id seam block, `/etc/sanad/sanad.env`,
+unit file) byte-identical before/after; `NRestarts=0`, binary backup retained
+at `/root/sanad-api-backup-pre-e664592e`; package contained no
+`.env`/`appsettings.Development.json`/secrets. Public OpenAPI
+(`/openapi/v1.json` 200) verified: `/api/v1/admin/caregivers/lookup` and
+`/api/v1/admin/elderly/lookup` present; `CareHomeVisitClosureRequest.reason`
+= anyOf[string, null] with `maxLength: 500` (the only raw annotation);
+`ReplyToSupportTicketRequest.body` and `CareHomeVisitDecisionRequest.reason`
+publish no `maxLength` (trimmed/approve-ignored caps stay documented). No
+authenticated read-back, no provider/financial call, no DB write, no
+provisioning run. Provisioner tool re-published at `e664592e` and refreshed
+at `/root/sanad-demo-provisioner` (DLL SHA-256
+`756bddf39be5d55fb8b4dcb23079cc7ea78837a951ed1450f3a60ab724c42c67`; replaced
+`cd2dfd6d…` from `2bccdb3e`;
+no provisioning run). Release `verified`; phase `completed` (2026-10-26). The rehearsal revision before this
 release was API `2bccdb3e`
 (`2bccdb3e5b59c65ba1cad91abd640bbb7fb92b81`, `Staging`, service active, 9/9
 migration heads, DB reachable — read-only 2026-10-26). **Owner decisions
@@ -465,12 +497,14 @@ rows and the source handlers:
 
 ## Open items for parent
 
-1. ~~Run the new translation tests~~ DONE — full-tree gates in A3: unit
-   project 5,710/0/27 skipped, provisioner 75/75 incl. ElderlyOpsFacts 11/11.
-   Gate ownership returns to parent for the integrated lookup+provisioner
-   stage (the 9-row fixture execution is now DONE too — section F).
-2. Task E fix enters review together with the FAQ fix (both are read-path
-   defects in this report's reconciliation).
+1. ~~Run the new translation tests~~ DONE — final gates: strict build 0/0,
+   unit suite 5,737/0/27 (single OpenAPI closure failure cured via the
+   `[property:]` fix, focused rerun 14/14), provisioner 75/75 incl.
+   ElderlyOpsFacts 11/11, architecture 1/1, release `e664592e` deployed and
+   verified. Work complete; no open items for this tranche.
+2. ~~Task E fix enters review together with the FAQ fix~~ DONE — both
+   read-path defects shipped in release `e664592e` (eligible-residents
+   mapped-id ordering, FAQ `IComparable`), verified live.
 3. ~~Product decision still needed for Task D~~ RESOLVED by Owner decision
    (accepted 2026-10-26): **no new numeric caps this phase — ship as-is**; only
    the raw-measured closure reason publishes `[StringLength(500)]`; trimmed
