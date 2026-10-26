@@ -12,7 +12,8 @@
   was executed and verified the same day - 29 of the 34 inventoried mis-invocation
   rows deleted, 6 rehearsal and 9 local orphan demo files deleted, 5 rows held for
   an Owner expansion decision (see "Cleanup execution" below and in the D4
-  receipt). Nothing committed, pushed or deployed.
+  receipt). Nothing committed, pushed or deployed at that stage (released
+  later on 2026-10-26 - see "Release (2026-10-26)" below).
 - Status: `approved` / `in_progress` (2026-10-25). D1–D4 provisional handback by a
   stopped worker failed review; the Owner redirected the remaining correction phase
   to the single continuing worker (2026-10-26):
@@ -241,7 +242,8 @@ Total: roughly 250–350 records plus media, excluding messages and ledger lines
 - No provider call occurs during provisioning or readback; money-state rows exist
   only where the seam is enabled.
 - Legal pages visibly carry `DEMO — not legal text`.
-- Nothing is committed, pushed or deployed by this slice.
+- Nothing is committed, pushed or deployed by this slice. (Superseded on
+  2026-10-26 by the Owner-authorized release - see "Release (2026-10-26)".)
 
 ## Open items
 
@@ -409,6 +411,39 @@ work, the future rehearsal Production restore, and the regenerated corpus
 notifications kept as intended corpus content). Acceptance is a status record
 only - it does NOT authorize commit, push, deploy, environment restoration or
 any new cleanup.
+
+**Release (2026-10-26, Owner-authorized):** after acceptance the Owner ordered
+the release verbatim ("You have my approval so commit and push and also
+deploy"), and it was executed the same day; this section supersedes the
+pre-release "nothing committed/pushed/deployed" statements above, which
+describe the state during slice execution.
+
+- **Commit/push:** `2bccdb3e5b59c65ba1cad91abd640bbb7fb92b81` (short
+  `2bccdb3e`) pushed to `origin/main` (`9d92b820..2bccdb3e`) - 18 files
+  (provisioner tooling + target guard, DemoCorpusFacts 64/64, D1-D4 receipts,
+  `New-DemoMedia.ps1`, Development fixture-refund-seam block, brief, private
+  handoff). Focused gate before commit: build exit 0 (0 warnings / 0 errors),
+  tests 64/64. Staged-diff secret scan clean (pointers to mode-600 private
+  credential files only, no values).
+- **Deploy target:** rehearsal VPS `srv1604711` (72.62.92.144), unit
+  `sanad-api`, loopback `127.0.0.1:5001`, environment `Staging`, effective DB
+  `SanadDb` (loopback:5433) revalidated live before any write; pre-cutover
+  revision `8913df42` -> post-cutover `2bccdb3e`. Migration set unchanged by
+  this phase: all nine contexts "0 pending / 0 migration(s) applied"; no DB
+  backup required, none taken. Config fingerprints (appsettings, incl. the
+  seam block, `/etc/sanad/sanad.env`, unit) identical before/after; unrelated
+  app on port 5000 untouched; binary backup retained (rollback not needed).
+- **Verification:** `Verify-SanadDeployment.ps1` exit 0 over a localhost-only
+  tunnel - revision match, `Staging`, required/applied 9/9 match, startup log
+  shows all nine context checks, smoke `GET /api/v1/lookups/services`
+  HTTP 200. Limitation (recorded, not changed): the API binds loopback only -
+  public 5001 unreachable, public port 80 answers 404.
+- **Provisioner tooling:** published at `2bccdb3e` and refreshed at
+  `/root/sanad-demo-provisioner` (tool files only; DLL SHA-256 `cd2dfd6d...`
+  byte-identical; `--help` responds; no provisioning run, no DB writes).
+- **State:** release `verified`; slice `completed` (2026-10-26). Full evidence:
+  the "Release record (2026-10-26, Owner-authorized)" section in the D4
+  receipt.
 ### Cleanup execution (2026-10-26, Owner-approved)
 
 The Owner approved the exact-list cleanup ("I approve") and it was executed and

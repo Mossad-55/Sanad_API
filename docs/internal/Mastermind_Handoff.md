@@ -1,6 +1,6 @@
 # Sanad API Mastermind handoff
 
-## Current next action — demo corpus slice D1–D4 ACCEPTED and closed by the Owner on 2026-10-26 (Owner verbatim "Accept it please" to the parent's final review report; a status record only). Remaining separately-authorized optional actions, NOT done and NOT approved: (i) commit/push of the uncommitted corpus/correction work (still on base `9d92b820`); (ii) the future Production environment restore on the rehearsal (it stays `Staging` with the seam enabled while seam-armed rows exist); (iii) the 7 regenerated corpus-keyed notifications are kept as intended corpus content per the approval wording (not approved for deletion)
+## Current next action — demo corpus slice D1–D4 completed and RELEASED on 2026-10-26 by explicit Owner order ("You have my approval so commit and push and also deploy"): release `verified`, phase `completed`. Remaining separately-authorized optional actions, NOT done and NOT approved: (i) the future Production environment restore on the rehearsal (it stays `Staging` with the seam enabled while seam-armed rows exist); (ii) the 7 regenerated corpus-keyed notifications are kept as intended corpus content per the approval wording (not approved for deletion)
 
 The mobile-report slice is `completed`; release `verified` at live revision
 `8913df42`. Commits: `456858d8` (implementation, 105 files, three migrations
@@ -21,6 +21,31 @@ The demo corpus implementation is D1–D3 `done`; D4 (the receipt) was
 final review report with "Accept it please" (a status record only; it does NOT
 authorize commit, push, deploy, environment restoration or any new cleanup).
 The execution history below stands as recorded.
+
+**Release (2026-10-26, Owner-authorized, COMPLETE):** after acceptance the
+Owner ordered the release verbatim ("You have my approval so commit and push
+and also deploy"). Commit `2bccdb3e5b59c65ba1cad91abd640bbb7fb92b81` (short
+`2bccdb3e`, 18 files, gate 0 warnings + DemoCorpusFacts 64/64, staged-diff
+secret scan clean) pushed `origin/main` `9d92b820..2bccdb3e`; deployed to the
+rehearsal VPS `srv1604711` (72.62.92.144, unit `sanad-api`, loopback :5001,
+`Staging`, DB `SanadDb` revalidated live before any write); live revision
+`8913df42` → `2bccdb3e`; migration set unchanged — all nine contexts
+"0 pending / 0 migration(s) applied", no DB backup required (none taken);
+config fingerprints (`appsettings.*` incl. the seam block, `/etc/sanad/sanad.env`,
+unit) identical before/after; unrelated app on port 5000 untouched; binary
+backup retained, rollback not needed. `Verify-SanadDeployment.ps1` exit 0 over
+a localhost-only tunnel — revision match, required/applied 9/9, smoke
+`GET /api/v1/lookups/services` HTTP 200; external-path limitation recorded
+(loopback-only bind: public 5001 unreachable, public 80 → 404), wiring not
+changed. Provisioner tool re-published at `2bccdb3e` and refreshed at
+`/root/sanad-demo-provisioner` (DLL SHA-256 `cd2dfd6d...` byte-identical;
+no provisioning run, no DB writes). Any present-tense "nothing committed,
+pushed or deployed" statements in the demo-corpus docs and in the execution
+history below describe the state during execution, before this Owner-authorized
+release. Full evidence: the "Release record (2026-10-26, Owner-authorized)"
+section in the [D4 receipt](work/demo-corpus/d4-receipt-2026-10-26.md) and the
+brief's "Release (2026-10-26, Owner-authorized)" section. Release `verified`;
+phase `completed` (2026-10-26).
 D1: all 22 corpus groups, the two guard kinds, the media writer and the
 `New-DemoMedia.ps1` generator, green on a throwaway nonce (135 → 763 → 763).
 D2: local `SanadDb` seeded additively under the single `--allow-local-sanad-db`
