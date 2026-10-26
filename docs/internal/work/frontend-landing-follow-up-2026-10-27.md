@@ -167,6 +167,43 @@ workers are frozen, per parent direction.
   shared-policy regression set; existing caregiver review test set must stay
   green unchanged.
 
+## Release receipt (2026-10-27, Owner-authorized)
+
+Release `cf065d4bb479669462d026e58be6a9a744d3fd3f` (18 files, +1118/−27)
+pushed `origin/main` (`812493d9..cf065d4b`), staged-diff secret scan clean
+(1,136 added lines, 0 findings, values never printed). Package: manifest
+revision = pushed SHA, 9/9 required-migration heads (none added; startup
+confirmed **9/9 contexts `0 pending / 0 applied`**), zip sha256
+`c2b15c59…a97ae81f7` verified byte-identical on target before extraction.
+Deployed to the rehearsal (`srv1604711`, 72.62.92.144, unit `sanad-api`,
+Staging, loopback 5001, DB `SanadDb`): live `47329bf5` → `cf065d4b`; binary
+backup `/root/sanad-api-backup-pre-cf065d4b` (110 top-level entries) taken
+before stop; host `appsettings.json` + `appsettings.Staging.json` excluded
+from replacement; service active, `NRestarts=0`. Config fingerprints
+byte-identical before/after: `/etc/sanad/sanad.env` `fad7e7fc…`,
+`appsettings.json` `200332b4…`, `appsettings.Staging.json` (7-id seam block
+present) `fd96e26d…`, unit `c018192e…` — the seam's explicit startup line was
+not re-emitted this start (recorded honestly); effective seam configuration is
+proven unchanged by the byte-identical fingerprint.
+`Verify-SanadDeployment.ps1` **exit 0** over public 8091 (revision match,
+required/applied 9/9, smoke `GET /api/v1/lookups/services` 200). Feature
+smoke: anonymous `GET /api/v1/admin/caregivers/lookup` **401 (not 404)**;
+both lookup paths present in public OpenAPI. No provider call, no DB write,
+no auth login, no provisioning run (provisioner sources unchanged — tool NOT
+refreshed, per instruction). Team artifacts shipped in the same commit:
+[frontend-landing-response-2026-10-27.md](frontend-landing-response-2026-10-27.md)
++ [frontend-money-actions-2026-10-27.md](frontend-money-actions-2026-10-27.md).
+Limitations: no full-suite rerun this phase (focused contract per direction:
+strict build 0/0, focused 146/146/0 skipped, architecture 1/1); caregiver-role
+admission is runtime-proven by the registered-policy matrix, not by an
+authenticated live call (no login performed, per constraint); notification
+defect-absence is source+test-proven, no live events fired. **Refund
+verification: pending, not executed, requirements NOT closed** — the
+proposed one-funded-test-booking protocol awaits parent review; max two real
+test refund records; serialized after this release; existing real captures
+are valid single sales, not duplicates; the `556970084`/`01a1559c…` care-home
+capture is not refund-eligible via existing APIs.
+
 ## Current result
 
 Preparation complete at `812493d9` (2026-10-27); Task A/A2 delivered
