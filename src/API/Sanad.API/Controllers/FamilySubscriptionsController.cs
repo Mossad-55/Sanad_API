@@ -525,6 +525,15 @@ public sealed class FamilySubscriptionsController : ApiControllerBase
             "Paymob.NotConfigured" => StatusCodes.Status503ServiceUnavailable,
             "Subscriptions.PlanChange.PaymentNotRequired" => StatusCodes.Status400BadRequest,
 
+            // Mobile integration 2026-10-26: the no-plan-change-during-paid-period
+            // policy and its duplicate-attempt guard are documented 409 conflicts
+            // (same outcome as the helper's own fallback, stated explicitly).
+            "Subscriptions.PlanChange.PaidPeriodActive" or "Subscriptions.PlanChange.PaymentPending" =>
+                StatusCodes.Status409Conflict,
+            "Subscriptions.PlanChange.NotUpgrade" or "Subscriptions.PlanChange.CancelRenewalRequested" or
+                "Subscriptions.PlanChange.RenewalGrace" or "Subscriptions.PendingDowngrade.NotDowngrade" =>
+                StatusCodes.Status409Conflict,
+
             // E04: the helper's 409 fallback must never swallow the platform
             // maintenance/method outcomes.
             "Platform.Maintenance" or "Platform.ControlStateUnavailable" => StatusCodes.Status503ServiceUnavailable,

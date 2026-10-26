@@ -1738,7 +1738,7 @@
     },
     {
       "name": "11. Resident care records",
-      "description": "Facility-owner-only care records for residents with an Accepted booking at this facility. Every read/write rechecks facility ownership and accepted-resident scope. Mutations require an approved disposable fixture.",
+      "description": "Facility-owner-only care records for residents with an Accepted booking at this facility. Every read/write rechecks facility ownership and accepted-resident scope. A created CareHome-source record also surfaces in the family read GET /api/v1/family/dependents/{dependentId}/care-records and the elderly self read GET /api/v1/elderly/care-records, which return the combined all-source timeline. Mutations require an approved disposable fixture.",
       "item": [
         {
           "name": "List accepted resident names",

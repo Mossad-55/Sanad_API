@@ -703,6 +703,28 @@ public sealed class FamilyController :
         return ToActionResult(result);
     }
 
+    [HttpGet("invitations/sent")]
+    [ProducesResponseType(
+        typeof(IReadOnlyList<FamilySentInvitationResponse>),
+        StatusCodes.Status200OK)]
+    public async Task<IActionResult> ListSentInvitations(
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new ListSentFamilyInvitationsQuery(
+                    userId,
+                    DateTime.UtcNow),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
     [HttpPost("invitations/accept")]
     [ProducesResponseType(
         StatusCodes.Status204NoContent)]

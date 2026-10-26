@@ -276,6 +276,98 @@ public sealed class ListMyFamilyInvitationsQueryHandler
     }
 }
 
+// --------------------------- List sent (outbox) -----------------------
+
+/// <summary>
+/// Outbox item for invitations sent by the caller's family. Exactly the
+/// fields the mobile app needs to display and cancel a pending invitation.
+/// </summary>
+public sealed record FamilySentInvitationResponse(
+    FamilyInvitationId Id,
+    string InvitedEmail,
+    FamilyRole Role,
+    FamilyRelationshipType RelationshipType,
+    FamilyInvitationStatus Status,
+    DateTime CreatedOnUtc,
+    DateTime ExpiresOnUtc);
+
+internal static class FamilySentInvitationMappings
+{
+    public static FamilySentInvitationResponse ToSentResponse(
+        this FamilyInvitation invitation) =>
+        new(
+            invitation.Id,
+            invitation.InvitedEmail,
+            invitation.Role,
+            invitation.RelationshipType,
+            invitation.Status,
+            invitation.CreatedOnUtc,
+            invitation.ExpiresOnUtc);
+}
+
+public sealed record ListSentFamilyInvitationsQuery(
+    UserId UserId,
+    DateTime UtcNow)
+    : IQuery<IReadOnlyList<FamilySentInvitationResponse>>;
+
+public sealed class ListSentFamilyInvitationsQueryValidator
+    : AbstractValidator<ListSentFamilyInvitationsQuery>
+{
+    public ListSentFamilyInvitationsQueryValidator()
+    {
+        RuleFor(q => q.UserId).NotEqual(UserId.Empty);
+        RuleFor(q => q.UtcNow)
+            .Must(utcNow => utcNow.Kind == DateTimeKind.Utc)
+            .WithMessage("Operation time must be in UTC.");
+    }
+}
+
+public sealed class ListSentFamilyInvitationsQueryHandler
+    : IQueryHandler<
+        ListSentFamilyInvitationsQuery,
+        IReadOnlyList<FamilySentInvitationResponse>>
+{
+    private readonly IFamiliesDbContext _dbContext;
+
+    public ListSentFamilyInvitationsQueryHandler(
+        IFamiliesDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<Result<IReadOnlyList<FamilySentInvitationResponse>>> Handle(
+        ListSentFamilyInvitationsQuery request,
+        CancellationToken cancellationToken)
+    {
+        Family? family =
+            await FamilyAccess.ResolveFamilyAsync(
+                _dbContext,
+                request.UserId,
+                cancellationToken);
+
+        if (family is null)
+        {
+            return FamilyInvitationErrors.FamilyNotFound;
+        }
+
+        // Scoped strictly to the caller's family; every status is returned
+        // so the outbox can show pending (cancellable) and decided items.
+        List<FamilyInvitation> invitations =
+            await _dbContext.Invitations
+                .AsNoTracking()
+                .Where(invitation => invitation.FamilyId == family.Id)
+                .OrderByDescending(invitation => invitation.CreatedOnUtc)
+                .ToListAsync(cancellationToken);
+
+        IReadOnlyList<FamilySentInvitationResponse> items =
+            invitations
+                .Select(invitation => invitation.ToSentResponse())
+                .ToList();
+
+        return Result<IReadOnlyList<FamilySentInvitationResponse>>.Success(items);
+    }
+}
+
 // ------------------------------- Accept -------------------------------
 
 public sealed record AcceptFamilyInvitationCommand(

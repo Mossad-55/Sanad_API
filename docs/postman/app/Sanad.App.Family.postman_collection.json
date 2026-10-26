@@ -1195,6 +1195,35 @@
             "description": "role 2 = Editor, 3 = Viewer; relationshipType 6 = Sister. 409 RecipientNotRegistered (unknown email), RecipientMissingFamilyAccount, CannotInviteYourself, AlreadyMember, PendingInvitationExists. The invite token is delivered only by email and never logged. Production SMTP uses the bilingual Invitation template; the Development sender suppresses delivery."
           },
           {
+            "name": "List invitations sent by my family (outbox)",
+            "request": {
+              "method": "GET",
+              "header": [
+                {
+                  "key": "Authorization",
+                  "value": "Bearer {{ familyToken }}"
+                }
+              ],
+              "url": "{{baseUrl}}/api/v1/family/invitations/sent"
+            },
+            "event": [
+              {
+                "listen": "test",
+                "script": {
+                  "type": "text/javascript",
+                  "exec": [
+                    "if (pm.response.code === 200) {",
+                    "  const items = pm.response.json();",
+                    "  const pending = items.find(i => i.status === 1);",
+                    "  if (pending) { pm.environment.set('invitationId', pending.id); }",
+                    "}"
+                  ]
+                }
+              }
+            ],
+            "description": "Use the inviter's token. Returns the invitations sent by the caller's family, every status (1 Pending, 2 Accepted, 3 Declined, 4 Revoked, 5 Expired), newest first, with exactly: id, invitedEmail, role, relationshipType, status, createdOnUtc, expiresOnUtc. Family-scoped: never another family's invitations. A returned Pending id feeds the existing 'Revoke invitation (Owner, by id)' request below — there is no separate cancel endpoint. 404 Families.Invitation.FamilyNotFound when the caller has no family."
+          },
+          {
             "name": "List my pending invitations (invitee)",
             "request": {
               "method": "GET",
@@ -2498,7 +2527,7 @@
       },
       {
         "name": "13. Subscriptions (owner quote/payment/plan-change/read/lifecycle)",
-        "description": "Owner-only subscription catalog, server-calculated purchase and plan-change quotes, initial/upgrade and renewal Card/Wallet payment intents, current snapshot, pending-downgrade lifecycle, renewal lifecycle, invoice/payment-attempt history and invoice PDF. Payment history reports EGP major-unit amounts and settlement-only paidOnUtc. On service shutdown after a paid plan change, only the unused share of new money is refundable; the credited source-period share is not refunded a second time, and a zero-cost plan change refunds zero. Allowance settlement remains separate.",
+        "description": "Owner-only subscription catalog, server-calculated purchase and plan-change quotes, initial/upgrade and renewal Card/Wallet payment intents, current snapshot, pending-downgrade lifecycle, renewal lifecycle, invoice/payment-attempt history and invoice PDF. Payment history reports EGP major-unit amounts and settlement-only paidOnUtc. During an active paid period an immediate plan change (the plan-change payment intent) is refused with 409 Subscriptions.PlanChange.PaidPeriodActive and creates no payment; turning auto-renew off does not lift it, a duplicate/second-device intent while one is pending is 409 Subscriptions.PlanChange.PaymentPending, and the deferred pending-downgrade route is the compliant way to change plan. On service shutdown after a paid plan change, only the unused share of new money is refundable; the credited source-period share is not refunded a second time, and a zero-cost plan change refunds zero. Allowance settlement remains separate.",
         "item": [
           {
             "name": "List published subscription plans",
@@ -2512,7 +2541,7 @@
               ],
               "url": "{{baseUrl}}/api/v1/family/subscriptions/plans"
             },
-            "description": "Owner only; 200 returns published versions including retired-for-new-sales plans and excludes drafts. Each item also carries the optional bilingual copy authored for that version — arabicName, englishName, arabicDescription, englishDescription, and per-benefit arabicLabel/englishLabel — stored with surrounding whitespace trimmed (a whitespace-only value is stored as absent/null) and never generated, translated, or back-filled; a version without authored copy keeps null for all of them. The copy is display-only and never changes price, cycle, currency, limits, rollover, or benefit inclusion."
+            "description": "Owner only; 200 returns published versions including retired-for-new-sales plans and excludes drafts. Each item also carries the optional bilingual copy authored for that version — arabicName, englishName, arabicDescription, englishDescription, and per-benefit arabicLabel/englishLabel — stored with surrounding whitespace trimmed (a whitespace-only value is stored as absent/null) and never generated, translated, or back-filled; a version without authored copy keeps null for all of them. The copy is display-only and never changes price, cycle, currency, limits, rollover, or benefit inclusion. The approved benefit set is frozen: Library (key 2) is included on every plan, while PremiumContent (key 8) is included on premium-plus only — a plan version that withholds a benefit keeps isIncluded:false, and editing the catalog listing alone never grants one."
           },
           {
             "name": "Get subscription purchase quote",
@@ -2592,7 +2621,7 @@
               },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/plan-change/quote"
             },
-            "description": "Owner only; read-only upgrade quote. The server returns targetRemainingGross, settledCredit (from actually settled current-period gross and remaining time), taxRatePercentage, targetTaxAmount, totalPayable, and currency. Coupons are not accepted; unpaid time earns no credit; totalPayable is floored at zero. Errors: 403 Subscriptions.PlanChange.NotOwner, 404 unavailable plan/current subscription, 409 Subscriptions.Quote.TaxNotConfigured when no effective active tax rule exists, renewal grace, or cancel-renewal requested. Safe to run."
+            "description": "Owner only; read-only upgrade quote. The server returns targetRemainingGross, settledCredit (from actually settled current-period gross and remaining time), taxRatePercentage, targetTaxAmount, totalPayable, and currency. Coupons are not accepted; unpaid time earns no credit; totalPayable is floored at zero. Errors: 403 Subscriptions.PlanChange.NotOwner, 404 unavailable plan/current subscription, 409 Subscriptions.Quote.ChargesNotConfigured when no effective shared platform fee and tax configuration exists, renewal grace, or cancel-renewal requested. The quote is a read and stays available during an active paid period. Safe to run."
           },
           {
             "name": "Create immediate plan-upgrade payment intent",
@@ -2614,7 +2643,7 @@
               },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/plan-change/payment-intent"
             },
-            "description": "Owner-only mutation; method 1=Card or 2=Wallet. Card uses the existing provider subscription and updates its future recurring gross amount after successful settlement; Wallet remains one-time/manual. A zero-charge upgrade performs no provider charge and returns amount 0, but still synchronizes Card future billing before local finalization. A target priced at or below the current plan returns 409 Subscriptions.PlanChange.NotUpgrade before any provider call. If tax is not configured, the quote is rejected with 409 Subscriptions.Quote.TaxNotConfigured before payment. Do not replay without an approved payment fixture. Platform availability: a new plan-change intent is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable); the plan-change quote and the pending-downgrade lifecycle stay available during Maintenance."
+            "description": "Owner-only mutation; method 1=Card or 2=Wallet. Card uses the existing provider subscription and updates its future recurring gross amount after successful settlement; Wallet remains one-time/manual. A zero-charge upgrade performs no provider charge and returns amount 0, but still synchronizes Card future billing before local finalization. An immediate change while the current subscription is a paid plan whose currentPeriodEndsOnUtc is still in the future is refused with 409 Subscriptions.PlanChange.PaidPeriodActive before any provider call or attempt write, so no payment is created; turning auto-renew off does not lift the block. A second intent while a plan-change payment for the subscription is still pending (duplicate or second device) is 409 Subscriptions.PlanChange.PaymentPending. A target priced at or below the current plan returns 409 Subscriptions.PlanChange.NotUpgrade before any provider call. If the shared platform fee and tax configuration is not available, the quote is rejected with 409 Subscriptions.Quote.ChargesNotConfigured before payment. Do not replay without an approved payment fixture. Platform availability: a new plan-change intent is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable); the plan-change quote and the pending-downgrade lifecycle stay available during Maintenance."
           },
           {
             "name": "Schedule or replace pending downgrade",
@@ -2636,7 +2665,7 @@
               },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/pending-downgrade"
             },
-            "description": "Owner-only mutation; schedules a lower-priced plan for the next successful renewal and returns 204. Replaces an existing pending downgrade. Card synchronizes the existing provider subscription's target recurring gross amount; Wallet stays manual. Errors: 403 not owner, 404 missing/unavailable plan or subscription, 409 Subscriptions.PendingDowngrade.NotDowngrade for a target that is not cheaper, renewal grace, cancel-renewal requested, or provider/tax conflict. A guarded local Development test fixture uses a dedicated current Premium subscription without a Paymob subscription ID to verify schedule/readback/cancel safely; no provider update occurs. Do not replay against shared data."
+            "description": "Owner-only mutation; schedules a lower-priced plan for the next successful renewal and returns 204. Replaces an existing pending downgrade. Card synchronizes the existing provider subscription's target recurring gross amount; Wallet stays manual. This deferred route is the compliant way to change plan during an active paid period: the plan changes only at the original period boundary and no payment is created. Errors: 403 not owner, 404 missing/unavailable plan or subscription, 409 Subscriptions.PendingDowngrade.NotDowngrade for a target that is not cheaper, renewal grace, cancel-renewal requested, or provider/tax conflict. A guarded local Development test fixture uses a dedicated current Premium subscription without a Paymob subscription ID to verify schedule/readback/cancel safely; no provider update occurs. Do not replay against shared data."
           },
           {
             "name": "Cancel pending downgrade",
@@ -2752,7 +2781,7 @@
               },
               "url": "{{baseUrl}}/api/v1/family/subscriptions/renewal/payment-intent"
             },
-            "description": "Owner only; starts at the period boundary or during seven-day grace using stored snapshot terms. A seeded current subscription normally returns 409 NotDue; do not replay against a due shared subscription without an approved fixture. Platform availability: a new renewal intent is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable)."
+            "description": "Owner only; starts at the period boundary or during seven-day grace using stored snapshot terms. A renewal before the boundary returns 409 Subscriptions.Renewal.NotDue (a seeded current subscription normally hits this); do not replay against a due shared subscription without an approved fixture. Platform availability: a new renewal intent is refused while the platform is in Maintenance (503 Platform.Maintenance) or when the method is disabled or not configured (400 Platform.PaymentMethodUnavailable)."
           },
           {
             "name": "List subscription invoices",

@@ -128,6 +128,22 @@ public sealed class FamilySubscriptionsControllerTests
         AssertPlatformStatus(result, expectedStatus, code);
     }
 
+    [Theory]
+    [InlineData("Subscriptions.PlanChange.PaidPeriodActive")]
+    [InlineData("Subscriptions.PlanChange.PaymentPending")]
+    public async Task Plan_change_payment_intent_maps_the_paid_period_policy_to_documented_409(string code)
+    {
+        // Mobile integration 2026-10-26: the no-plan-change-during-paid-period
+        // policy and its duplicate-attempt guard are documented conflicts.
+        var controller = CreateController(new FailingPlatformSender(new Error(code, "refused")));
+
+        var result = await controller.CreatePlanChangePaymentIntent(
+            new CreatePlanChangePaymentIntentRequest(Guid.NewGuid(), SubscriptionPaymentMethod.Card, Billing()),
+            CancellationToken.None);
+
+        AssertPlatformStatus(result, StatusCodes.Status409Conflict, code);
+    }
+
     // ------------------ W4 payment history ------------------
 
     [Fact]

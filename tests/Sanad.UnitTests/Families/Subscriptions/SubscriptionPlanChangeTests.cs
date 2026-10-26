@@ -74,8 +74,11 @@ public sealed class SubscriptionPlanChangeTests
     public async Task Wallet_upgrade_uses_manual_payment_and_does_not_update_provider_subscription()
     {
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
+        // Mobile integration 2026-10-26: an immediate plan change is refused while
+        // a paid period is active, so the upgrade mechanics below start from the
+        // unpaid Free snapshot (Price == 0 has no paid period to protect).
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target,
-            now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub");
+            now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", sourcePlan: SubscriptionPlan.Free);
         var paymob = new FakePaymobClient();
 
         var intent = await PlanChangeIntentHandler(db, paymob).Handle(
@@ -138,7 +141,7 @@ public sealed class SubscriptionPlanChangeTests
     public async Task Card_upgrade_callback_updates_provider_before_finalizing_local_snapshot()
     {
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
-        await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", 1000m, 0m);
+        await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", 1000m, 0m, sourcePlan: SubscriptionPlan.Free);
         var paymob = new FakePaymobClient();
         var intent = await PlanChangeIntentHandler(db, paymob).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
@@ -159,7 +162,7 @@ public sealed class SubscriptionPlanChangeTests
     public async Task Provider_failure_does_not_finalize_paid_plan_change()
     {
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
-        await using var db = Seed(out Family family, out SubscriptionPlanVersion source, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub");
+        await using var db = Seed(out Family family, out SubscriptionPlanVersion source, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", sourcePlan: SubscriptionPlan.Free);
         var paymob = new FakePaymobClient { UpdateFailure = true };
         var intent = await PlanChangeIntentHandler(db, paymob).Handle(
             new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
@@ -179,7 +182,7 @@ public sealed class SubscriptionPlanChangeTests
     public async Task Zero_charge_card_upgrade_updates_provider_and_finalizes_immediately()
     {
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
-        await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", 10000m, 0m);
+        await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target, now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub", 10000m, 0m, sourcePlan: SubscriptionPlan.Free);
         var paymob = new FakePaymobClient();
 
         var result = await PlanChangeIntentHandler(db, paymob).Handle(
@@ -199,7 +202,7 @@ public sealed class SubscriptionPlanChangeTests
         DateTime end = start.AddMonths(1);
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target,
-            start, end, SubscriptionPlan.PremiumPlus, "provider-sub", 1000m, 0m);
+            start, end, SubscriptionPlan.PremiumPlus, "provider-sub", 1000m, 0m, sourcePlan: SubscriptionPlan.Free);
         SubscriptionPlanVersion followup = AddPlan(db, "ultra", 7000m, start);
         var initialQuote = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, target.Id, now), default);
@@ -228,7 +231,7 @@ public sealed class SubscriptionPlanChangeTests
         DateTime end = start.AddMonths(1);
         DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
         await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target,
-            start, end, SubscriptionPlan.PremiumPlus, "provider-sub", 10000m, 0m);
+            start, end, SubscriptionPlan.PremiumPlus, "provider-sub", 10000m, 0m, sourcePlan: SubscriptionPlan.Free);
         SubscriptionPlanVersion followup = AddPlan(db, "ultra", 7000m, start);
         var initialQuote = await new CreatePlanChangeQuoteCommandHandler(db, new FixedPlatformChargeRules(10m, 5m)).Handle(
             new CreatePlanChangeQuoteCommand(family.OwnerUserId, target.Id, now), default);
@@ -303,6 +306,181 @@ public sealed class SubscriptionPlanChangeTests
         Assert.Null(subscription.PendingDowngrade);
         Assert.Equal(end.AddMonths(1), subscription.CurrentPeriodEndsOnUtc);
     }
+
+    // ------- Mobile integration 2026-10-26: no immediate plan change during a paid period -------
+
+    [Fact]
+    public async Task Plan_change_during_an_active_paid_period_is_refused_without_creating_a_payment()
+    {
+        DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
+        DateTime periodEnd = now.AddDays(16);
+        await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target,
+            now.AddDays(-15), periodEnd, SubscriptionPlan.PremiumPlus, "provider-sub");
+        var paymob = new FakePaymobClient();
+
+        var result = await PlanChangeIntentHandler(db, paymob).Handle(
+            new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
+
+        Assert.False(result.IsSuccess);
+        Assert.Equal("Subscriptions.PlanChange.PaidPeriodActive", result.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Equal(0, paymob.UpdateCalls);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+        var subscription = db.FamilySubscriptions.Single();
+        Assert.Equal(SubscriptionPlan.Premium.Key, subscription.PlanKey);
+        Assert.Equal(periodEnd, subscription.CurrentPeriodEndsOnUtc);
+    }
+
+    [Fact]
+    public async Task Cancelling_auto_renew_does_not_lift_the_paid_period_plan_change_block()
+    {
+        DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
+        DateTime periodEnd = now.AddDays(16);
+        await using var db = Seed(out Family family, out _, out SubscriptionPlanVersion target,
+            now.AddDays(-15), periodEnd, SubscriptionPlan.PremiumPlus, "provider-sub");
+        var subscription = db.FamilySubscriptions.Single();
+        subscription.CancelRenewal(now.AddDays(-1));
+        await db.SaveChangesAsync();
+        var paymob = new FakePaymobClient();
+
+        var result = await PlanChangeIntentHandler(db, paymob).Handle(
+            new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default);
+
+        Assert.False(result.IsSuccess);
+        // Cancelling auto-renew does not end the paid period, so the immediate
+        // change is still refused. The conflict surfaced is the (pre-existing,
+        // more specific) cancellation state, which the plan-change restore path
+        // shares; the paid period — and the block — both remain.
+        Assert.Equal("Subscriptions.PlanChange.CancelRenewalRequested", result.Error.Code);
+        Assert.False(subscription.AutoRenewEnabled);
+        Assert.Equal(periodEnd, subscription.CurrentPeriodEndsOnUtc);
+        Assert.Empty(db.SubscriptionPaymentAttempts);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Equal(0, paymob.UpdateCalls);
+    }
+
+    [Fact]
+    public async Task Two_device_retry_while_a_plan_change_payment_is_pending_creates_no_second_payment()
+    {
+        DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
+        string store = Guid.NewGuid().ToString();
+        await using var deviceA = Seed(out Family family, out _, out SubscriptionPlanVersion target,
+            now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub",
+            sourcePlan: SubscriptionPlan.Free, databaseName: store);
+        // The second context over the same store models the same family owner
+        // retrying from a second device before the first attempt settles.
+        await using var deviceB = CreateContext(store);
+        var paymob = new FakePaymobClient();
+
+        var first = await PlanChangeIntentHandler(deviceA, paymob).Handle(
+            new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Wallet, Billing(), now), default);
+        Assert.True(first.IsSuccess);
+        Assert.Equal(1, paymob.IntentCalls);
+
+        var second = await PlanChangeIntentHandler(deviceB, paymob).Handle(
+            new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Wallet, Billing(), now), default);
+
+        Assert.False(second.IsSuccess);
+        Assert.Equal("Subscriptions.PlanChange.PaymentPending", second.Error.Code);
+        Assert.Equal(1, paymob.IntentCalls); // no second provider intent
+        Assert.Equal(1, await deviceB.SubscriptionPaymentAttempts.CountAsync());
+
+        // The guard releases as soon as the pending attempt settles as failed.
+        var attempt = await deviceB.SubscriptionPaymentAttempts.SingleAsync();
+        attempt.TryMarkFailed(null, now);
+        await deviceB.SaveChangesAsync();
+
+        var retry = await PlanChangeIntentHandler(deviceB, paymob).Handle(
+            new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Wallet, Billing(), now), default);
+
+        Assert.True(retry.IsSuccess);
+        Assert.Equal(2, await deviceB.SubscriptionPaymentAttempts.CountAsync());
+    }
+
+    [Fact]
+    public async Task Concurrent_plan_change_requests_during_a_paid_period_create_no_payment()
+    {
+        DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
+        string store = Guid.NewGuid().ToString();
+        await using var deviceA = Seed(out Family family, out _, out SubscriptionPlanVersion target,
+            now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub",
+            databaseName: store);
+        await using var deviceB = CreateContext(store);
+        var paymob = new FakePaymobClient();
+
+        var results = await Task.WhenAll(
+            PlanChangeIntentHandler(deviceA, paymob).Handle(
+                new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default),
+            PlanChangeIntentHandler(deviceB, paymob).Handle(
+                new CreatePlanChangePaymentIntentCommand(family.OwnerUserId, target.Id, SubscriptionPaymentMethod.Card, Billing(), now), default));
+
+        Assert.All(results, result => Assert.False(result.IsSuccess));
+        Assert.All(results, result => Assert.Equal("Subscriptions.PlanChange.PaidPeriodActive", result.Error.Code));
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Equal(0, paymob.UpdateCalls);
+        Assert.Empty(await deviceA.SubscriptionPaymentAttempts.ToListAsync());
+        Assert.Empty(await deviceB.SubscriptionPaymentAttempts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Repurchase_with_a_current_subscription_is_refused_and_creates_no_payment()
+    {
+        DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
+        string store = Guid.NewGuid().ToString();
+        await using var deviceA = Seed(out Family family, out _, out SubscriptionPlanVersion target,
+            now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub",
+            databaseName: store);
+        await using var deviceB = CreateContext(store);
+        var paymob = new FakePaymobClient();
+        var controls = FixedPlatformControls.Operational();
+
+        var first = await PurchaseIntentHandler(deviceA, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(family.OwnerUserId, target.Id, null, SubscriptionPaymentMethod.Card, Billing(), now), default);
+        var second = await PurchaseIntentHandler(deviceB, paymob, controls).Handle(
+            new CreateSubscriptionPaymentIntentCommand(family.OwnerUserId, target.Id, null, SubscriptionPaymentMethod.Card, Billing(), now), default);
+
+        Assert.False(first.IsSuccess);
+        Assert.Equal("Subscriptions.Payment.CurrentExists", first.Error.Code);
+        Assert.False(second.IsSuccess);
+        Assert.Equal("Subscriptions.Payment.CurrentExists", second.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Equal(0, paymob.UpdateCalls);
+        Assert.Empty(await deviceB.SubscriptionPaymentAttempts.ToListAsync());
+    }
+
+    [Fact]
+    public async Task Early_renewal_during_an_active_paid_period_is_refused_and_creates_no_payment()
+    {
+        DateTime now = new(2026, 1, 16, 0, 0, 0, DateTimeKind.Utc);
+        string store = Guid.NewGuid().ToString();
+        await using var deviceA = Seed(out Family family, out _, out _,
+            now.AddDays(-15), now.AddDays(16), SubscriptionPlan.PremiumPlus, "provider-sub",
+            databaseName: store);
+        await using var deviceB = CreateContext(store);
+        var paymob = new FakePaymobClient();
+        var controls = FixedPlatformControls.Operational();
+
+        var first = await RenewalIntentHandler(deviceA, paymob, controls).Handle(
+            new CreateSubscriptionRenewalPaymentIntentCommand(family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), now), default);
+        var second = await RenewalIntentHandler(deviceB, paymob, controls).Handle(
+            new CreateSubscriptionRenewalPaymentIntentCommand(family.OwnerUserId, SubscriptionPaymentMethod.Card, Billing(), now), default);
+
+        Assert.False(first.IsSuccess);
+        Assert.Equal("Subscriptions.Renewal.NotDue", first.Error.Code);
+        Assert.False(second.IsSuccess);
+        Assert.Equal("Subscriptions.Renewal.NotDue", second.Error.Code);
+        Assert.Equal(0, paymob.IntentCalls);
+        Assert.Equal(0, paymob.UpdateCalls);
+        Assert.Empty(await deviceB.SubscriptionPaymentAttempts.ToListAsync());
+    }
+
+    private static CreateSubscriptionPaymentIntentCommandHandler PurchaseIntentHandler(
+        FamiliesDbContext db, IPaymobClient paymob, FixedPlatformControls controls) =>
+        new(db, paymob, new FixedPlatformChargeRules(10m, 5m), controls, controls);
+
+    private static CreateSubscriptionRenewalPaymentIntentCommandHandler RenewalIntentHandler(
+        FamiliesDbContext db, IPaymobClient paymob, FixedPlatformControls controls) =>
+        new(db, paymob, new FixedPlatformChargeRules(10m, 5m), controls, controls);
 
     // ---------------------- E04-B platform control gates ----------------------
 
@@ -385,6 +563,13 @@ public sealed class SubscriptionPlanChangeTests
         Assert.Equal(PlatformState.Maintenance, controls.State);
     }
 
+    /// <summary>
+    /// A second <see cref="FamiliesDbContext"/> over the same in-memory store
+    /// models a second logical session/device (two-device and concurrency tests).
+    /// </summary>
+    private static FamiliesDbContext CreateContext(string databaseName) =>
+        new(new DbContextOptionsBuilder<FamiliesDbContext>().UseInMemoryDatabase(databaseName).Options);
+
     private static FamiliesDbContext Seed(
         out Family family,
         out SubscriptionPlanVersion source,
@@ -395,9 +580,10 @@ public sealed class SubscriptionPlanChangeTests
         string? providerId = null,
         decimal? currentGross = null,
         decimal currentTaxRate = 0m,
-        SubscriptionPlan? sourcePlan = null)
+        SubscriptionPlan? sourcePlan = null,
+        string? databaseName = null)
     {
-        var db = new FamiliesDbContext(new DbContextOptionsBuilder<FamiliesDbContext>().UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        var db = CreateContext(databaseName ?? Guid.NewGuid().ToString());
         family = Family.Create(UserId.New());
         source = SubscriptionPlanVersion.Create(sourcePlan ?? SubscriptionPlan.Premium, true, true, start, start);
         target = SubscriptionPlanVersion.Create(targetPlan, true, true, start, start);

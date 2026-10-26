@@ -87,6 +87,34 @@ Authorization: Bearer {{familyToken}}
 
 `status`: `1` Pending, `2` Accepted, `3` Declined, `4` Revoked, `5` Expired. (The list endpoint returns only Pending.)
 
+## List invitations sent by my family (outbox)
+
+The authenticated family member sees the invitations **sent by their own family** — every status: still-Pending (cancellable while it lasts), Accepted, Declined, Revoked and past-expiry Pending — newest first. This is the inviter-facing list for the Settings "sent invites" screen after app reopen; a returned Pending `id` cancels through the existing revoke route below (no separate cancel endpoint).
+
+```http
+GET /api/v1/family/invitations/sent
+Authorization: Bearer {{familyToken}}
+```
+
+- `200` — array of `FamilySentInvitationResponse`, newest first.
+- `404 Families.Invitation.FamilyNotFound` — caller has no family.
+
+`FamilySentInvitationResponse` (exactly these seven fields):
+
+```json
+{
+  "id": "…uuid…",
+  "invitedEmail": "sister@example.com",
+  "role": 2,
+  "relationshipType": 6,
+  "status": 1,
+  "createdOnUtc": "2026-09-01T10:00:00Z",
+  "expiresOnUtc": "2026-09-08T10:00:00Z"
+}
+```
+
+The query is scoped strictly to the caller's family (owned family first, else the earliest family membership, same resolution as every family route): it never returns another family's invitations, and being family-scoped it does include invitations another Owner/Editor of the same family created.
+
 ## Accept an invitation
 
 The invited user calls this with the token from the deep link (or from the invitation inbox flow). On success the user is added to the family as a `FamilyMember` with the invited role and relationship.
@@ -127,7 +155,7 @@ Content-Type: application/json
 
 ## Revoke an invitation
 
-Family Owner only, by invitation id. The current API has no inviter-facing list/outbox endpoint to retrieve this id; the ID must come from the create-invitation response or another trusted client-held value.
+Family Owner only, by invitation id. Take the id from the pending item in the sent-invitations outbox (`GET /api/v1/family/invitations/sent`) or from the create-invitation response.
 
 ```http
 DELETE /api/v1/family/invitations/{invitationId}

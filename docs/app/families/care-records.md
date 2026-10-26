@@ -1,15 +1,19 @@
-# Care-record creates (family and caregiver)
+# Care-record creates (family, caregiver and care home)
 
-Two authenticated creates add an entry to a dependent's care-record timeline:
+Three authenticated creates add an entry to a dependent's shared care-record
+timeline:
 
 | Method | Route | Policy | Source |
 |---|---|---|---|
 | `POST` | `/api/v1/family/dependents/{dependentId}/care-records` | `FamilyAccess` (Owner/Editor) | `Family` |
 | `POST` | `/api/v1/caregiver/care-records` | `CaregiverAccess` | `Caregiver` |
+| `POST` | `/api/v1/care-homes/residents/mine/{residentId}/care-records` | `CareHomeOwnerAccess` (facility owner) | `CareHome` |
 
-Both derive the source, dependent ownership and author from the authenticated
+All derive the source, dependent scope and author from the authenticated
 caller and the route; they are never accepted from the body. Success is `201`
-with the created `CareRecordResponse`.
+with the created `CareRecordResponse`. The care-home create is documented in
+full — including the two app read routes it surfaces in — in
+[care-home care records](../../care-homes/care-records.md).
 
 ## Request body
 
@@ -61,6 +65,10 @@ accepts an optional `source` filter in either form: the enum name (`Family`,
 Omitting it returns all three sources combined. Any other value — or bad paging
 or reversed date filters — is `400 Families.CareRecords.InvalidQuery` before the
 read runs. The elderly and admin care-record reads apply the same filter rule.
+
+`CareHome`-source records (source `2`) are created by the care-home facility
+owner only and are read-only for the family and the elderly; a family write
+against one is `Families.CareRecords.AccessDenied`.
 
 ## Retry safety (`Idempotency-Key`)
 

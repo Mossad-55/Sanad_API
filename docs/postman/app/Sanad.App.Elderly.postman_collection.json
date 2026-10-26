@@ -230,7 +230,7 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{elderlyJwt}}" }],
             "url": "{{baseUrl}}/api/v1/elderly/care-records?page=1&pageSize=20",
-            "description": "Optional source=Family|CareHome|Caregiver, visitDateFrom/To and search filters. Search is over hospital fields, never medical details."
+            "description": "Optional source=Family|CareHome|Caregiver, visitDateFrom/To and search filters. Search is over hospital fields, never medical details. Includes CareHome-source records created from the care-home dashboard (read-only for the elderly)."
           }
         }
       ]

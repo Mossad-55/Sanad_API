@@ -14,6 +14,59 @@ namespace Sanad.Modules.Families.Application.Subscriptions;
 
 public sealed record PlanChangeQuoteResponse(Guid PlanVersionId, string PlanKey, int PlanVersion,
     decimal TargetRemainingGross, decimal SettledCredit, decimal TaxRatePercentage, decimal TargetTaxAmount, decimal PlatformFeeRatePercentage, decimal PlatformFeeAmount, int PlatformChargeRuleVersion, decimal TotalPayable, string Currency);
+
+/// <summary>
+/// Owner decision (mobile integration, 2026-10-26): an upgrade, downgrade or
+/// re-purchase is not allowed before the current paid period ends.
+/// <para>
+/// An <b>immediate</b> plan change — the plan-change payment intent, which would
+/// move the family to another plan right now and take a new payment — is refused
+/// with <see cref="PaidPeriodActiveCode"/> (a documented <c>409</c>) while the
+/// current subscription is a <b>paid</b> plan whose period has not yet ended. The
+/// refusal happens before any provider call and before any payment attempt is
+/// written, so no new payment is created.
+/// </para>
+/// <para>
+/// The paid period is bounded by <see cref="FamilySubscription.CurrentPeriodEndsOnUtc"/>
+/// alone. Auto-renew state is deliberately not consulted: turning auto-renew off
+/// (cancel-renewal) neither ends the paid period nor lifts the block. A Free
+/// snapshot (<c>Price == 0</c>) has no paid period to protect, so it may still
+/// change plan.
+/// </para>
+/// <para>
+/// A <b>deferred</b> change is not an immediate plan change: the scheduled
+/// pending-downgrade is applied only at the original period boundary, so the plan
+/// does not change before the current paid period ends and no payment is created.
+/// The plan-change quote stays a read. Neither is gated here.
+/// </para>
+/// </summary>
+internal static class PlanChangePolicy
+{
+    /// <summary>Documented <c>409</c>: the current paid period is still running.</summary>
+    internal const string PaidPeriodActiveCode = "Subscriptions.PlanChange.PaidPeriodActive";
+
+    /// <summary>
+    /// Documented <c>409</c>: a plan-change payment for this subscription is
+    /// already awaiting settlement, so a duplicate or second-device attempt must
+    /// not create another payment.
+    /// </summary>
+    internal const string PaymentPendingCode = "Subscriptions.PlanChange.PaymentPending";
+
+    internal static Error PaidPeriodActive => new(
+        PaidPeriodActiveCode,
+        "The subscription plan cannot be changed before the current paid period ends.");
+
+    internal static Error PaymentPending => new(
+        PaymentPendingCode,
+        "A plan-change payment for this subscription is already pending.");
+
+    /// <summary>
+    /// True while the current subscription is a paid plan whose period has not
+    /// yet ended — the interval in which no immediate plan change is allowed.
+    /// </summary>
+    internal static bool IsPaidPeriodActive(FamilySubscription subscription, DateTime nowUtc) =>
+        subscription.Price > 0m && nowUtc < subscription.CurrentPeriodEndsOnUtc;
+}
 public sealed record CreatePlanChangeQuoteCommand(UserId UserId, Guid PlanVersionId, DateTime UtcNow) : IQuery<PlanChangeQuoteResponse>;
 public sealed record CreatePlanChangePaymentIntentCommand(UserId UserId, Guid PlanVersionId, SubscriptionPaymentMethod Method,
     PaymobBillingData Billing, DateTime UtcNow) : ICommand<SubscriptionPaymentIntentResponse>;
@@ -48,6 +101,15 @@ public sealed class CreatePlanChangeQuoteCommandHandler : IQueryHandler<CreatePl
         decimal credit = subscription!.CurrentPeriodGross is decimal gross ? Money(gross * fraction) : 0m;
         return new PlanChangeQuoteResponse(plan.Id, plan.Key, plan.Version, targetGross, credit, Money(charge.TaxRatePercentage), targetTax, Money(charge.PlatformFeeRatePercentage), targetFee, charge.Version, Money(Math.Max(0m, targetGross - credit)), plan.Currency);
     }
+    /// <summary>
+    /// Resolves the owner, current subscription and target plan for a plan-change
+    /// request. It is shared by the quote read, the immediate plan-change intent
+    /// and the deferred pending-downgrade lifecycle, so it deliberately does not
+    /// apply the "no immediate plan change during a paid period" policy: that gate
+    /// belongs to the immediate path alone and is applied by
+    /// <see cref="CreatePlanChangePaymentIntentCommandHandler"/> via
+    /// <see cref="PlanChangePolicy.IsPaidPeriodActive"/>.
+    /// </summary>
     internal async Task<(FamilySubscription? Subscription, SubscriptionPlanVersion? Plan, Error? Error)> Resolve(UserId userId, Guid planId, DateTime now, CancellationToken ct)
     {
         var family = await FamilyAccess.ResolveFamilyAsync(_db, userId, ct);
@@ -83,10 +145,27 @@ public sealed class CreatePlanChangePaymentIntentCommandHandler : ICommandHandle
             _controls, _paymentMethods, request.Method, ct);
         if (platformError is not null) return Result<SubscriptionPaymentIntentResponse>.Failure(platformError);
 
-        var quote = await new CreatePlanChangeQuoteCommandHandler(_db, _chargeRules).Handle(new(request.UserId, request.PlanVersionId, request.UtcNow), ct);
+        var planChange = new CreatePlanChangeQuoteCommandHandler(_db, _chargeRules);
+        var quote = await planChange.Handle(new(request.UserId, request.PlanVersionId, request.UtcNow), ct);
         if (!quote.IsSuccess) return Result<SubscriptionPaymentIntentResponse>.Failure(quote.Error);
-        var resolved = await new CreatePlanChangeQuoteCommandHandler(_db, _chargeRules).Resolve(request.UserId, request.PlanVersionId, request.UtcNow, ct);
+        var resolved = await planChange.Resolve(request.UserId, request.PlanVersionId, request.UtcNow, ct);
         if (resolved.Error is not null) return Result<SubscriptionPaymentIntentResponse>.Failure(resolved.Error);
+        // Mobile integration 2026-10-26: an immediate plan change is refused while
+        // the current subscription's paid period is still running. The refusal
+        // happens before any provider call and before any attempt write, so no new
+        // payment is created. The quote read above and the deferred
+        // pending-downgrade lifecycle are deliberately not gated: the downgrade
+        // applies only at the period boundary and takes no payment.
+        if (PlanChangePolicy.IsPaidPeriodActive(resolved.Subscription!, request.UtcNow))
+            return Result<SubscriptionPaymentIntentResponse>.Failure(PlanChangePolicy.PaidPeriodActive);
+        // A duplicate or second-device attempt must not create a second payment
+        // for the same plan change; the pending attempt is the arbiter.
+        if (await _db.SubscriptionPaymentAttempts.AnyAsync(
+                attempt => attempt.SubscriptionId == resolved.Subscription!.Id
+                    && attempt.IsPlanChange
+                    && attempt.Status == SubscriptionPaymentAttemptStatus.Pending,
+                ct))
+            return Result<SubscriptionPaymentIntentResponse>.Failure(PlanChangePolicy.PaymentPending);
         if (resolved.Plan!.Price <= resolved.Subscription!.Price)
             return Result<SubscriptionPaymentIntentResponse>.Failure(new Error("Subscriptions.PlanChange.NotUpgrade", "Use the pending downgrade operation for a lower-priced plan."));
         if (quote.Value.TotalPayable <= 0m)
@@ -127,6 +206,11 @@ public sealed class ReplacePendingDowngradeCommandHandler : ICommandHandler<Repl
     public ReplacePendingDowngradeCommandHandler(IFamiliesDbContext db, IPaymobClient paymob, IPlatformChargeRuleReader chargeRules) { _db = db; _paymob = paymob; _chargeRules = chargeRules; }
     public async Task<Result> Handle(ReplacePendingDowngradeCommand r, CancellationToken ct)
     {
+        // Mobile integration 2026-10-26: a downgrade is scheduled for the next
+        // successful renewal, so the plan does not change before the current paid
+        // period ends and no payment is created — it is the compliant way to
+        // change plan under the policy ("no plan change before the period ends"),
+        // so it is deliberately not gated by PlanChangePolicy.
         var resolved = await new CreatePlanChangeQuoteCommandHandler(_db, _chargeRules).Resolve(r.UserId, r.PlanVersionId, r.UtcNow, ct);
         if (resolved.Error is not null) return Result.Failure(resolved.Error);
         if (resolved.Plan!.Price >= resolved.Subscription!.Price) return Result.Failure(new Error("Subscriptions.PendingDowngrade.NotDowngrade", "The selected plan is not a downgrade."));

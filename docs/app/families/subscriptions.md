@@ -8,6 +8,10 @@ Family subscription reads require a normal Family JWT and the `FamilyAccess` pol
 
 Each item includes its key, version, tax-exclusive price, currency, billing cycle, rollover policy, member and monthly-booking limits, publication/creation timestamps, availability, and all benefit keys with their included state. It also includes nullable `paymobSubscriptionPlanId`: a positive value enables initial Card enrollment when Paymob Card 3DS is configured; `null` means no initial enrollment and one-time/manual billing. Interpret these numeric JSON enum values as follows: `cycle` is `1` Monthly or `2` Annual; a benefit's `key` is `1` Chatting, `2` Library, `3` CommunityForum, `4` FamilyActivityTimeline, `5` BasicSearch, `6` AdvancedSearchFilters, `7` MedicalSummaryExportAndSecureSharing, or `8` PremiumContent, and `isIncluded` is the boolean state for that benefit. Each limit has `kind` `1` Finite with a positive integer `value`, or `2` Unlimited with `value: null`. `rollover` is `1` None or `2` NotApplicable. The catalog read does not add platform fee or tax to the returned price.
 
+### Approved benefit set (frozen)
+
+The published benefit state is part of the frozen plan contract, not app configuration. **Free** includes keys `1 Chatting`, `2 Library`, `3 CommunityForum`, and `5 BasicSearch` (it excludes `4`, `6`, `7`, and `8`); **Premium** includes keys `1`–`7` (it deliberately excludes `8 PremiumContent`); **PremiumPlus** includes all eight keys. `Library` (key 2) is therefore included on every plan, while `PremiumContent` (key 8) is included on PremiumPlus only. The catalog read reports whatever each plan version was authored and published with, and a family's [current subscription snapshot](#current-subscription-snapshot) reports the benefit terms snapshotted onto that subscription at purchase or plan-change time; neither invents, drops, or back-fills a benefit. A benefit that a plan version withholds stays visibly `isIncluded: false` — changing the *catalog listing* alone never grants it.
+
 ### Bilingual plan copy
 
 Each catalog item also carries the optional bilingual copy authored for **that plan version**: `arabicName`, `englishName`, `arabicDescription`, and `englishDescription`. Each benefit carries the optional `arabicLabel` and `englishLabel` authored for that benefit on that same version. Every one of these fields is nullable and holds the authored value with surrounding whitespace trimmed; a whitespace-only value is stored as absent (`null`). The API never generates, translates, or back-fills copy. A plan version created before the copy existed, or one whose author supplied no copy, keeps `null` for all of these fields; treat `null` as "no authored copy for this version" and fall back to your own product copy for that plan. The copy belongs to the version, so two versions of the same plan key may return different names, descriptions, and benefit labels.
@@ -179,8 +183,11 @@ The server uses the stored subscription snapshot terms and never accepts a
 client-supplied price, plan, tax, discount, or renewal date. A failed renewal
 settlement keeps access in grace until `currentPeriodEndsOnUtc + 7 days`; a
 successful retry advances the period from the original period-end anchor and
-clears grace. Settlement is idempotent. A renewal before the boundary, after
-grace expiry, or while another renewal attempt is pending returns `409`.
+clears grace. Settlement is idempotent. A renewal before the boundary returns
+`409 Subscriptions.Renewal.NotDue`, after grace expiry `409
+Subscriptions.Renewal.GraceExpired`, and while another renewal attempt is
+pending `409 Subscriptions.Renewal.PendingExists`; in each case no new payment is
+created.
 This endpoint always uses the manual payment-intent boundary and reports
 `recurringRenewalSupported: false`; renewal enrollment is not started here.
 Wallet renewal remains one-time/manual.
@@ -215,6 +222,10 @@ current-period gross amount; unpaid time earns no credit. `totalPayable` is
 rounded to two decimals and floored at zero. The server calculates all values;
 clients cannot override price, tax, credit, or currency.
 
+The quote is a read — it does not change the subscription or create a payment —
+so it stays available during an active paid period and while the platform is in
+Maintenance.
+
 `POST /api/v1/family/subscriptions/plan-change/payment-intent` starts an
 immediate upgrade:
 
@@ -242,6 +253,25 @@ Card future amount before applying the local target snapshot, and returns
 `amount: 0` with empty provider secret/key fields. Local finalization occurs
 only after required payment/provider work succeeds.
 
+**No plan change during an active paid period.** An immediate plan change — the
+plan-change payment intent, which would move the family to another plan now and
+take a new payment — is refused with `409
+Subscriptions.PlanChange.PaidPeriodActive` while the current subscription is a
+**paid** plan (price greater than `0`) whose `currentPeriodEndsOnUtc` is still
+in the future. The refusal happens before any provider call and before any
+payment attempt is written, so **no new payment is created**. Turning auto-renew
+off does **not** end the paid period and does not lift the block: the request is
+still refused (`409 Subscriptions.PlanChange.CancelRenewalRequested` once
+renewal cancellation has been requested, otherwise `409
+Subscriptions.PlanChange.PaidPeriodActive`). A Free snapshot (price `0`) has no
+paid period to protect and may still change plan. A second plan-change intent
+while a plan-change payment for the same subscription is still pending — a
+duplicate or second-device retry — is refused with `409
+Subscriptions.PlanChange.PaymentPending`, so the pending attempt is the arbiter
+and no second payment is created. The deferred pending-downgrade route below is the
+compliant way to change plan under this policy: it applies only at the original
+period boundary and takes no payment.
+
 `PUT /api/v1/family/subscriptions/pending-downgrade` schedules or replaces a
 lower-priced plan for the next successful renewal:
 
@@ -265,12 +295,16 @@ supported.
 Typical outcomes are `401` unauthenticated, `403`
 `Subscriptions.PlanChange.NotOwner`, `404`
 `Subscriptions.PlanChange.NotFound` or `Subscriptions.PlanChange.PlanNotFound`,
-`409 Subscriptions.PlanChange.NotUpgrade` when an immediate-payment target is
+`409 Subscriptions.PlanChange.PaidPeriodActive` for an immediate change while a
+paid period is still running, `409 Subscriptions.PlanChange.PaymentPending` for a
+duplicate/second-device retry while a plan-change payment is pending, `409
+Subscriptions.PlanChange.NotUpgrade` when an immediate-payment target is
 not higher priced, `409 Subscriptions.PendingDowngrade.NotDowngrade` when a
 scheduled target is not lower priced, and `409` for renewal grace, cancelled
-renewal, unavailable shared Finance/provider state, or another invalid lifecycle
-transition. A missing effective shared Finance rule is `409
-Subscriptions.Quote.TaxNotConfigured`. Provider failures return `502`
+renewal (`Subscriptions.PlanChange.CancelRenewalRequested`), unavailable shared
+Finance/provider state, or another invalid lifecycle transition. A missing
+effective shared Finance rule is `409
+Subscriptions.Quote.ChargesNotConfigured`. Provider failures return `502`
 (`Paymob.GatewayError`) and missing
 provider configuration returns `503` (`Paymob.NotConfigured`). A failed Card
 provider amount update leaves local pending state unchanged and is safe to
