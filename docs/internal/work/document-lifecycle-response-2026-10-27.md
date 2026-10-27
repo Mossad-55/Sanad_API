@@ -264,13 +264,150 @@ CertificateVersionItemResponse {
   no DSN, token, credential, key, or URL material anywhere; the only hits
   are schema property names EF generates and prose words.
 
-## 6. Release receipt (filled at execution)
+## 6. Release receipt
 
-- Pushed commit SHA: `PENDING_PUSH`
-- Remote `origin/main` HEAD after push: `PENDING_PUSH`
-- Pre-deploy live SHA: `b302a3fc`; pre-phase remote: `85503ec0`
-- Staging backup: `PENDING_BACKUP_RECEIPT`
-- Applied migrations on Staging: `PENDING_APPLY_RECORD`
-- Live verification + Owner-authorized post-release tests:
-  `PENDING_POST_RELEASE` (if not executed, recorded NOT RUN with reasons in
-  the docs-only receipt commit)
+- Pushed commit SHA: `b861e3e54e5b555202623d219e9d33d6d7a871dd` (single
+  release commit; no amend, no force).
+- Remote `origin/main` HEAD after push: `b861e3e54e5b555202623d219e9d33d6d7a871dd`
+  (verified exact match via `git ls-remote`).
+- Pre-deploy live SHA: `b302a3fc`; pre-phase remote: `85503ec0`.
+- Staging backup:
+  `/var/backups/sanad/SanadDb_pre_doclifecycle_20261027T175259Z.dump`,
+  885,722 bytes, sha256
+  `2ce6871074d8b448b6efff395033dd16c5bc23a66d6a33a30ec2efdaa39830bf`,
+  pg_restore TOC 907 entries (537 TABLE DATA / FK / INDEX), taken BEFORE any
+  migration, from the pre-deploy live state (`b302a3fc`, host config md5
+  fingerprints `f7e65dde…` / `eef821ae…` captured pre- and post-cutover,
+  byte-identical).
+- Applied migrations on Staging (startup policy, exclusive EF lock,
+  2026-10-27 17:58 UTC): Caregivers **1** (`20261027120000_AddCaregiverCertificateVersions`),
+  CareHomes **1** (`20261027120000_AddCareHomeDocumentHistoryRemoval`),
+  all other seven contexts **0**; history counts now 12 / 20 exactly.
+  History rows for both new heads verified in `__EFMigrationsHistory`.
+- Deployment verifier (`Verify-SanadDeployment.ps1`): **exit 0, run twice**
+  (immediately after cutover and again at the very end after the provisioner
+  swap restart): revision match (`b861e3e5`), environment Staging, 9/9
+  required/applied heads match, 9 startup migration contexts proven, smoke
+  `GET /api/v1/lookups/services` HTTP 200. Service active, NRestarts 0.
+- Package: 110 files, no `.env` / Development appsettings / key material;
+  host `appsettings.json` + `appsettings.Staging.json` authoritative and
+  preserved verbatim. Provisioner tool rebuilt at the same SHA and refreshed
+  at `/root/sanad-demo-provisioner` (tar sha256 `4be15b3a…84244f` verified
+  on target; `Sanad.PortalProvisioner.dll` sha256 `be3b0772…585c` byte-
+  identical to local publish; `--help` responds). **No provisioning run,
+  no DB writes, no seeding, no new accounts, no password resets.**
+
+## 7. Post-release verification record (Owner-authorized, Staging)
+
+All writes used ONLY the existing approved demo accounts of the `demo1`
+corpus (`demo1.<role>@test.sanad.local`, undeliverable domain) and
+clearly-marked `SANAD-TEST` documents; one designated test upload per
+scope; no bulk operations; no provisioning; no account/password changes.
+Read-only probing came first; writes followed only after each readback.
+
+### 7.1 Anonymous surface
+
+- OpenAPI: all new routes present (`…/documents`, `…/documents/{id}/file`,
+  verify/reject, caregiver certificate version routes, admin mirrors).
+- 14/14 new private routes probed unauthenticated: **13 → 401**;
+  `GET /api/v1/caregiver/certificates/{id}` → **405** (no GET route exists —
+  correct; certificate reads ride the profile payload).
+
+### 7.2 Live pre-write state (read-only)
+
+- `care_homes.documents`: 32 rows / 0 removed.
+- `caregivers.caregiver_certificates`: 14 rows / 0 removed / 0 non-zero
+  revision; `caregiver_certificate_versions`: **0 rows** (no fabricated
+  history); partial unique index present with the exact contracted
+  definition.
+
+### 7.3 Task A live flow (demo facility `01a17542-29e5-7fdd-a55f-d2465be8ad63`, Approved)
+
+- Baseline honest readback: 4 legacy documents, all `current`/Verified,
+  `pending=0`, `history=0`, `expired=false` everywhere; bogus
+  `?view=bogus` → `400 CareHomes.Document.InvalidView`.
+- Owner profile round-trip (product-by-design: an Approved facility must
+  open an editable revision via `PUT mine/profile` before uploads; the
+  save clones every approved document into the new revision → plain
+  upload without it is a coded `409`, confirming the gate):
+  `PUT mine/profile` (v15, open revision) → marked `SANAD-TEST` license
+  upload (`01a17e8e-b00b-7e1b-970d-a869984673c2`, v16) → list `all` = 9
+  items EXACTLY as designed: TEST + 3 clones `pending`, superseded license
+  clone `history`, 4 originals still `current`.
+- Protection gates live: `remove(current)` → **409 NotRemovable**;
+  `remove(pending)` → **409 NotRemovable**; stale `expectedVersion` →
+  **409 Conflict**; second owner's id on owner routes → **404** coded
+  `CareHomes.Document.DocumentNotFound` (own-facility scoping, no leak);
+  caregiver token on owner routes → **403/403**.
+- Full promotion pipeline (the pre-existing review flow, unchanged by the
+  phase — admin verify is domain-gated to `PendingReview` +
+  `SubmittedRevisionId`, so the open-revisibility upload was exercised
+  through submit → verify → approve): owner submit (v17, status
+  PendingReview) → admin targeted verify with
+  `{expectedVersion, expiryDate:"2028-11-30", confirmNonExpiring:false}`
+  (v18; TEST → Verified) → admin approve action=1 (v19, status Approved,
+  approvedRevision = the new revision). Readback after approval: the 4
+  old documents **all reclassified `history`**, their revisions (incl.
+  the verified TEST license) `current` — replacement promotion with
+  history retention proven live.
+- History-only removal: owner `DELETE` of the old license
+  (`01a17542-2ac9-76e7-9164-d6aebd7e8dca`, now `history`, v19) → **204**;
+  idempotent replay → **204** with facility Version unchanged (20 → 20,
+  no second audit write); removed row absent from every list; removed
+  file route → **404**; the promoted TEST license file → **200** (its
+  bytes live, shared-reference semantics).
+- Storage retention: the removed license's bytes remain on disk under
+  `/var/sanad/files-private/private/care-home-documents/…pdf` while the
+  DB row carries its tombstone (`removed_on_utc`/`removed_by_user_id`
+  set) — logical removal, no physical delete, exactly as contracted.
+- Final A state: 37 documents / 1 removed / facility v20 Approved.
+
+### 7.4 Task B live flow (caregiver.1, Active Medical; PracticeLicense)
+
+- Baseline: legacy row honestly shows `versions: []`, `hasPendingReplacement:
+  false`, effective Verified / expiry 2027-10-25 — no fabricated history.
+- Replacement on the stable id (`PUT certificates/{id}/file`, multipart
+  expiry+file, `SANAD-TEST` bytes) → 200; **status stays Active (4),
+  availability stays Available (1)** (contract: no suspension while the
+  approved current is effective); stored status stays Verified with the
+  OLD expiry; `hasPendingReplacement: true` with exactly 2 versions
+  materialized (legacy current, Verified/classification Current) + the
+  pending candidate (classification Pending, expiry 2029-01-31).
+- Admin targeted version verify `POST …/versions/{versionId}/verify`
+  (bodyless, concurrency-guarded) → **204**; promotion proven: new
+  version classification `Current`/Verified, effective fields promoted
+  (expiry 2029-01-31), old version retained as `History` with
+  `supersededOnUtc` timestamp and `canRemove: true`; admin detail mirrors
+  the same version readback.
+- History-version removal `DELETE …/versions/{versionId}` → **204**;
+  idempotent replay → **204**; removed version hidden from lists;
+  removed-version file → **404**; live-version file → **200**;
+  effective-snapshot file → **200**; caregiver on admin routes → **403**;
+  caregiver.2 cross-scope on caregiver.1's certificate/version →
+  **404/404** (scoped, existence never leaked).
+- DB state: exactly 2 version rows total (1 tombstoned with
+  `removed_*` set), parent `revision=4`, partial unique index enforced.
+- **Recorded anomaly (demo-seed artifact, not a phase defect)**: the
+  MATERIALIZED legacy version's download 404s because its stored
+  `file_path` is the provisioner-seeded synthetic key
+  `private/caregiver-documents/demo-demo1-practice-license.pdf` that never
+  had physical bytes on disk (pre-existing demo-corpus seed); the storage
+  layer honestly refuses to fabricate content. Real uploads (all actual
+  traffic from here on) have live references and serve 200, as proven by
+  the TEST version file.
+
+### 7.5 Live anonymous/authz matrix NOT RUN items
+
+None — every planned post-release probe was executed, including the
+final deployment-verifier re-run and session cleanup. The only
+unexecuted class of checks would be negative tests against REAL persons'
+accounts, which was explicitly out of scope (demo corpus only).
+
+### 7.6 Session and cleanup hygiene
+
+- All gate logins used throwaway sessions named `gate-2026-10-27`;
+  every one was revoked (`logout-all` per demo account) and a read-only
+  DB check confirms **0 active** `gate-2026-10-27%` device sessions.
+- Demo facility/contents retain their demo-identity markers; the TEST
+  uploads are few, clearly marked, and left in place as instructed
+  (shared bytes deleted only if overlaid by later phases).
