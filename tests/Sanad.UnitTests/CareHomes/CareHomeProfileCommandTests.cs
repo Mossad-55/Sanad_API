@@ -17,11 +17,11 @@ public sealed class CareHomeProfileCommandTests
     {
         using CareHomesDbContext db = CreateDbContext();
         UserId owner = UserId.New();
-        var handler = new CreateCareHomeFacilityCommandHandler(db);
+        var handler = new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock());
 
         var created = await handler.Handle(new CreateCareHomeFacilityCommand(owner), default);
         var duplicate = await handler.Handle(new CreateCareHomeFacilityCommand(owner), default);
-        var otherOwnerRead = await new GetMyCareHomeFacilityQueryHandler(db)
+        var otherOwnerRead = await new GetMyCareHomeFacilityQueryHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new GetMyCareHomeFacilityQuery(UserId.New()), default);
 
         Assert.True(created.IsSuccess);
@@ -38,9 +38,9 @@ public sealed class CareHomeProfileCommandTests
     {
         using CareHomesDbContext db = CreateDbContext();
         UserId owner = UserId.New();
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        var handler = new SaveMyCareHomeProfileCommandHandler(db);
+        var handler = new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock());
         CareHomeProfileDraft draft = CareHomeFacilityTests.Draft();
 
         var saved = await handler.Handle(
@@ -63,11 +63,11 @@ public sealed class CareHomeProfileCommandTests
     {
         using CareHomesDbContext db = CreateDbContext();
         UserId owner = UserId.New();
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        var saved = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var saved = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
-        var handler = new SubmitMyCareHomeApplicationCommandHandler(db);
+        var handler = new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock());
 
         var missingEverything = await handler.Handle(
             new SubmitMyCareHomeApplicationCommand(owner, saved.Value.Version), default);
@@ -98,11 +98,11 @@ public sealed class CareHomeProfileCommandTests
     {
         using CareHomesDbContext db = CreateDbContext();
         UserId owner = UserId.New();
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        var saved = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var saved = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
-        var handler = new SubmitMyCareHomeApplicationCommandHandler(db);
+        var handler = new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock());
         CareHomeFacility facility = await db.Facilities.Include(x => x.Revisions).SingleAsync();
         foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
             facility.UploadDocument(owner, type, $"private/{type}.pdf", "application/pdf", 100, null, DateTime.UtcNow);
@@ -135,9 +135,9 @@ public sealed class CareHomeProfileCommandTests
             new DbContextOptionsBuilder<CareHomesDbContext>().UseSqlite(connection).Options);
         await db.Database.EnsureCreatedAsync();
         UserId owner = UserId.New();
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        var saved = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var saved = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
         Assert.True(saved.IsSuccess);
         CareHomeFacility facility = await db.Facilities.Include(x => x.Revisions).SingleAsync();
@@ -148,7 +148,7 @@ public sealed class CareHomeProfileCommandTests
         db.ProfileMedia.Add(GalleryMedia(facility, 0));
         await db.SaveChangesAsync();
 
-        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db)
+        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
 
         Assert.True(submitted.IsSuccess);
@@ -171,9 +171,9 @@ public sealed class CareHomeProfileCommandTests
         using CareHomesDbContext db = CreateDbContext();
         UserId owner = UserId.New();
         UserId admin = UserId.New();
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        var saved = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var saved = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
         CareHomeFacility facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents).SingleAsync();
         foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
@@ -184,7 +184,7 @@ public sealed class CareHomeProfileCommandTests
         db.ProfileMedia.Add(CoverMedia(facility));
         db.ProfileMedia.Add(GalleryMedia(facility, 0));
         await db.SaveChangesAsync();
-        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db)
+        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
         Assert.True(submitted.IsSuccess);
         facility.Review(admin, facility.Version, CareHomeReviewAction.Approved, null, DateTime.UtcNow, DateOnly.FromDateTime(DateTime.UtcNow));
@@ -198,7 +198,7 @@ public sealed class CareHomeProfileCommandTests
             .Where(x => x.ProfileRevisionId == approvedRevisionId).OrderBy(x => x.Position).ToListAsync();
 
         CareHomeProfileDraft edited = CareHomeFacilityTests.Draft() with { ContactPhone = "+201999999999" };
-        var edit = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var edit = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, facility.Version, edited), default);
         Assert.True(edit.IsSuccess);
         Assert.NotNull(edit.Value.OpenRevisionId);
@@ -228,7 +228,7 @@ public sealed class CareHomeProfileCommandTests
             Assert.Equal(original.StorageKey, inherited.StorageKey);
         }
 
-        var submittedEdit = await new SubmitMyCareHomeApplicationCommandHandler(db)
+        var submittedEdit = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new SubmitMyCareHomeApplicationCommand(owner, edit.Value.Version), default);
         Assert.True(submittedEdit.IsSuccess);
 
@@ -247,9 +247,9 @@ public sealed class CareHomeProfileCommandTests
         await db.Database.EnsureCreatedAsync();
         UserId owner = UserId.New();
         UserId admin = UserId.New();
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        var saved = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var saved = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
         CareHomeFacility facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents).SingleAsync();
         foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
@@ -260,7 +260,7 @@ public sealed class CareHomeProfileCommandTests
         db.ProfileMedia.Add(CoverMedia(facility));
         db.ProfileMedia.Add(GalleryMedia(facility, 0));
         await db.SaveChangesAsync();
-        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db)
+        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
         Assert.True(submitted.IsSuccess);
         facility.Review(admin, facility.Version, CareHomeReviewAction.Approved, null, DateTime.UtcNow, DateOnly.FromDateTime(DateTime.UtcNow));
@@ -292,9 +292,9 @@ public sealed class CareHomeProfileCommandTests
         using CareHomesDbContext db = CreateDbContext();
         UserId owner = UserId.New();
         UserId admin = UserId.New();
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        var saved = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var saved = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
         CareHomeFacility facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents).SingleAsync();
         foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
@@ -305,13 +305,13 @@ public sealed class CareHomeProfileCommandTests
         db.ProfileMedia.Add(CoverMedia(facility));
         db.ProfileMedia.Add(GalleryMedia(facility, 0));
         await db.SaveChangesAsync();
-        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db)
+        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
         Assert.True(submitted.IsSuccess);
         facility.Review(admin, facility.Version, CareHomeReviewAction.Approved, null, DateTime.UtcNow, DateOnly.FromDateTime(DateTime.UtcNow));
         await db.SaveChangesAsync();
 
-        var edit = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var edit = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, facility.Version, CareHomeFacilityTests.Draft() with { ContactPhone = "+201999999999" }), default);
         Assert.True(edit.IsSuccess);
         Guid inheritedMediaId = (await db.ProfileMedia.FirstAsync(x => x.ProfileRevisionId == edit.Value.OpenRevisionId && x.Kind == CareHomeProfileMediaKind.Gallery)).Id;
@@ -323,7 +323,7 @@ public sealed class CareHomeProfileCommandTests
         Assert.False(await db.ProfileMedia.AnyAsync(x => x.Id == inheritedMediaId));
 
         int currentVersion = (await db.Facilities.SingleAsync()).Version;
-        var resave = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var resave = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, currentVersion, CareHomeFacilityTests.Draft() with { ContactPhone = "+201888888888" }), default);
         Assert.True(resave.IsSuccess);
         Assert.False(await db.ProfileMedia.AnyAsync(x => x.Id == inheritedMediaId));
@@ -334,7 +334,7 @@ public sealed class CareHomeProfileCommandTests
             x.ProfileRevisionId == facility.ApprovedRevisionId && x.Kind == CareHomeProfileMediaKind.Gallery));
         int versionBeforeRead = facility.Version;
         int documentCount = facility.Documents.Count;
-        var read = await new GetMyCareHomeFacilityQueryHandler(db).Handle(new GetMyCareHomeFacilityQuery(owner), default);
+        var read = await new GetMyCareHomeFacilityQueryHandler(db, CareHomeTestClockHost.Clock()).Handle(new GetMyCareHomeFacilityQuery(owner), default);
         Assert.True(read.IsSuccess);
         Assert.Equal(versionBeforeRead, read.Value.Version);
         Assert.Equal(documentCount, read.Value.Documents.Count);
@@ -358,7 +358,7 @@ public sealed class CareHomeProfileCommandTests
         Guid approvedRevisionId = await SubmitVerifyAndApproveAsync(
             db, facility, owner, admin, FixedNow, FixedNow.AddMinutes(2), FixedToday);
 
-        var edit = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var edit = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, facility.Version,
                 CareHomeFacilityTests.Draft() with { ContactPhone = "+201999999999" }), default);
         Assert.True(edit.IsSuccess);
@@ -388,7 +388,7 @@ public sealed class CareHomeProfileCommandTests
         Assert.Equal(CareHomeDocumentStatus.Verified, newerClone.Status);
         Assert.True(newerClone.IsUsableOn(FixedToday));
 
-        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db).Handle(
+        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SubmitMyCareHomeApplicationCommand(owner, reloaded.Version), default);
         Assert.True(submitted.IsSuccess);
         Assert.Equal(openRevisionId, submitted.Value.SubmittedRevisionId);
@@ -419,7 +419,7 @@ public sealed class CareHomeProfileCommandTests
         await SubmitVerifyAndApproveAsync(db, facility, owner, admin, uploadedAt, reviewedAt,
             new DateOnly(2026, 9, 1));
 
-        var edit = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var edit = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, facility.Version,
                 CareHomeFacilityTests.Draft() with { ContactPhone = "+201888888888" }), default);
         Assert.True(edit.IsSuccess);
@@ -442,7 +442,7 @@ public sealed class CareHomeProfileCommandTests
 
         // Submission itself only requires the four document types per revision, so the
         // expired document is refused later, by the existing validity rule at review.
-        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db).Handle(
+        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SubmitMyCareHomeApplicationCommand(owner, reloaded.Version), default);
         Assert.True(submitted.IsSuccess);
 
@@ -472,7 +472,7 @@ public sealed class CareHomeProfileCommandTests
         Guid approvedRevisionId = await SubmitVerifyAndApproveAsync(
             db, facility, owner, admin, FixedNow, FixedNow.AddMinutes(2), FixedToday);
 
-        var edit = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var edit = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, facility.Version,
                 CareHomeFacilityTests.Draft() with { ContactPhone = "+201777777777" }), default);
         Assert.True(edit.IsSuccess);
@@ -486,7 +486,7 @@ public sealed class CareHomeProfileCommandTests
             FixedNow.AddMinutes(30));
         await db.SaveChangesAsync();
 
-        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db).Handle(
+        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SubmitMyCareHomeApplicationCommand(owner, editing.Version), default);
         Assert.True(submitted.IsSuccess);
 
@@ -525,7 +525,7 @@ public sealed class CareHomeProfileCommandTests
         db.ChangeTracker.Clear();
         CareHomeFacility corrected = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents)
             .SingleAsync(x => x.OwnerUserId == owner);
-        var next = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var next = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, corrected.Version,
                 CareHomeFacilityTests.Draft() with { ContactPhone = "+201666666666" }), default);
         Assert.True(next.IsSuccess);
@@ -550,9 +550,9 @@ public sealed class CareHomeProfileCommandTests
     private static async Task<CareHomeFacility> SaveDraftWithDocumentsAndMediaAsync(
         CareHomesDbContext db, UserId owner, DateTime uploadedAt, DateOnly? licenseExpiry)
     {
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        var saved = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var saved = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
         Assert.True(saved.IsSuccess);
         CareHomeFacility facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents)
@@ -575,7 +575,7 @@ public sealed class CareHomeProfileCommandTests
         CareHomesDbContext db, CareHomeFacility facility, UserId owner, UserId admin,
         DateTime uploadedAt, DateTime reviewedAt, DateOnly reviewedOn)
     {
-        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db).Handle(
+        var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
         Assert.True(submitted.IsSuccess);
         foreach (CareHomeDocument document in facility.Documents.ToArray())

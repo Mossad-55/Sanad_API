@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using MediatR;
 using Sanad.API.Authorization;
+using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
@@ -166,5 +167,56 @@ public sealed class CareHomeFacilitiesController(ISender sender) : ApiController
             return Unauthorized();
         return ToActionResult(await sender.Send(
             new SubmitMyCareHomeApplicationCommand(actorUserId, request.ExpectedVersion), cancellationToken));
+    }
+
+    // Additive 2026-10-27 document lifecycle surface: labeled list (default
+    // all), scoped owner file read (own facility, history included), and
+    // history-only logical removal. All other facility behavior is unchanged.
+    [HttpGet("mine/documents")]
+    [ProducesResponseType(typeof(CareHomeDocumentListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    public async Task<IActionResult> ListDocuments(
+        [FromQuery] string? view,
+        [FromQuery] CareHomeDocumentType? type,
+        [FromQuery] bool? isExpired,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId))
+            return Unauthorized();
+        return ToActionResult(await sender.Send(
+            new GetMyCareHomeDocumentsQuery(actorUserId, view, type, isExpired), cancellationToken));
+    }
+
+    [HttpGet("mine/documents/{documentId:guid}/file")]
+    [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> ReadDocument(Guid documentId, CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId))
+            return Unauthorized();
+        var result = await sender.Send(
+            new GetMyCareHomeDocumentFileQuery(actorUserId, documentId), cancellationToken);
+        if (result.IsFailure)
+            return ToActionResult(result);
+        PrivateFileContent content = result.Value;
+        return File(content.Content, content.ContentType, enableRangeProcessing: false);
+    }
+
+    [HttpDelete("mine/documents/{documentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RemoveDocument(
+        Guid documentId,
+        [FromQuery] int expectedVersion,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId))
+            return Unauthorized();
+        return ToActionResult(await sender.Send(
+            new RemoveMyCareHomeDocumentCommand(actorUserId, expectedVersion, documentId), cancellationToken));
     }
 }

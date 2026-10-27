@@ -514,7 +514,7 @@ public sealed class MediaUploadHardeningTests
     {
         var storage = new RecordingPrivateStorage();
         var sender = new RejectingSender();
-        var controller = new CaregiverController(sender, storage)
+        var controller = new CaregiverController(sender, storage, new FixedClock())
         {
             ControllerContext = ClaimsContextFor("certificate-signature-trace", UserId.New())
         };
@@ -533,7 +533,7 @@ public sealed class MediaUploadHardeningTests
     public async Task Certificate_upload_refuses_empty_and_oversize_bodies()
     {
         var storage = new RecordingPrivateStorage();
-        var controller = new CaregiverController(new RejectingSender(), storage)
+        var controller = new CaregiverController(new RejectingSender(), storage, new FixedClock())
         {
             ControllerContext = ClaimsContextFor("certificate-size-trace", UserId.New())
         };
@@ -559,7 +559,7 @@ public sealed class MediaUploadHardeningTests
     {
         var storage = new RecordingPrivateStorage();
         var sender = new RejectingSender();
-        var controller = new CaregiverController(sender, storage)
+        var controller = new CaregiverController(sender, storage, new FixedClock())
         {
             ControllerContext = ClaimsContextFor("certificate-accept-trace", UserId.New())
         };

@@ -65,9 +65,9 @@ public sealed class CareHomeProfileMediaTests
             await using var db = new CareHomesDbContext(new DbContextOptionsBuilder<CareHomesDbContext>()
                 .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
             UserId owner = UserId.New();
-            var created = await new CreateCareHomeFacilityCommandHandler(db)
+            var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
                 .Handle(new CreateCareHomeFacilityCommand(owner), default);
-            var profile = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+            var profile = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
                 new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
             var storage = new LocalDiskFileStorage(Options.Create(new LocalStorageOptions { RootPath = storageRoot }));
             var handler = new UploadCareHomeProfileMediaCommandHandler(db, storage);
@@ -115,9 +115,9 @@ public sealed class CareHomeProfileMediaTests
                 Options.Create(new LocalStorageOptions { RootPath = storageRoot }));
             byte[] png = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/F5sAAAAASUVORK5CYII=");
 
-            var created = await new CreateCareHomeFacilityCommandHandler(db)
+            var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
                 .Handle(new CreateCareHomeFacilityCommand(owner), default);
-            var saved = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+            var saved = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
                 new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
             Assert.True(saved.IsSuccess);
             CareHomeFacility facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents).SingleAsync();
@@ -136,7 +136,7 @@ public sealed class CareHomeProfileMediaTests
                 facility.Version, CareHomeProfileMediaKind.Gallery, new MemoryStream(png), "image/png", png.Length), default);
             Assert.True(gallery.IsSuccess);
 
-            var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db).Handle(
+            var submitted = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
                 new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
             Assert.True(submitted.IsSuccess);
             facility.Review(admin, facility.Version, CareHomeReviewAction.Approved, null, UtcNow, Today);
@@ -148,7 +148,7 @@ public sealed class CareHomeProfileMediaTests
             string approvedGalleryPath = PrivateFilePath(storageRoot, approvedGallery.StorageKey);
             Assert.True(File.Exists(approvedGalleryPath));
 
-            var edit = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+            var edit = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
                 new SaveMyCareHomeProfileCommand(owner, facility.Version,
                     CareHomeFacilityTests.Draft() with { ContactPhone = "+201999999999" }), default);
             Assert.True(edit.IsSuccess);
@@ -173,7 +173,7 @@ public sealed class CareHomeProfileMediaTests
             await readback.Value.Content.DisposeAsync();
 
             // Re-saving the draft must not resurrect the deliberately removed asset.
-            var resave = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+            var resave = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
                 new SaveMyCareHomeProfileCommand(owner, facility.Version,
                     CareHomeFacilityTests.Draft() with { ContactPhone = "+201888888888" }), default);
             Assert.True(resave.IsSuccess);
@@ -184,7 +184,7 @@ public sealed class CareHomeProfileMediaTests
             // Submission never silently restores the removed asset: with only the cover left
             // the two-photo rule still refuses, and it stays refused until a real replacement
             // is uploaded through the normal flow.
-            var submittedWithoutReplacement = await new SubmitMyCareHomeApplicationCommandHandler(db).Handle(
+            var submittedWithoutReplacement = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
                 new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
             Assert.False(submittedWithoutReplacement.IsSuccess);
             Assert.Equal("CareHomes.Facility.ProfileMediaRequired", submittedWithoutReplacement.Error.Code);
@@ -194,7 +194,7 @@ public sealed class CareHomeProfileMediaTests
             Assert.True(replacement.IsSuccess);
             Assert.NotEqual(inheritedGallery.Id, replacement.Value.Id);
 
-            var submittedAfterReplacement = await new SubmitMyCareHomeApplicationCommandHandler(db).Handle(
+            var submittedAfterReplacement = await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
                 new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
             Assert.True(submittedAfterReplacement.IsSuccess);
 

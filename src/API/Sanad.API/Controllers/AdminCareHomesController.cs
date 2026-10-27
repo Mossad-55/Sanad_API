@@ -46,6 +46,40 @@ public sealed class AdminCareHomesController(ISender sender, IDateTimeProvider c
     public async Task<IActionResult> Detail(Guid careHomeId, CancellationToken cancellationToken) =>
         ToActionResult(await sender.Send(new GetAdminCareHomeApplicationQuery(careHomeId), cancellationToken));
 
+    // Additive 2026-10-27 document lifecycle surface: labeled list (default
+    // all) and history-only logical removal. The existing verify/reject/file
+    // routes and their authorization are unchanged.
+    [HttpGet("{careHomeId:guid}/documents")]
+    [ProducesResponseType(typeof(CareHomeDocumentListResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    public async Task<IActionResult> ListDocuments(
+        Guid careHomeId,
+        [FromQuery] string? view,
+        [FromQuery] CareHomeDocumentType? type,
+        [FromQuery] bool? isExpired,
+        CancellationToken cancellationToken) =>
+        ToActionResult(await sender.Send(
+            new GetAdminCareHomeDocumentsQuery(careHomeId, view, type, isExpired), cancellationToken));
+
+    [HttpDelete("{careHomeId:guid}/documents/{documentId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status409Conflict)]
+    [ProducesResponseType(typeof(ProblemDetails), StatusCodes.Status401Unauthorized)]
+    public async Task<IActionResult> RemoveDocument(
+        Guid careHomeId,
+        Guid documentId,
+        [FromQuery] int expectedVersion,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId))
+            return Unauthorized();
+        return ToActionResult(await sender.Send(
+            new RemoveAdminCareHomeDocumentCommand(actorUserId, careHomeId, expectedVersion, documentId),
+            cancellationToken));
+    }
+
     [HttpGet("{careHomeId:guid}/documents/{documentId:guid}/file")]
     [ProducesResponseType(typeof(FileStreamResult), StatusCodes.Status200OK)]
     public async Task<IActionResult> ReadPrivateDocument(Guid careHomeId, Guid documentId, CancellationToken cancellationToken)

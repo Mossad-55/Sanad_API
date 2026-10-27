@@ -14,6 +14,8 @@ The operational review and private-file routes in this guide are restricted to n
 
 Returns `200 OK` with the owner ID, nullable `ownerArabicName`/`ownerEnglishName` account display names (null when the identity is missing or anonymized; no phone is exposed), lifecycle status/version, submitted and approved revision IDs, ordered frozen/editable `revisions`, document metadata, and chronological `reviewHistory`. Each revision carries its ordered media metadata (`id`, `kind`, `position`, `contentType`, `length`, and a `uri` pointing at the Admin media file route below); storage keys are never serialized. Each history entry keeps its actor ID and ordering and adds nullable `actorArabicName`/`actorEnglishName` plus separately named `actorCurrentRoles` holding the actor's current account roles at read time (not the role held when the event occurred); missing or anonymized actors yield null enrichment. Unknown IDs return `404 CareHomes.Admin.ApplicationNotFound`. Document metadata contains IDs, type, revision, expiry, review state/reason, and timestamps; it does not expose the private storage key.
 
+Additive since 2026-10-27: each document in `documents` also carries `lifecycleView` (`current|pending|history`), `isExpired` (supplied expiry date before the current Cairo server date; independent of status, so a pending candidate with a past date reads expired), and `needsAction` (true only for the latest rejected pending candidate awaiting correction), and the payload carries `reviewTargetRevisionId` — the revision whose documents are the actionable candidate set (the submitted revision while under review, else the current editable revision). The array's existing newest-first ordering and total membership are unchanged apart from logically removed rows disappearing (see the removal section below).
+
 ## Read a private document
 
 `GET /api/v1/admin/care-homes/{careHomeId}/documents/{documentId}/file`
@@ -43,6 +45,45 @@ Verification requires an expiry date or explicit `confirmNonExpiring: true`; a g
 Rejection requires a reason and returns the updated detail. Review and document
 rejection reasons accept at most 1000 characters each (existing domain rule,
 unchanged). Both document actions return `409 CareHomes.Admin.Conflict` when `expectedVersion` is stale, `400 CareHomes.Admin.InvalidOperation` for an invalid state, and `400 CareHomes.Admin.DocumentNotFound` for a missing document. Authentication/authorization failures are `401/403`.
+
+## Document views list and history removal
+
+`GET /api/v1/admin/care-homes/{careHomeId}/documents`
+
+The same items as the detail `documents` array as a labeled list:
+`{ view, type, isExpired, totalCount, items[] }`, newest-first. The default
+`view` is `all`; optional `view=current|pending|history`, `type` (1–4), and
+`isExpired=true|false` filters are accepted. Unknown `view` values return
+`400 CareHomes.Document.InvalidView`; undefined `type` values return `400
+CareHomes.Document.InvalidType` — never a silent empty result. An unknown
+facility returns `404 CareHomes.Admin.ApplicationNotFound`. The meanings of
+`lifecycleView`/`isExpired`/`needsAction` are identical to the owner guide
+classification; the current document of each type protects the eligibility
+gate even when expired, and the latest rejected candidate stays `pending` with
+`needsAction: true`. When the newest document on the approved revision for a
+type is rejected or revoked (a legacy/stored-data state the classification
+explicitly supports; today's flow cannot author it), that type has **no
+current document** — older verified documents are never resurrected, and
+deleting the negative document from history does not restore one, so removal
+cannot unblock any eligibility gate.
+
+`DELETE /api/v1/admin/care-homes/{careHomeId}/documents/{documentId}?expectedVersion={version}`
+
+History-only logical removal (2026-10-27). The server recomputes the
+classification at mutation time; only `history`-classified documents are
+removable. The current effective document is protected even when expired, and
+active pending candidates — including the latest rejected candidate awaiting
+correction — are protected; both return `409 CareHomes.Document.NotRemovable`.
+Stale versions return `409 CareHomes.Admin.Conflict`; unknown documents return
+`404 CareHomes.Admin.DocumentNotFound`, and a repeat Delete of an
+already-removed owned document is idempotent: `204` again with no second audit
+write. Success is `204 No Content` with no body
+and no removed-user metadata exposure. Removal is logical only: the audit row
+and shared private file bytes are retained (nothing is physically deleted),
+the row disappears from the detail array, both document lists, and the file
+route once removed, clones never carry removed rows into new revisions, and
+direct verify/reject of a removed row fails closed instead of reanimating it.
+Files still referenced by live revisions keep working through their own IDs.
 
 ## Review the application
 

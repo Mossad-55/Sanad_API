@@ -413,7 +413,11 @@
                   "if (pm.response.code === 200) {",
                   "  const body = pm.response.json();",
                   "  const cert = (body.certificates || []).find(c => c.type === 1);",
-                  "  if (cert && cert.id) { pm.environment.set('certificateId', cert.id); }",
+                  "  if (cert && cert.id) {",
+                  "    pm.environment.set('certificateId', cert.id);",
+                  "    const version = (cert.versions || [])[0];",
+                  "    if (version && version.id) { pm.environment.set('certificateVersionId', version.id); }",
+                  "  }",
                   "}"
                 ]
               }
@@ -460,7 +464,7 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/certificates/{{certificateId}}/file",
-            "description": "Replaces a certificate file. A mandatory replacement resets review and can move an Active caregiver to PendingReview/Unavailable. Errors: 400 validation/storage failure, 401/403 auth, 404 Caregivers.Onboarding.CertificateNotFound for a non-empty unknown ID, 409 invalid certificate operation. Use only disposable local fixtures.",
+            "description": "Replaces a certificate file by appending a new Pending version; the previously approved file is retained as history (never deleted). If a valid approved current version exists the caregiver status/availability stay unchanged; otherwise a mandatory replacement forces PendingReview/Unavailable. Errors: 400 validation/storage failure, 401/403 auth, 404 Caregivers.Onboarding.CertificateNotFound for a non-empty unknown ID, 409 invalid certificate operation or Caregivers.Onboarding.CertificateConflict. Use only disposable local fixtures.",
             "body": {
               "mode": "formdata",
               "formdata": [
@@ -493,7 +497,49 @@
               }
             ],
             "url": "{{baseUrl}}/api/v1/caregiver/certificates/{{certificateId}}",
-            "description": "Removes only an Additional certificate; mandatory certificate removal returns 409 Caregivers.Onboarding.InvalidCertificateOperation. Success 200; 401/403 auth; 404 Caregivers.Onboarding.CertificateNotFound. The stored private file is deleted."
+            "description": "Logically removes only an Additional certificate; mandatory certificate removal returns 409 Caregivers.Onboarding.InvalidCertificateOperation. Success 200; 401/403 auth; 404 Caregivers.Onboarding.CertificateNotFound. The row and every version file are retained for audit: the qualification leaves certificates[], appears in removedCertificates[], is excluded from discovery, and frees its Additional slot."
+          }
+        },
+        {
+          "name": "Download certificate file (current version)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/certificates/{{certificateId}}/file",
+            "description": "Streams the effective snapshot version's stored scan for the authenticated owner (the approved current version, else the live pending candidate, else the newest retained upload after an initial rejection). That version is protected from removal, so a removed key is never served. No storage key is exposed. Errors: 401/403 auth; 404 Caregivers.Onboarding.NotFound (no profile); 404 Caregivers.Onboarding.CertificateNotFound (unknown/non-owned/tombstoned certificate); 404 Storage.File.NotFound."
+          }
+        },
+        {
+          "name": "Download certificate version file",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/certificates/{{certificateId}}/versions/{{certificateVersionId}}/file",
+            "description": "Streams one named version's stored scan (the version id comes from certificates[].versions[].id). Set certificateVersionId by running the Practice License add request. Errors include 404 Caregivers.Onboarding.CertificateVersionNotFound when the version is unknown or has been logically removed (its bytes are retained but no longer downloadable)."
+          }
+        },
+        {
+          "name": "Remove certificate history version",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ caregiverToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/caregiver/certificates/{{certificateId}}/versions/{{certificateVersionId}}",
+            "description": "Logically removes one superseded history version of the caregiver's own qualification. 204 No Content; idempotent 204 when the version was already removed by this caregiver; 409 Caregivers.Onboarding.CertificateVersionNotRemovable when the version is protected (the current effective version even when expired, the live pending candidate, or the retained version that still backs the effective snapshot after an initial rejection — the profile's canRemove flag is authoritative); 404 Caregivers.Onboarding.CertificateNotFound / CertificateVersionNotFound for unknown or other-scope ids; 409 Caregivers.Onboarding.CertificateConflict on a concurrent classification change. The row and file are never physically deleted and the version can never be reanimated."
           }
         }
       ],

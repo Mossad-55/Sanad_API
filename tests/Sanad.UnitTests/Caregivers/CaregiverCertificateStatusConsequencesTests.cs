@@ -9,7 +9,7 @@ public sealed class CaregiverCertificateStatusConsequencesTests
     [Theory]
     [InlineData(CaregiverCertificateType.PracticeLicense)]
     [InlineData(CaregiverCertificateType.GraduationCertificate)]
-    public void UpdateCertificateFile_ShouldReturnActiveCaregiverToPendingReview_WhenMandatory(
+    public void UpdateCertificateFile_ShouldKeepActive_WhenMandatoryReplacementHasValidCurrent(
         CaregiverCertificateType certificateType)
     {
         Caregiver caregiver =
@@ -20,6 +20,9 @@ public sealed class CaregiverCertificateStatusConsequencesTests
                 caregiver,
                 certificateType);
 
+        string originalFilePath =
+            certificate.FilePath;
+
         caregiver.UpdateCertificateFile(
             certificate.Id,
             "certificates/replacement.jpg",
@@ -27,9 +30,69 @@ public sealed class CaregiverCertificateStatusConsequencesTests
             CaregiverTestData.CurrentDate,
             CaregiverTestData.CurrentUtc);
 
+        // The already-approved mandatory qualification stays effective: the
+        // caregiver is not knocked off the roster while the replacement is
+        // under review, and the effective columns still describe the approved
+        // scan (the replacement waits as a second, pending version).
         Assert.Equal(
-            CertificateVerificationStatus.Pending,
+            CertificateVerificationStatus.Verified,
             certificate.VerificationStatus);
+
+        Assert.Equal(
+            originalFilePath,
+            certificate.FilePath);
+
+        Assert.True(certificate.HasPendingReplacement);
+
+        Assert.Equal(
+            CaregiverStatus.Active,
+            caregiver.Status);
+
+        Assert.Equal(
+            CaregiverAvailability.Available,
+            caregiver.Availability);
+
+        Assert.Equal(
+            CaregiverTestData.CurrentUtc,
+            caregiver.UpdatedOnUtc);
+    }
+
+    [Theory]
+    [InlineData(CaregiverCertificateType.PracticeLicense)]
+    [InlineData(CaregiverCertificateType.GraduationCertificate)]
+    public void UpdateCertificateFile_ShouldReturnActiveCaregiverToPendingReview_WhenMandatoryCurrentIsExpired(
+        CaregiverCertificateType certificateType)
+    {
+        // The approved mandatory version is now expired, so nothing valid is in
+        // force: the mandatory-safety consequence must still apply, exactly as
+        // before the lifecycle change.
+        DateOnly expiredOn =
+            CaregiverTestData.CurrentDate;
+
+        Caregiver caregiver =
+            CreateActiveMedicalCaregiverWithExpiry(
+                certificateType,
+                expiredOn);
+
+        CaregiverCertificate certificate =
+            GetCertificate(
+                caregiver,
+                certificateType);
+
+        caregiver.UpdateCertificateFile(
+            certificate.Id,
+            "certificates/replacement.jpg",
+            expiryDate: null,
+            expiredOn.AddDays(1),
+            CaregiverTestData.CurrentUtc);
+
+        // The expired-but-approved version remains the honest effective label
+        // (never faked to Verified), and the caregiver is taken off the roster.
+        Assert.Equal(
+            CertificateVerificationStatus.Verified,
+            certificate.VerificationStatus);
+
+        Assert.True(certificate.HasPendingReplacement);
 
         Assert.Equal(
             CaregiverStatus.PendingReview,

@@ -1,4 +1,4 @@
-﻿using System.Text.Json;
+using System.Text.Json;
 using MediatR;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -63,7 +63,7 @@ public sealed class CareHomeReadbackTests
         db.Facilities.Add(facility);
         await db.SaveChangesAsync();
 
-        var handler = new GetMyCareHomeFacilityQueryHandler(db);
+        var handler = new GetMyCareHomeFacilityQueryHandler(db, CareHomeTestClockHost.Clock());
         var read = await handler.Handle(new GetMyCareHomeFacilityQuery(owner), default);
 
         Assert.True(read.IsSuccess);
@@ -89,7 +89,7 @@ public sealed class CareHomeReadbackTests
         db.Facilities.Add(facility);
         await db.SaveChangesAsync();
 
-        var read = await new GetMyCareHomeFacilityQueryHandler(db)
+        var read = await new GetMyCareHomeFacilityQueryHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new GetMyCareHomeFacilityQuery(owner), default);
 
         Assert.True(read.IsSuccess);
@@ -116,7 +116,7 @@ public sealed class CareHomeReadbackTests
         facility.Review(admin, facility.Version, CareHomeReviewAction.CorrectionsRequested, "Fix it", Now.AddMinutes(1), DateOnly.FromDateTime(Now));
         await db.SaveChangesAsync();
 
-        var needsCorrection = await new GetMyCareHomeFacilityQueryHandler(db)
+        var needsCorrection = await new GetMyCareHomeFacilityQueryHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new GetMyCareHomeFacilityQuery(owner), default);
         Assert.True(needsCorrection.IsSuccess);
         Assert.Equal(CareHomeStatus.NeedsCorrection, needsCorrection.Value.Status);
@@ -131,7 +131,7 @@ public sealed class CareHomeReadbackTests
         facility.Review(admin, facility.Version, CareHomeReviewAction.Rejected, "Rejected", Now.AddMinutes(3), DateOnly.FromDateTime(Now));
         await db.SaveChangesAsync();
 
-        var rejected = await new GetMyCareHomeFacilityQueryHandler(db)
+        var rejected = await new GetMyCareHomeFacilityQueryHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new GetMyCareHomeFacilityQuery(owner), default);
         Assert.True(rejected.IsSuccess);
         Assert.Equal(CareHomeStatus.Rejected, rejected.Value.Status);
@@ -155,7 +155,7 @@ public sealed class CareHomeReadbackTests
         db.Facilities.Add(facility);
         await db.SaveChangesAsync();
 
-        var approved = await new GetMyCareHomeFacilityQueryHandler(db)
+        var approved = await new GetMyCareHomeFacilityQueryHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new GetMyCareHomeFacilityQuery(owner), default);
         Assert.True(approved.IsSuccess);
         Assert.Equal(CareHomeStatus.Approved, approved.Value.Status);
@@ -167,7 +167,7 @@ public sealed class CareHomeReadbackTests
         editable.SaveDraft(owner, editable.Version, CareHomeFacilityTests.Draft() with { Address = "Updated address" }, Now.AddMinutes(3));
         await db.SaveChangesAsync();
 
-        var approvedWithDraft = await new GetMyCareHomeFacilityQueryHandler(db)
+        var approvedWithDraft = await new GetMyCareHomeFacilityQueryHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new GetMyCareHomeFacilityQuery(owner), default);
         Assert.True(approvedWithDraft.IsSuccess);
         Assert.Equal(CareHomeStatus.Approved, approvedWithDraft.Value.Status);
@@ -206,7 +206,7 @@ public sealed class CareHomeReadbackTests
             [reviewerId] = Display(reviewerId, "مراجع", "Reviewer Name", (int)AccountType.SupportAdmin)
         });
 
-        var detail = await new GetAdminCareHomeApplicationQueryHandler(db, sender)
+        var detail = await new GetAdminCareHomeApplicationQueryHandler(db, sender, CareHomeTestClockHost.Clock())
             .Handle(new GetAdminCareHomeApplicationQuery(facility.Id.Value), default);
 
         Assert.True(detail.IsSuccess);
@@ -244,7 +244,7 @@ public sealed class CareHomeReadbackTests
         db.Facilities.Add(facility);
         await db.SaveChangesAsync();
 
-        var detail = await new GetAdminCareHomeApplicationQueryHandler(db, new DisplayInfoSender())
+        var detail = await new GetAdminCareHomeApplicationQueryHandler(db, new DisplayInfoSender(), CareHomeTestClockHost.Clock())
             .Handle(new GetAdminCareHomeApplicationQuery(facility.Id.Value), default);
 
         Assert.True(detail.IsSuccess);
@@ -278,7 +278,7 @@ public sealed class CareHomeReadbackTests
                 (int)AccountType.SuperAdmin, (int)AccountType.SupportAdmin)
         });
 
-        var detail = await new GetAdminCareHomeApplicationQueryHandler(db, sender)
+        var detail = await new GetAdminCareHomeApplicationQueryHandler(db, sender, CareHomeTestClockHost.Clock())
             .Handle(new GetAdminCareHomeApplicationQuery(facility.Id.Value), default);
 
         Assert.True(detail.IsSuccess);
@@ -440,7 +440,7 @@ public sealed class CareHomeReadbackTests
         db.Facilities.Add(facility);
         await db.SaveChangesAsync();
 
-        var handler = new GetAdminCareHomeApplicationQueryHandler(db, new ForwardingSender(identity));
+        var handler = new GetAdminCareHomeApplicationQueryHandler(db, new ForwardingSender(identity), CareHomeTestClockHost.Clock());
         var detail = await handler.Handle(new GetAdminCareHomeApplicationQuery(facility.Id.Value), default);
 
         Assert.True(detail.IsSuccess);
@@ -497,7 +497,7 @@ public sealed class CareHomeReadbackTests
         db.Facilities.Add(facility);
         await db.SaveChangesAsync();
 
-        var handler = new GetAdminCareHomeApplicationQueryHandler(db, new ForwardingSender(identity));
+        var handler = new GetAdminCareHomeApplicationQueryHandler(db, new ForwardingSender(identity), CareHomeTestClockHost.Clock());
         var before = await handler.Handle(new GetAdminCareHomeApplicationQuery(facility.Id.Value), default);
         Assert.True(before.IsSuccess);
         Assert.Equal(["SupportAdmin"], before.Value.ReviewHistory.Single().ActorCurrentRoles);

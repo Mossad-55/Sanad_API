@@ -84,6 +84,15 @@ public static class ResultProblemDetailsMapper
             ["CareHomes.Document.FacilityNotFound"] = 404,
             ["CareHomes.Document.Conflict"] = 409,
             ["CareHomes.Document.InvalidContent"] = 400,
+            // Document lifecycle (2026-10-27): scoped history removal + list
+            // validation. An unknown/removed document is 404 (no
+            // cross-facility enumeration), protecting the effective current
+            // document or an active candidate is 409, and unsupported
+            // list filters are coded 400s rather than silent empties.
+            ["CareHomes.Document.DocumentNotFound"] = 404,
+            ["CareHomes.Document.NotRemovable"] = 409,
+            ["CareHomes.Document.InvalidView"] = 400,
+            ["CareHomes.Document.InvalidType"] = 400,
             ["CareHomes.Admin.InvalidQuery"] = 400,
             ["CareHomes.Admin.ApplicationNotFound"] = 404,
             ["CareHomes.Admin.DocumentNotFound"] = 404,
@@ -248,6 +257,9 @@ public static class ResultProblemDetailsMapper
             ["Caregivers.Onboarding.InvalidSchedule"] = 409,
             ["Caregivers.Onboarding.NotActive"] = 409,
             ["Caregivers.Onboarding.CertificateNotFound"] = 404,
+            ["Caregivers.Onboarding.CertificateVersionNotFound"] = 404,
+            ["Caregivers.Onboarding.CertificateVersionNotRemovable"] = 409,
+            ["Caregivers.Onboarding.CertificateConflict"] = 409,
             ["Caregivers.Onboarding.InvalidCertificateOperation"] = 409,
             ["Caregivers.Onboarding.InvalidState"] = 409,
             ["Caregivers.Onboarding.CaregiverNotFound"] = 404,

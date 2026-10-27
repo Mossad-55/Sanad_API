@@ -91,7 +91,7 @@ public sealed class AddCertificateCommandHandler
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
-        return caregiver.ToProfileResponse();
+        return caregiver.ToProfileResponse(request.CurrentDate);
     }
 }
 
@@ -122,18 +122,22 @@ public sealed class ReplaceCertificateFileCommandValidator
     }
 }
 
+/// <summary>
+/// Appends a replacement upload as a new pending version. The previous scan is
+/// retained as history for audit (never deleted); only the effective current
+/// version keeps backing the caregiver's qualification until the replacement is
+/// approved. When a valid approved mandatory version is already in force, the
+/// caregiver's status and availability are left unchanged.
+/// </summary>
 public sealed class ReplaceCertificateFileCommandHandler
     : ICommandHandler<ReplaceCertificateFileCommand, CaregiverProfileResponse>
 {
     private readonly ICaregiversDbContext _dbContext;
-    private readonly IFileStorage _fileStorage;
 
     public ReplaceCertificateFileCommandHandler(
-        ICaregiversDbContext dbContext,
-        IFileStorage fileStorage)
+        ICaregiversDbContext dbContext)
     {
         _dbContext = dbContext;
-        _fileStorage = fileStorage;
     }
 
     public async Task<Result<CaregiverProfileResponse>> Handle(
@@ -152,21 +156,17 @@ public sealed class ReplaceCertificateFileCommandHandler
             return OnboardingErrors.NotFound;
         }
 
-        if (!caregiver.Certificates.Any(
-                c => c.Id == request.CertificateId))
+        CaregiverCertificate? certificate =
+            caregiver.Certificates
+                .SingleOrDefault(c => c.Id == request.CertificateId);
+
+        if (certificate is null || certificate.IsRemoved)
         {
             return OnboardingErrors.CertificateNotFound;
         }
 
-        string? previousFileKey =
-            caregiver.Certificates
-                .Single(c => c.Id == request.CertificateId)
-                .FilePath;
-
         try
         {
-            // Mandatory replacement flips an Active caregiver back to
-            // PendingReview and resets the certificate to Pending.
             caregiver.UpdateCertificateFile(
                 request.CertificateId,
                 request.FileKey,
@@ -179,22 +179,20 @@ public sealed class ReplaceCertificateFileCommandHandler
             return OnboardingErrors.InvalidCertificateOperation;
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        // Best-effort orphan cleanup of the replaced scan.
-        if (!string.IsNullOrWhiteSpace(previousFileKey) &&
-            previousFileKey != request.FileKey)
+        try
         {
-            await _fileStorage.DeleteAsync(
-                previousFileKey,
-                cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return OnboardingErrors.CertificateConflict;
         }
 
-        return caregiver.ToProfileResponse();
+        return caregiver.ToProfileResponse(request.CurrentDate);
     }
 }
 
-// ------------------- Self-service: remove ----------------------------
+// ------------------- Self-service: remove whole ----------------------
 
 public sealed record RemoveCertificateCommand(
     UserId UserId,
@@ -212,18 +210,21 @@ public sealed class RemoveCertificateCommandValidator
     }
 }
 
+/// <summary>
+/// Logically removes (tombstones) one whole Additional qualification. The row
+/// and its version files stay retained for authorized history; only the active
+/// profile, the Additional cap and public discovery drop it. Mandatory
+/// qualifications still cannot be removed.
+/// </summary>
 public sealed class RemoveCertificateCommandHandler
     : ICommandHandler<RemoveCertificateCommand, CaregiverProfileResponse>
 {
     private readonly ICaregiversDbContext _dbContext;
-    private readonly IFileStorage _fileStorage;
 
     public RemoveCertificateCommandHandler(
-        ICaregiversDbContext dbContext,
-        IFileStorage fileStorage)
+        ICaregiversDbContext dbContext)
     {
         _dbContext = dbContext;
-        _fileStorage = fileStorage;
     }
 
     public async Task<Result<CaregiverProfileResponse>> Handle(
@@ -251,12 +252,8 @@ public sealed class RemoveCertificateCommandHandler
             return OnboardingErrors.CertificateNotFound;
         }
 
-        string fileKey = certificate.FilePath;
-
         try
         {
-            // Mandatory certificates (Practice License / Graduation)
-            // cannot be removed — replace the file instead.
             caregiver.RemoveCertificate(request.CertificateId);
         }
         catch (DomainException)
@@ -264,16 +261,216 @@ public sealed class RemoveCertificateCommandHandler
             return OnboardingErrors.InvalidCertificateOperation;
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        if (!string.IsNullOrWhiteSpace(fileKey))
+        try
         {
-            await _fileStorage.DeleteAsync(
-                fileKey,
-                cancellationToken);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return OnboardingErrors.CertificateConflict;
         }
 
         return caregiver.ToProfileResponse();
+    }
+}
+
+// ------------- Self/Admin: remove one history version ----------------
+
+public sealed record RemoveOwnCertificateVersionCommand(
+    UserId UserId,
+    CaregiverCertificateId CertificateId,
+    CaregiverCertificateVersionId VersionId,
+    DateTime UtcNow)
+    : ICommand;
+
+public sealed class RemoveOwnCertificateVersionCommandValidator
+    : AbstractValidator<RemoveOwnCertificateVersionCommand>
+{
+    public RemoveOwnCertificateVersionCommandValidator()
+    {
+        RuleFor(c => c.UserId).NotEqual(UserId.Empty);
+        RuleFor(c => c.CertificateId)
+            .NotEqual(CaregiverCertificateId.Empty);
+        RuleFor(c => c.VersionId)
+            .NotEqual(CaregiverCertificateVersionId.Empty);
+    }
+}
+
+public sealed class RemoveOwnCertificateVersionCommandHandler
+    : ICommandHandler<RemoveOwnCertificateVersionCommand>
+{
+    private readonly ICaregiversDbContext _dbContext;
+
+    public RemoveOwnCertificateVersionCommandHandler(
+        ICaregiversDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public Task<Result> Handle(
+        RemoveOwnCertificateVersionCommand request,
+        CancellationToken cancellationToken) =>
+        SharedCertificateVersionRemoval.HandleAsync(
+            _dbContext,
+            request.UserId,
+            request.UserId,
+            caregiverId: null,
+            request.CertificateId,
+            request.VersionId,
+            request.UtcNow,
+            cancellationToken);
+}
+
+public sealed record RemoveAdminCertificateVersionCommand(
+    CaregiverId CaregiverId,
+    UserId ActorUserId,
+    CaregiverCertificateId CertificateId,
+    CaregiverCertificateVersionId VersionId,
+    DateTime UtcNow)
+    : ICommand;
+
+public sealed class RemoveAdminCertificateVersionCommandValidator
+    : AbstractValidator<RemoveAdminCertificateVersionCommand>
+{
+    public RemoveAdminCertificateVersionCommandValidator()
+    {
+        RuleFor(c => c.CaregiverId).NotEqual(CaregiverId.Empty);
+        RuleFor(c => c.ActorUserId).NotEqual(UserId.Empty);
+        RuleFor(c => c.CertificateId)
+            .NotEqual(CaregiverCertificateId.Empty);
+        RuleFor(c => c.VersionId)
+            .NotEqual(CaregiverCertificateVersionId.Empty);
+    }
+}
+
+public sealed class RemoveAdminCertificateVersionCommandHandler
+    : ICommandHandler<RemoveAdminCertificateVersionCommand>
+{
+    private readonly ICaregiversDbContext _dbContext;
+
+    public RemoveAdminCertificateVersionCommandHandler(
+        ICaregiversDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public Task<Result> Handle(
+        RemoveAdminCertificateVersionCommand request,
+        CancellationToken cancellationToken) =>
+        SharedCertificateVersionRemoval.HandleAsync(
+            _dbContext,
+            ownerUserId: null,
+            request.ActorUserId,
+            request.CaregiverId,
+            request.CertificateId,
+            request.VersionId,
+            request.UtcNow,
+            cancellationToken);
+}
+
+/// <summary>
+/// Shared history-version removal: resolves the caregiver by the authenticated
+/// owner (self) or by id (admin), re-derives the version classification on the
+/// freshly loaded aggregate, and refuses (409) any current / pending / unknown
+/// target. A repeated removal of an already-removed version is an idempotent
+/// success; a version that is not part of this caregiver's qualification is a
+/// 404 (no existence leak across scopes). The removal is attributed to the
+/// explicit acting user: the caregiver's own user id for a self removal, the
+/// authenticated admin's user id for an admin removal — never the client body.
+/// </summary>
+internal static class SharedCertificateVersionRemoval
+{
+    internal static async Task<Result> HandleAsync(
+        ICaregiversDbContext dbContext,
+        UserId? ownerUserId,
+        UserId actorUserId,
+        CaregiverId? caregiverId,
+        CaregiverCertificateId certificateId,
+        CaregiverCertificateVersionId versionId,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        Caregiver? caregiver =
+            ownerUserId.HasValue
+                ? await dbContext.Caregivers
+                    .Include(c => c.Certificates)
+                    .SingleOrDefaultAsync(
+                        c => c.UserId == ownerUserId.Value,
+                        cancellationToken)
+                : await dbContext.Caregivers
+                    .Include(c => c.Certificates)
+                    .SingleOrDefaultAsync(
+                        c => c.Id == caregiverId!.Value,
+                        cancellationToken);
+
+        if (caregiver is null)
+        {
+            return Result.Failure(OnboardingErrors.NotFound);
+        }
+
+        CaregiverCertificate? certificate =
+            caregiver.Certificates
+                .SingleOrDefault(c => c.Id == certificateId);
+
+        if (certificate is null)
+        {
+            return Result.Failure(
+                OnboardingErrors.CertificateNotFound);
+        }
+
+        CaregiverCertificateVersion? version =
+            certificate.Versions
+                .SingleOrDefault(candidate => candidate.Id == versionId);
+
+        if (version is null)
+        {
+            return Result.Failure(
+                OnboardingErrors.CertificateVersionNotFound);
+        }
+
+        // Idempotent: a repeated removal of an already-removed version is a
+        // success and changes nothing.
+        if (version.IsRemoved)
+        {
+            return Result.Success();
+        }
+
+        // Only genuinely superseded history may be removed. The live current
+        // effective version, the pending review candidate and the version still
+        // backing the effective snapshot (an initial rejection with no approved
+        // current) are all refused with a stable 409, so the displayed status
+        // and the legacy snapshot download never point at a removed file.
+        if (!certificate.CanRemoveVersion(version))
+        {
+            return Result.Failure(
+                OnboardingErrors.CertificateVersionNotRemovable);
+        }
+
+        try
+        {
+            caregiver.RemoveCertificateVersion(
+                certificateId,
+                versionId,
+                actorUserId,
+                utcNow);
+        }
+        catch (DomainException)
+        {
+            return Result.Failure(
+                OnboardingErrors.CertificateVersionNotRemovable);
+        }
+
+        try
+        {
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result.Failure(
+                OnboardingErrors.CertificateConflict);
+        }
+
+        return Result.Success();
     }
 }
 
@@ -281,7 +478,9 @@ public sealed class RemoveCertificateCommandHandler
 
 public sealed record VerifyCertificateCommand(
     CaregiverId CaregiverId,
-    CaregiverCertificateId CertificateId)
+    CaregiverCertificateId CertificateId,
+    CaregiverCertificateVersionId? VersionId = null,
+    DateTime? UtcNow = null)
     : ICommand;
 
 public sealed class VerifyCertificateCommandHandler
@@ -312,34 +511,107 @@ public sealed class VerifyCertificateCommandHandler
                 OnboardingErrors.NotFound);
         }
 
-        if (!caregiver.Certificates.Any(
-                c => c.Id == request.CertificateId))
+        CaregiverCertificate? certificate =
+            caregiver.Certificates
+                .SingleOrDefault(c => c.Id == request.CertificateId);
+
+        if (certificate is null)
         {
             return Result.Failure(
                 OnboardingErrors.CertificateNotFound);
         }
 
+        DateTime utcNow = request.UtcNow ?? DateTime.UtcNow;
+
         try
         {
-            // Only a Pending certificate can be Verified.
-            caregiver.VerifyCertificate(request.CertificateId);
+            // The WHOLE promotion runs in one transaction committed exactly
+            // once: the lazy legacy materialization (whose INSERT lands in the
+            // first save), the demote (save 1) and the promote (save 2). If the
+            // second save, a concurrent writer or cancellation fails, the
+            // demotion rolls back with it, so the qualification keeps its
+            // previous approved current version instead of being left with zero
+            // current versions and a still-Verified row.
+            return await _dbContext.ExecuteInTransactionAsync(
+                async operationToken =>
+                {
+                    // The reviewed version is the explicitly named one or the
+                    // newest live pending version. The classification is
+                    // recomputed on the freshly loaded aggregate, never trusted
+                    // from the client. A legacy row is materialized first so its
+                    // pending version has a stable identity.
+                    caregiver.EnsureCertificateVersionsMaterialized(
+                        request.CertificateId);
+
+                    CaregiverCertificateVersion? target =
+                        request.VersionId.HasValue
+                            ? certificate.Versions.SingleOrDefault(
+                                version =>
+                                    version.Id == request.VersionId.Value)
+                            : certificate.PendingVersion;
+
+                    if (target is null)
+                    {
+                        // An explicit but unknown version id is a 404; the
+                        // legacy no-version route keeps its historical 409 when
+                        // nothing is pending to verify (pre-versioning parity).
+                        return Result.Failure(
+                            request.VersionId.HasValue
+                                ? OnboardingErrors.CertificateVersionNotFound
+                                : OnboardingErrors
+                                    .InvalidCertificateOperation);
+                    }
+
+                    if (target.IsRemoved || target.IsHistory ||
+                        target.VerificationStatus !=
+                            CertificateVerificationStatus.Pending)
+                    {
+                        return Result.Failure(
+                            OnboardingErrors.InvalidCertificateOperation);
+                    }
+
+                    // The demote is persisted before the promote so the
+                    // partial-unique "one current version" index never sees two
+                    // current rows; a concurrent edit loses the Revision race
+                    // and both saves share one commit.
+                    caregiver.BeginCertificatePromotion(
+                        request.CertificateId,
+                        target.Id,
+                        utcNow);
+
+                    await _dbContext.SaveChangesAsync(operationToken);
+
+                    caregiver.CompleteCertificatePromotion(
+                        request.CertificateId,
+                        target.Id,
+                        utcNow);
+
+                    await _dbContext.SaveChangesAsync(operationToken);
+
+                    return Result.Success();
+                },
+                cancellationToken);
         }
         catch (DomainException)
         {
             return Result.Failure(
                 OnboardingErrors.InvalidCertificateOperation);
         }
-
-        await _dbContext.SaveChangesAsync(cancellationToken);
-
-        return Result.Success();
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result.Failure(
+                OnboardingErrors.CertificateConflict);
+        }
     }
 }
 
 public sealed record RejectCertificateCommand(
     CaregiverId CaregiverId,
     CaregiverCertificateId CertificateId,
-    string Reason)
+    string Reason,
+    CaregiverCertificateVersionId? VersionId = null,
+    DateOnly? CurrentDate = null,
+    DateTime? UtcNow = null)
     : ICommand;
 
 public sealed class RejectCertificateCommandValidator
@@ -384,20 +656,63 @@ public sealed class RejectCertificateCommandHandler
                 OnboardingErrors.NotFound);
         }
 
-        if (!caregiver.Certificates.Any(
-                c => c.Id == request.CertificateId))
+        CaregiverCertificate? certificate =
+            caregiver.Certificates
+                .SingleOrDefault(c => c.Id == request.CertificateId);
+
+        if (certificate is null)
         {
             return Result.Failure(
                 OnboardingErrors.CertificateNotFound);
         }
 
+        // A legacy row is materialized first so its pending version has a
+        // stable identity before the reject is classified.
+        caregiver.EnsureCertificateVersionsMaterialized(
+            request.CertificateId);
+
+        CaregiverCertificateVersion? target =
+            request.VersionId.HasValue
+                ? certificate.Versions.SingleOrDefault(
+                    version => version.Id == request.VersionId.Value)
+                : certificate.PendingVersion;
+
+        if (target is null)
+        {
+            // An explicit but unknown version id is a 404; the legacy
+            // no-version route keeps its historical 409 when nothing is pending
+            // to reject (pre-versioning parity).
+            return Result.Failure(
+                request.VersionId.HasValue
+                    ? OnboardingErrors.CertificateVersionNotFound
+                    : OnboardingErrors.InvalidCertificateOperation);
+        }
+
+        if (target.IsRemoved || target.IsHistory ||
+            target.VerificationStatus !=
+                CertificateVerificationStatus.Pending)
+        {
+            return Result.Failure(
+                OnboardingErrors.InvalidCertificateOperation);
+        }
+
+        DateTime utcNow = request.UtcNow ?? DateTime.UtcNow;
+
+        DateOnly currentDate =
+            request.CurrentDate ??
+            CaregiverCertificateClock.ToCairoDate(utcNow);
+
         try
         {
-            // Only a Pending certificate can be Rejected; mandatory
-            // rejection also forces the caregiver Unavailable.
+            // Rejecting a pending replacement keeps any previously approved
+            // mandatory qualification in force; only when no valid approved
+            // version remains does the mandatory-safety consequence apply.
             caregiver.RejectCertificate(
                 request.CertificateId,
-                request.Reason.Trim());
+                request.VersionId,
+                request.Reason.Trim(),
+                currentDate,
+                utcNow);
         }
         catch (DomainException)
         {
@@ -405,7 +720,15 @@ public sealed class RejectCertificateCommandHandler
                 OnboardingErrors.InvalidCertificateOperation);
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result.Failure(
+                OnboardingErrors.CertificateConflict);
+        }
 
         return Result.Success();
     }
@@ -460,8 +783,11 @@ public sealed class RevokeCertificateCommandHandler
                 OnboardingErrors.NotFound);
         }
 
-        if (!caregiver.Certificates.Any(
-                c => c.Id == request.CertificateId))
+        CaregiverCertificate? certificate =
+            caregiver.Certificates
+                .SingleOrDefault(c => c.Id == request.CertificateId);
+
+        if (certificate is null)
         {
             return Result.Failure(
                 OnboardingErrors.CertificateNotFound);
@@ -469,7 +795,7 @@ public sealed class RevokeCertificateCommandHandler
 
         try
         {
-            // Only a Verified certificate can be Revoked; revoking a
+            // Only a Verified current version can be Revoked; revoking a
             // mandatory certificate suspends an Active caregiver.
             caregiver.RevokeCertificate(
                 request.CertificateId,
@@ -482,22 +808,41 @@ public sealed class RevokeCertificateCommandHandler
                 OnboardingErrors.InvalidCertificateOperation);
         }
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        try
+        {
+            await _dbContext.SaveChangesAsync(cancellationToken);
+        }
+        catch (DbUpdateConcurrencyException)
+        {
+            return Result.Failure(
+                OnboardingErrors.CertificateConflict);
+        }
 
         return Result.Success();
     }
 }
 
-// ---------------------- Admin: file download --------------------------
+// ---------------------- File download ---------------------------------
 
 public sealed record CertificateFileContent(
     string FileName,
     string ContentType,
     Stream Content);
 
+/// <summary>
+/// Streams one stored certificate scan. The admin review surface resolves the
+/// caregiver by id; the self-service surface resolves it by the authenticated
+/// owner's user id. When <see cref="VersionId"/> is supplied the named
+/// version's scan is served (after refusing a removed version); otherwise the
+/// effective snapshot version (approved current, else live pending, else the
+/// newest retained candidate) is served for backward compatibility, and that
+/// version is protected from removal so a removed key is never served.
+/// </summary>
 public sealed record GetCertificateFileQuery(
     CaregiverId CaregiverId,
-    CaregiverCertificateId CertificateId)
+    CaregiverCertificateId CertificateId,
+    CaregiverCertificateVersionId? VersionId = null,
+    UserId? OwnerUserId = null)
     : IQuery<CertificateFileContent>;
 
 public sealed class GetCertificateFileQueryHandler
@@ -519,12 +864,19 @@ public sealed class GetCertificateFileQueryHandler
         CancellationToken cancellationToken)
     {
         Caregiver? caregiver =
-            await _dbContext.Caregivers
-                .AsNoTracking()
-                .Include(c => c.Certificates)
-                .SingleOrDefaultAsync(
-                    c => c.Id == request.CaregiverId,
-                    cancellationToken);
+            request.OwnerUserId.HasValue
+                ? await _dbContext.Caregivers
+                    .AsNoTracking()
+                    .Include(c => c.Certificates)
+                    .SingleOrDefaultAsync(
+                        c => c.UserId == request.OwnerUserId.Value,
+                        cancellationToken)
+                : await _dbContext.Caregivers
+                    .AsNoTracking()
+                    .Include(c => c.Certificates)
+                    .SingleOrDefaultAsync(
+                        c => c.Id == request.CaregiverId,
+                        cancellationToken);
 
         if (caregiver is null)
         {
@@ -535,14 +887,52 @@ public sealed class GetCertificateFileQueryHandler
             caregiver.Certificates
                 .SingleOrDefault(c => c.Id == request.CertificateId);
 
-        if (certificate is null)
+        // A tombstoned qualification is invisible to its owner; an admin
+        // audit read may still resolve it.
+        if (certificate is null ||
+            (request.OwnerUserId.HasValue && certificate.IsRemoved))
         {
             return OnboardingErrors.CertificateNotFound;
         }
 
+        string? fileKey;
+
+        if (request.VersionId.HasValue)
+        {
+            CaregiverCertificateVersion? version =
+                certificate.Versions.SingleOrDefault(
+                    candidate => candidate.Id == request.VersionId.Value);
+
+            // A removed (or unknown) version is never downloadable.
+            if (version is null || version.IsRemoved)
+            {
+                return OnboardingErrors.CertificateVersionNotFound;
+            }
+
+            fileKey = version.FilePath;
+        }
+        else
+        {
+            // The legacy no-version download resolves the version that backs
+            // the effective snapshot (the approved current, else the live
+            // pending candidate, else the newest retained candidate). That
+            // version is protected from removal, so this key is never a removed
+            // version's key; a legacy row with no materialized version serves
+            // its own stored row key.
+            CaregiverCertificateVersion? effective =
+                certificate.EffectiveSnapshotVersion;
+
+            if (effective is not null && effective.IsRemoved)
+            {
+                return OnboardingErrors.CertificateVersionNotFound;
+            }
+
+            fileKey = effective?.FilePath ?? certificate.FilePath;
+        }
+
         Result<PrivateFileContent> file =
             await _fileStorage.OpenReadAsync(
-                certificate.FilePath,
+                fileKey,
                 cancellationToken);
 
         if (file.IsFailure)

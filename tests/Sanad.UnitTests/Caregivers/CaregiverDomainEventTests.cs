@@ -256,7 +256,7 @@ public sealed class CaregiverDomainEventTests
     }
 
     [Fact]
-    public void ActiveMandatoryCertificateReplacement_ShouldRaiseReviewRequiredEvent()
+    public void ActiveMandatoryCertificateReplacement_KeepsApprovedVersionEffective_WithoutReviewRequired()
     {
         Caregiver caregiver =
             CreateActiveMedical();
@@ -265,6 +265,9 @@ public sealed class CaregiverDomainEventTests
             GetCertificate(
                 caregiver,
                 CaregiverCertificateType.PracticeLicense);
+
+        CaregiverAvailability availabilityBeforeReplacement =
+            caregiver.Availability;
 
         caregiver.ClearDomainEvents();
 
@@ -276,20 +279,32 @@ public sealed class CaregiverDomainEventTests
             CaregiverTestData.CurrentUtc
                 .AddHours(1));
 
-        CaregiverReviewRequiredDomainEvent domainEvent =
-            Assert.Single(
-                caregiver.DomainEvents
-                    .OfType<
-                        CaregiverReviewRequiredDomainEvent>());
+        // Approved 2026-10-27 contract: the valid approved mandatory
+        // certificate REMAINS the effective current version while a
+        // replacement is pending, so the caregiver is not suspended and is
+        // not forced back into the review pipeline. The new upload is only
+        // recorded as the pending candidate for targeted version review.
+        Assert.Empty(
+            caregiver.DomainEvents
+                .OfType<
+                    CaregiverReviewRequiredDomainEvent>());
 
         Assert.Equal(
-            caregiver.Id,
-            domainEvent.CaregiverId);
+            CaregiverStatus.Active,
+            caregiver.Status);
 
         Assert.Equal(
-            CaregiverReviewTrigger
-                .MandatoryCertificateReplaced,
-            domainEvent.Trigger);
+            availabilityBeforeReplacement,
+            caregiver.Availability);
+
+        Assert.True(
+            practiceLicense.HasPendingReplacement);
+
+        Assert.Equal(
+            CertificateVerificationStatus.Verified,
+            practiceLicense
+                .EffectiveSnapshotVersion!
+                .VerificationStatus);
     }
 
     [Fact]

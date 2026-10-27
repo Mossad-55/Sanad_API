@@ -132,7 +132,7 @@ public sealed class GetCaregiverAdminDetailQueryHandler
             return OnboardingErrors.CaregiverNotFound;
         }
 
-        return caregiver.ToProfileResponse();
+        return caregiver.ToAdminProfileResponse();
     }
 }
 

@@ -37,11 +37,14 @@ public sealed class CareHomeReadbackPostgresTests
 
     private const string ExpectedDatabase = "SanadFur04VerifyDb";
 
-    private const string ExpectedCareHomesHead = "20261022213000_AddCareHomeRefundPolicySnapshots";
+    private const string ExpectedCareHomesHead = "20261027120000_AddCareHomeDocumentHistoryRemoval";
 
     private const string ExpectedIdentityHead = "20261022094500_AddPartnerContactOptionalFields";
 
-    private const int ExpectedCareHomesMigrationCount = 18;
+    // 2026-10-27 release fact-check: all 20 committed CareHomes migrations
+    // are recorded (including the empty-Up 20261003222617 — the old comment
+    // claiming it is not recorded was stale), plus 17 Identity rows.
+    private const int ExpectedCareHomesMigrationCount = 20;
 
     private const int ExpectedIdentityMigrationCount = 17;
 
@@ -99,7 +102,7 @@ public sealed class CareHomeReadbackPostgresTests
             }
 
             await using var readDb = CreateCareHomesDb(connectionString);
-            var read = await new GetMyCareHomeFacilityQueryHandler(readDb)
+            var read = await new GetMyCareHomeFacilityQueryHandler(readDb, CareHomeTestClockHost.Clock())
                 .Handle(new GetMyCareHomeFacilityQuery(owner), default);
 
             Assert.True(read.IsSuccess);
@@ -147,7 +150,7 @@ public sealed class CareHomeReadbackPostgresTests
             }
 
             await using var readDb = CreateCareHomesDb(connectionString);
-            var read = await new GetMyCareHomeFacilityQueryHandler(readDb)
+            var read = await new GetMyCareHomeFacilityQueryHandler(readDb, CareHomeTestClockHost.Clock())
                 .Handle(new GetMyCareHomeFacilityQuery(owner), default);
 
             Assert.True(read.IsSuccess);
@@ -203,7 +206,7 @@ public sealed class CareHomeReadbackPostgresTests
 
             await using var readDb = CreateCareHomesDb(connectionString);
             var sender = new ForwardingSender(CreateIdentityDb(connectionString));
-            var detail = await new GetAdminCareHomeApplicationQueryHandler(readDb, sender)
+            var detail = await new GetAdminCareHomeApplicationQueryHandler(readDb, sender, CareHomeTestClockHost.Clock())
                 .Handle(new GetAdminCareHomeApplicationQuery(facilityIds[0].Value), default);
 
             Assert.True(detail.IsSuccess);
@@ -446,7 +449,7 @@ public sealed class CareHomeReadbackPostgresTests
 
             await using var readDb = CreateCareHomesDb(connectionString);
             await using var sender = new ForwardingSender(CreateIdentityDb(connectionString));
-            var before = await new GetAdminCareHomeApplicationQueryHandler(readDb, sender)
+            var before = await new GetAdminCareHomeApplicationQueryHandler(readDb, sender, CareHomeTestClockHost.Clock())
                 .Handle(new GetAdminCareHomeApplicationQuery(facilityIds[0].Value), default);
 
             Assert.True(before.IsSuccess);
@@ -468,7 +471,7 @@ public sealed class CareHomeReadbackPostgresTests
                 await identityDb.SaveChangesAsync();
             }
 
-            var after = await new GetAdminCareHomeApplicationQueryHandler(readDb, sender)
+            var after = await new GetAdminCareHomeApplicationQueryHandler(readDb, sender, CareHomeTestClockHost.Clock())
                 .Handle(new GetAdminCareHomeApplicationQuery(facilityIds[0].Value), default);
             Assert.True(after.IsSuccess);
             Assert.Equal(["SuperAdmin"], after.Value.ReviewHistory.Single(x => x.ActorUserId == reviewerId).ActorCurrentRoles);

@@ -134,6 +134,11 @@ public sealed class CaregiverDiscoveryFilterTests
             CancellationToken cancellationToken = default) =>
             _inner.GetTopRatedCaregiversAsync(cancellationToken);
 
+        public Task<TResult> ExecuteInTransactionAsync<TResult>(
+            Func<CancellationToken, Task<TResult>> operation,
+            CancellationToken cancellationToken = default) =>
+            _inner.ExecuteInTransactionAsync(operation, cancellationToken);
+
         public Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
             _inner.SaveChangesAsync(cancellationToken);
     }

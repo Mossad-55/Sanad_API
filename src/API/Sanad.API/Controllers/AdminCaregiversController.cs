@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers.Requests;
 using Sanad.API.ProblemDetail;
+using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Onboarding;
@@ -29,13 +30,21 @@ public sealed class AdminCaregiversController :
     ApiControllerBase
 {
     private readonly ISender _sender;
+    private readonly IDateTimeProvider _clock;
 
     public AdminCaregiversController(
-        ISender sender)
+        ISender sender,
+        IDateTimeProvider clock)
     {
         _sender = sender;
+        _clock = clock;
     }
 
+    /// <summary>
+    /// Approves the newest pending version of the qualification (the
+    /// back-compatible route). The promotion is two-phase so the "one current
+    /// version" constraint holds even under a concurrent edit.
+    /// </summary>
     [HttpPost("{caregiverId:guid}/certificates/{certificateId:guid}/verify")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     public async Task<IActionResult> VerifyCertificate(
@@ -47,7 +56,37 @@ public sealed class AdminCaregiversController :
             await _sender.Send(
                 new VerifyCertificateCommand(
                     new CaregiverId(caregiverId),
-                    new CaregiverCertificateId(certificateId)),
+                    new CaregiverCertificateId(certificateId),
+                    VersionId: null,
+                    UtcNow: _clock.UtcNow),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Approves one explicitly named pending version. The server re-derives the
+    /// version's classification on the freshly loaded aggregate, so a version
+    /// that has become current, superseded or removed loses this race with a
+    /// stable conflict instead of being promoted.
+    /// </summary>
+    [HttpPost(
+        "{caregiverId:guid}/certificates/{certificateId:guid}/versions/" +
+        "{versionId:guid}/verify")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> VerifyCertificateVersion(
+        Guid caregiverId,
+        Guid certificateId,
+        Guid versionId,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new VerifyCertificateCommand(
+                    new CaregiverId(caregiverId),
+                    new CaregiverCertificateId(certificateId),
+                    new CaregiverCertificateVersionId(versionId),
+                    _clock.UtcNow),
                 cancellationToken);
 
         return ToActionResult(result);
@@ -66,7 +105,40 @@ public sealed class AdminCaregiversController :
                 new RejectCertificateCommand(
                     new CaregiverId(caregiverId),
                     new CaregiverCertificateId(certificateId),
-                    request.Reason),
+                    request.Reason,
+                    VersionId: null,
+                    CurrentDate: CaregiverCertificateClock.CairoDate(_clock),
+                    UtcNow: _clock.UtcNow),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Rejects one explicitly named pending version, keeping any previously
+    /// approved qualification in force. Only when no valid approved version
+    /// remains does the mandatory-safety consequence apply.
+    /// </summary>
+    [HttpPost(
+        "{caregiverId:guid}/certificates/{certificateId:guid}/versions/" +
+        "{versionId:guid}/reject")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RejectCertificateVersion(
+        Guid caregiverId,
+        Guid certificateId,
+        Guid versionId,
+        [FromBody] ReviewCertificateRequest request,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new RejectCertificateCommand(
+                    new CaregiverId(caregiverId),
+                    new CaregiverCertificateId(certificateId),
+                    request.Reason,
+                    new CaregiverCertificateVersionId(versionId),
+                    CaregiverCertificateClock.CairoDate(_clock),
+                    _clock.UtcNow),
                 cancellationToken);
 
         return ToActionResult(result);
@@ -86,7 +158,7 @@ public sealed class AdminCaregiversController :
                     new CaregiverId(caregiverId),
                     new CaregiverCertificateId(certificateId),
                     request.Reason,
-                    DateTime.UtcNow),
+                    _clock.UtcNow),
                 cancellationToken);
 
         return ToActionResult(result);
@@ -115,6 +187,79 @@ public sealed class AdminCaregiversController :
             result.Value.Content,
             result.Value.ContentType,
             result.Value.FileName);
+    }
+
+    /// <summary>
+    /// Streams one stored certificate scan of the qualification: the named
+    /// version when supplied, otherwise the effective snapshot version (approved
+    /// current, else live pending, else the newest retained candidate). A removed
+    /// version (or an unknown one) is answered with the generic 404, so its
+    /// retained bytes are no longer downloadable.
+    /// </summary>
+    [HttpGet(
+        "{caregiverId:guid}/certificates/{certificateId:guid}/versions/" +
+        "{versionId:guid}/file")]
+    public async Task<IActionResult> DownloadCertificateVersionFile(
+        Guid caregiverId,
+        Guid certificateId,
+        Guid versionId,
+        CancellationToken cancellationToken)
+    {
+        var result =
+            await _sender.Send(
+                new GetCertificateFileQuery(
+                    new CaregiverId(caregiverId),
+                    new CaregiverCertificateId(certificateId),
+                    new CaregiverCertificateVersionId(versionId)),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        // FileStreamResult disposes the stream after sending.
+        return File(
+            result.Value.Content,
+            result.Value.ContentType,
+            result.Value.FileName);
+    }
+
+    /// <summary>
+    /// Logically removes one superseded history version, under the existing
+    /// caregiver-review admin policy. The row and stored file are never
+    /// physically deleted; a repeated removal is an idempotent 204, a current
+    /// effective (even expired), live pending or effective-snapshot-backing
+    /// version is a 409, and an unknown or other-scope version is a 404 with no
+    /// existence leak. The acting admin id is taken from the authenticated
+    /// request, never the client.
+    /// </summary>
+    [HttpDelete(
+        "{caregiverId:guid}/certificates/{certificateId:guid}/versions/" +
+        "{versionId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveCertificateVersion(
+        Guid caregiverId,
+        Guid certificateId,
+        Guid versionId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId actorUserId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new RemoveAdminCertificateVersionCommand(
+                    new CaregiverId(caregiverId),
+                    actorUserId,
+                    new CaregiverCertificateId(certificateId),
+                    new CaregiverCertificateVersionId(versionId),
+                    _clock.UtcNow),
+                cancellationToken);
+
+        return ToActionResult(result);
     }
 
     [HttpGet]
@@ -180,8 +325,8 @@ public sealed class AdminCaregiversController :
             await _sender.Send(
                 new ApproveCaregiverCommand(
                     new CaregiverId(caregiverId),
-                    DateOnly.FromDateTime(DateTime.UtcNow),
-                    DateTime.UtcNow),
+                    CaregiverCertificateClock.CairoDate(_clock),
+                    _clock.UtcNow),
                 cancellationToken);
 
         return ToActionResult(result);
@@ -251,8 +396,8 @@ public sealed class AdminCaregiversController :
             await _sender.Send(
                 new ReactivateCaregiverCommand(
                     new CaregiverId(caregiverId),
-                    DateOnly.FromDateTime(DateTime.UtcNow),
-                    DateTime.UtcNow),
+                    CaregiverCertificateClock.CairoDate(_clock),
+                    _clock.UtcNow),
                 cancellationToken);
 
         return ToActionResult(result);

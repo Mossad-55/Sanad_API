@@ -65,11 +65,76 @@ Errors: `400 CareHomes.Facility.InvalidProfile` for field limits and invalid can
 
 `POST /api/v1/care-homes/facilities/mine/documents` (`multipart/form-data`)
 
-Fields: `expectedVersion` (current facility version), `type` (`1` operating license, `2` registration, `3` health certificate, `4` civil-defense certificate), optional `expiryDate` (`YYYY-MM-DD`), and `file`. The upload is accepted only for the caller's editable draft/correction. Content is checked server-side by file signature and MIME type; accepted files are PDF/JPG/PNG up to 10 MiB. A replacement creates a new private document row; prior revision/document evidence is retained. The response is `200 OK` with the new document's ID, type, revision, nullable expiry, `PendingReview` state, and timestamps; the facility version increments.
+Fields: `expectedVersion` (current facility version), `type` (`1` operating license, `2` registration, `3` health certificate, `4` civil-defense certificate), optional `expiryDate` (`YYYY-MM-DD`), and `file`. The upload is accepted only for the caller's editable draft/correction. Content is checked server-side by file signature and MIME type; accepted files are PDF/JPG/PNG up to 10 MiB. A replacement creates a new private document row; prior revision/document evidence is retained. The response is `200 OK` with the new document's ID, type, revision, nullable expiry, `PendingReview` state, timestamps, and — additive since 2026-10-27 — the `lifecycleView` (always `pending` for a fresh upload), `isExpired`, and `needsAction` fields described below; the facility version increments.
 
 The owner read endpoint returns document metadata only. It never returns the private storage key or file content. Private file retrieval and document verification/rejection are Admin operations documented in [the Admin Care Homes guide](../admin/care-homes.md).
 
 Errors: `400 CareHomes.Document.InvalidContent` or `Storage.File.*` for unsupported/mismatched/empty/oversized files, `404 CareHomes.Document.FacilityNotFound`, `409 CareHomes.Document.Conflict` for stale version or a non-editable state, and `401/403` for authentication/account-policy failures.
+
+## Document lifecycle views, file read, and history removal
+
+Since 2026-10-27 every document a caller sees carries three additive, computed
+fields next to the unchanged `status` field:
+
+- `lifecycleView` — exactly one of `current`, `pending`, or `history`. It is
+  never stored and never a fourth status value.
+  - `current`: per document type, the newest `Verified` document on the
+    facility's approved revision (`approvedRevisionId`). It stays `current`
+    even when its expiry has passed, and a newer pending replacement never
+    displaces it. If the newest document on the approved revision for a type
+    is rejected or revoked (a legacy/stored-data state the classification
+    explicitly supports; today's flow cannot author it), that type has **no
+    current document**: older verified documents are never resurrected, and
+    deleting the negative document from history does not restore one — the
+    effective state is retained from the audit rows, so removing the negative
+    row cannot unblock any eligibility gate.
+  - `pending`: the newest document of the type on the actionable target
+    revision — the submitted revision while under review, else the current
+    editable revision — regardless of its stored status. This includes a
+    latest rejected candidate awaiting correction, so it is never lost in
+    history.
+  - `history`: everything else (superseded uploads, older revisions, rejected
+    documents of past submissions).
+- `isExpired` — `true` when the supplied `expiryDate` is before the current
+  Cairo server date and the document is not Admin-confirmed non-expiring. It
+  is independent of `status`: a pending candidate with a past date reads
+  `isExpired: true` instead of reassuring, and a missing date reads `false`
+  ("no expiry recorded", never treated as non-expiring). The comparison date
+  always comes from the server clock; clients cannot influence it.
+- `needsAction` — `true` only for a `pending` candidate whose stored status is
+  `Rejected`.
+
+The `mine` readback and each document carry these fields; its additive
+`reviewTargetRevisionId` is the revision whose documents are the actionable
+candidate set. Existing array order (insertion order) is unchanged.
+
+`GET /api/v1/care-homes/facilities/mine/documents` returns the same items as a
+labeled list: `{ view, type, isExpired, totalCount, items[] }`, newest-first.
+The default `view` is `all`; optional `view=current|pending|history`, `type`
+(1–4) and `isExpired=true|false` filters are accepted. Unknown `view` values
+return `400 CareHomes.Document.InvalidView` and undefined `type` values return
+`400 CareHomes.Document.InvalidType` — never a silent empty result.
+
+`GET /api/v1/care-homes/facilities/mine/documents/{documentId}/file` returns
+one of the facility's own private document files, current through history, at
+any facility status. Logically removed or unknown documents return `404
+CareHomes.Document.DocumentNotFound`; another owner's ID is indistinguishable
+(`404 CareHomes.Document.FacilityNotFound`). The storage key is never exposed.
+
+`DELETE /api/v1/care-homes/facilities/mine/documents/{documentId}?expectedVersion={version}`
+removes a document from the facility's history. Only `history`-classified
+documents are removable — the server recomputes the classification at mutation
+time and never trusts a client-supplied view flag. The current effective
+document is protected even when expired, and active pending candidates
+(including the latest rejected candidate) are protected; both return `409
+CareHomes.Document.NotRemovable`. A stale version returns `409
+CareHomes.Document.Conflict`. Success is `204 No Content`. Repeating the same
+DELETE returns `204` again — it is idempotent and writes nothing. Removal is
+logical: the audit row and the stored file bytes are retained, the document
+disappears from every read (the `mine` array, the list, and the file route),
+a removed document is never carried into a new revision, and a removed
+document cannot be reviewed again. Files still referenced by live revisions
+keep working unchanged.
 
 ## Manage facility cover and gallery media
 
@@ -95,4 +160,4 @@ Submission is the validation boundary. The current draft must contain the requir
 
 This API slice exposes owner draft editing, private document and image uploads, and submission. Admin review and private-file inspection are documented separately under `docs/admin/care-homes.md`. Submission and each review decision produce idempotent in-app/email status notifications: the owner receives status changes; active SuperAdmin/SupportAdmin accounts receive submission and correction events. No SMS is sent. Status notices are written to the inbox regardless of the owner's notification preferences; the owner's own push behaviour is governed by two self-service switches — `systemNotifications` for review/status events (`CareHomes`/`OnboardingStatus`) and `bookingUpdates` for care-home booking events — managed at `GET/PUT /api/v1/account/notification-preferences`. Email is not affected by those preferences. A document replacement remains `PendingReview` until Admin verification; it does not restore approval or booking eligibility by itself. License-expiry alerts are produced by the Admin-side daily UTC-midnight monitor described in the Admin guide. Public discovery/detail and checkout eligibility are documented in `docs/care-homes/discovery.md`; checkout rechecks current license eligibility, while existing stays remain unchanged. Private documents and draft images cannot be served through the generic public/static file route.
 
-Postman owner requests in `docs/postman/care-homes/Sanad.CareHomes.Owner.postman_collection.json` include image upload, owner readback, and removal; set `careHomeProfileImagePath` to an eligible local JPG/PNG before running those examples. The Bruno owner-onboarding collection was not expanded or run for this media change.
+Postman owner requests in `docs/postman/care-homes/Sanad.CareHomes.Owner.postman_collection.json` include image upload, owner readback, document lifecycle list/readback, owner document file read, and history removal; set `careHomeProfileImagePath` to an eligible local JPG/PNG and `careHomeDocumentId` from a list response before running those examples. The Bruno owner-onboarding collection was not expanded or run for the lifecycle work.

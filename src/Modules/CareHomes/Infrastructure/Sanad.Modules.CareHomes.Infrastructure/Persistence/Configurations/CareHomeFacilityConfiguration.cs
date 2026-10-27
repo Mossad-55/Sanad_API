@@ -123,6 +123,15 @@ public sealed class CareHomeDocumentConfiguration : IEntityTypeConfiguration<Car
         builder.Property(x => x.ReviewReason).HasColumnName("review_reason").HasMaxLength(1000);
         builder.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
         builder.Property(x => x.UpdatedOnUtc).HasColumnName("updated_on_utc").IsRequired();
+        // History-only logical removal (2026-10-27), Owner-approved: nullable
+        // audit columns for the logical delete. Nothing is ever physically
+        // deleted; removed rows keep their shared private bytes and audit
+        // trail while the read layer hides them.
+        builder.Property(x => x.RemovedByUserId)
+            .HasConversion(x => x.HasValue ? x.Value.Value : (Guid?)null,
+                value => value.HasValue ? new UserId(value.Value) : null)
+            .HasColumnName("removed_by_user_id");
+        builder.Property(x => x.RemovedOnUtc).HasColumnName("removed_on_utc");
         builder.HasIndex("care_home_id", nameof(CareHomeDocument.ProfileRevisionId), nameof(CareHomeDocument.Type));
     }
 }

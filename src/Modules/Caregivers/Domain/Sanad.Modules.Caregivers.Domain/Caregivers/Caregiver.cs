@@ -74,6 +74,14 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
     public DateTime UpdatedOnUtc { get; private set; }
     private readonly List<CaregiverCertificate> _certificates = [];
     public IReadOnlyCollection<CaregiverCertificate> Certificates => _certificates.AsReadOnly();
+
+    /// <summary>Live (non-tombstoned) qualifications, in insertion order.</summary>
+    public IReadOnlyList<CaregiverCertificate> GetActiveCertificates() =>
+        _certificates.Where(certificate => !certificate.IsRemoved).ToList();
+
+    /// <summary>Tombstoned qualifications retained for audit, insertion order.</summary>
+    public IReadOnlyList<CaregiverCertificate> GetRemovedCertificates() =>
+        _certificates.Where(certificate => certificate.IsRemoved).ToList();
     public IReadOnlyCollection<CaregiverServiceSelection> ServiceSelections => _serviceSelections.AsReadOnly();
     public IReadOnlyCollection<CaregiverLanguageSelection> LanguageSelections => _languageSelections.AsReadOnly();
     public IReadOnlyCollection<CaregiverAreaSelection> AreaSelections => _areaSelections.AsReadOnly();
@@ -388,11 +396,15 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
                 "Only Medical caregivers can add professional certificates.");
         }
 
+        // A tombstoned (whole-qualification removed) Certificate no longer
+        // holds its slot: the mandatory-unique rule and the Additional cap count
+        // only the live qualifications.
         if (type == CaregiverCertificateType.PracticeLicense)
         {
             bool alreadyHasPracticeLicense =
                 _certificates.Any(
                     certificate =>
+                        !certificate.IsRemoved &&
                         certificate.Type ==
                         CaregiverCertificateType.PracticeLicense);
 
@@ -408,6 +420,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             bool alreadyHasGraduationCertificate =
                 _certificates.Any(
                     certificate =>
+                        !certificate.IsRemoved &&
                         certificate.Type ==
                         CaregiverCertificateType.GraduationCertificate);
 
@@ -423,6 +436,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             int additionalCertificateCount =
                 _certificates.Count(
                     certificate =>
+                        !certificate.IsRemoved &&
                         certificate.Type ==
                         CaregiverCertificateType.AdditionalCertificate);
 
@@ -446,27 +460,124 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UpdatedOnUtc = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Lazily records the honest current snapshot for a pre-versioning
+    /// qualification before a mutation that must resolve one of its versions.
+    /// A no-op once any version exists. Called by the review commands so a
+    /// legacy row's pending / current version can be addressed by id.
+    /// </summary>
+    public void EnsureCertificateVersionsMaterialized(
+        CaregiverCertificateId certificateId)
+    {
+        GetCertificate(certificateId)
+            .EnsureCurrentVersionMaterialized();
+    }
+
+    /// <summary>
+    /// Convenience overload used by the seeder and the domain tests: verifies
+    /// the newest pending version of the qualification in one step. The HTTP
+    /// review path uses the explicit version-targeted two-phase promotion so a
+    /// concurrent editor cannot slip between the demote and the promote.
+    /// </summary>
     public void VerifyCertificate(CaregiverCertificateId certificateId)
     {
         CaregiverCertificate certificate = GetCertificate(certificateId);
 
-        certificate.Verify();
+        certificate.EnsureCurrentVersionMaterialized();
 
-        UpdatedOnUtc = DateTime.UtcNow;
+        CaregiverCertificateVersion? pending =
+            certificate.PendingVersion;
+
+        if (pending is null)
+        {
+            throw new DomainException(
+                "The Certificate has no pending version to verify.");
+        }
+
+        DateTime utcNow = DateTime.UtcNow;
+
+        certificate.BeginPromotion(pending.Id, utcNow);
+        certificate.CompletePromotion(pending.Id, utcNow);
+
+        UpdatedOnUtc = utcNow;
     }
 
-    public void RejectCertificate(CaregiverCertificateId certificateId, string reason)
+    /// <summary>
+    /// First half of an approval promotion for one explicit pending version.
+    /// The caller persists this demote before calling
+    /// <see cref="CompleteCertificatePromotion"/>, so the partial-unique
+    /// "one current version" index never sees two current rows in one batch.
+    /// </summary>
+    public void BeginCertificatePromotion(
+        CaregiverCertificateId certificateId,
+        CaregiverCertificateVersionId versionId,
+        DateTime utcNow)
     {
+        ValidateUtc(utcNow);
+
         CaregiverCertificate certificate = GetCertificate(certificateId);
 
-        certificate.Reject(reason);
+        certificate.BeginPromotion(versionId, utcNow);
 
-        if (IsMandatoryCertificate(certificate.Type))
+        UpdatedOnUtc = utcNow;
+    }
+
+    /// <summary>
+    /// Second half of an approval promotion for one explicit pending version.
+    /// </summary>
+    public void CompleteCertificatePromotion(
+        CaregiverCertificateId certificateId,
+        CaregiverCertificateVersionId versionId,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        certificate.CompletePromotion(versionId, utcNow);
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    /// <summary>
+    /// Convenience overload for the seeders and domain tests. It evaluates
+    /// expiry against the current UTC calendar date; the HTTP review path
+    /// always passes the Cairo calendar date explicitly.
+    /// </summary>
+    public void RejectCertificate(
+        CaregiverCertificateId certificateId,
+        string reason)
+    {
+        DateTime utcNow = DateTime.UtcNow;
+
+        RejectCertificate(
+            certificateId,
+            versionId: null,
+            reason,
+            currentDate: DateOnly.FromDateTime(utcNow),
+            utcNow);
+    }
+
+    public void RejectCertificate(
+        CaregiverCertificateId certificateId,
+        CaregiverCertificateVersionId? versionId,
+        string reason,
+        DateOnly currentDate,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        certificate.RejectPendingVersion(versionId, reason, utcNow);
+
+        if (IsMandatoryCertificate(certificate.Type) &&
+            !certificate.HasValidCurrentVersion(currentDate))
         {
             Availability = CaregiverAvailability.Unavailable;
         }
 
-        UpdatedOnUtc = DateTime.UtcNow;
+        UpdatedOnUtc = utcNow;
     }
 
     public void RevokeCertificate(
@@ -479,7 +590,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         ValidateUtc(utcNow);
 
-        certificate.Revoke(reason);
+        certificate.RevokeCurrentVersion(reason, utcNow);
 
         if (IsMandatoryCertificate(
             certificate.Type))
@@ -553,6 +664,13 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
             StatusReason!));
     }
 
+    /// <summary>
+    /// Appends a replacement upload as a new pending version. When a valid,
+    /// approved, unexpired mandatory version is already in force, the
+    /// caregiver's effective status and availability are left unchanged (the
+    /// pending replacement is reviewed separately). When no such qualification
+    /// remains, the mandatory-safety consequence applies exactly as before.
+    /// </summary>
     public void UpdateCertificateFile(
         CaregiverCertificateId certificateId,
         string filePath,
@@ -565,13 +683,18 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
 
         ValidateUtc(utcNow);
 
-        certificate.UpdateFile(
+        bool hadValidCurrent =
+            certificate.HasValidCurrentVersion(currentDate);
+
+        certificate.AddReplacementVersion(
             filePath,
             expiryDate,
-            currentDate);
+            currentDate,
+            utcNow);
 
         if (IsMandatoryCertificate(
-            certificate.Type))
+                certificate.Type) &&
+            !hadValidCurrent)
         {
             Availability =
                 CaregiverAvailability.Unavailable;
@@ -592,6 +715,12 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         UpdatedOnUtc = utcNow;
     }
 
+    /// <summary>
+    /// Logically removes (tombstones) a whole Additional qualification. The
+    /// row and its version files stay retained for authorized history but the
+    /// qualification leaves the active profile, the Additional cap and public
+    /// discovery. Mandatory qualifications still cannot be removed.
+    /// </summary>
     public void RemoveCertificate(CaregiverCertificateId certificateId)
     {
         CaregiverCertificate certificate = GetCertificate(certificateId);
@@ -604,8 +733,39 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
                 "Replace its file instead.");
         }
 
-        _certificates.Remove(certificate);
+        certificate.MarkRemoved(DateTime.UtcNow);
+
         UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Logically removes one retained-history version of a qualification.
+    /// Returns <c>false</c> when the version was already removed (idempotent),
+    /// and throws when the version is the current effective or live pending
+    /// version. The qualification's effective snapshot, eligibility and
+    /// version files are otherwise untouched.
+    /// </summary>
+    public bool RemoveCertificateVersion(
+        CaregiverCertificateId certificateId,
+        CaregiverCertificateVersionId versionId,
+        UserId removedByUserId,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        bool removed = certificate.RemoveHistoryVersion(
+            versionId,
+            removedByUserId,
+            utcNow);
+
+        if (removed)
+        {
+            UpdatedOnUtc = utcNow;
+        }
+
+        return removed;
     }
 
     public void SelectService(Service service)
@@ -1525,6 +1685,7 @@ public sealed class Caregiver : AggregateRoot<CaregiverId>
         CaregiverCertificate? certificate =
             _certificates.SingleOrDefault(
                 certificate =>
+                    !certificate.IsRemoved &&
                     certificate.Type ==
                     certificateType);
 

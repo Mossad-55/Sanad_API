@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Sanad.API.Authorization;
 using Sanad.API.Controllers.Requests;
+using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
@@ -21,13 +22,16 @@ public sealed class CaregiverController :
 {
     private readonly ISender _sender;
     private readonly IFileStorage _fileStorage;
+    private readonly IDateTimeProvider _clock;
 
     public CaregiverController(
         ISender sender,
-        IFileStorage fileStorage)
+        IFileStorage fileStorage,
+        IDateTimeProvider clock)
     {
         _sender = sender;
         _fileStorage = fileStorage;
+        _clock = clock;
     }
 
     [HttpPost("profile")]
@@ -319,7 +323,7 @@ public sealed class CaregiverController :
             await _sender.Send(
                 new BecomeAvailableCommand(
                     userId,
-                    DateOnly.FromDateTime(DateTime.UtcNow)),
+                    CaregiverCertificateClock.CairoDate(_clock)),
                 cancellationToken);
 
         return ToActionResult(result);
@@ -380,8 +384,8 @@ public sealed class CaregiverController :
                     request.Type,
                     fileKey,
                     request.ExpiryDate,
-                    DateOnly.FromDateTime(DateTime.UtcNow),
-                    DateTime.UtcNow),
+                    CaregiverCertificateClock.CairoDate(_clock),
+                    _clock.UtcNow),
                 cancellationToken);
 
         if (result.IsFailure)
@@ -432,8 +436,8 @@ public sealed class CaregiverController :
                     new CaregiverCertificateId(certificateId),
                     fileKey,
                     request.ExpiryDate,
-                    DateOnly.FromDateTime(DateTime.UtcNow),
-                    DateTime.UtcNow),
+                    CaregiverCertificateClock.CairoDate(_clock),
+                    _clock.UtcNow),
                 cancellationToken);
 
         if (result.IsFailure)
@@ -471,6 +475,112 @@ public sealed class CaregiverController :
         return ToActionResult(result);
     }
 
+    /// <summary>
+    /// Logically removes one superseded history version of the caregiver's own
+    /// qualification. The version's row and stored file are never physically
+    /// deleted; they are hidden from the normal read surfaces and can never be
+    /// promoted, verified or reanimated. Idempotent (204) when the version is
+    /// already removed by this caregiver. 409 when the version is the current
+    /// effective version (even expired), the live pending candidate or the
+    /// version still backing the effective snapshot; 404 when the version is
+    /// unknown or belongs to another caregiver.
+    /// </summary>
+    [HttpDelete(
+        "certificates/{certificateId:guid}/versions/{versionId:guid}")]
+    [ProducesResponseType(StatusCodes.Status204NoContent)]
+    public async Task<IActionResult> RemoveCertificateVersion(
+        Guid certificateId,
+        Guid versionId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new RemoveOwnCertificateVersionCommand(
+                    userId,
+                    new CaregiverCertificateId(certificateId),
+                    new CaregiverCertificateVersionId(versionId),
+                    _clock.UtcNow),
+                cancellationToken);
+
+        return ToActionResult(result);
+    }
+
+    /// <summary>
+    /// Streams one stored certificate scan of the caregiver's own
+    /// qualification: the named version when supplied, otherwise the effective
+    /// snapshot version (approved current, else live pending, else the newest
+    /// retained candidate). A removed version is answered with the generic 404
+    /// (its bytes stay retained for audit but are no longer downloadable). The
+    /// route carries no storage key and is scoped to the authenticated owner.
+    /// </summary>
+    [HttpGet("certificates/{certificateId:guid}/versions/{versionId:guid}/file")]
+    public async Task<IActionResult> DownloadCertificateVersionFile(
+        Guid certificateId,
+        Guid versionId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new GetCertificateFileQuery(
+                    CaregiverId.Empty,
+                    new CaregiverCertificateId(certificateId),
+                    new CaregiverCertificateVersionId(versionId),
+                    userId),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        // FileStreamResult disposes the stream after sending.
+        return File(
+            result.Value.Content,
+            result.Value.ContentType,
+            result.Value.FileName);
+    }
+
+    [HttpGet("certificates/{certificateId:guid}/file")]
+    public async Task<IActionResult> DownloadCertificateFile(
+        Guid certificateId,
+        CancellationToken cancellationToken)
+    {
+        if (!TryGetAuthenticatedUserId(out UserId userId))
+        {
+            return Unauthorized();
+        }
+
+        var result =
+            await _sender.Send(
+                new GetCertificateFileQuery(
+                    CaregiverId.Empty,
+                    new CaregiverCertificateId(certificateId),
+                    VersionId: null,
+                    OwnerUserId: userId),
+                cancellationToken);
+
+        if (result.IsFailure)
+        {
+            return ToActionResult(result);
+        }
+
+        // FileStreamResult disposes the stream after sending.
+        return File(
+            result.Value.Content,
+            result.Value.ContentType,
+            result.Value.FileName);
+    }
+
     [HttpPost("submit")]
     [ProducesResponseType(
         typeof(CaregiverProfileResponse),
@@ -487,8 +597,8 @@ public sealed class CaregiverController :
             await _sender.Send(
                 new SubmitCaregiverCommand(
                     userId,
-                    DateOnly.FromDateTime(DateTime.UtcNow),
-                    DateTime.UtcNow),
+                    CaregiverCertificateClock.CairoDate(_clock),
+                    _clock.UtcNow),
                 cancellationToken);
 
         return ToActionResult(result);

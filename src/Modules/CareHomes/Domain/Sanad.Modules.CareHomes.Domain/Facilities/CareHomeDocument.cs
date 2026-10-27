@@ -45,6 +45,16 @@ public sealed class CareHomeDocument : Entity<Guid>
     public string? ReviewReason { get; private set; }
     public DateTime CreatedOnUtc { get; private set; }
     public DateTime UpdatedOnUtc { get; private set; }
+    public DateTime? RemovedOnUtc { get; private set; }
+    public UserId? RemovedByUserId { get; private set; }
+
+    /// <summary>
+    /// Logical-removal marker (Owner-approved history-only deletion): a
+    /// removed document stays stored with its bytes and audit columns but
+    /// disappears from every read view, list, and file route. Nothing is
+    /// ever physically deleted.
+    /// </summary>
+    public bool IsRemoved => RemovedOnUtc is not null;
 
     internal static CareHomeDocument Upload(
         CareHomeDocumentType type,
@@ -118,6 +128,8 @@ public sealed class CareHomeDocument : Entity<Guid>
     {
         if (source is null)
             throw new DomainException("Care-home document source is required.");
+        if (source.IsRemoved)
+            throw new DomainException("A removed care-home document cannot be carried into a new revision.");
         if (profileRevisionId == Guid.Empty)
             throw new DomainException("Care-home document revision is required.");
         EnsureUtc(utcNow);
@@ -144,6 +156,27 @@ public sealed class CareHomeDocument : Entity<Guid>
 
     public bool IsUsableOn(DateOnly date) => Status == CareHomeDocumentStatus.Verified &&
         (VerifiedNonExpiring || (ExpiryDate is not null && ExpiryDate >= date));
+
+    /// <summary>
+    /// History-only logical removal (Owner-approved): stamps who removed the
+    /// document and when. The row, its bytes and its audit trail remain; the
+    /// read layer hides removed rows. Removal of the effective current
+    /// document or an active candidate is refused by the application gate
+    /// before this is reached, and a repeated removal is idempotent at that
+    /// layer (this method only accepts a first removal).
+    /// </summary>
+    internal void Remove(UserId actorUserId, DateTime utcNow)
+    {
+        if (IsRemoved)
+            throw new DomainException("Care-home document has already been removed.");
+        if (actorUserId == UserId.Empty)
+            throw new DomainException("Care-home document remover is required.");
+        EnsureUtc(utcNow);
+
+        RemovedByUserId = actorUserId;
+        RemovedOnUtc = utcNow;
+        UpdatedOnUtc = utcNow;
+    }
 
     private static void EnsureUtc(DateTime utcNow)
     {

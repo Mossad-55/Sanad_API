@@ -5,6 +5,7 @@ using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Enums;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.Caregivers.Application.Abstractions.Data;
+using Sanad.Modules.Caregivers.Application.Onboarding;
 using Sanad.Modules.Caregivers.Domain.Caregivers;
 
 namespace Sanad.Modules.Caregivers.Application.Discovery;
@@ -314,8 +315,16 @@ public sealed class GetCaregiverPublicProfileQueryHandler : IQueryHandler<GetCar
                 languages[l.Id].Code))
             .ToList();
 
+        // Public discovery only surfaces live qualifications that are still
+        // Verified and unexpired as of the Cairo calendar date: a tombstoned
+        // (whole-removed) qualification and any expired Verified certificate are
+        // excluded. Expiry is a calendar-day judgement in the documented
+        // Africa/Cairo zone, never a UTC-date guess.
+        DateOnly today =
+            CaregiverCertificateClock.ToCairoDate(DateTime.UtcNow);
+
         var verifiedCerts = caregiver.Certificates
-            .Where(c => c.VerificationStatus == CertificateVerificationStatus.Verified)
+            .Where(c => c.IsPubliclyUsable(today))
             .Select(c => new CaregiverPublicCertificateResponse(
                 c.Type,
                 c.ExpiryDate,

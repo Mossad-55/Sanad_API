@@ -54,12 +54,8 @@ public sealed class CaregiverAvailabilityComplianceTests
             caregiver.Availability);
     }
 
-    [Theory]
-    [InlineData(CertificateVerificationStatus.Pending)]
-    [InlineData(CertificateVerificationStatus.Rejected)]
-    [InlineData(CertificateVerificationStatus.Revoked)]
-    public void BecomeAvailable_ShouldRejectNonVerifiedMandatoryCertificate(
-        CertificateVerificationStatus certificateStatus)
+    [Fact]
+    public void BecomeAvailable_ShouldRejectRevokedMandatoryCertificate()
     {
         Caregiver caregiver =
             CreateMedicalCaregiver();
@@ -75,38 +71,13 @@ public sealed class CaregiverAvailabilityComplianceTests
                 caregiver,
                 CaregiverCertificateType.PracticeLicense);
 
-        switch (certificateStatus)
-        {
-            case CertificateVerificationStatus.Pending:
-                caregiver.UpdateCertificateFile(
-                    practiceLicense.Id,
-                    "certificates/new-practice-license.jpg",
-                    expiryDate: null,
-                    CreateCurrentDate(),
-                    CaregiverTestData.CurrentUtc);
-                break;
+        caregiver.RevokeCertificate(
+            practiceLicense.Id,
+            "Practice License revoked.",
+            CaregiverTestData.CurrentUtc);
 
-            case CertificateVerificationStatus.Rejected:
-                caregiver.UpdateCertificateFile(
-                    practiceLicense.Id,
-                    "certificates/new-practice-license.jpg",
-                    expiryDate: null,
-                    CreateCurrentDate(),
-                    CaregiverTestData.CurrentUtc);
-
-                caregiver.RejectCertificate(
-                    practiceLicense.Id,
-                    "Practice License rejected.");
-                break;
-
-            case CertificateVerificationStatus.Revoked:
-                caregiver.RevokeCertificate(
-                    practiceLicense.Id,
-                    "Practice License revoked.",
-                    CaregiverTestData.CurrentUtc);
-                break;
-        }
-
+        // Revocation unseats the effective current version, so the medical
+        // caregiver is NOT qualified to become available.
         Assert.Throws<DomainException>(
             () => caregiver.BecomeAvailable(
                 CreateCurrentDate()));
@@ -114,6 +85,59 @@ public sealed class CaregiverAvailabilityComplianceTests
         Assert.Equal(
             CaregiverAvailability.Unavailable,
             caregiver.Availability);
+    }
+
+    [Theory]
+    [InlineData(CertificateVerificationStatus.Pending)]
+    [InlineData(CertificateVerificationStatus.Rejected)]
+    public void BecomeAvailable_ShouldHonorApprovedCurrent_WhileReplacementPendingOrRejected(
+        CertificateVerificationStatus replacementOutcome)
+    {
+        Caregiver caregiver =
+            CreateMedicalCaregiver();
+
+        CaregiverTestData
+            .EnsureReadyForActivation(
+                caregiver);
+
+        caregiver.TransitionToActive();
+
+        CaregiverCertificate practiceLicense =
+            GetCertificate(
+                caregiver,
+                CaregiverCertificateType.PracticeLicense);
+
+        caregiver.UpdateCertificateFile(
+            practiceLicense.Id,
+            "certificates/new-practice-license.jpg",
+            expiryDate: null,
+            CreateCurrentDate(),
+            CaregiverTestData.CurrentUtc);
+
+        if (replacementOutcome ==
+            CertificateVerificationStatus.Rejected)
+        {
+            caregiver.RejectCertificate(
+                practiceLicense.Id,
+                "Practice License rejected.");
+        }
+
+        // Approved 2026-10-27 contract: the valid approved certificate
+        // REMAINS the effective current version while a replacement is
+        // pending or even rejected, so availability is not suspended — the
+        // pending/rejected candidate never unseats the approved current.
+        caregiver.BecomeAvailable(
+            CreateCurrentDate());
+
+        Assert.Equal(
+            CaregiverAvailability.Available,
+            caregiver.Availability);
+
+        Assert.Equal(
+            CertificateVerificationStatus.Verified,
+            practiceLicense
+                .EffectiveSnapshotVersion!
+                .VerificationStatus);
     }
 
     [Fact]

@@ -28,7 +28,9 @@ public sealed record CaregiverProfileResponse(
     MedicalPricingResponse? MedicalPricing,
     CompanionPricingResponse? CompanionPricing,
     MedicalScheduleResponse? MedicalSchedule,
-    CompanionScheduleResponse? CompanionSchedule);
+    CompanionScheduleResponse? CompanionSchedule,
+    // Live (non-tombstoned) qualification tombstones retained for audit.
+    IReadOnlyList<CertificateItemResponse> RemovedCertificates);
 
 public sealed record MedicalPricingResponse(
     decimal HomeVisitPrice,
@@ -81,13 +83,73 @@ public sealed record CertificateItemResponse(
     CaregiverCertificateType Type,
     DateOnly? ExpiryDate,
     CertificateVerificationStatus VerificationStatus,
-    string? ReviewReason);
+    string? ReviewReason,
+    // ---- additive (this lifecycle): existing fields keep their meaning ----
+    CertificateExpiryStatus ExpiryStatus,
+    bool HasPendingReplacement,
+    IReadOnlyList<CertificateVersionItemResponse> Versions);
+
+/// <summary>
+/// One upload of a qualification as seen by the owner / admin read surfaces.
+/// The effective certificate fields above are unchanged legacy fields; this
+/// per-version list is the additive Current / Pending / History axis. Removed
+/// history versions are hidden. <see cref="FileLink"/> is the authorized
+/// download path of the version's stored scan and carries no storage key.
+/// </summary>
+public sealed record CertificateVersionItemResponse(
+    CaregiverCertificateVersionId Id,
+    DateOnly? ExpiryDate,
+    CertificateVerificationStatus VerificationStatus,
+    CertificateExpiryStatus ExpiryStatus,
+    CertificateVersionClassification Classification,
+    string? ReviewReason,
+    DateTime CreatedOnUtc,
+    DateTime? SupersededOnUtc,
+    string FileLink,
+    bool CanRemove);
 
 internal static class CaregiverProfileMappings
 {
+    private const string SelfBasePath = "/api/v1/caregiver";
+    private const string AdminBasePath = "/api/v1/admin/caregivers";
+
+    /// <summary>
+    /// Maps the aggregate for the caregiver's own read surfaces. New members
+    /// are additive at the record tail; the existing fields and the
+    /// <c>Certificates</c> array keep their exact meaning (live qualifications
+    /// only). Version file links point at the self download route.
+    /// </summary>
     public static CaregiverProfileResponse ToProfileResponse(
-        this Caregiver caregiver) =>
-        new(
+        this Caregiver caregiver,
+        DateOnly? currentDate = null) =>
+        Map(
+            caregiver,
+            currentDate,
+            $"{SelfBasePath}");
+
+    /// <summary>
+    /// Maps the aggregate for the admin review surfaces. The shape is
+    /// identical to <see cref="ToProfileResponse"/>; only the per-version file
+    /// links point at the admin download route.
+    /// </summary>
+    public static CaregiverProfileResponse ToAdminProfileResponse(
+        this Caregiver caregiver,
+        DateOnly? currentDate = null) =>
+        Map(
+            caregiver,
+            currentDate,
+            $"{AdminBasePath}/{caregiver.Id.Value}");
+
+    private static CaregiverProfileResponse Map(
+        Caregiver caregiver,
+        DateOnly? currentDate,
+        string certificateBasePath)
+    {
+        DateOnly today =
+            currentDate ??
+            CaregiverCertificateClock.ToCairoDate(DateTime.UtcNow);
+
+        return new(
             caregiver.Id,
             caregiver.UserId,
             caregiver.Type,
@@ -110,13 +172,11 @@ internal static class CaregiverProfileMappings
                     caregiver.CompanionProfile.YearsOfExperience,
                     caregiver.CompanionProfile.SpecializationId,
                     caregiver.CompanionProfile.Biography),
-            caregiver.Certificates
-                .Select(certificate => new CertificateItemResponse(
-                    certificate.Id,
-                    certificate.Type,
-                    certificate.ExpiryDate,
-                    certificate.VerificationStatus,
-                    certificate.ReviewReason))
+            caregiver.GetActiveCertificates()
+                .Select(certificate => MapCertificate(
+                    certificate,
+                    today,
+                    certificateBasePath))
                 .ToList(),
             caregiver.ServiceSelections
                 .Select(selection => selection.Id)
@@ -164,7 +224,53 @@ internal static class CaregiverProfileMappings
                                 window.DayOfWeek,
                                 window.StartTime,
                                 window.EndTime))
-                        .ToList()));
+                        .ToList()),
+            caregiver.GetRemovedCertificates()
+                .Select(certificate => MapCertificate(
+                    certificate,
+                    today,
+                    certificateBasePath))
+                .ToList());
+    }
+
+    private static CertificateItemResponse MapCertificate(
+        CaregiverCertificate certificate,
+        DateOnly today,
+        string certificateBasePath) =>
+        new(
+            certificate.Id,
+            certificate.Type,
+            certificate.ExpiryDate,
+            certificate.VerificationStatus,
+            certificate.ReviewReason,
+            certificate.ExpiryStatus(today),
+            certificate.HasPendingReplacement,
+            certificate.VisibleVersions
+                .Select(version => new CertificateVersionItemResponse(
+                    version.Id,
+                    version.ExpiryDate,
+                    version.VerificationStatus,
+                    version.ExpiryStatus(today),
+                    Classify(version),
+                    version.ReviewReason,
+                    version.CreatedOnUtc,
+                    version.SupersededOnUtc,
+                    $"{certificateBasePath}/certificates/" +
+                    $"{certificate.Id.Value}/versions/" +
+                    $"{version.Id.Value}/file",
+                    // Explicitly states removability so a history-labelled
+                    // version backing the effective snapshot is never presented
+                    // as deletable and then refused with a surprise 409.
+                    certificate.CanRemoveVersion(version)))
+                .ToList());
+
+    private static CertificateVersionClassification Classify(
+        CaregiverCertificateVersion version) =>
+        version.IsCurrent
+            ? CertificateVersionClassification.Current
+            : version.IsPending
+                ? CertificateVersionClassification.Pending
+                : CertificateVersionClassification.History;
 }
 
 // ----------------------------- Bootstrap ------------------------------

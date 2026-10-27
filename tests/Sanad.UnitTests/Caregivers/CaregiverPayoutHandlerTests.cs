@@ -999,6 +999,11 @@ public sealed class CaregiverPayoutHandlerTests
             inner.SavePayoutIfAccountRevisionVerifiedAsync(
                 caregiverId, expectedRevision, payout, cancellationToken);
 
+        public Task<TResult> ExecuteInTransactionAsync<TResult>(
+            Func<CancellationToken, Task<TResult>> operation,
+            CancellationToken cancellationToken = default) =>
+            inner.ExecuteInTransactionAsync(operation, cancellationToken);
+
         public Task<int> SaveChangesAsync(
             CancellationToken cancellationToken = default) =>
             inner.SaveChangesAsync(cancellationToken);
@@ -1073,6 +1078,13 @@ public sealed class CaregiverPayoutHandlerTests
             CaregiverId caregiverId, int expectedRevision, CaregiverPayout payout,
             CancellationToken cancellationToken = default) =>
             throw failure();
+
+        // Runs the callback directly: any save the callback performs still hits
+        // this fake's throwing SaveChangesAsync, which is the point of the fake.
+        public Task<TResult> ExecuteInTransactionAsync<TResult>(
+            Func<CancellationToken, Task<TResult>> operation,
+            CancellationToken cancellationToken = default) =>
+            operation(cancellationToken);
 
         public Task<int> SaveChangesAsync(
             CancellationToken cancellationToken = default) =>

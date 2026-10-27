@@ -101,6 +101,18 @@ public interface ICaregiversDbContext
     Task<IReadOnlyList<TopRatedCaregiverCard>> GetTopRatedCaregiversAsync(
         CancellationToken cancellationToken = default);
 
+    // Runs a multi-save unit of work inside a single relational transaction,
+    // committing exactly once when the callback returns and rolling the whole
+    // unit back on ANY failure (a later save, an optimistic-concurrency loss or
+    // cancellation). Under the InMemory provider there is no transaction to
+    // roll back, so this is a passthrough there and atomicity itself is proven
+    // against real Postgres. Used by the two-phase certificate promotion, which
+    // must not leave a zero-current qualification behind if its second save
+    // fails.
+    Task<TResult> ExecuteInTransactionAsync<TResult>(
+        Func<CancellationToken, Task<TResult>> operation,
+        CancellationToken cancellationToken = default);
+
     Task<int> SaveChangesAsync(
         CancellationToken cancellationToken = default);
 }

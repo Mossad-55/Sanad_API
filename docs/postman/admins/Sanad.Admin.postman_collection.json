@@ -1727,7 +1727,7 @@
         {
           "name": "Verify certificate",
           "request": {
-            "description": "Returns 204 when the certificate is verified. Unknown caregiver ids return 404 Caregivers.Onboarding.NotFound; unknown certificate ids for an existing caregiver return 404 Caregivers.Onboarding.CertificateNotFound.",
+            "description": "Verifies the newest pending version of the certificate (a previous current becomes history). Returns 204. Unknown caregiver ids return 404 Caregivers.Onboarding.NotFound; unknown certificate ids for an existing caregiver return 404 Caregivers.Onboarding.CertificateNotFound.",
             "method": "POST",
             "header": [
               {
@@ -1749,7 +1749,7 @@
         {
           "name": "Reject certificate",
           "request": {
-            "description": "Returns 204 when the certificate is rejected. Unknown caregiver ids return 404 Caregivers.Onboarding.NotFound; unknown certificate ids for an existing caregiver return 404 Caregivers.Onboarding.CertificateNotFound.",
+            "description": "Rejects the newest pending version. A mandatory rejection forces the caregiver Unavailable only when no valid approved current version remains; otherwise status/availability are unchanged and the rejection is retained as history. Returns 204. Unknown caregiver ids return 404 Caregivers.Onboarding.NotFound; unknown certificate ids for an existing caregiver return 404 Caregivers.Onboarding.CertificateNotFound.",
             "method": "POST",
             "header": [
               {
@@ -1787,6 +1787,50 @@
             "body": {
               "mode": "raw",
               "raw": "{\n  \"reason\": \"License expired or invalid.\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Verify certificate version",
+          "request": {
+            "description": "Promotes one explicitly named pending version to Verified/Current (any previous current becomes history). 204 on success; 404 Caregivers.Onboarding.CertificateVersionNotFound for an unknown version; 409 Caregivers.Onboarding.InvalidCertificateOperation when not a reviewable pending version; 409 Caregivers.Onboarding.CertificateConflict on a concurrent classification change. Set certificateVersionId from the caregiver profile response (certificates[].versions[].id).",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ accessToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregivers/{{caregiverId}}/certificates/{{certificateId}}/versions/{{certificateVersionId}}/verify",
+            "body": {
+              "mode": "raw",
+              "raw": ""
+            }
+          }
+        },
+        {
+          "name": "Reject certificate version",
+          "request": {
+            "description": "Rejects one explicitly named pending version, keeping any previously approved qualification in force (a mandatory rejection forces Unavailable only when no valid approved current remains). 204 on success; 404 CertificateVersionNotFound; 409 InvalidCertificateOperation / CertificateConflict; 400 Api.Validation.Failed for a missing/overlong reason.",
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ accessToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregivers/{{caregiverId}}/certificates/{{certificateId}}/versions/{{certificateVersionId}}/reject",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Document is unclear; please re-upload.\"\n}"
             }
           }
         },
@@ -1898,7 +1942,7 @@
         {
           "name": "Download certificate file",
           "request": {
-            "description": "Streams the private certificate file. Unknown caregiver ids return 404 Caregivers.Onboarding.NotFound; unknown certificate ids for an existing caregiver return 404 Caregivers.Onboarding.CertificateNotFound; missing stored files return 404 Storage.File.NotFound.",
+            "description": "Streams the private certificate file. The no-version route serves the effective snapshot version (the approved current version, else the live pending candidate, else the newest retained upload after an initial rejection), which is protected from removal. Unknown caregiver ids return 404 Caregivers.Onboarding.NotFound; unknown certificate ids for an existing caregiver return 404 Caregivers.Onboarding.CertificateNotFound; missing stored files return 404 Storage.File.NotFound.",
             "method": "GET",
             "header": [
               {
@@ -1912,9 +1956,45 @@
             ],
             "url": "{{baseUrl}}/api/v1/admin/caregivers/{{caregiverId}}/certificates/{{certificateId}}/file"
           }
+        },
+        {
+          "name": "Download certificate version file",
+          "request": {
+            "description": "Streams one named version's stored scan. 404 Caregivers.Onboarding.CertificateVersionNotFound when the version is unknown or has been logically removed (its retained bytes are no longer downloadable). Set certificateVersionId from the caregiver profile response (certificates[].versions[].id).",
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ accessToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregivers/{{caregiverId}}/certificates/{{certificateId}}/versions/{{certificateVersionId}}/file"
+          }
+        },
+        {
+          "name": "Remove certificate history version",
+          "request": {
+            "description": "Logically removes one superseded history version under CaregiverReviewAdmin. 204 No Content; idempotent 204 when already removed; 409 Caregivers.Onboarding.CertificateVersionNotRemovable when the version is protected (the current effective version even when expired, the live pending candidate, or the retained version that still backs the effective snapshot after an initial rejection — the profile's canRemove flag is authoritative); 404 CertificateNotFound / CertificateVersionNotFound for unknown ids; 409 Caregivers.Onboarding.CertificateConflict on a concurrent change. The row and file are never physically deleted.",
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{ accessToken }}"
+              }
+            ],
+            "url": "{{baseUrl}}/api/v1/admin/caregivers/{{caregiverId}}/certificates/{{certificateId}}/versions/{{certificateVersionId}}"
+          }
         }
       ],
-      "description": "Caregiver review routes use CaregiverReviewAdmin: Normal SuperAdmin or SupportAdmin only; ContentAdmin receives 403. caregiverId/certificateId are captured by the Caregiver onboarding collection. Review order: verify certificates, then approve (or request correction/reject). Suspend/reactivate apply to Active/Suspended caregivers. File download is the only access path to certificate scans."
+      "description": "Caregiver review routes use CaregiverReviewAdmin: Normal SuperAdmin or SupportAdmin only; ContentAdmin receives 403. caregiverId/certificateId are captured by the Caregiver onboarding collection; certificateVersionId is taken from the caregiver profile response (certificates[].versions[].id). Review order: verify certificates, then approve (or request correction/reject). Suspend/reactivate apply to Active/Suspended caregivers. Certificate scans are readable only through the file download routes, and a removed history version's file is a 404."
     },
     {
       "name": "04. Care Assessment CMS",

@@ -1,10 +1,12 @@
 using Microsoft.EntityFrameworkCore;
 using Sanad.BuildingBlocks.Application.CQRS;
+using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
+using Sanad.Modules.CareHomes.Application.Discovery;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 
 namespace Sanad.Modules.CareHomes.Application.Facilities;
@@ -23,7 +25,13 @@ public sealed record CareHomeOwnerProfile(
     CareHomeProfileRevisionProfile? ApprovedProfile,
     IReadOnlyList<CareHomeDocumentResponse> Documents,
     IReadOnlyList<CareHomeReviewHistory> ReviewHistory,
-    IReadOnlyList<CareHomeProfileMediaResponse> ProfileMedia);
+    IReadOnlyList<CareHomeProfileMediaResponse> ProfileMedia,
+    // Additive 2026-10-27: the revision whose documents are the actionable
+    // candidate set (the submitted revision while under review, else the
+    // unfrozen editable revision). Clients use it to never act on a
+    // historical revision; the domain's SubmittedRevisionId scoping remains
+    // the enforcement.
+    Guid? ReviewTargetRevisionId);
 
 public sealed record CareHomeProfileMediaResponse(Guid Id, CareHomeProfileMediaKind Kind, int Position,
     string ContentType, long Length, Guid ProfileRevisionId, string FilePath);
@@ -37,7 +45,7 @@ public sealed record SaveMyCareHomeProfileCommand(
 public sealed record SubmitMyCareHomeApplicationCommand(UserId ActorUserId, int ExpectedVersion)
     : ICommand<CareHomeOwnerProfile>;
 
-public sealed class CreateCareHomeFacilityCommandHandler(ICareHomesDbContext db)
+public sealed class CreateCareHomeFacilityCommandHandler(ICareHomesDbContext db, IDateTimeProvider clock)
     : ICommandHandler<CreateCareHomeFacilityCommand, CareHomeOwnerProfile>
 {
     public static readonly Error AlreadyExists = new("CareHomes.Facility.AlreadyExists", "This account already owns a care-home facility.");
@@ -62,20 +70,30 @@ public sealed class CreateCareHomeFacilityCommandHandler(ICareHomesDbContext db)
             throw;
         }
 
-        return Map(facility);
+        return Map(facility, media: null, CareHomePublicEligibility.CairoDate(clock.UtcNow));
     }
 
-    internal static CareHomeOwnerProfile Map(CareHomeFacility facility, IReadOnlyList<CareHomeProfileMedia>? media = null)
+    internal static CareHomeOwnerProfile Map(CareHomeFacility facility, IReadOnlyList<CareHomeProfileMedia>? media, DateOnly cairoToday)
     {
         CareHomeProfileRevision? draft = facility.Revisions.LastOrDefault(x => !x.IsFrozen);
         CareHomeProfileDraft? profile = draft is null ? null : ToDraft(draft);
+        IReadOnlyList<CareHomeDocument> activeDocuments = CareHomeDocumentLifecycle.ActiveDocuments(facility);
+        IReadOnlyDictionary<Guid, string> documentViews = CareHomeDocumentLifecycle.Classify(
+            facility.Documents, facility.ApprovedRevisionId,
+            CareHomeDocumentLifecycle.ResolveTargetRevisionId(facility));
         return new CareHomeOwnerProfile(
             facility.Id.Value, facility.Status, facility.Version, facility.SubmittedRevisionId,
             facility.ApprovedRevisionId, draft?.Id, profile,
             ToRevisionProfile(facility, facility.SubmittedRevisionId, CareHomeStatus.PendingReview),
             ToRevisionProfile(facility, facility.ApprovedRevisionId, null),
-            facility.Documents.Select(UploadCareHomeDocumentCommandHandler.ToResponse).ToArray(),
-            facility.ReviewHistory.ToArray(), MapMedia(media ?? []));
+            // Existing owner documents array: unchanged contents and
+            // insertion order (minus logically removed rows), each item now
+            // carrying the additive lifecycle/expiry/needs-action fields.
+            facility.Documents.Where(document => !document.IsRemoved)
+                .Select(document => CareHomeDocumentLifecycle.ToResponse(document, documentViews, cairoToday))
+                .ToArray(),
+            facility.ReviewHistory.ToArray(), MapMedia(media ?? []),
+            CareHomeDocumentLifecycle.ResolveTargetRevisionId(facility));
     }
 
     internal static CareHomeProfileDraft ToDraft(CareHomeProfileRevision revision) => new(
@@ -100,7 +118,7 @@ public sealed class CreateCareHomeFacilityCommandHandler(ICareHomesDbContext db)
             $"/api/v1/care-homes/facilities/mine/media/{x.Id:D}/file")).ToArray();
 }
 
-public sealed class GetMyCareHomeFacilityQueryHandler(ICareHomesDbContext db)
+public sealed class GetMyCareHomeFacilityQueryHandler(ICareHomesDbContext db, IDateTimeProvider clock)
     : IQueryHandler<GetMyCareHomeFacilityQuery, CareHomeOwnerProfile>
 {
     private static readonly Error NotFound = new("CareHomes.Facility.NotFound", "Care-home facility was not found.");
@@ -117,7 +135,7 @@ public sealed class GetMyCareHomeFacilityQueryHandler(ICareHomesDbContext db)
             return Result<CareHomeOwnerProfile>.Failure(NotFound);
         var media = await db.ProfileMedia.AsNoTracking()
             .Where(x => facility.Revisions.Select(r => r.Id).Contains(x.ProfileRevisionId)).ToListAsync(ct);
-        return CareHomeStoredProfileMapper.Map(facility, media);
+        return CareHomeStoredProfileMapper.Map(facility, media, CareHomePublicEligibility.CairoDate(clock.UtcNow));
     }
 }
 
@@ -130,11 +148,12 @@ public sealed class GetMyCareHomeFacilityQueryHandler(ICareHomesDbContext db)
 /// </summary>
 internal static class CareHomeStoredProfileMapper
 {
-    public static Result<CareHomeOwnerProfile> Map(CareHomeFacility facility, IReadOnlyList<CareHomeProfileMedia>? media)
+    public static Result<CareHomeOwnerProfile> Map(
+        CareHomeFacility facility, IReadOnlyList<CareHomeProfileMedia>? media, DateOnly cairoToday)
     {
         try
         {
-            return CreateCareHomeFacilityCommandHandler.Map(facility, media);
+            return CreateCareHomeFacilityCommandHandler.Map(facility, media, cairoToday);
         }
         catch (DomainException)
         {
@@ -144,7 +163,7 @@ internal static class CareHomeStoredProfileMapper
     }
 }
 
-public sealed class SaveMyCareHomeProfileCommandHandler(ICareHomesDbContext db)
+public sealed class SaveMyCareHomeProfileCommandHandler(ICareHomesDbContext db, IDateTimeProvider clock)
     : ICommandHandler<SaveMyCareHomeProfileCommand, CareHomeOwnerProfile>
 {
     private static readonly Error NotFound = new("CareHomes.Facility.NotFound", "Care-home facility was not found.");
@@ -189,11 +208,11 @@ public sealed class SaveMyCareHomeProfileCommandHandler(ICareHomesDbContext db)
 
         var media = await db.ProfileMedia.AsNoTracking()
             .Where(x => facility.Revisions.Select(revision => revision.Id).Contains(x.ProfileRevisionId)).ToListAsync(ct);
-        return CareHomeStoredProfileMapper.Map(facility, media);
+        return CareHomeStoredProfileMapper.Map(facility, media, CareHomePublicEligibility.CairoDate(clock.UtcNow));
     }
 }
 
-public sealed class SubmitMyCareHomeApplicationCommandHandler(ICareHomesDbContext db)
+public sealed class SubmitMyCareHomeApplicationCommandHandler(ICareHomesDbContext db, IDateTimeProvider clock)
     : ICommandHandler<SubmitMyCareHomeApplicationCommand, CareHomeOwnerProfile>
 {
     private static readonly Error NotFound = new("CareHomes.Facility.NotFound", "Care-home facility was not found.");
@@ -239,6 +258,6 @@ public sealed class SubmitMyCareHomeApplicationCommandHandler(ICareHomesDbContex
 
         var media = await db.ProfileMedia.AsNoTracking()
             .Where(x => facility.Revisions.Select(revision => revision.Id).Contains(x.ProfileRevisionId)).ToListAsync(ct);
-        return CareHomeStoredProfileMapper.Map(facility, media);
+        return CareHomeStoredProfileMapper.Map(facility, media, CareHomePublicEligibility.CairoDate(clock.UtcNow));
     }
 }

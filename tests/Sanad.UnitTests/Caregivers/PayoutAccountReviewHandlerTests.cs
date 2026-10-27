@@ -474,6 +474,11 @@ public sealed class PayoutAccountReviewHandlerTests
             inner.SavePayoutIfAccountRevisionVerifiedAsync(
                 caregiverId, expectedRevision, payout, cancellationToken);
 
+        public Task<TResult> ExecuteInTransactionAsync<TResult>(
+            Func<CancellationToken, Task<TResult>> operation,
+            CancellationToken cancellationToken = default) =>
+            inner.ExecuteInTransactionAsync(operation, cancellationToken);
+
         public Task<int> SaveChangesAsync(
             CancellationToken cancellationToken = default) =>
             inner.SaveChangesAsync(cancellationToken);

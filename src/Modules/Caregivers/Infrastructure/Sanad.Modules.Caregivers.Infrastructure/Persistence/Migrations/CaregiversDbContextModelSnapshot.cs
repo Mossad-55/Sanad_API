@@ -858,10 +858,25 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
                                 .HasColumnType("text")
                                 .HasColumnName("file_path");
 
+                            b1.Property<bool>("IsRemoved")
+                                .ValueGeneratedOnAdd()
+                                .HasColumnType("boolean")
+                                .HasDefaultValue(false)
+                                .HasColumnName("is_removed");
+
+                            b1.Property<DateTime?>("RemovedOnUtc")
+                                .HasColumnType("timestamp with time zone")
+                                .HasColumnName("removed_on_utc");
+
                             b1.Property<string>("ReviewReason")
                                 .HasMaxLength(500)
                                 .HasColumnType("character varying(500)")
                                 .HasColumnName("review_reason");
+
+                            b1.Property<int>("Revision")
+                                .IsConcurrencyToken()
+                                .HasColumnType("integer")
+                                .HasColumnName("revision");
 
                             b1.Property<int>("Type")
                                 .HasColumnType("integer")
@@ -881,6 +896,83 @@ namespace Sanad.Modules.Caregivers.Infrastructure.Persistence.Migrations
 
                             b1.WithOwner()
                                 .HasForeignKey("CaregiverId");
+
+                            b1.OwnsMany("Sanad.Modules.Caregivers.Domain.Caregivers.CaregiverCertificateVersion", "Versions", b2 =>
+                                {
+                                    b2.Property<Guid>("OwnerCaregiverId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("caregiver_id");
+
+                                    b2.Property<Guid>("OwnerCertificateId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("certificate_id");
+
+                                    b2.Property<Guid>("Id")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("id");
+
+                                    b2.Property<DateTime>("CreatedOnUtc")
+                                        .HasColumnType("timestamp with time zone")
+                                        .HasColumnName("created_on_utc");
+
+                                    b2.Property<DateOnly?>("ExpiryDate")
+                                        .HasColumnType("date")
+                                        .HasColumnName("expiry_date");
+
+                                    b2.Property<string>("FilePath")
+                                        .IsRequired()
+                                        .HasColumnType("text")
+                                        .HasColumnName("file_path");
+
+                                    b2.Property<bool>("IsCurrent")
+                                        .HasColumnType("boolean")
+                                        .HasColumnName("is_current");
+
+                                    b2.Property<bool>("IsRemoved")
+                                        .ValueGeneratedOnAdd()
+                                        .HasColumnType("boolean")
+                                        .HasDefaultValue(false)
+                                        .HasColumnName("is_removed");
+
+                                    b2.Property<Guid?>("RemovedByUserId")
+                                        .HasColumnType("uuid")
+                                        .HasColumnName("removed_by_user_id");
+
+                                    b2.Property<DateTime?>("RemovedOnUtc")
+                                        .HasColumnType("timestamp with time zone")
+                                        .HasColumnName("removed_on_utc");
+
+                                    b2.Property<string>("ReviewReason")
+                                        .HasMaxLength(500)
+                                        .HasColumnType("character varying(500)")
+                                        .HasColumnName("review_reason");
+
+                                    b2.Property<DateTime?>("SupersededOnUtc")
+                                        .HasColumnType("timestamp with time zone")
+                                        .HasColumnName("superseded_on_utc");
+
+                                    b2.Property<DateTime>("UpdatedOnUtc")
+                                        .HasColumnType("timestamp with time zone")
+                                        .HasColumnName("updated_on_utc");
+
+                                    b2.Property<int>("VerificationStatus")
+                                        .HasColumnType("integer")
+                                        .HasColumnName("verification_status");
+
+                                    b2.HasKey("OwnerCaregiverId", "OwnerCertificateId", "Id");
+
+                                    b2.HasIndex("OwnerCaregiverId", "OwnerCertificateId")
+                                        .IsUnique()
+                                        .HasDatabaseName("ux_caregiver_certificate_versions_current")
+                                        .HasFilter("is_current AND NOT is_removed");
+
+                                    b2.ToTable("caregiver_certificate_versions", "caregivers");
+
+                                    b2.WithOwner()
+                                        .HasForeignKey("OwnerCaregiverId", "OwnerCertificateId");
+                                });
+
+                            b1.Navigation("Versions");
                         });
 
                     b.OwnsOne("Sanad.Modules.Caregivers.Domain.Caregivers.CompanionCaregiverPricing", "CompanionPricing", b1 =>

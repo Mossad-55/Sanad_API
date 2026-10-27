@@ -20,7 +20,7 @@ public sealed class AdminCareHomeApplicationTests
     {
         using CareHomesDbContext db = CreateDb();
         var list = new GetAdminCareHomeApplicationsQueryHandler(db, Sender);
-        var detail = new GetAdminCareHomeApplicationQueryHandler(db, Sender);
+        var detail = new GetAdminCareHomeApplicationQueryHandler(db, Sender, CareHomeTestClockHost.Clock());
 
         var invalidPage = await list.Handle(new GetAdminCareHomeApplicationsQuery(0, 20), default);
         var invalidSize = await list.Handle(new GetAdminCareHomeApplicationsQuery(1, 101), default);
@@ -41,7 +41,7 @@ public sealed class AdminCareHomeApplicationTests
         UserId admin = UserId.New();
         var facility = await CreateSubmittedFacility(db, owner);
         CareHomeDocument document = facility.Documents.Single(x => x.Type == CareHomeDocumentType.OperatingLicense);
-        var handler = new ReviewCareHomeDocumentCommandHandler(db, Sender);
+        var handler = new ReviewCareHomeDocumentCommandHandler(db, Sender, CareHomeTestClockHost.Clock());
         int submittedVersion = facility.Version;
 
         var missingConfirmation = await handler.Handle(new ReviewCareHomeDocumentCommand(
@@ -65,7 +65,7 @@ public sealed class AdminCareHomeApplicationTests
         UserId admin = UserId.New();
         var facility = await CreateSubmittedFacility(db, owner);
         CareHomeDocument document = facility.Documents.Single(x => x.Type == CareHomeDocumentType.Registration);
-        var handler = new ReviewCareHomeDocumentCommandHandler(db, Sender);
+        var handler = new ReviewCareHomeDocumentCommandHandler(db, Sender, CareHomeTestClockHost.Clock());
 
         var rejected = await handler.Handle(new ReviewCareHomeDocumentCommand(
             admin, facility.Id.Value, document.Id, facility.Version, false, null, false, "Unreadable registration"), default);
@@ -86,7 +86,7 @@ public sealed class AdminCareHomeApplicationTests
         UserId owner = UserId.New();
         UserId admin = UserId.New();
         var facility = await CreateSubmittedFacility(db, owner);
-        var handler = new ReviewCareHomeApplicationCommandHandler(db, Sender);
+        var handler = new ReviewCareHomeApplicationCommandHandler(db, Sender, CareHomeTestClockHost.Clock());
 
         var correction = await handler.Handle(new ReviewCareHomeApplicationCommand(
             admin, facility.Id.Value, facility.Version, CareHomeReviewAction.CorrectionsRequested, "Please replace certificate"), default);
@@ -96,7 +96,7 @@ public sealed class AdminCareHomeApplicationTests
         {
             facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents)
                 .SingleAsync(x => x.Id == facility.Id);
-            await new ReviewCareHomeDocumentCommandHandler(db, Sender).Handle(new ReviewCareHomeDocumentCommand(
+            await new ReviewCareHomeDocumentCommandHandler(db, Sender, CareHomeTestClockHost.Clock()).Handle(new ReviewCareHomeDocumentCommand(
                 admin, facility.Id.Value, document.Id, facility.Version, true, null, true, null), default);
         }
         facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents).SingleAsync(x => x.Id == facility.Id);
@@ -119,9 +119,9 @@ public sealed class AdminCareHomeApplicationTests
     {
         using CareHomesDbContext db = CreateDb();
         UserId owner = UserId.New();
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        _ = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        _ = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
         CareHomeFacility draft = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents)
             .SingleAsync(x => x.Id == new CareHomeId(created.Value.Id));
@@ -137,7 +137,7 @@ public sealed class AdminCareHomeApplicationTests
                 draft.UploadDocument(owner, type, $"private/{type}.pdf", "application/pdf", 100, null, DateTime.UtcNow);
         draft.SaveDraft(owner, draft.Version, CareHomeFacilityTests.Draft(), DateTime.UtcNow);
         await db.SaveChangesAsync();
-        var submit = new SubmitMyCareHomeApplicationCommandHandler(db);
+        var submit = new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock());
         AddCoverAndGallery(db, draft);
         await db.SaveChangesAsync();
         await submit.Handle(new SubmitMyCareHomeApplicationCommand(owner, draft.Version), default);
@@ -151,9 +151,9 @@ public sealed class AdminCareHomeApplicationTests
 
     private static async Task<CareHomeFacility> CreateSubmittedFacility(CareHomesDbContext db, UserId owner)
     {
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        _ = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        _ = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
         CareHomeFacility facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents)
             .SingleAsync(x => x.OwnerUserId == owner);
@@ -162,7 +162,7 @@ public sealed class AdminCareHomeApplicationTests
         await db.SaveChangesAsync();
         AddCoverAndGallery(db, facility);
         await db.SaveChangesAsync();
-        await new SubmitMyCareHomeApplicationCommandHandler(db)
+        await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
         return facility;
     }

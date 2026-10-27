@@ -225,6 +225,25 @@
           ]
         },
         {
+          "name": "List care-home document views",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents",
+            "description": "Additive 2026-10-27. Default view=all returns every active document newest-first (the previous detail ordering, minus logically removed rows); each item carries lifecycleView (current|pending|history), isExpired (supplied expiry date before the current Cairo date; independent of status — a pending document with a past date reads expired, no false reassurance) and needsAction (true only for the latest rejected pending candidate awaiting correction). The application detail documents array now carries the same three fields, and its additive reviewTargetRevisionId pins the revision whose documents are the actionable candidate set — always review through verify/reject, which remain enforced server-side against the submitted revision. Optional query parameters: view=current|pending|history (an unknown value returns 400 CareHomes.Document.InvalidView, never an empty result), type=1..4 (an undefined value returns 400 CareHomes.Document.InvalidType), isExpired=true|false."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('document view list contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Read private care-home document",
           "request": {
             "method": "GET",
@@ -294,6 +313,25 @@
               "script": {
                 "exec": [
                   "pm.test('document reject contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove care-home document history",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}?expectedVersion={{careHomeVersion}}",
+            "description": "History-only logical removal (2026-10-27). The server recomputes the classification at mutation time, so only history-classified documents are removable: a protected current document (even when expired) or an active pending candidate (including the latest rejected candidate awaiting correction) returns 409 CareHomes.Document.NotRemovable; a stale expectedVersion returns 409 CareHomes.Admin.Conflict; an unknown or already-removed document is 404 and repeated removals are idempotent (no second audit write). Removed rows disappear from the detail documents array and both document lists while their audit row and shared private bytes are retained — nothing is ever physically deleted, and live revisions keep reading their shared files."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('admin history removal contract', function () { pm.expect([204, 401, 403, 404, 409]).to.include(pm.response.code); });"
                 ]
               }
             }

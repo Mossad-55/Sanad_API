@@ -86,7 +86,8 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
 
         if (createdRevision && ApprovedRevisionId is Guid approvedRevisionId)
         {
-            foreach (var document in _documents.Where(item => item.ProfileRevisionId == approvedRevisionId).ToList())
+            foreach (var document in _documents.Where(item =>
+                    item.ProfileRevisionId == approvedRevisionId && !item.IsRemoved).ToList())
                 _documents.Add(CareHomeDocument.Clone(document, current.Id, utcNow));
         }
 
@@ -168,7 +169,8 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
 
         if (ApprovedRevisionId is Guid approvedRevisionId && source.Id == approvedRevisionId)
         {
-            foreach (var document in _documents.Where(item => item.ProfileRevisionId == approvedRevisionId).ToList())
+            foreach (var document in _documents.Where(item =>
+                    item.ProfileRevisionId == approvedRevisionId && !item.IsRemoved).ToList())
                 _documents.Add(CareHomeDocument.Clone(document, editable.Id, utcNow));
         }
 
@@ -202,7 +204,8 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
         if (revision.Id == ApprovedRevisionId)
             throw new DomainException("Create a new profile revision before resubmitting an approved facility.");
         var required = Enum.GetValues<CareHomeDocumentType>();
-        if (required.Any(type => !_documents.Any(document => document.Type == type && document.ProfileRevisionId == revision.Id)))
+        if (required.Any(type => !_documents.Any(document => document.Type == type &&
+                document.ProfileRevisionId == revision.Id && !document.IsRemoved)))
             throw new DomainException("Operating license, registration, health, and civil-defense documents are required before submission.");
 
         revision.Freeze(utcNow);
@@ -226,7 +229,7 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
         if (Status != CareHomeStatus.PendingReview || SubmittedRevisionId is null)
             throw new DomainException("Documents can only be verified while the application is under review.");
         CareHomeDocument document = _documents.SingleOrDefault(item =>
-                item.Id == documentId && item.ProfileRevisionId == SubmittedRevisionId.Value)
+                item.Id == documentId && item.ProfileRevisionId == SubmittedRevisionId.Value && !item.IsRemoved)
             ?? throw new DomainException("Care-home document was not found in the submitted revision.");
         document.Verify(adminUserId, expiryDate, confirmNonExpiring, utcNow);
         UpdatedOnUtc = utcNow;
@@ -241,9 +244,54 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
         if (Status != CareHomeStatus.PendingReview || SubmittedRevisionId is null)
             throw new DomainException("Documents can only be rejected while the application is under review.");
         CareHomeDocument document = _documents.SingleOrDefault(item =>
-                item.Id == documentId && item.ProfileRevisionId == SubmittedRevisionId.Value)
+                item.Id == documentId && item.ProfileRevisionId == SubmittedRevisionId.Value && !item.IsRemoved)
             ?? throw new DomainException("Care-home document was not found in the submitted revision.");
         document.Reject(adminUserId, reason, utcNow);
+        UpdatedOnUtc = utcNow;
+        Version++;
+    }
+
+    /// <summary>
+    /// Owner path for the approved history-only logical removal: the caller
+    /// must own the facility. Whether the document is actually removable
+    /// (only the history class) is decided by the application layer right
+    /// before this call, from a freshly recomputed classification; the
+    /// aggregate guards the version token and the first-removal invariant.
+    /// A repeated removal is handled idempotently by the application layer
+    /// and never reaches this method.
+    /// </summary>
+    public void RemoveOwnDocumentHistory(
+        UserId actorUserId,
+        int expectedVersion,
+        Guid documentId,
+        DateTime utcNow)
+    {
+        EnsureOwner(actorUserId);
+        RemoveDocument(actorUserId, expectedVersion, documentId, utcNow);
+    }
+
+    /// <summary>
+    /// Operational-admin path for the same history-only logical removal; the
+    /// admin policy is enforced at the route, exactly like document
+    /// verify/reject. Domain scoping and invariant guards are identical to
+    /// the owner path.
+    /// </summary>
+    public void RemoveDocumentHistory(
+        UserId actorUserId,
+        int expectedVersion,
+        Guid documentId,
+        DateTime utcNow)
+        => RemoveDocument(actorUserId, expectedVersion, documentId, utcNow);
+
+    private void RemoveDocument(UserId actorUserId, int expectedVersion, Guid documentId, DateTime utcNow)
+    {
+        EnsureVersion(expectedVersion);
+        if (actorUserId == UserId.Empty)
+            throw new DomainException("Care-home document remover is required.");
+        EnsureUtc(utcNow);
+        CareHomeDocument document = _documents.SingleOrDefault(item => item.Id == documentId)
+            ?? throw new DomainException("Care-home document was not found.");
+        document.Remove(actorUserId, utcNow);
         UpdatedOnUtc = utcNow;
         Version++;
     }
@@ -272,7 +320,8 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
                     .GroupBy(document => document.Type)
                     .Any(group => !LatestDocument(group).IsUsableOn(currentDate)) ||
                     Enum.GetValues<CareHomeDocumentType>().Any(type => !_documents.Any(document =>
-                        document.ProfileRevisionId == revisionId && document.Type == type && document.IsUsableOn(currentDate))))
+                        document.ProfileRevisionId == revisionId && document.Type == type && document.IsUsableOn(currentDate)
+                        && !document.IsRemoved)))
                     throw new DomainException("Every required care-home document must be Admin-verified and valid before approval.");
                 CareHomeProfileRevision submitted = _revisions.Single(revision => revision.Id == revisionId);
                 submitted.MarkApproved(utcNow);
@@ -296,7 +345,8 @@ public sealed class CareHomeFacility : AggregateRoot<CareHomeId>
             case CareHomeReviewAction.Reactivated:
                 if (Status != CareHomeStatus.Suspended)
                     throw new DomainException("Only a suspended care home can be reactivated.");
-                if (ApprovedRevisionId is null || _documents.Where(document => document.ProfileRevisionId == ApprovedRevisionId.Value)
+                if (ApprovedRevisionId is null || _documents.Where(document =>
+                        document.ProfileRevisionId == ApprovedRevisionId.Value)
                     .GroupBy(document => document.Type)
                     .Any(group => !LatestDocument(group).IsUsableOn(currentDate)))
                     throw new DomainException("Required care-home documents must be valid before reactivation.");

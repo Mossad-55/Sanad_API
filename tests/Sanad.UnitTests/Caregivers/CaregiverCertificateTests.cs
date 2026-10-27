@@ -439,12 +439,15 @@ public sealed class CaregiverCertificateTests
             certificate.VerificationStatus);
     }
 
+    /// <summary>
+    /// With no valid approved current version (a brand-new pending upload or an
+    /// initial rejection), a replacement upload becomes the effective pending
+    /// version and the row's columns mirror it.
+    /// </summary>
     [Theory]
     [InlineData(CertificateVerificationStatus.Pending)]
     [InlineData(CertificateVerificationStatus.Rejected)]
-    [InlineData(CertificateVerificationStatus.Verified)]
-    [InlineData(CertificateVerificationStatus.Revoked)]
-    public void UpdateCertificateFile_ShouldReturnAnyStatusToPending(
+    public void UpdateCertificateFile_ShouldMakeReplacementEffective_WhenNoValidCurrent(
         CertificateVerificationStatus initialStatus)
     {
         Caregiver caregiver =
@@ -505,6 +508,64 @@ public sealed class CaregiverCertificateTests
             certificate.VerificationStatus);
 
         Assert.Null(certificate.ReviewReason);
+    }
+
+    /// <summary>
+    /// A replacement upload against an already-approved (or revoked)
+    /// qualification is appended as a pending version only: the current
+    /// effective scan keeps the row's columns and the caregiver's eligibility
+    /// until the replacement is itself reviewed.
+    /// </summary>
+    [Theory]
+    [InlineData(CertificateVerificationStatus.Verified)]
+    [InlineData(CertificateVerificationStatus.Revoked)]
+    public void UpdateCertificateFile_ShouldKeepCurrentEffective_WhenReplacementPending(
+        CertificateVerificationStatus initialStatus)
+    {
+        Caregiver caregiver =
+            CreateMedicalCaregiver();
+
+        CaregiverCertificate certificate =
+            AddCertificate(
+                caregiver,
+                CaregiverCertificateType.PracticeLicense);
+
+        MoveCertificateToStatus(
+            caregiver,
+            certificate,
+            initialStatus);
+
+        string originalFilePath =
+            certificate.FilePath;
+
+        DateOnly? originalExpiryDate =
+            certificate.ExpiryDate;
+
+        caregiver.UpdateCertificateFile(
+            certificate.Id,
+            "  certificates/new-document.jpg  ",
+            CreateCurrentDate()
+                .AddYears(1),
+            CreateCurrentDate(),
+            CaregiverTestData.CurrentUtc);
+
+        Assert.Equal(
+            initialStatus,
+            certificate.VerificationStatus);
+
+        Assert.Equal(
+            originalFilePath,
+            certificate.FilePath);
+
+        Assert.Equal(
+            originalExpiryDate,
+            certificate.ExpiryDate);
+
+        Assert.True(certificate.HasPendingReplacement);
+
+        Assert.Equal(
+            2,
+            certificate.VisibleVersions.Count);
     }
 
     [Theory]
@@ -587,7 +648,7 @@ public sealed class CaregiverCertificateTests
     [InlineData(CertificateVerificationStatus.Rejected)]
     [InlineData(CertificateVerificationStatus.Verified)]
     [InlineData(CertificateVerificationStatus.Revoked)]
-    public void RemoveCertificate_ShouldRemoveAdditionalFromAnyStatus(
+    public void RemoveCertificate_ShouldTombstoneAdditionalFromAnyStatus(
         CertificateVerificationStatus initialStatus)
     {
         Caregiver caregiver =
@@ -606,7 +667,23 @@ public sealed class CaregiverCertificateTests
         caregiver.RemoveCertificate(
             certificate.Id);
 
+        // Removal is a logical tombstone, never a physical delete: the row is
+        // retained for authorized history but leaves the live profile.
+        Assert.True(certificate.IsRemoved);
+
         Assert.DoesNotContain(
+            caregiver.GetActiveCertificates(),
+            existing =>
+                existing.Id ==
+                certificate.Id);
+
+        Assert.Contains(
+            caregiver.GetRemovedCertificates(),
+            existing =>
+                existing.Id ==
+                certificate.Id);
+
+        Assert.Contains(
             caregiver.Certificates,
             existing =>
                 existing.Id ==
@@ -643,8 +720,14 @@ public sealed class CaregiverCertificateTests
             expiryDate: null,
             CreateCurrentDate());
 
+        // The tombstoned qualification frees its Additional slot even though
+        // its row is retained for audit.
         Assert.Equal(
             Caregiver.MaximumAdditionalCertificates,
+            caregiver.GetActiveCertificates().Count);
+
+        Assert.Equal(
+            Caregiver.MaximumAdditionalCertificates + 1,
             caregiver.Certificates.Count);
     }
 
@@ -692,10 +775,125 @@ public sealed class CaregiverCertificateTests
                 CaregiverCertificateId.Empty));
     }
 
+    /// <summary>
+    /// The aggregate guard behind per-version history removal: a superseded
+    /// history version is removed (idempotently), while the current effective
+    /// and the live pending versions are refused.
+    /// </summary>
+    [Fact]
+    public void RemoveCertificateVersion_ShouldRemoveHistoryButRefuseCurrentAndPending()
+    {
+        Caregiver caregiver =
+            CreateMedicalCaregiver();
+
+        CaregiverCertificate certificate =
+            AddCertificate(
+                caregiver,
+                CaregiverCertificateType.PracticeLicense);
+
+        caregiver.VerifyCertificate(
+            certificate.Id);
+
+        CaregiverCertificateVersionId currentVersionId =
+            certificate.CurrentVersion!.Id;
+
+        // A replacement becomes the live pending version; the approved upload
+        // stays effective until the replacement is reviewed.
+        caregiver.UpdateCertificateFile(
+            certificate.Id,
+            "certificates/replacement.jpg",
+            expiryDate: null,
+            CreateCurrentDate(),
+            CaregiverTestData.CurrentUtc);
+
+        CaregiverCertificateVersionId pendingVersionId =
+            certificate.PendingVersion!.Id;
+
+        Assert.Throws<DomainException>(
+            () => caregiver.RemoveCertificateVersion(
+                certificate.Id,
+                currentVersionId,
+                UserId.New(),
+                CaregiverTestData.CurrentUtc));
+
+        Assert.Throws<DomainException>(
+            () => caregiver.RemoveCertificateVersion(
+                certificate.Id,
+                pendingVersionId,
+                UserId.New(),
+                CaregiverTestData.CurrentUtc));
+
+        // Promoting the replacement turns the approved upload into history.
+        caregiver.VerifyCertificate(
+            certificate.Id);
+
+        Assert.True(
+            caregiver.RemoveCertificateVersion(
+                certificate.Id,
+                currentVersionId,
+                UserId.New(),
+                CaregiverTestData.CurrentUtc));
+
+        // Idempotent repeat: no second change, no exception.
+        Assert.False(
+            caregiver.RemoveCertificateVersion(
+                certificate.Id,
+                currentVersionId,
+                UserId.New(),
+                CaregiverTestData.CurrentUtc));
+
+        Assert.True(
+            certificate.Versions
+                .Single(version => version.Id == currentVersionId)
+                .IsRemoved);
+    }
+
+    /// <summary>
+    /// The rejected candidate that still backs the effective snapshot (no
+    /// approved current) is protected: it is the only source of the displayed
+    /// status and the legacy snapshot download, so removing it must be refused
+    /// rather than leaving those pointing at a removed file. Only a later
+    /// upload supersedes it into genuine history.
+    /// </summary>
+    [Fact]
+    public void RemoveCertificateVersion_ShouldProtectRejectedCandidateBackingTheSnapshot()
+    {
+        Caregiver caregiver =
+            CreateMedicalCaregiver();
+
+        CaregiverCertificate certificate =
+            AddCertificate(
+                caregiver,
+                CaregiverCertificateType.AdditionalCertificate);
+
+        caregiver.RejectCertificate(
+            certificate.Id,
+            "Unreadable scan.");
+
+        CaregiverCertificateVersion rejected =
+            certificate.Versions.Single();
+
+        Assert.True(rejected.IsHistory);
+        Assert.False(certificate.CanRemoveVersion(rejected));
+
+        Assert.Throws<DomainException>(
+            () => caregiver.RemoveCertificateVersion(
+                certificate.Id,
+                rejected.Id,
+                UserId.New(),
+                CaregiverTestData.CurrentUtc));
+    }
+
+    /// <summary>
+    /// When a mandatory qualification still has a valid approved version, a
+    /// rejected replacement never knocks the Active caregiver off the roster:
+    /// the approved current stays in force and the rejection is retained as
+    /// history rather than becoming the effective label.
+    /// </summary>
     [Theory]
     [InlineData(CaregiverCertificateType.PracticeLicense)]
     [InlineData(CaregiverCertificateType.GraduationCertificate)]
-    public void RejectCertificate_ShouldKeepPendingReview_WhenActiveMandatoryReplacementRejected(
+    public void RejectCertificate_ShouldKeepActive_WhenMandatoryReplacementRejectedWithValidCurrent(
         CaregiverCertificateType certificateType)
     {
         Caregiver caregiver =
@@ -705,6 +903,9 @@ public sealed class CaregiverCertificateTests
             GetCertificate(
                 caregiver,
                 certificateType);
+
+        string originalFilePath =
+            certificate.FilePath;
 
         caregiver.UpdateCertificateFile(
             certificate.Id,
@@ -718,16 +919,24 @@ public sealed class CaregiverCertificateTests
             "Invalid mandatory Certificate.");
 
         Assert.Equal(
-            CaregiverStatus.PendingReview,
+            CaregiverStatus.Active,
             caregiver.Status);
 
         Assert.Equal(
-            CertificateVerificationStatus.Rejected,
+            CaregiverAvailability.Available,
+            caregiver.Availability);
+
+        // The approved current is the honest effective label; the rejected
+        // replacement is retained history.
+        Assert.Equal(
+            CertificateVerificationStatus.Verified,
             certificate.VerificationStatus);
 
         Assert.Equal(
-            CaregiverAvailability.Unavailable,
-            caregiver.Availability);
+            originalFilePath,
+            certificate.FilePath);
+
+        Assert.False(certificate.HasPendingReplacement);
     }
 
     [Fact]

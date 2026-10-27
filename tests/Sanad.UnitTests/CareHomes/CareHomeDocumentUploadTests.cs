@@ -17,12 +17,12 @@ public sealed class CareHomeDocumentUploadTests
         using CareHomesDbContext db = new(new DbContextOptionsBuilder<CareHomesDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
         UserId owner = UserId.New();
-        var created = await new CreateCareHomeFacilityCommandHandler(db)
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
             .Handle(new CreateCareHomeFacilityCommand(owner), default);
-        var saved = await new SaveMyCareHomeProfileCommandHandler(db).Handle(
+        var saved = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
             new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
         var storage = new RecordingStorage();
-        var handler = new UploadCareHomeDocumentCommandHandler(db, storage);
+        var handler = new UploadCareHomeDocumentCommandHandler(db, storage, CareHomeTestClockHost.Clock());
         byte[] pdf = Encoding.ASCII.GetBytes("%PDF-1.7\nprivate fixture");
 
         var rejectedSignature = await handler.Handle(new UploadCareHomeDocumentCommand(

@@ -279,6 +279,82 @@
           ]
         },
         {
+          "name": "List my documents (lifecycle views)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/documents",
+            "description": "Additive 2026-10-27. Default view=all returns every active document newest-first; each item carries lifecycleView (current|pending|history), isExpired (supplied expiry date before the current Cairo date; independent of status) and needsAction (true only for the pending candidate the Admin rejected, awaiting correction). Optional query parameters: view=current|pending|history (an unknown value returns 400 CareHomes.Document.InvalidView, never an empty result), type=1..4 (an undefined value returns 400 CareHomes.Document.InvalidType) and isExpired=true|false. Logically removed history documents never appear here or in the mine readback, which carries the same three fields plus reviewTargetRevisionId."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('document list contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List only my current documents",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/documents?view=current",
+            "description": "view=current returns at most one current document per required type: the newest Verified document on the approved revision, kept even when its supplied expiry has passed (isExpired=true while status is unchanged) and never displaced by a newer pending replacement."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('current view contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read my document file",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/documents/{{careHomeDocumentId}}/file",
+            "description": "Owner read of one of the facility's own private document files — current through history, at any facility status. Set careHomeDocumentId from a document list response. An unknown or logically removed document returns 404 CareHomes.Document.DocumentNotFound; another owner's ID is indistinguishable (404 facility not found). The storage key is never exposed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('owner document file contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove document from history",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/facilities/mine/documents/{{careHomeDocumentId}}?expectedVersion={{careHomeFacilityVersion}}",
+            "description": "History-only logical removal (2026-10-27). Only history-classified documents are removable: the protected current response returns 204; an already-removed owned document returns 204 again (idempotent replay, no second write). Removed rows disappear from every read but their audit row and shared private bytes are retained — nothing is ever physically deleted, and files still referenced by live revisions keep working."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('history removal contract', function () { pm.expect([204, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
           "name": "Upload private gallery image",
           "request": {
             "method": "POST",

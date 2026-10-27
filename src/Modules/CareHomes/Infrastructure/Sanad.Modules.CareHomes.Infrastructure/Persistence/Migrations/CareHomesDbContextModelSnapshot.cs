@@ -1093,6 +1093,14 @@ namespace Sanad.Modules.CareHomes.Infrastructure.Persistence.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("profile_revision_id");
 
+                    b.Property<Guid?>("RemovedByUserId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("removed_by_user_id");
+
+                    b.Property<DateTime?>("RemovedOnUtc")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("removed_on_utc");
+
                     b.Property<string>("ReviewReason")
                         .HasMaxLength(1000)
                         .HasColumnType("character varying(1000)")

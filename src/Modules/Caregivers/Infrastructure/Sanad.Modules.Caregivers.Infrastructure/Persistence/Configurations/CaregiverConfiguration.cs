@@ -221,6 +221,16 @@ public sealed class CaregiverConfiguration :
             certificate.Property(cert => cert.ReviewReason)
                 .HasColumnName("review_reason")
                 .HasMaxLength(500);
+            certificate.Property(cert => cert.IsRemoved)
+                .HasColumnName("is_removed")
+                .HasDefaultValue(false)
+                .IsRequired();
+            certificate.Property(cert => cert.RemovedOnUtc)
+                .HasColumnName("removed_on_utc");
+            certificate.Property(cert => cert.Revision)
+                .HasColumnName("revision")
+                .IsConcurrencyToken()
+                .IsRequired();
             certificate.Property(cert => cert.CreatedOnUtc)
                 .HasColumnName("created_on_utc")
                 .IsRequired();
@@ -228,6 +238,85 @@ public sealed class CaregiverConfiguration :
                 .HasColumnName("updated_on_utc")
                 .IsRequired();
             certificate.HasKey("CaregiverId", "Id");
+
+            // Computed read-side members, never persisted columns.
+            certificate.Ignore(cert => cert.CurrentVersion);
+            certificate.Ignore(cert => cert.PendingVersion);
+            certificate.Ignore(cert => cert.HasPendingReplacement);
+            certificate.Ignore(cert => cert.HasCurrentVersion);
+            certificate.Ignore(cert => cert.VisibleVersions);
+
+            // Append-only upload history for the qualification. The nested FK
+            // is the owning certificate's composite key (caregiver_id, id),
+            // carried on the version row as caregiver_id + certificate_id. A
+            // partial unique index enforces "at most one current version per
+            // qualification" without touching removed history rows.
+            certificate.OwnsMany(cert => cert.Versions, version =>
+            {
+                version.ToTable("caregiver_certificate_versions");
+                version.WithOwner().HasForeignKey(
+                    "OwnerCaregiverId",
+                    "OwnerCertificateId");
+                version.Property<CaregiverId>("OwnerCaregiverId")
+                    .HasConversion(id => id.Value, value => new CaregiverId(value))
+                    .HasColumnName("caregiver_id")
+                    .IsRequired();
+                version.Property<CaregiverCertificateId>("OwnerCertificateId")
+                    .HasConversion(id => id.Value, value => new CaregiverCertificateId(value))
+                    .HasColumnName("certificate_id")
+                    .IsRequired();
+                version.Property(v => v.Id)
+                    .HasConversion(id => id.Value, value => new CaregiverCertificateVersionId(value))
+                    .HasColumnName("id")
+                    .ValueGeneratedNever()
+                    .IsRequired();
+                version.Property(v => v.FilePath)
+                    .HasColumnName("file_path")
+                    .IsRequired();
+                version.Property(v => v.ExpiryDate)
+                    .HasColumnName("expiry_date");
+                version.Property(v => v.VerificationStatus)
+                    .HasColumnName("verification_status")
+                    .HasConversion<int>()
+                    .IsRequired();
+                version.Property(v => v.ReviewReason)
+                    .HasColumnName("review_reason")
+                    .HasMaxLength(500);
+                version.Property(v => v.IsCurrent)
+                    .HasColumnName("is_current")
+                    .IsRequired();
+                version.Property(v => v.SupersededOnUtc)
+                    .HasColumnName("superseded_on_utc");
+                version.Property(v => v.IsRemoved)
+                    .HasColumnName("is_removed")
+                    .HasDefaultValue(false)
+                    .IsRequired();
+                version.Property(v => v.RemovedOnUtc)
+                    .HasColumnName("removed_on_utc");
+                version.Property(v => v.RemovedByUserId)
+                    .HasConversion(
+                        id => id.HasValue ? id.Value.Value : (Guid?)null,
+                        value => value.HasValue
+                            ? new UserId(value.Value)
+                            : (UserId?)null)
+                    .HasColumnName("removed_by_user_id");
+                version.Property(v => v.CreatedOnUtc)
+                    .HasColumnName("created_on_utc")
+                    .IsRequired();
+                version.Property(v => v.UpdatedOnUtc)
+                    .HasColumnName("updated_on_utc")
+                    .IsRequired();
+                version.HasKey("OwnerCaregiverId", "OwnerCertificateId", "Id");
+                version.HasIndex("OwnerCaregiverId", "OwnerCertificateId")
+                    .IsUnique()
+                    .HasFilter("is_current AND NOT is_removed")
+                    .HasDatabaseName(
+                        "ux_caregiver_certificate_versions_current");
+
+                // Computed classification flags are not columns.
+                version.Ignore(v => v.IsPending);
+                version.Ignore(v => v.IsHistory);
+            });
         });
 
         // ---- Owned schedules: their own tables + nested owned collections ----

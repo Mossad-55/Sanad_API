@@ -96,6 +96,35 @@ public sealed class CaregiversDbContext :
         }
     }
 
+    public async Task<TResult> ExecuteInTransactionAsync<TResult>(
+        Func<CancellationToken, Task<TResult>> operation,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(operation);
+
+        // The InMemory provider used by the unit tests has no real
+        // transactions; run the callback directly so the domain orchestration
+        // is still exercised. Atomic rollback is proven separately against real
+        // Postgres (see CaregiverCertificateVersionsPostgresTests).
+        if (!Database.IsRelational())
+        {
+            return await operation(cancellationToken);
+        }
+
+        // await using disposes the transaction on any path that does not reach
+        // the explicit commit, which reverts every save the callback made.
+        await using
+            Microsoft.EntityFrameworkCore.Storage.IDbContextTransaction
+                transaction =
+                    await Database.BeginTransactionAsync(cancellationToken);
+
+        TResult result = await operation(cancellationToken);
+
+        await transaction.CommitAsync(cancellationToken);
+
+        return result;
+    }
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {

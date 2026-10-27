@@ -1,11 +1,13 @@
 using Microsoft.EntityFrameworkCore;
 using MediatR;
+using Sanad.BuildingBlocks.Application.Abstractions;
 using Sanad.BuildingBlocks.Application.Abstractions.Storage;
 using Sanad.BuildingBlocks.Application.CQRS;
 using Sanad.BuildingBlocks.Application.Results;
 using Sanad.BuildingBlocks.Domain.Exceptions;
 using Sanad.BuildingBlocks.Domain.Primitives.Ids;
 using Sanad.Modules.CareHomes.Application.Abstractions.Data;
+using Sanad.Modules.CareHomes.Application.Discovery;
 using Sanad.Modules.CareHomes.Domain.Facilities;
 using Sanad.Modules.Identity.Application.Users;
 using Sanad.Modules.Identity.Domain.Users;
@@ -72,7 +74,12 @@ public sealed record CareHomeAdminApplicationDetail(
     Guid? ApprovedRevisionId,
     IReadOnlyList<CareHomeAdminRevision> Revisions,
     IReadOnlyList<CareHomeDocumentResponse> Documents,
-    IReadOnlyList<CareHomeAdminReviewHistory> ReviewHistory);
+    IReadOnlyList<CareHomeAdminReviewHistory> ReviewHistory,
+    // Additive 2026-10-27: the revision whose documents are the actionable
+    // candidate set — the explicit review target so a reviewer never acts on
+    // a historical revision. Domain scoping (verify/reject only touch the
+    // submitted revision) is unchanged and remains the enforcement.
+    Guid? ReviewTargetRevisionId);
 
 public static class CareHomeAdminErrors
 {
@@ -137,7 +144,7 @@ public sealed class GetAdminCareHomeApplicationsQueryHandler(ICareHomesDbContext
 
 public sealed record GetAdminCareHomeApplicationQuery(Guid CareHomeId) : IQuery<CareHomeAdminApplicationDetail>;
 
-public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext db, ISender sender)
+public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext db, ISender sender, IDateTimeProvider clock)
     : IQueryHandler<GetAdminCareHomeApplicationQuery, CareHomeAdminApplicationDetail>
 {
     public async Task<Result<CareHomeAdminApplicationDetail>> Handle(GetAdminCareHomeApplicationQuery request, CancellationToken ct)
@@ -155,7 +162,7 @@ public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext 
 
         try
         {
-            return await Map(facility, media, sender, ct);
+            return await Map(facility, media, sender, ct, CareHomePublicEligibility.CairoDate(clock.UtcNow));
         }
         catch (DomainException)
         {
@@ -169,7 +176,8 @@ public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext 
     }
 
     internal static async Task<CareHomeAdminApplicationDetail> Map(
-        CareHomeFacility facility, IReadOnlyList<CareHomeProfileMedia> media, ISender sender, CancellationToken ct)
+        CareHomeFacility facility, IReadOnlyList<CareHomeProfileMedia> media, ISender sender, CancellationToken ct,
+        DateOnly cairoToday)
     {
         IReadOnlyList<CareHomeProfileMedia> mediaForRevision(Guid revisionId) =>
             media.Where(x => x.ProfileRevisionId == revisionId)
@@ -187,6 +195,14 @@ public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext 
         Dictionary<Guid, UserDisplayInfo> infoById = displayInfo.ToDictionary(x => x.UserId.Value);
 
         infoById.TryGetValue(facility.OwnerUserId.Value, out UserDisplayInfo? owner);
+
+        // Additive classification: the existing all-documents newest-first
+        // array order is preserved (minus logically removed rows); each
+        // item now carries the lifecycle/expiry/needs-action fields.
+        IReadOnlyList<CareHomeDocument> activeDocuments = CareHomeDocumentLifecycle.ActiveDocuments(facility);
+        IReadOnlyDictionary<Guid, string> documentViews = CareHomeDocumentLifecycle.Classify(
+            facility.Documents, facility.ApprovedRevisionId,
+            CareHomeDocumentLifecycle.ResolveTargetRevisionId(facility));
 
         return new CareHomeAdminApplicationDetail(
             facility.Id.Value, facility.OwnerUserId.Value,
@@ -211,8 +227,9 @@ public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext 
                             revision.CancellationTermsJson)),
                     mapMedia(revision.Id, revisionMedia));
             }).ToArray(),
-            facility.Documents.OrderByDescending(x => x.CreatedOnUtc)
-                .Select(UploadCareHomeDocumentCommandHandler.ToResponse).ToArray(),
+            facility.Documents.Where(document => !document.IsRemoved)
+                .OrderByDescending(x => x.CreatedOnUtc)
+                .Select(document => CareHomeDocumentLifecycle.ToResponse(document, documentViews, cairoToday)).ToArray(),
             facility.ReviewHistory.OrderBy(x => x.OccurredOnUtc).Select(history =>
             {
                 infoById.TryGetValue(history.ActorUserId.Value, out UserDisplayInfo? actor);
@@ -222,7 +239,8 @@ public sealed class GetAdminCareHomeApplicationQueryHandler(ICareHomesDbContext 
                     history.ActorUserId.Value, history.Reason, history.OccurredOnUtc,
                     actor?.ArabicFullName, actor?.EnglishFullName,
                     actor?.AccountTypes.Select(x => ((AccountType)x).ToString()).ToArray());
-            }).ToArray());
+            }).ToArray(),
+            CareHomeDocumentLifecycle.ResolveTargetRevisionId(facility));
     }
 
     private static async Task<IReadOnlyList<UserDisplayInfo>> QueryDisplayInfoAsync(
@@ -244,7 +262,7 @@ public sealed record ReviewCareHomeDocumentCommand(
     bool ConfirmNonExpiring,
     string? Reason) : ICommand<CareHomeAdminApplicationDetail>;
 
-public sealed class ReviewCareHomeDocumentCommandHandler(ICareHomesDbContext db, ISender sender)
+public sealed class ReviewCareHomeDocumentCommandHandler(ICareHomesDbContext db, ISender sender, IDateTimeProvider clock)
     : ICommandHandler<ReviewCareHomeDocumentCommand, CareHomeAdminApplicationDetail>
 {
     public async Task<Result<CareHomeAdminApplicationDetail>> Handle(ReviewCareHomeDocumentCommand request, CancellationToken ct)
@@ -280,7 +298,8 @@ public sealed class ReviewCareHomeDocumentCommandHandler(ICareHomesDbContext db,
             .ToListAsync(ct);
         try
         {
-            return await GetAdminCareHomeApplicationQueryHandler.Map(facility, media, sender, ct);
+            return await GetAdminCareHomeApplicationQueryHandler.Map(facility, media, sender, ct,
+                CareHomePublicEligibility.CairoDate(clock.UtcNow));
         }
         catch (DomainException)
         {
@@ -297,7 +316,7 @@ public sealed record ReviewCareHomeApplicationCommand(
     CareHomeReviewAction Action,
     string? Reason) : ICommand<CareHomeAdminApplicationDetail>;
 
-public sealed class ReviewCareHomeApplicationCommandHandler(ICareHomesDbContext db, ISender sender)
+public sealed class ReviewCareHomeApplicationCommandHandler(ICareHomesDbContext db, ISender sender, IDateTimeProvider clock)
     : ICommandHandler<ReviewCareHomeApplicationCommand, CareHomeAdminApplicationDetail>
 {
     public async Task<Result<CareHomeAdminApplicationDetail>> Handle(ReviewCareHomeApplicationCommand request, CancellationToken ct)
@@ -329,7 +348,8 @@ public sealed class ReviewCareHomeApplicationCommandHandler(ICareHomesDbContext 
             .ToListAsync(ct);
         try
         {
-            return await GetAdminCareHomeApplicationQueryHandler.Map(facility, media, sender, ct);
+            return await GetAdminCareHomeApplicationQueryHandler.Map(facility, media, sender, ct,
+                CareHomePublicEligibility.CairoDate(clock.UtcNow));
         }
         catch (DomainException)
         {
