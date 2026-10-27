@@ -579,6 +579,106 @@ second binary deploy for docs, blind refund retry, `record-completed` to fabrica
 completion. The prior HMAC exposure remains a **separate** coordinated-rotation
 follow-up.
 
+## Release receipt — refund-completion fix (2026-10-27, Owner-authorized)
+
+Release `b302a3fc33124fb840435cc24052dc12ffd750e4` (32 files, +2768/−36)
+pushed `origin/main` (`fafb6370..b302a3fc`), no mend/force. Staged set exactly
+the approved 32 files (refund source/interfaces/decorators/tool fake/new tests/
+19 adapted test fakes/care-home doc/active brief); private handoff + debris left
+unstaged. Staged-diff secret scan: 2,768 added lines, **0 real-secret findings**
+(flags only synthetic `sk_test`/`pk_test` placeholders, the B2 test-mode
+public-key prefix in this brief, and a `HmacSecret = secret` code line — values
+never printed).
+
+Package: `Publish-SanadApi.ps1 -Configuration Release` → manifest revision =
+pushed SHA, 9/9 required-migration heads (none added), no
+`appsettings.Development.json` / `.env` / keys in the output; zip
+`deploy/sanad-api-b302a3fc.zip` sha256
+`a5f30acfd53b13e31044b74a0e93bfda0858a7e63ef2a10f432505520eaa280b`, **verified
+byte-identical on target before extraction**.
+
+Deployed to the same approved rehearsal (`srv1604711`, 72.62.92.144, unit
+`sanad-api`, `Staging`, loopback 5001, DB `SanadDb`): live `cf065d4b` →
+`b302a3fc`; binary backup `/root/sanad-api-backup-pre-b302a3fc` (110 top-level
+entries) taken before stop; extraction overlaid application files **without**
+replacing host `appsettings.json` / `appsettings.Staging.json`; service
+`active`, `NRestarts=0`. Startup log: **9/9 contexts, each `0 pending
+migration(s) / 0 migration(s) applied`** (0 migrations, as scoped), listening
+`http://127.0.0.1:5001`. Config fingerprints byte-identical before/after
+(also equal to the prior release): `/etc/sanad/sanad.env` `fad7e7fc…`,
+`appsettings.json` `200332b4…`, `appsettings.Staging.json` (`FixtureRefundSeam`
+with exactly **7** ids) `fd96e26d…`, unit `c018192e…`.
+`Verify-SanadDeployment.ps1` **exit 0** over public 8091 (revision match,
+required/applied 9/9, 9 startup contexts, smoke `GET /api/v1/lookups/services`
+HTTP 200).
+
+Provisioner tool (its `Sanad.API` dependency changed): re-published fresh
+(framework-dependent `linux-x64`, Release, 0 warnings), zip sha256
+`d24d6f7f203a2365bce2dc98df2348b039c169a6b11272c034866f458dceadb8` verified on
+target; `/root/sanad-demo-provisioner` backed up to
+`/root/sanad-demo-provisioner-backup-pre-b302a3fc` and refreshed —
+`Sanad.PortalProvisioner.dll` sha256
+`1024dedbeb9b5745c71312f17d93bfe57073f51fb795f3000ec6ae0e090d8f05` (matches
+local publish), host `appsettings.json` preserved, `--help` responds. **No
+provisioning run, no DB write, no seeder.**
+
+## B2 final result — second TEST booking proves app `Completed` (2026-10-27)
+
+ONE new designated TEST booking (max two total; both now used). Existing
+demo-family credentials only (`demo1.family.owner`), reusing the last valid
+facility `01a12162-4bb9-782a-b386-8a1cb2c136ef` / room type
+`01a12b1b-902d-7b0b-b7cd-3af2274c25d8`; no new accounts, no manual state, no
+extra charges, no owner impersonation.
+
+- **Checkout.** `POST …/checkout` with a fresh `Idempotency-Key` → booking
+  `01a17b7a-5524-75e3-8601-f548e7544559`, status 1, total **11,500.00 EGP**
+  (base 10,000 + fee 1,000 + tax 500), `refundPolicyVersion` 1.
+- **Provider test intent.** `POST …/payments/intent` HTTP 200 →
+  `intentionOrderId 640433504`, `paymobOrderId
+  chb_01a17b7a55257be897cf2f8fc19a4d4a`, public key prefix `egy_pk_te…`
+  (test-mode); completed the documented frictionless TEST Mastercard checkout
+  (no OTP, no real card data).
+- **Capture.** Booking → status 2 `PaidAwaitingDecision` / payment 2 `Paid`,
+  `payment_completed_on_utc` set, `PaymobTransactionId 561461962`, through the
+  **normal HMAC callback** (nginx log: `POST
+  /api/v1/payments/webhooks/paymob … 03:50:22 … 200`).
+- **Refund.** Family cancel before check-in (`POST …/{id}/cancel`, legacy v1 ⇒
+  full award). Cancel response HTTP 200 in 2.66 s already carried
+  **`status 9` Refunded / `paymentStatus 5` Refunded / `refundStatus 4`
+  Completed**, `refundAmount 11500.00`, `refundReference 561462075`,
+  `refundCompletedOnUtc 2026-10-27T03:51:20.7347297Z`.
+- **Which path completed it — readback, directly observed.** The persist store
+  shows `refund_completed_on_utc = 03:51:20.734729`, identical to the cancel
+  request's own `UtcNow` (the readback path stamps that value; the callback
+  stamps `DateTime.UtcNow`). The service journal records, inside that request,
+  the outbound `POST …/acceptance/void_refund/refund` **and** the readback
+  `GET https://accept.paymob.com/api/acceptance/transactions/561462075`
+  (with `POST …/auth/tokens`). Paymob's refund callback did also arrive
+  (`POST /api/v1/payments/webhooks/paymob … 03:51:22 … 200`) but was an
+  idempotent no-op: only **one** `RefundCompleted` (event 7) outbox row exists.
+  So the app's own **readback completion is runtime-proven**, not merely
+  test-proven, for this run.
+- **Provider read-only confirmation.** capture `561461962`: `success=true`,
+  `pending=false`, `is_refunded=true`, `refunded_amount_cents=1150000`,
+  `amount_cents=1150000`, `currency=EGP`, `order.id=640433504`, merchant
+  `chb_01a17b7a55257be897cf2f8fc19a4d4a`. refund `561462075`: `success=true`,
+  `pending=false`, `is_refund=true`, `has_parent_transaction=true`,
+  `parent_transaction=561461962`, `amount_cents=1150000`, `currency=EGP`,
+  `order.id=640433504`.
+- **Outbox / side effects (minimal, normal).** 4 processed rows for the
+  booking (`PaymentSucceeded`, `OwnerDecisionNeeded`, `FamilyCancelledPaidBooking`,
+  `RefundCompleted`), each `attempt_count=1`. `refund_status` ambiguity flag
+  false; refund attempt claim cleared. `finance.refund_ledgers` /
+  `refund_ledger_entries` are refund-case-scoped (no booking linkage): 0 rows
+  added today (7/11 unchanged). Care-home booking count 27 → 28.
+- **First booking unchanged.** `01a17ac8-…` still `Initiated` (8/4/2,
+  `refund_completed_on_utc` null); no manual state action taken on it.
+- **Operator sessions.** Both created sessions logged out
+  (`sessions/logout` → 204; the token then returns 401); a fresh probe saw
+  exactly one session (its own) and was logged out. Private artifacts
+  (checkout URL, tokens, response JSONs) removed; no clientSecret / token /
+  HMAC value or full URL was printed or staged throughout.
+
 ## Current result
 
 Preparation complete at `812493d9` (2026-10-27); Task A/A2 delivered
@@ -628,3 +728,18 @@ The Owner then **lifted the push/release hold for this bounded fix only** and
 authorized commit/push/deploy to the same rehearsal plus ONE second/final TEST
 booking proving the app's own `Completed`. Phase `ready_for_review` → release
 authorized; recorded below once executed.
+
+**Executed (2026-10-27).** Pushed `b302a3fc` and deployed it to the same
+rehearsal (verifier exit 0, 9/9 heads / 0 pending, smoke 200, fingerprints
+unchanged; provisioner refreshed, no run). The second/final TEST booking
+(`01a17b7a-5524-75e3-8601-f548e7544559`, 11,500.00 EGP) paid through the real
+flow and was refunded by a family cancel; the app itself recorded
+`refundStatus Completed` **within the cancel request**, and the service journal
+shows the new authenticated readback `GET /api/acceptance/transactions/561462075`
+— so the **app's own `Completed` is runtime-proven via the readback path**, with
+the provider settlement independently confirmed. Provider maximum of two test
+records reached; the first booking stays `Initiated` (untouched). Both
+operator sessions logged out. Security follow-up (coordinated HMAC rotation)
+remains **open and separate**. Not a production-readiness claim: test account
+only; live merchant keys and HTTPS webhook delivery still need separate
+verification.

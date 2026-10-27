@@ -73,13 +73,41 @@ state before acting. It also states honestly what is excluded (all
 reconciliation routes) and why.
 
 Separately, the minimal endpoint-to-Paymob test-account verification
-(**maximum two test records**) is **prepared, not executed**: no existing
-eligible refund capture exists, so the one legitimate path is a new funded
-TEST care-home booking through the real checkout flow. That protocol is under
-separate review and **no real Paymob proof, seam execution or provider call
-has been made**. Do not treat the matrix as permission to execute any listed
-action; do not fabricate provider references or duplicate-charge claims —
-existing real captures are valid single sales, not duplicates.
+(**maximum two test records**) is now **executed and closed** (both records
+used; see §1.5). No pre-existing eligible refund capture existed, so the only
+legitimate path was a new funded TEST care-home booking through the real
+checkout flow.
+
+Do not treat the matrix as permission to execute any further listed action; do
+not fabricate provider references or duplicate-charge claims — existing real
+captures are valid single sales, not duplicates.
+
+### 1.5 Care-home refund completion — delivered, runtime-proven
+
+The refund-completion gap reported after the first test booking (provider
+settled the refund while the app stayed `Initiated`) is fixed and proven
+end-to-end on the rehearsal:
+
+- Refund completion no longer depends on callback (re)delivery: once the
+  refund call returns the provider transaction id and it is durably persisted,
+  the processor reads that exact transaction back over the authenticated
+  merchant channel and completes only on a settled, cross-correlated refund.
+  The signed callback remains the fallback, and a readback refusal never
+  repeats the refund request.
+- The reviewer-flagged parent-payment-path concurrency re-read was corrected so
+  a genuinely applied refunded-parent callback is acknowledged via the
+  booking's recorded payment id, without weakening the child-reference identity
+  check.
+- Final runtime proof (2026-10-27, rehearsal `Staging`): one real TEST booking
+  (11,500.00 EGP, `refundPolicyVersion` 1) paid through the documented
+  frictionless TEST card and the normal HMAC callback, then cancelled by the
+  family before check-in. The cancel response itself returned
+  `refundStatus Completed` with `refundCompletedOnUtc` set; the outbound
+  readback `GET /api/acceptance/transactions/<refund-id>` is recorded in the
+  service journal within that same request, and exactly one `RefundCompleted`
+  outbox event was written. Provider readback confirms a settled refund child
+  correlated to our capture and order. Full evidence: release receipt in
+  [frontend-landing-follow-up-2026-10-27.md](frontend-landing-follow-up-2026-10-27.md).
 
 ### 1.4 Documentation/contract corrections — delivered
 
@@ -227,11 +255,17 @@ seam intact.
   checks 1/1; deployment verified per the release receipt in the execution
   brief. Skipped/not-run: no full-suite rerun this phase (focused set per
   contract); no live notification events triggered; no provider calls.
-- Commit/push/deployed revision: recorded in
-  `frontend-landing-follow-up-2026-10-27.md` (release receipt section) once
-  deployed.
-- Provider verification: **not executed**; maximum two test records under the
-  separately reviewed protocol (see §1.3).
+- Commit/push/deployed revision: the lookup/notification/matrix/documentation
+  work shipped in `cf065d4b` (deployed to the rehearsal and verified:
+  verifier exit 0, 9/9 heads, smoke 200). The refund-completion fix (§1.5)
+  shipped separately in `b302a3fc`, deployed to the same rehearsal and
+  verified the same way (revision match, 9/9 heads / 0 pending, smoke 200,
+  configuration fingerprints unchanged). Exact receipts in
+  `frontend-landing-follow-up-2026-10-27.md`.
+- Provider verification: **executed and closed** — the maximum two TEST
+  care-home records were used; the second proved the app's own `Completed`
+  refund reconciliation end-to-end (§1.5). Test mode only; live merchant keys
+  and HTTPS webhook delivery for production remain to be verified separately.
 - Handoff attachments and outstanding team actions: §2, §3 as listed.
 
 Please complete your team's actions and return concrete test results. Backend
