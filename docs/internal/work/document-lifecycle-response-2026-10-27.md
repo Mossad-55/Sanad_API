@@ -8,11 +8,11 @@ and legacy-data facts, the limitations that are **not** promised, and the
 post-release verification record.
 
 - Baseline commit: `85503ec0` (matches the pre-phase remote pin).
-- Release commit: see "Release receipt" below (exact SHA filled at push).
-- Deployed target: Staging (srv1604711 / 72.62.92.144, unit `Sanad-api`,
-  DB loopback:5433 `SanadDb`, app Staging #7 identity seam) — unchanged
-  configuration posture: no seam/CORS/proxy/HMAC/provider/config changes,
-  no new accounts.
+- Release commit: `b861e3e54e5b555202623d219e9d33d6d7a871dd` (single
+  release commit; full receipt in section 6).
+- Deployed to the authorized Staging rehearsal target (the same designated
+  target as the prior designated receipt); configuration posture unchanged:
+  no seam/CORS/proxy/HMAC/provider/config changes, no new accounts.
 
 ---
 
@@ -24,8 +24,10 @@ A shared deterministic classifier (`CareHomeDocumentLifecycle`) is recomputed
 on every read **and at mutation time** (the removal gate never trusts a
 client-supplied view flag):
 
-- Logically removed rows vanish from every view, list, file read, and
-  classification input.
+- Logically removed rows are hidden from every serialized view, list, and
+  file read — they never appear in any response payload. Their rows are
+  RETAINED and remain input to the effective-state audit described below;
+  only their serialized presence is removed.
 - `lifecycleView` ∈ `"current" | "pending" | "history"` (additive field on
   every document item):
   - **current** — per document `Type`, the effective approved slot: the
@@ -105,10 +107,17 @@ client-supplied view flag):
   is **never** called by removal; bytes stay shared with any live
   clone/reference. Audit columns retained; no removed-user metadata is
   exposed in responses (bare `204`).
-- Domain fences: clones never copy removed sources; `Submit`/approval/
-  reactivation gates and document verify/reject lookups ignore removed rows;
-  direct verify/reject of a removed row fails closed (409). No
-  resurrection path exists; public discovery eligibility untouched.
+- Domain fences (traced to final source): removed rows are never eligible
+  as positive presence — profile-save/revision clones copy only live
+  (`!IsRemoved`) approved documents; `Submit` requires each required type
+  to have a live usable document in the revision; document verify/reject
+  lookups target only non-removed rows (a removed row fails closed);
+  owner/admin file reads of a removed row answer 404. The effective audit
+  is deliberately different: the approval and reactivation gates evaluate
+  the newest row per document type over the FULL row set INCLUDING removed
+  rows, so a removed rejected/revoked latest keeps its "no current" verdict
+  and deleting it from history can never unblock approval/reactivation —
+  no resurrection path exists. Public discovery eligibility untouched.
 
 ---
 
@@ -124,7 +133,13 @@ client-supplied view flag):
   is pending** — the caregiver's availability is not suspended and no
   review-required event flips an Active caregiver back into review.
   The new upload rides along as the pending candidate for targeted review.
-  (Expired or revoked ⇒ NOT qualified for booking eligibility — unchanged.)
+  (Expired or revoked remains restrictive in the EXISTING caregiver
+  certification gates: activation/availability compliance and the public
+  discovery projection exclude expired and tombstoned qualifications
+  (`IsPubliclyUsable`, Cairo-date judgement). This phase adds no
+  families/booking certificate policy and claims no end-to-end booking
+  gate — certification and any booking path are distinct surfaces outside
+  this scope.)
 - Effective-snapshot rule: `Current → Pending → newest retained version`;
   a removed version can never be the effective fallback.
 
