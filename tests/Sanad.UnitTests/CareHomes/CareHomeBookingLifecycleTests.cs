@@ -926,7 +926,7 @@ public sealed class CareHomeBookingLifecycleTests
         Assert.Equal(booking.TotalAmount, paymob.LastRefundAmount);
 
         await new CompleteCareHomeRefundCallbackHandler(db)
-            .Handle(new CompleteCareHomeRefundCallbackCommand(9001, 7110, true, Now.AddMinutes(3)), default);
+            .Handle(new CompleteCareHomeRefundCallbackCommand(7110, true, false, true, decimal.ToInt64(booking.TotalAmount * 100m), null, Now.AddMinutes(3)), default);
         Assert.Equal(CareHomeRefundStatus.Completed, booking.RefundStatus);
         Assert.Contains(db.BookingNotificationOutbox, x => x.BookingId == booking.Id && x.EventType == CareHomeNotificationEvent.RefundCompleted);
     }
@@ -1120,6 +1120,9 @@ public sealed class CareHomeBookingLifecycleTests
                 ? Result<string?>.Failure(new Error("Paymob.RefundRejected", "temporary"))
                 : Result<string?>.Success("refund"));
         }
+
+        public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(string refundTransactionId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error("Paymob.VerificationUnavailable", "Refund verification is not used by this test.")));
     }
 
     private sealed class ConcurrentSaveCareHomesDbContext(

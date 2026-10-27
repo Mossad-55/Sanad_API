@@ -40,4 +40,17 @@ public sealed class DevelopmentPaymobClient : IPaymobClient
 
     public Task<Result> UpdateSubscriptionAmountAsync(string providerSubscriptionId, decimal targetRecurringGross, CancellationToken cancellationToken = default) =>
         Task.FromResult(Result.Success());
+
+    public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+        string refundTransactionId,
+        CancellationToken cancellationToken = default)
+    {
+        // The development client fabricates synthetic references and has no
+        // provider channel, so a readback can never attest a real refund.
+        // Failing closed leaves the refund at Initiated rather than inventing a
+        // settled refund.
+        return Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error(
+            "Paymob.VerificationUnavailable",
+            "Refund transaction verification is not available for this client.")));
+    }
 }

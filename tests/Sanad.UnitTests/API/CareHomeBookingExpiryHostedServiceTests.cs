@@ -62,5 +62,11 @@ public sealed class CareHomeBookingExpiryHostedServiceTests
             decimal amount,
             CancellationToken cancellationToken = default) =>
             Task.FromResult(Result<string?>.Success(null));
+
+        public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+            string refundTransactionId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<PaymobRefundVerification>.Failure(
+                new Error("Paymob.VerificationUnavailable", "Refund verification is not used by this sweep test.")));
     }
 }

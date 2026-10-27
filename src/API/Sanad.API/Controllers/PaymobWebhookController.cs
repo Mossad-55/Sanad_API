@@ -72,30 +72,62 @@ public sealed class PaymobWebhookController : ControllerBase
             return Unauthorized();
         }
 
-        bool isRefundCallback =
-            obj.TryGetProperty("is_refunded", out JsonElement isRefunded)
-                && isRefunded.ValueKind is JsonValueKind.True
-            || obj.TryGetProperty("has_parent_transaction", out JsonElement hasParent)
+        // Paymob reports a refund as a *child* transaction (is_refund=true,
+        // has_parent_transaction=true, is_refunded=false) whose *parent* payment
+        // carries is_refunded=true — so the refunded flag lands on the payment,
+        // not on the refund. `has_parent_transaction`/`is_refunded` are
+        // HMAC-covered and only route a child/parent here; the flag itself is
+        // never treated as a completed refund, because only a settled,
+        // identity-matched transaction completes a booking (see
+        // CompleteCareHomeRefundCallbackHandler). `parent_transaction` and
+        // `order.merchant_order_id` are NOT HMAC-covered and are never used for
+        // identity; `order.id` is HMAC-covered but is used only to recognise a
+        // callback that raced the refund call, never to complete a booking on its
+        // own.
+        bool hasParentTransaction =
+            obj.TryGetProperty("has_parent_transaction", out JsonElement hasParent)
                 && hasParent.ValueKind is JsonValueKind.True;
+        bool isRefundedFlag =
+            obj.TryGetProperty("is_refunded", out JsonElement isRefunded)
+                && isRefunded.ValueKind is JsonValueKind.True;
 
-        if (isRefundCallback)
+        if (isRefundedFlag || hasParentTransaction)
         {
-            if (!obj.TryGetProperty("id", out JsonElement refundTransaction)
-                || !refundTransaction.TryGetInt64(out long refundTransactionId))
+            // A void moves no money in this system and is never a payment or a
+            // refund event. `is_voided` is HMAC-covered, so this can only be a
+            // genuinely signed void. Scoped to the refund/child branch so an
+            // ordinary (non-child) payment callback is unchanged.
+            if (obj.TryGetProperty("is_voided", out JsonElement isVoided)
+                && isVoided.ValueKind is JsonValueKind.True)
+            {
                 return Ok();
-            long? parentTransactionId = obj.TryGetProperty("parent_transaction", out JsonElement parentTransaction)
-                && parentTransaction.TryGetInt64(out long parentId)
-                    ? parentId
-                    : obj.TryGetProperty("is_refunded", out JsonElement refunded)
-                        && refunded.ValueKind is JsonValueKind.True
-                            ? refundTransactionId
-                            : null;
+            }
+
+            // A signed refund callback must carry the identity and outcome the
+            // handler needs. A missing or ill-typed field is malformed, not a
+            // settled refund, and is rejected rather than silently acknowledged.
+            if (!TryGetInt64(obj, "id", out long refundTransactionId)
+                || !TryGetInt64(obj, "amount_cents", out long refundAmountCents)
+                || !TryGetBoolean(obj, "success", out bool refundSuccess)
+                || !TryGetBoolean(obj, "pending", out bool refundPending))
+            {
+                return BadRequest();
+            }
+
+            long? orderId = obj.TryGetProperty("order", out JsonElement refundOrder)
+                && refundOrder.ValueKind is JsonValueKind.Object
+                && TryGetInt64(refundOrder, "id", out long parsedOrderId)
+                    ? parsedOrderId
+                    : null;
+
             var refundResult = await _sender.Send(
                 new CompleteCareHomeRefundCallbackCommand(
                     refundTransactionId,
-                    parentTransactionId,
-                    obj.TryGetProperty("is_refunded", out JsonElement isRefundedFlag)
-                        && isRefundedFlag.ValueKind is JsonValueKind.True,
+                    refundSuccess,
+                    refundPending,
+                    isRefundedFlag,
+                    refundAmountCents,
+                    orderId,
                     DateTime.UtcNow),
                 cancellationToken);
             return refundResult.IsSuccess ? Ok() : StatusCode(StatusCodes.Status500InternalServerError);
@@ -203,6 +235,24 @@ public sealed class PaymobWebhookController : ControllerBase
         }
 
         return Ok();
+    }
+
+    private static bool TryGetInt64(JsonElement element, string propertyName, out long value)
+    {
+        value = 0;
+        return element.TryGetProperty(propertyName, out JsonElement property)
+            && property.ValueKind is JsonValueKind.Number
+            && property.TryGetInt64(out value);
+    }
+
+    private static bool TryGetBoolean(JsonElement element, string propertyName, out bool value)
+    {
+        value = false;
+        if (!element.TryGetProperty(propertyName, out JsonElement property))
+            return false;
+        if (property.ValueKind is JsonValueKind.True) { value = true; return true; }
+        if (property.ValueKind is JsonValueKind.False) { return true; }
+        return false;
     }
 
     private async Task<IActionResult> HandleSubscriptionCallback(

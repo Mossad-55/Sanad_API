@@ -72,6 +72,11 @@ namespace Sanad.Modules.Families.Infrastructure.Payments;
 /// </summary>
 public sealed class FixtureRefundSeamPaymobClient : IPaymobClient, IDisposable
 {
+    /// <summary>Prefix of the synthetic refund reference this seam's scripted
+    /// <see cref="FixtureRefundOutcome.Completed"/> outcome returns. It is not a
+    /// provider reference, so it must never be sent to a provider readback.</summary>
+    public const string SyntheticRefundReferencePrefix = "fixture-refund-";
+
     // One concise, credential-free log line per intercepted refund call.
     private static readonly Action<ILogger, string, string, Exception?> LogInterceptedRefund =
         LoggerMessage.Define<string, string>(
@@ -172,6 +177,26 @@ public sealed class FixtureRefundSeamPaymobClient : IPaymobClient, IDisposable
         CancellationToken cancellationToken = default)
         => _inner.UpdateSubscriptionAmountAsync(providerSubscriptionId, targetRecurringGross, cancellationToken);
 
+    public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+        string refundTransactionId,
+        CancellationToken cancellationToken = default)
+    {
+        // A synthetic fixture refund reference is produced only by this seam's
+        // own scripted Completed outcome. It proves nothing about a provider, so
+        // it is refused explicitly and NEVER falls through to the real client's
+        // provider readback. Any other (real) id is delegated read-only, so a
+        // genuine provider refund can still be verified through this decorator.
+        if (!string.IsNullOrWhiteSpace(refundTransactionId)
+            && refundTransactionId.StartsWith(SyntheticRefundReferencePrefix, StringComparison.Ordinal))
+        {
+            return Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error(
+                "Paymob.VerificationUnavailable",
+                "A synthetic fixture refund cannot be verified against the provider.")));
+        }
+
+        return _inner.VerifyRefundTransactionAsync(refundTransactionId, cancellationToken);
+    }
+
     public async Task<Result<string?>> RefundPaymentAsync(
         string paymobTransactionId,
         decimal amount,
@@ -228,7 +253,7 @@ public sealed class FixtureRefundSeamPaymobClient : IPaymobClient, IDisposable
             // transaction reference string. Deterministic and derived only
             // from the fixture id.
             FixtureRefundOutcome.Completed => Result<string?>.Success(
-                $"fixture-refund-{paymobTransactionId}"),
+                $"{SyntheticRefundReferencePrefix}{paymobTransactionId}"),
 
             _ => RefuseConfiguredValue(paymobTransactionId, configuredOutcome),
         };

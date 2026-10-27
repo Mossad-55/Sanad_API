@@ -552,5 +552,12 @@ public sealed class AdminBookingOutcomeCommandTests
                 RefundOutcomeUnknown ? "Paymob.RefundOutcomeUnknown" : "Paymob.RefundRejected",
                 "The gateway did not confirm the refund.")));
         }
+
+        public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+            string refundTransactionId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error(
+                "Paymob.VerificationUnavailable",
+                "Refund verification is not used by this test.")));
     }
 }

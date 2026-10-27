@@ -34,6 +34,24 @@ public sealed record PaymobPaymentIntent(
     string PublicKey,
     bool RecurringRenewalSupported = false);
 
+/// <summary>
+/// The authenticated provider view of a single transaction, read back from
+/// Paymob's transaction-status API over the merchant channel. Every field here
+/// is provider-attested (not a webhook body), so it — unlike a callback's
+/// unsigned <c>is_refund</c> — may evidence a settled refund. Missing scalar
+/// fields are surfaced as <c>null</c> so a caller can refuse to act on an
+/// incomplete readback rather than infer a value.
+/// </summary>
+public sealed record PaymobRefundVerification(
+    long? TransactionId,
+    bool? IsRefund,
+    bool? Success,
+    bool? Pending,
+    long? AmountCents,
+    string? Currency,
+    long? OrderId,
+    long? ParentTransactionId);
+
 public interface IPaymobClient
 {
     Task<Result<PaymobPaymentIntent>> CreatePaymentIntentAsync(
@@ -55,5 +73,17 @@ public interface IPaymobClient
     Task<Result<string?>> RefundPaymentAsync(
         string paymobTransactionId,
         decimal amount,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Reads a single transaction back from the provider, authenticated, to
+    /// verify a refund that the refund API's <c>id</c>-only response does not by
+    /// itself prove settled. Returns a failure (never a fabricated success) when
+    /// the gateway is unconfigured, the read is refused, the response cannot be
+    /// read, or the required fields are absent — callers must treat any failure
+    /// as "not verified" and leave the refund at its current state.
+    /// </summary>
+    Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+        string refundTransactionId,
         CancellationToken cancellationToken = default);
 }

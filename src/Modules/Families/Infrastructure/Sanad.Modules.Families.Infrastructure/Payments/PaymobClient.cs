@@ -386,6 +386,133 @@ public sealed class PaymobClient : IPaymobClient
         }
     }
 
+    /// <summary>
+    /// Authenticated read-only readback of a single transaction
+    /// (<c>GET /api/acceptance/transactions/{id}</c>). The refund API's 2xx
+    /// carries only a refund <c>id</c>, which does not prove a settled refund, so
+    /// this lets a caller verify the exact refund against the provider before
+    /// treating it as settled. The merchant auth token is exchanged from the API
+    /// key (the same credentials the subscription-management namespace accepts;
+    /// the secret key is rejected there), and no credential ever reaches a URL or
+    /// the log. A missing scalar field is surfaced as <c>null</c>, and a response
+    /// without the required identity/outcome is refused — never guessed.
+    /// </summary>
+    public async Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+        string refundTransactionId,
+        CancellationToken cancellationToken = default)
+    {
+        if (string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            return Result<PaymobRefundVerification>.Failure(
+                new Error("Paymob.NotConfigured", "The payment gateway is not configured."));
+        }
+
+        if (string.IsNullOrWhiteSpace(refundTransactionId))
+        {
+            return Result<PaymobRefundVerification>.Failure(
+                new Error("Paymob.VerificationUnavailable", "No refund transaction was supplied to verify."));
+        }
+
+        try
+        {
+            string? authToken = await GetSubscriptionAuthTokenAsync(cancellationToken);
+            if (authToken is null)
+            {
+                return Result<PaymobRefundVerification>.Failure(
+                    new Error("Paymob.VerificationUnavailable", "The refund could not be verified with the payment gateway."));
+            }
+
+            HttpClient httpClient = _httpClientFactory.CreateClient("Paymob");
+
+            using HttpRequestMessage request = new(
+                HttpMethod.Get,
+                $"{_options.BaseUrl}/api/acceptance/transactions/{Uri.EscapeDataString(refundTransactionId.Trim())}");
+            request.Headers.TryAddWithoutValidation("Authorization", $"Bearer {authToken}");
+
+            using HttpResponseMessage response = await httpClient.SendAsync(request, cancellationToken);
+            if (!response.IsSuccessStatusCode)
+            {
+                return Result<PaymobRefundVerification>.Failure(
+                    new Error("Paymob.VerificationUnavailable",
+                        $"Paymob refund verification failed with status {(int)response.StatusCode}."));
+            }
+
+            string body = await response.Content.ReadAsStringAsync(cancellationToken);
+            if (!TryParseJson(body, out JsonElement root) || root.ValueKind != JsonValueKind.Object)
+            {
+                return Result<PaymobRefundVerification>.Failure(
+                    new Error("Paymob.VerificationUnavailable", "The refund verification response could not be read."));
+            }
+
+            // Refuse an incomplete readback rather than infer a settled refund
+            // from absent fields: identity and outcome must all be present.
+            if (!TryReadLong(root, "id", out long transactionId)
+                || !TryReadBool(root, "is_refund", out bool isRefund)
+                || !TryReadBool(root, "success", out bool success)
+                || !TryReadBool(root, "pending", out bool pending))
+            {
+                return Result<PaymobRefundVerification>.Failure(
+                    new Error("Paymob.VerificationUnavailable", "The refund verification response was incomplete."));
+            }
+
+            return Result<PaymobRefundVerification>.Success(new PaymobRefundVerification(
+                transactionId,
+                isRefund,
+                success,
+                pending,
+                TryReadLong(root, "amount_cents", out long amountCents) ? amountCents : null,
+                root.TryGetProperty("currency", out JsonElement currency) && currency.ValueKind == JsonValueKind.String
+                    ? currency.GetString()
+                    : null,
+                root.TryGetProperty("order", out JsonElement order) && order.ValueKind == JsonValueKind.Object
+                    && TryReadLong(order, "id", out long orderId)
+                        ? orderId
+                        : null,
+                ReadParentTransactionId(root)));
+        }
+        catch (Exception exception) when (exception is JsonException or HttpRequestException)
+        {
+            return Result<PaymobRefundVerification>.Failure(
+                new Error("Paymob.VerificationUnavailable", "The refund could not be verified with the payment gateway."));
+        }
+    }
+
+    private static long? ReadParentTransactionId(JsonElement root)
+    {
+        if (!root.TryGetProperty("parent_transaction", out JsonElement parent))
+        {
+            return null;
+        }
+
+        return parent.ValueKind switch
+        {
+            JsonValueKind.Number when parent.TryGetInt64(out long value) => value,
+            JsonValueKind.Object when TryReadLong(parent, "id", out long nested) => nested,
+            _ => null
+        };
+    }
+
+    private static bool TryReadLong(JsonElement element, string propertyName, out long value)
+    {
+        value = 0;
+        return element.TryGetProperty(propertyName, out JsonElement property)
+            && property.ValueKind == JsonValueKind.Number
+            && property.TryGetInt64(out value);
+    }
+
+    private static bool TryReadBool(JsonElement element, string propertyName, out bool value)
+    {
+        value = false;
+        if (!element.TryGetProperty(propertyName, out JsonElement property))
+        {
+            return false;
+        }
+
+        if (property.ValueKind == JsonValueKind.True) { value = true; return true; }
+        if (property.ValueKind == JsonValueKind.False) { return true; }
+        return false;
+    }
+
     public async Task<Result> UpdateSubscriptionAmountAsync(string providerSubscriptionId, decimal targetRecurringGross, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_options.ApiKey)) return Result.Failure(new Error("Paymob.NotConfigured", "The payment gateway is not configured."));

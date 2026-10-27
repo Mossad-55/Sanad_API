@@ -114,6 +114,18 @@ public sealed class ScriptedPaymobClient : IPaymobClient
         };
     }
 
+    /// <summary>
+    /// Every reference this double produces carries the synthetic marker, so a
+    /// readback is refused rather than fabricated: no socket is ever opened and
+    /// a synthetic reference can never be mistaken for provider evidence.
+    /// </summary>
+    public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+        string refundTransactionId,
+        CancellationToken cancellationToken = default)
+        => Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error(
+            "Paymob.VerificationUnavailable",
+            "Synthetic fixture transactions cannot be verified against a provider.")));
+
     private string NextReference(string kind) =>
         $"{SyntheticReferencePrefix}-{kind}-{Interlocked.Increment(ref _sequence):x12}";
 }

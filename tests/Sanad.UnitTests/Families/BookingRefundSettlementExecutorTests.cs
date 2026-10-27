@@ -259,6 +259,13 @@ public sealed class BookingRefundSettlementExecutorTests
             return Task.FromResult(Result<string?>.Failure(
                 new Error(code, "The gateway did not confirm the refund.")));
         }
+
+        public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+            string refundTransactionId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error(
+                "Paymob.VerificationUnavailable",
+                "Refund verification is not used by this test.")));
     }
 
     private sealed record PostedCredit(Guid FamilyId, Money Amount, Guid ActorUserId, string? EvidenceReference);

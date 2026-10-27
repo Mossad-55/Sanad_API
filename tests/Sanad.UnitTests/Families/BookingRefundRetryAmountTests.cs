@@ -406,5 +406,12 @@ public sealed class BookingRefundRetryAmountTests
 
             return Task.FromResult(Result<string?>.Success($"refund-{_calls}"));
         }
+
+        public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+            string refundTransactionId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error(
+                "Paymob.VerificationUnavailable",
+                "Refund verification is not used by this test.")));
     }
 }

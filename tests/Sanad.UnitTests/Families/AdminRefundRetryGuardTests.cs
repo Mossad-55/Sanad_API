@@ -321,5 +321,8 @@ public sealed class AdminRefundRetryGuardTests
                 return Task.FromResult(Result<string?>.Success(RefundId));
             return Task.FromResult(Result<string?>.Failure(new Error("Paymob.GatewayError", "gateway refused")));
         }
+
+        public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(string refundTransactionId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error("Paymob.VerificationUnavailable", "Refund verification is not used by this test.")));
     }
 }

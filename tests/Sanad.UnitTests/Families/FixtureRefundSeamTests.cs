@@ -162,6 +162,68 @@ public sealed class FixtureRefundSeamTests
     }
 
     // ------------------------------------------------------------------
+    // Verified readback: a synthetic fixture reference never reaches the real
+    // provider; a real reference passes through read-only.
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task Synthetic_Fixture_Refund_Is_Never_Verified_Against_The_Real_Client()
+    {
+        RecordingClient inner = new();
+        FixtureRefundSeamPaymobClient seam = NewSeam(inner, enabled: true, outcomes: new Dictionary<string, string>
+        {
+            [AllowlistedId] = "Completed"
+        });
+
+        // The seam's own scripted Completed refund produces a synthetic
+        // reference; it proves nothing about a provider, so a readback for it
+        // must be refused WITHOUT ever reaching the real client.
+        Result<string?> refund = await seam.RefundPaymentAsync(AllowlistedId, 100m);
+        Assert.Equal($"{FixtureRefundSeamPaymobClient.SyntheticRefundReferencePrefix}{AllowlistedId}", refund.Value);
+
+        Result<PaymobRefundVerification> verification = await seam.VerifyRefundTransactionAsync(refund.Value!);
+
+        Assert.True(verification.IsFailure);
+        Assert.Equal("Paymob.VerificationUnavailable", verification.Error.Code);
+        Assert.Equal(0, inner.VerifyCalls);
+    }
+
+    [Fact]
+    public async Task Synthetic_Fixture_Refund_Is_Refused_Even_When_The_Seam_Is_Disabled()
+    {
+        // The synthetic guard is unconditional: a `fixture-refund-` reference
+        // must never be sent to a provider regardless of the seam's enablement.
+        RecordingClient inner = new();
+        FixtureRefundSeamPaymobClient seam = NewSeam(inner, enabled: false, outcomes: new Dictionary<string, string>());
+
+        Result<PaymobRefundVerification> verification =
+            await seam.VerifyRefundTransactionAsync($"{FixtureRefundSeamPaymobClient.SyntheticRefundReferencePrefix}{AllowlistedId}");
+
+        Assert.True(verification.IsFailure);
+        Assert.Equal("Paymob.VerificationUnavailable", verification.Error.Code);
+        Assert.Equal(0, inner.VerifyCalls);
+    }
+
+    [Fact]
+    public async Task Verified_Readback_Delegates_A_Real_Transaction_To_The_Inner_Client()
+    {
+        // A real provider id (any value that is not the synthetic prefix) is
+        // delegated read-only, so a genuine provider refund can still be
+        // verified through the decorator.
+        RecordingClient inner = new();
+        FixtureRefundSeamPaymobClient seam = NewSeam(inner, enabled: true, outcomes: new Dictionary<string, string>
+        {
+            [AllowlistedId] = "Rejected"
+        });
+
+        Result<PaymobRefundVerification> verification = await seam.VerifyRefundTransactionAsync("561442898");
+
+        Assert.Equal(1, inner.VerifyCalls);
+        Assert.Equal("561442898", inner.LastVerifiedTransactionId);
+        Assert.True(verification.IsFailure); // the recording stand-in refuses by contract
+    }
+
+    // ------------------------------------------------------------------
     // Fail-safe refusal on a malformed configured outcome
     // ------------------------------------------------------------------
 
@@ -943,6 +1005,8 @@ public sealed class FixtureRefundSeamTests
         public int IntentCalls { get; private set; }
         public int SubscriptionIntentCalls { get; private set; }
         public int UpdateCalls { get; private set; }
+        public int VerifyCalls { get; private set; }
+        public string? LastVerifiedTransactionId { get; private set; }
 
         public Task<Result<PaymobPaymentIntent>> CreatePaymentIntentAsync(
             PaymobPaymentIntentInput input,
@@ -980,6 +1044,17 @@ public sealed class FixtureRefundSeamTests
             LastTransactionId = paymobTransactionId;
             LastAmount = amount;
             return Task.FromResult(Result<string?>.Success("real-refund-ref"));
+        }
+
+        public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+            string refundTransactionId,
+            CancellationToken cancellationToken = default)
+        {
+            VerifyCalls++;
+            LastVerifiedTransactionId = refundTransactionId;
+            return Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error(
+                "Paymob.VerificationUnavailable",
+                "Recording stand-in does not verify refunds.")));
         }
     }
 }

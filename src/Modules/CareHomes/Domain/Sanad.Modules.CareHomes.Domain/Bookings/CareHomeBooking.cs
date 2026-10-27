@@ -730,13 +730,13 @@ public sealed class CareHomeBooking : AggregateRoot<Guid>
         return true;
     }
 
-    public bool MarkRefundCompletedFromProviderCallback(string? refundReference, long? parentTransactionId, DateTime utcNow)
+    public bool MarkRefundCompletedFromProviderCallback(string? refundReference, long transactionId, DateTime utcNow)
     {
         if (RefundStatus is CareHomeRefundStatus.Completed or CareHomeRefundStatus.ManuallyCompleted
             || RefundStatus != CareHomeRefundStatus.Initiated
             || string.IsNullOrWhiteSpace(RefundReference)) return false;
         bool matchesRefund = string.Equals(RefundReference, refundReference, StringComparison.Ordinal);
-        bool matchesPayment = PaymobTransactionId.HasValue && PaymobTransactionId.Value == parentTransactionId;
+        bool matchesPayment = PaymobTransactionId.HasValue && PaymobTransactionId.Value == transactionId;
         if (!matchesRefund && !matchesPayment) return false;
         CompleteRefund(utcNow);
         return true;

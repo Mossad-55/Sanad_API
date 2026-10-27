@@ -1370,5 +1370,12 @@ public sealed class CaregiverCancelBookingCommandHandlerTests
                 : Result<string?>.Failure(
                     new Error("Paymob.RefundFailed", "The gateway refused the refund.")));
         }
+
+        public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+            string refundTransactionId,
+            CancellationToken cancellationToken = default) =>
+            Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error(
+                "Paymob.VerificationUnavailable",
+                "Refund verification is not used by this test.")));
     }
 }

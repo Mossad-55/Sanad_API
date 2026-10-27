@@ -91,6 +91,15 @@ public sealed class BookingPaymentIntentTests
         {
             return Task.FromResult(Result<string?>.Success($"dev-refund-{Guid.NewGuid():N}"));
         }
+
+        public Task<Result<PaymobRefundVerification>> VerifyRefundTransactionAsync(
+            string refundTransactionId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(Result<PaymobRefundVerification>.Failure(new Error(
+                "Paymob.VerificationUnavailable",
+                "Refund verification is not used by this test.")));
+        }
     }
 
     private static async Task<(BookingCheckoutResponse Response, Booking Booking)> CheckoutAsync(
