@@ -2,7 +2,8 @@
 
 Accessible standalone handoff compiled from the released investigation record
 (`docs/internal/work/frontend-report-2026-10-26.md`, corrected tranche 2) and
-current source at revision `812493d9`. This document describes what each action
+current source at revision `b302a3fc` (refund-completion release). This
+document describes what each action
 does, who may call it, and what the persisted demo state allowed at capture
 time. **It is not an execution authorization.** Fixture eligibility facts below
 were read from the rehearsal database on **2026-10-26** (revision era
@@ -69,10 +70,16 @@ evidence and is never acceptable.
   never label one as a duplicate-charge fixture without proven duplication,
   and never submit a duplicate-charge claim against them on an unverified
   basis.
-- As of the 2026-10-27 corrected check, **no existing eligible
-  provider-refund capture has been evidenced**. Any refund verification must
-  create its own legitimate test booking through the real flow (see the
-  pending protocol in the execution brief — **not executed, not closed**).
+- As of the 2026-10-27 corrected check, **no pre-existing eligible
+  provider-refund capture was evidenced**. The subsequent real-test
+  verification therefore created its own legitimate TEST bookings through the
+  real checkout flow and is now **executed and closed** (2026-10-27, release
+  `b302a3fc`; both of the two permitted records used — the first remains the
+  historical `Initiated` record, intentionally not rewritten, with no
+  financial action required on it; the second proved the full refund path —
+  see §1.5 of [frontend-landing-response-2026-10-27.md](frontend-landing-response-2026-10-27.md)
+  and the execution brief's receipt). No further refund execution is approved
+  by this document.
 
 ## Execution rules (constraints, not permissions)
 

@@ -82,33 +82,6 @@ Do not treat the matrix as permission to execute any further listed action; do
 not fabricate provider references or duplicate-charge claims — existing real
 captures are valid single sales, not duplicates.
 
-### 1.5 Care-home refund completion — delivered, runtime-proven
-
-The refund-completion gap reported after the first test booking (provider
-settled the refund while the app stayed `Initiated`) is fixed and proven
-end-to-end on the rehearsal:
-
-- Refund completion no longer depends on callback (re)delivery: once the
-  refund call returns the provider transaction id and it is durably persisted,
-  the processor reads that exact transaction back over the authenticated
-  merchant channel and completes only on a settled, cross-correlated refund.
-  The signed callback remains the fallback, and a readback refusal never
-  repeats the refund request.
-- The reviewer-flagged parent-payment-path concurrency re-read was corrected so
-  a genuinely applied refunded-parent callback is acknowledged via the
-  booking's recorded payment id, without weakening the child-reference identity
-  check.
-- Final runtime proof (2026-10-27, rehearsal `Staging`): one real TEST booking
-  (11,500.00 EGP, `refundPolicyVersion` 1) paid through the documented
-  frictionless TEST card and the normal HMAC callback, then cancelled by the
-  family before check-in. The cancel response itself returned
-  `refundStatus Completed` with `refundCompletedOnUtc` set; the outbound
-  readback `GET /api/acceptance/transactions/<refund-id>` is recorded in the
-  service journal within that same request, and exactly one `RefundCompleted`
-  outbox event was written. Provider readback confirms a settled refund child
-  correlated to our capture and order. Full evidence: release receipt in
-  [frontend-landing-follow-up-2026-10-27.md](frontend-landing-follow-up-2026-10-27.md).
-
 ### 1.4 Documentation/contract corrections — delivered
 
 - The `200**` formatting typo in `docs/app/public/site-settings.md` is fixed.
@@ -125,6 +98,39 @@ end-to-end on the rehearsal:
   gets a new key; do not re-key the same unchanged submission to bypass a
   `409`. The runtime idempotency policy is unchanged and no new frontend
   architecture is required.
+
+### 1.5 Care-home refund completion — delivered, runtime-proven
+
+The refund-completion gap reported after the first test booking (provider
+settled the refund while the app stayed `Initiated`) is fixed and proven
+end-to-end on the rehearsal:
+
+- Refund completion no longer rests on callback (re)delivery alone: once the
+  refund call returns the provider transaction id and it is durably persisted,
+  the processor reads that exact transaction back over the authenticated
+  merchant channel and completes only on a settled, cross-correlated refund.
+  The signed callback remains the fallback. The readback **verifies the
+  immediately settled state**; a pending refund can still require the later
+  signed callback or an operator reconciliation for eventual completion —
+  no guarantee is made that every future refund completes without them. A
+  readback refusal never repeats the refund request.
+- The reviewer-flagged parent-payment-path concurrency re-read was corrected so
+  a genuinely applied refunded-parent callback is acknowledged via the
+  booking's recorded payment id, without weakening the child-reference identity
+  check.
+- The **first** TEST booking remains the historical `Initiated` record and was
+  intentionally **not rewritten**; no frontend financial action is required on
+  it. The **second** TEST booking closed the new flow.
+- Final runtime proof of the second booking (2026-10-27, rehearsal `Staging`):
+  one real TEST booking (11,500.00 EGP, `refundPolicyVersion` 1) paid through
+  the documented frictionless TEST card and the normal HMAC callback, then
+  cancelled by the family before check-in. The cancel response itself returned
+  `refundStatus Completed` with `refundCompletedOnUtc` set; the outbound
+  readback `GET /api/acceptance/transactions/<refund-id>` is recorded in the
+  service journal within that same request, and exactly one `RefundCompleted`
+  outbox event was written. Provider readback confirms a settled refund child
+  correlated to our capture and order. Full evidence: release receipt in
+  [frontend-landing-follow-up-2026-10-27.md](frontend-landing-follow-up-2026-10-27.md).
 
 ## 2. Frontend and landing actions — yours to own and complete
 
@@ -244,29 +250,59 @@ seam intact.
 ## 5. Delivery record
 
 - Approved scope: Owner-approved follow-up of 2026-10-27 (this document's §1).
-- Implemented changes: §1.1–§1.4 as described — caregiver-lookup policy change
+- Implemented changes: §1.1–§1.5 as described — caregiver-lookup policy change
   (lookup-scoped only), lookup role/contract tests, notification producer
-  verification tests, doc corrections and the standalone money-action matrix.
-- Tests and verification: strict Release build **0 warnings / 0 errors**;
-  focused gates — lookup contract/role-matrix/runtime tests, shared
-  caregiver-review policy tests, notification producer tests
-  (readable/care-home-booking/chat), partner-contact +
-  idempotency tests — **146 passed / 0 failed / 0 skipped**; architecture
-  checks 1/1; deployment verified per the release receipt in the execution
-  brief. Skipped/not-run: no full-suite rerun this phase (focused set per
-  contract); no live notification events triggered; no provider calls.
-- Commit/push/deployed revision: the lookup/notification/matrix/documentation
-  work shipped in `cf065d4b` (deployed to the rehearsal and verified:
-  verifier exit 0, 9/9 heads, smoke 200). The refund-completion fix (§1.5)
-  shipped separately in `b302a3fc`, deployed to the same rehearsal and
-  verified the same way (revision match, 9/9 heads / 0 pending, smoke 200,
-  configuration fingerprints unchanged). Exact receipts in
+  verification tests, the standalone money-action matrix, doc corrections and
+  the care-home refund-completion fix.
+- Tests and verification, by release — these were two separate deployments:
+  - **Earlier lookup/notification/matrix/docs release** (`cf065d4b`): strict
+    Release build **0 warnings / 0 errors**; focused gates — lookup
+    contract/role-matrix/runtime tests, shared caregiver-review policy tests,
+    notification producer tests (readable/care-home-booking/chat),
+    partner-contact + idempotency tests — **146 passed / 0 failed / 0
+    skipped**; architecture checks 1/1; **no provider calls in that release**;
+    deployment verified per its release receipt in the execution brief.
+  - **Later refund-completion release** (`b302a3fc`): strict Release build
+    **0 warnings / 0 errors**; **481 focused tests** green; **4 real
+    PostgreSQL-backed readback-concurrency checks executed**; and the actual
+    Paymob path exercised end-to-end on the rehearsal. Across the
+    investigation **two TEST bookings** were used, each paid through the
+    normal HMAC callback and refund via cancel-before-check-in: **both
+    provider refunds succeeded** (settled refund children correlated to our
+    captures and orders); the **first** remains the historical `Initiated`
+    record (recorded before the fix, intentionally not rewritten), and the
+    **second**, after the `b302a3fc` deployment, reached app `Completed`
+    through the authenticated readback. This was a real provider interaction —
+    no blanket "no provider calls" claim is made for the phase as a whole.
+  - Skipped/not-run in both: no full-suite rerun (focused set per contract);
+    test mode only throughout. No dedicated live onboarding/chat/booking-decision
+    notification test events were generated; normal payment/cancellation/refund
+    outbox side effects occurred during the Paymob tests and are recorded in
+    the receipt.
+- Commit/push/deployed revisions: `cf065d4b`
+  (lookup/notification/matrix/docs) and `b302a3fc` (refund-completion fix,
+  §1.5) — both deployed to the same rehearsal and verified the same way
+  (verifier exit 0, revision match, 9/9 heads / 0 pending, smoke 200,
+  configuration fingerprints unchanged). Receipts:
   `frontend-landing-follow-up-2026-10-27.md`.
 - Provider verification: **executed and closed** — the maximum two TEST
   care-home records were used; the second proved the app's own `Completed`
   refund reconciliation end-to-end (§1.5). Test mode only; live merchant keys
   and HTTPS webhook delivery for production remain to be verified separately.
-- Handoff attachments and outstanding team actions: §2, §3 as listed.
+- Handoff attachments and outstanding team actions: §2, §3 as listed, plus
+  the checklist below.
+
+## 6. Action checklist
+
+| Team | Action | Expected reply |
+|---|---|---|
+| Web | After deployment, test each lookup screen's role against §1.1 (Super Admin/Finance Admin, Super Admin/Support Admin, Content Admin denied) — A7 | Concrete per-screen result; any mismatch as route + role + UTC timestamp + sanitized response/trace ID |
+| Web | Align contact-form retry behavior with the documented idempotency semantics (§1.4, A2) | Confirmation of the same-key retry implementation; any failing request as sanitized request + UTC timestamp + response/trace ID |
+| Web | If product requires header/account language synchronization, persist it through the existing account-language endpoint; otherwise clearly distinguish UI language from saved notification language (A8) | Product choice confirmed by the frontend team; fresh, timestamped evidence only if a synchronized account still shows a discrepancy — not new backend scope |
+| Web | Publish content, FAQ/testimonial/legal references and run the seed script only through approved admin workflows (A5/A6) | Completion confirmation; if a publishing API fails: route, authorized role, sanitized request/response/trace ID |
+| Web | Create and configure own test accounts via supported flows, then run role tests (Test accounts) | Role-test results; a specific account-management gap only if it blocks you |
+| Mobile | Confirm the released build's claim-submission path: platform, app version, build number, channel, `claimSubmission: true` coverage (§3) | Sanitized build confirmation + the older-build upgrade/retirement approach |
+| Owner | Decide final production/URLs, launch legal approval and go-live cutover (§4) | Product/deployment decisions — explicitly not backend work in this phase |
 
 Please complete your team's actions and return concrete test results. Backend
 owns backend defects and the agreed delivery scope — not unrelated frontend
