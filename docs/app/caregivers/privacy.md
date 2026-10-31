@@ -93,10 +93,10 @@ No migration file is committed by the worker; the owner generates the migration 
 
 ## Postman
 
-See `Sanad.App.Caregiver` collection: folder `07. Privacy` with `GET privacy` and `PUT privacy` requests.
+See `Ahlena.App.Caregiver` collection: folder `07. Privacy` with `GET privacy` and `PUT privacy` requests.
 
 ## Bruno
 
-- `collections/Sanad/caregiver/10-privacy-get.bru` — seq 10, GET privacy, bearer `{{jwt}}`, asserts 200 + `showProfile` eq true.
-- `collections/Sanad/caregiver-privacy/` — guarded local read/update/read-back, restoration to the exact seeded state, 400/401/403 checks, and exact-session logout.
+- `collections/Ahlena/caregiver/10-privacy-get.bru` — seq 10, GET privacy, bearer `{{jwt}}`, asserts 200 + `showProfile` eq true.
+- `collections/Ahlena/caregiver-privacy/` — guarded local read/update/read-back, restoration to the exact seeded state, 400/401/403 checks, and exact-session logout.
 - Logout requests keep logout last: `08-logout-owner.bru` seq 8→9, `09-logout-caregiver.bru` seq 9→11 if needed.

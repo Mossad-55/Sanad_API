@@ -1,4 +1,4 @@
-# Sanad API instructions
+# Ahlena API instructions
 
 Read and follow [docs/internal/governance/AGENTS.md](docs/internal/governance/AGENTS.md) for all work in this repository.
 

@@ -333,7 +333,7 @@ function Test-F2FixtureTarget {
     foreach ($module in $modules) {
         if (-not (Test-LoopbackHost ([string]$module.host))) { $problems += "module $($module.module) does not target a loopback host" }
         if ([int]$module.port -ne 5432) { $problems += "module $($module.module) does not target the local port 5432" }
-        if ([string]$module.database -ne 'SanadDb') { $problems += "module $($module.module) does not target database SanadDb" }
+        if ([string]$module.database -ne 'AhlenaDb') { $problems += "module $($module.module) does not target database AhlenaDb" }
         if ([int]$module.pendingMigrations -ne 0) { $problems += "module $($module.module) has pending migrations" }
         if (-not [bool]$module.passed) { $problems += "module $($module.module) did not pass verification" }
     }
@@ -344,7 +344,7 @@ function Test-F2FixtureTarget {
     else {
         if (-not (Test-LoopbackHost ([string]$Connection.Host))) { $problems += 'the resolved connection does not target a loopback host' }
         if ([string]$Connection.Port -ne '5432') { $problems += "the resolved connection targets port '$($Connection.Port)', expected 5432" }
-        if ([string]$Connection.Database -ne 'SanadDb') { $problems += "the resolved connection targets database '$($Connection.Database)', expected SanadDb" }
+        if ([string]$Connection.Database -ne 'AhlenaDb') { $problems += "the resolved connection targets database '$($Connection.Database)', expected AhlenaDb" }
         if ([string]::IsNullOrWhiteSpace([string]$Connection.Password)) { $problems += 'the resolved connection carries no password for the local client' }
     }
 
@@ -1343,7 +1343,7 @@ function Get-F2DatabaseConnection {
     }
 
     if ([string]::IsNullOrWhiteSpace($raw) -and -not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-        $settingsPath = Join-Path $RepoRoot 'src/API/Sanad.API/appsettings.Development.json'
+        $settingsPath = Join-Path $RepoRoot 'src/API/Ahlena.API/appsettings.Development.json'
         if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
             $settings = ConvertFrom-SafeJson ([System.IO.File]::ReadAllText($settingsPath))
             if ($null -ne $settings -and $null -ne $settings.ConnectionStrings) {
@@ -1379,7 +1379,7 @@ function Invoke-F2PsqlProcess {
         [string]$Tag
     )
 
-    $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) ("sanad-f2-" + $Tag + "-" + [Guid]::NewGuid().ToString('N') + ".sql")
+    $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) ("ahlena-f2-" + $Tag + "-" + [Guid]::NewGuid().ToString('N') + ".sql")
     [System.IO.File]::WriteAllText($tempFile, $Sql, (New-Object System.Text.UTF8Encoding($false)))
 
     $overrides = [ordered]@{
@@ -1853,15 +1853,15 @@ if ($f2ExpectedWorktreeRoot) {
 }
 
 if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'AGENTS.md') -PathType Leaf)) {
-    throw 'Run this script from the Sanad API repository checkout.'
+    throw 'Run this script from the Ahlena API repository checkout.'
 }
 
 $head = Get-PinnedHead $repoRoot
 $uri = Assert-LoopbackBaseUrl $f2BaseUrl
 $baseUrl = "$($uri.Scheme)://$($uri.Authority)"
 
-$apiDirectory = Join-Path $repoRoot 'src/API/Sanad.API'
-if (-not $f2ApiAssemblyPath) { $f2ApiAssemblyPath = Join-Path $apiDirectory 'bin/Release/net10.0/Sanad.API.dll' }
+$apiDirectory = Join-Path $repoRoot 'src/API/Ahlena.API'
+if (-not $f2ApiAssemblyPath) { $f2ApiAssemblyPath = Join-Path $apiDirectory 'bin/Release/net10.0/Ahlena.API.dll' }
 $assemblyPath = Resolve-FullPath $f2ApiAssemblyPath
 if (-not (Test-Path -LiteralPath $assemblyPath -PathType Leaf)) {
     throw "The API assembly was not found at $assemblyPath. Build the Release API before running this verification."
@@ -2187,7 +2187,7 @@ try {
     }
     else {
         $serveEnvironment = Get-LocalFixtureEnvironment -Password $f2FixturePassword
-        $logDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("sanad-f2-logs-" + [Guid]::NewGuid().ToString('N'))
+        $logDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ("ahlena-f2-logs-" + [Guid]::NewGuid().ToString('N'))
         New-Item -ItemType Directory -Path $logDirectory -Force | Out-Null
         $stdoutLog = Join-Path $logDirectory 'api.stdout.log'
         $stderrLog = Join-Path $logDirectory 'api.stderr.log'
@@ -2218,7 +2218,7 @@ try {
         logPaths = @($logPaths | ForEach-Object { Get-TrimmedRedactedLine -Text ([string]$_) })
     }
 
-    $client = New-SanadHttpClient
+    $client = New-AhlenaHttpClient
     $tokens = @{}
 
     # Required: the two provisioned fixture identities.

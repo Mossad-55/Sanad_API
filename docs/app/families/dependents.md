@@ -212,7 +212,7 @@ calendar features. It is not a family-member timezone setting.
 Each dependent may have one optional phone-only emergency contact (name,
 relationship, and an E.164 phone number). All active Family members may read
 it; only the current Family Owner may add or update it. Editors and Viewers
-cannot change it. The contact does not need a Sanad account.
+cannot change it. The contact does not need a Ahlena account.
 
 ```http
 GET /api/v1/family/dependents/{dependentId}/emergency-contact

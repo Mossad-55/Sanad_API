@@ -24,12 +24,12 @@ separate [deploy runbook](deploy-runbook.md).
 Run the publisher once:
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Publish-SanadApi.ps1 -Configuration Release
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Publish-AhlenaApi.ps1 -Configuration Release
 ```
 
 The publisher compiles the API as part of `dotnet publish`; do not run a second
 solution build just for packaging. It derives the latest migration source heads
-for all nine contexts and writes `sanad-deployment-manifest.json`. It also
+for all nine contexts and writes `ahlena-deployment-manifest.json`. It also
 refuses to publish if `appsettings.Development.json` appears in the output.
 The output directory is `deploy/publish-out/` (git-ignored and cleared for each
 run so files from an older package cannot leak into the new one). Packaging

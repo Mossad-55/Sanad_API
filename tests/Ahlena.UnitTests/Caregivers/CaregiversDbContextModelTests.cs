@@ -1,0 +1,234 @@
+using Microsoft.EntityFrameworkCore;
+using Ahlena.BuildingBlocks.Domain.Primitives.Ids;
+using Ahlena.Modules.Caregivers.Domain.Caregivers;
+using Ahlena.Modules.Caregivers.Domain.Caregivers.Lookups;
+using Ahlena.Modules.Caregivers.Domain.Caregivers.Selections;
+using Ahlena.Modules.Caregivers.Infrastructure.Persistence;
+
+namespace Ahlena.UnitTests.Caregivers;
+
+public sealed class CaregiversDbContextModelTests
+{
+    [Fact]
+    public void Model_ShouldUseCaregiversSchema()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+        Assert.Equal(CaregiversDbContext.Schema, dbContext.Model.GetDefaultSchema());
+    }
+
+    [Fact]
+    public void Model_ShouldMapLookupTables()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        string[] expected = ["services", "languages", "governorates",
+            "cities", "areas", "specializations", "professional_titles", "academic_degrees",
+            "banks"];
+
+        string[] mapped = dbContext.Model.GetEntityTypes()
+            .Select(t => t.GetTableName())
+            .Where(n => n is not null)
+            .Cast<string>()
+            .ToArray();
+
+        foreach (string table in expected)
+        {
+            Assert.Contains(table, mapped);
+        }
+    }
+
+    [Fact]
+    public void Model_ShouldMapUniqueLanguageCode()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(Language));
+
+        Assert.NotNull(entityType);
+        Assert.Contains(entityType!.GetIndexes(),
+            index => index.IsUnique && index.Properties.Count == 1
+                && index.Properties[0].Name == "Code");
+    }
+
+    [Fact]
+    public void Model_ShouldMapUniqueBankCode()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(Bank));
+
+        Assert.NotNull(entityType);
+        Assert.Equal("banks", entityType!.GetTableName());
+        Assert.Contains(entityType!.GetIndexes(),
+            index => index.IsUnique && index.Properties.Count == 1
+                && index.Properties[0].Name == "Code");
+    }
+
+    [Fact]
+    public void Model_ShouldMapPayoutAccountWithUniqueCaregiver()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(CaregiverPayoutAccount));
+
+        Assert.NotNull(entityType);
+        Assert.Equal("caregiver_payout_accounts", entityType!.GetTableName());
+        Assert.True(entityType.FindProperty(nameof(CaregiverPayoutAccount.Revision))!.IsConcurrencyToken);
+        Assert.Contains(entityType!.GetIndexes(),
+            index => index.IsUnique && index.Properties.Count == 1
+                && index.Properties[0].Name == "CaregiverId");
+    }
+
+    [Fact]
+    public async Task PayoutAccountRevision_ShouldRejectStaleConcurrentUpdate()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+        var caregiverId = CaregiverId.New();
+        var account = CaregiverPayoutAccount.Create(
+            caregiverId, "Caregiver Name", "NBE", "encrypted-value", "1234");
+
+        using (CaregiversDbContext setup = CreateDbContext(databaseName))
+        {
+            setup.PayoutAccounts.Add(account);
+            await setup.SaveChangesAsync();
+        }
+
+        using CaregiversDbContext reviewContext = CreateDbContext(databaseName);
+        using CaregiversDbContext caregiverContext = CreateDbContext(databaseName);
+        CaregiverPayoutAccount staleReviewCopy = await reviewContext.PayoutAccounts.SingleAsync();
+        CaregiverPayoutAccount editedAccount = await caregiverContext.PayoutAccounts.SingleAsync();
+
+        editedAccount.UpdateDetails(
+            "Updated Name", "NBE", "encrypted-new-value", "5678");
+        await caregiverContext.SaveChangesAsync();
+
+        staleReviewCopy.Verify(UserId.New(), 1, DateTime.UtcNow, "BankPortal", null);
+        await Assert.ThrowsAsync<DbUpdateConcurrencyException>(
+            () => reviewContext.SaveChangesAsync());
+    }
+
+    [Fact]
+    public void Model_ShouldMapPayoutsWithPartialUniquePaidBooking()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(CaregiverPayout));
+
+        Assert.NotNull(entityType);
+        Assert.Equal("caregiver_payouts", entityType!.GetTableName());
+        Assert.Contains(entityType!.GetIndexes(),
+            index => index.IsUnique && index.Properties.Count == 1
+                && index.Properties[0].Name == "BookingId"
+                && index.GetDatabaseName() == "ux_caregiver_payouts_booking_paid");
+    }
+
+    [Fact]
+    public void Model_ShouldMapCityGovernorateForeignKey()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var property = dbContext.Model.FindEntityType(
+            typeof(City))
+            ?.FindProperty("GovernorateId");
+
+        Assert.NotNull(property);
+        Assert.Equal("governorate_id", property!.GetColumnName());
+    }
+
+    [Fact]
+    public void Model_ShouldMapCaregiversTable()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        bool exists = dbContext.Model.GetEntityTypes()
+            .Any(t => t.GetTableName() == "caregivers");
+
+        Assert.True(exists);
+    }
+
+    [Fact]
+    public void Model_ShouldIgnoreComputedShiftProperties()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(MedicalShiftAvailability));
+
+        Assert.NotNull(entityType);
+        Assert.DoesNotContain(entityType!.GetProperties(),
+            p => p.Name is "StartTime" or "EndTime" or "Duration" or "EndsNextDay");
+    }
+
+    [Fact]
+    public void Model_ShouldUseCompositeKeyForServiceSelections()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var entityType = dbContext.Model.FindEntityType(
+            typeof(CaregiverServiceSelection));
+
+        Assert.NotNull(entityType);
+        var key = entityType!.FindPrimaryKey();
+        Assert.NotNull(key);
+        Assert.Equal(2, key!.Properties.Count);
+    }
+
+    [Fact]
+    public void CaregiversDbSet_ShouldPersistAndReloadCaregiver()
+    {
+        string databaseName = Guid.NewGuid().ToString();
+
+        Caregiver caregiver =
+            Caregiver.Create(
+                UserId.New(),
+                CaregiverType.Companion);
+
+        using (CaregiversDbContext arrangeContext =
+                   CreateDbContext(databaseName))
+        {
+            arrangeContext.Caregivers.Add(caregiver);
+            arrangeContext.SaveChanges();
+        }
+
+        using CaregiversDbContext assertContext =
+            CreateDbContext(databaseName);
+
+        Caregiver? reloaded = assertContext.Caregivers
+            .AsNoTracking()
+            .SingleOrDefault(c => c.Id == caregiver.Id);
+
+        Assert.NotNull(reloaded);
+        Assert.Equal(CaregiverType.Companion, reloaded!.Type);
+        Assert.Equal(CaregiverStatus.Onboarding, reloaded.Status);
+    }
+
+    [Fact]
+    public void Model_ShouldMapLanguageCodeMaxLength()
+    {
+        using CaregiversDbContext dbContext = CreateDbContext();
+
+        var property = dbContext.Model.FindEntityType(
+            typeof(Language))
+            ?.FindProperty(nameof(Language.Code));
+
+        Assert.NotNull(property);
+        Assert.Equal(
+            Language.MaximumCodeLength,
+            property!.GetMaxLength());
+    }
+
+    private static CaregiversDbContext CreateDbContext(
+        string? databaseName = null)
+    {
+        DbContextOptions<CaregiversDbContext> options =
+            new DbContextOptionsBuilder<CaregiversDbContext>()
+                .UseInMemoryDatabase(databaseName ?? Guid.NewGuid().ToString())
+                .Options;
+
+        return new CaregiversDbContext(options);
+    }
+}

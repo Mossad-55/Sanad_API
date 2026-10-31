@@ -1,0 +1,52 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Ahlena.Modules.Families.Domain.Subscriptions;
+
+namespace Ahlena.Modules.Families.Infrastructure.Persistence.Configurations;
+
+public sealed class SubscriptionPlanVersionConfiguration : IEntityTypeConfiguration<SubscriptionPlanVersion>
+{
+    public void Configure(EntityTypeBuilder<SubscriptionPlanVersion> builder)
+    {
+        builder.ToTable("subscription_plan_versions");
+        builder.HasKey(x => x.Id);
+        builder.Property(x => x.Id).HasColumnName("id").ValueGeneratedNever();
+        builder.Property(x => x.Key).HasColumnName("plan_key").HasMaxLength(100).IsRequired();
+        builder.Property(x => x.Version).HasColumnName("version").IsRequired();
+        builder.Property(x => x.Price).HasColumnName("price").HasPrecision(18, 2).IsRequired();
+        builder.Property(x => x.Cycle).HasColumnName("cycle").HasConversion<int>().IsRequired();
+        builder.Property(x => x.Currency).HasColumnName("currency").HasMaxLength(3).IsRequired();
+        builder.Property(x => x.MemberLimitKind).HasColumnName("member_limit_kind").HasConversion<int>().IsRequired();
+        builder.Property(x => x.MemberLimitValue).HasColumnName("member_limit_value");
+        builder.Property(x => x.MonthlyBookingLimitKind).HasColumnName("monthly_booking_limit_kind").HasConversion<int>().IsRequired();
+        builder.Property(x => x.MonthlyBookingLimitValue).HasColumnName("monthly_booking_limit_value");
+        builder.Property(x => x.Rollover).HasColumnName("rollover").HasConversion<int>().IsRequired();
+        builder.Property(x => x.IsPublished).HasColumnName("is_published").IsRequired().IsConcurrencyToken();
+        builder.Property(x => x.IsAvailableForNewSales)
+            .HasColumnName("is_available_for_new_sales")
+            .IsRequired()
+            .IsConcurrencyToken();
+        builder.Property(x => x.CreatedOnUtc).HasColumnName("created_on_utc").IsRequired();
+        builder.Property(x => x.PublishedOnUtc).HasColumnName("published_on_utc");
+        builder.Property(x => x.PaymobSubscriptionPlanId).HasColumnName("paymob_subscription_plan_id");
+        // Version-owned authored copy. Every column is nullable so a version
+        // created before the copy existed keeps reading an absent value.
+        builder.Property(x => x.ArabicName).HasColumnName("arabic_name").HasMaxLength(SubscriptionPlanVersion.MaximumNameLength);
+        builder.Property(x => x.EnglishName).HasColumnName("english_name").HasMaxLength(SubscriptionPlanVersion.MaximumNameLength);
+        builder.Property(x => x.ArabicDescription).HasColumnName("arabic_description").HasMaxLength(SubscriptionPlanVersion.MaximumDescriptionLength);
+        builder.Property(x => x.EnglishDescription).HasColumnName("english_description").HasMaxLength(SubscriptionPlanVersion.MaximumDescriptionLength);
+        builder.HasIndex(x => new { x.Key, x.Version }).IsUnique().HasDatabaseName("ux_subscription_plan_versions_key_version");
+
+        builder.OwnsMany(x => x.Benefits, benefit =>
+        {
+            benefit.ToTable("subscription_plan_version_benefits");
+            benefit.WithOwner().HasForeignKey("SubscriptionPlanVersionId");
+            benefit.Property<Guid>("SubscriptionPlanVersionId").HasColumnName("subscription_plan_version_id");
+            benefit.Property(x => x.Key).HasColumnName("benefit_key").HasConversion<int>().IsRequired();
+            benefit.Property(x => x.IsIncluded).HasColumnName("is_included").IsRequired();
+            benefit.Property(x => x.ArabicLabel).HasColumnName("arabic_label").HasMaxLength(SubscriptionBenefit.MaximumLabelLength);
+            benefit.Property(x => x.EnglishLabel).HasColumnName("english_label").HasMaxLength(SubscriptionBenefit.MaximumLabelLength);
+            benefit.HasKey("SubscriptionPlanVersionId", nameof(SubscriptionBenefit.Key));
+        });
+    }
+}

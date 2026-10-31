@@ -88,7 +88,7 @@ for the verbs, status codes and error codes.
 
 The Postman requests are in the Care Homes collection under
 `09. Family ratings (HC-TASK-041)` and the facility-owner ratings folder of the
-[owner collection](../postman/care-homes/Sanad.CareHomes.Owner.postman_collection.json).
+[owner collection](../postman/care-homes/Ahlena.CareHomes.Owner.postman_collection.json).
 Examples require the disposable Development fixture and are not runtime-verified.
 Stateful localhost HTTP evidence for the moderation lifecycle is provided by
 `tools/Invoke-F7LocalHttpVerification.ps1` and recorded in the F7 worker brief.
@@ -98,24 +98,24 @@ Stateful localhost HTTP evidence for the moderation lifecycle is provided by
 The authored focused tests are run with:
 
 ```powershell
-dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-build --no-restore --filter "FullyQualifiedName~CareHomes.CareHomeDiscoveryTests" --nologo
+dotnet test tests/Ahlena.UnitTests/Ahlena.UnitTests.csproj --no-build --no-restore --filter "FullyQualifiedName~CareHomes.CareHomeDiscoveryTests" --nologo
 ```
 
 The task gates also require:
 
 ```powershell
-dotnet build Sanad.slnx --no-restore -m:1 --nologo
-dotnet test Sanad.slnx --no-build --no-restore --nologo
+dotnet build Ahlena.slnx --no-restore -m:1 --nologo
+dotnet test Ahlena.slnx --no-build --no-restore --nologo
 ```
 
 Bruno uses exactly these four explicit paths from `tests/Bruno`:
 
 ```powershell
 bru run `
-  "collections/Sanad/care-homes-discovery/00-list-default.bru" `
-  "collections/Sanad/care-homes-discovery/01-list-invalid-pagination.bru" `
-  "collections/Sanad/care-homes-discovery/02-detail-approved-fixture.bru" `
-  "collections/Sanad/care-homes-discovery/03-detail-unknown-is-404.bru" `
+  "collections/Ahlena/care-homes-discovery/00-list-default.bru" `
+  "collections/Ahlena/care-homes-discovery/01-list-invalid-pagination.bru" `
+  "collections/Ahlena/care-homes-discovery/02-detail-approved-fixture.bru" `
+  "collections/Ahlena/care-homes-discovery/03-detail-unknown-is-404.bru" `
   --env local-fixtures --insecure --bail --reporter-skip-body
 ```
 

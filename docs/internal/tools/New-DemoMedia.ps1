@@ -5,13 +5,13 @@
 
 .DESCRIPTION
     Produces, with no third-party asset and no network access:
-      * sanad-demo.jpg           — a JPEG carrying a visible "SANAD DEMO" mark.
+      * ahlena-demo.jpg           — a JPEG carrying a visible "AHLENA DEMO" mark.
                                    The single public image reused by every
                                    public image field.
-      * sanad-demo-document.pdf  — a one-page PDF whose every line is demo
+      * ahlena-demo-document.pdf  — a one-page PDF whose every line is demo
                                    labelled ("DEMO — not legal text"). Reused by
                                    every document field and chat attachment.
-      * sanad-demo.mp4           — a short H.264 MP4 rendered from that still.
+      * ahlena-demo.mp4           — a short H.264 MP4 rendered from that still.
                                    `video/mp4` is accepted only by the private
                                    storage writer, so this file is referenced
                                    only by private/video-capable fields.
@@ -82,7 +82,7 @@ function Write-DemoStill {
             $centre = New-Object System.Drawing.StringFormat
             $centre.Alignment = [System.Drawing.StringAlignment]::Center
 
-            $graphics.DrawString('SANAD DEMO', $titleFont, $white, [float]($Width / 2), [float]($Height * 0.28), $centre)
+            $graphics.DrawString('AHLENA DEMO', $titleFont, $white, [float]($Width / 2), [float]($Height * 0.28), $centre)
             $graphics.DrawString('Synthetic media - not a real photograph', $subtitleFont, $muted, [float]($Width / 2), [float]($Height * 0.49), $centre)
             $graphics.DrawString('generated locally and reused by every public image field', $smallFont, $muted, [float]($Width / 2), [float]($Height * 0.60), $centre)
 
@@ -105,7 +105,7 @@ function New-DemoDocument {
     # are written directly. All text is ASCII Latin-1 so the byte length of each
     # line equals its character length, which keeps the xref offsets exact.
     $lines = @(
-        'SANAD DEMO',
+        'AHLENA DEMO',
         'Synthetic demo document - not a real legal or clinical document.',
         '',
         'Generated locally by docs/internal/tools/New-DemoMedia.ps1 and reused',
@@ -137,7 +137,7 @@ function New-DemoDocument {
         '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>'
         '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>'
         "<< /Length $([System.Text.Encoding]::ASCII.GetByteCount($streamText)) >>`nstream`n$streamText`nendstream"
-        '<< /Title (SANAD DEMO document) /Subject (Synthetic demo data) /Producer (New-DemoMedia.ps1) /Creator (Sanad demo corpus) >>'
+        '<< /Title (AHLENA DEMO document) /Subject (Synthetic demo data) /Producer (New-DemoMedia.ps1) /Creator (Ahlena demo corpus) >>'
     )
 
     $encoding = [System.Text.Encoding]::ASCII
@@ -344,9 +344,9 @@ New-Item -ItemType Directory -Path $OutputDirectory -Force | Out-Null
 $buildDirectory = Join-Path $OutputDirectory 'build'
 New-Item -ItemType Directory -Path $buildDirectory -Force | Out-Null
 
-$imagePath = Join-Path $OutputDirectory 'sanad-demo.jpg'
-$documentPath = Join-Path $OutputDirectory 'sanad-demo-document.pdf'
-$videoPath = Join-Path $OutputDirectory 'sanad-demo.mp4'
+$imagePath = Join-Path $OutputDirectory 'ahlena-demo.jpg'
+$documentPath = Join-Path $OutputDirectory 'ahlena-demo-document.pdf'
+$videoPath = Join-Path $OutputDirectory 'ahlena-demo.mp4'
 
 Write-DemoStill -Path $imagePath
 New-DemoDocument -Path $documentPath

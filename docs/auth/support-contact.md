@@ -65,7 +65,7 @@ curl -sS https://localhost:7296/api/v1/support/contact
 ```json
 {
   "supportPhone": "+201000000001",
-  "supportEmail": "support@sanad.example"
+  "supportEmail": "support@ahlena.example"
 }
 ```
 
@@ -148,7 +148,7 @@ contact pair itself.
   "faqs": [],
   "supportContact": {
     "supportPhone": "+201000000001",
-    "supportEmail": "support@sanad.example"
+    "supportEmail": "support@ahlena.example"
   }
 }
 ```
@@ -156,7 +156,7 @@ contact pair itself.
 When no contact has been configured yet, the same route returns `200` with
 `"supportContact": null` — the app hides the card. An individually unset value
 arrives as `null` inside a populated pair (for example
-`{ "supportPhone": null, "supportEmail": "support@sanad.example" }`), so the app
+`{ "supportPhone": null, "supportEmail": "support@ahlena.example" }`), so the app
 hides only the missing option. The pair is global: every
 app role sees the same phone and email. Admin management (and the explicit
 rule that `POST /api/v1/support/contact` is unchanged by it) lives in

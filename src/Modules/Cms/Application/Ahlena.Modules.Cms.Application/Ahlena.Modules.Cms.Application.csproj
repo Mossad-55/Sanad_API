@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Application\Ahlena.BuildingBlocks.Application\Ahlena.BuildingBlocks.Application.csproj" />
+    <ProjectReference Include="..\..\..\..\BuildingBlocks\Domain\Ahlena.BuildingBlocks.Domain\Ahlena.BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\Domain\Ahlena.Modules.Cms.Domain\Ahlena.Modules.Cms.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Families\Domain\Ahlena.Modules.Families.Domain\Ahlena.Modules.Families.Domain.csproj" />
+    <ProjectReference Include="..\..\..\Families\Application\Ahlena.Modules.Families.Application\Ahlena.Modules.Families.Application.csproj" />
+    <ProjectReference Include="..\..\..\Caregivers\Application\Ahlena.Modules.Caregivers.Application\Ahlena.Modules.Caregivers.Application.csproj" />
+    <ProjectReference Include="..\..\..\Caregivers\Domain\Ahlena.Modules.Caregivers.Domain\Ahlena.Modules.Caregivers.Domain.csproj" />
+    <ProjectReference Include="..\..\..\CareHomes\Application\Ahlena.Modules.CareHomes.Application\Ahlena.Modules.CareHomes.Application.csproj" />
+    <ProjectReference Include="..\..\..\CareHomes\Domain\Ahlena.Modules.CareHomes.Domain\Ahlena.Modules.CareHomes.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+  </ItemGroup>
+</Project>

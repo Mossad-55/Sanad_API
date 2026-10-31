@@ -93,11 +93,11 @@ Retries are safe: the operation is idempotent, and a partially completed deletio
 | Availability read, earnings, medication tasks and help-request transitions | `docs/app/caregivers/earnings-and-medication-tasks.md` |
 | Payout account, caregiver payout reads, payment policy | `docs/app/caregivers/payouts.md` |
 | Family rating and top-10 endpoints | `docs/app/caregivers/family-ratings.md` |
-| Postman (caregiver self-service) | `docs/postman/app/Sanad.App.Caregiver.postman_collection.json` |
-| Postman (caregiver operations) | `docs/postman/app/Sanad.App.Caregiver.Operations.postman_collection.json` |
-| Postman (Family endpoints in this feature) | `docs/postman/app/Sanad.App.Family.postman_collection.json` |
+| Postman (caregiver self-service) | `docs/postman/app/Ahlena.App.Caregiver.postman_collection.json` |
+| Postman (caregiver operations) | `docs/postman/app/Ahlena.App.Caregiver.Operations.postman_collection.json` |
+| Postman (Family endpoints in this feature) | `docs/postman/app/Ahlena.App.Family.postman_collection.json` |
 
-Public app surfaces (splash screens, active lookups) that the wizard reads from are documented in `docs/app/public/` and collected in `docs/postman/app/Sanad.App.Public.postman_collection.json`.
+Public app surfaces (splash screens, active lookups) that the wizard reads from are documented in `docs/app/public/` and collected in `docs/postman/app/Ahlena.App.Public.postman_collection.json`.
 
 ## Conventions
 

@@ -28,12 +28,12 @@ GET /api/v1/site-settings
       "key": "about",
       "arabicLabel": "من نحن",
       "englishLabel": "About",
-      "url": "https://sanad.example/about"
+      "url": "https://ahlena.example/about"
     }
   ],
   "seo": {
-    "arabicTitle": "سند",
-    "englishTitle": "Sanad",
+    "arabicTitle": "أهلنا",
+    "englishTitle": "Ahlena",
     "arabicDescription": "وصف",
     "englishDescription": "Description"
   }

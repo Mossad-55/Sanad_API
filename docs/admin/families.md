@@ -161,7 +161,7 @@ Response:
 - `search` is matched **literally**: `%`, `_` and `\` in the caller's text match
   those characters, they are never treated as wildcards.
 - Runnable requests (authored examples, not execution evidence):
-  `docs/postman/admins/Sanad.Admin.Families.postman_collection.json`
+  `docs/postman/admins/Ahlena.Admin.Families.postman_collection.json`
   (`Dependent (elderly) name+ID lookup`).
 
 ## Errors
@@ -178,7 +178,7 @@ search is an empty page.
 ## Verification
 
 Runnable requests are in
-[`Sanad.Admin.Families.postman_collection.json`](../postman/admins/Sanad.Admin.Families.postman_collection.json).
+[`Ahlena.Admin.Families.postman_collection.json`](../postman/admins/Ahlena.Admin.Families.postman_collection.json).
 The collection examples are authored contracts; they are not evidence of
 runtime execution. End-to-end HTTP proof (role denial, unknown-id `404`,
 paging clamp, empty reads) is provided by the F6 local verification adapter and

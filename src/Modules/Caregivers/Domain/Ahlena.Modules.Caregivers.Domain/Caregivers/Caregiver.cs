@@ -1,0 +1,1703 @@
+using Ahlena.BuildingBlocks.Domain.Abstractions;
+using Ahlena.BuildingBlocks.Domain.Exceptions;
+using Ahlena.BuildingBlocks.Domain.Primitives.Ids;
+using Ahlena.Modules.Caregivers.Domain.Caregivers.Events;
+using Ahlena.Modules.Caregivers.Domain.Caregivers.Lookups;
+using Ahlena.Modules.Caregivers.Domain.Caregivers.Selections;
+
+namespace Ahlena.Modules.Caregivers.Domain.Caregivers;
+
+public sealed class Caregiver : AggregateRoot<CaregiverId>
+{
+    public const int MaximumAreaSelections = 10;
+    public const int MaximumAdditionalCertificates = 5;
+    public const int MaximumDetailedAddressLength = 500;
+
+    public string? DetailedAddress { get; private set; }
+
+    public VisibilityPreferences Visibility { get; private set; } = VisibilityPreferences.Default;
+
+    private readonly List<CaregiverServiceSelection> _serviceSelections = [];
+    private readonly List<CaregiverLanguageSelection> _languageSelections = [];
+    private readonly List<CaregiverAreaSelection> _areaSelections = [];
+
+    private Caregiver()
+    {
+    }
+
+    private Caregiver(
+        CaregiverId id,
+        UserId userId,
+        CaregiverType type)
+        : base(id)
+    {
+        UserId = userId;
+        Type = type;
+        Status = CaregiverStatus.Onboarding;
+        Availability = CaregiverAvailability.Unavailable;
+
+        if (type == CaregiverType.Companion)
+        {
+            CompanionSchedule = CompanionWeeklySchedule.Create();
+        }
+
+        if (type == CaregiverType.Medical)
+        {
+            MedicalSchedule = MedicalWeeklySchedule.Create();
+        }
+
+        Visibility = VisibilityPreferences.Default;
+
+        CreatedOnUtc = DateTime.UtcNow;
+        UpdatedOnUtc = DateTime.UtcNow;
+
+        RaiseDomainEvent(
+            new CaregiverCreatedDomainEvent(
+                Id,
+                UserId));
+    }
+
+    public UserId UserId { get; private set; }
+    public MedicalCaregiverProfile? MedicalProfile { get; private set; }
+    public CompanionCaregiverProfile? CompanionProfile { get; private set; }
+    public CaregiverType Type { get; private set; }
+    public CaregiverStatus Status { get; private set; }
+    public string? StatusReason { get; private set; }
+    public CaregiverAvailability Availability { get; private set; }
+    public MedicalCaregiverPricing? MedicalPricing { get; private set; }
+    public MedicalWeeklySchedule? MedicalSchedule { get; private set; }
+    public CompanionCaregiverPricing? CompanionPricing { get; private set; }
+    public CompanionWeeklySchedule? CompanionSchedule { get; private set; }
+    public decimal AverageRating { get; private set; } = 0;
+    public int ReviewsCount { get; private set; } = 0;
+    public DateTime CreatedOnUtc { get; private set; }
+    public DateTime UpdatedOnUtc { get; private set; }
+    private readonly List<CaregiverCertificate> _certificates = [];
+    public IReadOnlyCollection<CaregiverCertificate> Certificates => _certificates.AsReadOnly();
+
+    /// <summary>Live (non-tombstoned) qualifications, in insertion order.</summary>
+    public IReadOnlyList<CaregiverCertificate> GetActiveCertificates() =>
+        _certificates.Where(certificate => !certificate.IsRemoved).ToList();
+
+    /// <summary>Tombstoned qualifications retained for audit, insertion order.</summary>
+    public IReadOnlyList<CaregiverCertificate> GetRemovedCertificates() =>
+        _certificates.Where(certificate => certificate.IsRemoved).ToList();
+    public IReadOnlyCollection<CaregiverServiceSelection> ServiceSelections => _serviceSelections.AsReadOnly();
+    public IReadOnlyCollection<CaregiverLanguageSelection> LanguageSelections => _languageSelections.AsReadOnly();
+    public IReadOnlyCollection<CaregiverAreaSelection> AreaSelections => _areaSelections.AsReadOnly();
+
+    public void UpdateFamilyRatingSummary(
+        decimal averageRating,
+        int reviewsCount,
+        DateTime utcNow)
+    {
+        if (averageRating is < 0m or > 5m)
+            throw new DomainException("Average rating must be between 0 and 5.");
+        if (reviewsCount < 0)
+            throw new DomainException("Review count cannot be negative.");
+        if (utcNow.Kind != DateTimeKind.Utc)
+            throw new DomainException("Rating timestamps must be UTC.");
+
+        AverageRating = Math.Round(averageRating, 2, MidpointRounding.ToEven);
+        ReviewsCount = reviewsCount;
+        UpdatedOnUtc = utcNow;
+    }
+
+    internal void ValidateSubmissionReadiness(
+        DateOnly currentDate)
+    {
+        EnsureRequiredSelections();
+
+        switch (Type)
+        {
+            case CaregiverType.Medical:
+                EnsureMedicalSubmissionReadiness(
+                    currentDate);
+                return;
+
+            case CaregiverType.Companion:
+                EnsureCompanionSubmissionReadiness();
+                return;
+
+            default:
+                throw new DomainException(
+                    "Caregiver type is invalid.");
+        }
+    }
+
+    internal void ValidateActivationReadiness(
+        DateOnly currentDate)
+    {
+        ValidateSubmissionReadiness(
+            currentDate);
+
+        if (Type == CaregiverType.Medical)
+        {
+            EnsureMandatoryCertificatesAreCompliant(
+                currentDate);
+        }
+    }
+
+    public static Caregiver Create(
+        UserId userId,
+        CaregiverType type)
+    {
+        if (userId == UserId.Empty)
+        {
+            throw new DomainException(
+                "User ID is required.");
+        }
+
+        if (!Enum.IsDefined(type))
+        {
+            throw new DomainException(
+                "Caregiver type is invalid.");
+        }
+
+        return new Caregiver(
+            CaregiverId.New(),
+            userId,
+            type);
+    }
+
+    public void UpdateMedicalProfile(
+        ProfessionalTitle professionalTitle,
+        int yearsOfExperience,
+        Specialization specialization,
+        AcademicDegree academicDegree,
+        string? currentWorkplace,
+        string? biography,
+        DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(
+            professionalTitle);
+
+        ArgumentNullException.ThrowIfNull(
+            specialization);
+
+        ArgumentNullException.ThrowIfNull(
+            academicDegree);
+
+        ValidateUtc(utcNow);
+
+        if (Type != CaregiverType.Medical)
+        {
+            throw new DomainException(
+                "Only a Medical caregiver can have " +
+                "a Medical professional profile.");
+        }
+
+        if (!professionalTitle.IsActive)
+        {
+            throw new DomainException(
+                "Professional Title is inactive.");
+        }
+
+        if (!specialization.IsActive)
+        {
+            throw new DomainException(
+                "Specialization is inactive.");
+        }
+
+        if (specialization.CaregiverType !=
+            CaregiverType.Medical)
+        {
+            throw new DomainException(
+                "Specialization does not support " +
+                "Medical caregivers.");
+        }
+
+        if (!academicDegree.IsActive)
+        {
+            throw new DomainException(
+                "Academic Degree is inactive.");
+        }
+
+        MedicalCaregiverProfile profile =
+            MedicalCaregiverProfile.Create(
+                professionalTitle.Id,
+                yearsOfExperience,
+                specialization.Id,
+                academicDegree.Id,
+                currentWorkplace,
+                biography);
+
+        MedicalProfile = profile;
+
+        if (Status == CaregiverStatus.Active)
+        {
+            Status = CaregiverStatus.PendingReview;
+            StatusReason = null;
+            Availability =
+                CaregiverAvailability.Unavailable;
+
+            RaiseDomainEvent(new CaregiverReviewRequiredDomainEvent(
+                Id,
+                CaregiverReviewTrigger.MedicalProfessionalProfileChanged));
+        }
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void UpdateCompanionProfile(
+        int yearsOfExperience,
+        Specialization specialization,
+        string? biography,
+        DateTime utcNow)
+    {
+        ArgumentNullException.ThrowIfNull(
+            specialization);
+
+        ValidateUtc(utcNow);
+
+        if (Type != CaregiverType.Companion)
+        {
+            throw new DomainException(
+                "Only a Companion caregiver can have " +
+                "a Companion professional profile.");
+        }
+
+        if (!specialization.IsActive)
+        {
+            throw new DomainException(
+                "Specialization is inactive.");
+        }
+
+        if (specialization.CaregiverType !=
+            CaregiverType.Companion)
+        {
+            throw new DomainException(
+                "Specialization does not support " +
+                "Companion caregivers.");
+        }
+
+        CompanionCaregiverProfile profile =
+            CompanionCaregiverProfile.Create(
+                yearsOfExperience,
+                specialization.Id,
+                biography);
+
+        CompanionProfile = profile;
+
+        if (Status == CaregiverStatus.Active)
+        {
+            Status = CaregiverStatus.PendingReview;
+            StatusReason = null;
+            Availability =
+                CaregiverAvailability.Unavailable;
+
+            RaiseDomainEvent(
+                new CaregiverReviewRequiredDomainEvent(
+                    Id,
+                    CaregiverReviewTrigger
+                        .CompanionProfessionalProfileChanged));
+        }
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void BecomeAvailable(DateOnly currentDate)
+    {
+        if (Status != CaregiverStatus.Active)
+        {
+            throw new DomainException(
+                "Only an Active caregiver can become Available."
+            );
+        }
+
+        if (Type == CaregiverType.Medical)
+        {
+            EnsureMandatoryCertificatesAreCompliant(currentDate);
+        }
+
+        Availability = CaregiverAvailability.Available;
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void BecomeUnavailable()
+    {
+        Availability = CaregiverAvailability.Unavailable;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void UpdateMedicalPricing(
+        decimal homeVisitPrice,
+        decimal eightHourShiftPrice,
+        decimal twelveHourShiftPrice,
+        decimal twentyFourHourShiftPrice)
+    {
+        if (Type != CaregiverType.Medical)
+        {
+            throw new DomainException(
+                "Only a Medical caregiver can have " +
+                "Medical pricing.");
+        }
+
+        if (MedicalPricing is null)
+        {
+            MedicalPricing = MedicalCaregiverPricing.Create(
+                homeVisitPrice,
+                eightHourShiftPrice,
+                twelveHourShiftPrice,
+                twentyFourHourShiftPrice);
+        }
+        else
+        {
+            MedicalPricing.Update(
+                homeVisitPrice,
+                eightHourShiftPrice,
+                twelveHourShiftPrice,
+                twentyFourHourShiftPrice);
+        }
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void UpdateCompanionPricing(
+        decimal hourlyPrice,
+        decimal eightHourDayPrice,
+        decimal overnightPrice)
+    {
+        if (Type != CaregiverType.Companion)
+        {
+            throw new DomainException(
+                "Only a Companion caregiver can have " +
+                "Companion pricing.");
+        }
+
+        if (CompanionPricing is null)
+        {
+            CompanionPricing = CompanionCaregiverPricing.Create(
+                hourlyPrice,
+                eightHourDayPrice,
+                overnightPrice);
+        }
+        else
+        {
+            CompanionPricing.Update(
+                hourlyPrice,
+                eightHourDayPrice,
+                overnightPrice);
+        }
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void AddCertificate(
+        CaregiverCertificateType type,
+        string filePath,
+        DateOnly? expiryDate,
+        DateOnly currentDate)
+    {
+        if (Type != CaregiverType.Medical)
+        {
+            throw new DomainException(
+                "Only Medical caregivers can add professional certificates.");
+        }
+
+        // A tombstoned (whole-qualification removed) Certificate no longer
+        // holds its slot: the mandatory-unique rule and the Additional cap count
+        // only the live qualifications.
+        if (type == CaregiverCertificateType.PracticeLicense)
+        {
+            bool alreadyHasPracticeLicense =
+                _certificates.Any(
+                    certificate =>
+                        !certificate.IsRemoved &&
+                        certificate.Type ==
+                        CaregiverCertificateType.PracticeLicense);
+
+            if (alreadyHasPracticeLicense)
+            {
+                throw new DomainException(
+                    "The caregiver already has a Practice License.");
+            }
+        }
+
+        if (type == CaregiverCertificateType.GraduationCertificate)
+        {
+            bool alreadyHasGraduationCertificate =
+                _certificates.Any(
+                    certificate =>
+                        !certificate.IsRemoved &&
+                        certificate.Type ==
+                        CaregiverCertificateType.GraduationCertificate);
+
+            if (alreadyHasGraduationCertificate)
+            {
+                throw new DomainException(
+                    "The caregiver already has a Graduation Certificate.");
+            }
+        }
+
+        if (type == CaregiverCertificateType.AdditionalCertificate)
+        {
+            int additionalCertificateCount =
+                _certificates.Count(
+                    certificate =>
+                        !certificate.IsRemoved &&
+                        certificate.Type ==
+                        CaregiverCertificateType.AdditionalCertificate);
+
+            if (additionalCertificateCount >=
+                MaximumAdditionalCertificates)
+            {
+                throw new DomainException(
+                    $"A caregiver cannot add more than " +
+                    $"{MaximumAdditionalCertificates} " +
+                    $"Additional Certificates.");
+            }
+        }
+
+        _certificates.Add(
+            CaregiverCertificate.Create(
+                type,
+                filePath,
+                expiryDate,
+                currentDate));
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Lazily records the honest current snapshot for a pre-versioning
+    /// qualification before a mutation that must resolve one of its versions.
+    /// A no-op once any version exists. Called by the review commands so a
+    /// legacy row's pending / current version can be addressed by id.
+    /// </summary>
+    public void EnsureCertificateVersionsMaterialized(
+        CaregiverCertificateId certificateId)
+    {
+        GetCertificate(certificateId)
+            .EnsureCurrentVersionMaterialized();
+    }
+
+    /// <summary>
+    /// Convenience overload used by the seeder and the domain tests: verifies
+    /// the newest pending version of the qualification in one step. The HTTP
+    /// review path uses the explicit version-targeted two-phase promotion so a
+    /// concurrent editor cannot slip between the demote and the promote.
+    /// </summary>
+    public void VerifyCertificate(CaregiverCertificateId certificateId)
+    {
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        certificate.EnsureCurrentVersionMaterialized();
+
+        CaregiverCertificateVersion? pending =
+            certificate.PendingVersion;
+
+        if (pending is null)
+        {
+            throw new DomainException(
+                "The Certificate has no pending version to verify.");
+        }
+
+        DateTime utcNow = DateTime.UtcNow;
+
+        certificate.BeginPromotion(pending.Id, utcNow);
+        certificate.CompletePromotion(pending.Id, utcNow);
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    /// <summary>
+    /// First half of an approval promotion for one explicit pending version.
+    /// The caller persists this demote before calling
+    /// <see cref="CompleteCertificatePromotion"/>, so the partial-unique
+    /// "one current version" index never sees two current rows in one batch.
+    /// </summary>
+    public void BeginCertificatePromotion(
+        CaregiverCertificateId certificateId,
+        CaregiverCertificateVersionId versionId,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        certificate.BeginPromotion(versionId, utcNow);
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    /// <summary>
+    /// Second half of an approval promotion for one explicit pending version.
+    /// </summary>
+    public void CompleteCertificatePromotion(
+        CaregiverCertificateId certificateId,
+        CaregiverCertificateVersionId versionId,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        certificate.CompletePromotion(versionId, utcNow);
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    /// <summary>
+    /// Convenience overload for the seeders and domain tests. It evaluates
+    /// expiry against the current UTC calendar date; the HTTP review path
+    /// always passes the Cairo calendar date explicitly.
+    /// </summary>
+    public void RejectCertificate(
+        CaregiverCertificateId certificateId,
+        string reason)
+    {
+        DateTime utcNow = DateTime.UtcNow;
+
+        RejectCertificate(
+            certificateId,
+            versionId: null,
+            reason,
+            currentDate: DateOnly.FromDateTime(utcNow),
+            utcNow);
+    }
+
+    public void RejectCertificate(
+        CaregiverCertificateId certificateId,
+        CaregiverCertificateVersionId? versionId,
+        string reason,
+        DateOnly currentDate,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        certificate.RejectPendingVersion(versionId, reason, utcNow);
+
+        if (IsMandatoryCertificate(certificate.Type) &&
+            !certificate.HasValidCurrentVersion(currentDate))
+        {
+            Availability = CaregiverAvailability.Unavailable;
+        }
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void RevokeCertificate(
+        CaregiverCertificateId certificateId,
+        string reason,
+        DateTime utcNow)
+    {
+        CaregiverCertificate certificate =
+            GetCertificate(certificateId);
+
+        ValidateUtc(utcNow);
+
+        certificate.RevokeCurrentVersion(reason, utcNow);
+
+        if (IsMandatoryCertificate(
+            certificate.Type))
+        {
+            Availability =
+                CaregiverAvailability.Unavailable;
+
+            if (Status == CaregiverStatus.Active)
+            {
+                Status =
+                    CaregiverStatus.Suspended;
+
+                StatusReason =
+                    certificate.ReviewReason;
+
+                RaiseDomainEvent(new CaregiverSuspendedDomainEvent(
+                    Id,
+                    StatusReason!));
+            }
+        }
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    public void SuspendForExpiredMandatoryCertificate(
+        CaregiverCertificateId certificateId,
+        DateOnly currentDate,
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.Active,
+            "Only an Active caregiver can be suspended " +
+            "for Certificate expiry.");
+
+        ValidateUtc(utcNow);
+
+        CaregiverCertificate certificate =
+            GetCertificate(certificateId);
+
+        if (!IsMandatoryCertificate(
+            certificate.Type))
+        {
+            throw new DomainException(
+                "Only a mandatory Certificate can " +
+                "suspend the caregiver when expired.");
+        }
+
+        bool isExpired =
+            certificate.ExpiryDate.HasValue &&
+            certificate.ExpiryDate.Value <
+            currentDate;
+
+        if (!isExpired)
+        {
+            throw new DomainException(
+                "Certificate has not expired.");
+        }
+
+        Status = CaregiverStatus.Suspended;
+
+        StatusReason =
+            $"{certificate.Type} has expired.";
+
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverSuspendedDomainEvent(
+            Id,
+            StatusReason!));
+    }
+
+    /// <summary>
+    /// Appends a replacement upload as a new pending version. When a valid,
+    /// approved, unexpired mandatory version is already in force, the
+    /// caregiver's effective status and availability are left unchanged (the
+    /// pending replacement is reviewed separately). When no such qualification
+    /// remains, the mandatory-safety consequence applies exactly as before.
+    /// </summary>
+    public void UpdateCertificateFile(
+        CaregiverCertificateId certificateId,
+        string filePath,
+        DateOnly? expiryDate,
+        DateOnly currentDate,
+        DateTime utcNow)
+    {
+        CaregiverCertificate certificate =
+            GetCertificate(certificateId);
+
+        ValidateUtc(utcNow);
+
+        bool hadValidCurrent =
+            certificate.HasValidCurrentVersion(currentDate);
+
+        certificate.AddReplacementVersion(
+            filePath,
+            expiryDate,
+            currentDate,
+            utcNow);
+
+        if (IsMandatoryCertificate(
+                certificate.Type) &&
+            !hadValidCurrent)
+        {
+            Availability =
+                CaregiverAvailability.Unavailable;
+
+            if (Status == CaregiverStatus.Active)
+            {
+                Status =
+                    CaregiverStatus.PendingReview;
+
+                StatusReason = null;
+
+                RaiseDomainEvent(new CaregiverReviewRequiredDomainEvent(
+                    Id,
+                    CaregiverReviewTrigger.MandatoryCertificateReplaced));
+            }
+        }
+
+        UpdatedOnUtc = utcNow;
+    }
+
+    /// <summary>
+    /// Logically removes (tombstones) a whole Additional qualification. The
+    /// row and its version files stay retained for authorized history but the
+    /// qualification leaves the active profile, the Additional cap and public
+    /// discovery. Mandatory qualifications still cannot be removed.
+    /// </summary>
+    public void RemoveCertificate(CaregiverCertificateId certificateId)
+    {
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        if (IsMandatoryCertificate(
+            certificate.Type))
+        {
+            throw new DomainException(
+                "A mandatory Certificate cannot be removed. " +
+                "Replace its file instead.");
+        }
+
+        certificate.MarkRemoved(DateTime.UtcNow);
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    /// <summary>
+    /// Logically removes one retained-history version of a qualification.
+    /// Returns <c>false</c> when the version was already removed (idempotent),
+    /// and throws when the version is the current effective or live pending
+    /// version. The qualification's effective snapshot, eligibility and
+    /// version files are otherwise untouched.
+    /// </summary>
+    public bool RemoveCertificateVersion(
+        CaregiverCertificateId certificateId,
+        CaregiverCertificateVersionId versionId,
+        UserId removedByUserId,
+        DateTime utcNow)
+    {
+        ValidateUtc(utcNow);
+
+        CaregiverCertificate certificate = GetCertificate(certificateId);
+
+        bool removed = certificate.RemoveHistoryVersion(
+            versionId,
+            removedByUserId,
+            utcNow);
+
+        if (removed)
+        {
+            UpdatedOnUtc = utcNow;
+        }
+
+        return removed;
+    }
+
+    public void SelectService(Service service)
+    {
+        ArgumentNullException.ThrowIfNull(service);
+
+        if (!service.IsActive)
+        {
+            throw new DomainException(
+                "Cannot select an inactive service."
+            );
+        }
+
+        if (service.CaregiverType != Type)
+        {
+            throw new DomainException(
+                "The service does not support this caregiver type."
+            );
+        }
+
+        bool alreadySelected = _serviceSelections.Any(
+            selection => selection.Id == service.Id
+        );
+
+        if (alreadySelected)
+        {
+            throw new DomainException(
+                "The service is already selected."
+            );
+        }
+
+        _serviceSelections.Add(CaregiverServiceSelection.Create(service.Id));
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RemoveService(ServiceId serviceId)
+    {
+        if (serviceId == ServiceId.Empty)
+        {
+            throw new DomainException(
+                "Service ID is required."
+            );
+        }
+
+        CaregiverServiceSelection? selection = _serviceSelections.SingleOrDefault(
+            selection => selection.Id == serviceId
+        );
+
+        if (selection is null)
+        {
+            throw new DomainException(
+                "The service is not selected."
+            );
+        }
+
+        bool isRemovingFinalService = _serviceSelections.Count == 1;
+
+        if (Status == CaregiverStatus.Active &&
+            isRemovingFinalService)
+        {
+            throw new DomainException(
+                "An active caregiver must have at least one service."
+            );
+        }
+
+        _serviceSelections.Remove(selection);
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void SelectLanguage(Language language)
+    {
+        ArgumentNullException.ThrowIfNull(language);
+
+        if (!language.IsActive)
+        {
+            throw new DomainException(
+                "Cannot select an inactive language."
+            );
+        }
+
+        bool alreadySelected = _languageSelections.Any(
+            selection => selection.Id == language.Id
+        );
+
+        if (alreadySelected)
+        {
+            throw new DomainException(
+                "The language is already selected."
+            );
+        }
+
+        _languageSelections.Add(CaregiverLanguageSelection.Create(language.Id));
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RemoveLanguage(LanguageId languageId)
+    {
+        if (languageId == LanguageId.Empty)
+        {
+            throw new DomainException(
+                "Language ID is required."
+            );
+        }
+
+        CaregiverLanguageSelection? selection =
+        _languageSelections.SingleOrDefault(
+            selection =>
+                selection.Id == languageId);
+
+        if (selection is null)
+        {
+            throw new DomainException(
+                "The language is not selected.");
+        }
+
+        bool isRemovingFinalLanguage =
+            _languageSelections.Count == 1;
+
+        if (Status == CaregiverStatus.Active &&
+            isRemovingFinalLanguage)
+        {
+            throw new DomainException(
+                "An active caregiver must have at least one language.");
+        }
+
+        _languageSelections.Remove(selection);
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void SelectArea(Area area)
+    {
+        ArgumentNullException.ThrowIfNull(area);
+
+        if (!area.IsActive)
+        {
+            throw new DomainException(
+                "Cannot select an inactive area.");
+        }
+
+        bool alreadySelected =
+            _areaSelections.Any(
+                selection =>
+                    selection.Id == area.Id);
+
+        if (alreadySelected)
+        {
+            throw new DomainException(
+                "The area is already selected.");
+        }
+
+        if (_areaSelections.Count >=
+            MaximumAreaSelections)
+        {
+            throw new DomainException(
+                $"A caregiver cannot select more than " + $"{MaximumAreaSelections} areas.");
+        }
+
+        _areaSelections.Add(
+            CaregiverAreaSelection.Create(area.Id));
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RemoveArea(AreaId areaId)
+    {
+        if (areaId == AreaId.Empty)
+        {
+            throw new DomainException(
+                "Area ID is required.");
+        }
+
+        CaregiverAreaSelection? selection =
+            _areaSelections.SingleOrDefault(
+                selection =>
+                    selection.Id == areaId);
+
+        if (selection is null)
+        {
+            throw new DomainException(
+                "The area is not selected.");
+        }
+
+        bool isRemovingFinalArea =
+            _areaSelections.Count == 1;
+
+        if (Status == CaregiverStatus.Active &&
+            isRemovingFinalArea)
+        {
+            throw new DomainException(
+                "An active caregiver must have at least one area.");
+        }
+
+        _areaSelections.Remove(selection);
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    private CaregiverCertificate GetCertificate(CaregiverCertificateId certificateId)
+    {
+        if (certificateId == CaregiverCertificateId.Empty)
+        {
+            throw new DomainException(
+                "Certificate ID is required.");
+        }
+
+        CaregiverCertificate? certificate =
+            _certificates.SingleOrDefault(
+                certificate =>
+                    certificate.Id ==
+                    certificateId);
+
+        if (certificate is null)
+        {
+            throw new DomainException(
+                "Certificate was not found.");
+        }
+
+        return certificate;
+    }
+
+    public void UpdateDetailedAddress(
+        string? detailedAddress)
+    {
+        string? normalizedAddress =
+            NormalizeOptionalDetailedAddress(
+                detailedAddress);
+
+        DetailedAddress = normalizedAddress;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void UpdateVisibility(
+        bool showProfile,
+        bool showRating,
+        bool showPhone,
+        bool shareLocation)
+    {
+        if (Visibility is null)
+        {
+            Visibility = VisibilityPreferences.Create(
+                showProfile,
+                showRating,
+                showPhone,
+                shareLocation);
+        }
+        else
+        {
+            Visibility.Update(
+                showProfile,
+                showRating,
+                showPhone,
+                shareLocation);
+        }
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void AddCompanionAvailabilityWindow(
+        CompanionBookingType bookingType,
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime)
+    {
+        EnsureCompanionCaregiver();
+
+        CompanionWeeklySchedule currentSchedule =
+            CompanionSchedule ??
+            CompanionWeeklySchedule.Create();
+
+        CompanionWeeklySchedule updatedSchedule =
+            currentSchedule.AddWindow(
+                bookingType,
+                dayOfWeek,
+                startTime,
+                endTime);
+
+        CompanionSchedule = updatedSchedule;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RemoveCompanionAvailabilityWindow(
+        CompanionBookingType bookingType,
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime)
+    {
+        EnsureCompanionCaregiver();
+
+        CompanionWeeklySchedule currentSchedule =
+            CompanionSchedule ??
+            CompanionWeeklySchedule.Create();
+
+        CompanionWeeklySchedule updatedSchedule =
+            currentSchedule.RemoveWindow(
+                bookingType,
+                dayOfWeek,
+                startTime,
+                endTime);
+
+        if (Status == CaregiverStatus.Active &&
+            !updatedSchedule.HasAvailability)
+        {
+            throw new DomainException(
+                "An Active caregiver must have " +
+                "at least one availability window.");
+        }
+
+        CompanionSchedule = updatedSchedule;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void AddMedicalShift(
+        DayOfWeek dayOfWeek,
+        MedicalShiftType shiftType
+    )
+    {
+        EnsureMedicalCaregiver();
+
+        MedicalWeeklySchedule currentSchedule =
+            MedicalSchedule ??
+            MedicalWeeklySchedule.Create();
+
+        MedicalWeeklySchedule updatedSchedule =
+            currentSchedule.AddShift(
+                dayOfWeek,
+                shiftType);
+
+        MedicalSchedule = updatedSchedule;
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RemoveMedicalShift(
+        DayOfWeek dayOfWeek,
+        MedicalShiftType shiftType)
+    {
+        EnsureMedicalCaregiver();
+
+        MedicalWeeklySchedule currentSchedule =
+            MedicalSchedule ??
+            MedicalWeeklySchedule.Create();
+
+        MedicalWeeklySchedule updatedSchedule =
+            currentSchedule.RemoveShift(
+                dayOfWeek,
+                shiftType);
+
+        EnsureActiveScheduleRemainsAvailable(
+            updatedSchedule.HasAvailability);
+
+        MedicalSchedule = updatedSchedule;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void AddMedicalHomeVisitWindow(
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime)
+    {
+        EnsureMedicalCaregiver();
+
+        MedicalWeeklySchedule currentSchedule =
+            MedicalSchedule ??
+            MedicalWeeklySchedule.Create();
+
+        MedicalWeeklySchedule updatedSchedule =
+            currentSchedule.AddHomeVisitWindow(
+                dayOfWeek,
+                startTime,
+                endTime);
+
+        MedicalSchedule = updatedSchedule;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void RemoveMedicalHomeVisitWindow(
+        DayOfWeek dayOfWeek,
+        TimeOnly startTime,
+        TimeOnly endTime)
+    {
+        EnsureMedicalCaregiver();
+
+        MedicalWeeklySchedule currentSchedule =
+            MedicalSchedule ??
+            MedicalWeeklySchedule.Create();
+
+        MedicalWeeklySchedule updatedSchedule =
+            currentSchedule.RemoveHomeVisitWindow(
+                dayOfWeek,
+                startTime,
+                endTime);
+
+        EnsureActiveScheduleRemainsAvailable(
+            updatedSchedule.HasAvailability);
+
+        MedicalSchedule = updatedSchedule;
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void ReplaceMedicalSchedule(
+        IReadOnlyCollection<MedicalShiftInput> shifts,
+        IReadOnlyCollection<MedicalHomeVisitWindowInput>
+            homeVisitWindows)
+    {
+        EnsureMedicalCaregiver();
+
+        MedicalWeeklySchedule schedule =
+            MedicalWeeklySchedule.Create();
+
+        foreach (
+            MedicalShiftInput shift in
+                shifts ?? [])
+        {
+            schedule =
+                schedule.AddShift(
+                    shift.DayOfWeek,
+                    shift.ShiftType);
+        }
+
+        foreach (
+            MedicalHomeVisitWindowInput window in
+                homeVisitWindows ?? [])
+        {
+            schedule =
+                schedule.AddHomeVisitWindow(
+                    window.DayOfWeek,
+                    window.StartTime,
+                    window.EndTime);
+        }
+
+        EnsureActiveScheduleRemainsAvailable(
+            schedule.HasAvailability);
+
+        MedicalSchedule =
+            schedule.HasAvailability ? schedule : null;
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void ReplaceCompanionSchedule(
+        IReadOnlyCollection<CompanionAvailabilityWindowInput>
+            windows)
+    {
+        EnsureCompanionCaregiver();
+
+        CompanionWeeklySchedule schedule =
+            CompanionWeeklySchedule.Create();
+
+        foreach (
+            CompanionAvailabilityWindowInput window in
+                windows ?? [])
+        {
+            schedule =
+                schedule.AddWindow(
+                    window.BookingType,
+                    window.DayOfWeek,
+                    window.StartTime,
+                    window.EndTime);
+        }
+
+        EnsureActiveScheduleRemainsAvailable(
+            schedule.HasAvailability);
+
+        CompanionSchedule =
+            schedule.HasAvailability ? schedule : null;
+
+        UpdatedOnUtc = DateTime.UtcNow;
+    }
+
+    public void SubmitForReview(
+        DateTime utcNow,
+        DateOnly currentDate
+    )
+    {
+        EnsureStatus(
+            CaregiverStatus.Onboarding,
+            "Only an Onboarding caregiver can submit for review."
+        );
+
+        ValidateUtc(utcNow);
+
+        ValidateSubmissionReadiness(currentDate);
+
+        Status = CaregiverStatus.PendingReview;
+        StatusReason = null;
+        Availability = CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverSubmittedForReviewDomainEvent(
+            Id,
+            IsResubmission: false));
+    }
+
+    public void RequestCorrection(
+        string reason,
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.PendingReview,
+            "Only a Pending Review caregiver can need correction.");
+
+        ValidateUtc(utcNow);
+
+        string normalizedReason =
+            NormalizeRequiredStatusReason(
+                reason,
+                "Correction reason");
+
+        Status = CaregiverStatus.NeedsCorrection;
+        StatusReason = normalizedReason;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverCorrectionRequestedDomainEvent(
+            Id,
+            normalizedReason));
+    }
+
+    public void ResubmitForReview(
+        DateTime utcNow,
+        DateOnly currentDate)
+    {
+        EnsureStatus(
+            CaregiverStatus.NeedsCorrection,
+            "Only a Needs Correction caregiver can resubmit.");
+
+        ValidateUtc(utcNow);
+
+        ValidateSubmissionReadiness(currentDate);
+
+        Status = CaregiverStatus.PendingReview;
+        StatusReason = null;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverSubmittedForReviewDomainEvent(
+            Id,
+            IsResubmission: true));
+    }
+
+    public void Approve(
+        DateTime utcNow,
+        DateOnly currentDate)
+    {
+        EnsureStatus(
+            CaregiverStatus.PendingReview,
+            "Only a Pending Review caregiver can be approved.");
+
+        ValidateUtc(utcNow);
+
+        ValidateActivationReadiness(
+            currentDate);
+
+        Status = CaregiverStatus.Active;
+        StatusReason = null;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverApprovedDomainEvent(
+            Id));
+    }
+
+    public void RejectApplication(
+        string reason,
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.PendingReview,
+            "Only a Pending Review caregiver can be rejected.");
+
+        ValidateUtc(utcNow);
+
+        string normalizedReason =
+            NormalizeRequiredStatusReason(
+                reason,
+                "Rejection reason");
+
+        Status = CaregiverStatus.Rejected;
+        StatusReason = normalizedReason;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverRejectedDomainEvent(
+            Id,
+            normalizedReason));
+    }
+
+    public void Suspend(
+        string reason,
+        DateTime utcNow)
+    {
+        EnsureStatus(
+            CaregiverStatus.Active,
+            "Only an Active caregiver can be suspended.");
+
+        ValidateUtc(utcNow);
+
+        string normalizedReason =
+            NormalizeRequiredStatusReason(
+                reason,
+                "Suspension reason");
+
+        Status = CaregiverStatus.Suspended;
+        StatusReason = normalizedReason;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverSuspendedDomainEvent(
+            Id,
+            normalizedReason));
+    }
+
+    public void Reactivate(
+        DateTime utcNow,
+        DateOnly currentDate)
+    {
+        EnsureStatus(
+            CaregiverStatus.Suspended,
+            "Only a Suspended caregiver can be reactivated.");
+
+        ValidateUtc(utcNow);
+
+        ValidateActivationReadiness(
+            currentDate);
+
+        Status = CaregiverStatus.Active;
+        StatusReason = null;
+        Availability =
+            CaregiverAvailability.Unavailable;
+
+        UpdatedOnUtc = utcNow;
+
+        RaiseDomainEvent(new CaregiverReactivatedDomainEvent(
+            Id));
+    }
+
+    /// <summary>
+    /// SET-8d — terminal self-deletion state. Idempotent, no status gate: a
+    /// retry after a partial failure must converge, and the caregiver row is
+    /// retained (anonymize & retain, never hard-deleted). Discovery and quote
+    /// queries filter on Status == Active, so a Deactivated caregiver drops
+    /// out of both automatically.
+    /// </summary>
+    public void Deactivate(
+        string reason,
+        DateTime utcNow)
+    {
+        if (Status == CaregiverStatus.Deactivated)
+        {
+            return;
+        }
+
+        Status = CaregiverStatus.Deactivated;
+        StatusReason = reason;
+        Availability = CaregiverAvailability.Unavailable;
+        UpdatedOnUtc = utcNow;
+    }
+
+    private static bool IsMandatoryCertificate(CaregiverCertificateType type)
+    {
+        return type is
+            CaregiverCertificateType.PracticeLicense or
+            CaregiverCertificateType.GraduationCertificate;
+    }
+
+    private void EnsureMandatoryCertificatesAreCompliant(
+        DateOnly currentDate)
+    {
+        EnsureCertificateIsCompliant(
+            CaregiverCertificateType.PracticeLicense,
+            currentDate);
+
+        EnsureCertificateIsCompliant(
+            CaregiverCertificateType.GraduationCertificate,
+            currentDate);
+    }
+
+    private void EnsureCertificateIsCompliant(
+        CaregiverCertificateType certificateType,
+        DateOnly currentDate)
+    {
+        CaregiverCertificate certificate =
+            GetRequiredCertificate(certificateType);
+
+        if (certificate.VerificationStatus !=
+            CertificateVerificationStatus.Verified)
+        {
+            throw new DomainException(
+                $"The {certificateType} must be Verified.");
+        }
+
+        bool isExpired =
+            certificate.ExpiryDate.HasValue &&
+            certificate.ExpiryDate.Value <
+            currentDate;
+
+        if (isExpired)
+        {
+            throw new DomainException(
+                $"The {certificateType} has expired.");
+        }
+    }
+
+    private static string? NormalizeOptionalDetailedAddress(
+        string? detailedAddress)
+    {
+        if (string.IsNullOrWhiteSpace(
+            detailedAddress))
+        {
+            return null;
+        }
+
+        string normalizedAddress =
+            detailedAddress.Trim();
+
+        if (normalizedAddress.Length >
+            MaximumDetailedAddressLength)
+        {
+            throw new DomainException(
+                $"Detailed address cannot exceed " +
+                $"{MaximumDetailedAddressLength} characters.");
+        }
+
+        return normalizedAddress;
+    }
+
+    private void EnsureCompanionCaregiver()
+    {
+        if (Type != CaregiverType.Companion)
+        {
+            throw new DomainException(
+                "Only a Companion caregiver can manage " +
+                "a Companion schedule.");
+        }
+    }
+
+    private void EnsureMedicalCaregiver()
+    {
+        if (Type != CaregiverType.Medical)
+        {
+            throw new DomainException(
+                "Only a Medical caregiver can manage " +
+                "a Medical schedule.");
+        }
+    }
+
+    private void EnsureActiveScheduleRemainsAvailable(
+        bool hasAvailability)
+    {
+        if (Status == CaregiverStatus.Active &&
+            !hasAvailability)
+        {
+            throw new DomainException(
+                "An Active caregiver must have " +
+                "at least one availability entry.");
+        }
+    }
+
+    private void EnsureStatus(
+        CaregiverStatus requiredStatus,
+        string errorMessage)
+    {
+        if (Status != requiredStatus)
+        {
+            throw new DomainException(
+                errorMessage);
+        }
+    }
+
+    private static string NormalizeRequiredStatusReason(
+        string reason,
+        string fieldName)
+    {
+        if (string.IsNullOrWhiteSpace(reason))
+        {
+            throw new DomainException(
+                $"{fieldName} is required.");
+        }
+
+        return reason.Trim();
+    }
+
+    private static void ValidateUtc(
+        DateTime utcNow)
+    {
+        if (utcNow.Kind != DateTimeKind.Utc)
+        {
+            throw new DomainException(
+                "Transition time must be in UTC.");
+        }
+    }
+    private void EnsureRequiredSelections()
+    {
+        if (_serviceSelections.Count == 0)
+        {
+            throw new DomainException(
+                "At least one Service is required.");
+        }
+
+        if (_languageSelections.Count == 0)
+        {
+            throw new DomainException(
+                "At least one Language is required.");
+        }
+
+        if (_areaSelections.Count == 0)
+        {
+            throw new DomainException(
+                "At least one Area is required.");
+        }
+    }
+
+    private void EnsureCompanionSubmissionReadiness()
+    {
+        if (CompanionProfile is null)
+        {
+            throw new DomainException(
+                "Companion professional profile is required.");
+        }
+
+        if (CompanionPricing is null)
+        {
+            throw new DomainException(
+                "Companion pricing is required.");
+        }
+
+        if (CompanionSchedule is null ||
+            !CompanionSchedule.HasAvailability)
+        {
+            throw new DomainException(
+                "At least one Companion availability " +
+                "window is required.");
+        }
+    }
+
+    private void EnsureMedicalSubmissionReadiness(
+        DateOnly currentDate)
+    {
+        if (MedicalProfile is null)
+        {
+            throw new DomainException(
+                "Medical professional profile is required.");
+        }
+
+        if (MedicalPricing is null)
+        {
+            throw new DomainException(
+                "Medical pricing is required.");
+        }
+
+        if (MedicalSchedule is null ||
+            !MedicalSchedule.HasAvailability)
+        {
+            throw new DomainException(
+                "At least one Medical availability " +
+                "entry is required.");
+        }
+
+        EnsureCertificateIsReadyForReview(
+            CaregiverCertificateType.PracticeLicense,
+            currentDate);
+
+        EnsureCertificateIsReadyForReview(
+            CaregiverCertificateType.GraduationCertificate,
+            currentDate);
+    }
+
+    private void EnsureCertificateIsReadyForReview(
+        CaregiverCertificateType certificateType,
+        DateOnly currentDate)
+    {
+        CaregiverCertificate certificate =
+            GetRequiredCertificate(
+                certificateType);
+
+        bool hasAllowedStatus =
+            certificate.VerificationStatus is
+                CertificateVerificationStatus.Pending or
+                CertificateVerificationStatus.Verified;
+
+        if (!hasAllowedStatus)
+        {
+            throw new DomainException(
+                $"The {certificateType} must be replaced " +
+                "before submission.");
+        }
+
+        bool isExpired =
+            certificate.ExpiryDate.HasValue &&
+            certificate.ExpiryDate.Value <
+            currentDate;
+
+        if (isExpired)
+        {
+            throw new DomainException(
+                $"The {certificateType} has expired.");
+        }
+    }
+
+    private CaregiverCertificate GetRequiredCertificate(
+        CaregiverCertificateType certificateType)
+    {
+        CaregiverCertificate? certificate =
+            _certificates.SingleOrDefault(
+                certificate =>
+                    !certificate.IsRemoved &&
+                    certificate.Type ==
+                    certificateType);
+
+        if (certificate is null)
+        {
+            throw new DomainException(
+                $"The caregiver does not have a " +
+                $"{certificateType}.");
+        }
+
+        return certificate;
+    }
+
+
+}

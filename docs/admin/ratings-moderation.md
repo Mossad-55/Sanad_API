@@ -203,13 +203,13 @@ keep a rating, and cannot see who reviewed it.
 Focused tests:
 
 ```powershell
-dotnet test tests/Sanad.UnitTests/Sanad.UnitTests.csproj --no-build --filter "FullyQualifiedName~AdminCaregiverRatingModerationTests|FullyQualifiedName~AdminCareHomeRatingModerationTests|FullyQualifiedName~OwnerCareHomeRatingTests|FullyQualifiedName~RatingsModerationAuthorizationTests"
+dotnet test tests/Ahlena.UnitTests/Ahlena.UnitTests.csproj --no-build --filter "FullyQualifiedName~AdminCaregiverRatingModerationTests|FullyQualifiedName~AdminCareHomeRatingModerationTests|FullyQualifiedName~OwnerCareHomeRatingTests|FullyQualifiedName~RatingsModerationAuthorizationTests"
 ```
 
 Runnable requests are in
-[`Sanad.Admin.Ratings.postman_collection.json`](../postman/admins/Sanad.Admin.Ratings.postman_collection.json);
+[`Ahlena.Admin.Ratings.postman_collection.json`](../postman/admins/Ahlena.Admin.Ratings.postman_collection.json);
 the owner read and flag are in the
-[facility-owner collection](../postman/care-homes/Sanad.CareHomes.Owner.postman_collection.json).
+[facility-owner collection](../postman/care-homes/Ahlena.CareHomes.Owner.postman_collection.json).
 Collection examples are authored contracts, not runtime evidence. Localhost HTTP
 proof (role denial, the flag → hide → restore lifecycle, aggregate agreement,
 unknown-id `404`, blank/over-long reason `400` and the `409` conflicts) is

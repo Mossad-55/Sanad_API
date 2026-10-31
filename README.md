@@ -1,6 +1,8 @@
-# Sanad Care API
+# Ahlena API
 
-Sanad Care (سند) is a bilingual Arabic/English healthcare and caregiving platform. This repository is the .NET 10 backend.
+> **Brand note:** this repository was historically branded **Sanad / سند**. An Owner-approved local rename to **Ahlena / أهلنا** has been implemented (2026-10-31) and is pending parent review; see `docs/internal/work/ahlena-rebrand-2026-10-31.md`. Historical documents, work records, and evidence throughout the repo may still reference the old brand or legacy physical names (`SanadDb` was renamed to `AhlenaDb` on 2026-10-31; `SanadBrunoTestDb` and `@test.sanad.local` identities remain intentionally unchanged), which later records keep as facts. The repository is `Mossad-55/Ahlena_API`; the checkout folder becomes `D:\Ahlena_API` when the parent completes the physical move. The rename lives only in this local checkout (uncommitted working tree plus staging) and is not pushed or deployed: the last deployment rehearsed end-to-end was revision `b861e3e5` under the previous brand, and the rebranded build has not yet had an independent runtime rehearsal.
+
+Ahlena (أهلنا) is a bilingual Arabic/English healthcare and caregiving platform. This repository is the .NET 10 backend.
 
 The active development branch is `main`.
 
@@ -18,7 +20,7 @@ Run Bruno for changes whose affected behavior needs an end-to-end API check, and
 
 For an authorized deployment, validate the relevant API behavior and verify the exact migration target. Stage changes by logical scope and keep private control files unstaged.
 
-Identity (non-social auth), shared splash CMS, Caregivers (lookups, onboarding, admin review, discovery), and Families (family/dependents/invitations, assessment, medical profile, medications, notes/activities, bookings + Paymob) are implemented as Domain + Application + Infrastructure with HTTP in `Sanad.API`. Module `Presentation` projects are empty shells by design.
+Identity (non-social auth, sessions, accounts, profile, messaging), shared CMS (splash screens, landing, legal, help center, wellness library, site settings), Caregivers (lookups, onboarding, admin review, discovery), Families (family/dependents/invitations, assessment, medical profile, medications, notes/activities, bookings + Paymob, subscriptions), CareHomes (facilities, bookings, visits, records, inventory, finance, ratings), Chat, Community, Finance (platform fees/tax, payouts, subscription refunds, complaints), and Notifications (inbox, push/email outboxes, devices) are implemented as Domain + Application + Infrastructure with HTTP in `Ahlena.API`. Module `Presentation` projects are empty shells by design; each module owns its own EF Core `DbContext` and PostgreSQL schema, composed behind the single API host.
 
 Implemented HTTP surface:
 
@@ -61,8 +63,15 @@ Implemented HTTP surface:
 - **Admin Elderly check-in operations**: Normal SuperAdmin/SupportAdmin read-only list, detail, timeline, and aggregate routes with filters, paging, inclusive ranges up to 31 days, safe projections, and audit-before-read behavior (`docs/admin/elderly-check-ins.md`)
 - **Elderly wellness tips**: Normal Elderly published-only paged list/detail plus SuperAdmin/ContentAdmin Normal CMS list/search/detail/preview, multipart draft authoring with generated image storage keys, publish, and archive (`docs/app/elderly/wellness-tips.md`, `docs/admin/wellness-tips.md`). CMS content is currently global/shared; tenant scope and clinical review remain Needs Owner Verification.
 - **Elderly profile**: Normal Elderly-only `GET /api/v1/elderly/profile` and `/photo` resolve the linked dependent from JWT identity, return bilingual names, profile-local computed age, photo state/path, latest linked assessment, stored IANA timezone, and nullable primary emergency contact (`docs/app/elderly/profile.md`). Family Owners may set a dependent timezone and add/update the primary contact; all active Family members may read the contact.
-- **Notifications inbox and Admin inspection**: authenticated NormalAccess inbox list/cursor, unread count, mark-one-read, and mark-all-read routes; durable eligible-recipient check-in alerts; and audited, one-year Admin list/detail/timeline/aggregate views for Normal SuperAdmin/SupportAdmin (`docs/app/notifications.md`, `docs/admin/notifications.md`). Admin records expose only ID/category/type/created/read metadata; recipient identity, title, body, and destination are omitted. Push/email delivery/retries, physical purge, complete category inventory, deleted-recipient mapping, and audit-retention enforcement remain deferred or Needs Owner Verification.
-- **Next subscription slices**: booking-completion allowance consumption and notification producers/delivery. Family-owner immediate prorated upgrades and next-renewal downgrades are implemented; successful initial and renewal settlement now creates immutable branded invoice PDFs with owner-only list/detail/download routes; provider subscription callback settlement, shared identity persistence, and seven-day grace handling are implemented; Wallet remains one-time/manual.
+- **Notifications inbox and Admin inspection**: authenticated NormalAccess inbox list/cursor, unread count, mark-one-read, and mark-all-read routes; durable eligible-recipient check-in alerts; push device registration/list/remove at `/api/v1/devices`; and audited, one-year Admin list/detail/timeline/aggregate views for Normal SuperAdmin/SupportAdmin (`docs/app/notifications.md`, `docs/admin/notifications.md`). Admin records expose only ID/category/type/created/read metadata; recipient identity, title, body, and destination are omitted. Push (FCM via `notifications.push_outbox`) and email (SMTP via `notifications.email_outbox`, plain-text plus HTML snapshots, backed-off retries, unregistered-token retirement) are delivered by hosted outbox processors. Physical purge, the complete category/event inventory, deleted-recipient mapping, and seven-year audit-retention enforcement remain Needs Owner Verification.
+- **Subscription lifecycle**: booking-completion allowance consumption is implemented; successful initial and renewal settlement creates immutable branded invoice PDFs with owner-only list/detail/download routes; provider subscription callback settlement, shared identity persistence, and seven-day grace handling are implemented; Wallet remains one-time/manual. Family plan changes are quoted read-only (`POST plan-change/quote`) and refused with `409 Subscriptions.PlanChange.PaidPeriodActive` while a paid period runs; a pending downgrade can be scheduled (`PUT pending-downgrade`) and applies at the original period boundary.
+- **Care homes**: owner facility onboarding and management (`/api/v1/care-homes/facilities`), inventory, room/bed/profile media, and maintenance windows; anonymous discovery; family booking requests, extensions, check-ins, and disputes (`/api/v1/family/care-home-bookings`); owner and admin visit, resident-record, finance-reporting, payout, refund, and moderation operations (`docs/care-homes/`)
+- **Ratings**: family caregiver ratings (`PUT /api/v1/family/caregiver-ratings/bookings/{bookingId}` after a completed booking, `GET .../top-10`); family care-home ratings (`PUT /api/v1/family/care-home-ratings/bookings/{bookingId}`); care-home owner reads and flags (`/api/v1/care-homes/facilities/mine/ratings`); admin caregiver, care-home, and app-feedback rating views under `/api/v1/admin/...`
+- **Chat**: NormalAccess conversations, messages, attachments, blocks, reports, unread/read sync, and presence under `/api/v1/chat` (`docs/app/chat/`)
+- **Community**: posts, categories, comments, likes/favorites, author photos, uploads, and blocks under `/api/v1/community`, with admin moderation (`docs/app/community/`)
+- **Wellness library**: paged categories, content, video, and recommendations plus saved/liked/view tracking under `/api/v1/library`; premium-marked content requires an active subscription whose benefits include `PremiumContent` (Premium Plus tiers only); admin authoring under `/api/v1/admin/library`
+- **Public site surfaces**: anonymous landing (`/api/v1/landing`), help center, legal documents, site settings, splash screens, and public lookups; anonymous `POST /api/v1/partner-contact`; platform status at `GET /api/v1/platform/status`
+- **Support and feedback**: contact and ticket list/detail under `/api/v1/support`; app-store rating submission (`POST /api/v1/feedback/app-rating`)
 
 Email, SMS, and payments:
 
@@ -73,39 +82,45 @@ Email, SMS, and payments:
 - SMS Misr with a template token uses `POST /api/OTP/`
 - Paymob intention + refunds when `Paymob__SecretKey` is set; otherwise `DevelopmentPaymobClient`
 
-Not in this repository yet:
+Current boundaries (source-verified):
 
-- Family/caregiver **ratings and reviews** HTTP (caregiver `average_rating` / `reviews_count` columns exist; no review API)
-- Booking cancellation **fee tiers** (cancellation is allowed; no fee deducted yet)
-- Initial Card enrollment is available only with a local `paymobSubscriptionPlanId` and configured Card 3DS integration. Subscription callback identity/event ledger persistence and renewal settlement preserve the seven-day grace and original period-end anchor; Wallet remains one-time/manual. Family-owner plan changes use immediate prorated upgrades and next-renewal downgrades; invoice/PDF generation is complete; allowance consumption and notifications remain later slices.
+- **Caregiver-booking cancellation refunds** follow policy revision 2 for new bookings: full refund of the captured amount at or before 24 hours before the scheduled start, 50% when later than 24 hours before the start but before the visit starts, and nothing once the visit has started. Each booking snapshots the policy version at creation; bookings made before the revision keep the legacy revision-1 rules, and reschedules preserve the original version. See the policy table in `docs/app/families/bookings.md`.
+- **Care-home cancellation refund policy v2** (nothing refundable after a recorded check-in) ships dormant by Owner decision; care-home cancellations continue under the documented version-1 rule until it is activated (`docs/care-homes/booking-lifecycle.md`).
+- **Premium library content** is included only in Premium Plus tiers; Free and Premium plans list it as unavailable. Non-premium library content stays readable for all.
+- Physical notification purge, the complete category/event inventory, deleted-recipient mapping, and seven-year audit-retention enforcement remain open (Needs Owner Verification).
+- Initial Card enrollment is available only with a local `paymobSubscriptionPlanId` and configured Card 3DS integration; Wallet remains one-time/manual; immediate plan changes are refused with `409 Subscriptions.PlanChange.PaidPeriodActive` while a paid period runs.
 - Social / Google / Apple authentication (cancelled and removed)
 
 ## Solution layout
 
 ```text
 src/
-├── API/Sanad.API                         HTTP host
-├── BuildingBlocks/                       Shared Domain, Application, Infrastructure
+├── API/Ahlena.API                         HTTP host (controllers, integrations, outbox processors)
+├── BuildingBlocks/                       Shared Contracts, Domain, Application, Infrastructure
 └── Modules/
-    ├── Identity/                         Auth Domain, Application, Infrastructure (Presentation shell)
-    ├── Cms/                              Splash Domain, Application, Infrastructure
-    ├── Caregivers/                       Lookups + onboarding + admin review + discovery
-    └── Families/                         Family, dependents, assessment, meds, notes, bookings
+    ├── Identity/                         Auth, sessions, accounts, OTP, profile, messaging
+    ├── Cms/                              Splash, landing, legal, help center, wellness library, site settings
+    ├── Caregivers/                       Lookups, onboarding, admin review, discovery
+    ├── Families/                         Family, dependents, assessment, meds, notes, bookings, subscriptions
+    ├── CareHomes/                        Facilities, bookings, visits, records, inventory, finance, ratings
+    ├── Chat/                             Conversations, messages, attachments, blocks
+    ├── Community/                        Posts, categories, comments, moderation
+    ├── Finance/                          Platform fees/tax, payouts, subscription refunds, complaints
+    └── Notifications/                    In-app inbox, push/email outboxes, devices
 tests/
-├── Sanad.ArchitectureTests
-└── Sanad.UnitTests
+├── Ahlena.ArchitectureTests
+├── Ahlena.PortalProvisionerTests
+├── Ahlena.UnitTests
+└── Bruno/                                Stateful API check collections
 docs/
-├── architecture/
+├── admin/                                Admin HTTP guides
+├── app/                                  Family/caregiver/elderly and app-wide HTTP guides
+├── architecture/                         Overview and current tech-stack notes
 ├── auth/                                 Authentication flows, claims/policies, error catalog
-├── app/                                  Mobile-app HTTP (one area per consumer inside)
-│   ├── public/                           Anonymous app surfaces (splash, active lookups)
-│   ├── caregivers/                       Caregiver onboarding + booking actions
-│   └── families/                         Family app (dependents, discovery, bookings, …)
-├── admin/                                Admin HTTP (splash, lookups, caregiver review, assessments)
-├── operations/                           Configuration, migrations, security
-└── postman/
-    ├── admins/                           Admin Postman collection
-    └── app/                              App Postman collections (Public + Caregiver + Family)
+├── care-homes/                           Care-home feature guides
+├── frontend-handoffs/                    Dated admin/app integration handoffs
+├── internal/                             Governance, operations runbooks, tools, work records
+└── postman/                              24 Postman collections (admins/, app/, care-homes/) — see docs/postman/README.md
 ```
 
 Dependency direction:
@@ -134,9 +149,9 @@ ASP.NET Core maps `__` to nested keys.
 
 ```bash
 export ASPNETCORE_ENVIRONMENT=Development
-export ConnectionStrings__IdentityDatabase="Host=localhost;Port=5432;Database=sanad_identity;Username=REPLACE_ME;Password=REPLACE_ME"
-export Identity__Jwt__Issuer="sanad-api"
-export Identity__Jwt__Audience="sanad-clients"
+export ConnectionStrings__IdentityDatabase="Host=localhost;Port=5432;Database=AhlenaDb;Username=REPLACE_ME;Password=REPLACE_ME"
+export Identity__Jwt__Issuer="ahlena-api"
+export Identity__Jwt__Audience="ahlena-clients"
 export Identity__Jwt__SigningKey="REPLACE_WITH_AT_LEAST_32_UTF8_BYTES"
 ```
 
@@ -144,18 +159,22 @@ export Identity__Jwt__SigningKey="REPLACE_WITH_AT_LEAST_32_UTF8_BYTES"
 
 Design-time EF migrations also require `ConnectionStrings__IdentityDatabase` (the Caregivers design-time factory falls back to `ConnectionStrings__CaregiversDatabase` then `IdentityDatabase`).
 
-Caregivers, CMS, and Families fall back to `ConnectionStrings__IdentityDatabase` when their own connection strings are not set.
+All module contexts other than Identity (Caregivers, CMS, Families, CareHomes, Chat, Community, Finance, Notifications) fall back to `ConnectionStrings__IdentityDatabase` when their own connection strings are not set.
 
 ### CORS
 
-A single default CORS policy allows any origin, header, and method. This is owner-confirmed intentional configuration (native mobile clients send no `Origin` header), not a backlog item; do not "fix" it without a new explicit owner order. It is registered in `AddSanadApi` (`AddCors`) and applied in `UseSanadApi` (`UseCors`, between authentication and authorization).
+A single default CORS policy allows any origin, header, and method, registered in `AddAhlenaApi` (`AddCors`) and applied in `UseAhlenaApi` (`UseCors`, between authentication and authorization). Status: open CORS is the correct posture for the current development stage only; this session's rename made no runtime change to it. The production origin allowlist is deferred until the final domains are approved, at which point it becomes an explicit configuration slice. Native mobile clients legitimately send no `Origin` header because CORS is a browser-side enforcement mechanism — that is not the rationale for allowing any origin, and it does not make the open policy acceptable for production. Security rules: `docs/internal/operations/security.md`.
 
 ### Local file storage
 
-Public uploads (splash images, service icons) and private uploads (caregiver certificate scans, National ID front/back) are stored on local disk:
+Public assets (splash images, lookup service icons, assessment tier images, community images) and private documents (caregiver certificate scans, National ID front/back, chat attachments, wellness library videos) are stored on local disk. Limits and access are route-specific:
 
-- Public root: `{AppContext.BaseDirectory}/sanad-files` (Development default only); outside Development configure a durable absolute path with `Storage__Local__RootPath="/var/sanad/files"` — the host refuses to start when the root sits inside the versioned release folder. Served anonymously at `GET /files/{key}`. Limit 2 MB; jpeg/png/webp.
-- Private root: a sibling directory (`<root>-private`) that is **not** served statically. Certificate scans (pdf/jpeg/png/webp, 5 MB limit) are only reachable through the admin download endpoint `GET /api/v1/admin/caregivers/{id}/certificates/{certId}/file`. National ID images (jpeg/png/webp, 5 MB per side) are stored under folder `identity-documents` and are not downloadable in this slice.
+- Public root: `{AppContext.BaseDirectory}/sanad-files` (Development default only); outside Development configure a durable absolute path with `Storage__Local__RootPath="/var/ahlena/files"` — the host refuses to start when the root sits inside the versioned release folder. Served anonymously at `GET /files/{key}`. Default public limit 2 MB for images (splash/lookup icons/tier images/community images, jpeg/png/webp).
+- Private root: a sibling directory (`<root>-private`) that is **not** served statically:
+  - **Caregiver certificates** (pdf/jpeg/png/webp, 5 MB): self-service under `/api/v1/caregiver/certificates` (upload, replace file, remove, version history). The caregiver downloads their own certificate files: `GET /api/v1/caregiver/certificates/{certificateId}/file` and `GET /api/v1/caregiver/certificates/{certificateId}/versions/{versionId}/file`; admin reviewers download at `GET /api/v1/admin/caregivers/{caregiverId}/certificates/{certificateId}/file`.
+  - **National ID** (jpeg/png/webp, 5 MB per side, private `identity-documents` folder): self-service `GET`/`PUT /api/v1/auth/identity-document`; the self GET returns status metadata only (uploaded, verification status, review reason — no file URLs). Admin reviewers download front/back at `GET /api/v1/admin/identity-documents/{userId}/front` and `/back`.
+  - **Chat attachments**: images 5 MB, video 50 MB, PDF documents 10 MB.
+  - **Wellness library** admin video uploads: 50 MB.
 
 ### Optional SMTP
 
@@ -168,7 +187,7 @@ export Identity__Email__Smtp__UseSsl="true"
 export Identity__Email__Smtp__Username="REPLACE_ME"
 export Identity__Email__Smtp__Password="REPLACE_ME"
 export Identity__Email__Smtp__FromAddress="REPLACE_ME"
-export Identity__Email__Smtp__FromName="Sanad Care"
+export Identity__Email__Smtp__FromName="Ahlena"
 ```
 
 SMTP is enabled only when `Host` and `FromAddress` are both set.
@@ -194,9 +213,9 @@ Never put SMS Misr or SMTP credentials in a mobile app or in Git.
 
 ## Database
 
-Identity uses PostgreSQL schema `identity`, CMS uses schema `cms`, Caregivers uses schema `caregivers`, and Families uses schema `families`. The API applies module migrations at startup (`Database.Migrate()` per module), so `dotnet ef` is not required on the server. EF history tables live per schema (for example `identity.__EFMigrationsHistory`).
+Each module owns its own PostgreSQL schema: `identity` (Identity), `cms`, `caregivers`, `families`, `care_homes`, `chat`, `community`, `finance`, and `notifications`. The API applies module migrations at startup (`Database.Migrate()` per module), so `dotnet ef` is not required on the server. EF history tables live per schema (for example `identity.__EFMigrationsHistory`).
 
-Historical social-authentication migrations remain in the project and must be applied in order. The last Identity migration, `RemoveSocialAuthentication`, drops those tables.
+Historical social-authentication migrations remain in the project and must be applied in order; `RemoveSocialAuthentication` drops those tables at its point in the sequence. The README intentionally does not pin Identity's current migration head — the applied head is verified per release (`docs/internal/operations/migrations.md`, deploy verify).
 
 ## Run
 
@@ -204,8 +223,8 @@ From the repository root:
 
 ```bash
 dotnet restore
-dotnet build Sanad.slnx
-dotnet run --project src/API/Sanad.API/Sanad.API.csproj --launch-profile https
+dotnet build Ahlena.slnx
+dotnet run --project src/API/Ahlena.API/Ahlena.API.csproj --launch-profile https
 ```
 
 Launch profiles:
@@ -270,7 +289,7 @@ Anonymous app reads (splash, active lookups) return `200 []` when empty. `caregi
 | GET | `/api/v1/lookups/professional-titles` | Active Medical professional titles |
 | GET | `/api/v1/lookups/academic-degrees` | Active Medical academic degrees |
 
-See `docs/app/public/`. Postman: `docs/postman/app/Sanad.App.Public.postman_collection.json`.
+See `docs/app/public/`. Postman: `docs/postman/app/Ahlena.App.Public.postman_collection.json`.
 
 ## App — caregiver onboarding endpoints
 
@@ -304,7 +323,7 @@ Self-service routes under `/api/v1/caregiver/...` require policy `CaregiverAcces
 | POST | `/caregiver/bookings/{bookingId}/visit-report` | Submit one immutable Visit Report |
 | POST | `/caregiver/bookings/{bookingId}/medical-report` | Medical caregiver report with optional private photo |
 
-Booking actions: `docs/app/caregivers/bookings.md`. Postman: `docs/postman/app/Sanad.App.Caregiver.postman_collection.json`.
+Booking actions: `docs/app/caregivers/bookings.md`. Postman: `docs/postman/app/Ahlena.App.Caregiver.postman_collection.json`.
 
 ## App — family endpoints
 
@@ -350,9 +369,9 @@ Family routes under `/api/v1/family/...` require policy `FamilyAccess` (Normal J
 | POST | `/family/subscriptions/reenable-auto-renew` | Re-enable auto-renew before period end (Owner only) |
 | POST | `/api/v1/payments/webhooks/paymob` | Paymob HMAC webhook (anonymous) |
 
-Adding a dependent creates an Elderly Identity account server-side (no email/password, Active, phone verified) so SMS OTP login works immediately. One elderly identity is linked to at most one family. Invitations go to already-registered Family users by email with a `sanad://family/invite?token=...` deep link (7-day expiry, hashed token).
+Adding a dependent creates an Elderly Identity account server-side (no email/password, Active, phone verified) so SMS OTP login works immediately. One elderly identity is linked to at most one family. Invitations go to already-registered Family users by email with a `ahlena://family/invite?token=...` deep link (7-day expiry, hashed token).
 
-Full reference: `docs/app/families/`. Postman: `docs/postman/app/Sanad.App.Family.postman_collection.json`.
+Full reference: `docs/app/families/`. Postman: `docs/postman/app/Ahlena.App.Family.postman_collection.json`.
 
 ## Admin endpoints
 
@@ -363,13 +382,13 @@ Super Admin-only with a Normal JWT. See `docs/admin/subscriptions.md`.
 - Splash CMS: `docs/admin/splash-screens.md`
 - Caregiver lookups (create/rename/activate/deactivate + admin list-all for all eight lookups): `docs/admin/`
 - Caregiver review: `docs/admin/caregivers-review.md` — paged list (reviewer name/phone joined from Identity), detail, approve/reject/request-correction/suspend/reactivate, certificate verify/reject/revoke, private certificate file download.
-- National ID review: `docs/admin/identity-documents.md` — paged list, detail, private front/back download, verify/reject/revoke.
+- National ID review: `docs/admin/admin-identity-documents.md` — paged list, detail, private front/back download, verify/reject/revoke.
 - Care-needs assessment CMS: `docs/admin/care-assessments.md` — questions, scoring tiers, submissions.
 - Bookings (cancellations & refunds): `docs/admin/bookings.md` — paged closed bookings (`finance` = all / cancelled / failed refund / refunded), detail, and `POST .../refund` to retry a failed Paymob refund.
-- Subscriptions: `docs/admin/subscriptions.md` — Super Admin plan list/detail, family subscription list/detail, plan authoring including optional Paymob mapping, one-time publication, retirement, coupon create/list/detail/hard-delete configuration, and the legacy tax adapter; shared fee/tax configuration is in `docs/admin/finance-platform-charges.md`. Family owners can request server-calculated purchase and plan-change quotes, initial Card enrollment when configured, immediate upgrades, pending next-renewal downgrades, manual renewal payment intents, Paymob callback settlement with durable identity/idempotency, renewal-grace recovery, anchor-preserving payment retry, and immutable invoice list/detail/private PDF downloads. Allowance consumption follows it.
+- Subscriptions: `docs/admin/subscriptions.md` — Super Admin plan list/detail, family subscription list/detail, plan authoring including optional Paymob mapping, one-time publication, retirement, coupon create/list/detail/hard-delete configuration, and the legacy tax adapter; shared fee/tax configuration is in `docs/admin/finance-platform-charges.md`. Family owners can request server-calculated purchase and plan-change quotes (read-only); immediate plan changes are refused with `409 Subscriptions.PlanChange.PaidPeriodActive` while a paid period runs, and a pending next-renewal downgrade applies at the original period boundary. Initial Card enrollment when configured, manual renewal payment intents, Paymob callback settlement with durable identity/idempotency, renewal-grace recovery, anchor-preserving payment retry, and immutable invoice list/detail/private PDF downloads are implemented, and booking-completion allowance consumption follows the plan.
 - Elderly medication operations: `docs/admin/elderly-medications.md` — SuperAdmin and SupportAdmin with Normal access can list/detail prescriptions, inspect persisted dose timelines (inclusive ranges up to 31 days), and read persisted-dose adherence aggregates. No write APIs; successful sensitive reads audit before returning data. Postman/Bruno examples are manual/stateful and must not run against shared/live environments.
 
-Postman: `docs/postman/admins/Sanad.Admin.postman_collection.json`; shared Finance configuration: `docs/postman/admins/Sanad.Admin.Finance.postman_collection.json`.
+Postman: `docs/postman/admins/Ahlena.Admin.postman_collection.json`; shared Finance configuration: `docs/postman/admins/Ahlena.Admin.Finance.postman_collection.json`.
 
 Lookup error codes: `Caregivers.Lookups.NameAlreadyInUse` (409), `Caregivers.Lookups.LanguageCodeInUse` (409), `Caregivers.Lookups.ParentNotActive` (409), `Caregivers.Lookups.NotFound` (404), `Caregivers.Lookups.ParentNotFound` (404).
 
@@ -393,26 +412,20 @@ Details live in `docs/`.
 ## Tests
 
 ```bash
-dotnet test Sanad.slnx
+dotnet test Ahlena.slnx
 ```
 
 ## Documentation
 
 ```text
 docs/auth/                              Auth flows, claims/policies, error catalog
-docs/app/public/                        Anonymous mobile-app HTTP (splash, public lookups)
-docs/app/caregivers/                    Caregiver self-service onboarding HTTP
-docs/app/families/                      Family app HTTP (family, dependents, invitations)
-docs/admin/                             Admin HTTP (splash, lookups, caregiver review)
-docs/architecture/                      Architecture notes
-docs/operations/                        Configuration, migrations, security
-docs/postman/Sanad.Auth.postman_collection.json
-docs/postman/app/Sanad.App.Public.postman_collection.json
-docs/postman/app/Sanad.App.Caregiver.postman_collection.json
-docs/postman/app/Sanad.App.Family.postman_collection.json
-docs/postman/admins/Sanad.Admin.postman_collection.json
-docs/postman/Sanad.hostinger.postman_environment.json
-docs/postman/Sanad.local.postman_environment.json
+docs/app/                               App HTTP guides (public, caregivers, families, elderly, chat, community, library)
+docs/admin/                             Admin HTTP guides
+docs/care-homes/                        Care-home feature guides
+docs/architecture/                      Architecture overview and current tech-stack notes
+docs/frontend-handoffs/                 Dated admin/app integration handoffs
+docs/internal/                          Governance, operations runbooks, tools, work records
+docs/postman/                           24 Postman collections (admins/, app/, care-homes/) and environments
 ```
 
 ## Security

@@ -343,5 +343,5 @@ Anonymize & retain everywhere — nothing is hard-deleted.
 
 ### Bruno
 
-- `collections/Sanad/account-delete-family/` — family self-delete negative tests: `01-login-owner.bru`, `02-delete-as-owner-conflict.bru` (DELETE → assert 409 + code `Identity.Account.OwnershipTransferRequired` — guard-protected, mutates nothing), `03-logout-owner.bru`.
+- `collections/Ahlena/account-delete-family/` — family self-delete negative tests: `01-login-owner.bru`, `02-delete-as-owner-conflict.bru` (DELETE → assert 409 + code `Identity.Account.OwnershipTransferRequired` — guard-protected, mutates nothing), `03-logout-owner.bru`.
 - Existing `set-8d-account-delete` folder covers caregiver paths.

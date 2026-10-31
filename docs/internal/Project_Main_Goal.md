@@ -1,6 +1,6 @@
 # Project direction
 
-Sanad is an Arabic/English elderly-care platform covering Care Homes, Family,
+Ahlena is an Arabic/English elderly-care platform covering Care Homes, Family,
 Caregiver and Elderly services, Chat, Notifications, Community and Admin APIs.
 This backend repository does not implement frontend screens.
 

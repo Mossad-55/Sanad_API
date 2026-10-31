@@ -70,10 +70,10 @@ Removing a dependent **hard-deletes** the Families row and the photo file. The E
 | Bookings: checkout, tabs, detail, cancel | `docs/app/families/bookings.md` |
 | Booking reviews | `docs/app/families/bookings.md` |
 | Dependent medical-access grants | `docs/app/families/medical-access.md` |
-| Postman (reviews and medical access) | `docs/postman/app/Sanad.App.Family.Operations.postman_collection.json` |
+| Postman (reviews and medical access) | `docs/postman/app/Ahlena.App.Family.Operations.postman_collection.json` |
 | Subscription plan catalog and current snapshot (Owner read-only) | `docs/app/families/subscriptions.md` |
 | Library: categories, articles/videos, premium gating, saved/liked/views | `docs/app/library/README.md` |
-| Postman | `docs/postman/app/Sanad.App.Family.postman_collection.json` |
+| Postman | `docs/postman/app/Ahlena.App.Family.postman_collection.json` |
 
 The Elderly SMS OTP login used by dependents is documented in `docs/auth/elderly-sms-login.md`.
 

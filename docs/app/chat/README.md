@@ -13,8 +13,8 @@ erased, and a blocked sender must never learn that a block exists.
 - [Sync and recovery (Chat Plus: cursor lifecycle, polling, dedupe)](sync.md)
 - [Realtime hub, typing, and presence (Chat Plus: transport, events, budgets)](realtime.md)
 - [Operations (Chat Plus: topology, config, dispatch, migrations, Firebase/APNs checklist)](operations.md)
-- [Postman Chat collection](../../postman/app/Sanad.App.Chat.postman_collection.json)
-- [Postman Admin Chat reports collection](../../postman/admins/Sanad.Admin.Chat.postman_collection.json)
+- [Postman Chat collection](../../postman/app/Ahlena.App.Chat.postman_collection.json)
+- [Postman Admin Chat reports collection](../../postman/admins/Ahlena.Admin.Chat.postman_collection.json)
 
 Examples across these pages are statically authored from the verified code
 paths — no live API/DB run backs them. Run stateful requests only against

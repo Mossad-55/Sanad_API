@@ -1,0 +1,116 @@
+<Solution>
+  <Folder Name="/src/" />
+  <Folder Name="/src/API/">
+    <Project Path="src/API/Ahlena.API/Ahlena.API.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/" />
+  <Folder Name="/src/BuildingBlocks/Application/">
+    <Project Path="src/BuildingBlocks/Application/Ahlena.BuildingBlocks.Application/Ahlena.BuildingBlocks.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Contracts/">
+    <Project Path="src/BuildingBlocks/Contracts/Ahlena.BuildingBlocks.Contracts/Ahlena.BuildingBlocks.Contracts.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Domain/">
+    <Project Path="src/BuildingBlocks/Domain/Ahlena.BuildingBlocks.Domain/Ahlena.BuildingBlocks.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/BuildingBlocks/Infrastructure/">
+    <Project Path="src/BuildingBlocks/Infrastructure/Ahlena.BuildingBlocks.Infrastructure/Ahlena.BuildingBlocks.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/" />
+  <Folder Name="/src/Modules/Caregivers/" />
+  <Folder Name="/src/Modules/Caregivers/Application/">
+    <Project Path="src/Modules/Caregivers/Application/Ahlena.Modules.Caregivers.Application/Ahlena.Modules.Caregivers.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Caregivers/Domain/">
+    <Project Path="src/Modules/Caregivers/Domain/Ahlena.Modules.Caregivers.Domain/Ahlena.Modules.Caregivers.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/CareHomes/" />
+  <Folder Name="/src/Modules/CareHomes/Application/">
+    <Project Path="src/Modules/CareHomes/Application/Ahlena.Modules.CareHomes.Application/Ahlena.Modules.CareHomes.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/CareHomes/Domain/">
+    <Project Path="src/Modules/CareHomes/Domain/Ahlena.Modules.CareHomes.Domain/Ahlena.Modules.CareHomes.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/CareHomes/Infrastructure/">
+    <Project Path="src/Modules/CareHomes/Infrastructure/Ahlena.Modules.CareHomes.Infrastructure/Ahlena.Modules.CareHomes.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Caregivers/Infrastructure/">
+    <Project Path="src/Modules/Caregivers/Infrastructure/Ahlena.Modules.Caregivers.Infrastructure/Ahlena.Modules.Caregivers.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Caregivers/Presentation/">
+    <Project Path="src/Modules/Caregivers/Presentation/Ahlena.Modules.Caregivers.Presentation/Ahlena.Modules.Caregivers.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Community/" />
+  <Folder Name="/src/Modules/Community/Application/">
+    <Project Path="src/Modules/Community/Application/Ahlena.Modules.Community.Application/Ahlena.Modules.Community.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Community/Domain/">
+    <Project Path="src/Modules/Community/Domain/Ahlena.Modules.Community.Domain/Ahlena.Modules.Community.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Community/Infrastructure/">
+    <Project Path="src/Modules/Community/Infrastructure/Ahlena.Modules.Community.Infrastructure/Ahlena.Modules.Community.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Cms/" />
+  <Folder Name="/src/Modules/Cms/Application/">
+    <Project Path="src/Modules/Cms/Application/Ahlena.Modules.Cms.Application/Ahlena.Modules.Cms.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Cms/Domain/">
+    <Project Path="src/Modules/Cms/Domain/Ahlena.Modules.Cms.Domain/Ahlena.Modules.Cms.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Cms/Infrastructure/">
+    <Project Path="src/Modules/Cms/Infrastructure/Ahlena.Modules.Cms.Infrastructure/Ahlena.Modules.Cms.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Families/" />
+  <Folder Name="/src/Modules/Families/Application/">
+    <Project Path="src/Modules/Families/Application/Ahlena.Modules.Families.Application/Ahlena.Modules.Families.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Families/Domain/">
+    <Project Path="src/Modules/Families/Domain/Ahlena.Modules.Families.Domain/Ahlena.Modules.Families.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Families/Infrastructure/">
+    <Project Path="src/Modules/Families/Infrastructure/Ahlena.Modules.Families.Infrastructure/Ahlena.Modules.Families.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Families/Presentation/">
+    <Project Path="src/Modules/Families/Presentation/Ahlena.Modules.Families.Presentation/Ahlena.Modules.Families.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Finance/" />
+  <Folder Name="/src/Modules/Finance/Application/">
+    <Project Path="src/Modules/Finance/Application/Ahlena.Modules.Finance.Application/Ahlena.Modules.Finance.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Finance/Domain/">
+    <Project Path="src/Modules/Finance/Domain/Ahlena.Modules.Finance.Domain/Ahlena.Modules.Finance.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Finance/Infrastructure/">
+    <Project Path="src/Modules/Finance/Infrastructure/Ahlena.Modules.Finance.Infrastructure/Ahlena.Modules.Finance.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identity/" />
+  <Folder Name="/src/Modules/Notifications/" />
+  <Folder Name="/src/Modules/Notifications/Application/">
+    <Project Path="src/Modules/Notifications/Application/Ahlena.Modules.Notifications.Application/Ahlena.Modules.Notifications.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Notifications/Domain/">
+    <Project Path="src/Modules/Notifications/Domain/Ahlena.Modules.Notifications.Domain/Ahlena.Modules.Notifications.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Notifications/Infrastructure/">
+    <Project Path="src/Modules/Notifications/Infrastructure/Ahlena.Modules.Notifications.Infrastructure/Ahlena.Modules.Notifications.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identity/Application/">
+    <Project Path="src/Modules/Identity/Application/Ahlena.Modules.Identity.Application/Ahlena.Modules.Identity.Application.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identity/Domain/">
+    <Project Path="src/Modules/Identity/Domain/Ahlena.Modules.Identity.Domain/Ahlena.Modules.Identity.Domain.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identity/Infrastructure/">
+    <Project Path="src/Modules/Identity/Infrastructure/Ahlena.Modules.Identity.Infrastructure/Ahlena.Modules.Identity.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/src/Modules/Identity/Presentation/">
+    <Project Path="src/Modules/Identity/Presentation/Ahlena.Modules.Identity.Presentation/Ahlena.Modules.Identity.Presentation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Ahlena.ArchitectureTests/Ahlena.ArchitectureTests.csproj" />
+    <Project Path="tests/Ahlena.UnitTests/Ahlena.UnitTests.csproj" />
+  </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/Ahlena.GeographyImport/Ahlena.GeographyImport.csproj" />
+  </Folder>
+</Solution>

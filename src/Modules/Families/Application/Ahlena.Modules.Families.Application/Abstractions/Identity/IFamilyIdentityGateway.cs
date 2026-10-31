@@ -1,0 +1,78 @@
+using Ahlena.BuildingBlocks.Application.Results;
+using Ahlena.BuildingBlocks.Domain.Enums;
+using Ahlena.BuildingBlocks.Domain.Primitives.Ids;
+
+namespace Ahlena.Modules.Families.Application.Abstractions.Identity;
+
+public sealed record ElderlyIdentityAccount(
+    UserId UserId,
+    bool Exists,
+    bool IsElderly);
+
+public sealed record FamilyInviteeAccount(
+    UserId UserId,
+    bool Exists,
+    bool HasFamilyAccount);
+
+public sealed record FamilyMemberProfile(
+    UserId UserId,
+    string ArabicFullName,
+    string EnglishFullName,
+    string? Email,
+    string? PhoneNumber = null,
+    string? AvatarUrl = null,
+    int Status = 0,
+    DateTime? LastLoginOnUtc = null);
+
+/// <summary>
+/// Outbound port implemented by Ahlena.API over MediatR. Lets the Families
+/// module interact with the Identity module without referencing it
+/// directly: elderly login provisioning (F2) and family-member invitation
+/// lookup/email (F3).
+/// </summary>
+public interface IFamilyIdentityGateway
+{
+    Task<Result<ElderlyIdentityAccount>> GetElderlyByPhoneAsync(
+        string phoneNumber,
+        CancellationToken cancellationToken = default);
+
+    Task<Result<ElderlyIdentityAccount>> CreateElderlyAsync(
+        string arabicFullName,
+        string englishFullName,
+        string phoneNumber,
+        Gender gender,
+        DateOnly dateOfBirth,
+        DateTime utcNow,
+        CancellationToken cancellationToken = default);
+
+    Task DeleteElderlyAsync(
+        UserId userId,
+        CancellationToken cancellationToken = default);
+
+    Task<Result<FamilyInviteeAccount>> GetFamilyInviteeByEmailAsync(
+        string email,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<FamilyMemberProfile>> GetFamilyMemberProfilesAsync(
+        IReadOnlyCollection<UserId> userIds,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Best-effort delivery of the invitation deep link. The invitation is
+    /// persisted before this is called; a mail failure must not roll it back.
+    /// </summary>
+    Task SendFamilyInvitationEmailAsync(
+        string email,
+        string familyName,
+        string invitationToken,
+        CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Blocks and PII-scrubs the given family member/dependent Identity accounts
+    /// (hybrid caregiver accounts are skipped). Called by the family-deletion
+    /// flow BEFORE the family-side changes are persisted.
+    /// </summary>
+    Task<Result> AnonymizeFamilyAccountsAsync(
+        IReadOnlyCollection<UserId> userIds,
+        CancellationToken cancellationToken = default);
+}

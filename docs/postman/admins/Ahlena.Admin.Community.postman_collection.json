@@ -1,0 +1,142 @@
+{
+  "info": {
+    "_postman_id": "b3f1c2a4-0001-4a10-community-admin-000000001",
+    "name": "Ahlena Admin — Community moderation",
+    "description": "Content moderation for Community posts. Requires a normal JWT with ContentAdmin or SuperAdmin role. Run only against disposable fixtures.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7296" },
+    { "key": "accessToken", "value": "" },
+    { "key": "postId", "value": "" },
+    { "key": "categoryId", "value": "" },
+    { "key": "reportId", "value": "" },
+    { "key": "authorId", "value": "" },
+    { "key": "restrictionId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Publish pending post",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}/publish"
+      },
+      "description": "ContentAdmin or SuperAdmin only. Returns 204 and makes the post visible to authenticated Community reads. Unknown or invalid-state posts return the standard problem response."
+    },
+    {
+      "name": "Reject pending post",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"reasonCode\": \"Spam\",\n  \"note\": null\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}/reject"
+      },
+      "description": "ContentAdmin or SuperAdmin only. Returns 204. reasonCode is CommunityGuidelines|Spam|Duplicate|UnsafeContent|Other; Other requires a note. Notes are trimmed plain text up to 1000 characters. Rejection stores moderator and UTC decision time; pending/rejected posts remain hidden from the public Community feed."
+    },
+    {
+      "name": "List categories (admin)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/categories"
+      },
+      "description": "ContentAdmin or SuperAdmin only. All categories including inactive, with isActive and timestamps."
+    },
+    {
+      "name": "Create category",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"نصائح صحية\",\n  \"englishName\": \"Health tips\",\n  \"isActive\": true\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/categories"
+      },
+      "description": "ContentAdmin or SuperAdmin only. Returns 201 with the created item. Names are required (1–200 chars); invalid names return 400 Community.Category.Invalid. Capture the returned id as categoryId."
+    },
+    {
+      "name": "Update category",
+      "request": {
+        "method": "PUT",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"arabicName\": \"نصائح صحية\",\n  \"englishName\": \"Health tips\",\n  \"isActive\": false\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/categories/{{categoryId}}"
+      },
+      "description": "Renames and toggles isActive. Returns 200 with the updated item. Unknown ids return 404 Community.CategoryNotFound."
+    },
+    {
+      "name": "Delete category",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/categories/{{categoryId}}"
+      },
+      "description": "Hard delete. Returns 204. Unknown ids return 404 Community.CategoryNotFound; categories referenced by posts return 409 Community.CategoryInUse."
+    },
+    {
+      "name": "Community moderation queue",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/posts?page=1&pageSize=25&status=PendingReview&reportStatus=Open&search="
+      },
+      "description": "ContentAdmin or SuperAdmin only. Paged queue with optional status/reportStatus/search filters and query-derived counters. Page size defaults to 25 and is capped at 100. Items include author ID and display names, never contact details."
+    },
+    {
+      "name": "Community moderation post detail",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}"
+      },
+      "description": "Returns post detail, retained reports, chronological publish/rejection history, and a nullable activeRestriction ({restrictionId, expiresOnUtc}) that is null unless the author is currently restricted. Author email and phone are not included. Unknown posts return 404."
+    },
+    {
+      "name": "List Community restrictions",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/restrictions?page=1&pageSize=25&authorId=&isActive="
+      },
+      "description": "ContentAdmin or SuperAdmin only. Paged retained restrictions, newest first by stored start instant with a stable ID tie-break. Optional authorId and isActive filters (isActive=false returns expired/revoked rows); page size defaults to 25 and is capped at 100. totalCount is the count for the current filter. Items carry author ID and display names plus the stored duration/reason/note/timestamps/revocation facts and an isActive flag resolved at one captured UTC instant — never contact details."
+    },
+    {
+      "name": "Resolve Community report",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"resolution\": \"ActionTaken\",\n  \"note\": \"Reviewed\"\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/reports/{{reportId}}/resolve"
+      },
+      "description": "resolution is ActionTaken or Dismissed; note is optional up to 1000 characters. Resolution records moderator/time but does not itself reject a post or restrict its author. Unknown report returns 404; already resolved returns 409."
+    },
+    {
+      "name": "Restrict Community author",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"duration\": \"Days7\",\n  \"reasonCode\": \"Spam\",\n  \"note\": null\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/authors/{{authorId}}/restrictions"
+      },
+      "description": "Community-only write restriction. duration is Hours24|Days7|Days30; reasonCode is CommunityGuidelines|Spam|Duplicate|UnsafeContent|Other. Other requires a note. Blocks new posts/comments/replies only and does not change Identity state."
+    },
+    {
+      "name": "Revoke Community restriction",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }, { "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Appeal accepted\"\n}" },
+        "url": "{{baseUrl}}/api/v1/admin/community/restrictions/{{restrictionId}}/revoke"
+      },
+      "description": "Ends a restriction early while retaining its original action and recording moderator, UTC time, and required reason. Unknown id returns 404; already revoked returns 409."
+    },
+    {
+      "name": "Delete any Community post (moderator) — disposable fixture only",
+      "request": {
+        "method": "DELETE",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/community/posts/{{postId}}"
+      },
+      "description": "STATE-CHANGING: CommunityModeration (SuperAdmin or ContentAdmin) may delete any post; success 204 and DeletedBy records the moderator. Repeat/unknown returns 404. This permission is delete-only: there is no Admin edit/impersonation route. Use an approved disposable fixture."
+    }
+  ]
+}

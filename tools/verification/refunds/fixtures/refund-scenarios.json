@@ -1,5 +1,5 @@
 ﻿{
-  "$schema": "sanad.refund-verification-scenarios/v1",
+  "$schema": "ahlena.refund-verification-scenarios/v1",
   "pack": "tools/verification/refunds",
   "lane": "W2-V0",
   "stage": "S7",

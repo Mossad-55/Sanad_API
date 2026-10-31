@@ -69,7 +69,7 @@ Write-Host ''
 # 1. DI source of truth — the key-presence gate, and the absence of any
 #    environment gate for the Paymob client.
 # ---------------------------------------------------------------------------
-$diPath = Join-Path $RepoRoot 'src\Modules\Families\Infrastructure\Sanad.Modules.Families.Infrastructure\DependencyInjection.cs'
+$diPath = Join-Path $RepoRoot 'src\Modules\Families\Infrastructure\Ahlena.Modules.Families.Infrastructure\DependencyInjection.cs'
 if (-not (Test-Path -LiteralPath $diPath)) {
     $failures.Add("DI source not found: $diPath")
 }

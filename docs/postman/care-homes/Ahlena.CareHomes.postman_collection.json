@@ -1,0 +1,9 @@
+{
+  "info": {
+    "_postman_id": "a4fce7cf-2668-4d8e-9a3d-58ec5fd34573",
+    "name": "Ahlena Care Homes — audience collection index",
+    "description": "This index replaces the former mixed-audience collection. Import the role-specific collections listed in docs/postman/care-homes/README.md: Facility Owner, Family, or Admin. Do not use a mixed Care Homes collection.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": []
+}

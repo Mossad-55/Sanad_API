@@ -1,0 +1,60 @@
+{
+  "info": {
+    "_postman_id": "b3f1c2a4-0001-4a10-care-ops-000000000001",
+    "name": "Ahlena App — Caregiver operations",
+    "description": "Availability read, caregiver-owned earnings, medication tasks, help-request lifecycle, payout account, and caregiver-facing payout reads. State-changing requests require disposable fixtures.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7296" },
+    { "key": "caregiverToken", "value": "" },
+    { "key": "familyToken", "value": "" },
+    { "key": "caregiverId", "value": "" },
+    { "key": "requestId", "value": "" },
+    { "key": "taskId", "value": "" },
+    { "key": "payoutId", "value": "" },
+    { "key": "dependentId", "value": "" },
+    { "key": "careRecordId", "value": "" },
+    { "key": "careRecordVersion", "value": "1" },
+    { "key": "caregiverCareRecordIdempotencyKey", "value": "" }
+  ],
+  "item": [
+    { "name": "01. Family availability read", "item": [
+      { "name": "Get caregiver availability", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/availability" }, "description": "FamilyAccess. Schedule windows are caregiver-local and include availability status." },
+      { "name": "Get caregiver availability for a date", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{familyToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/availability/day?date=2026-06-08&shiftType=EightHourShift" }, "description": "FamilyAccess. Date-specific declared availability minus active booking overlaps; timeZoneId is Africa/Cairo and intervals are UTC instants, advisory only (not a hold or expiry rule). shiftType accepts HomeVisit, EightHourShift, TwelveHourShift, TwentyFourHourShift, Hourly. 400 Caregivers.Availability.InvalidQuery for a missing or invalid date/shiftType; 404 Caregivers.NotFound. An inactive or manually unavailable caregiver answers 200 with an empty intervals array." }
+    ] },
+    { "name": "02. Earnings", "item": [
+      { "name": "Get earnings summary", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/earnings/summary" }, "description": "CaregiverAccess and self-only. Totals use completed bookings’ BaseCaregiverFee, not a payout ledger." },
+      { "name": "Get earnings transactions", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/earnings/transactions?page=1&pageSize=20" }, "description": "CaregiverAccess and self-only. Page size is bounded by the API." }
+    ] },
+    { "name": "03. Medication tasks", "item": [
+      { "name": "List medication tasks", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/medication-tasks?status=&startDate=&endDate=" }, "description": "CaregiverAccess; only tasks for an elderly person linked by Confirmed or InProgress booking are returned." },
+      { "name": "Administer medication task", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/medication-tasks/{{taskId}}/administer" }, "description": "State-changing disposable-fixture request; no body." },
+      { "name": "Skip medication task", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Elderly declined the dose\"\n}" }, "url": "{{baseUrl}}/api/v1/caregivers/{{caregiverId}}/medication-tasks/{{taskId}}/skip" }, "description": "Reason is required and must contain 1–500 non-whitespace characters." }
+    ] },
+    { "name": "04. Help-request lifecycle", "item": [
+      { "name": "Accept help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/accept" } },
+      { "name": "Decline help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Outside current care scope\"\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/decline" } },
+      { "name": "Start help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/start" } },
+      { "name": "Resolve help request", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Request completed\"\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/help-requests/{{requestId}}/resolve" } }
+    ] },
+    { "name": "05. Payout account", "item": [
+      { "name": "Get payout account", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/payout-account" }, "description": "CaregiverAccess and self-only. Returns the masked IBAN (**** plus last four); the full IBAN is never returned. 404 when no account was saved." },
+      { "name": "Update payout account", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"accountHolderName\": \"Mohamed Ahmed\",\n  \"bankCode\": \"NBE\",\n  \"iban\": \"EG380019000500000000263180002\"\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/payout-account" }, "description": "CaregiverAccess and self-only. Upserts and returns Pending with a masked IBAN. Bank code must be active; IBAN must be a SWIFT-registered format (country, length, BBAN, checksum). Stored as authenticated ciphertext plus last four only; missing key configuration fails closed with 503. State-changing: disposable fixture only." }
+    ] },
+    { "name": "06. Payout reads", "item": [
+      { "name": "Get payout summary", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/payouts/summary" }, "description": "CaregiverAccess and self-only. unpaidAmount = eligible-unrecorded bookings (Completed + Paid, past the payout-policy delay, no Paid row; a Failed row does not clear the debt). transferredAmount = sum of Paid net amounts (Transferred is an alias of Paid; there is no Processing state). nextExpectedPayoutOnUtc is computed only with a Verified payout account, else null. No effective policy → 400 Finance.PayoutPolicy.Missing (fail closed)." },
+      { "name": "List payouts", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/payouts?status=&page=1&pageSize=20" }, "description": "CaregiverAccess and self-only. status accepts Paid or Failed (any other value → 400); page ≥ 1, pageSize clamped 1–100, newest-recorded first. amount = gross (net always equals gross); bankNameArabic/bankNameEnglish resolved from the snapshotted bankCode (null when unknown); transferredOnUtc set only on Paid rows." },
+      { "name": "Get payout detail", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/payouts/{{payoutId}}" }, "description": "CaregiverAccess and self-only. Same fields as the list item plus bookingItems (always one element: bookingId, caregiverAmount = gross, currency). Another caregiver's id → 404 Caregivers.Payouts.NotFound (no existence leak)." },
+      { "name": "Get payment policy", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/payment-policy" }, "description": "CaregiverAccess. Admin-authored descriptionArabic/descriptionEnglish of the effective payout policy (null before descriptions existed or when no policy exists). requiresVerifiedBankAccount is always true; minimumPayoutAmount and expectedProcessingDays are honest nulls — no such rules exist." }
+    ] },
+    { "name": "07. Care records (booking-authorized dependents)", "item": [
+      { "name": "List eligible care-record recipients", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/care-records/recipients?page=1&pageSize=20&search=" }, "description": "Names only; own Confirmed/InProgress or completed-within-30-days bookings. Permission is rechecked on every subsequent call." },
+      { "name": "List own-source care records for a dependent", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/care-records?dependentId={{dependentId}}&page=1&pageSize=20" }, "description": "Medical and companion caregivers; own-source only, for a dependent linked by the caregiver's own eligible booking." },
+      { "name": "Get caregiver care record", "request": { "method": "GET", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/care-records/{{careRecordId}}" } },
+      { "name": "Create caregiver-source care record", "request": { "method": "POST", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }, { "key": "Idempotency-Key", "value": "{{caregiverCareRecordIdempotencyKey}}" }], "body": { "mode": "raw", "raw": "{\n  \"dependentId\": \"{{dependentId}}\",\n  \"hospitalName\": \"Approved test fixture\",\n  \"visitDate\": \"2026-10-20\",\n  \"details\": \"Disposable caregiver care-record fixture\"\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/care-records" }, "description": "The dependentId is a selector only; booking scope is revalidated at write. The Idempotency-Key header is optional: leave caregiverCareRecordIdempotencyKey empty for the legacy behavior; the same trimmed key (1–128 printable ASCII, else 400 Families.CareRecords.IdempotencyKeyInvalid) with the same request replays the stored 201 body without a second record, and the same key with a different request is 409 Families.CareRecords.IdempotencyConflict. Replayed snapshots are retained for 7 days; cleanup is operational, not automatic. Mutation: approved disposable fixture only." },
+      { "name": "Update caregiver-source care record", "request": { "method": "PUT", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }, { "key": "Content-Type", "value": "application/json" }], "body": { "mode": "raw", "raw": "{\n  \"hospitalName\": \"Approved test fixture\",\n  \"visitDate\": \"2026-10-20\",\n  \"details\": \"Updated disposable caregiver care-record fixture\",\n  \"expectedVersion\": {{careRecordVersion}}\n}" }, "url": "{{baseUrl}}/api/v1/caregiver/care-records/{{careRecordId}}" }, "description": "Versioned update; stale expectedVersion returns 409. Approved disposable fixture only." },
+      { "name": "Delete caregiver-source care record", "request": { "method": "DELETE", "header": [{ "key": "Authorization", "value": "Bearer {{caregiverToken}}" }], "url": "{{baseUrl}}/api/v1/caregiver/care-records/{{careRecordId}}?expectedVersion={{careRecordVersion}}" }, "description": "Caregiver own-source only; success 204. Mutation: approved disposable fixture only." }
+    ] }
+  ]
+}

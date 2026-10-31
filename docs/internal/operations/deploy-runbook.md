@@ -1,5 +1,7 @@
 # Deploy runbook (production releases)
 
+> If a local demo-corpus refresh is needed before a release rehearsal, use the guarded provisioner contract in [test-data.md](test-data.md#portal-provisioner-local-demo-corpus--demo-nonce); the rehearsal path itself uses `--target-kind rehearsal` with `--tunnel-declared` and is unchanged by the local database rename.
+
 Deployment is never implied by `publish`, a merge, or a passing gate battery. It starts only on an explicit owner deployment order for an accepted phase and an exact target host/database. The target may be incorporated by reference to the immediately prior owner-designated deployment receipt when the owner asks to continue that release workflow; revalidate its live service, effective database identity and configuration before any write. Do not repeatedly request the same authorization or a literal `publish` word when the owner has already ordered deployment of that accepted phase. If the target differs or cannot be verified, stop and ask about that specific mismatch. The deploying agent or owner follows this page top to bottom and records evidence without secrets.
 
 ## 1. Pre-flight (on the build machine)
@@ -17,6 +19,14 @@ ASP.NET Core never loads a `.env` file automatically. The host (systemd
 `EnvironmentFile=` / `Environment=` or the container/host secret store)
 must inject the actual environment; placing a `.env` beside the binaries
 without host wiring has no effect. Prefer the host secret store.
+
+Canonical names on the authorized Staging host (2026-10-31 Ahlena rebrand):
+env file `/etc/ahlena/ahlena.env`, unit `ahlena-api.service`, API tree
+`/root/ahlena-api`, durable data `/var/ahlena/{keys,files,files-private}`,
+tool root `/root/ahlena-demo-provisioner`, public proxy port 8091 over
+loopback 5001, and database `AhlenaDb`. See
+`docs/internal/operations/vps/staging.md` for the old→new mapping; older
+receipts keep the historical `sanad`-era names as facts.
 
 | Variable | Purpose | Production rule |
 |---|---|---|
@@ -44,8 +54,8 @@ Prove ignore-status before every release: `git check-ignore -v .env deploy/publi
 1. Capture the startup log once; confirm it records all nine context checks, pending/applied counts, and the listen URL. Pass it to the verifier so startup evidence is checked mechanically. This complements the remote endpoint's current applied-head report.
 2. Run the verifier once from the build machine:
    ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Verify-SanadDeployment.ps1 `
-     -ManifestPath .\deploy\publish-out\sanad-deployment-manifest.json `
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Verify-AhlenaDeployment.ps1 `
+     -ManifestPath .\deploy\publish-out\ahlena-deployment-manifest.json `
      -BaseUrl https://your-authorized-host `
      -ExpectedRevision <pushed-sha> `
      -StartupLogPath <captured-startup-log-path>

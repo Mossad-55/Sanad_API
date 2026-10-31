@@ -15,7 +15,7 @@ $env:CareHomes__TestClock__Enabled = 'true'
 $env:CareHomes__TestClock__CheckoutHoldDuration = '00:00:30'
 $env:CareHomes__TestClock__DecisionHoldDuration = '00:01:00'
 $env:CareHomes__TestClock__ExpirySweepInterval = '00:00:05'
-dotnet run --no-build --no-launch-profile --project src/API/Sanad.API/Sanad.API.csproj
+dotnet run --no-build --no-launch-profile --project src/API/Ahlena.API/Ahlena.API.csproj
 ```
 
 This is a test-only configuration example: it must remain on the pinned local Development target and must not be used for production or a shared environment. There is no public time-control endpoint. `ArrivalLeadDuration` is deliberately not configurable and must remain 24 hours. Overrides without `Enabled=true`, enabling the test clock outside Development, or zero/negative durations are rejected during startup.
@@ -266,7 +266,7 @@ Both routes require `CareHomesOperationalAdmin`, which permits `SuperAdmin` and 
 
 Facility owners can review cases without changing them using `GET /api/v1/care-homes/check-in-disputes/mine` (`CareHomeOwnerAccess`). The server derives the facility from the authenticated owner; no facility ID is accepted. Optional `page` defaults to 1 (minimum 1), `pageSize` defaults to 25 (1–100), and `status` accepts `Open` or `Resolved`, case-insensitively. Invalid query values receive the standard validation problem response. The result is `{ page, pageSize, totalCount, items }`; the count is after owner/status filtering and before paging. Items are ordered by opening time descending, then case ID descending. If the owner has no facility, the endpoint deliberately returns a successful empty page (unlike existing finance reads).
 
-Each item contains case/booking/facility IDs, status, opening and nullable checkout times, nullable Family reason and resident name snapshots, nullable original booking amount/currency, and nullable effective check-in/resolution times. A missing related booking makes resident names and original amount/currency null; otherwise the stored booking total and current fixed `EGP` convention are shown. Open cases have null outcome timestamps. The owner projection omits Admin evidence, rationale and resolver identity, and exposes no family/resident identity or payment details. Loading, empty and errors should be presented as read-only list states; Sanad support handles disputes. An Admin's effective case outcome does not change the facility-recorded check-in or checkout timestamps. There is no owner resolve/mutation action.
+Each item contains case/booking/facility IDs, status, opening and nullable checkout times, nullable Family reason and resident name snapshots, nullable original booking amount/currency, and nullable effective check-in/resolution times. A missing related booking makes resident names and original amount/currency null; otherwise the stored booking total and current fixed `EGP` convention are shown. Open cases have null outcome timestamps. The owner projection omits Admin evidence, rationale and resolver identity, and exposes no family/resident identity or payment details. Loading, empty and errors should be presented as read-only list states; Ahlena support handles disputes. An Admin's effective case outcome does not change the facility-recorded check-in or checkout timestamps. There is no owner resolve/mutation action.
 
 Families may also submit a check-in dispute after a facility-recorded check-in:
 

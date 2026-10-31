@@ -6,7 +6,7 @@ app ratings users submitted through the authenticated app surface (see
 Admins can investigate rating feedback during a refund or support
 investigation; it never creates, edits, or deletes stored ratings. Authored
 Postman examples for the Feedback admin surface live in
-[`docs/postman/admins/Sanad.Admin.Feedback.postman_collection.json`](../postman/admins/Sanad.Admin.Feedback.postman_collection.json).
+[`docs/postman/admins/Ahlena.Admin.Feedback.postman_collection.json`](../postman/admins/Ahlena.Admin.Feedback.postman_collection.json).
 
 ## Authorization
 

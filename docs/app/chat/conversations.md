@@ -453,4 +453,4 @@ The three privacy codes are rewritten by the Chat controller to the generic
 All examples on this page are statically authored from the verified code
 paths and lane reports (`docs/chat/reports/lane-a-*.md`); they were never
 executed against a live API or database. Matching Postman requests:
-[Sanad.App.Chat.postman_collection.json](../../postman/app/Sanad.App.Chat.postman_collection.json).
+[Ahlena.App.Chat.postman_collection.json](../../postman/app/Ahlena.App.Chat.postman_collection.json).

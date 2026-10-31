@@ -8,15 +8,15 @@ only through the guarded Bruno flow on disposable targets.
 
 ## Layout by audience
 
-- `Sanad.Auth.postman_collection.json` — login, OTP, sessions, password flows.
-- `Sanad.ElderlyWelcome.postman_collection.json` — the Elderly Welcome contract.
+- `Ahlena.Auth.postman_collection.json` — login, OTP, sessions, password flows.
+- `Ahlena.ElderlyWelcome.postman_collection.json` — the Elderly Welcome contract.
 - `app/` — family, caregiver, elderly, and public app surfaces:
-  `Sanad.App.{Chat, Community, Caregiver, Caregiver.Operations, Elderly,
+  `Ahlena.App.{Chat, Community, Caregiver, Caregiver.Operations, Elderly,
   Family, Family.Operations, Family.CareHomes, Library, Public}`.
-- `admins/` — admin surfaces: `Sanad.Admin.{CareHomes, CaregiverNotes, Chat,
+- `admins/` — admin surfaces: `Ahlena.Admin.{CareHomes, CaregiverNotes, Chat,
   Community, Families, Finance, Ratings, Feedback}` plus the general
-  `Sanad.Admin` collection (incl. the Library CMS folder).
-- `care-homes/` — the original Care Homes slice collections (`Sanad.CareHomes{,
+  `Ahlena.Admin` collection (incl. the Library CMS folder).
+- `care-homes/` — the original Care Homes slice collections (`Ahlena.CareHomes{,
   .Owner, .Finance}`) plus its [README](care-homes/README.md).
 
 ## Conventions (all collections)

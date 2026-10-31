@@ -134,4 +134,4 @@ contracts plus a runnable integration harness:
 Privacy settings and presence live in [sync.md](sync.md)-adjacent REST calls
 above; the matching Postman sync flow is folder `09.Sync and recovery` and
 the privacy/presence flow is folder `10.Privacy and presence` in
-[Sanad.App.Chat.postman_collection.json](../../postman/app/Sanad.App.Chat.postman_collection.json).
+[Ahlena.App.Chat.postman_collection.json](../../postman/app/Ahlena.App.Chat.postman_collection.json).

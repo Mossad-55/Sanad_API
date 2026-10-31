@@ -1,0 +1,112 @@
+using Microsoft.EntityFrameworkCore;
+using Ahlena.Modules.Cms.Application.Abstractions.Data;
+using Ahlena.Modules.Cms.Domain.Help;
+using Ahlena.Modules.Cms.Domain.Landing;
+using Ahlena.Modules.Cms.Domain.Legal;
+using Ahlena.Modules.Cms.Domain.Library;
+using Ahlena.Modules.Cms.Domain.Splash;
+using Ahlena.Modules.Cms.Domain.Wellness;
+using Ahlena.Modules.Cms.Domain.SentenceBuilder;
+using Ahlena.Modules.Cms.Domain.MedicationLateness;
+using Ahlena.Modules.Cms.Domain.Settings;
+using Ahlena.Modules.Cms.Domain.Welcome;
+
+namespace Ahlena.Modules.Cms.Infrastructure.Persistence;
+
+public sealed class CmsDbContext :
+    DbContext,
+    ICmsDbContext
+{
+    public const string Schema = "cms";
+
+    public CmsDbContext(
+        DbContextOptions<CmsDbContext> options)
+        : base(options)
+    {
+    }
+
+    public DbSet<SplashScreen> SplashScreens =>
+        Set<SplashScreen>();
+
+    public DbSet<LegalDocument> LegalDocuments =>
+        Set<LegalDocument>();
+
+    public DbSet<HelpFaq> HelpFaqs =>
+        Set<HelpFaq>();
+
+    public DbSet<SupportContact> SupportContacts =>
+        Set<SupportContact>();
+
+    public DbSet<WellnessTip> WellnessTips => Set<WellnessTip>();
+    public DbSet<SentenceBuilderCatalogEntry> SentenceBuilderCatalogEntries => Set<SentenceBuilderCatalogEntry>();
+    public DbSet<SentenceBuilderCatalogRevision> SentenceBuilderCatalogRevisions => Set<SentenceBuilderCatalogRevision>();
+    public DbSet<MedicationLatenessSetting> MedicationLatenessSettings => Set<MedicationLatenessSetting>();
+    public DbSet<MedicationLatenessSettingRevision> MedicationLatenessSettingRevisions => Set<MedicationLatenessSettingRevision>();
+    public DbSet<ElderlyWelcome> ElderlyWelcomes => Set<ElderlyWelcome>();
+    public DbSet<LibraryCategory> LibraryCategories => Set<LibraryCategory>();
+    public DbSet<LibraryContent> LibraryContents => Set<LibraryContent>();
+    public DbSet<LibraryContentInteraction> LibraryContentInteractions => Set<LibraryContentInteraction>();
+    public DbSet<LandingSection> LandingSections => Set<LandingSection>();
+    public DbSet<LandingSectionHistory> LandingSectionHistory => Set<LandingSectionHistory>();
+
+    public DbSet<FamilyHomeSection> FamilyHomeSections => Set<FamilyHomeSection>();
+    public DbSet<FamilyHomeSectionHistory> FamilyHomeSectionHistory => Set<FamilyHomeSectionHistory>();
+
+    public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
+
+    protected override void OnModelCreating(
+        ModelBuilder modelBuilder)
+    {
+        modelBuilder.HasDefaultSchema(
+            Schema);
+
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            typeof(CmsDbContext).Assembly);
+
+        base.OnModelCreating(
+            modelBuilder);
+    }
+
+    public override int SaveChanges()
+        => SaveChanges(acceptAllChangesOnSuccess: true);
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        ThrowIfSentenceBuilderRevisionMutated();
+        ThrowIfMedicationLatenessRevisionMutated();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
+        => SaveChangesAsync(acceptAllChangesOnSuccess: true, cancellationToken);
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        ThrowIfSentenceBuilderRevisionMutated();
+        ThrowIfMedicationLatenessRevisionMutated();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+
+    private void ThrowIfSentenceBuilderRevisionMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<SentenceBuilderCatalogRevision>())
+        {
+            if (entry.State == EntityState.Deleted)
+                throw new InvalidOperationException("Sentence-builder catalog revisions are immutable and cannot be deleted.");
+
+            if (entry.State == EntityState.Modified && entry.Properties.Any(property =>
+                    property.IsModified && property.Metadata.Name is not nameof(SentenceBuilderCatalogRevision.IsActive)))
+                throw new InvalidOperationException("Sentence-builder catalog fields are immutable; only activation may change.");
+        }
+    }
+
+    private void ThrowIfMedicationLatenessRevisionMutated()
+    {
+        foreach (var entry in ChangeTracker.Entries<MedicationLatenessSettingRevision>())
+        {
+            if (entry.State == EntityState.Deleted || entry.State == EntityState.Modified && entry.Properties.Any(property =>
+                    property.IsModified && property.Metadata.Name is not nameof(MedicationLatenessSettingRevision.IsActive)))
+                throw new InvalidOperationException("Medication lateness setting revisions are immutable; only activation may change.");
+        }
+    }
+}

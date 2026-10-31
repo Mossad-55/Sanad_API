@@ -2,18 +2,31 @@
 
 Never publish `Development` to a publicly reachable host. The isolated
 development/testing VPS runs `Staging` with a separately named test
-database (for example `SanadStagingDb` â€” never the production database
+database (for example `AhlenaStagingDb` â€” never the production database
 name, never `SanadBrunoTestDb`, which belongs to local disposable runs).
 
-Templates: `sanad-api.service.template` (systemd, single instance),
-`sanad-api.nginx.conf.template` (TLS edge). Both are reviewable templates
+Templates: `ahlena-api.service.template` (systemd, single instance),
+`ahlena-api.nginx.conf.template` (public edge; the authorized target is plain HTTP 8091 -> loopback 5001, no domain/TLS). Both are reviewable templates
 with `__FILL__` placeholders and zero secrets. `deploy/` is git-ignored, so
 tracked templates live in this directory.
+**Canonical Ahlena layout (2026-10-31 VPS rebrand):** the authorized Staging
+host uses unit `/etc/systemd/system/ahlena-api.service`, env file
+`/etc/ahlena/ahlena.env` (mode 600), API tree `/root/ahlena-api`, durable
+data `/var/ahlena/keys` + `/var/ahlena/files` with the private sibling
+`/var/ahlena/files-private`, tool root `/root/ahlena-demo-provisioner`,
+package archive root `/root/ahlena-releases`, and nginx site
+`/etc/nginx/sites-available/ahlena-api` (public 8091 -> loopback 5001; no
+domain, no TLS termination). Before this rebrand the same host ran under the
+historical layout (`sanad-api.service`, `/etc/sanad/sanad.env`,
+`/root/sanad-api`, `/var/sanad/*`, remote DB `SanadDb` on loopback port
+5433). The rebrand cloned that database into `AhlenaDb` and removed the old
+live database only after full verification; same-named old directories kept
+on disk are archived backups/historical receipts, not live configuration.
 
 ## 1. Pre-deployment requirements (all mandatory, in order)
 
 1. Owner authorization naming the exact host, public URL, service name/port
-   (`http://127.0.0.1:5000` loopback behind nginx), environment (`Staging`),
+   (`http://127.0.0.1:5001` loopback behind the public proxy port 8091), environment (`Staging`),
    database host/name, backup/restore boundary, and startup
    migration/seed permission. No default inference that any existing
    VPS/database is disposable.
@@ -27,9 +40,9 @@ tracked templates live in this directory.
    that lossy down-migrations are never run on populated data.
 5. Durable directories created outside the release folder with
    least-privilege ownership (commands are templates â€” run on the host):
-   `install -d -o sanad -g sanad -m 700 /var/sanad/keys`
-   `install -d -o sanad -g sanad -m 750 /var/sanad/files`
-   `install -d -o sanad -g sanad -m 750 /var/sanad/files-private`
+   `install -d -o root -g root -m 700 /var/ahlena/keys`
+   `install -d -o root -g root -m 755 /var/ahlena/files`
+   `install -d -o root -g root -m 755 /var/ahlena/files-private`
 6. Host-local environment injected by systemd (`EnvironmentFile=`), never
    assumed from a `.env` file beside the binaries (ASP.NET Core never loads
    `.env` automatically).
@@ -65,29 +78,29 @@ before accepting traffic; each is a real database/host write:
    can leave the machine (development senders); configuring any real
    provider value enables real sends on its first eligible outbox row.
 6. **DataProtection key ring:** keys persist under
-   `DataProtection:KeyRingPath` (for example `/var/sanad/keys`) with the
-   stable `DataProtection:ApplicationName` discriminator (`Sanad.API`).
+   `DataProtection:KeyRingPath` (for example `/var/ahlena/keys`) with the
+   stable `DataProtection:ApplicationName` discriminator (`Ahlena.API`).
    Missing/relative/release-folder paths refuse startup outside
    Development. Old chat sync cursors decrypt after restarts and redeploys
    only while the ring and discriminator are unchanged.
 7. **Upload storage:** the effective `Storage:Local:RootPath` (for example
-   `/var/sanad/files`, private sibling `<root>-private`) is created if
+   `/var/ahlena/files`, private sibling `<root>-private`) is created if
    missing. A root inside the release folder refuses startup outside
    Development.
 
 ## 3. Deploy steps (host)
 
 1. Copy ONLY the `deploy/publish-out/` contents into a NEW versioned
-   directory (for example `/opt/sanad/api/releases/<revision>/`). Never copy
+   directory (on the authorized Staging host: `/root/ahlena-releases/ahlena-api-<revision>/`). Never copy
    the repo, a `.env` from elsewhere, seed settings, keys, or certificates.
 2. Confirm ignore-status hygiene on the build machine before every release:
    `git check-ignore -v .env deploy/publish-out` must list both as ignored.
-3. Repoint `/opt/sanad/api/current` to the new directory (never delete or
-   move files under `/var/sanad/files` or `/var/sanad/keys`).
-4. `systemctl daemon-reload`, then `systemctl restart sanad-api`.
+3. Sync the release tree into `/root/ahlena-api` (new versioned directory + repoint; never delete or
+   move files under `/var/ahlena/files` or `/var/ahlena/keys`).
+4. `systemctl daemon-reload`, then `systemctl restart ahlena-api`.
    The service uses Type=simple: process start does not prove API/migration
    readiness. Wait for successful startup evidence and HTTP verification.
-5. Capture the FULL startup log (`journalctl -u sanad-api`) â€” it is the
+5. Capture the FULL startup log (`journalctl -u ahlena-api`) â€” it is the
    9-context migration evidence. Save it with the release record.
 
 The API processes forwarded scheme/address from the template's loopback nginx
@@ -100,7 +113,7 @@ application logs for diagnosis; do not enable full-request logging on this API.
 
 ## 4. Verify (build machine)
 
-Run `Verify-SanadDeployment.ps1` with the manifest, the authorized base URL,
+Run `Verify-AhlenaDeployment.ps1` with the manifest, the authorized base URL,
 the expected pushed SHA, and the captured startup log path (see
 `docs/internal/operations/deploy-runbook.md` Â§4). Required: remote revision
 match, 9/9 applied-migration match, startup-log 9-context evidence, and the
@@ -116,7 +129,7 @@ anonymous smoke at HTTP 200.
    data; down-migrations were proven only on the disposable local target
    during Chat Plus Phase 7, never on populated VPS data.
 3. Uploads and key ring are shared durable state: rollback must not delete,
-   move, or replace files under `/var/sanad/files` or `/var/sanad/keys`;
+   move, or replace files under `/var/ahlena/files` or `/var/ahlena/keys`;
    previously issued sync cursors keep decrypting only while the ring and
    application discriminator are untouched.
 

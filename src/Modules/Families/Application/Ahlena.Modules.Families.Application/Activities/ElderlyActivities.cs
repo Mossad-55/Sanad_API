@@ -1,0 +1,130 @@
+using Microsoft.EntityFrameworkCore;
+using Ahlena.BuildingBlocks.Application.CQRS;
+using Ahlena.BuildingBlocks.Application.Results;
+using Ahlena.BuildingBlocks.Domain.Primitives.Ids;
+using Ahlena.Modules.Families.Application.Abstractions.Data;
+using Ahlena.Modules.Families.Application.Abstractions.Identity;
+using Ahlena.Modules.Families.Application.Families;
+using Ahlena.Modules.Families.Domain.Activities;
+using Ahlena.Modules.Families.Domain.Families;
+
+namespace Ahlena.Modules.Families.Application.Activities;
+
+public sealed record ElderlyActivityItemResponse(
+    Guid Id,
+    Guid DependentId,
+    Guid ActorUserId,
+    ElderlyActivityType ActivityType,
+    string ActivityTypeNameAr,
+    string ActivityTypeNameEn,
+    string Summary,
+    DateTime CreatedOnUtc,
+    string ArabicFullName,
+    string EnglishFullName);
+
+public sealed record ElderlyActivityDashboardResponse(
+    int TotalEventsCount,
+    int ThisWeekEventsCount,
+    int UniqueUsersCount,
+    IReadOnlyList<ElderlyActivityItemResponse> Activities);
+
+internal static class ElderlyActivityMappings
+{
+    public static ElderlyActivityItemResponse ToResponse(
+        this ElderlyActivityLog log,
+        IReadOnlyDictionary<UserId, FamilyMemberProfile> profiles)
+    {
+        profiles.TryGetValue(log.ActorUserId, out FamilyMemberProfile? profile);
+
+        return new(
+            log.Id.Value,
+            log.ElderlyId.Value,
+            log.ActorUserId.Value,
+            log.ActivityType,
+            GetActivityNameAr(log.ActivityType),
+            GetActivityNameEn(log.ActivityType),
+            log.Summary,
+            log.CreatedOnUtc,
+            profile?.ArabicFullName ?? string.Empty,
+            profile?.EnglishFullName ?? string.Empty);
+    }
+
+    public static string GetActivityNameAr(ElderlyActivityType type) => type switch
+    {
+        ElderlyActivityType.ViewMedicalProfile => "عرض الملف الطبي",
+        ElderlyActivityType.UpdateMedications => "تحديث الأدوية",
+        ElderlyActivityType.AddNote => "إضافة ملاحظة",
+        ElderlyActivityType.ShareMedicalProfile => "مشاركة الملف الطبي",
+        ElderlyActivityType.ScheduleAppointment => "تحديد موعد",
+        ElderlyActivityType.ReviewMedications => "مراجعة الأدوية",
+        _ => "نشاط"
+    };
+
+    public static string GetActivityNameEn(ElderlyActivityType type) => type switch
+    {
+        ElderlyActivityType.ViewMedicalProfile => "Viewed Medical Profile",
+        ElderlyActivityType.UpdateMedications => "Updated Medications",
+        ElderlyActivityType.AddNote => "Added Care Note",
+        ElderlyActivityType.ShareMedicalProfile => "Shared Medical Profile",
+        ElderlyActivityType.ScheduleAppointment => "Scheduled Appointment",
+        ElderlyActivityType.ReviewMedications => "Reviewed Medications",
+        _ => "Activity"
+    };
+}
+
+public sealed record GetElderlyActivityTimelineQuery(
+    UserId UserId,
+    ElderlyId DependentId,
+    int Limit = 50) : IQuery<ElderlyActivityDashboardResponse>;
+
+public sealed class GetElderlyActivityTimelineQueryHandler : IQueryHandler<GetElderlyActivityTimelineQuery, ElderlyActivityDashboardResponse>
+{
+    private readonly IFamiliesDbContext _dbContext;
+    private readonly IFamilyIdentityGateway _identityGateway;
+
+    public GetElderlyActivityTimelineQueryHandler(IFamiliesDbContext dbContext, IFamilyIdentityGateway identityGateway)
+    {
+        _dbContext = dbContext;
+        _identityGateway = identityGateway;
+    }
+
+    public async Task<Result<ElderlyActivityDashboardResponse>> Handle(GetElderlyActivityTimelineQuery request, CancellationToken cancellationToken)
+    {
+        Family? family = await FamilyAccess.ResolveFamilyAsync(_dbContext, request.UserId, cancellationToken);
+        if (family is null || !FamilyAccess.CanManage(family, request.UserId))
+        {
+            return FamilyErrors.AccessDenied;
+        }
+
+        DateTime weekAgoUtc = DateTime.UtcNow.AddDays(-7);
+
+        var baseQuery = _dbContext.ElderlyActivityLogs
+            .AsNoTracking()
+            .Where(l => l.ElderlyId == request.DependentId)
+            .Where(l => _dbContext.Elderlies.Any(e =>
+                e.Id == l.ElderlyId && e.FamilyId == family.Id));
+
+        int totalEvents = await baseQuery.CountAsync(cancellationToken);
+        int thisWeekEvents = await baseQuery.CountAsync(l => l.CreatedOnUtc >= weekAgoUtc, cancellationToken);
+        int uniqueUsers = await baseQuery.Select(l => l.ActorUserId).Distinct().CountAsync(cancellationToken);
+
+        List<ElderlyActivityLog> logs = await baseQuery
+            .OrderByDescending(l => l.CreatedOnUtc)
+            .Take(Math.Max(1, Math.Min(request.Limit, 100)))
+            .ToListAsync(cancellationToken);
+
+        IReadOnlyDictionary<UserId, FamilyMemberProfile> profiles =
+            await FamilyMemberEnrichment.ResolveProfilesAsync(
+                _identityGateway,
+                logs.Select(l => l.ActorUserId).Distinct(),
+                cancellationToken);
+
+        var response = new ElderlyActivityDashboardResponse(
+            totalEvents,
+            thisWeekEvents,
+            uniqueUsers,
+            logs.Select(l => l.ToResponse(profiles)).ToList());
+
+        return Result<ElderlyActivityDashboardResponse>.Success(response);
+    }
+}

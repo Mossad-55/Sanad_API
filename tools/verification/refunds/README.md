@@ -16,7 +16,7 @@ number from the W0 D1 hypothesis list (see "Owner-evidence markers" below).
 1. **Refund lifecycle states** — every B7 state defined by the money core:
    `requested`, `investigating`, `approved`, `rejected`, `transfer-initiated`,
    `transfer-confirmed`, `failed`, `timed-out`, `credit-balance-posted`.
-   The append-only `RefundLedger` (`src/Modules/Finance/Domain/Sanad.Modules.Finance.Domain/RefundLedger.cs`)
+   The append-only `RefundLedger` (`src/Modules/Finance/Domain/Ahlena.Modules.Finance.Domain/RefundLedger.cs`)
    is the source of truth for the state machine; `investigating` is the
    SupportAdmin review phase that precedes SuperAdmin approval (decisions #11,
    #12) and is verified as an observable phase, not a stored enum member.
@@ -63,7 +63,7 @@ number from the W0 D1 hypothesis list (see "Owner-evidence markers" below).
 
 1. **Verified disposable local PostgreSQL.** A local PostgreSQL instance
    (`localhost` / `127.0.0.1` only) holding a database whose name matches the
-   disposable pattern `^sanad_(refund|verify|disposable)[a-z0-9_]*$`. The
+   disposable pattern `^ahlena_(refund|verify|disposable)[a-z0-9_]*$`. The
    Mastermind must have **verified** the target identity (effective database
    name + host) before any run.
 2. **Deterministic gateway doubles.** The graph must resolve
@@ -78,7 +78,7 @@ number from the W0 D1 hypothesis list (see "Owner-evidence markers" below).
 
 W0 D4 established that `DevelopmentPaymobClient` selection is
 **key-presence-gated, not environment-gated**. `AddFamiliesInfrastructure`
-(`src/Modules/Families/Infrastructure/Sanad.Modules.Families.Infrastructure/DependencyInjection.cs:53-62`)
+(`src/Modules/Families/Infrastructure/Ahlena.Modules.Families.Infrastructure/DependencyInjection.cs:53-62`)
 registers the client from the **presence of `Paymob:SecretKey` alone**:
 
 ```

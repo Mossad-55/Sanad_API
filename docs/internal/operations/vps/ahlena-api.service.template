@@ -1,0 +1,96 @@
+# ahlena-api.service — systemd template (single instance, .NET 10)
+#
+# REVIEWABLE TEMPLATE — copy to /etc/systemd/system/ahlena-api.service on the
+# target host and replace every __FILL__ placeholder there. Nothing in this
+# file is a secret. The real environment lives in the host-local env file
+# (mode 600, never committed; canonical name /etc/ahlena/ahlena.env);
+# ASP.NET Core never loads a `.env` file automatically, so systemd must
+# inject the actual environment.
+#
+# Single-instance only: Chat Plus realtime keeps in-memory registries and
+# supports exactly one API instance with no backplane in this release. Never
+# add replicas or a second service instance. Never enable this unit while the
+# historical `sanad-api` unit is still enabled — exactly one app unit may be
+# active on the host.
+
+[Unit]
+Description=Ahlena API (.NET 10, single instance)
+After=network.target postgresql.service
+Wants=postgresql.service
+StartLimitIntervalSec=300
+StartLimitBurst=5
+
+[Service]
+# No SystemdLifetime/READY notification integration is installed. Health and
+# migration readiness must be checked separately after this process starts.
+Type=simple
+# The current authorized Staging deployment runs the API as root under its
+# dedicated /root/ahlena-api release tree (matching the historical layout).
+# A dedicated least-privilege service user is the recommended hardening when a
+# future order authorizes a new host layout.
+User=root
+# Versioned release folder; each publish lands in a NEW directory and the
+# symlink (or this path) is repointed. Durable data (keys, uploads) MUST NOT
+# live under this path.
+WorkingDirectory=__FILL__/ahlena-api
+ExecStart=/usr/bin/dotnet __FILL__/ahlena-api/Ahlena.API.dll
+
+# Host-local environment (keys only are tracked in .env.example; real values
+# live ONLY here, mode 600, root readable; canonical path /etc/ahlena/ahlena.env).
+# systemd injects them — placing a `.env` beside the binaries without this
+# wiring has no effect.
+EnvironmentFile=/etc/ahlena/ahlena.env
+
+# Non-secret hardening/structure (values, not secrets):
+Environment=DOTNET_ENVIRONMENT=Staging
+Environment=ASPNETCORE_ENVIRONMENT=Staging
+# Loopback only — the reverse proxy is the only public entry point.
+# The authorized Staging deployment listens on http://127.0.0.1:5001 behind
+# the public proxy port 8091 (see ahlena-api.nginx.conf.template).
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5001
+# 52 MiB total multipart budget to match the chat upload contract
+# (per-type controller limits still apply inside the API).
+Environment=Kestrel__Limits__MaxRequestBodySize=54525952
+Environment=DOTNET_NOLOGO=true
+Environment=DOTNET_CLI_TELEMETRY_OPTOUT=true
+
+# The key ring (/var/ahlena/keys) and uploads (/var/ahlena/files plus the
+# /var/ahlena/files-private sibling) are durable directories OUTSIDE the
+# release folder, created with least privilege:
+#   install -d -o root -g root -m 700 /var/ahlena/keys
+#   install -d -o root -g root -m 755 /var/ahlena/files
+#   install -d -o root -g root -m 755 /var/ahlena/files-private
+# Key XML files are host secrets: back them up with the database, never
+# commit, print, or paste them. Deploy/rollback must never delete or move
+# shared files under these paths.
+
+Restart=on-failure
+RestartSec=5
+# Bounded restart loop: sustained crash-loops page the operator instead of
+# spinning forever against a bad migration or config.
+TimeoutStopSec=30
+KillSignal=SIGTERM
+
+# Least-privilege filesystem view for the service process.
+NoNewPrivileges=true
+# NOTE: the authorized Staging deployment runs from /root/ahlena-api as root;
+# ProtectSystem=strict with a /root WorkingDirectory requires an explicit
+# ReadWritePaths exception for the binary tree or a non-root layout. Relax or
+# harden deliberately when adapting this template on a target host.
+# ProtectSystem=strict
+# ProtectHome=true
+PrivateTmp=true
+# Durable read/write paths (keys + uploads). The release folder itself is
+# never a data root; publishes happen OUTSIDE the running service (new
+# directory + repoint + restart).
+ReadWritePaths=/var/ahlena/keys /var/ahlena/files /var/ahlena/files-private
+
+# Console log carries the startup migration report (per-context
+# pending/applied counts for all 9 contexts). It must never contain query
+# tokens, bodies, headers, or connection strings. Query the journal with:
+#   journalctl -u ahlena-api --since "2026-10-31 12:00" --no-pager
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

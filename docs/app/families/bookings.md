@@ -40,7 +40,7 @@ PendingPayment â”€â”€payâ”€â”€â–¶ PendingCaregiverApprov
 - **Acceptance window:** the caregiver must respond within `min(now + 24h, booking start)`; acceptance after the deadline is rejected. A payment whose success webhook arrives after the deadline is **not** honoured as a booking â€” the booking expires and the payment is refunded automatically (see refunds below).
 - **Slot reservation:** a booking in `PendingPayment` or `PendingCaregiverApproval` already blocks the same caregiver/date/overlapping-time slot (`409 Bookings.ScheduleConflict`).
 - **Snapshot immutability:** later caregiver price edits never change an existing booking.
-- **Payments (contract as of `b556c4e`):** checkout returns no payment data. The app starts a payment with the **payment intent** endpoint (section 5), which creates a Paymob **intention** server-side and returns `clientSecret` + `publicKey` for the **Paymob mobile SDK** (embedded card / wallet UI â€” card data never touches Sanad servers). The Paymob **webhook** (`POST /api/v1/payments/webhooks/paymob`, anonymous HMAC-SHA512 from query / JSON `hmac` / `X-Paymob-Hmac`, idempotent, amount-checked) is the **single source of truth**: only the webhook can mark a booking paid. Refunds are **automatic** on caregiver decline, on family cancellation before acceptance, and when a late payment arrives after the deadline (pay â†’ expire â†’ refund).
+- **Payments (contract as of `b556c4e`):** checkout returns no payment data. The app starts a payment with the **payment intent** endpoint (section 5), which creates a Paymob **intention** server-side and returns `clientSecret` + `publicKey` for the **Paymob mobile SDK** (embedded card / wallet UI â€” card data never touches Ahlena servers). The Paymob **webhook** (`POST /api/v1/payments/webhooks/paymob`, anonymous HMAC-SHA512 from query / JSON `hmac` / `X-Paymob-Hmac`, idempotent, amount-checked) is the **single source of truth**: only the webhook can mark a booking paid. Refunds are **automatic** on caregiver decline, on family cancellation before acceptance, and when a late payment arrives after the deadline (pay â†’ expire â†’ refund).
 
 ## Endpoints
 
@@ -249,7 +249,7 @@ available methods from the public status route â€” see
 1. Call the intent endpoint, receive `clientSecret` + `publicKey`.
 2. Initialize the Paymob mobile SDK with them; the user completes card/wallet entry inside the SDK (no WebView, no card data in the app's code).
 3. Show a *processing* state and poll `GET /family/bookings/{bookingId}` (~3s, cap ~60s).
-4. Paymob calls the Sanad webhook; only the webhook moves the booking `PendingPayment â†’ PendingCaregiverApproval` (paid) or records a failure. Never trust the SDK callback or redirect alone.
+4. Paymob calls the Ahlena webhook; only the webhook moves the booking `PendingPayment â†’ PendingCaregiverApproval` (paid) or records a failure. Never trust the SDK callback or redirect alone.
 
 **Automatic refunds (full amount, via Paymob)**
 

@@ -33,8 +33,8 @@ GET /api/v1/admin/site-settings
     }
   ],
   "seo": {
-    "arabicTitle": "سند",
-    "englishTitle": "Sanad",
+    "arabicTitle": "أهلنا",
+    "englishTitle": "Ahlena",
     "arabicDescription": "وصف",
     "englishDescription": "Description"
   },
@@ -73,12 +73,12 @@ implicitly, generated or translated.
       "key": "about",
       "arabicLabel": "من نحن",
       "englishLabel": "About",
-      "url": "https://sanad.example/about"
+      "url": "https://ahlena.example/about"
     }
   ],
   "seo": {
-    "arabicTitle": "سند",
-    "englishTitle": "Sanad",
+    "arabicTitle": "أهلنا",
+    "englishTitle": "Ahlena",
     "arabicDescription": "وصف",
     "englishDescription": "Description"
   }

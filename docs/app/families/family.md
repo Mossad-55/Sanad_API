@@ -53,7 +53,7 @@ Member management is owner-only; all members can view the family and a member's 
       "arabicFullName": "أحمد محمد النصر",
       "englishFullName": "Ahmed Mohamed El-Nasr",
       "email": "ahmed@example.com",
-      "avatarUrl": "https://cdn.sanad.example/avatars/ahmed.png",
+      "avatarUrl": "https://cdn.ahlena.example/avatars/ahmed.png",
       "status": 2,
       "lastActivityOnUtc": "2026-09-12T18:30:00Z"
     }
@@ -94,7 +94,7 @@ Authorization: Bearer {{familyToken}}
   "arabicFullName": "أحمد محمد النصر",
   "englishFullName": "Ahmed Mohamed El-Nasr",
   "email": "ahmed@example.com",
-  "avatarUrl": "https://cdn.sanad.example/avatars/ahmed.png",
+  "avatarUrl": "https://cdn.ahlena.example/avatars/ahmed.png",
   "status": 2,
   "lastActivityOnUtc": "2026-09-12T18:30:00Z"
 }

@@ -23,8 +23,8 @@ Authority: the [refund contract's numbered decision lock](../../../../docs/inter
       verification risk (W0 D4) — refund runs never proceed on the real client.
 - [ ] **0.4 Disposable target identity verified.** If any step below needs
       PostgreSQL, the target is a **verified disposable local** database:
-      host `localhost`/`127.0.0.1`, name matching `^sanad_(refund|verify|disposable)[a-z0-9_]*$`.
-      Never `SanadDb` on the shared host, never the production-configured remote.
+      host `localhost`/`127.0.0.1`, name matching `^ahlena_(refund|verify|disposable)[a-z0-9_]*$`.
+      Never `AhlenaDb` (the persistent local database) nor its legacy `SanadDb` name on the shared host, never the production-configured remote.
 
 ## 1. Build — 0 / 0
 
@@ -40,13 +40,13 @@ money core (F0) that every refund lane depends on.
 
 | Filter | Class | Proves |
 |---|---|---|
-| `FullyQualifiedName~Sanad.UnitTests.Finance.MoneyTests` | `MoneyTests` | minor-unit arithmetic (decision #4), ToEven rounding, proration floor 0 (#31) |
-| `FullyQualifiedName~Sanad.UnitTests.Finance.RefundLedgerTests` | `RefundLedgerTests` | the B7 state machine, transfer evidence (#16), unresolved-timeout block and reconciliation (#17) |
-| `FullyQualifiedName~Sanad.UnitTests.Finance.CreditBalanceTests` | `CreditBalanceTests` | non-withdrawable credit, never-negative balance, zero/negative rejection (#15) |
-| `FullyQualifiedName~Sanad.UnitTests.Finance.BusinessDayCalendarTests` | `BusinessDayCalendarTests` | Cairo Sunday–Thursday business days, DST-safe add (#1, #2) |
-| `FullyQualifiedName~Sanad.UnitTests.Finance.FinanceMoneyCorePersistenceModelTests` | `FinanceMoneyCorePersistenceModelTests` | the Finance schema/model for the ledger, credit and their mappings |
-| `FullyQualifiedName~Sanad.UnitTests.Finance.PayoutEligibilityTests` | `PayoutEligibilityTests` | payout eligibility unaffected by refund changes |
-| `FullyQualifiedName~Sanad.UnitTests.Finance.CaregiverPayoutPolicyTests` | `CaregiverPayoutPolicyTests` | payout policy consistent with ledger/payout effects |
+| `FullyQualifiedName~Ahlena.UnitTests.Finance.MoneyTests` | `MoneyTests` | minor-unit arithmetic (decision #4), ToEven rounding, proration floor 0 (#31) |
+| `FullyQualifiedName~Ahlena.UnitTests.Finance.RefundLedgerTests` | `RefundLedgerTests` | the B7 state machine, transfer evidence (#16), unresolved-timeout block and reconciliation (#17) |
+| `FullyQualifiedName~Ahlena.UnitTests.Finance.CreditBalanceTests` | `CreditBalanceTests` | non-withdrawable credit, never-negative balance, zero/negative rejection (#15) |
+| `FullyQualifiedName~Ahlena.UnitTests.Finance.BusinessDayCalendarTests` | `BusinessDayCalendarTests` | Cairo Sunday–Thursday business days, DST-safe add (#1, #2) |
+| `FullyQualifiedName~Ahlena.UnitTests.Finance.FinanceMoneyCorePersistenceModelTests` | `FinanceMoneyCorePersistenceModelTests` | the Finance schema/model for the ledger, credit and their mappings |
+| `FullyQualifiedName~Ahlena.UnitTests.Finance.PayoutEligibilityTests` | `PayoutEligibilityTests` | payout eligibility unaffected by refund changes |
+| `FullyQualifiedName~Ahlena.UnitTests.Finance.CaregiverPayoutPolicyTests` | `CaregiverPayoutPolicyTests` | payout policy consistent with ledger/payout effects |
 
 - [ ] **2.1** All filters green; counts recorded exactly (not "all passed").
 - [ ] **2.2** Families refund-path filters green:

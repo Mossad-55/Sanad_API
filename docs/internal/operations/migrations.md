@@ -7,11 +7,11 @@ EF history table: `identity.__EFMigrationsHistory`.
 ## Apply
 
 ```bash
-export ConnectionStrings__IdentityDatabase="Host=localhost;Port=5432;Database=sanad_identity;Username=REPLACE_ME;Password=REPLACE_ME"
+export ConnectionStrings__IdentityDatabase="Host=localhost;Port=5432;Database=ahlena_identity;Username=REPLACE_ME;Password=REPLACE_ME"
 
 dotnet ef database update \
-  --project src/Modules/Identity/Infrastructure/Sanad.Modules.Identity.Infrastructure/Sanad.Modules.Identity.Infrastructure.csproj \
-  --startup-project src/API/Sanad.API/Sanad.API.csproj
+  --project src/Modules/Identity/Infrastructure/Ahlena.Modules.Identity.Infrastructure/Ahlena.Modules.Identity.Infrastructure.csproj \
+  --startup-project src/API/Ahlena.API/Ahlena.API.csproj
 ```
 
 The design-time factory reads only `ConnectionStrings__IdentityDatabase`.
@@ -92,8 +92,11 @@ production. Do not infer deployment application from a passing model/build check
 
 The following feature migrations are present in the worktree and are applied
 to `localhost:5432/SanadBrunoTestDb`. No production or remote database was
-changed by that authorized application; the separate local `SanadDb` rollback
-is recorded below:
+changed by that authorized application; the separate local persistent database
+rollback is recorded below. (Name note: the local persistent database was
+renamed from `SanadDb` to `AhlenaDb` on 2026-10-31 by owner-approved action.
+Historical records below keep the names in effect at the time; current
+instructions use `AhlenaDb`.)
 
 - Families: `20261005101503_AddBookingReviewsAndMedicalAccessGrants`
 - Families: `20261005111105_AddMedicalAccessGrantGrantee`
@@ -123,28 +126,29 @@ Caregivers first, then Care Homes:
 
 Neither migration is applied to staging or production; that stays a separate,
 serialized release step. Generate Care Homes migrations with the API startup
-project (`--startup-project src/API/Sanad.API/Sanad.API.csproj`); Caregivers has
+project (`--startup-project src/API/Ahlena.API/Ahlena.API.csproj`); Caregivers has
 its own design-time factory.
 
 Confirm the target before any `database update`: with
 `App__TestUserSeed__Enabled=true` in the environment, the fixture-seed guard pins
 the CareHomes context to the disposable Bruno database `SanadBrunoTestDb`, so a
-CareHomes `database update` resolves there rather than to `SanadDb`. Run
+CareHomes `database update` resolves there rather than to the persistent local
+`AhlenaDb`. Run
 `dotnet ef dbcontext info` for the exact context first, and set
 `App__TestUserSeed__Enabled=false` for the migration command when the intended
-target is `SanadDb`.
+target is the persistent local `AhlenaDb`.
 
 To inspect SQL without changing a database, use the module Infrastructure
 project and the API startup project:
 
 ```bash
 dotnet ef migrations list \
-  --project src/Modules/Community/Infrastructure/Sanad.Modules.Community.Infrastructure/Sanad.Modules.Community.Infrastructure.csproj \
-  --startup-project src/API/Sanad.API/Sanad.API.csproj
+  --project src/Modules/Community/Infrastructure/Ahlena.Modules.Community.Infrastructure/Ahlena.Modules.Community.Infrastructure.csproj \
+  --startup-project src/API/Ahlena.API/Ahlena.API.csproj
 
 dotnet ef migrations script \
-  --project src/Modules/Community/Infrastructure/Sanad.Modules.Community.Infrastructure/Sanad.Modules.Community.Infrastructure.csproj \
-  --startup-project src/API/Sanad.API/Sanad.API.csproj \
+  --project src/Modules/Community/Infrastructure/Ahlena.Modules.Community.Infrastructure/Ahlena.Modules.Community.Infrastructure.csproj \
+  --startup-project src/API/Ahlena.API/Ahlena.API.csproj \
   --output community-migration.sql
 ```
 

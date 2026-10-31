@@ -1,4 +1,6 @@
-# Sanad API — documentation index
+# Ahlena API — documentation index
+
+> **Brand note:** this repository was historically branded **Sanad / سند**. Owner-approved local rename to **Ahlena / أهلنا** implemented 2026-10-31, pending parent review; see `docs/internal/work/ahlena-rebrand-2026-10-31.md`. Slice plans, reports, and handoffs under `docs/internal/` are historical records and may still reference the old brand.
 
 Single map of this `docs/` tree. Start here; do not re-derive it per task.
 
@@ -26,11 +28,11 @@ Single map of this `docs/` tree. Start here; do not re-derive it per task.
 
 ## Verification tooling (living source of truth)
 
-- `tools/Verify-ApiContractMapping.ps1` — controllers ↔ Postman ↔ Bruno mapping. Run before every merge; Postman must stay 0 missing / 0 orphan. Bruno is risk-based, 0 orphans required.
-- `tools/Publish-SanadApi.ps1` — Release packaging + deployment manifest (see [operations/publish.md](internal/operations/publish.md), trigger word: `publish`).
-- `tools/Verify-SanadDeployment.ps1` — post-start manifest + smoke verification (see [operations/deploy-runbook.md](internal/operations/deploy-runbook.md)).
-- `tools/Start-LocalBrunoFixtureApi.ps1` — guarded disposable-target API launcher for Bruno checks.
-- `tools/Invoke-BrunoPreflight.ps1` — offline Bruno selection checks.
+- `docs/internal/tools/Verify-ApiContractMapping.ps1` — controllers ↔ Postman mapping. Run before every merge; Postman must stay 0 missing / 0 orphan. Known limitation: the script's exit code covers only the Postman missing/orphan counts — Bruno checks are intentionally excluded from this gate (owner direction), so a clean exit is not a Bruno coverage claim.
+- `docs/internal/tools/Publish-AhlenaApi.ps1` — Release packaging + deployment manifest (see [operations/publish.md](internal/operations/publish.md), trigger word: `publish`).
+- `docs/internal/tools/Verify-AhlenaDeployment.ps1` — post-start manifest + smoke verification (see [operations/deploy-runbook.md](internal/operations/deploy-runbook.md)).
+- `tools/Start-LocalBrunoFixtureApi.ps1` (repo-root `tools/`) - guarded disposable-target API launcher for Bruno checks.
+- `docs/internal/tools/Invoke-BrunoPreflight.ps1` — offline Bruno selection checks.
 
 ## Operations runbooks
 

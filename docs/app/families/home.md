@@ -100,6 +100,6 @@ copy, and do not treat the empty list as an error.
 
 ## Postman
 
-`docs/postman/app/Sanad.App.Family.postman_collection.json` → **Family home
+`docs/postman/app/Ahlena.App.Family.postman_collection.json` → **Family home
 sections**. Admin authoring requests live in
-`docs/postman/admins/Sanad.Admin.postman_collection.json`.
+`docs/postman/admins/Ahlena.Admin.postman_collection.json`.

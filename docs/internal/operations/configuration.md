@@ -1,5 +1,7 @@
 # Configuration reference
 
+> Provisioner/demo-fixture overrides (the guarded `--target-kind local-demo` / `--allow-local-ahlena-db` SHAPE) are documented with the test fixture: [Provisioner targets](test-data.md#portal-provisioner-local-demo-corpus--demo-nonce).
+
 Use environment variables. ASP.NET Core maps `__` to nested keys.
 
 Do not put secrets in `appsettings.json` or in Git.
@@ -25,7 +27,7 @@ EF design-time migrations also read `ConnectionStrings__IdentityDatabase`.
 
 Outside Development the host refuses to start when the effective root sits
 inside the versioned release folder. On the VPS use a durable absolute
-path such as `/var/sanad/files` (see the VPS templates in
+path — canonical `/var/ahlena/files` (see the VPS templates in
 `docs/internal/operations/vps/`). Deploy and rollback procedures must never
 delete or move shared files.
 Public URL path is `/files/{key}`. Do not commit uploaded files.
@@ -38,8 +40,8 @@ application discriminator.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `DataProtection__KeyRingPath` | (framework default; Development only) | Absolute persistent key-ring directory outside the release folder, e.g. `/var/sanad/keys`. Required outside Development; the host refuses to start without it. Never use fixture seeding or ephemeral keys on a publicly reachable host. |
-| `DataProtection__ApplicationName` | `Sanad.API` | Discriminator isolating this API's protected payloads. Must stay stable across deploys or previously issued cursors stop decrypting. |
+| `DataProtection__KeyRingPath` | (framework default; Development only) | Absolute persistent key-ring directory outside the release folder, e.g. `/var/ahlena/keys`. Required outside Development; the host refuses to start without it. Never use fixture seeding or ephemeral keys on a publicly reachable host. |
+| `DataProtection__ApplicationName` | `Ahlena.API` | Discriminator isolating this API's protected payloads. Must stay stable across deploys or previously issued cursors stop decrypting. |
 
 The service user needs exclusive access to the key directory (mode `700`,
 keys `600`); see the VPS templates for the exact ownership/permission
@@ -58,14 +60,14 @@ Enabled only when `Host` and `FromAddress` are set.
 | `Identity__Email__Smtp__Username` | | Optional SMTP user |
 | `Identity__Email__Smtp__Password` | | Optional SMTP password |
 | `Identity__Email__Smtp__FromAddress` | | From address |
-| `Identity__Email__Smtp__FromName` | `Sanad Care` | From display name |
+| `Identity__Email__Smtp__FromName` | `Ahlena` | From display name |
 | `Identity__Email__Smtp__SupportInboxAddress` | (falls back to `FromAddress`) | Support inbox for `/api/v1/support/contact` |
 
 ## Family invitations (deep link)
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `App__InviteBaseUrl` | `sanad://family/invite` (Development) | Base of the mobile deep link sent in invitation emails; the API appends `?token=<opaque-token>` |
+| `App__InviteBaseUrl` | `ahlena://family/invite` (Development) | Base of the mobile deep link sent in invitation emails; the API appends `?token=<opaque-token>` |
 
 The deep link opens the mobile app's invitation screen; there is no web page. See `docs/app/families/invitations.md`.
 
@@ -141,8 +143,8 @@ deployment applies it. Do not treat the generated migration as applied state.
 
 ```bash
 export ASPNETCORE_ENVIRONMENT=Development
-export ConnectionStrings__IdentityDatabase="Host=localhost;Port=5432;Database=sanad_identity;Username=REPLACE_ME;Password=REPLACE_ME"
-export Identity__Jwt__Issuer="sanad-api"
-export Identity__Jwt__Audience="sanad-clients"
+export ConnectionStrings__IdentityDatabase="Host=localhost;Port=5432;Database=AhlenaDb;Username=REPLACE_ME;Password=REPLACE_ME"
+export Identity__Jwt__Issuer="ahlena-api"
+export Identity__Jwt__Audience="ahlena-clients"
 export Identity__Jwt__SigningKey="REPLACE_WITH_AT_LEAST_32_UTF8_BYTES"
 ```

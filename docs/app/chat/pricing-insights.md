@@ -94,6 +94,6 @@ recorded at `POST /api/v1/family/bookings/checkout`:
 | Missing/malformed/empty/unknown/inactive `areaId` or `serviceId` | `400` | `Caregivers.PricingInsights.InvalidFilter` |
 
 Matching Postman request:
-[Sanad.App.Chat.postman_collection.json](../../postman/app/Sanad.App.Chat.postman_collection.json)
+[Ahlena.App.Chat.postman_collection.json](../../postman/app/Ahlena.App.Chat.postman_collection.json)
 (folder `11.Pricing insights` — supply a **caregiver** JWT, not the default
 app token).

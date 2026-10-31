@@ -1,0 +1,54 @@
+using Ahlena.BuildingBlocks.Application.CQRS;
+using Ahlena.BuildingBlocks.Application.Results;
+using Ahlena.BuildingBlocks.Domain.Primitives.Ids;
+
+namespace Ahlena.Modules.Community.Application.Comments;
+
+public sealed record GetPostCommentsQuery(Guid PostId, int Page, int PageSize) : IQuery<CommentPage>;
+
+public sealed record CommentPage
+{
+    public IReadOnlyList<Comment> Items { get; set; } = new List<Comment>();
+    public int Page { get; set; }
+    public int PageSize { get; set; }
+    public int TotalCount { get; set; }
+}
+
+public sealed class GetPostCommentsQueryHandler
+    : IQueryHandler<GetPostCommentsQuery, CommentPage>
+{
+    private readonly ICommunityDbContext _dbContext;
+
+    public GetPostCommentsQueryHandler(ICommunityDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<Result<CommentPage>> Handle(GetPostCommentsQuery request, CancellationToken cancellationToken)
+    {
+        // A deleted post's thread is gone with it: comments are neither
+        // counted nor listed once the parent post is deleted.
+        var deleted = _dbContext.Posts
+            .Where(p => p.Status == PostStatus.Deleted);
+        var totalCount = await _dbContext.Comments
+            .Where(c => c.PostId == new CommunityPostId(request.PostId))
+            .Where(c => !deleted.Any(p => p.Id == c.PostId))
+            .CountAsync(cancellationToken);
+
+        var comments = await _dbContext.Comments
+            .Where(c => c.PostId == new CommunityPostId(request.PostId))
+            .Where(c => !deleted.Any(p => p.Id == c.PostId))
+            .OrderByDescending(c => c.CreatedOnUtc)
+            .Skip((request.Page - 1) * request.PageSize)
+            .Take(request.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return Result<CommentPage>.Success(new CommentPage
+        {
+            Items = comments,
+            Page = request.Page,
+            PageSize = request.PageSize,
+            TotalCount = totalCount
+        });
+    }
+}

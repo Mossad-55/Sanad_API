@@ -3,14 +3,14 @@
 Release entry points: [publish.md](publish.md) (trigger word: `publish` â€” package only, never deploys) and [deploy-runbook.md](deploy-runbook.md) (production releases with local-only environment). Start with the [documentation index](../../README.md).
 
 The repository contains a repeatable package step in
-`docs/internal/tools/Publish-SanadApi.ps1`. It publishes the API and writes
-`sanad-deployment-manifest.json` containing the Git revision, package time, and
+`docs/internal/tools/Publish-AhlenaApi.ps1`. It publishes the API and writes
+`ahlena-deployment-manifest.json` containing the Git revision, package time, and
 the latest required migration identifier for each registered DbContext.
 
 From the repository root, run:
 
 ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Publish-SanadApi.ps1 -Configuration Release
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Publish-AhlenaApi.ps1 -Configuration Release
 ```
 
 The default package directory is `deploy/publish-out/` and is intentionally
@@ -21,8 +21,8 @@ After the published API starts, verify the exact package revision, the
 actually applied migrations, and the anonymous smoke contract with:
 
 ```powershell
-   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Verify-SanadDeployment.ps1 `
-  -ManifestPath .\deploy\publish-out\sanad-deployment-manifest.json `
+   powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\docs\internal\tools\Verify-AhlenaDeployment.ps1 `
+  -ManifestPath .\deploy\publish-out\ahlena-deployment-manifest.json `
   -BaseUrl https://your-authorized-host `
   -ExpectedRevision <pushed-sha> `
   -StartupLogPath <captured-startup-log-path>
@@ -39,7 +39,7 @@ release evidence.
 
 Before a remote launch:
 
-1. Verify the exact pushed revision in `sanad-deployment-manifest.json`.
+1. Verify the exact pushed revision in `ahlena-deployment-manifest.json`.
 2. Verify the configured database targets and ensure the production database
    user has the required migration permissions. Outside Development, the API
    applies pending migrations for all registered contexts (including Finance)

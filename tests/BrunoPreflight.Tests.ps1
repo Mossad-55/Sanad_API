@@ -2,7 +2,7 @@
 param()
 $ErrorActionPreference = 'Stop'
 $sourceRoot = Split-Path -Parent $PSScriptRoot
-$testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('sanad-bruno-preflight-' + [Guid]::NewGuid().ToString('N'))
+$testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ahlena-bruno-preflight-' + [Guid]::NewGuid().ToString('N'))
 $testRoot = [System.IO.Path]::GetFullPath($testRoot)
 $checks = 0
 
@@ -98,7 +98,7 @@ script:pre-request {
 finally {
     $tempParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath()).TrimEnd('\') + '\'
     if ($testRoot.StartsWith($tempParent, [System.StringComparison]::OrdinalIgnoreCase) -and
-        (Split-Path -Leaf $testRoot) -like 'sanad-bruno-preflight-*' -and (Test-Path -LiteralPath $testRoot)) {
+        (Split-Path -Leaf $testRoot) -like 'ahlena-bruno-preflight-*' -and (Test-Path -LiteralPath $testRoot)) {
         Remove-Item -LiteralPath $testRoot -Recurse -Force
     }
 }

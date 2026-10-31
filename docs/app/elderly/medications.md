@@ -84,7 +84,7 @@ prescription editing or dose skipping.
 
 ## Postman and Bruno
 
-The [Elderly Postman collection](../../postman/app/Sanad.App.Elderly.postman_collection.json)
+The [Elderly Postman collection](../../postman/app/Ahlena.App.Elderly.postman_collection.json)
 contains read requests and an explicitly state-changing take-dose example.
 The Bruno Elderly medication folder covers list/dashboard reads and safe
 unauthenticated late-route rejection; it does not issue a take or evaluation

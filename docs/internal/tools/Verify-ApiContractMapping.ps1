@@ -34,7 +34,7 @@ function Get-AttributeArguments([string]$Text, [string]$AttributeName) {
 }
 
 $controllerRoutes = [System.Collections.Generic.List[object]]::new()
-$controllerRoot = Join-Path $RepositoryRoot 'src/API/Sanad.API/Controllers'
+$controllerRoot = Join-Path $RepositoryRoot 'src/API/Ahlena.API/Controllers'
 
 Get-ChildItem $controllerRoot -Filter '*.cs' -File | ForEach-Object {
     $sourceText = Get-Content -Raw $_.FullName

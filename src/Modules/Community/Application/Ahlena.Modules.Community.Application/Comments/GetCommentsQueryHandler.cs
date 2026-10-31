@@ -1,0 +1,36 @@
+using Ahlena.Modules.Community.Application.Abstractions.Data;
+using Ahlena.Modules.Community.Application.Posts;
+using Ahlena.Modules.Community.Domain.Comments;
+using Ahlena.Modules.Community.Domain.Posts;
+using Ahlena.BuildingBlocks.Application.Abstractions;
+using Ahlena.BuildingBlocks.Domain.Primitives.Ids;
+
+namespace Ahlena.Modules.Community.Application.Comments;
+
+public sealed class GetCommentsQueryHandler : IQueryHandler<GetCommentsQuery, Comment[]>
+{
+    private readonly ICommunityDbContext _dbContext;
+
+    public GetCommentsQueryHandler(ICommunityDbContext dbContext)
+    {
+        _dbContext = dbContext;
+    }
+
+    public async Task<Result<Comment[]>> Handle(GetCommentsQuery request, CancellationToken cancellationToken)
+    {
+        var page = Math.Max(1, request.Page);
+        var pageSize = Math.Clamp(request.PageSize, 1, 100);
+        Comment[] comments = await _dbContext.Comments
+            .AsNoTracking()
+            .Where(c => c.PostId == new CommunityPostId(request.PostId))
+            // A deleted post's children are hidden with it: the detail read
+            // answers 404, so the thread must not keep serving content.
+            .Where(c => !_dbContext.Posts
+                .Any(p => p.Id == c.PostId && p.Status == PostStatus.Deleted))
+            .OrderByDescending(c => c.CreatedOnUtc)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToArrayAsync(cancellationToken);
+        return Result<Comment[]>.Success(comments);
+    }
+}

@@ -156,7 +156,7 @@ def _start_server(workspace: str) -> tuple[subprocess.Popen[Any], int, str, str]
 
 def _prompt_text(job: Job, task: str, allowed_files: list[str], base_revision: str) -> str:
     files = "\n".join(f"- {item}" for item in allowed_files) or "- No file manifest supplied"
-    return f"""You are an OpenCode implementation worker for the Sanad API repository.
+    return f"""You are an OpenCode implementation worker for the Ahlena API repository.
 
 Phase: {job.phase}
 Requested model label: {job.model_label}
@@ -226,7 +226,7 @@ def _create_job(arguments: dict[str, Any]) -> dict[str, Any]:
 
     process, port, base_url, password = _start_server(workspace)
     try:
-        title = str(arguments.get("title", f"Sanad {phase}"))
+        title = str(arguments.get("title", f"Ahlena {phase}"))
         session_body: dict[str, Any] = {"title": title, "location": {"directory": workspace}}
         provider_id = arguments.get("provider_id")
         model_id = arguments.get("model_id")
@@ -433,7 +433,7 @@ def _handle(request: dict[str, Any]) -> dict[str, Any] | None:
     if method == "notifications/initialized":
         return None
     if method == "initialize":
-        return {"jsonrpc": "2.0", "id": request_id, "result": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "sanad-opencode-bridge", "version": "0.1.0"}}}
+        return {"jsonrpc": "2.0", "id": request_id, "result": {"protocolVersion": "2024-11-05", "capabilities": {"tools": {}}, "serverInfo": {"name": "ahlena-opencode-bridge", "version": "0.1.0"}}}
     if method == "tools/list":
         return {"jsonrpc": "2.0", "id": request_id, "result": {"tools": TOOLS}}
     if method == "tools/call":

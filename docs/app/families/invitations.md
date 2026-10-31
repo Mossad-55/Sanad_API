@@ -1,6 +1,6 @@
 # Family member invitations
 
-Owners and Editors invite other **Family-account users** to share management of a family. Invitees are addressed by **email only** (never phone). The recipient must already have a Sanad account with a Family role; otherwise no invitation is created and no email is sent.
+Owners and Editors invite other **Family-account users** to share management of a family. Invitees are addressed by **email only** (never phone). The recipient must already have a Ahlena account with a Family role; otherwise no invitation is created and no email is sent.
 
 All routes require policy `FamilyAccess`.
 
@@ -22,10 +22,10 @@ On creation the API generates an opaque, random 32-byte token. Only its **SHA-25
 The email contains a mobile **deep link** (there is no web page):
 
 ```text
-sanad://family/invite?token=<opaque-token>
+ahlena://family/invite?token=<opaque-token>
 ```
 
-The base is configuration value `App:InviteBaseUrl` (`sanad://family/invite` in development). The mobile app registers the `sanad://` scheme, opens on the invitation screen, reads `token`, and calls accept or decline. Tapping the link without the app installed does nothing by design — recipients always already have the app (they must be registered). The same pending invitations are also listed in-app (`GET .../invitations`), so the email is a convenience shortcut, not the only entry point.
+The base is configuration value `App:InviteBaseUrl` (`ahlena://family/invite` in development). The mobile app registers the `ahlena://` scheme, opens on the invitation screen, reads `token`, and calls accept or decline. Tapping the link without the app installed does nothing by design — recipients always already have the app (they must be registered). The same pending invitations are also listed in-app (`GET .../invitations`), so the email is a convenience shortcut, not the only entry point.
 
 The token is authenticated at accept/decline time against the caller's JWT: **only the invited user's own Family session** can answer it (`403 Families.Invitation.NotInvitee` otherwise).
 

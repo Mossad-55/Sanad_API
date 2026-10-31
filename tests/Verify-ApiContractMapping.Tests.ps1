@@ -94,7 +94,7 @@ function New-ApiMappingFixture {
         [string]$Scenario
     )
 
-    $controllerDir = Join-Path $Root 'src/API/Sanad.API/Controllers'
+    $controllerDir = Join-Path $Root 'src/API/Ahlena.API/Controllers'
     $postmanDir = Join-Path $Root 'docs/postman'
     New-Item -ItemType Directory -Path $controllerDir -Force | Out-Null
     New-Item -ItemType Directory -Path $postmanDir -Force | Out-Null
@@ -102,7 +102,7 @@ function New-ApiMappingFixture {
     $controllerText = @'
 using Microsoft.AspNetCore.Mvc;
 
-namespace Sanad.API.Controllers;
+namespace Ahlena.API.Controllers;
 
 [ApiController]
 [Route("api/v1/members")]
@@ -213,7 +213,7 @@ function Invoke-ApiMappingChecker {
 $fixtureRoots = @()
 try {
     # 1. Missing + orphan: the gate must fail with both diagnostics.
-    $missingRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('sanad-mapping-missing-' + [Guid]::NewGuid().ToString('N'))
+    $missingRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ahlena-mapping-missing-' + [Guid]::NewGuid().ToString('N'))
     $fixtureRoots += $missingRoot
     New-ApiMappingFixture -Root $missingRoot -Scenario 'Missing'
     $missingRun = Invoke-ApiMappingChecker -FixtureRoot $missingRoot
@@ -230,7 +230,7 @@ try {
     }
 
     # 2. Complete sets: the gate must pass with zero missing/orphan routes.
-    $cleanRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('sanad-mapping-clean-' + [Guid]::NewGuid().ToString('N'))
+    $cleanRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ahlena-mapping-clean-' + [Guid]::NewGuid().ToString('N'))
     $fixtureRoots += $cleanRoot
     New-ApiMappingFixture -Root $cleanRoot -Scenario 'Clean'
     $cleanRun = Invoke-ApiMappingChecker -FixtureRoot $cleanRoot
@@ -246,7 +246,7 @@ try {
 
     # 3. Negative route documentation: an intentionally non-existent route
     #    named '[no-route]' must neither orphan-fail nor mask a real mapping.
-    $negativeRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('sanad-mapping-negative-' + [Guid]::NewGuid().ToString('N'))
+    $negativeRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('ahlena-mapping-negative-' + [Guid]::NewGuid().ToString('N'))
     $fixtureRoots += $negativeRoot
     New-ApiMappingFixture -Root $negativeRoot -Scenario 'Negative'
     $negativeRun = Invoke-ApiMappingChecker -FixtureRoot $negativeRoot

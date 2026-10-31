@@ -14,8 +14,8 @@ $e06Password = $FixturePassword
 $baseUrl = $e06Url
 $null = Assert-LoopbackBaseUrl $baseUrl
 $root = Get-RepositoryRoot
-$apiDirectory = Join-Path $root 'src/API/Sanad.API'
-$assembly = Join-Path $apiDirectory 'bin/Release/net10.0/Sanad.API.dll'
+$apiDirectory = Join-Path $root 'src/API/Ahlena.API'
+$assembly = Join-Path $apiDirectory 'bin/Release/net10.0/Ahlena.API.dll'
 $environment = Get-LocalFixtureEnvironment -Password $e06Password
 $verificationEnvironment = Get-LocalFixtureEnvironment -Password $e06Password -EnableSeed
 $preflight = Invoke-TargetVerification -RepoRoot $root -AssemblyPath $assembly -Environment $verificationEnvironment -ApiDirectory $apiDirectory
@@ -93,7 +93,7 @@ try {
     $logs = @((Join-Path $logDir 'stdout.log'),(Join-Path $logDir 'stderr.log'))
     $process = Start-FixtureApiProcess -AssemblyPath $assembly -WorkingDirectory $apiDirectory -Url $baseUrl -Environment $environment -OutputLogPath $logs[0] -ErrorLogPath $logs[1]
     if (-not (Wait-ForEndpoint -Url $baseUrl -TimeoutSeconds 90 -Process $process)) { throw 'E06 API startup failed.' }
-    $client = New-SanadHttpClient
+    $client = New-AhlenaHttpClient
     foreach ($actor in @('admin','denied')) {
         $email = if ($actor -eq 'admin') {'support.e06@test.sanad.local'} else {'content.e06@test.sanad.local'}
         $tokens[$actor] = Get-FixtureToken -Client $client -Url $baseUrl -Email $email -Password $e06Password -DeviceName "e06-$actor"

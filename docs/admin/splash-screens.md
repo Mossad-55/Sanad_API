@@ -50,8 +50,8 @@ Returns all splash screens (both `Draft` and `Published`), ordered by `displayOr
   {
     "id": "0191ae10-0000-7000-8000-000000000001",
     "internalName": "welcome-screen",
-    "arabicTitle": "مرحباً بكم في سند",
-    "englishTitle": "Welcome to Sanad",
+    "arabicTitle": "مرحباً بكم في أهلنا",
+    "englishTitle": "Welcome to Ahlena",
     "arabicDescription": "منصة الرعاية المتكاملة لكبار السن",
     "englishDescription": "Integrated care platform for the elderly",
     "arabicButtonText": "التالي",

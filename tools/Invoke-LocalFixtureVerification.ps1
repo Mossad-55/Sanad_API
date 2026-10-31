@@ -10,7 +10,7 @@
 
       1. Read-only target verification of all nine module contexts, pending
          migrations, existing records, storage root and non-live integrations
-         (`Sanad.API.dll --verify-local-fixture-target`). No write happens until
+         (`Ahlena.API.dll --verify-local-fixture-target`). No write happens until
          this report passes.
       2. Idempotent Minimal fixture seed (`--seed-local-fixtures`), then a second
          read-only verification to show no duplicate identities or data loss.
@@ -723,7 +723,7 @@ function Wait-ForEndpoint {
     return $false
 }
 
-function New-SanadHttpClient {
+function New-AhlenaHttpClient {
     Enable-HttpClientType
 
     $client = New-Object System.Net.Http.HttpClient
@@ -731,7 +731,7 @@ function New-SanadHttpClient {
     return $client
 }
 
-function Invoke-SanadHttpRequest {
+function Invoke-AhlenaHttpRequest {
     [CmdletBinding()]
     param(
         [System.Net.Http.HttpClient]$Client,
@@ -833,7 +833,7 @@ function Get-FixtureToken {
 
     $payload = Get-LoginPayload -Identifier $Email -Password $Password -DeviceName $DeviceName
 
-    $response = Invoke-SanadHttpRequest -Client $Client -Method 'POST' -Url "$Url/api/v1/auth/login" -Body $payload -Token $null
+    $response = Invoke-AhlenaHttpRequest -Client $Client -Method 'POST' -Url "$Url/api/v1/auth/login" -Body $payload -Token $null
     $parsed = ConvertFrom-SafeJson $response.Body
 
     if ($response.Status -ne 200) {
@@ -860,7 +860,7 @@ function Invoke-PlannedChecks {
 
     $results = @()
     foreach ($check in $Plan) {
-        $response = Invoke-SanadHttpRequest -Client $Client -Method $check.Method -Url "$Url$($check.Path)" -Body $null -Token $check.Token
+        $response = Invoke-AhlenaHttpRequest -Client $Client -Method $check.Method -Url "$Url$($check.Path)" -Body $null -Token $check.Token
         $parsed = ConvertFrom-SafeJson $response.Body
         $traceId = $null
         if ($null -ne $parsed -and $parsed.PSObject.Properties.Name -contains 'traceId') { $traceId = [string]$parsed.traceId }
@@ -898,20 +898,20 @@ if ($ExpectedWorktreeRoot) {
 }
 
 if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'AGENTS.md') -PathType Leaf)) {
-    throw 'Run this script from the Sanad API repository checkout.'
+    throw 'Run this script from the Ahlena API repository checkout.'
 }
 
 $head = Get-PinnedHead $repoRoot
 $uri = Assert-LoopbackBaseUrl $BaseUrl
 $baseUrl = "$($uri.Scheme)://$($uri.Authority)"
 
-$apiDirectory = Join-Path $repoRoot 'src/API/Sanad.API'
+$apiDirectory = Join-Path $repoRoot 'src/API/Ahlena.API'
 if (-not $ApiAssemblyPath) {
-    $ApiAssemblyPath = Join-Path $apiDirectory 'bin/Release/net10.0/Sanad.API.dll'
+    $ApiAssemblyPath = Join-Path $apiDirectory 'bin/Release/net10.0/Ahlena.API.dll'
 }
 $assemblyPath = Resolve-FullPath $ApiAssemblyPath
 if (-not (Test-Path -LiteralPath $assemblyPath -PathType Leaf)) {
-    throw 'The built API assembly was not found. Build Release first (dotnet build Sanad.slnx -c Release).'
+    throw 'The built API assembly was not found. Build Release first (dotnet build Ahlena.slnx -c Release).'
 }
 
 $seedEnvironment = Get-LocalFixtureEnvironment -Password $FixturePassword -EnableSeed
@@ -961,7 +961,7 @@ $canRunChecks = ($failureNotes.Count -eq 0)
 
 # 3. Start or reuse the API once.
 if ($canRunChecks -and -not $apiReused -and -not $SkipApiStart) {
-    $logDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ('sanad-l1-verify-' + [Guid]::NewGuid().ToString('N'))
+    $logDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ('ahlena-l1-verify-' + [Guid]::NewGuid().ToString('N'))
     [System.IO.Directory]::CreateDirectory($logDirectory) | Out-Null
     $outputLog = Join-Path $logDirectory 'api.stdout.log'
     $errorLog = Join-Path $logDirectory 'api.stderr.log'
@@ -999,7 +999,7 @@ $client = $null
 try {
     if ($canRunChecks) {
         try {
-            $client = New-SanadHttpClient
+            $client = New-AhlenaHttpClient
 
             # 4. Login preflight for both Minimal fixture identities.
             $tokens['content-admin'] = Get-FixtureToken -Client $client -Url $baseUrl `

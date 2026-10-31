@@ -1,0 +1,1537 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Options;
+using Ahlena.BuildingBlocks.Application.Abstractions;
+using Ahlena.BuildingBlocks.Domain.Enums;
+using Ahlena.BuildingBlocks.Domain.Primitives.Ids;
+using Ahlena.BuildingBlocks.Domain.ValueObjects;
+using Ahlena.Modules.Identity.Domain.Authentication.DeviceSessions;
+using Ahlena.Modules.Caregivers.Domain.Caregivers;
+using Ahlena.Modules.Caregivers.Domain.Caregivers.Lookups;
+using Ahlena.Modules.Caregivers.Infrastructure.Persistence;
+using Ahlena.Modules.Cms.Application.Abstractions.Data;
+using Ahlena.Modules.Cms.Domain.SentenceBuilder;
+using Ahlena.Modules.Families.Application.Abstractions.Data;
+using Ahlena.Modules.Families.Domain.Bookings;
+using Ahlena.Modules.Families.Domain.Elderlies;
+using Ahlena.Modules.Families.Domain.Families;
+using Ahlena.Modules.Families.Domain.Medications;
+using Ahlena.Modules.Families.Domain.Subscriptions;
+using Ahlena.Modules.Identity.Application.Abstractions.Security;
+using Ahlena.Modules.Identity.Domain.Users;
+using Ahlena.Modules.Identity.Infrastructure.Persistence;
+
+namespace Ahlena.API.Seeding;
+
+// Opt-in idempotent fixture for end-to-end testing (Development environments ONLY).
+// Mirrors SuperAdminSeeder. Never enable against a live Paymob key or real users.
+//
+// Seeds: family owner + viewer (password login), two elderly login users,
+// the family aggregate with two elderly dependents, one Active+Available MEDICAL
+// and one Active+Available COMPANION caregiver (built through the real domain
+// readiness flow), and a booking portfolio: Completed, Confirmed, PendingPayment,
+// CancelledByFamily, CancelledByCaregiver (refunded), DeclinedByCaregiver (refunded),
+// isolated paid caregiver-decision requests that never call Paymob, and a separate
+// manual Premium subscription for no-provider downgrade lifecycle coverage. The
+// opt-in subscription fixtures also include a subscription-free family owner, a
+// due current subscription for renewal coverage, and a published higher-priced
+// test plan for plan-change payment-intent coverage.
+public sealed class TestUserDataSeeder
+{
+    /// <summary>Deterministic fixture e-mail for the Content Admin identity.</summary>
+    public const string MinimalFixtureContentAdminEmail = "content.admin@test.sanad.local";
+
+    /// <summary>Deterministic fixture e-mail for the Family viewer identity.</summary>
+    public const string MinimalFixtureFamilyViewerEmail = "family.viewer@test.sanad.local";
+
+    /// <summary>
+    /// The exact identities produced by <c>App:TestUserSeed:Scope=Minimal</c>,
+    /// used by the read-only verification report to count fixture presence.
+    /// </summary>
+    public static readonly IReadOnlyList<string> MinimalFixtureIdentityEmails =
+    [
+        MinimalFixtureContentAdminEmail,
+        MinimalFixtureFamilyViewerEmail
+    ];
+
+    private static readonly SemaphoreSlim SubscriptionFixtureGate = new(1, 1);
+
+    private static readonly string[] AllowedEnvironmentNames =
+    [
+        Environments.Development
+    ];
+
+    private readonly IdentityDbContext _identityDbContext;
+    private readonly IFamiliesDbContext _familiesDbContext;
+    private readonly CaregiversDbContext _caregiversDbContext;
+    private readonly ICmsDbContext _cmsDbContext;
+    private readonly IPasswordHasher _passwordHasher;
+    private readonly IDateTimeProvider _dateTimeProvider;
+    private readonly TestUserSeedOptions _options;
+    private readonly IConfiguration _configuration;
+    private readonly IHostEnvironment _hostEnvironment;
+    private readonly TestPlatformChargeRuleSeeder _platformChargeRuleSeeder;
+
+    public TestUserDataSeeder(
+        IdentityDbContext identityDbContext,
+        IFamiliesDbContext familiesDbContext,
+        CaregiversDbContext caregiversDbContext,
+        ICmsDbContext cmsDbContext,
+        IPasswordHasher passwordHasher,
+        IDateTimeProvider dateTimeProvider,
+        IOptions<TestUserSeedOptions> options,
+        IConfiguration configuration,
+        IHostEnvironment hostEnvironment,
+        TestPlatformChargeRuleSeeder platformChargeRuleSeeder)
+    {
+        _identityDbContext = identityDbContext;
+        _familiesDbContext = familiesDbContext;
+        _caregiversDbContext = caregiversDbContext;
+        _cmsDbContext = cmsDbContext;
+        _passwordHasher = passwordHasher;
+        _dateTimeProvider = dateTimeProvider;
+        _options = options.Value;
+        _configuration = configuration;
+        _hostEnvironment = hostEnvironment;
+        _platformChargeRuleSeeder = platformChargeRuleSeeder;
+    }
+
+    public async Task SeedAsync(CancellationToken cancellationToken = default)
+    {
+        if (!AllowedEnvironmentNames.Contains(
+                _hostEnvironment.EnvironmentName,
+                StringComparer.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        if (!_options.Enabled)
+        {
+            return;
+        }
+
+        string scope = ResolveScope();
+
+        if (string.Equals(scope, TestUserSeedOptions.ScopeMinimal, StringComparison.OrdinalIgnoreCase))
+        {
+            await SeedMinimalIdentitiesAsync(cancellationToken);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_options.ElderlyPassword))
+        {
+            throw new InvalidOperationException(
+                "App:TestUserSeed:ElderlyPassword must be supplied locally when fixture seeding is enabled.");
+        }
+
+        string fixtureRunId = ReadFixtureRunId();
+
+        string? paymobSecretKey =
+            _configuration["Paymob:SecretKey"];
+
+        if (PaymobSecretKeySafety.IsLive(paymobSecretKey))
+        {
+            throw new InvalidOperationException(
+                "App:TestUserSeed:Enabled must never be true against a LIVE Paymob key.");
+        }
+
+        DateTime utcNow = _dateTimeProvider.UtcNow;
+        DateOnly today = DateOnly.FromDateTime(utcNow);
+
+        // ---------------- Identity: accounts ----------------
+
+        User owner = await EnsureUserAsync(
+            arabicFullName: "مالك العيلة التجريبي",
+            englishFullName: "Test Family Owner",
+            email: "family.owner@test.sanad.local",
+            phoneNumber: "+201000000001",
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        User viewer = await EnsureUserAsync(
+            arabicFullName: "فرد العيلة التجريبي",
+            englishFullName: "Test Family Viewer",
+            email: "family.viewer@test.sanad.local",
+            phoneNumber: "+201000000002",
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        User medicalCaregiverUser = await EnsureUserAsync(
+            arabicFullName: "الكيرجيفر الطبي التجريبي",
+            englishFullName: "Test Medical Caregiver",
+            email: "medical.caregiver@test.sanad.local",
+            phoneNumber: "+201000000003",
+            AccountType.MedicalCaregiver,
+            utcNow,
+            cancellationToken);
+
+        User companionCaregiverUser = await EnsureUserAsync(
+            arabicFullName: "الكيرجيفر المرافق التجريبي",
+            englishFullName: "Test Companion Caregiver",
+            email: "companion.caregiver@test.sanad.local",
+            phoneNumber: "+201000000004",
+            AccountType.CompanionCaregiver,
+            utcNow,
+            cancellationToken);
+
+        User careHomeOwner = await EnsureUserAsync(
+            arabicFullName: "ØµØ§Ø­Ø¨ Ø¯Ø§Ø± Ø§Ù„Ø±Ø¹Ø§ÙŠØ© Ø§Ù„ØªØ¬Ø±ÙŠØ¨ÙŠ",
+            englishFullName: "Test Care Home Owner",
+            email: "carehome.owner@test.sanad.local",
+            phoneNumber: "+201000000011",
+            AccountType.CareHomeOwner,
+            utcNow,
+            cancellationToken);
+
+        await EnsureFixtureLoginCapacityAsync(
+            [owner.Id, viewer.Id, careHomeOwner.Id],
+            utcNow,
+            cancellationToken);
+
+        User manualSubscriptionOwner = await EnsureUserAsync(
+            arabicFullName: "مالك اشتراك الاختبار اليدوي",
+            englishFullName: "Test Manual Subscription Owner",
+            email: "family.downgrade@test.sanad.local",
+            phoneNumber: "+201000000010",
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        User subscriptionFreeOwner = await EnsureUserAsync(
+            arabicFullName: "Ù…Ø§Ù„Ùƒ Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ø®ØªØ¨Ø§Ø±ÙŠ Ø¨Ù„Ø§ Ø§Ø´ØªØ±Ø§Ùƒ",
+            englishFullName: "Test Subscription-Free Owner",
+            email: FixtureEmail("family.subscription-free", fixtureRunId),
+            phoneNumber: FixturePhoneNumber(fixtureRunId, 2),
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        User renewalOwner = await EnsureUserAsync(
+            arabicFullName: "Ù…Ø§Ù„Ùƒ ØªØ¬Ø¯ÙŠØ¯ Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ù„Ø§Ø®ØªØ¨Ø§Ø±ÙŠ",
+            englishFullName: "Test Subscription Renewal Owner",
+            email: FixtureEmail("family.renewal", fixtureRunId),
+            phoneNumber: FixturePhoneNumber(fixtureRunId, 3),
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        User planChangeOwner = await EnsureUserAsync(
+            arabicFullName: "Ù…Ø§Ù„Ùƒ ØªØºÙŠÙŠØ± Ø§Ù„Ø§Ø´ØªØ±Ø§Ùƒ Ø§Ù„Ø§Ø®ØªØ¨Ø¨Ø§Ø±ÙŠ",
+            englishFullName: "Test Subscription Plan Change Owner",
+            email: FixtureEmail("family.plan-change", fixtureRunId),
+            phoneNumber: FixturePhoneNumber(fixtureRunId, 4),
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        _ = await EnsureUserAsync(
+            arabicFullName: "Ø¯Ø¹Ù… Ø§Ù„Ø¹ÙŠÙ„Ø© Ø§Ù„ØªØ¬Ø±ÙŠØ¨ÙŠ",
+            englishFullName: "Test Support Admin",
+            email: "support.admin@test.sanad.local",
+            phoneNumber: "+201000000007",
+            AccountType.SupportAdmin,
+            utcNow,
+            cancellationToken);
+
+        _ = await EnsureUserAsync(
+            arabicFullName: "إدارة المحتوى التجريبية",
+            englishFullName: "Test Content Admin",
+            email: "content.admin@test.sanad.local",
+            phoneNumber: "+201000000009",
+            AccountType.ContentAdmin,
+            utcNow,
+            cancellationToken);
+
+        User grandfatherUser = await EnsureElderlyUserAsync(
+            arabicFullName: "الجد التجريبي",
+            englishFullName: "Test Grandfather",
+            phoneNumber: "+201000000005",
+            Gender.Male,
+            new DateOnly(1950, 1, 15),
+            utcNow,
+            cancellationToken);
+
+        User grandmotherUser = await EnsureElderlyUserAsync(
+            arabicFullName: "الجدة التجريبية",
+            englishFullName: "Test Grandmother",
+            phoneNumber: "+201000000006",
+            Gender.Female,
+            new DateOnly(1952, 3, 20),
+            utcNow,
+            cancellationToken);
+
+        await EnsureHelpRequestCatalogAsync(cancellationToken);
+
+        // ---------------- Families: aggregate + dependents ----------------
+
+        Family? family = await _familiesDbContext.Families
+            .Include(f => f.Members)
+            .FirstOrDefaultAsync(f => f.OwnerUserId == owner.Id, cancellationToken);
+
+        if (family is null)
+        {
+            family = Family.Create(owner.Id, "Test Family");
+
+            family.AddMember(
+                FamilyMember.Create(
+                    viewer.Id,
+                    owner.Id,
+                    FamilyRelationshipType.Son,
+                    FamilyRole.Viewer));
+
+            _familiesDbContext.Families.Add(family);
+
+            // Elderly dependents are their own aggregate root (FamiliesDbContext.Elderlies).
+            _familiesDbContext.Elderlies.Add(
+                Elderly.Create(
+                    owner.Id,
+                    grandfatherUser.Id,
+                    family.Id,
+                    FamilyRelationshipType.Grandfather,
+                    FullName.Create("الجد التجريبي"),
+                    FullName.Create("Test Grandfather"),
+                    Gender.Male,
+                    new DateOnly(1950, 1, 15),
+                    today));
+
+            _familiesDbContext.Elderlies.Add(
+                Elderly.Create(
+                    owner.Id,
+                    grandmotherUser.Id,
+                    family.Id,
+                    FamilyRelationshipType.Grandmother,
+                    FullName.Create("الجدة التجريبية"),
+                    FullName.Create("Test Grandmother"),
+                    Gender.Female,
+                    new DateOnly(1952, 3, 20),
+                    today));
+
+            await _familiesDbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        bool hasExpectedFamilyViewer = family.Members.Any(member => member.Id == viewer.Id);
+        bool hasGrandfatherDependent = await _familiesDbContext.Elderlies
+            .AnyAsync(
+                e => e.FamilyId == family.Id && e.IdentityUserId == grandfatherUser.Id,
+                cancellationToken);
+        bool hasGrandmotherDependent = await _familiesDbContext.Elderlies
+            .AnyAsync(
+                e => e.FamilyId == family.Id && e.IdentityUserId == grandmotherUser.Id,
+                cancellationToken);
+
+        if (!hasExpectedFamilyViewer || !hasGrandfatherDependent || !hasGrandmotherDependent)
+        {
+            throw new InvalidOperationException(
+                "Existing test-family fixture is missing its expected viewer or linked Elderly accounts. No domain rows were inserted or changed.");
+        }
+
+        // ---------------- Caregivers: lookups + two Active caregivers ----------------
+
+        // Load-or-create: a crashed earlier run may have persisted the caregivers
+        // but never reached the bookings section - never early-return past it.
+        Caregiver? medical = await _caregiversDbContext.Caregivers
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(c => c.UserId == medicalCaregiverUser.Id, cancellationToken);
+
+        Caregiver? companion = await _caregiversDbContext.Caregivers
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(c => c.UserId == companionCaregiverUser.Id, cancellationToken);
+
+        if (medical is null || companion is null)
+        {
+            Governorate governorate = await EnsureLookupAsync(
+            _caregiversDbContext,
+            _caregiversDbContext.Governorates,
+            g => g.EnglishName == "Alexandria",
+            () => Governorate.Create("الإسكندرية", "Alexandria"),
+            cancellationToken);
+
+            City city = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Cities,
+                c => c.EnglishName == "Smouha" && c.GovernorateId == governorate.Id,
+                () => City.Create(governorate.Id, "سموحة", "Smouha"),
+                cancellationToken);
+
+            Area area = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Areas,
+                a => a.EnglishName == "Smouha Area" && a.CityId == city.Id,
+                () => Area.Create(city.Id, "سموحة", "Smouha Area"),
+                cancellationToken);
+
+            Language language = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Languages,
+                l => l.EnglishName == "Arabic",
+                () => Language.Create("ar", "العربية", "Arabic"),
+                cancellationToken);
+
+            Service medicalService = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Services,
+                s => s.EnglishName == "Test Medical Care",
+                () => Service.Create("رعاية طبية تجريبية", "Test Medical Care", "test-data/icons/medical.png", CaregiverType.Medical, true),
+                cancellationToken);
+
+            Service companionService = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Services,
+                s => s.EnglishName == "Test Companion Care",
+                () => Service.Create("رعاية مرافقة تجريبية", "Test Companion Care", "test-data/icons/companion.png", CaregiverType.Companion, true),
+                cancellationToken);
+
+            Specialization medicalSpecialization = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Specializations,
+                s => s.EnglishName == "Test Geriatric Care",
+                () => Specialization.Create("رعاية مسنين تجريبية", "Test Geriatric Care", true, CaregiverType.Medical),
+                cancellationToken);
+
+            Specialization companionSpecialization = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.Specializations,
+                s => s.EnglishName == "Test Elderly Companionship",
+                () => Specialization.Create("مرافقة مسنين تجريبية", "Test Elderly Companionship", true, CaregiverType.Companion),
+                cancellationToken);
+
+            ProfessionalTitle professionalTitle = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.ProfessionalTitles,
+                t => t.EnglishName == "Test Nurse",
+                () => ProfessionalTitle.Create("ممرض تجريبي", "Test Nurse", true),
+                cancellationToken);
+
+            AcademicDegree academicDegree = await EnsureLookupAsync(
+                _caregiversDbContext,
+                _caregiversDbContext.AcademicDegrees,
+                d => d.EnglishName == "Test BSc Nursing",
+                () => AcademicDegree.Create("بكالوريوس تمريض تجريبي", "Test BSc Nursing", true),
+                cancellationToken);
+
+            // ---------------- Medical caregiver (real readiness flow) ----------------
+
+            medical = Caregiver.Create(
+            medicalCaregiverUser.Id,
+            CaregiverType.Medical);
+
+            medical.SelectService(medicalService);
+            medical.SelectLanguage(language);
+            medical.SelectArea(area);
+
+            medical.UpdateMedicalProfile(
+                professionalTitle,
+                yearsOfExperience: 8,
+                medicalSpecialization,
+                academicDegree,
+                currentWorkplace: "Test Clinic",
+                biography: "Seeded test medical caregiver.",
+                utcNow);
+
+            medical.UpdateMedicalPricing(
+                homeVisitPrice: 500m,
+                eightHourShiftPrice: 900m,
+                twelveHourShiftPrice: 1300m,
+                twentyFourHourShiftPrice: 1800m);
+
+            medical.AddMedicalHomeVisitWindow(DayOfWeek.Saturday, new TimeOnly(8, 0), new TimeOnly(22, 0));
+            medical.AddMedicalHomeVisitWindow(DayOfWeek.Wednesday, new TimeOnly(8, 0), new TimeOnly(22, 0));
+            // A day cannot combine a shift with Home Visit windows (MedicalWeeklySchedule rule) —
+            // shift lives on Monday; windows on Saturday + Wednesday.
+            medical.AddMedicalShift(DayOfWeek.Monday, MedicalShiftType.EightHourMorning);
+
+            medical.AddCertificate(
+                CaregiverCertificateType.PracticeLicense,
+                "test-data/certificates/practice-license.pdf",
+                expiryDate: today.AddYears(1),
+                today);
+
+            medical.AddCertificate(
+                CaregiverCertificateType.GraduationCertificate,
+                "test-data/certificates/graduation.pdf",
+                expiryDate: null,
+                today);
+
+            medical.SubmitForReview(utcNow, today);
+
+            foreach (CaregiverCertificate certificate in medical.Certificates)
+            {
+                medical.VerifyCertificate(certificate.Id);
+            }
+
+            medical.Approve(utcNow, today);
+            medical.BecomeAvailable(today);
+
+            _caregiversDbContext.Caregivers.Add(medical);
+            await _caregiversDbContext.SaveChangesAsync(cancellationToken);
+
+            // ---------------- Companion caregiver (real readiness flow) ----------------
+
+            companion = Caregiver.Create(
+            companionCaregiverUser.Id,
+            CaregiverType.Companion);
+
+            companion.SelectService(companionService);
+            companion.SelectLanguage(language);
+            companion.SelectArea(area);
+
+            companion.UpdateCompanionProfile(
+                yearsOfExperience: 5,
+                companionSpecialization,
+                biography: "Seeded test companion caregiver.",
+                utcNow);
+
+            companion.UpdateCompanionPricing(
+                hourlyPrice: 80m,
+                eightHourDayPrice: 500m,
+                overnightPrice: 700m);
+
+            companion.AddCompanionAvailabilityWindow(CompanionBookingType.Hourly, DayOfWeek.Saturday, new TimeOnly(9, 0), new TimeOnly(18, 0));
+            companion.AddCompanionAvailabilityWindow(CompanionBookingType.Hourly, DayOfWeek.Monday, new TimeOnly(9, 0), new TimeOnly(18, 0));
+
+            companion.SubmitForReview(utcNow, today);
+            companion.Approve(utcNow, today);
+            companion.BecomeAvailable(today);
+
+            _caregiversDbContext.Caregivers.Add(companion);
+            await _caregiversDbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        // ---------------- Subscriptions: published catalog + current snapshot ----------------
+
+        await _platformChargeRuleSeeder.SeedAsync(utcNow, cancellationToken);
+
+        await SubscriptionFixtureGate.WaitAsync(cancellationToken);
+        try
+        {
+            await EnsureSubscriptionFixturesAsync(family, utcNow, cancellationToken);
+            await EnsureManualDowngradeSubscriptionFixtureAsync(
+                manualSubscriptionOwner,
+                utcNow,
+                cancellationToken);
+            await EnsureSubscriptionFreeFixtureAsync(subscriptionFreeOwner, cancellationToken);
+            await EnsureRenewalSubscriptionFixtureAsync(renewalOwner, utcNow, cancellationToken);
+            await EnsurePlanChangeSubscriptionFixtureAsync(planChangeOwner, cancellationToken);
+        }
+        finally
+        {
+            SubscriptionFixtureGate.Release();
+        }
+
+        // ---------------- Bookings portfolio (no slot conflicts: distinct dates per caregiver) ----------------
+
+        Elderly? grandfather = await _familiesDbContext.Elderlies
+            .SingleOrDefaultAsync(
+                e => e.FamilyId == family.Id && e.IdentityUserId == grandfatherUser.Id,
+                cancellationToken);
+
+        if (grandfather is null)
+        {
+            throw new InvalidOperationException(
+                "Test fixture is missing the expected Elderly dependent for the confirmed caregiver booking.");
+        }
+
+        await EnsureMedicationFixtureAsync(grandfather, owner.Id, utcNow, cancellationToken);
+
+        bool bookingsSeeded = await _familiesDbContext.Bookings
+            .AnyAsync(b => b.FamilyId == family.Id, cancellationToken);
+
+        if (bookingsSeeded)
+        {
+            bool hasActiveBookingForFixtureElderly = await _familiesDbContext.Bookings
+                .AnyAsync(
+                    b => b.ElderlyId == grandfather.Id
+                        && b.CaregiverId == medical.Id
+                        && (b.Status == BookingStatus.Confirmed || b.Status == BookingStatus.InProgress),
+                    cancellationToken);
+
+            if (!hasActiveBookingForFixtureElderly)
+            {
+                throw new InvalidOperationException(
+                    "Existing test-family bookings do not include a Confirmed or InProgress booking for the seeded Elderly and assigned medical caregiver fixtures. No booking was added or changed.");
+            }
+
+            await EnsureCaregiverDecisionFixturesAsync(
+                family,
+                owner,
+                grandfather,
+                medical,
+                utcNow,
+                cancellationToken);
+
+            return;
+        }
+
+        decimal medicalHomeVisitFee = medical.MedicalPricing!.HomeVisitPrice;
+        decimal companionHourlyFee = companion.CompanionPricing!.HourlyPrice;
+
+        // 1. Completed (the full successful lifecycle)
+        Booking completed = NewBooking(family, owner, grandfather, medical, BookingCaregiverType.Medical,
+            BookingShiftType.HomeVisit, today.AddDays(1), new TimeOnly(10, 0), new TimeOnly(12, 0),
+            utcNow, medicalHomeVisitFee);
+        PayAndAccept(completed, utcNow);
+        completed.StartVisit(utcNow.AddMinutes(2));
+        completed.CompleteVisit("Seeded completed visit.", utcNow.AddMinutes(3));
+
+        // 2. Confirmed (paid + accepted — the "successful active" booking)
+        Booking confirmed = NewBooking(family, owner, grandfather, medical, BookingCaregiverType.Medical,
+            BookingShiftType.HomeVisit, today.AddDays(3), new TimeOnly(14, 0), new TimeOnly(16, 0),
+            utcNow, medicalHomeVisitFee);
+        PayAndAccept(confirmed, utcNow);
+
+        // 3. PendingPayment (ready for the Postman payment-intent test)
+        Booking pending = NewBooking(family, owner, grandfather, medical, BookingCaregiverType.Medical,
+            BookingShiftType.HomeVisit, today.AddDays(4), new TimeOnly(14, 0), new TimeOnly(16, 0),
+            utcNow, medicalHomeVisitFee);
+
+        // 4. CancelledByFamily (never paid)
+        Booking cancelledByFamily = NewBooking(family, owner, grandfather, medical, BookingCaregiverType.Medical,
+            BookingShiftType.HomeVisit, today.AddDays(5), new TimeOnly(14, 0), new TimeOnly(16, 0),
+            utcNow, medicalHomeVisitFee);
+        cancelledByFamily.CancelByFamily("Seeded family cancellation (unpaid).", utcNow);
+
+        // 5. CancelledByCaregiver after payment → refunded (feeds the admin cancellation summary)
+        Booking cancelledByCaregiver = NewBooking(family, owner, grandfather, companion, BookingCaregiverType.Companion,
+            BookingShiftType.Hourly, today.AddDays(3), new TimeOnly(10, 0), new TimeOnly(12, 0),
+            utcNow, companionHourlyFee);
+        PayAndAccept(cancelledByCaregiver, utcNow);
+        cancelledByCaregiver.CancelByCaregiver("Seeded caregiver cancellation.", utcNow.AddMinutes(4));
+        cancelledByCaregiver.MarkRefunded($"test-refund-{cancelledByCaregiver.Id.Value:N}", utcNow.AddMinutes(5));
+
+        // 6. DeclinedByCaregiver after payment → refunded.
+        // DeclineByCaregiver is only valid from PendingCaregiverApproval, so this
+        // booking is paid but NOT accepted (the decline replaces the acceptance).
+        Booking declined = NewBooking(family, owner, grandfather, medical, BookingCaregiverType.Medical,
+            BookingShiftType.HomeVisit, today.AddDays(6), new TimeOnly(14, 0), new TimeOnly(16, 0),
+            utcNow, medicalHomeVisitFee);
+        declined.RecordPaymentIntent(
+            declined.Id.Value.ToString(),
+            PaymentMethod.Card,
+            utcNow);
+        declined.MarkAsPaid(
+            declined.Id.Value.ToString(),
+            $"test-txn-{declined.Id.Value:N}",
+            utcNow.AddMinutes(1));
+        declined.DeclineByCaregiver("Seeded caregiver decline.", utcNow.AddMinutes(4));
+        declined.MarkRefunded($"test-refund-{declined.Id.Value:N}", utcNow.AddMinutes(5));
+
+        Booking caregiverAccept = NewPaidPendingCaregiverDecisionBooking(
+            family,
+            owner,
+            grandfather,
+            medical,
+            utcNow,
+            today.AddDays(8),
+            "Seeded Bruno caregiver accept fixture.");
+        Booking caregiverDecline = NewPaidPendingCaregiverDecisionBooking(
+            family,
+            owner,
+            grandfather,
+            medical,
+            utcNow,
+            today.AddDays(9),
+            "Seeded Bruno caregiver decline fixture.");
+
+        _familiesDbContext.Bookings.AddRange(
+            completed,
+            confirmed,
+            pending,
+            cancelledByFamily,
+            cancelledByCaregiver,
+            declined,
+            caregiverAccept,
+            caregiverDecline);
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureCaregiverDecisionFixturesAsync(
+        Family family,
+        User owner,
+        Elderly elderly,
+        Caregiver medical,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        (string Instructions, int DayOffset)[] fixtures =
+        [
+            ("Seeded Bruno caregiver accept fixture.", 8),
+            ("Seeded Bruno caregiver decline fixture.", 9)
+        ];
+        string[] fixtureInstructions = fixtures.Select(fixture => fixture.Instructions).ToArray();
+        var existing = await _familiesDbContext.Bookings
+            .Where(booking => booking.SpecialInstructions != null
+                && fixtureInstructions.Contains(booking.SpecialInstructions))
+            .Select(booking => new { Instructions = booking.SpecialInstructions!, booking.Status })
+            .ToListAsync(cancellationToken);
+
+        DateOnly today = DateOnly.FromDateTime(utcNow);
+
+        foreach ((string instructions, int dayOffset) in fixtures)
+        {
+            var matching = existing.Where(fixture => fixture.Instructions == instructions).ToList();
+            if (matching.Any(fixture => fixture.Status == BookingStatus.PendingCaregiverApproval))
+            {
+                continue;
+            }
+
+            int nextDayOffset = dayOffset + matching.Count * fixtures.Length;
+            _familiesDbContext.Bookings.Add(
+                NewPaidPendingCaregiverDecisionBooking(
+                    family,
+                    owner,
+                    elderly,
+                    medical,
+                    utcNow,
+                    today.AddDays(nextDayOffset),
+                    instructions));
+        }
+
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static Booking NewPaidPendingCaregiverDecisionBooking(
+        Family family,
+        User owner,
+        Elderly elderly,
+        Caregiver medical,
+        DateTime utcNow,
+        DateOnly bookingDate,
+        string fixtureInstructions)
+    {
+        Booking booking = NewBooking(
+            family,
+            owner,
+            elderly,
+            medical,
+            BookingCaregiverType.Medical,
+            BookingShiftType.HomeVisit,
+            bookingDate,
+            new TimeOnly(14, 0),
+            new TimeOnly(16, 0),
+            utcNow,
+            medical.MedicalPricing!.HomeVisitPrice,
+            fixtureInstructions);
+
+        string orderId = booking.Id.Value.ToString();
+        booking.RecordPaymentIntent(orderId, PaymentMethod.Card, utcNow);
+
+        // Test-only captured evidence without a gateway transaction reference. The decline handler
+        // can persist the local state transition but will not issue an external refund request.
+        booking.MarkAsPaid(orderId, paymobTransactionId: null!, utcNow);
+        return booking;
+    }
+
+    private async Task EnsureMedicationFixtureAsync(
+        Elderly elderly,
+        UserId createdByUserId,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        TimeZoneInfo timeZone;
+        try
+        {
+            timeZone = TimeZoneInfo.FindSystemTimeZoneById(elderly.TimeZoneId);
+        }
+        catch (TimeZoneNotFoundException exception)
+        {
+            throw new InvalidOperationException(
+                "The seeded Elderly fixture has an invalid time zone; no medication fixture was added or changed.",
+                exception);
+        }
+        catch (InvalidTimeZoneException exception)
+        {
+            throw new InvalidOperationException(
+                "The seeded Elderly fixture has an invalid time zone; no medication fixture was added or changed.",
+                exception);
+        }
+
+        DateTime localNow = TimeZoneInfo.ConvertTimeFromUtc(utcNow, timeZone);
+        DateOnly localDate = DateOnly.FromDateTime(localNow);
+        int thresholdMinutes = await GetMedicationLatenessThresholdAsync(cancellationToken);
+        TimeSpan overdueBy = TimeSpan.FromMinutes(thresholdMinutes + 1);
+        TimeSpan localTime = localNow.TimeOfDay - overdueBy;
+        TimeOnly scheduledTime = localTime >= TimeSpan.Zero
+            ? TimeOnly.FromTimeSpan(localTime)
+            : new TimeOnly(0, 0);
+
+        const string fixtureName = "Test late-evaluation medication";
+        Medication? medication = await _familiesDbContext.Medications
+            .SingleOrDefaultAsync(
+                item => item.ElderlyId == elderly.Id && item.Name == fixtureName,
+                cancellationToken);
+
+        if (medication is null)
+        {
+            medication = Medication.Create(
+                elderly.Id,
+                createdByUserId,
+                fixtureName,
+                "500 mg",
+                "tablet",
+                doseQuantity: 1,
+                doseTimes: [scheduledTime],
+                startDate: localDate.AddDays(-1),
+                endDate: null,
+                instructions: "Seeded overdue dose for late-evaluation testing.",
+                stockQuantity: 30,
+                lowStockThreshold: 5);
+
+            _familiesDbContext.Medications.Add(medication);
+            await _familiesDbContext.SaveChangesAsync(cancellationToken);
+            return;
+        }
+
+        if (medication.Status != MedicationStatus.Active
+            || medication.StartDate > localDate
+            || medication.EndDate < localDate
+            || medication.Dosage != "500 mg"
+            || medication.DoseUnit != "tablet"
+            || medication.DoseQuantity != 1)
+        {
+            throw new InvalidOperationException(
+                "The deterministic late-evaluation medication fixture already exists with incompatible stored terms. No medication fixture was changed.");
+        }
+
+        if (localNow.TimeOfDay < scheduledTime.ToTimeSpan().Add(TimeSpan.FromMinutes(thresholdMinutes)))
+        {
+            medication.UpdateDetails(
+                fixtureName,
+                "500 mg",
+                "tablet",
+                doseQuantity: 1,
+                doseTimes: [scheduledTime],
+                startDate: medication.StartDate,
+                endDate: medication.EndDate,
+                instructions: "Seeded overdue dose for late-evaluation testing.");
+            await _familiesDbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private async Task<int> GetMedicationLatenessThresholdAsync(
+        CancellationToken cancellationToken)
+    {
+        var setting = await _cmsDbContext.MedicationLatenessSettings
+            .Include(item => item.Revisions)
+            .SingleOrDefaultAsync(cancellationToken);
+
+        return setting?.Revisions.SingleOrDefault(item => item.IsActive)?.ThresholdMinutes
+            ?? 60;
+    }
+
+    private async Task EnsureSubscriptionFixturesAsync(
+        Family family,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        SubscriptionPlanVersion? free = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(
+                plan => plan.Key == SubscriptionPlan.FreeKey && plan.Version == 1,
+                cancellationToken);
+
+        if (free is null)
+        {
+            free = SubscriptionPlanVersion.Create(
+                SubscriptionPlan.Free,
+                isPublished: true,
+                isAvailableForNewSales: true,
+                createdOnUtc: utcNow,
+                publishedOnUtc: utcNow);
+            _familiesDbContext.SubscriptionPlanVersions.Add(free);
+        }
+        else
+        {
+            ValidateSubscriptionPlanVersion(free, SubscriptionPlan.Free, true, true, "free");
+        }
+
+        SubscriptionPlanVersion? premium = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(
+                plan => plan.Key == SubscriptionPlan.PremiumKey && plan.Version == 1,
+                cancellationToken);
+
+        if (premium is null)
+        {
+            premium = SubscriptionPlanVersion.Create(
+                SubscriptionPlan.Premium,
+                isPublished: true,
+                isAvailableForNewSales: false,
+                createdOnUtc: utcNow,
+                publishedOnUtc: utcNow);
+            _familiesDbContext.SubscriptionPlanVersions.Add(premium);
+        }
+        else
+        {
+            ValidateSubscriptionPlanVersion(premium, SubscriptionPlan.Premium, true, false, "premium");
+        }
+
+        SubscriptionPlanVersion? premiumPlus = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(
+                plan => plan.Key == SubscriptionPlan.PremiumPlusKey && plan.Version == 1,
+                cancellationToken);
+
+        if (premiumPlus is null)
+        {
+            premiumPlus = SubscriptionPlanVersion.Create(
+                SubscriptionPlan.PremiumPlus,
+                isPublished: false,
+                isAvailableForNewSales: true,
+                createdOnUtc: utcNow);
+            _familiesDbContext.SubscriptionPlanVersions.Add(premiumPlus);
+        }
+        else
+        {
+            ValidateSubscriptionPlanVersion(premiumPlus, SubscriptionPlan.PremiumPlus, false, true, "premium-plus");
+        }
+
+        SubscriptionPlan upgradePlan = SubscriptionPlan.Create(
+            "test-upgrade",
+            1,
+            499m,
+            SubscriptionCycle.Monthly,
+            SubscriptionPlan.DefaultCurrency,
+            SubscriptionPlan.Premium.Benefits,
+            SubscriptionPlan.Premium.MemberLimit,
+            SubscriptionPlan.Premium.MonthlyBookingLimit,
+            SubscriptionPlan.Premium.Rollover);
+
+        SubscriptionPlanVersion? upgrade = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(
+                plan => plan.Key == upgradePlan.Key && plan.Version == upgradePlan.Version,
+                cancellationToken);
+
+        if (upgrade is null)
+        {
+            upgrade = SubscriptionPlanVersion.Create(
+                upgradePlan,
+                isPublished: true,
+                isAvailableForNewSales: true,
+                createdOnUtc: utcNow,
+                publishedOnUtc: utcNow);
+            _familiesDbContext.SubscriptionPlanVersions.Add(upgrade);
+        }
+        else
+        {
+            ValidateSubscriptionPlanVersion(upgrade, upgradePlan, true, true, "test-upgrade");
+        }
+
+        FamilySubscription? current = await _familiesDbContext.FamilySubscriptions
+            .Include(subscription => subscription.Benefits)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(
+                subscription => subscription.FamilyId == family.Id && subscription.IsCurrent,
+                cancellationToken);
+
+        if (current is null)
+        {
+            _familiesDbContext.FamilySubscriptions.Add(
+                FamilySubscription.Create(family.Id, free, utcNow));
+        }
+        else
+        {
+            ValidateFamilySubscription(current, SubscriptionPlan.Free);
+        }
+
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsureSubscriptionFreeFixtureAsync(
+        User owner,
+        CancellationToken cancellationToken)
+    {
+        Family family = await EnsureFixtureFamilyAsync(owner, "Test Subscription-Free Family", cancellationToken);
+
+        bool hasCurrent = await _familiesDbContext.FamilySubscriptions
+            .AnyAsync(subscription => subscription.FamilyId == family.Id && subscription.IsCurrent, cancellationToken);
+
+        _ = hasCurrent;
+    }
+
+    private async Task EnsureRenewalSubscriptionFixtureAsync(
+        User owner,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        Family family = await EnsureFixtureFamilyAsync(owner, "Test Subscription Renewal Family", cancellationToken);
+        SubscriptionPlanVersion premium = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .AsSplitQuery()
+            .SingleAsync(
+                plan => plan.Key == SubscriptionPlan.PremiumKey && plan.Version == 1,
+                cancellationToken);
+
+        FamilySubscription? current = await _familiesDbContext.FamilySubscriptions
+            .Include(subscription => subscription.Benefits)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(
+                subscription => subscription.FamilyId == family.Id && subscription.IsCurrent,
+                cancellationToken);
+
+        if (current is null)
+        {
+            current = FamilySubscription.Create(
+                family.Id,
+                premium,
+                utcNow.AddMonths(-2),
+                utcNow.AddDays(-1));
+            _familiesDbContext.FamilySubscriptions.Add(current);
+        }
+        // A repeated launch may find a callback-mutated subscription. Preserve it;
+        // only the first launch needs the due-period precondition.
+
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task EnsurePlanChangeSubscriptionFixtureAsync(
+        User owner,
+        CancellationToken cancellationToken)
+    {
+        Family family = await EnsureFixtureFamilyAsync(owner, "Test Subscription Plan Change Family", cancellationToken);
+        bool hasCurrent = await _familiesDbContext.FamilySubscriptions
+            .AnyAsync(subscription => subscription.FamilyId == family.Id && subscription.IsCurrent, cancellationToken);
+
+        if (!hasCurrent)
+        {
+            SubscriptionPlanVersion free = await _familiesDbContext.SubscriptionPlanVersions
+                .Include(plan => plan.Benefits)
+                .AsSplitQuery()
+                .SingleAsync(
+                    plan => plan.Key == SubscriptionPlan.FreeKey && plan.Version == 1,
+                    cancellationToken);
+            _familiesDbContext.FamilySubscriptions.Add(FamilySubscription.Create(family.Id, free));
+            await _familiesDbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private async Task<Family> EnsureFixtureFamilyAsync(
+        User owner,
+        string name,
+        CancellationToken cancellationToken)
+    {
+        Family? family = await _familiesDbContext.Families
+            .SingleOrDefaultAsync(item => item.OwnerUserId == owner.Id, cancellationToken);
+
+        if (family is not null)
+            return family;
+
+        family = Family.Create(owner.Id, name);
+        _familiesDbContext.Families.Add(family);
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+        return family;
+    }
+
+    private static void ValidateSubscriptionPlanVersion(
+        SubscriptionPlanVersion actual,
+        SubscriptionPlan expected,
+        bool isPublished,
+        bool isAvailableForNewSales,
+        string fixtureName)
+    {
+        if (actual.IsPublished != isPublished
+            || (isPublished
+                && (!actual.PublishedOnUtc.HasValue
+                    || actual.PublishedOnUtc.Value == default
+                    || actual.PublishedOnUtc.Value.Kind != DateTimeKind.Utc))
+            || (!isPublished && actual.PublishedOnUtc.HasValue)
+            || actual.IsAvailableForNewSales != isAvailableForNewSales
+            || actual.Key != expected.Key
+            || actual.Version != expected.Version
+            || actual.Price != expected.Price
+            || actual.Cycle != expected.Cycle
+            || actual.Currency != expected.Currency
+            || actual.MemberLimitKind != expected.MemberLimit.Kind
+            || actual.MemberLimitValue != expected.MemberLimit.Value
+            || actual.MonthlyBookingLimitKind != expected.MonthlyBookingLimit.Kind
+            || actual.MonthlyBookingLimitValue != expected.MonthlyBookingLimit.Value
+            || actual.Rollover != expected.Rollover
+            || !HasExactBenefits(actual.Benefits, expected.Benefits))
+        {
+            throw new InvalidOperationException(
+                $"The deterministic {fixtureName} subscription fixture already exists with incompatible stored terms or benefits.");
+        }
+    }
+
+    private async Task EnsureManualDowngradeSubscriptionFixtureAsync(
+        User owner,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        Family? family = await _familiesDbContext.Families
+            .Include(item => item.Members)
+            .SingleOrDefaultAsync(item => item.OwnerUserId == owner.Id, cancellationToken);
+
+        if (family is null)
+        {
+            family = Family.Create(owner.Id, "Test Manual Subscription Family");
+            _familiesDbContext.Families.Add(family);
+            await _familiesDbContext.SaveChangesAsync(cancellationToken);
+        }
+
+        SubscriptionPlanVersion premium = await _familiesDbContext.SubscriptionPlanVersions
+            .Include(plan => plan.Benefits)
+            .AsSplitQuery()
+            .SingleAsync(
+                plan => plan.Key == SubscriptionPlan.PremiumKey && plan.Version == 1,
+                cancellationToken);
+
+        FamilySubscription? current = await _familiesDbContext.FamilySubscriptions
+            .Include(subscription => subscription.Benefits)
+            .AsSplitQuery()
+            .SingleOrDefaultAsync(
+                subscription => subscription.FamilyId == family.Id && subscription.IsCurrent,
+                cancellationToken);
+
+        if (current is null)
+        {
+            current = FamilySubscription.Create(family.Id, premium, utcNow);
+            current.SetCurrentPeriodSettlement(premium.Price, taxRatePercentage: 0m);
+            _familiesDbContext.FamilySubscriptions.Add(current);
+        }
+        else
+        {
+            ValidateFamilySubscription(current, SubscriptionPlan.Premium);
+        }
+
+        if (current.PaymobSubscriptionId is not null)
+        {
+            throw new InvalidOperationException(
+                "The manual subscription downgrade fixture must not have a Paymob subscription ID.");
+        }
+
+        await _familiesDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private static void ValidateFamilySubscription(FamilySubscription actual, SubscriptionPlan expected)
+    {
+        if (!actual.IsCurrent
+            || actual.PlanKey != expected.Key
+            || actual.PlanVersion != expected.Version
+            || actual.Price != expected.Price
+            || actual.Cycle != expected.Cycle
+            || actual.Currency != expected.Currency
+            || actual.MemberLimitKind != expected.MemberLimit.Kind
+            || actual.MemberLimitValue != expected.MemberLimit.Value
+            || actual.MonthlyBookingLimitKind != expected.MonthlyBookingLimit.Kind
+            || actual.MonthlyBookingLimitValue != expected.MonthlyBookingLimit.Value
+            || actual.Rollover != expected.Rollover
+            || !HasExactBenefits(actual.Benefits, expected.Benefits))
+        {
+            throw new InvalidOperationException(
+                "The seeded family already has an incompatible current subscription fixture stored terms or benefits.");
+        }
+    }
+
+    private static bool HasExactBenefits(
+        IEnumerable<SubscriptionBenefit> actual,
+        IEnumerable<SubscriptionBenefit> expected)
+    {
+        var actualList = actual.ToList();
+        var expectedList = expected.ToList();
+
+        if (actualList.Count != 8
+            || expectedList.Count != 8
+            || actualList.Select(benefit => benefit.Key).Distinct().Count() != 8)
+        {
+            return false;
+        }
+
+        var actualBenefits = actualList.ToDictionary(benefit => benefit.Key, benefit => benefit.IsIncluded);
+        var expectedBenefits = expectedList.ToDictionary(benefit => benefit.Key, benefit => benefit.IsIncluded);
+
+        return actualBenefits.Count == expectedBenefits.Count
+            && actualBenefits.All(pair => expectedBenefits.TryGetValue(pair.Key, out bool included)
+                && included == pair.Value);
+    }
+
+    private static Booking NewBooking(
+        Family family,
+        User owner,
+        Elderly elderly,
+        Caregiver caregiver,
+        BookingCaregiverType caregiverType,
+        BookingShiftType shiftType,
+        DateOnly bookingDate,
+        TimeOnly startTime,
+        TimeOnly endTime,
+        DateTime utcNow,
+        decimal baseFee,
+        string? specialInstructions = null)
+    {
+        return Booking.Create(
+            family.Id,
+            owner.Id,
+            elderly.Id,
+            caregiver.Id,
+            caregiverType,
+            shiftType,
+            bookingDate,
+            startTime,
+            endTime,
+            "14 شارع الكورنيش، الإسكندرية (بيانات اختبار)",
+            specialInstructions,
+            BookingPriceSnapshot.Calculate(baseFee, 15m),
+            acceptanceDeadlineUtc: utcNow.AddHours(24),
+            currentDate: DateOnly.FromDateTime(utcNow),
+            createdOnUtc: utcNow);
+    }
+
+    private static void PayAndAccept(Booking booking, DateTime utcNow)
+    {
+        booking.RecordPaymentIntent(
+            booking.Id.Value.ToString(),
+            PaymentMethod.Card,
+            utcNow.AddMinutes(-3));
+        booking.MarkAsPaid(
+            booking.Id.Value.ToString(),
+            $"test-txn-{booking.Id.Value:N}",
+            utcNow.AddMinutes(-2));
+        booking.AcceptByCaregiver(utcNow.AddMinutes(-1));
+    }
+
+    private async Task<User> EnsureUserAsync(
+        string arabicFullName,
+        string englishFullName,
+        string email,
+        string phoneNumber,
+        AccountType accountType,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        string normalizedEmail = Email.Create(email).Value;
+
+        List<User> users =
+            await _identityDbContext.Users.ToListAsync(cancellationToken);
+
+        User? user = users.FirstOrDefault(
+            u => u.Email != null && u.Email.Value == normalizedEmail);
+
+        if (user is not null)
+        {
+            bool changed = false;
+            if (!user.Accounts.Any(account => account.AccountType == accountType))
+            {
+                user.AddAccount(accountType);
+                changed = true;
+            }
+
+            // Existing local fixtures may have been created by registration
+            // tests and left pending verification. The guarded fixture seed
+            // represents ready-to-use test accounts, not OTP lifecycle cases.
+            if (user.Status == UserStatus.PendingVerification)
+            {
+                if (!user.EmailVerified)
+                {
+                    user.VerifyEmail(utcNow);
+                    changed = true;
+                }
+
+                if (!user.PhoneVerified)
+                {
+                    user.VerifyPhone(utcNow);
+                    changed = true;
+                }
+
+                user.Activate(utcNow);
+                changed = true;
+            }
+
+            changed |= EnsureFixturePassword(user, _options.Password, utcNow);
+
+            if (changed)
+            {
+                await _identityDbContext.SaveChangesAsync(cancellationToken);
+            }
+            return user;
+        }
+
+        user = User.Create(
+            FullName.Create(arabicFullName),
+            FullName.Create(englishFullName),
+            Email.Create(email),
+            PhoneNumber.Create(phoneNumber));
+
+        user.AddAccount(accountType);
+        user.SetInitialPasswordHash(
+            _passwordHasher.Hash(_options.Password),
+            utcNow);
+        user.VerifyEmail(utcNow);
+        user.VerifyPhone(utcNow);
+        user.Activate(utcNow);
+
+        _identityDbContext.Users.Add(user);
+        await _identityDbContext.SaveChangesAsync(cancellationToken);
+
+        return user;
+    }
+
+    private string ReadFixtureRunId()
+    {
+        string? runId = _configuration[$"{TestUserSeedOptions.SectionName}:RunId"];
+        if (string.IsNullOrWhiteSpace(runId))
+        {
+            throw new InvalidOperationException(
+                "App:TestUserSeed:RunId must be supplied for subscription lifecycle fixtures.");
+        }
+
+        string normalized = new(runId.Trim().Where(char.IsLetterOrDigit).ToArray());
+        if (normalized.Length is < 6 or > 32)
+        {
+            throw new InvalidOperationException(
+                "App:TestUserSeed:RunId must contain 6 to 32 letters or digits.");
+        }
+
+        return normalized.ToLowerInvariant();
+    }
+
+    /// <summary>
+    /// Resolves <c>App:TestUserSeed:Scope</c>. Unknown values fail closed.
+    /// Only reached when the seed is enabled, so a disabled seed never
+    /// inspects the scope.
+    /// </summary>
+    private string ResolveScope()
+    {
+        string? raw = _options.Scope;
+
+        if (string.IsNullOrWhiteSpace(raw)
+            || string.Equals(raw, TestUserSeedOptions.ScopeFull, StringComparison.OrdinalIgnoreCase))
+        {
+            return TestUserSeedOptions.ScopeFull;
+        }
+
+        if (string.Equals(raw, TestUserSeedOptions.ScopeMinimal, StringComparison.OrdinalIgnoreCase))
+        {
+            return TestUserSeedOptions.ScopeMinimal;
+        }
+
+        throw new InvalidOperationException(
+            "App:TestUserSeed:Scope must be 'Full' or 'Minimal'.");
+    }
+
+    /// <summary>
+    /// Minimal fixture scope: exactly the two deterministic identities needed
+    /// by the L1 verification path (admin wellness-tips list + family viewer),
+    /// each with a ready-to-use password login. No elderly password, no RunId,
+    /// no families, caregivers, bookings, subscriptions or catalog rows.
+    /// Idempotent: repeated runs keep the same two identities.
+    /// </summary>
+    private async Task SeedMinimalIdentitiesAsync(CancellationToken cancellationToken)
+    {
+        string? paymobSecretKey =
+            _configuration["Paymob:SecretKey"];
+
+        if (PaymobSecretKeySafety.IsLive(paymobSecretKey))
+        {
+            throw new InvalidOperationException(
+                "App:TestUserSeed:Enabled must never be true against a LIVE Paymob key.");
+        }
+
+        DateTime utcNow = _dateTimeProvider.UtcNow;
+
+        User contentAdmin = await EnsureUserAsync(
+            arabicFullName: "إدارة المحتوى التجريبية",
+            englishFullName: "Test Content Admin",
+            email: MinimalFixtureContentAdminEmail,
+            phoneNumber: "+201000000009",
+            AccountType.ContentAdmin,
+            utcNow,
+            cancellationToken);
+
+        User familyViewer = await EnsureUserAsync(
+            arabicFullName: "فرد العيلة التجريبي",
+            englishFullName: "Test Family Viewer",
+            email: MinimalFixtureFamilyViewerEmail,
+            phoneNumber: "+201000000002",
+            AccountType.Family,
+            utcNow,
+            cancellationToken);
+
+        await EnsureFixtureLoginCapacityAsync(
+            [contentAdmin.Id, familyViewer.Id],
+            utcNow,
+            cancellationToken);
+    }
+
+    private static string FixtureEmail(string prefix, string runId) =>
+        $"{prefix}.{runId}@test.sanad.local";
+
+    private async Task EnsureFixtureLoginCapacityAsync(
+        IReadOnlyCollection<UserId> fixtureUserIds,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        List<DeviceSession> activeSessions =
+            await _identityDbContext.DeviceSessions
+                .Where(session =>
+                    fixtureUserIds.Contains(session.UserId)
+                    && !session.RevokedOnUtc.HasValue
+                    && session.ExpiresOnUtc > utcNow)
+                .OrderBy(session => session.CreatedOnUtc)
+                .ToListAsync(cancellationToken);
+
+        int sessionsToRevoke = Math.Max(
+            0,
+            activeSessions.Count - (DeviceSessionPolicy.MaximumActiveSessions - 1));
+
+        foreach (DeviceSession session in activeSessions.Take(sessionsToRevoke))
+        {
+            session.Revoke("Disposable fixture login capacity", utcNow);
+        }
+
+        if (sessionsToRevoke > 0)
+        {
+            await _identityDbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+
+    private static string FixturePhoneNumber(string runId, int suffix)
+    {
+        int hash = 17;
+        unchecked
+        {
+            foreach (char character in runId)
+                hash = (hash * 31) + character;
+        }
+
+        hash = Math.Abs(hash == int.MinValue ? 0 : hash);
+        return $"+201{hash % 100000000:00000000}{suffix % 10}";
+    }
+
+    private async Task<User> EnsureElderlyUserAsync(
+        string arabicFullName,
+        string englishFullName,
+        string phoneNumber,
+        Gender gender,
+        DateOnly dateOfBirth,
+        DateTime utcNow,
+        CancellationToken cancellationToken)
+    {
+        string normalizedPhoneNumber = PhoneNumber.Create(phoneNumber).Value;
+
+        List<User> users =
+            await _identityDbContext.Users.ToListAsync(cancellationToken);
+
+        User? user = users.FirstOrDefault(
+            u => u.PhoneNumber.Value == normalizedPhoneNumber);
+
+        if (user is not null)
+        {
+            if (EnsureFixturePassword(user, _options.ElderlyPassword!, utcNow))
+                await _identityDbContext.SaveChangesAsync(cancellationToken);
+
+            return user;
+        }
+
+        // CreateElderly already sets UserStatus.Active, PhoneVerified = true,
+        // DateOfBirth, Gender and the Elderly account — nothing else needed.
+        user = User.CreateElderly(
+            FullName.Create(arabicFullName),
+            FullName.Create(englishFullName),
+            PhoneNumber.Create(phoneNumber),
+            gender,
+            dateOfBirth,
+            utcNow);
+
+        EnsureFixturePassword(user, _options.ElderlyPassword!, utcNow);
+
+        _identityDbContext.Users.Add(user);
+        await _identityDbContext.SaveChangesAsync(cancellationToken);
+
+        return user;
+    }
+
+    private bool EnsureFixturePassword(User user, string password, DateTime utcNow)
+    {
+        if (user.Password is not null
+            && _passwordHasher.Verify(user.Password.PasswordHash, password)
+                != PasswordVerificationResult.Failed)
+        {
+            return false;
+        }
+
+        if (user.HasPassword)
+        {
+            user.ResetPasswordHash(_passwordHasher.Hash(password), utcNow);
+        }
+        else
+        {
+            user.SetInitialPasswordHash(_passwordHasher.Hash(password), utcNow);
+        }
+
+        return true;
+    }
+
+    private async Task EnsureHelpRequestCatalogAsync(
+        CancellationToken cancellationToken)
+    {
+        (string Key, SentenceBuilderCategory Category, string Arabic, string English)[] entries =
+        [
+            ("self", SentenceBuilderCategory.Actor, "أنا", "I"),
+            ("need", SentenceBuilderCategory.Action, "أحتاج", "need"),
+            ("water", SentenceBuilderCategory.Need, "ماء", "water"),
+            ("now", SentenceBuilderCategory.Qualifier, "الآن", "now")
+        ];
+
+        for (int index = 0; index < entries.Length; index++)
+        {
+            var fixture = entries[index];
+            SentenceBuilderCatalogEntry? entry = await _cmsDbContext.SentenceBuilderCatalogEntries
+                .Include(item => item.Revisions)
+                .SingleOrDefaultAsync(
+                    item => item.StableKey == fixture.Key && item.Category == fixture.Category,
+                    cancellationToken);
+
+            if (entry is null)
+            {
+                entry = SentenceBuilderCatalogEntry.Create(fixture.Key, fixture.Category);
+                SentenceBuilderCatalogRevision revision = entry.AddRevision(
+                    fixture.Arabic,
+                    fixture.English,
+                    index);
+                revision.Activate();
+                _cmsDbContext.SentenceBuilderCatalogEntries.Add(entry);
+                continue;
+            }
+
+            if (!entry.Revisions.Any(revision => revision.IsActive))
+            {
+                SentenceBuilderCatalogRevision revision = entry.AddRevision(
+                    fixture.Arabic,
+                    fixture.English,
+                    index);
+                revision.Activate();
+            }
+        }
+
+        await _cmsDbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    private async Task<T> EnsureLookupAsync<T>(
+        CaregiversDbContext dbContext,
+        DbSet<T> set,
+        System.Linq.Expressions.Expression<Func<T, bool>> predicate,
+        Func<T> factory,
+        CancellationToken cancellationToken)
+        where T : class
+    {
+        T? existing = await set.FirstOrDefaultAsync(predicate, cancellationToken);
+
+        if (existing is not null)
+        {
+            return existing;
+        }
+
+        T created = factory();
+        set.Add(created);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return created;
+    }
+}

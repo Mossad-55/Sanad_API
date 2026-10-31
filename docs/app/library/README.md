@@ -9,8 +9,8 @@ bullet lists) and `Video` (an uploaded MP4 stored by the API plus a duration —
 there is no transcoding in V1, and playback is served by the API itself, not
 by an external host).
 
-- [Postman App library collection](../../postman/app/Sanad.App.Library.postman_collection.json)
-- [Postman Admin collection (Library CMS folder)](../../postman/admins/Sanad.Admin.postman_collection.json)
+- [Postman App library collection](../../postman/app/Ahlena.App.Library.postman_collection.json)
+- [Postman Admin collection (Library CMS folder)](../../postman/admins/Ahlena.Admin.postman_collection.json)
 
 ## Categories
 

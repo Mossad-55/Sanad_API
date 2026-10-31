@@ -183,5 +183,5 @@ with all three `null`).
 
 ## Postman
 
-`docs/postman/admins/Sanad.Admin.postman_collection.json` → folder
+`docs/postman/admins/Ahlena.Admin.postman_collection.json` → folder
 "21. Support inbox (SuperAdmin/SupportAdmin)".

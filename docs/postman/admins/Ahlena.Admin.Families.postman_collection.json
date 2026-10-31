@@ -1,0 +1,194 @@
+{
+  "info": {
+    "_postman_id": "c6f0a1b2-0006-4f60-families-admin-000000006",
+    "name": "Ahlena Admin — Families",
+    "description": "Read-only operational family register for SuperAdmin and SupportAdmin (policy OperationalReadAdmin: Normal access, account_type SuperAdmin (5) or SupportAdmin (7)). ContentAdmin, FinanceAdmin, Care Home owners, Family, Elderly and Caregiver tokens are denied. There is no Admin write, impersonation or subscription/search-enrichment route here. These examples are authored, not runtime evidence; run only against disposable local fixtures.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7296" },
+    { "key": "accessToken", "value": "" },
+    { "key": "familyId", "value": "" },
+    { "key": "deletedFamilyId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "List families",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/families?page=1&pageSize=25&search=",
+        "description": "Bounded family register. Paging is clamped and never an error: page is at least 1, pageSize defaults to 25 and is capped at 100. search matches an exact family id when the value parses as a GUID and otherwise a case-insensitive substring of the family name; a blank search is treated as absent and a search that matches nothing returns an empty page with totalCount 0. Results order newest first by createdOnUtc then familyId. Each item carries familyId, name, ownerUserId, memberCount, createdOnUtc and nullable deletedOnUtc; the family deletion reason/message is never returned. A deleted family is retained and reports its deletedOnUtc."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('family list contract status', () => pm.expect([200, 401, 403]).to.include(pm.response.code));",
+              "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('page'); pm.expect(body).to.have.property('pageSize'); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('items').that.is.an('array'); pm.expect(body.pageSize).to.be.at.most(100); if (body.items.length > 0) { pm.expect(body.items[0]).to.have.property('familyId'); pm.expect(body.items[0]).to.have.property('memberCount'); pm.expect(body.items[0]).to.have.property('deletedOnUtc'); pm.expect(JSON.stringify(body)).not.to.include('deletionReason'); } }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List families (exact id search)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/families?page=1&pageSize=25&search={{familyId}}",
+        "description": "A GUID search is matched as an exact family id and ignores the name. Set familyId to a family you own from the list response first. A well-formed but unknown id is not an error: it returns 200 with an empty items array."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('family exact id search contract', () => pm.expect([200, 401, 403]).to.include(pm.response.code));",
+              "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.items).to.be.an('array'); pm.expect(body.totalCount).to.be.at.most(1); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List families (deleted family retained)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/families?page=1&pageSize=25&search={{deletedFamilyId}}",
+        "description": "A deleted family is retained by the register rather than hidden: the row still resolves and carries a non-null deletedOnUtc. The deletion reason/message is not part of the projection. Set deletedFamilyId to a soft-deleted fixture family first."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('deleted family retained contract', () => pm.expect([200, 401, 403]).to.include(pm.response.code));",
+              "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.items).to.be.an('array'); if (body.items.length > 0) { pm.expect(body.items[0].deletedOnUtc, 'deleted fixture must report a deletion instant').to.not.be.null; } pm.expect(JSON.stringify(body)).not.to.include('deletionReason'); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "List families (paging clamp and unmatched search)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/families?page=0&pageSize=500&search=zzz-no-such-family",
+        "description": "Neither invalid paging nor an unmatched search is a 400 on this read. page 0 reads as 1, pageSize 500 reads as 100, and the unmatched search returns 200 with an empty items array and totalCount 0."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('family paging clamp and empty search contract', () => pm.expect([200, 401, 403]).to.include(pm.response.code));",
+              "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body.page).to.equal(1); pm.expect(body.pageSize).to.equal(100); pm.expect(body.totalCount).to.equal(0); pm.expect(body.items).to.have.lengthOf(0); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Dependent (elderly) name+ID lookup",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/elderly/lookup?search=&page=1&pageSize=20",
+        "description": "OperationalReadAdmin (SuperAdmin or SupportAdmin, access_type Normal). Resolves a dependent name to the single dependent id used as the care-record dependentId and as the elderlyId of check-ins, SOS, help requests and medications. search is an optional case-insensitive substring of the Arabic or English full name; the caller's text is matched literally (% and _ are not wildcards) and a blank or unmatched search is never an error. Paging is clamped and echoed back: page is at least 1, pageSize defaults to 20 and is capped at 100. Items are ordered by Arabic name, then English name, then id. Each item carries id, arabicFullName and englishFullName and nothing else - no phone, email, address, emergency contact, health note or medical value - and dependents of a deleted family are excluded. The envelope is items, page, pageSize, totalCount, totalPages."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('elderly lookup contract', () => pm.expect([200, 401, 403]).to.include(pm.response.code));",
+              "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('page'); pm.expect(body).to.have.property('pageSize'); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('totalPages'); pm.expect(body.items).to.be.an('array'); pm.expect(body.pageSize).to.be.at.most(100); if (body.items.length > 0) { pm.expect(body.items[0]).to.have.property('id'); pm.expect(body.items[0]).to.have.property('arabicFullName'); pm.expect(body.items[0]).to.have.property('englishFullName'); const json = JSON.stringify(body); ['phoneNumber','email','detailedAddress','healthNotes','emergencyContact','medicalProfile'].forEach(key => pm.expect(json, key + ' must never be published').not.to.include(key)); } }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Family detail",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/families/{{familyId}}",
+        "description": "Detail adds members and dependents to the list fields. members is ordered by joinedOnUtc then userId and each entry carries userId, role (1 Owner, 2 Editor, 3 Viewer), relationshipType (1 Father, 2 Mother, 3 Son, 4 Daughter, 5 Brother, 6 Sister, 7 Grandfather, 8 Grandmother, 9 Grandson, 10 Granddaughter, 11 Uncle, 12 Aunt, 13 Nephew, 14 Niece, 15 Spouse, 99 Other), addedByUserId, joinedOnUtc and status (1 PendingVerification, 2 Active, 3 Suspended, 4 Blocked, or 0 when the Identity profile cannot be resolved). dependents carries elderlyId, identityUserId and relationshipType only, and is still returned for a deleted family. Never returned: medical profile, notes, address, phone, health or assessment data, member display names/email/avatar, and the family deletion reason/message. Unknown or empty ids return 404 Families.Family.NotFound."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('family detail contract status', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));",
+              "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('familyId'); pm.expect(body).to.have.property('name'); pm.expect(body).to.have.property('ownerUserId'); pm.expect(body).to.have.property('memberCount'); pm.expect(body).to.have.property('members').that.is.an('array'); pm.expect(body).to.have.property('dependents').that.is.an('array'); if (body.members.length > 0) { pm.expect(body.members[0]).to.have.property('userId'); pm.expect(body.members[0]).to.have.property('role'); pm.expect(body.members[0]).to.have.property('status'); } const raw = JSON.stringify(body); pm.expect(raw).not.to.include('arabicFullName'); pm.expect(raw).not.to.include('englishFullName'); pm.expect(raw).not.to.include('phoneNumber'); pm.expect(raw).not.to.include('avatarUrl'); pm.expect(raw).not.to.include('email'); pm.expect(raw).not.to.include('deletionReason'); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Family detail (unknown id)",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+        "url": "{{baseUrl}}/api/v1/admin/families/00000000-0000-0000-0000-000000000000",
+        "description": "An unknown or empty family id returns 404 Families.Family.NotFound; the route never creates or returns an empty family object."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "type": "text/javascript",
+            "exec": [
+              "pm.test('unknown family detail is 404', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));",
+              "if (pm.response.code === 404) { pm.expect(pm.response.json()).to.have.property('title'); }"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "Care records — payload-bearing operational read",
+      "description": "READ-ONLY, SuperAdmin and SupportAdmin only (OperationalReadAdmin). Every list/detail call is audited without filter or medical payload. No create/update/delete, impersonation, or author attribution route exists.",
+      "item": [
+        {
+          "name": "List care records — authorized local data only",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/care-records?page=1&pageSize=20",
+            "description": "Optional source, dependentId, visitDateFrom/To and hospital-name search filters. Response contains care-record content and each access is payload-free audited; use only the authorized local environment."
+          }
+        },
+        {
+          "name": "Get care record detail — audited read",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": "{{baseUrl}}/api/v1/admin/care-records/{{careRecordId}}",
+            "description": "READ-ONLY; detail access is audited without recording medical payload."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7296" },
+    { "key": "accessToken", "value": "" },
+    { "key": "familyId", "value": "" },
+    { "key": "deletedFamilyId", "value": "" },
+    { "key": "careRecordId", "value": "" }
+  ]
+}

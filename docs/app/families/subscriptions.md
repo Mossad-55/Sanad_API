@@ -336,7 +336,7 @@ state and must never be enabled with a live Paymob key.
 ## Subscription invoices
 
 Successful initial purchases and successful renewals create one immutable
-server-side invoice using the fixed Sanad Care branded PDF template. Failed,
+server-side invoice using the fixed Ahlena-branded PDF template. Failed,
 pending, duplicate, and grace-expired callback events do not create invoices.
 Invoice numbers use `INV-YYYY-MM-######`; the stored record includes the plan,
 period, subtotal, discount, tax, total, currency, issue time, and private PDF

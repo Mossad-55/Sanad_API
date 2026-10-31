@@ -245,7 +245,7 @@ detail. Validation `400`s keep their `code`.
 All examples on this page are statically authored from the verified code paths
 and lane reports (`docs/chat/reports/lane-b-*.md`); they were never executed
 against a live API or database. Matching Postman requests:
-[Sanad.App.Chat.postman_collection.json](../../postman/app/Sanad.App.Chat.postman_collection.json)
+[Ahlena.App.Chat.postman_collection.json](../../postman/app/Ahlena.App.Chat.postman_collection.json)
 (endpoint 11) and
-[Sanad.Admin.Chat.postman_collection.json](../../postman/admins/Sanad.Admin.Chat.postman_collection.json)
+[Ahlena.Admin.Chat.postman_collection.json](../../postman/admins/Ahlena.Admin.Chat.postman_collection.json)
 (endpoints 12–15).

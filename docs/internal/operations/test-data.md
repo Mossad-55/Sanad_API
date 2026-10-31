@@ -5,7 +5,7 @@ one report per completed booking; duplicate and concurrent submissions are rejec
 booking constraint. The `medical-reports` Bruno collection is intended for a freshly seeded local
 database only.
 
-An **opt-in, idempotent seeder** creates a stable multi-role fixture so API tests (manual, Postman, or an agent driving HTTP) can log in and exercise real flows without manual setup. It mirrors the `SuperAdminSeeder` pattern and lives at `src/API/Sanad.API/Seeding/TestUserDataSeeder.cs`.
+An **opt-in, idempotent seeder** creates a stable multi-role fixture so API tests (manual, Postman, or an agent driving HTTP) can log in and exercise real flows without manual setup. It mirrors the `SuperAdminSeeder` pattern and lives at `src/API/Ahlena.API/Seeding/TestUserDataSeeder.cs`.
 
 ## Enabling it
 
@@ -109,3 +109,25 @@ curl -i "https://<test-host>/api/v1/caregivers?type=1&availability=1&page=1&page
 curl -i "https://<test-host>/api/v1/family/bookings?tab=1" -H "Authorization: Bearer <access-token>"
 curl -i "https://<test-host>/api/v1/family/bookings?tab=3" -H "Authorization: Bearer <access-token>"
 ```
+
+## Portal provisioner (local demo corpus / demo-nonce)
+
+`tools/Ahlena.PortalProvisioner` provisions the bounded rehearsal/demo fixtures. Modes (from the tool's own `--help`): `--mode plan` prints the write manifest with zero database access, `--mode verify` is a read-only target identity assertion, `--mode provision` verifies first and then upserts marker-keyed data-only groups. `production` is refused outright.
+
+Common requirements (all modes): `--run-tag <tag>` is required — the tool refuses without a stable marker namespace per target. Other common options: `--instant <UTC>`, `--groups <id,id,...>`, `--work-root <dir>`, `--seam-deployed` (required to plan or provision the four FixtureRefundSeam groups, and backed by the deployed app's startup log line showing exactly the allowlisted ids this plan prints).
+
+Target kinds (`--target-kind`), verify/provision only:
+
+| Kind | Meaning | Override flag |
+|---|---|---|
+| `rehearsal` | the S3a fixture path (SSH tunnel declared via `--tunnel-declared`) | none |
+| `demo-nonce` | disposable local dry run; generated database name `SanadDemoNonce_<digits>` | none |
+| `local-demo` | the single recorded override for the **local `AhlenaDb`** | **`--allow-local-ahlena-db` (canonical, required)** |
+
+Strict local-demo guard (`--allow-local-ahlena-db`): the canonical flag is required for `--target-kind local-demo` and refused for every other kind. It accepts exactly one shape — the exact local database name `AhlenaDb` reached on loopback, an explicit `--expect-host`/`--expect-port`/`--expect-database` match, a `--run-tag`, no `--tunnel-declared`, and demo-corpus groups only (additive only; never report fixtures). The persistent local database name sits in the guard's protected list, so the guard cannot be widened by an override.
+
+Deprecated alias: `--allow-local-sanad-db` is still accepted for the same target kind with **identical** strict semantics (same target-kind restriction, same single-shape boundary, same run-tag requirement). It exists only for old command lines; new invocations should use `--allow-local-ahlena-db`. The rehearsal (`S3a`) target is the remote Staging database pinned by `--expect-database` plus the cluster system identifier: from the 2026-10-31 VPS rebrand that remote database is `AhlenaDb` on loopback port 5433 (before the rebrand it was named `SanadDb`; both names stay in the tool's protected-database list, which refuses them on direct loopback connections regardless of this rename).
+
+Other verify requirements: `--expect-revision <sha|latest>` (write-authorization correlation) and `--expect-migration-heads module=head ...` (all nine modules). The rehearsal path additionally uses `--credentials-file` (private `connectionString=`/`fixturePassword=`/`expectedSystemIdentifier=`; the system identifier is compared in memory only, never printed or serialized).
+
+This section documents the CLI contract only; no provisioning or seeding is implied or performed by documentation work.

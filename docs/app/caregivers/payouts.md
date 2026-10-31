@@ -295,8 +295,8 @@ Caregivers.PayoutAccount.RevisionConflict` so the reviewer reloads first.
 
 Ownership verification is a manual external check: the reviewer confirms the
 exact account belongs to the caregiver through an authorized third-party
-source outside Sanad (for example the bank's own portal) and records that
-source plus an optional non-sensitive reference in Sanad. A format check,
+source outside Ahlena (for example the bank's own portal) and records that
+source plus an optional non-sensitive reference in Ahlena. A format check,
 account-existence check, or name plausibility alone is not ownership
 verification. Approve requires the verification source (`POST` with
 `{ "expectedRevision": 3, "verificationSource": "BankPortal", "reference":

@@ -99,6 +99,6 @@ GET /api/v1/chat/conversations/{id}/sync?cursor=&pageSize=100
   stamp from a stale event.
 
 Matching Postman requests:
-[Sanad.App.Chat.postman_collection.json](../../postman/app/Sanad.App.Chat.postman_collection.json)
+[Ahlena.App.Chat.postman_collection.json](../../postman/app/Ahlena.App.Chat.postman_collection.json)
 (folder `09.Sync and recovery`: snapshot → next page via `{{syncCursor}}` →
 receipt delta; test scripts chain `{{syncCursor}}`).

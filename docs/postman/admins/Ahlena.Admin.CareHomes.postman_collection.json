@@ -1,0 +1,633 @@
+{
+  "info": {
+    "_postman_id": "a07b66e0-6780-4b75-8f25-ea1b2a758f96",
+    "name": "Ahlena Admin — Care Homes",
+    "description": "Care Homes operational endpoints only. CareHomesOperationalAdmin allows SuperAdmin and SupportAdmin; ContentAdmin is denied. Uses the existing Admin environment accessToken.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{accessToken}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:5235"
+    },
+    {
+      "key": "careHomeBookingId",
+      "value": ""
+    },
+    {
+      "key": "careHomeCheckInDisputeId",
+      "value": ""
+    },
+    {
+      "key": "careHomeDocumentId",
+      "value": ""
+    },
+    {
+      "key": "careHomeId",
+      "value": ""
+    },
+    {
+      "key": "careHomeVersion",
+      "value": ""
+    },
+    {
+      "key": "hc035ExternalRefundReference",
+      "value": ""
+    },
+    {
+      "key": "hc035FailedRefundBookingId",
+      "value": ""
+    },
+    {
+      "key": "hc035ManualRefundBookingId",
+      "value": ""
+    },
+    {
+      "key": "hc035AmbiguousRefundBookingId",
+      "value": ""
+    },
+    {
+      "key": "hc035AmbiguousRefundAttemptClaimId",
+      "value": ""
+    },
+    {
+      "key": "careHomeProfileMediaId",
+      "value": ""
+    },
+    {
+      "key": "careHomeLicenseThroughDate",
+      "value": "2026-12-31"
+    },
+    {
+      "key": "careHomeVisitId",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01. Check-in dispute operations",
+      "description": "Source-authored HC-034 room/bed assignment, actual facility check-in/out, Family confirmation, Family-submitted dispute, owner operational readback, and Admin dispute resolution. Requires an accepted booking and disposable fixture IDs. Check-out without Family confirmation opens a case immediately; a Family dispute requires a booking owned by that Family with facility check-in recorded. These examples are authored, not runtime evidence.",
+      "item": [
+        {
+          "name": "List check-in dispute cases",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/check-in-disputes",
+            "description": "CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin is denied). Lists cases newest first. Each case carries the stored residentArabicName/residentEnglishName snapshots and the original booking originalBookingTotalAmount in originalBookingCurrency (current fixed Care Home currency convention, EGP; the booking does not persist a currency). List-only enrichment; resolve and Family submission shapes are unchanged. Provide an authorized admin token before running."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('dispute list authored response', () => pm.expect([200, 401, 403]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200 && pm.response.json().length) pm.collectionVariables.set('careHomeCheckInDisputeId', pm.response.json()[0].id);"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Resolve check-in dispute case",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"effectiveCheckInOnUtc\": \"2026-11-10T12:00:00Z\",\n  \"evidence\": \"Signed arrival log\",\n  \"reason\": \"Facility record reconciled\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/check-in-disputes/{{careHomeCheckInDisputeId}}/resolve",
+            "description": "CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin is denied). Evidence, reason and a UTC effective check-in are required. Missing case is 404 CareHomes.CheckInDispute.NotFound; repeated/invalid resolution is 409 CareHomes.CheckInDispute.InvalidState. Supply an authorized admin token before running."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('dispute resolution authored response', () => pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "02. Refund recovery",
+      "description": "Requires separate disposable bookings in the indicated states. Family cancellation before recorded check-in refunds totalAmount; after recorded check-in it refunds 50% (version-1 rule; under version 2 a cancellation after a recorded check-in refunds nothing — delivered care is not refundable). Owner cancellation of an accepted stay refunds the full amount. Admin recovery requires a failed refund, an externally completed refund, or an unconfirmed refund attempt (Paymob.RefundOutcomeUnknown) parked under an ambiguity marker. The retry route only accepts a failed refund; reconcile clears the marker or recovers an interrupted claim using only verified evidence. No requests reset or seed the database.",
+      "item": [
+        {
+          "name": "Admin retries failed refund",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "none"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035FailedRefundBookingId}}/refund/retry",
+            "description": "Only a persisted failed refund is retryable. Local runtime requires a disposable failed-refund fixture; no provider call outside the Development stub is authorized."
+          }
+        },
+        {
+          "name": "Admin records externally completed refund",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reference\": \"{{hc035ExternalRefundReference}}\",\n  \"reason\": \"Verified external refund completion\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035ManualRefundBookingId}}/refund/record-completed",
+            "description": "Records completion only; this endpoint does not call Paymob. SuperAdmin/SupportAdmin only."
+          }
+        },
+        {
+          "name": "Admin reconciles an unconfirmed refund attempt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedAttemptClaimId\": \"{{hc035AmbiguousRefundAttemptClaimId}}\",\n  \"refundDidMove\": false,\n  \"verifiedProviderReference\": null,\n  \"evidence\": \"Provider console query confirms no refund was issued for the attempt\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{hc035AmbiguousRefundBookingId}}/refund/reconcile",
+            "description": "Clears the refund-ambiguity marker (Paymob.RefundOutcomeUnknown, or a refund call cancelled/timed out before its outcome was read). expectedAttemptClaimId is the refundAttemptClaimId read from the Admin booking detail response (GET /api/v1/admin/care-homes/bookings/{bookingId}) and is a compare-and-swap key: an absent (empty) id returns 400 CareHomes.RefundReconciliation.InvalidAttemptClaim, and a mismatch with the booking's current attempt returns 409 CareHomes.RefundReconciliation.AttemptMismatch so a stale operator never reconciles a different attempt than the one verified. refundDidMove must state what the operator verified: true completes the recorded award exactly once, discharges the held claim, and requires verifiedProviderReference; false returns the booking to the retryable failed-refund state; the latest attempt's record is retained as the audit trail (a later ambiguous attempt overwrites it; isRefundOutcomeAmbiguous stays the authoritative gate). A claimed attempt with no recorded provider outcome is never reconcilable here: it returns 409 CareHomes.RefundReconciliation.AttemptInconclusive (recovery awaits the queued provider attempt-liveness seam). Blank evidence returns 400 CareHomes.RefundReconciliation.EvidenceRequired; evidence overflowing the composed 2000-character clearance column returns 400 CareHomes.RefundReconciliation.EvidenceTooLong; a concurrent writer recovering first returns 409 CareHomes.RefundReconciliation.ConcurrencyConflict; a booking with nothing to reconcile returns CareHomes.RefundReconciliation.NoWindowToReconcile. SuperAdmin/SupportAdmin only."
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Facility application review",
+      "description": "SuperAdmin/SupportAdmin only. ContentAdmin must receive 403. Requests are authored against the current controller contract and require an existing submitted disposable application; no Bruno execution is claimed.",
+      "item": [
+        {
+          "name": "List care-home applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes?page=1&pageSize=20",
+            "description": "Returns page/pageSize/totalCount/items. Each item carries ownerArabicName/ownerEnglishName (nullable account display names; null when the identity is missing or anonymized; no phone). Invalid paging or status returns 400 CareHomes.Admin.InvalidQuery."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('care-home list contract', function () { pm.expect([200, 400, 401, 403]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get care-home application detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}",
+            "description": "Returns ownerArabicName/ownerEnglishName, revisions, document metadata and review history without private storage keys. Each revision carries ordered media metadata (id, kind, position, contentType, length, uri pointing at the Admin media file route) and its draft projection, which now includes cancellationTerms ({tiers:[{refundPercentage, deadlineHoursBeforeStart}]}, or null when the facility publishes no structured terms) so reviewers approve the same terms the booking flow snapshots (clause 6, decision #9). Each history entry carries actorArabicName/actorEnglishName and actorCurrentRoles (current account roles at read time, not historical roles; nulls when the identity is missing or anonymized). Unknown IDs return 404 CareHomes.Admin.ApplicationNotFound."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('care-home detail contract', function () { pm.expect([200, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List care-home document views",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents",
+            "description": "Additive 2026-10-27. Default view=all returns every active document newest-first (the previous detail ordering, minus logically removed rows); each item carries lifecycleView (current|pending|history), isExpired (supplied expiry date before the current Cairo date; independent of status — a pending document with a past date reads expired, no false reassurance) and needsAction (true only for the latest rejected pending candidate awaiting correction). The application detail documents array now carries the same three fields, and its additive reviewTargetRevisionId pins the revision whose documents are the actionable candidate set — always review through verify/reject, which remain enforced server-side against the submitted revision. Optional query parameters: view=current|pending|history (an unknown value returns 400 CareHomes.Document.InvalidView, never an empty result), type=1..4 (an undefined value returns 400 CareHomes.Document.InvalidType), isExpired=true|false."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('document view list contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read private care-home document",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}/file",
+            "description": "Streams private content only for PendingReview/Approved/Suspended applications. Draft/correction returns CareHomes.Admin.PrivateDocumentUnavailable."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('private-file contract', function () { pm.expect([200, 400, 401, 403, 404]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Verify non-expiring document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeVersion}},\n  \"expiryDate\": null,\n  \"confirmNonExpiring\": true\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}/verify",
+            "description": "Explicit confirmation is required for a verified document with no expiry. Stale version returns 409 CareHomes.Admin.Conflict."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('document verify contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject care-home document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeVersion}},\n  \"reason\": \"Unreadable document\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}/reject",
+            "description": "Reasoned rejection returns the updated detail. Invalid state returns 400 CareHomes.Admin.InvalidOperation."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('document reject contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Remove care-home document history",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/documents/{{careHomeDocumentId}}?expectedVersion={{careHomeVersion}}",
+            "description": "History-only logical removal (2026-10-27). The server recomputes the classification at mutation time, so only history-classified documents are removable: a protected current document (even when expired) or an active pending candidate (including the latest rejected candidate awaiting correction) returns 409 CareHomes.Document.NotRemovable; a stale expectedVersion returns 409 CareHomes.Admin.Conflict; an unknown or already-removed document is 404 and repeated removals are idempotent (no second audit write). Removed rows disappear from the detail documents array and both document lists while their audit row and shared private bytes are retained — nothing is ever physically deleted, and live revisions keep reading their shared files."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('admin history removal contract', function () { pm.expect([204, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Review care-home application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expectedVersion\": {{careHomeVersion}},\n  \"action\": 1,\n  \"reason\": null\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/review",
+            "description": "Action enum: 1 Approved, 2 Rejected, 3 CorrectionsRequested, 4 Suspended, 5 Reactivated. Supply a reason for rejection, correction, or suspension."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('application review contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read private facility media for review",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/{{careHomeId}}/media/{{careHomeProfileMediaId}}/file",
+            "description": "Private facility media for operational review. Requires CareHomesOperationalAdmin (SuperAdmin or SupportAdmin); ContentAdmin is denied. Returns media bytes or 404 for unknown/unassociated media."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Admin media review contract', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "04. Inventory inspection",
+      "description": "SuperAdmin/SupportAdmin only under CareHomesOperationalAdmin. ContentAdmin, owners, Family accounts and anonymous callers are denied. Requests are authored from the current source contract; the additive migration awaits fresh exact-target authorization and no Bruno execution is claimed for this delta.",
+      "item": [
+        {
+          "name": "Get care-home inventory",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/admin/{{careHomeId}}",
+            "description": "CareHomesOperationalAdmin (SuperAdmin/SupportAdmin). Returns 200 with the CareHomeInventoryDto for any facility; 404 for an unknown facility."
+          },
+          "description": "Returns room types, rooms, beds, maintenance and inventory version. Unknown facility returns 404 CareHomes.Inventory.NotFound."
+        },
+        {
+          "name": "Get care-home availability",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"startDate\": \"2027-01-01\",\n  \"endDate\": \"2027-01-20\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/care-homes/inventory/admin/{{careHomeId}}/availability",
+            "description": "CareHomesOperationalAdmin. POST with startDate/endDate; returns 200 with an array of CareHomeAvailability rows. This is a POST, not a GET."
+          },
+          "description": "Returns derived room-type availability. Dates are Egypt-local calendar dates; end must be after start. Archived assets, maintenance and supplied active occupancy are excluded. The current occupancy provider is empty until HC-TASK-032/034."
+        }
+      ]
+    },
+    {
+      "name": "05. Payout ledger",
+      "description": "HC-TASK-038. PayoutOperationalAdmin (SuperAdmin/FinanceAdmin) only. A bank transfer must already have been performed outside Ahlena; these requests only record/read ledger state and never initiate provider transfers. Use only an authorized disposable fixture. The migration is applied in the authorized disposable fixture; no new Bruno run is claimed for this authorization change.",
+      "item": [
+        {
+          "name": "Read payout ledger",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/payouts/ledger?facilityId={{careHomeId}}",
+            "description": "Returns checked-out paid/refunded bookings, remaining payable, effective Finance payout-fee rate, net amount, recorded transfer metadata, and outstanding facility debt. An eligible payable requires an effective Finance rule; absent configuration fails closed."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payout ledger contract', function () { pm.expect([200, 401, 403, 404, 500]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Record completed external bank transfer",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transferReference\": \"BANK-REFERENCE\",\n  \"evidence\": \"private evidence reference\",\n  \"reason\": \"Monthly facility settlement\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/payouts/bookings/{{careHomeBookingId}}/record",
+            "description": "STATE-CHANGING: call only after the external bank transfer is complete. One payout per completed eligible stay; gross, percentage fee, net, Finance rule version, evidence/reference, actor and time are snapshotted."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payout record contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Record confirmed post-payout refund/reversal",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerRefundAmount\": 575.00,\n  \"reference\": \"REFUND-OR-REVERSAL-REFERENCE\",\n  \"reason\": \"Confirmed customer refund after settlement\"\n}"
+            },
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/payouts/bookings/{{careHomeBookingId}}/record-reversal",
+            "description": "STATE-CHANGING: records a confirmed external refund/reversal for reconciliation; it does not issue the refund. Facility debt is proportional to the recorded net payout for the refunded share. Reference is the idempotency key."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('payout reversal contract', function () { pm.expect([200, 400, 401, 403, 404, 409]).to.include(pm.response.code); });"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "06. License expiry view",
+      "description": "Read-only, paginated operational Admin view. No fixture or database state changes are required.",
+      "item": [
+        {
+          "name": "List expiring operating licenses",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/license-expirations?through={{careHomeLicenseThroughDate}}&page=1&pageSize=20",
+            "description": "CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin, owners, Family and anonymous callers are denied). through is a required inclusive Cairo-local YYYY-MM-DD cutoff. Includes expired and upcoming licenses through that date, sorted by expiry then facility ID. Only latest verified finite-expiry operating license on approved revision qualifies. Invalid date/paging returns 400 CareHomes.Admin.InvalidQuery."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('license expiry view contract', () => pm.expect([200, 400, 401, 403]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('throughDate'); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('items').that.is.an('array'); pm.expect(JSON.stringify(body)).not.to.include('storageKey'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "07. Booking inspection",
+      "description": "Read-only operational booking register and detail. Requires CareHomesOperationalAdmin; no fixture or database mutation is performed.",
+      "item": [
+        {
+          "name": "List Care Homes bookings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings?page=1&pageSize=25",
+            "description": "All filters except page/pageSize are optional. Page size is 1–100. State filters use numeric enum values. Stay dates are inclusive and select overlapping stays. Search matches an exact booking GUID or merchant reference. Results order newest first then booking ID. The response contains page, pageSize, totalCount and items; each row also carries the persisted charge taxAmount and the nullable extensionOfBookingId (null for a base booking, the extended segment's booking ID for an extension row). Invalid query returns 400 CareHomes.Admin.InvalidQuery. Authenticated runtime evidence is not claimed by this authored request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('booking list contract status', () => pm.expect([200, 400, 401, 403]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('items').that.is.an('array'); pm.expect(body.items.length).to.be.at.most(100); if (body.items.length > 0) { pm.expect(body.items[0]).to.have.property('taxAmount'); pm.expect(body.items[0]).to.have.property('extensionOfBookingId'); } }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Care Homes booking detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/bookings/{{careHomeBookingId}}",
+            "description": "Returns persisted booking/charge/payment/refund/check-in/out facts and assignment/dispute history, plus the refund-policy/ambiguity surface: refundPolicyVersion, refundAttemptClaimId (the compare-and-swap key the refund reconcile call must present), isRefundOutcomeAmbiguous, isRefundAttemptInFlight, and the latest attempt's refundAmbiguityAwardAmount/reason/raisedOnUtc/clearedOnUtc. Read refundAttemptClaimId here to build the reconcile request — never guess it. Does not expose clinical intake, care notes, contact fields, or payment credentials. Unknown booking returns 404 CareHomes.Bookings.NotFound. Authenticated runtime evidence is not claimed by this authored request."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('booking detail contract status', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('bookingId'); pm.expect(body).to.have.property('assignmentHistory').that.is.an('array'); pm.expect(JSON.stringify(body)).not.to.include('PaymentClientSecret'); pm.expect(JSON.stringify(body)).not.to.include('MedicalSnapshotJson'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "08. Visit requests",
+      "description": "Read-only operational register and detail for care-home visit requests, under CareHomesOperationalAdmin (SuperAdmin or SupportAdmin only; ContentAdmin, owners, Family and anonymous callers are denied). No Admin scheduling, approval, rejection, cancellation or override route exists; no fixture or database mutation is performed. Rows additionally carry the facility's approved display name (facilityName, English preferred with an Arabic fallback) and the family's name (familyName) — both nullable, each resolved in one batched lookup per page. These examples are authored, not runtime evidence.",
+      "item": [
+        {
+          "name": "List care-home visits",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/visits?page=1&pageSize=25&facilityId=&status=&from=&to=",
+            "description": "Read-only. facilityId, status and the scheduled from/to window are optional. from/to are inclusive UTC days matched as overlap against the scheduled window (a visit matches when endsAtUtc is after the start of from and startsAtUtc is before the end of to). Paging is clamped, never an error: page is at least 1 and pageSize defaults to 25 and is capped at 100. Only an empty facilityId, an undefined status or an inverted window (to before from) returns 400 CareHomes.Admin.InvalidQuery. Results order newest first by startsAtUtc then visitId. The response contains page, pageSize, totalCount and items; each item carries visitId, facilityId, facilityName (the approved profile revision's English name with an Arabic fallback, nullable), familyId, familyName (the Families aggregate's stored name, nullable), nullable elderlyId, kind (1 Prospective, 2 Resident), status (1 Pending, 2 Approved, 3 Rejected, 4 FamilyCancelled, 5 FacilityCancelled, 6 Expired, 7 ReschedulePending, 8 Rescheduled), startsAtUtc, endsAtUtc, nullable rescheduleOfVisitId, the recorded decision facts (decidedByUserId, decidedOnUtc, decisionReason) and cancellation facts (cancelledByUserId, cancelledOnUtc, cancellationReason), and createdOnUtc. Visitor name and phone, visitorCount, the requesting familyUserId, decisionExpiresOnUtc and version are never returned."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('visit list contract status', () => pm.expect([200, 400, 401, 403]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('totalCount'); pm.expect(body).to.have.property('page'); pm.expect(body).to.have.property('pageSize'); pm.expect(body).to.have.property('items').that.is.an('array'); pm.expect(body.items.length).to.be.at.most(100); if (body.items.length > 0) { pm.expect(body.items[0]).to.have.property('visitId'); pm.expect(body.items[0]).to.have.property('status'); pm.expect(body.items[0]).to.have.property('facilityName'); pm.expect(body.items[0]).to.have.property('familyName'); pm.expect(JSON.stringify(body)).not.to.include('visitorPhone'); pm.expect(JSON.stringify(body)).not.to.include('visitorName'); pm.expect(JSON.stringify(body)).not.to.include('visitorCount'); pm.expect(JSON.stringify(body)).not.to.include('decisionExpiresOnUtc'); } }"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get care-home visit detail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/admin/care-homes/visits/{{careHomeVisitId}}",
+            "description": "Read-only. Returns the list fields (including nullable facilityName and familyName) plus updatedOnUtc, read from the stored row only. Visitor name and phone, visitorCount, the requesting familyUserId, decisionExpiresOnUtc and version are never returned, and no event history or timeline is derived. Unknown or empty visit ids return 404 CareHomes.Visits.NotFound. Set careHomeVisitId from a list item first."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('visit detail contract status', () => pm.expect([200, 401, 403, 404]).to.include(pm.response.code));",
+                  "if (pm.response.code === 200) { const body = pm.response.json(); pm.expect(body).to.have.property('visitId'); pm.expect(body).to.have.property('kind'); pm.expect(body).to.have.property('status'); pm.expect(body).to.have.property('facilityName'); pm.expect(body).to.have.property('familyName'); pm.expect(body).to.have.property('updatedOnUtc'); pm.expect(JSON.stringify(body)).not.to.include('visitorPhone'); pm.expect(JSON.stringify(body)).not.to.include('visitorName'); pm.expect(JSON.stringify(body)).not.to.include('familyUserId'); }"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

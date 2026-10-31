@@ -30,7 +30,7 @@ try {
 
     $rejected = @(
         @{ Url = 'https://example.com'; Reason = 'remote host' },
-        @{ Url = 'http://api.sanad.example/api'; Reason = 'non-loopback path' },
+        @{ Url = 'http://api.ahlena.example/api'; Reason = 'non-loopback path' },
         @{ Url = 'http://user:secret@localhost:5235'; Reason = 'embedded credentials' },
         @{ Url = 'http://localhost:5235/extra'; Reason = 'path component' },
         @{ Url = 'http://localhost:5235/?token=secret'; Reason = 'query component' },
@@ -95,7 +95,7 @@ try {
     Assert-Check ($redactedToken -notmatch 'abcdefghijklmno' -and $redactedToken -notmatch 'refresh-value') 'Token values are redacted'
     Assert-Check ($redactedToken -match '<redacted>') 'Redaction marker is present'
 
-    $redactedConnection = Get-RedactedText 'Host=localhost;Port=5432;Database=SanadDb;Username=someone;Password=pa55word'
+    $redactedConnection = Get-RedactedText 'Host=localhost;Port=5432;Database=AhlenaDb;Username=someone;Password=pa55word'
     Assert-Check ($redactedConnection -notmatch 'pa55word' -and $redactedConnection -notmatch 'someone') 'Connection string credentials are redacted'
 
     $redactedKey = Get-RedactedText 'gateway key sk_live_abcdefghijklmno'
@@ -202,7 +202,7 @@ try {
     # and aborted the whole run (leaving an orphaned API behind). The reader
     # must tolerate the live writer and never abort; a genuinely unreadable
     # log degrades to "no lines".
-    $logDir = Join-Path ([System.IO.Path]::GetTempPath()) ('sanad-l1-logtest-' + [Guid]::NewGuid().ToString('N'))
+    $logDir = Join-Path ([System.IO.Path]::GetTempPath()) ('ahlena-l1-logtest-' + [Guid]::NewGuid().ToString('N'))
     [System.IO.Directory]::CreateDirectory($logDir) | Out-Null
     $openLog = Join-Path $logDir 'api.stdout.log'
     $missingLog = Join-Path $logDir 'api.absent.log'
@@ -281,7 +281,7 @@ try {
     Assert-Check (-not (Test-NormalAccessType -AccessType $null)) 'A missing access type is rejected'
     Assert-Check (-not (Test-NormalAccessType -AccessType 'not-a-number')) 'A non-numeric access type is rejected'
 
-    $accessTypeSource = Get-Content (Join-Path $repoRoot 'src/Modules/Identity/Application/Sanad.Modules.Identity.Application/Authentication/Tokens/AuthAccessType.cs') -Raw
+    $accessTypeSource = Get-Content (Join-Path $repoRoot 'src/Modules/Identity/Application/Ahlena.Modules.Identity.Application/Authentication/Tokens/AuthAccessType.cs') -Raw
     Assert-Check ($accessTypeSource -match 'Normal\s*=\s*1') 'The preflight expectation matches AuthAccessType.Normal in the source'
     Assert-Check ($accessTypeSource -match 'RestrictedVerification\s*=\s*2') 'The restricted access type is still 2 in the source'
 
@@ -475,11 +475,11 @@ try {
 
     # ---------------- F2 connection target guard ----------------
 
-    $f2ParsedConnection = ConvertFrom-F2PostgresConnectionString -ConnectionString 'Host=localhost;Port=5432;Database=SanadDb;Username=postgres;Password=secret'
+    $f2ParsedConnection = ConvertFrom-F2PostgresConnectionString -ConnectionString 'Host=localhost;Port=5432;Database=AhlenaDb;Username=postgres;Password=secret'
     Assert-Check ($f2ParsedConnection.Host -eq 'localhost' -and $f2ParsedConnection.Port -eq '5432') 'The connection parser reads the host and port'
-    Assert-Check ($f2ParsedConnection.Database -eq 'SanadDb' -and $f2ParsedConnection.Username -eq 'postgres') 'The connection parser reads the database and user'
+    Assert-Check ($f2ParsedConnection.Database -eq 'AhlenaDb' -and $f2ParsedConnection.Username -eq 'postgres') 'The connection parser reads the database and user'
     Assert-Check (@($f2ParsedConnection.Problems).Count -eq 0) 'A complete connection string parses without problems'
-    Assert-Check ((ConvertFrom-F2PostgresConnectionString -ConnectionString 'Server=127.0.0.1;Database=SanadDb').Port -eq '5432') 'A connection string without a port defaults to 5432'
+    Assert-Check ((ConvertFrom-F2PostgresConnectionString -ConnectionString 'Server=127.0.0.1;Database=AhlenaDb').Port -eq '5432') 'A connection string without a port defaults to 5432'
     Assert-Check (@((ConvertFrom-F2PostgresConnectionString -ConnectionString 'Host=localhost').Problems).Count -gt 0) 'A connection string without a database is rejected'
     Assert-Check (@((ConvertFrom-F2PostgresConnectionString -ConnectionString '').Problems).Count -gt 0) 'An empty connection string is rejected'
 
@@ -489,7 +489,7 @@ try {
         targetMode         = 'PersistentLocal'
         failedChecks       = @()
         storageRootExists  = $true
-        modules            = @(1..9 | ForEach-Object { [pscustomobject]@{ module = "M$_"; host = 'localhost'; port = 5432; database = 'SanadDb'; pendingMigrations = 0; passed = $true } })
+        modules            = @(1..9 | ForEach-Object { [pscustomobject]@{ module = "M$_"; host = 'localhost'; port = 5432; database = 'AhlenaDb'; pendingMigrations = 0; passed = $true } })
     }
     $f2GoodGuard = Test-F2FixtureTarget -VerificationPassed $true -Report $f2GoodReport -Connection $f2ParsedConnection
     Assert-Check ($f2GoodGuard.Ok) 'The target guard accepts a verified persistent local Development database'
@@ -506,7 +506,7 @@ try {
             targetMode        = 'PersistentLocal'
             failedChecks      = @()
             storageRootExists = $true
-            modules           = @(1..9 | ForEach-Object { [pscustomobject]@{ module = "M$_"; host = 'localhost'; port = 5432; database = 'SanadDb'; pendingMigrations = 0; passed = $true } })
+            modules           = @(1..9 | ForEach-Object { [pscustomobject]@{ module = "M$_"; host = 'localhost'; port = 5432; database = 'AhlenaDb'; pendingMigrations = 0; passed = $true } })
         }
         $report.$($mutation.Field) = $mutation.Value
         Assert-Check ((Test-F2FixtureTarget -VerificationPassed $true -Report $report -Connection $f2ParsedConnection).Ok -eq $false) "The target guard rejects a report whose $($mutation.Field) is wrong"
@@ -518,7 +518,7 @@ try {
         targetMode        = 'PersistentLocal'
         failedChecks      = @()
         storageRootExists = $true
-        modules           = @(1..9 | ForEach-Object { [pscustomobject]@{ module = "M$_"; host = 'db.internal.example'; port = 5432; database = 'SanadDb'; pendingMigrations = 0; passed = $true } })
+        modules           = @(1..9 | ForEach-Object { [pscustomobject]@{ module = "M$_"; host = 'db.internal.example'; port = 5432; database = 'AhlenaDb'; pendingMigrations = 0; passed = $true } })
     }
     Assert-Check ((Test-F2FixtureTarget -VerificationPassed $true -Report $remoteModuleReport -Connection $f2ParsedConnection).Ok -eq $false) 'The target guard rejects a remote module host'
 
@@ -528,7 +528,7 @@ try {
         targetMode        = 'PersistentLocal'
         failedChecks      = @()
         storageRootExists = $true
-        modules           = @(1..9 | ForEach-Object { [pscustomobject]@{ module = "M$_"; host = 'localhost'; port = 5432; database = 'SanadDb'; pendingMigrations = $(if ($_ -eq 4) { 1 } else { 0 }); passed = $true } })
+        modules           = @(1..9 | ForEach-Object { [pscustomobject]@{ module = "M$_"; host = 'localhost'; port = 5432; database = 'AhlenaDb'; pendingMigrations = $(if ($_ -eq 4) { 1 } else { 0 }); passed = $true } })
     }
     Assert-Check ((Test-F2FixtureTarget -VerificationPassed $true -Report $pendingMigrationReport -Connection $f2ParsedConnection).Ok -eq $false) 'The target guard rejects a module with pending migrations'
 
@@ -538,11 +538,11 @@ try {
         targetMode        = 'PersistentLocal'
         failedChecks      = @()
         storageRootExists = $true
-        modules           = @([pscustomobject]@{ module = 'Identity'; host = 'localhost'; port = 5432; database = 'SanadDb'; pendingMigrations = 0; passed = $true })
+        modules           = @([pscustomobject]@{ module = 'Identity'; host = 'localhost'; port = 5432; database = 'AhlenaDb'; pendingMigrations = 0; passed = $true })
     }
     Assert-Check ((Test-F2FixtureTarget -VerificationPassed $true -Report $shortReport -Connection $f2ParsedConnection).Ok -eq $false) 'The target guard rejects an incomplete module set'
 
-    $remoteConnection = ConvertFrom-F2PostgresConnectionString -ConnectionString 'Host=10.1.2.3;Port=5432;Database=SanadDb;Username=postgres;Password=secret'
+    $remoteConnection = ConvertFrom-F2PostgresConnectionString -ConnectionString 'Host=10.1.2.3;Port=5432;Database=AhlenaDb;Username=postgres;Password=secret'
     Assert-Check ((Test-F2FixtureTarget -VerificationPassed $true -Report $f2GoodReport -Connection $remoteConnection).Ok -eq $false) 'The target guard rejects a remote connection target'
     $wrongDatabaseConnection = ConvertFrom-F2PostgresConnectionString -ConnectionString 'Host=localhost;Port=5432;Database=OtherDb;Username=postgres;Password=secret'
     Assert-Check ((Test-F2FixtureTarget -VerificationPassed $true -Report $f2GoodReport -Connection $wrongDatabaseConnection).Ok -eq $false) 'The target guard rejects a different database on the same host'

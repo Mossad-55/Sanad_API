@@ -1,4 +1,4 @@
-# Bruno API Tests for Sanad API
+# Bruno API Tests for Ahlena API
 
 This directory contains Bruno test collections for testing the newly implemented family and caregiver help request endpoints.
 
@@ -31,7 +31,7 @@ This directory contains Bruno test collections for testing the newly implemented
    - `elderlyId`: ID of a test elderly person (for caregiver tests)
    - Update pagination and filter values as needed
 
-2. Ensure the Sanad API is running and accessible at the configured base URL (default: http://localhost:5000)
+2. Ensure the Ahlena API is running and accessible at the configured base URL (default: http://localhost:5000)
 
 ## Running Tests
 

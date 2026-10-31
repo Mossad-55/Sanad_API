@@ -637,7 +637,7 @@ function Resolve-F7ConnectionStringSource {
     }
 
     if (-not [string]::IsNullOrWhiteSpace($RepoRoot)) {
-        $settingsPath = Join-Path $RepoRoot 'src/API/Sanad.API/appsettings.Development.json'
+        $settingsPath = Join-Path $RepoRoot 'src/API/Ahlena.API/appsettings.Development.json'
         if (Test-Path -LiteralPath $settingsPath -PathType Leaf) {
             $settings = ConvertFrom-SafeJson ([System.IO.File]::ReadAllText($settingsPath))
             if ($null -ne $settings -and $null -ne $settings.ConnectionStrings) {
@@ -696,7 +696,7 @@ function Test-F7FixtureTarget {
     foreach ($module in $modules) {
         if (-not (Test-LoopbackHost ([string]$module.host))) { $problems += "module $($module.module) does not target a loopback host" }
         if ([int]$module.port -ne 5432) { $problems += "module $($module.module) does not target the local port 5432" }
-        if ([string]$module.database -ne 'SanadDb') { $problems += "module $($module.module) does not target database SanadDb" }
+        if ([string]$module.database -ne 'AhlenaDb') { $problems += "module $($module.module) does not target database AhlenaDb" }
         if ([int]$module.pendingMigrations -ne 0) { $problems += "module $($module.module) has pending migrations" }
         if (-not [bool]$module.passed) { $problems += "module $($module.module) did not pass verification" }
     }
@@ -707,7 +707,7 @@ function Test-F7FixtureTarget {
     else {
         if (-not (Test-LoopbackHost ([string]$Connection.Host))) { $problems += 'the resolved connection does not target a loopback host' }
         if ([string]$Connection.Port -ne '5432') { $problems += "the resolved connection targets port '$($Connection.Port)', expected 5432" }
-        if ([string]$Connection.Database -ne 'SanadDb') { $problems += "the resolved connection targets database '$($Connection.Database)', expected SanadDb" }
+        if ([string]$Connection.Database -ne 'AhlenaDb') { $problems += "the resolved connection targets database '$($Connection.Database)', expected AhlenaDb" }
         if ([string]::IsNullOrWhiteSpace([string]$Connection.Username)) { $problems += 'the resolved connection carries no user name for the local client' }
         if ([string]::IsNullOrWhiteSpace([string]$Connection.Password)) { $problems += 'the resolved connection carries no password for the local client' }
     }
@@ -2823,7 +2823,7 @@ function Invoke-F7Psql {
         [switch]$ExpectJson
     )
 
-    $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) ("sanad-f7-" + $Tag + "-" + [Guid]::NewGuid().ToString('N') + ".sql")
+    $tempFile = Join-Path ([System.IO.Path]::GetTempPath()) ("ahlena-f7-" + $Tag + "-" + [Guid]::NewGuid().ToString('N') + ".sql")
     [System.IO.File]::WriteAllText($tempFile, $Sql, (New-Object System.Text.UTF8Encoding($false)))
 
     $overrides = [ordered]@{
@@ -2953,7 +2953,7 @@ function Invoke-F7Steps {
             continue
         }
 
-        $response = Invoke-SanadHttpRequest -Client $Client -Method $step.Method -Url "$Url$($step.Path)" -Body $step.Body -Token $step.Token
+        $response = Invoke-AhlenaHttpRequest -Client $Client -Method $step.Method -Url "$Url$($step.Path)" -Body $step.Body -Token $step.Token
         $parsed = ConvertFrom-SafeJson $response.Body
         $traceId = $null
         if ($null -ne $parsed -and $parsed -isnot [System.Array] -and $parsed.PSObject.Properties.Name -contains 'traceId') {
@@ -3041,20 +3041,20 @@ if ($f7LibraryOnly) { return }
 $repoRoot = Get-RepositoryRoot
 
 if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'AGENTS.md') -PathType Leaf)) {
-    throw 'Run this script from the Sanad API repository checkout.'
+    throw 'Run this script from the Ahlena API repository checkout.'
 }
 
 $head = Get-PinnedHead $repoRoot
 $uri = Assert-LoopbackBaseUrl $f7BaseUrl
 $baseUrl = "$($uri.Scheme)://$($uri.Authority)"
 
-$apiDirectory = Join-Path $repoRoot 'src/API/Sanad.API'
+$apiDirectory = Join-Path $repoRoot 'src/API/Ahlena.API'
 if ([string]::IsNullOrWhiteSpace($f7ApiAssemblyPath)) {
-    $f7ApiAssemblyPath = Join-Path $apiDirectory 'bin/Release/net10.0/Sanad.API.dll'
+    $f7ApiAssemblyPath = Join-Path $apiDirectory 'bin/Release/net10.0/Ahlena.API.dll'
 }
 $assemblyPath = Resolve-FullPath $f7ApiAssemblyPath
 if (-not (Test-Path -LiteralPath $assemblyPath -PathType Leaf)) {
-    throw 'The built API assembly was not found. Build Release first (dotnet build Sanad.slnx -c Release).'
+    throw 'The built API assembly was not found. Build Release first (dotnet build Ahlena.slnx -c Release).'
 }
 
 # The verification and the seed look at the same pinned local target; the
@@ -3093,7 +3093,7 @@ try {
     }
 
     if ($f7SkipFixtureWrite) {
-        $reportPath = Join-Path ([System.IO.Path]::GetTempPath()) ('sanad-f7-fixtures-' + [Guid]::NewGuid().ToString('N') + '.sql')
+        $reportPath = Join-Path ([System.IO.Path]::GetTempPath()) ('ahlena-f7-fixtures-' + [Guid]::NewGuid().ToString('N') + '.sql')
         [System.IO.File]::WriteAllText($reportPath, (Get-F7FixtureSql), (New-Object System.Text.UTF8Encoding($false)))
         $failureNotes += "SkipFixtureWrite is set: the provisioning SQL was written to $reportPath and nothing else ran."
         Write-F7Result -Passed $false -Phase 'report-only' -FixtureReport $null | ConvertTo-Json -Depth 8
@@ -3193,7 +3193,7 @@ try {
     # 3. Start or reuse the API once.
     $apiLogPaths = @()
     if (-not $apiReused -and -not $f7SkipApiStart) {
-        $logDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ('sanad-f7-verify-' + [Guid]::NewGuid().ToString('N'))
+        $logDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ('ahlena-f7-verify-' + [Guid]::NewGuid().ToString('N'))
         [System.IO.Directory]::CreateDirectory($logDirectory) | Out-Null
         $outputLog = Join-Path $logDirectory 'api.stdout.log'
         $errorLog = Join-Path $logDirectory 'api.stderr.log'
@@ -3219,7 +3219,7 @@ try {
     }
 
     $canRunChecks = $true
-    $client = New-SanadHttpClient
+    $client = New-AhlenaHttpClient
 
     # 4. Login preflight for every actor this run needs, then one ordered pass
     #    over the whole plan (session logout checks last).

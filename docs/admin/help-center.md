@@ -120,14 +120,14 @@ It is not per-role. It is contact-card data only:
 
 ```text
 GET /api/v1/admin/help-center/support-contact
-  200: { "supportPhone": "+201000000001", "supportEmail": "support@sanad.example",
+  200: { "supportPhone": "+201000000001", "supportEmail": "support@ahlena.example",
          "createdOnUtc": "...", "updatedOnUtc": "..." }
   200: { "supportPhone": null, "supportEmail": null,
          "createdOnUtc": "0001-01-01T00:00:00Z", "updatedOnUtc": "0001-01-01T00:00:00Z" }
        (nothing configured yet — the empty state is a success, never 404)
 
 PUT /api/v1/admin/help-center/support-contact
-  body: { "supportPhone": "+201000000001", "supportEmail": "support@sanad.example" }
+  body: { "supportPhone": "+201000000001", "supportEmail": "support@ahlena.example" }
   200 with the stored pair (upsert of the single global row)
 ```
 

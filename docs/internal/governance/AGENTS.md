@@ -1,4 +1,4 @@
-# Sanad API working instructions
+# Ahlena API working instructions
 
 Repository-wide rules referenced by root AGENTS.md. Simplified by Owner direction on 2026-10-19.
 
@@ -75,7 +75,7 @@ phase `accepted` with the failure recorded; it does not become `completed`.
 - Docs/Postman update with feature change; match verified behavior.
 - Mastermind owns scope, decisions, integration, selected checks, final evidence, handoff. Build once after final code change; focused tests. Full suite only cross-cutting/high-risk or contract-required. Bruno only when selected/requested.
 - Every dotnet build/test gate: successful exit and zero warnings. Reuse valid gates; rerun only invalidated checks. Never invent results.
-- Automated destructive/state-isolation tests use a verified disposable target and minimal writes, never production. Owner-approved persistent manual/API fixtures may use verified local `SanadDb` without reset; preserve unrelated data and reuse fixtures. Follow the [local verification contract](../work/portal-api-reconciliation/contracts/frontend-follow-up-2026-10-20.md#l1--persistent-local-fixtures-and-fast-verification). Resets need exact-target verification and separate Owner authorization.
+- Automated destructive/state-isolation tests use a verified disposable target and minimal writes, never production. Owner-approved persistent manual/API fixtures may use verified local `AhlenaDb` (the local persistent database renamed from `SanadDb` on 2026-10-31) without reset; preserve unrelated data and reuse fixtures. Follow the [local verification contract](../work/portal-api-reconciliation/contracts/frontend-follow-up-2026-10-20.md#l1--persistent-local-fixtures-and-fast-verification). Resets need exact-target verification and separate Owner authorization.
 
 ## Models and runtime
 

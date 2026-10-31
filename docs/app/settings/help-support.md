@@ -65,7 +65,7 @@ Authorization: Bearer <normal access token>
   ],
   "supportContact": {
     "supportPhone": "+201000000001",
-    "supportEmail": "support@sanad.example"
+    "supportEmail": "support@ahlena.example"
   }
 }
 ```

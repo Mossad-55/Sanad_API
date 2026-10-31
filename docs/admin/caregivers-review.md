@@ -266,7 +266,7 @@ There is no `PUT`, `PATCH` or `DELETE` route for a note: a stored note's text ca
 - `400 Caregivers.ReviewNote.InvalidText` — `text` missing, null, empty or whitespace-only, or longer than 2000 characters after trimming.
 - `401` — missing, expired or non-`Normal` token; `403` — authenticated without SuperAdmin/SupportAdmin.
 
-Both codes are mapped locally by the caregiver review controller rather than through the shared problem-details mapper, so a missing caregiver is a real `404`. Responses keep the usual `code` and `traceId` extensions for client keying. A Postman collection with authored examples is at `docs/postman/admins/Sanad.Admin.CaregiverNotes.postman_collection.json`.
+Both codes are mapped locally by the caregiver review controller rather than through the shared problem-details mapper, so a missing caregiver is a real `404`. Responses keep the usual `code` and `traceId` extensions for client keying. A Postman collection with authored examples is at `docs/postman/admins/Ahlena.Admin.CaregiverNotes.postman_collection.json`.
 
 ## Caregiver name+ID lookup
 
@@ -326,6 +326,6 @@ or restricted-verification caller is `401`.
 - `search` is matched **literally**: `%`, `_` and `\` in the caller's text match
   those characters, they are never treated as wildcards.
 - Runnable requests (authored examples, not execution evidence):
-  `docs/postman/admins/Sanad.Admin.CaregiverNotes.postman_collection.json`
+  `docs/postman/admins/Ahlena.Admin.CaregiverNotes.postman_collection.json`
   (`Caregiver name+ID lookup`).
 

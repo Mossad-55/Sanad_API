@@ -18,9 +18,9 @@
       G2. Host allowlist   — the connection string host must be localhost /
                              127.0.0.1 / ::1. Every other host is refused.
       G3. Database allowlist — the database name must match the disposable
-                             pattern ^sanad_(refund|verify|disposable)[a-z0-9_]*$
+                             pattern ^ahlena_(refund|verify|disposable)[a-z0-9_]*$
                              (belt-and-braces against the shipped default names
-                             `SanadDb`, `SanadBrunoTestDb` and any production name).
+                             `AhlenaDb` (legacy `SanadDb`), `SanadBrunoTestDb` and any production name).
       G4. Client-type gate — the resolved IPaymobClient must be
                              DevelopmentPaymobClient. Because selection is
                              key-presence-gated (W0 D4), this script refuses to
@@ -99,7 +99,7 @@ if (-not $IUnderstandThisRuns) {
     exit 0
 }
 
-$DisposableDatabasePattern = '^sanad_(refund|verify|disposable)[a-z0-9_]*$'
+$DisposableDatabasePattern = '^ahlena_(refund|verify|disposable)[a-z0-9_]*$'
 
 function Get-ConnectionStringParts {
     <#

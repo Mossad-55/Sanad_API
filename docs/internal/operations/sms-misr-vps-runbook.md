@@ -1,6 +1,6 @@
 # SMS Misr VPS configuration and verification
 
-This runbook records the working SMS Misr setup for the Sanad API and the checks to repeat after configuring a VPS. Never commit the SMS Misr username, password, sender token, or OTP.
+This runbook records the working SMS Misr setup for the Ahlena API and the checks to repeat after configuring a VPS. Never commit the SMS Misr username, password, sender token, or OTP.
 
 ## Configure the sender
 

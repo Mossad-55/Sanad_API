@@ -1,0 +1,263 @@
+using Microsoft.EntityFrameworkCore;
+using Ahlena.BuildingBlocks.Application.Abstractions;
+using Ahlena.BuildingBlocks.Application.CQRS;
+using Ahlena.BuildingBlocks.Application.Results;
+using Ahlena.BuildingBlocks.Domain.Primitives.Ids;
+using Ahlena.BuildingBlocks.Domain.ValueObjects;
+using Ahlena.Modules.Identity.Application.Abstractions.Data;
+using Ahlena.Modules.Identity.Application.Abstractions.Security;
+using Ahlena.Modules.Identity.Application.Authentication.Tokens;
+using Ahlena.Modules.Identity.Domain.Authentication.DeviceSessions;
+using Ahlena.Modules.Identity.Domain.Authentication.VerificationRequests;
+using Ahlena.Modules.Identity.Domain.Users;
+
+namespace Ahlena.Modules.Identity.Application.Authentication.Login;
+
+public sealed class LoginCommandHandler :
+    ICommandHandler<
+        LoginCommand,
+        LoginResponse>
+{
+    private readonly IIdentityDbContext _dbContext;
+    private readonly IPasswordHasher _passwordHasher;
+    private readonly IAuthTokenService _tokenService;
+    private readonly IDateTimeProvider _dateTimeProvider;
+
+    public LoginCommandHandler(
+        IIdentityDbContext dbContext,
+        IPasswordHasher passwordHasher,
+        IAuthTokenService tokenService,
+        IDateTimeProvider dateTimeProvider)
+    {
+        _dbContext = dbContext;
+        _passwordHasher = passwordHasher;
+        _tokenService = tokenService;
+        _dateTimeProvider = dateTimeProvider;
+    }
+
+    public async Task<Result<LoginResponse>> Handle(
+        LoginCommand request,
+        CancellationToken cancellationToken)
+    {
+        User? user;
+
+        if (!request.Identifier.Contains('@'))
+        {
+            PhoneNumber phoneNumber =
+                PhoneNumber.Create(
+                    request.Identifier);
+
+            user =
+                await _dbContext.Users
+                    .SingleOrDefaultAsync(
+                        item =>
+                            item.PhoneNumber ==
+                            phoneNumber,
+                        cancellationToken);
+        }
+        else
+        {
+            Email email =
+                Email.Create(
+                    request.Identifier);
+
+            user =
+                await _dbContext.Users
+                    .SingleOrDefaultAsync(
+                        item =>
+                            item.Email ==
+                            email,
+                        cancellationToken);
+        }
+
+        if (user is null ||
+            user.Password is null)
+        {
+            return LoginErrors
+                .InvalidCredentials;
+        }
+
+        PasswordVerificationResult
+            passwordVerification =
+                _passwordHasher.Verify(
+                    user.Password.PasswordHash,
+                    request.Password);
+
+        if (passwordVerification ==
+            PasswordVerificationResult.Failed)
+        {
+            return LoginErrors
+                .InvalidCredentials;
+        }
+
+        if (user.Status ==
+            UserStatus.Suspended)
+        {
+            return LoginErrors
+                .UserSuspended;
+        }
+
+        if (user.Status ==
+            UserStatus.Blocked)
+        {
+            return LoginErrors
+                .UserBlocked;
+        }
+
+        DateTime utcNow =
+            _dateTimeProvider.UtcNow;
+
+        if (passwordVerification ==
+            PasswordVerificationResult
+                .SuccessRehashNeeded)
+        {
+            string updatedPasswordHash =
+                _passwordHasher.Hash(
+                    request.Password);
+
+            user.RehashPasswordHash(
+                updatedPasswordHash,
+                utcNow);
+        }
+
+        if (user.Status ==
+            UserStatus.PendingVerification)
+        {
+            GeneratedAccessToken restrictedToken =
+                _tokenService
+                    .GenerateRestrictedVerificationToken(
+                        user,
+                        utcNow);
+
+            user.UpdateLastLogin(
+                utcNow);
+
+            await _dbContext.SaveChangesAsync(
+                cancellationToken);
+
+            VerificationRequest? emailRecoveryRequest =
+                user.EmailVerified
+                    ? null
+                    : await FindLatestResendableRequestAsync(
+                        user.Id,
+                        VerificationPurpose.VerifyEmail,
+                        cancellationToken);
+
+            VerificationRequest? phoneRecoveryRequest =
+                user.PhoneVerified
+                    ? null
+                    : await FindLatestResendableRequestAsync(
+                        user.Id,
+                        VerificationPurpose.VerifyPhone,
+                        cancellationToken);
+
+            return new LoginResponse(
+                user.Id,
+                AuthAccessType
+                    .RestrictedVerification,
+                restrictedToken.PlainTextToken,
+                restrictedToken.ExpiresOnUtc,
+                RefreshToken: null,
+                RefreshTokenExpiresOnUtc: null,
+                DeviceSessionId: null,
+                user.EmailVerified,
+                user.PhoneVerified,
+                emailRecoveryRequest?.Id,
+                emailRecoveryRequest?.ExpiresOnUtc,
+                phoneRecoveryRequest?.Id,
+                phoneRecoveryRequest?.ExpiresOnUtc);
+        }
+
+        if (user.Status !=
+            UserStatus.Active)
+        {
+            return LoginErrors
+                .InvalidCredentials;
+        }
+
+        int activeSessionCount =
+            await _dbContext.DeviceSessions
+                .CountAsync(
+                    session =>
+                        session.UserId ==
+                            user.Id &&
+                        session.RevokedOnUtc ==
+                            null &&
+                        session.ExpiresOnUtc >
+                            utcNow,
+                    cancellationToken);
+
+        if (activeSessionCount >=
+            DeviceSessionPolicy
+                .MaximumActiveSessions)
+        {
+            return LoginErrors
+                .SessionLimitReached;
+        }
+
+        GeneratedRefreshToken refreshToken =
+            _tokenService.GenerateRefreshToken(
+                utcNow);
+
+        DeviceSession deviceSession =
+            DeviceSession.Create(
+                user.Id,
+                request.DeviceName,
+                request.DevicePlatform,
+                request.AppVersion,
+                refreshToken.Hash,
+                utcNow,
+                refreshToken.ExpiresOnUtc);
+
+        // Session-bound Normal access: the token is issued after the
+        // session row exists and carries its id. Multi-device isolation
+        // follows from distinct session ids per device.
+        GeneratedAccessToken accessToken =
+            _tokenService.GenerateAccessToken(
+                user,
+                utcNow,
+                deviceSession.Id);
+
+        _dbContext.DeviceSessions.Add(
+            deviceSession);
+
+        user.UpdateLastLogin(
+            utcNow);
+
+        await _dbContext.SaveChangesAsync(
+            cancellationToken);
+
+        return new LoginResponse(
+            user.Id,
+            AuthAccessType.Normal,
+            accessToken.PlainTextToken,
+            accessToken.ExpiresOnUtc,
+            refreshToken.PlainTextToken,
+            refreshToken.ExpiresOnUtc,
+            deviceSession.Id,
+            user.EmailVerified,
+            user.PhoneVerified);
+    }
+
+    private async Task<VerificationRequest?>
+        FindLatestResendableRequestAsync(
+            UserId userId,
+            VerificationPurpose purpose,
+            CancellationToken cancellationToken)
+    {
+        return await _dbContext.VerificationRequests
+            .Where(request =>
+                request.UserId == userId &&
+                request.Purpose == purpose &&
+                (request.Status ==
+                    VerificationStatus.Pending ||
+                 request.Status ==
+                    VerificationStatus.Expired))
+            .OrderByDescending(request =>
+                request.CreatedOnUtc)
+            .ThenByDescending(request =>
+                request.Id)
+            .FirstOrDefaultAsync(
+                cancellationToken);
+    }
+}

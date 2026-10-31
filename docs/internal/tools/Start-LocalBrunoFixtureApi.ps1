@@ -9,12 +9,12 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $PSScriptRoot))
-$apiProject = Join-Path $repoRoot 'src/API/Sanad.API/Sanad.API.csproj'
+$apiProject = Join-Path $repoRoot 'src/API/Ahlena.API/Ahlena.API.csproj'
 $localEnvironment = Join-Path $repoRoot 'tests/Bruno/environments/local.bru'
 $fixtureEnvironment = Join-Path $repoRoot 'tests/Bruno/environments/local-fixtures.bru'
 
 if (-not (Test-Path -LiteralPath $apiProject)) {
-    throw 'Run this script from the Sanad API repository checkout.'
+    throw 'Run this script from the Ahlena API repository checkout.'
 }
 if (-not (Test-Path -LiteralPath $localEnvironment)) {
     throw 'The Bruno local environment file was not found; fixture environment was not created.'
@@ -48,7 +48,7 @@ function Assert-FixturePortAvailable([int]$ListenPort) {
 Assert-FixturePortAvailable $Port
 
 $fixtureRunId = [Guid]::NewGuid().ToString('N').Substring(0, 12)
-$fixtureHmacSecret = 'sanad-local-fixture-hmac-v1-never-live'
+$fixtureHmacSecret = 'ahlena-local-fixture-hmac-v1-never-live'
 
 $testUserSeedEnabled = -not $SkipTestUserSeed
 $financeMigrationsEnabled = -not $SkipFinanceMigrations

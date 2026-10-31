@@ -11,7 +11,7 @@ INSERT-only dedicated identities; the asset and the references that make it
 invalid row is ever hand-written into a shared table.
 
 Reference discovery itself is proved exhaustively and offline by
-tests/Sanad.UnitTests/Cms/LandingMediaDeletionTests.cs against the real handler and
+tests/Ahlena.UnitTests/Cms/LandingMediaDeletionTests.cs against the real handler and
 the real local storage (every status, retained history, family-home items, history
 details and unreadable payloads). This script proves the HTTP contract: the route,
 the policy outcome per account type, the local status mapping, and that a served
@@ -26,8 +26,8 @@ $e08Password = $FixturePassword
 $baseUrl = $e08Url
 $null = Assert-LoopbackBaseUrl $baseUrl
 $root = Get-RepositoryRoot
-$apiDirectory = Join-Path $root 'src/API/Sanad.API'
-$assembly = Join-Path $apiDirectory 'bin/Release/net10.0/Sanad.API.dll'
+$apiDirectory = Join-Path $root 'src/API/Ahlena.API'
+$assembly = Join-Path $apiDirectory 'bin/Release/net10.0/Ahlena.API.dll'
 $environment = Get-LocalFixtureEnvironment -Password $e08Password
 $verificationEnvironment = Get-LocalFixtureEnvironment -Password $e08Password -EnableSeed
 $preflight = Invoke-TargetVerification -RepoRoot $root -AssemblyPath $assembly -Environment $verificationEnvironment -ApiDirectory $apiDirectory
@@ -206,7 +206,7 @@ try {
     $process = Start-FixtureApiProcess -AssemblyPath $assembly -WorkingDirectory $apiDirectory -Url $baseUrl -Environment $environment -OutputLogPath $logs[0] -ErrorLogPath $logs[1]
     if (-not (Wait-ForEndpoint -Url $baseUrl -TimeoutSeconds 90 -Process $process)) { throw 'E08 API startup failed.' }
 
-    $client = New-SanadHttpClient
+    $client = New-AhlenaHttpClient
     $tokens['admin'] = Get-FixtureToken -Client $client -Url $baseUrl -Email 'content.e08@test.sanad.local' -Password $e08Password -DeviceName 'e08-content-admin'
     $tokens['denied'] = Get-FixtureToken -Client $client -Url $baseUrl -Email 'support.e08@test.sanad.local' -Password $e08Password -DeviceName 'e08-support-admin'
 

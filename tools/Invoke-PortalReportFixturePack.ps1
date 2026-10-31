@@ -7,7 +7,7 @@
 .DESCRIPTION
     The wrapper never writes fixture data itself and never talks to a provider.
     It drives the bounded test-only host under
-    tools/Sanad.PortalFixtureHost, which serves the REAL API controllers on a
+    tools/Ahlena.PortalFixtureHost, which serves the REAL API controllers on a
     loopback address and substitutes every provider-capable seam with explicit
     scripted/inert doubles proven by DI resolution before it listens.
 
@@ -18,7 +18,7 @@
                   no process, no database, no listener.
 
       Preflight   Builds the host container, proves the exact local target
-                  (localhost:5432/SanadDb, zero pending migrations) and the DI
+                  (localhost:5432/AhlenaDb, zero pending migrations) and the DI
                   isolation, prints a JSON report and exits. Read-only: it
                   never listens, never writes and never migrates.
 
@@ -43,10 +43,10 @@
 
       - The base URL must be a loopback HTTP(S) listener. There is no remote
         fallback and no way to pass one.
-      - Credentials are read from SANAD_W5_* environment variables, validated
+      - Credentials are read from AHLENA_W5_* environment variables, validated
         against the approved local target, written only to the private
         credential file and never printed, logged or written to a manifest.
-      - The connection string must target localhost:5432/SanadDb exactly.
+      - The connection string must target localhost:5432/AhlenaDb exactly.
       - Cleanup is report-only; no DELETE statement is constructed anywhere.
       - Offline tests dot-source this file with -LibraryOnly, which defines the
         pure functions and returns immediately: no I/O, no process, no HTTP,
@@ -204,7 +204,7 @@ function Resolve-FixtureManifestPath {
 
 function Test-ApprovedLocalConnectionString {
     <#
-        True only when the connection string targets localhost:5432/SanadDb.
+        True only when the connection string targets localhost:5432/AhlenaDb.
         Never echoes the string.
     #>
     [CmdletBinding()]
@@ -228,7 +228,7 @@ function Test-ApprovedLocalConnectionString {
     $port = 0
     if (-not [int]::TryParse([string]$builder['Port'], [ref]$port)) { return $false }
 
-    return (Test-LoopbackHost -HostName $hostValue) -and ($port -eq 5432) -and ([string]$builder['Database'] -eq 'SanadDb')
+    return (Test-LoopbackHost -HostName $hostValue) -and ($port -eq 5432) -and ([string]$builder['Database'] -eq 'AhlenaDb')
 }
 
 function New-FixtureCredentialFileJson {
@@ -245,7 +245,7 @@ function New-FixtureCredentialFileJson {
     )
 
     if (-not (Test-ApprovedLocalConnectionString -ConnectionString $ConnectionString)) {
-        throw 'The connection string must target localhost:5432/SanadDb.'
+        throw 'The connection string must target localhost:5432/AhlenaDb.'
     }
 
     if ([string]::IsNullOrWhiteSpace($JwtSigningKey) -or $JwtSigningKey.Length -lt 32) {
@@ -283,8 +283,8 @@ function Get-RedactedText {
     $redacted = [regex]::Replace($redacted, '(?i)\b(host|server)\s*=\s*[^\s]+', '$1=<redacted>')
     # The private credential file itself is a credential-bearing path.
     $redacted = [regex]::Replace($redacted, '(?i)credentials-[a-z0-9]+\.json', 'credentials-<redacted>.json')
-    # Any SANAD_W5_* surface (env name or assignment) is private.
-    $redacted = [regex]::Replace($redacted, '(?i)SANAD_W5_[A-Z0-9_]+', 'SANAD_W5_<redacted>')
+    # Any AHLENA_W5_* surface (env name or assignment) is private.
+    $redacted = [regex]::Replace($redacted, '(?i)AHLENA_W5_[A-Z0-9_]+', 'AHLENA_W5_<redacted>')
     return $redacted
 }
 
@@ -401,7 +401,7 @@ function Get-PortalFixturePlan {
         host          = 'sanad-portal-fixture-host'
         runTag        = $tag
         address       = 'http://127.0.0.1:5299'
-        target        = 'localhost:5432/SanadDb'
+        target        = 'localhost:5432/AhlenaDb'
         paymentDoubles = @(
             'Families IPaymobClient -> ScriptedPaymobClient',
             'Finance ISubscriptionRefundGateway -> ScriptedSubscriptionRefundGateway'
@@ -606,7 +606,7 @@ function Resolve-HostProjectPath {
     }
 
     return [System.IO.Path]::Combine(
-        (Resolve-FixtureRepoRoot), 'tools', 'Sanad.PortalFixtureHost', 'Sanad.PortalFixtureHost.csproj')
+        (Resolve-FixtureRepoRoot), 'tools', 'Ahlena.PortalFixtureHost', 'Ahlena.PortalFixtureHost.csproj')
 }
 
 function Write-SafeLine {
@@ -670,9 +670,9 @@ function New-FixtureCredentialFile {
     # The private artifact must never be written inside the repository.
     Assert-ArtifactOutsideRepo -Path $Path -RepoRoot $RepoRoot | Out-Null
 
-    $connectionString = [Environment]::GetEnvironmentVariable('SANAD_W5_CONNECTION_STRING')
-    $jwtSigningKey = [Environment]::GetEnvironmentVariable('SANAD_W5_JWT_SIGNING_KEY')
-    $fixturePassword = [Environment]::GetEnvironmentVariable('SANAD_W5_FIXTURE_PASSWORD')
+    $connectionString = [Environment]::GetEnvironmentVariable('AHLENA_W5_CONNECTION_STRING')
+    $jwtSigningKey = [Environment]::GetEnvironmentVariable('AHLENA_W5_JWT_SIGNING_KEY')
+    $fixturePassword = [Environment]::GetEnvironmentVariable('AHLENA_W5_FIXTURE_PASSWORD')
 
     $json = New-FixtureCredentialFileJson `
         -ConnectionString $connectionString `
@@ -831,7 +831,7 @@ try {
             }
 
             $processPath = [string]$process.Path
-            if ($processPath -notmatch 'Sanad\.PortalFixtureHost|dotnet') {
+            if ($processPath -notmatch 'Ahlena\.PortalFixtureHost|dotnet') {
                 throw 'Stop refused: the listening process is not the fixture host.'
             }
 

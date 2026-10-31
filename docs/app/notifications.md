@@ -26,7 +26,7 @@ reuses the help-request preference lookup, so dedicated SOS preference
 semantics remain **Needs Owner Verification**.
 
 The bounded check-in/SOS recipient-flow Bruno run is
-`tests/Bruno/collections/Sanad/elderly-wellness-events/` and passed **20/20
+`tests/Bruno/collections/Ahlena/elderly-wellness-events/` and passed **20/20
 requests and assertions** against local fixtures. This verifies the scoped
 current behavior; it does not establish the historical check-in 500 root
 exception, which was not captured.
@@ -184,7 +184,7 @@ switch immediately before sending. The current mapping is:
 
 | Event category/type | Push topic | Payload navigation |
 |---|---|---|
-| Care-home booking events (`CareHomes` with `Booking*` types) | `bookingUpdates` | `sanad://inbox?notificationId=<id>` |
+| Care-home booking events (`CareHomes` with `Booking*` types) | `bookingUpdates` | `ahlena://inbox?notificationId=<id>` |
 | Check-in (`ElderlyCheckIn`) | `checkInAlerts` | inbox fallback |
 | Medication late (`MedicationReminders`) | `medicationReminders` | inbox fallback |
 | Help request (`ElderlyHelpRequest`) | `helpRequestAlerts` | inbox fallback |
@@ -199,7 +199,7 @@ row. Likes, favorites, comments, money/payout events, and OTP are not
 pushed by this policy. Chat produces its in-app row through the durable Chat
 Plus outbox/dispatcher (staged in the Chat transaction, delivered after commit
 with bounded retries) — the mapping above applies when that seam creates the row.
-The `sanad://inbox` scheme is centralized in `PushFanoutPolicy.BuildData` so the
+The `ahlena://inbox` scheme is centralized in `PushFanoutPolicy.BuildData` so the
 mobile team can confirm or change it in one place.
 
 Transient provider errors use capped exponential backoff (maximum 60 minutes,

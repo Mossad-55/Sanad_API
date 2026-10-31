@@ -4,10 +4,10 @@ Import the collection for the caller that the frontend implements:
 
 | Collection | Use it for | Token / authorization |
 |---|---|---|
-| [Facility Owner](Sanad.CareHomes.Owner.postman_collection.json) | Owner onboarding, inventory, booking decisions, room assignment/transfers, maintenance, stays, and visit schedule/decisions | `careHomeOwnerJwt`; server policy `CareHomeOwnerAccess` |
-| [Family app](../app/Sanad.App.Family.CareHomes.postman_collection.json) | Anonymous discovery plus Family booking/payment, stay confirmation/disputes, ratings, and visit requests | `careHomeFamilyJwt` for Family routes; discovery and visit availability set `noauth` |
-| [Admin Care Homes](../admins/Sanad.Admin.CareHomes.postman_collection.json) | Application review, private-file reads, check-in disputes, refund recovery, inventory inspection, and payout ledger | Existing Admin environment `accessToken`; `CareHomesOperationalAdmin` allows SuperAdmin/SupportAdmin for general operations; `PayoutOperationalAdmin` allows SuperAdmin/FinanceAdmin for payouts |
-| [Care Homes finance and notes](Sanad.CareHomes.Finance.postman_collection.json) | HC-037 receipts, dashboard/revenue, CSV exports, and internal booking notes | Collection variables `careHomeOwnerJwt` or `accessToken`; Owner and Admin requests set their matching bearer token |
+| [Facility Owner](Ahlena.CareHomes.Owner.postman_collection.json) | Owner onboarding, inventory, booking decisions, room assignment/transfers, maintenance, stays, and visit schedule/decisions | `careHomeOwnerJwt`; server policy `CareHomeOwnerAccess` |
+| [Family app](../app/Ahlena.App.Family.CareHomes.postman_collection.json) | Anonymous discovery plus Family booking/payment, stay confirmation/disputes, ratings, and visit requests | `careHomeFamilyJwt` for Family routes; discovery and visit availability set `noauth` |
+| [Admin Care Homes](../admins/Ahlena.Admin.CareHomes.postman_collection.json) | Application review, private-file reads, check-in disputes, refund recovery, inventory inspection, and payout ledger | Existing Admin environment `accessToken`; `CareHomesOperationalAdmin` allows SuperAdmin/SupportAdmin for general operations; `PayoutOperationalAdmin` allows SuperAdmin/FinanceAdmin for payouts |
+| [Care Homes finance and notes](Ahlena.CareHomes.Finance.postman_collection.json) | HC-037 receipts, dashboard/revenue, CSV exports, and internal booking notes | Collection variables `careHomeOwnerJwt` or `accessToken`; Owner and Admin requests set their matching bearer token |
 
 Configure `baseUrl` and the role token in the corresponding Postman environment. The Admin collection also expects the Admin environment's `accessToken`. Visit examples use `careHomeFacilityId`, `careHomeVisitDate`, `careHomeVisitStart`, `careHomeVisitReplacementStart`, and `careHomeVisitId`; provide IDs and timestamps for a suitable existing fixture. Other empty collection variables are scenario IDs or fixture values; fill only those needed for the request being used.
 
@@ -17,4 +17,4 @@ Visit contract and lifecycle details are in [Care-home visits](../../care-homes/
 
 The Family visit folder includes public availability and Family list/create/detail/reschedule/cancel requests. The Owner visit folder includes settings read/update, visit list, approve/reject, and cancellation. These stateful examples require suitable existing visit records and do not include fixture setup or cleanup.
 
-The old [Sanad Care Homes collection file](Sanad.CareHomes.postman_collection.json) is now an empty index for compatibility. Its requests were moved into the role collections above. The broad [Sanad Admin collection](../admins/Sanad.Admin.postman_collection.json) no longer contains Care Homes domain requests; use the dedicated Admin Care Homes collection.
+The old [Ahlena Care Homes collection file](Ahlena.CareHomes.postman_collection.json) is now an empty index for compatibility. Its requests were moved into the role collections above. The broad [Ahlena Admin collection](../admins/Ahlena.Admin.postman_collection.json) no longer contains Care Homes domain requests; use the dedicated Admin Care Homes collection.

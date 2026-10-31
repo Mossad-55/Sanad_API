@@ -1,0 +1,214 @@
+using System.Text;
+using MediatR;
+using Microsoft.EntityFrameworkCore;
+using Ahlena.BuildingBlocks.Application.Abstractions.Storage;
+using Ahlena.BuildingBlocks.Application.Results;
+using Ahlena.BuildingBlocks.Domain.Primitives.Ids;
+using Ahlena.Modules.CareHomes.Application.Facilities;
+using Ahlena.Modules.CareHomes.Domain.Facilities;
+using Ahlena.Modules.CareHomes.Infrastructure.Persistence;
+using Ahlena.Modules.Identity.Application.Users;
+
+namespace Ahlena.UnitTests.CareHomes;
+
+public sealed class AdminCareHomeApplicationTests
+{
+    internal static ISender Sender { get; } = new FakeDisplayInfoSender();
+
+    [Fact]
+    public async Task AdminQueries_RejectInvalidPagingAndReturnTypedMissingIdErrors()
+    {
+        using CareHomesDbContext db = CreateDb();
+        var list = new GetAdminCareHomeApplicationsQueryHandler(db, Sender);
+        var detail = new GetAdminCareHomeApplicationQueryHandler(db, Sender, CareHomeTestClockHost.Clock());
+
+        var invalidPage = await list.Handle(new GetAdminCareHomeApplicationsQuery(0, 20), default);
+        var invalidSize = await list.Handle(new GetAdminCareHomeApplicationsQuery(1, 101), default);
+        var invalidStatus = await list.Handle(new GetAdminCareHomeApplicationsQuery(1, 20, (CareHomeStatus)999), default);
+        var missing = await detail.Handle(new GetAdminCareHomeApplicationQuery(Guid.NewGuid()), default);
+
+        Assert.Equal("CareHomes.Admin.InvalidQuery", invalidPage.Error.Code);
+        Assert.Equal("CareHomes.Admin.InvalidQuery", invalidSize.Error.Code);
+        Assert.Equal("CareHomes.Admin.InvalidQuery", invalidStatus.Error.Code);
+        Assert.Equal("CareHomes.Admin.ApplicationNotFound", missing.Error.Code);
+    }
+
+    [Fact]
+    public async Task DocumentReview_RequiresCurrentVersionAndExplicitNonExpiringConfirmation()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        UserId admin = UserId.New();
+        var facility = await CreateSubmittedFacility(db, owner);
+        CareHomeDocument document = facility.Documents.Single(x => x.Type == CareHomeDocumentType.OperatingLicense);
+        var handler = new ReviewCareHomeDocumentCommandHandler(db, Sender, CareHomeTestClockHost.Clock());
+        int submittedVersion = facility.Version;
+
+        var missingConfirmation = await handler.Handle(new ReviewCareHomeDocumentCommand(
+            admin, facility.Id.Value, document.Id, submittedVersion, true, null, false, null), default);
+        var verified = await handler.Handle(new ReviewCareHomeDocumentCommand(
+            admin, facility.Id.Value, document.Id, submittedVersion, true, null, true, null), default);
+        var stale = await handler.Handle(new ReviewCareHomeDocumentCommand(
+            admin, facility.Id.Value, document.Id, submittedVersion, true, null, true, null), default);
+
+        Assert.Equal("CareHomes.Admin.InvalidOperation", missingConfirmation.Error.Code);
+        Assert.True(verified.IsSuccess);
+        Assert.Equal(CareHomeDocumentStatus.Verified, verified.Value.Documents.Single(x => x.Id == document.Id).Status);
+        Assert.Equal("CareHomes.Admin.Conflict", stale.Error.Code);
+    }
+
+    [Fact]
+    public async Task DocumentReview_RejectsWithReasonAndMissingDocumentIsNotFound()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        UserId admin = UserId.New();
+        var facility = await CreateSubmittedFacility(db, owner);
+        CareHomeDocument document = facility.Documents.Single(x => x.Type == CareHomeDocumentType.Registration);
+        var handler = new ReviewCareHomeDocumentCommandHandler(db, Sender, CareHomeTestClockHost.Clock());
+
+        var rejected = await handler.Handle(new ReviewCareHomeDocumentCommand(
+            admin, facility.Id.Value, document.Id, facility.Version, false, null, false, "Unreadable registration"), default);
+        var missing = await handler.Handle(new ReviewCareHomeDocumentCommand(
+            admin, facility.Id.Value, Guid.NewGuid(), facility.Version, false, null, false, "missing"), default);
+
+        Assert.True(rejected.IsSuccess);
+        var response = rejected.Value.Documents.Single(x => x.Id == document.Id);
+        Assert.Equal(CareHomeDocumentStatus.Rejected, response.Status);
+        Assert.Equal("Unreadable registration", response.ReviewReason);
+        Assert.Equal("CareHomes.Admin.InvalidOperation", missing.Error.Code);
+    }
+
+    [Fact]
+    public async Task ApplicationReview_SupportsCorrectionApprovalSuspensionAndReactivationWithVersionChecks()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        UserId admin = UserId.New();
+        var facility = await CreateSubmittedFacility(db, owner);
+        var handler = new ReviewCareHomeApplicationCommandHandler(db, Sender, CareHomeTestClockHost.Clock());
+
+        var correction = await handler.Handle(new ReviewCareHomeApplicationCommand(
+            admin, facility.Id.Value, facility.Version, CareHomeReviewAction.CorrectionsRequested, "Please replace certificate"), default);
+
+        facility = await CreateSubmittedFacility(db, UserId.New());
+        foreach (CareHomeDocument document in facility.Documents.ToArray())
+        {
+            facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents)
+                .SingleAsync(x => x.Id == facility.Id);
+            await new ReviewCareHomeDocumentCommandHandler(db, Sender, CareHomeTestClockHost.Clock()).Handle(new ReviewCareHomeDocumentCommand(
+                admin, facility.Id.Value, document.Id, facility.Version, true, null, true, null), default);
+        }
+        facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents).SingleAsync(x => x.Id == facility.Id);
+        var approved = await handler.Handle(new ReviewCareHomeApplicationCommand(
+            admin, facility.Id.Value, facility.Version, CareHomeReviewAction.Approved, null), default);
+        var suspended = await handler.Handle(new ReviewCareHomeApplicationCommand(
+            admin, facility.Id.Value, approved.Value.Version, CareHomeReviewAction.Suspended, "License alert"), default);
+        var reactivated = await handler.Handle(new ReviewCareHomeApplicationCommand(
+            admin, facility.Id.Value, suspended.Value.Version, CareHomeReviewAction.Reactivated, null), default);
+
+        Assert.Equal(CareHomeStatus.NeedsCorrection, correction.Value.Status);
+        Assert.Equal(CareHomeStatus.Approved, approved.Value.Status);
+        Assert.Equal(CareHomeStatus.Suspended, suspended.Value.Status);
+        Assert.Equal(CareHomeStatus.Approved, reactivated.Value.Status);
+        Assert.Contains(correction.Value.ReviewHistory, x => x.Reason == "Please replace certificate");
+    }
+
+    [Fact]
+    public async Task PrivateDocumentFile_IsUnavailableForDraftAndDelegatesReadForReviewableStates()
+    {
+        using CareHomesDbContext db = CreateDb();
+        UserId owner = UserId.New();
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
+            .Handle(new CreateCareHomeFacilityCommand(owner), default);
+        _ = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
+            new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
+        CareHomeFacility draft = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents)
+            .SingleAsync(x => x.Id == new CareHomeId(created.Value.Id));
+        CareHomeDocument document = draft.UploadDocument(owner, CareHomeDocumentType.OperatingLicense,
+            "private/license.pdf", "application/pdf", 100, null, DateTime.UtcNow);
+        await db.SaveChangesAsync();
+        var storage = new RecordingStorage();
+        var handler = new GetAdminCareHomeDocumentFileQueryHandler(db, storage);
+
+        var unavailable = await handler.Handle(new GetAdminCareHomeDocumentFileQuery(draft.Id.Value, document.Id), default);
+        foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
+            if (type != CareHomeDocumentType.OperatingLicense)
+                draft.UploadDocument(owner, type, $"private/{type}.pdf", "application/pdf", 100, null, DateTime.UtcNow);
+        draft.SaveDraft(owner, draft.Version, CareHomeFacilityTests.Draft(), DateTime.UtcNow);
+        await db.SaveChangesAsync();
+        var submit = new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock());
+        AddCoverAndGallery(db, draft);
+        await db.SaveChangesAsync();
+        await submit.Handle(new SubmitMyCareHomeApplicationCommand(owner, draft.Version), default);
+        var readable = await handler.Handle(new GetAdminCareHomeDocumentFileQuery(draft.Id.Value, document.Id), default);
+
+        Assert.Equal("CareHomes.Admin.PrivateDocumentUnavailable", unavailable.Error.Code);
+        Assert.True(readable.IsSuccess);
+        Assert.Equal("application/pdf", readable.Value.ContentType);
+        Assert.Equal(1, storage.Reads);
+    }
+
+    private static async Task<CareHomeFacility> CreateSubmittedFacility(CareHomesDbContext db, UserId owner)
+    {
+        var created = await new CreateCareHomeFacilityCommandHandler(db, CareHomeTestClockHost.Clock())
+            .Handle(new CreateCareHomeFacilityCommand(owner), default);
+        _ = await new SaveMyCareHomeProfileCommandHandler(db, CareHomeTestClockHost.Clock()).Handle(
+            new SaveMyCareHomeProfileCommand(owner, created.Value.Version, CareHomeFacilityTests.Draft()), default);
+        CareHomeFacility facility = await db.Facilities.Include(x => x.Revisions).Include(x => x.Documents)
+            .SingleAsync(x => x.OwnerUserId == owner);
+        foreach (CareHomeDocumentType type in Enum.GetValues<CareHomeDocumentType>())
+            facility.UploadDocument(owner, type, $"private/{type}.pdf", "application/pdf", 100, null, DateTime.UtcNow);
+        await db.SaveChangesAsync();
+        AddCoverAndGallery(db, facility);
+        await db.SaveChangesAsync();
+        await new SubmitMyCareHomeApplicationCommandHandler(db, CareHomeTestClockHost.Clock())
+            .Handle(new SubmitMyCareHomeApplicationCommand(owner, facility.Version), default);
+        return facility;
+    }
+
+    private static void AddCoverAndGallery(CareHomesDbContext db, CareHomeFacility facility)
+    {
+        Guid revisionId = facility.Revisions.Single(revision => !revision.IsFrozen).Id;
+        db.ProfileMedia.Add(CareHomeProfileMedia.Create(
+            revisionId, CareHomeProfileMediaKind.Cover, 0,
+            "private/care-home-media/cover.jpg", "image/jpeg", 100, DateTime.UtcNow));
+        db.ProfileMedia.Add(CareHomeProfileMedia.Create(
+            revisionId, CareHomeProfileMediaKind.Gallery, 0,
+            "private/care-home-media/gallery-0.jpg", "image/jpeg", 100, DateTime.UtcNow));
+    }
+
+    private static CareHomesDbContext CreateDb() => new(new DbContextOptionsBuilder<CareHomesDbContext>()
+        .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+
+    private sealed class FakeDisplayInfoSender : ISender
+    {
+        public Task<TResponse> Send<TResponse>(IRequest<TResponse> request, CancellationToken cancellationToken = default)
+        {
+            if (request is GetUserDisplayInfoByIdsQuery)
+            {
+                return Task.FromResult((TResponse)(object)Result<IReadOnlyList<UserDisplayInfo>>.Success(Array.Empty<UserDisplayInfo>()));
+            }
+            throw new NotSupportedException();
+        }
+
+        public Task Send<TRequest>(TRequest request, CancellationToken cancellationToken = default) where TRequest : IRequest => throw new NotSupportedException();
+        public Task<object?> Send(object request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public IAsyncEnumerable<TResponse> CreateStream<TResponse>(IStreamRequest<TResponse> request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public IAsyncEnumerable<object?> CreateStream(object request, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+    }
+
+    private sealed class RecordingStorage : IFileStorage
+    {
+        public int Reads { get; private set; }
+        public Task<Result<StoredFile>> SaveAsync(Stream content, string contentType, long contentLength, string folder, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Result<StoredFile>> SavePrivateAsync(Stream content, string contentType, long contentLength, string folder, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Result<StoredFile>> SavePrivateAsync(Stream content, string contentType, long contentLength, string folder, long maxBytes, CancellationToken cancellationToken = default) => throw new NotSupportedException();
+        public Task<Result<PrivateFileContent>> OpenReadAsync(string key, CancellationToken cancellationToken = default)
+        {
+            Reads++;
+            return Task.FromResult<Result<PrivateFileContent>>(new PrivateFileContent("license.pdf", "application/pdf", new MemoryStream(Encoding.ASCII.GetBytes("private"))));
+        }
+        public Task<Result> DeleteAsync(string key, CancellationToken cancellationToken = default) => Task.FromResult(Result.Success());
+    }
+}

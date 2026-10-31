@@ -97,7 +97,7 @@ withheld and an error line reports the validation failures instead.
 
 ## Which transaction ids are allowlisted (provisioner-derived)
 
-The rehearsal provisioner (`Sanad.PortalProvisioner`, run with
+The rehearsal provisioner (`Ahlena.PortalProvisioner`, run with
 `--seam-deployed`) derives these deterministically per run tag; the `plan`
 manifest prints the exact ids/outcomes — copy them from there:
 

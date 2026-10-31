@@ -2024,7 +2024,7 @@ function Invoke-E05PlannedChecks {
         $transportError = $null
 
         try {
-            $response = Invoke-SanadHttpRequest -Client $Client -Method $check.Method -Url "$Url$($check.Path)" -Body $requestBody -Token $check.Token
+            $response = Invoke-AhlenaHttpRequest -Client $Client -Method $check.Method -Url "$Url$($check.Path)" -Body $requestBody -Token $check.Token
             $status = [int]$response.Status
             $bodyText = [string]$response.Body
         }
@@ -2154,21 +2154,21 @@ if ($e05LibraryOnly) { return }
 
 $repoRoot = Get-RepositoryRoot
 if (-not (Test-Path -LiteralPath (Join-Path $repoRoot 'AGENTS.md') -PathType Leaf)) {
-    throw 'Run this script from the Sanad API repository checkout.'
+    throw 'Run this script from the Ahlena API repository checkout.'
 }
 
 $head = Get-PinnedHead $repoRoot
 $uri = Assert-LoopbackBaseUrl $e05BaseUrl
 $baseUrl = "$($uri.Scheme)://$($uri.Authority)"
 
-$apiDirectory = Join-Path $repoRoot 'src/API/Sanad.API'
+$apiDirectory = Join-Path $repoRoot 'src/API/Ahlena.API'
 $assemblyCandidate = $e05ApiAssemblyPath
 if ([string]::IsNullOrWhiteSpace($assemblyCandidate)) {
-    $assemblyCandidate = Join-Path $apiDirectory 'bin/Release/net10.0/Sanad.API.dll'
+    $assemblyCandidate = Join-Path $apiDirectory 'bin/Release/net10.0/Ahlena.API.dll'
 }
 $assemblyPath = Resolve-FullPath $assemblyCandidate
 if (-not (Test-Path -LiteralPath $assemblyPath -PathType Leaf)) {
-    throw 'The built API assembly was not found. Build Release first (dotnet build Sanad.slnx -c Release).'
+    throw 'The built API assembly was not found. Build Release first (dotnet build Ahlena.slnx -c Release).'
 }
 
 $definition = Get-E05FixtureDefinition
@@ -2193,7 +2193,7 @@ $refusals = @()
 if (-not $preflight.passed) { $refusals += 'the read-only target verification did not pass' }
 if (-not $guard.Ok) { $refusals += @($guard.Problems) }
 if ([string]$connection.Database -eq 'SanadBrunoTestDb') { $refusals += 'the resolved database is SanadBrunoTestDb, which this adapter never touches' }
-if ([string]$connection.Database -ne 'SanadDb') { $refusals += "the resolved database is not the persistent local SanadDb" }
+if ([string]$connection.Database -ne 'AhlenaDb') { $refusals += "the resolved database is not the persistent local AhlenaDb" }
 if (@($connection.Problems).Count -gt 0) { $refusals += @($connection.Problems) }
 
 if ($refusals.Count -gt 0) {
@@ -2317,7 +2317,7 @@ try {
             throw "the E05 port is already occupied by another listener; stop the process this adapter owns before running again."
         }
 
-        $logDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ('sanad-e05-verify-' + [Guid]::NewGuid().ToString('N'))
+        $logDirectory = Join-Path ([System.IO.Path]::GetTempPath()) ('ahlena-e05-verify-' + [Guid]::NewGuid().ToString('N'))
         [System.IO.Directory]::CreateDirectory($logDirectory) | Out-Null
         $apiLogPaths = @((Join-Path $logDirectory 'api.stdout.log'), (Join-Path $logDirectory 'api.stderr.log'))
 
@@ -2331,7 +2331,7 @@ try {
             throw 'the Development API did not become reachable within 90 seconds'
         }
 
-        $client = New-SanadHttpClient
+        $client = New-AhlenaHttpClient
 
         # 3. Session preflight for the five dedicated fixture identities. A failure
         #    here is a failure note, not an abort: the affected checks then report

@@ -1,0 +1,54 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.Extensions.Configuration" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\BuildingBlocks\Domain\Ahlena.BuildingBlocks.Domain\Ahlena.BuildingBlocks.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Caregivers\Domain\Ahlena.Modules.Caregivers.Domain\Ahlena.Modules.Caregivers.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\CareHomes\Domain\Ahlena.Modules.CareHomes.Domain\Ahlena.Modules.CareHomes.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\CareHomes\Application\Ahlena.Modules.CareHomes.Application\Ahlena.Modules.CareHomes.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\CareHomes\Infrastructure\Ahlena.Modules.CareHomes.Infrastructure\Ahlena.Modules.CareHomes.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Chat\Domain\Ahlena.Modules.Chat.Domain\Ahlena.Modules.Chat.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Domain\Ahlena.Modules.Identity.Domain\Ahlena.Modules.Identity.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Application\Ahlena.Modules.Identity.Application\Ahlena.Modules.Identity.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Identity\Infrastructure\Ahlena.Modules.Identity.Infrastructure\Ahlena.Modules.Identity.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\API\Ahlena.API\Ahlena.API.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Cms\Domain\Ahlena.Modules.Cms.Domain\Ahlena.Modules.Cms.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Cms\Infrastructure\Ahlena.Modules.Cms.Infrastructure\Ahlena.Modules.Cms.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Caregivers\Infrastructure\Ahlena.Modules.Caregivers.Infrastructure\Ahlena.Modules.Caregivers.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Caregivers\Application\Ahlena.Modules.Caregivers.Application\Ahlena.Modules.Caregivers.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Families\Domain\Ahlena.Modules.Families.Domain\Ahlena.Modules.Families.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Families\Application\Ahlena.Modules.Families.Application\Ahlena.Modules.Families.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Families\Infrastructure\Ahlena.Modules.Families.Infrastructure\Ahlena.Modules.Families.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Finance\Domain\Ahlena.Modules.Finance.Domain\Ahlena.Modules.Finance.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Finance\Application\Ahlena.Modules.Finance.Application\Ahlena.Modules.Finance.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Finance\Infrastructure\Ahlena.Modules.Finance.Infrastructure\Ahlena.Modules.Finance.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Notifications\Application\Ahlena.Modules.Notifications.Application\Ahlena.Modules.Notifications.Application.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Notifications\Infrastructure\Ahlena.Modules.Notifications.Infrastructure\Ahlena.Modules.Notifications.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Modules\Notifications\Domain\Ahlena.Modules.Notifications.Domain\Ahlena.Modules.Notifications.Domain.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\tools\Ahlena.GeographyImport\Ahlena.GeographyImport.csproj" />
+  </ItemGroup>
+</Project>

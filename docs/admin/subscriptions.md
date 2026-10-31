@@ -238,8 +238,7 @@ are acknowledged without a second mutation. Successful initial and renewal
 settlement creates one immutable branded invoice PDF; failed, pending,
 duplicate, and grace-expired events do not. Recurring wallet billing, trials, and
 coupon redemption remain separate slices. Proration, allowance consumption, and
-deployment automation are implemented. Family-owner plan changes (immediate prorated upgrades
-and next-renewal downgrades) are documented in the family subscription guide;
+deployment automation are implemented. Family-owner plan changes (read-only quotes; immediate plan changes refused with `409 Subscriptions.PlanChange.PaidPeriodActive` during a paid period, and a scheduled pending downgrade applied at the original period boundary) are documented in the family subscription guide;
 they do not add an admin mutation surface. Initial Card enrollment is
 available only when the local plan has `paymobSubscriptionPlanId` and Paymob
 Card 3DS is configured; Wallet remains one-time/manual. The current family

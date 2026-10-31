@@ -1,0 +1,36 @@
+using Ahlena.BuildingBlocks.Application.Results;
+
+namespace Ahlena.Modules.Caregivers.Application.Lookups;
+
+public static class LookupsErrors
+{
+    public static readonly Error NotFound =
+        new(
+            "Caregivers.Lookups.NotFound",
+            "Lookup was not found.");
+
+    public static readonly Error NameAlreadyInUse =
+        new(
+            "Caregivers.Lookups.NameAlreadyInUse",
+            "A lookup with this name already exists.");
+
+    public static readonly Error ParentNotFound =
+        new(
+            "Caregivers.Lookups.ParentNotFound",
+            "The referenced parent lookup was not found.");
+
+    public static readonly Error LanguageCodeInUse =
+        new(
+            "Caregivers.Lookups.LanguageCodeInUse",
+            "A language with this code already exists.");
+
+    public static readonly Error BankCodeInUse =
+        new(
+            "Caregivers.Lookups.BankCodeInUse",
+            "A bank with this code already exists.");
+
+    public static readonly Error ParentNotActive =
+    new(
+        "Caregivers.Lookups.ParentNotActive",
+        "The referenced parent lookup is not active.");
+}

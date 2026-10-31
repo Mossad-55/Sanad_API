@@ -1,6 +1,6 @@
 # Authentication overview
 
-Sanad Auth is the Identity vertical slice exposed by `AuthController` at `/api/v1/auth`.
+Ahlena Auth is the Identity vertical slice exposed by `AuthController` at `/api/v1/auth`.
 
 Google/Apple social authentication was cancelled and removed. Do not add social endpoints.
 

@@ -1,0 +1,106 @@
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Ahlena.BuildingBlocks.Domain.Primitives.Ids;
+using Ahlena.Modules.Families.Domain.Families;
+
+namespace Ahlena.Modules.Families.Infrastructure.Persistence.Configurations;
+
+public sealed class FamilyConfiguration :
+    IEntityTypeConfiguration<Family>
+{
+    public void Configure(EntityTypeBuilder<Family> builder)
+    {
+        builder.ToTable("families");
+
+        builder.HasKey(family => family.Id);
+
+        builder.Property(family => family.Id)
+            .HasConversion(
+                id => id.Value,
+                value => new FamilyId(value))
+            .HasColumnName("id")
+            .ValueGeneratedNever();
+
+        builder.Property(family => family.OwnerUserId)
+            .HasConversion(
+                id => id.Value,
+                value => new UserId(value))
+            .HasColumnName("owner_user_id")
+            .IsRequired();
+
+        builder.Property(family => family.Name)
+            .HasColumnName("name")
+            .HasMaxLength(Family.MaximumNameLength)
+            .IsRequired();
+
+        builder.Property(family => family.CreatedOnUtc)
+            .HasColumnName("created_on_utc")
+            .IsRequired();
+
+        builder.Property(family => family.UpdatedOnUtc)
+            .HasColumnName("updated_on_utc")
+            .IsRequired();
+
+        builder.Property(family => family.DeletedOnUtc)
+            .HasColumnName("deleted_on_utc");
+
+        builder.Property(family => family.DeletionReason)
+            .HasColumnName("deletion_reason")
+            .HasMaxLength(Family.MaximumDeletionReasonLength);
+
+        builder.Property(family => family.DeletionMessage)
+            .HasColumnName("deletion_message")
+            .HasMaxLength(Family.MaximumDeletionMessageLength);
+
+        builder.HasIndex(family => family.OwnerUserId)
+            .IsUnique();
+
+        builder.OwnsMany(
+            family => family.Members,
+            member =>
+            {
+                member.ToTable("family_members");
+
+                member.WithOwner()
+                    .HasForeignKey("FamilyId");
+
+                member.Property<FamilyId>("FamilyId")
+                    .HasConversion(
+                        id => id.Value,
+                        value => new FamilyId(value))
+                    .HasColumnName("family_id")
+                    .IsRequired();
+
+                member.Property(m => m.Id)
+                    .HasConversion(
+                        id => id.Value,
+                        value => new UserId(value))
+                    .HasColumnName("user_id");
+
+                member.HasKey("FamilyId", "Id");
+
+                member.Property(m => m.AddedByUserId)
+                    .HasConversion(
+                        id => id.Value,
+                        value => new UserId(value))
+                    .HasColumnName("added_by_user_id")
+                    .IsRequired();
+
+                member.Property(m => m.RelationshipType)
+                    .HasColumnName("relationship_type")
+                    .HasConversion<int>()
+                    .IsRequired();
+
+                member.Property(m => m.Role)
+                    .HasColumnName("role")
+                    .HasConversion<int>()
+                    .IsRequired();
+
+                member.Property(m => m.JoinedOnUtc)
+                    .HasColumnName("joined_on_utc")
+                    .IsRequired();
+            });
+
+        builder.Ignore(family => family.DomainEvents);
+    }
+}

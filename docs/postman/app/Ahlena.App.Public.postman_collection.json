@@ -1,0 +1,339 @@
+{
+  "info": {
+    "name": "Ahlena App — Public",
+    "description": "App-facing routes. Splash and active lookups are public. Auth login is included so Family/Caregiver flows can reuse this collection later. The Paymob subscription callback below is a safe/manual fixture template only: it is not an automated provider mutation and must not be replayed without an approved provider payload and valid body hmac.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "03. Paymob webhook (manual fixture only)",
+      "item": [
+        {
+          "name": "CREATED — manual only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"subscription_data\": {\n    \"id\": \"{{paymobSubscriptionId}}\",\n    \"initial_transaction\": \"{{paymobInitialTransactionId}}\",\n    \"amount_cents\": 29900,\n    \"state\": \"active\",\n    \"next_billing\": \"2026-10-24T10:00:00Z\"\n  },\n  \"trigger_type\": \"CREATED\",\n  \"hmac\": \"{{paymobSubscriptionHmac}}\"\n}"},
+            "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
+          },
+          "description": "Safe/manual provider fixture only; this request does not automate provider mutation and has no automated assertions. Replace variables with an approved provider payload and valid HMAC-SHA512 over trigger_type + \"for\" + subscription_data.id; do not replay against shared local, VPS, or production data."
+        },
+        {
+          "name": "Subscription Created — manual only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"subscription_data\": {\n    \"id\": \"{{paymobSubscriptionId}}\",\n    \"initial_transaction\": \"{{paymobInitialTransactionId}}\",\n    \"amount_cents\": 29900,\n    \"state\": \"active\",\n    \"next_billing\": \"2026-10-24T10:00:00Z\"\n  },\n  \"trigger_type\": \"Subscription Created\",\n  \"hmac\": \"{{paymobSubscriptionHmac}}\"\n}"},
+            "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
+          },
+          "description": "Safe/manual provider fixture only; this request does not automate provider mutation and has no automated assertions. Replace variables with an approved provider payload and valid HMAC-SHA512 over trigger_type + \"for\" + subscription_data.id; do not replay against shared local, VPS, or production data."
+        },
+        {
+          "name": "Successful Transaction — manual only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"paymob_request_id\": \"{{paymobRequestId}}\",\n  \"subscription_data\": {\n    \"id\": \"{{paymobSubscriptionId}}\",\n    \"amount_cents\": 29900,\n    \"state\": \"active\",\n    \"next_billing\": \"2026-10-24T10:00:00Z\"\n  },\n  \"trigger_type\": \"Successful Transaction\",\n  \"hmac\": \"{{paymobSubscriptionHmac}}\"\n}"},
+            "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
+          },
+          "description": "Safe/manual renewal fixture only; this request does not automate provider mutation and has no automated assertions. Renewal callbacks require paymob_request_id. Replace variables with an approved provider payload and valid HMAC-SHA512 over trigger_type + \"for\" + subscription_data.id; do not replay against shared local, VPS, or production data."
+        },
+        {
+          "name": "Failed Transaction — manual only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"paymob_request_id\": \"{{paymobRequestId}}\",\n  \"subscription_data\": {\n    \"id\": \"{{paymobSubscriptionId}}\",\n    \"amount_cents\": 29900,\n    \"state\": \"failed\",\n    \"next_billing\": \"2026-10-24T10:00:00Z\"\n  },\n  \"trigger_type\": \"Failed Transaction\",\n  \"hmac\": \"{{paymobSubscriptionHmac}}\"\n}"},
+            "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
+          },
+          "description": "Safe/manual renewal fixture only; this request does not automate provider mutation and has no automated assertions. Renewal callbacks require paymob_request_id. Replace variables with an approved provider payload and valid HMAC-SHA512 over trigger_type + \"for\" + subscription_data.id; do not replay against shared local, VPS, or production data."
+        },
+        {
+          "name": "Failed Overdue Transaction — manual only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"paymob_request_id\": \"{{paymobRequestId}}\",\n  \"subscription_data\": {\n    \"id\": \"{{paymobSubscriptionId}}\",\n    \"amount_cents\": 29900,\n    \"state\": \"failed\",\n    \"next_billing\": \"2026-10-24T10:00:00Z\"\n  },\n  \"trigger_type\": \"Failed Overdue Transaction\",\n  \"hmac\": \"{{paymobSubscriptionHmac}}\"\n}"},
+            "url": "{{baseUrl}}/api/v1/payments/webhooks/paymob"
+          },
+          "description": "Safe/manual renewal fixture only; this request does not automate provider mutation and has no automated assertions. Renewal callbacks require paymob_request_id. Replace variables with an approved provider payload and valid HMAC-SHA512 over trigger_type + \"for\" + subscription_data.id; do not replay against shared local, VPS, or production data."
+        }
+      ]
+    },
+    {
+      "name": "01. Splash Screens",
+      "item": [
+        {
+          "name": "Get published splash screens",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/splash-screens",
+            "description": "Anonymous. Returns Published screens only, ordered by displayOrder. Empty list is 200 []."
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Landing",
+      "item": [
+        {
+          "name": "Get published landing sections",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/landing/sections",
+            "description": "Anonymous. Returns published visible sections ordered by displayOrder, virtual stats key excluded. Every one of the 11 stored types returns the same bilingual envelope (arabicTitle/englishTitle plus optional arabicBody/englishBody), the raw contentJson exactly as stored, imagePath, displayOrder, and testimonials/faqs (resolved live for the testimonials and faq types, null for every other type). Empty list is 200 []."
+          }
+        },
+        {
+          "name": "Get landing stats",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/landing/stats",
+            "description": "Anonymous. Live counters computed per request from real rows, never stored or hard-coded: familiesCount (excluding soft-deleted), medicalCaregiversCount and companionCaregiversCount (Active rows by type), approvedFacilitiesCount (Approved facility rows, 0 when there are none) and totalCaregiversCount (the sum). The client may cache these reads behind a 60-second ISR window; there is no revalidation webhook."
+          }
+        },
+        {
+          "name": "Submit landing contact form (shared support flow)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Authorization", "value": "Bearer {{accessToken}}"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"subject\": \"Landing enquiry\",\n  \"message\": \"I would like to know more about your services.\"\n}"},
+            "url": "{{baseUrl}}/api/v1/support/contact",
+            "description": "Authenticated app JWT. The landing contact-form section configures fields; submission enters the real shared support flow (no separate landing ticket table). Subject 3-150 chars, message 10-2000 chars. Success 200 with ticket receipt."
+          }
+        },
+        {
+          "name": "Submit partner contact (anonymous)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {"key": "Content-Type", "value": "application/json"},
+              {"key": "Idempotency-Key", "value": "{{partnerContactIdempotencyKey}}"}
+            ],
+            "body": {"mode": "raw", "raw": "{\n  \"name\": \"Nour Hassan\",\n  \"company\": \"Hassani Care\",\n  \"phone\": \"+20 100 123 4567\",\n  \"companyType\": \"Care home\",\n  \"city\": \"القاهرة\",\n  \"email\": \"nour@example.com\",\n  \"subject\": \"Partnership\",\n  \"message\": \"We would like to discuss a partnership.\"\n}"},
+            "url": "{{baseUrl}}/api/v1/partner-contact",
+            "description": "Anonymous - no Authorization header. Partner/business contact whose destination is the existing admin support inbox. No account is created and no identity is faked: the submitted name/company/phone/companyType/city/email/subject/message are stored as request data. company is the company NAME, kept separate from companyType (optional FREE TEXT <=100 chars - the select options are frontend-owned, no enum). phone is optional (<=32 chars, digits with an optional leading + and the separators space/()/-.); city is optional free text <=120 chars. All three are omitted-or-blank -> null and are part of the idempotency content. The Idempotency-Key header is REQUIRED: the same key with the same content returns the same receipt, the same key with different content returns 409 Identity.PartnerContact.IdempotencyConflict, and too many submissions from one caller answer 429 Identity.PartnerContact.RateLimited with a Retry-After header. A validation failure returns 400 (Api.Validation.Failed, or Identity.PartnerContact.Invalid from the domain rules). Success 200 with { contactId, submittedOnUtc }."
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Public Lookups",
+      "item": [
+        {
+          "name": "Get active services",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/services",
+            "description": "Anonymous. Active services only."
+          }
+        },
+        {
+          "name": "Get active languages",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/languages",
+            "description": "Anonymous. Active languages only, ordered by code."
+          }
+        },
+        {
+          "name": "Get active banks",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/banks",
+            "description": "Anonymous. Active banks only, ordered by code. Choices for caregiver payout-account setup."
+          }
+        },
+        {
+          "name": "Get active governorates",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/governorates",
+            "description": "Anonymous. Active governorates only."
+          }
+        },
+        {
+          "name": "Get active cities",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/lookups/cities?governorateId={{governorateId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lookups",
+                "cities"
+              ],
+              "query": [
+                {
+                  "key": "governorateId",
+                  "value": "{{governorateId}}"
+                }
+              ]
+            },
+            "description": "Anonymous. Required governorateId (also marked required in OpenAPI); omission returns 400 Api.Validation.Failed; unknown parent returns 200 with []. Returns cities where both city and governorate are active."
+          }
+        },
+        {
+          "name": "Get active areas",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/lookups/areas?cityId={{cityId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "lookups",
+                "areas"
+              ],
+              "query": [
+                {
+                  "key": "cityId",
+                  "value": "{{cityId}}"
+                }
+              ]
+            },
+            "description": "Anonymous. Required cityId (also marked required in OpenAPI); omission returns 400 Api.Validation.Failed; unknown parent returns 200 with []. Returns areas only when area + city + governorate are all active."
+          }
+        },
+        {
+          "name": "Get active specializations",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/specializations",
+            "description": "Anonymous. Active specializations for both caregiver types; filter client-side by caregiverType (1 Medical, 2 Companion)."
+          }
+        },
+        {
+          "name": "Get active professional titles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/professional-titles",
+            "description": "Anonymous. Active Medical professional titles."
+          }
+        },
+        {
+          "name": "Get active academic degrees",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/lookups/academic-degrees",
+            "description": "Anonymous. Active Medical academic degrees."
+          }
+        },
+        {
+          "name": "Get note categories & priorities lookup",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/note-categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "note-categories"
+              ]
+            },
+            "description": "Anonymous GET /api/v1/note-categories returns categories and priorities; each option has numeric id and bilingual nameAr/nameEn."
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Deployment info",
+      "item": [
+        {
+          "name": "Get deployment info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/deployment/info",
+            "description": "Anonymous. Safe release evidence only: application, environment, manifest revision, required migrations and actually applied latest migration per module context. Carries no connection strings, tokens, or payloads. Used by Verify-AhlenaDeployment.ps1 to prove remote revision and 9-context migration coverage."
+          }
+        }
+      ]
+    },
+    {
+      "name": "06. Platform status",
+      "item": [
+        {
+          "name": "Get public platform status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/platform/status",
+            "description": "Anonymous. Returns the sanitized public platform status: state (1 Operational, 2 Maintenance), the published bilingual maintenance message, the currently available supported payment methods (1 Card, 2 Wallet), and subscriptionCardEnrollmentAvailable (whether Card is usable for a subscription initial enrollment). ApplePay is never advertised. Fails closed with 503 Platform.ControlStateUnavailable when the platform controls cannot be read."
+          },
+          "description": "Read before starting a new booking or payment. Advisory for the UI only: the server enforces the same rules and refuses gated routes with 503 Platform.Maintenance or 400 Platform.PaymentMethodUnavailable."
+        }
+      ]
+    },
+    {
+      "name": "07. Site settings",
+      "item": [
+        {
+          "name": "Get site settings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/site-settings",
+            "description": "Anonymous. Returns the published navbar links and the SEO defaults: { navbarLinks, seo }. navbarLinks is the authored list in the authored order (the navbar order) and each link carries { key, arabicLabel, englishLabel, url }. seo is null when no SEO default was authored and each of its members is null when that member was not authored. Before anything is authored the read is honest: 200 with navbarLinks [] and seo null. The read exposes only the published content - no identity, timestamps or authoring metadata."
+          }
+        }
+      ]
+    },
+    {
+      "name": "08. Public legal",
+      "item": [
+        {
+          "name": "Get public legal document (anonymous)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/v1/public/legal/{documentType}",
+            "description": "Anonymous - no Authorization header, no token is read. Serves the current Published Privacy Policy or Terms & Conditions authored for the anonymous Public audience (LegalAudience = 0), in the same LegalDocumentResponse shape as the signed-in app read /api/v1/legal/* (bilingual ordered sections; audience 0, status 2). {documentType} binds from the route as a LegalDocumentType: 1 or PrivacyPolicy, 2 or TermsAndConditions (numeric or enum name, case-insensitive). Only the current Published Public version is served - no drafts, no archived versions, and no fallback to a different audience (a published Family document does not satisfy a public read). Help Center is NOT public: it stays on the authenticated GET /api/v1/help-center. Examples: GET {{baseUrl}}/api/v1/public/legal/PrivacyPolicy and GET {{baseUrl}}/api/v1/public/legal/2. Success 200 with the document. Malformed or undefined {documentType} (0, 3, 9, abc, a comma list) -> 400 Cms.Content.InvalidDocumentType. No current Published Public version for the requested type -> 404 Cms.Legal.NotPublished."
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {"key": "paymobSubscriptionId", "value": "REPLACE_WITH_PROVIDER_SUBSCRIPTION_ID", "type": "string", "description": "Provider subscription_data.id from an approved callback fixture."},
+    {"key": "paymobInitialTransactionId", "value": "REPLACE_WITH_INITIAL_TRANSACTION_ID", "type": "string", "description": "Optional subscription_data.initial_transaction; required for an initial CREATED settlement."},
+    {"key": "paymobRequestId", "value": "REPLACE_WITH_PROVIDER_REQUEST_ID", "type": "string", "description": "Required for renewal callbacks and used as the durable idempotency/event identity."},
+    {"key": "paymobSubscriptionHmac", "value": "REPLACE_WITH_BODY_HMAC", "type": "string", "description": "Lowercase or uppercase HMAC-SHA512 for trigger_type + for + subscription_data.id using Paymob__HmacSecret."},
+    {"key": "partnerContactIdempotencyKey", "value": "partner-contact-1", "type": "string", "description": "Idempotency-Key of the anonymous partner-contact submission. Reuse the same value to retry the same request; a new value starts a new submission."}
+  ]
+}

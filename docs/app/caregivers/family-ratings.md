@@ -35,12 +35,12 @@ non-admin read and from every aggregate, including this summary, the discovery
 search (with its `minRating` filter) and the top-10 ranking. Restoring it returns
 it to both. Moderation never changes stars, text or authorship, and a repeated
 `PUT` edits a hidden rating without unhiding it. See
-[Admin ratings moderation](../admin/ratings-moderation.md).
+[Admin ratings moderation](../../admin/ratings-moderation.md).
 
 SMS is not used. The Care homes rating endpoint
 and ranking remain separate and are tracked in the
 [Care homes task checklist](../../internal/operations/care-homes/Care_Homes_Tasks.md).
 
-Runnable Bruno coverage: `tests/Bruno/collections/Sanad/caregiver-ratings`,
+Runnable Bruno coverage: `tests/Bruno/collections/Ahlena/caregiver-ratings`,
 using only the guarded Development fixture database. The Postman requests are
-in `Sanad.App.Family` under `14. Caregiver ratings (Family)`.
+in `Ahlena.App.Family` under `14. Caregiver ratings (Family)`.
